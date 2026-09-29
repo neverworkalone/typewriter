@@ -5,6 +5,7 @@ import { sha256Json } from '../validate/semantic-audit.mjs';
 import {
   inspectWriterDomainEvidence,
   validateLexicalRecord,
+  validateSingleSenseBoundaryReview,
   validateTopicAnalysisEvidence,
 } from '../validate/lexical-quality.mjs';
 import {
@@ -301,11 +302,44 @@ function validateDecisionRow(row, {
     if (senseReview.sense_id !== sense.id) fail(`${senseLabel} is not source-bound`, 'DECISION_SOURCE_BINDING', config);
     requireString(senseReview.semantic_rationale, `${senseLabel}.semantic_rationale`, config);
     requireString(senseReview.boundary_rationale, `${senseLabel}.boundary_rationale`, config);
-    if (senseReview.boundary_action !== 'retain' || senseReview.boundary_classification !== 'atomic') {
+    const singleSenseBoundaryReview = senseReview.single_sense_boundary_review;
+    if (candidate.senses.length === 1
+      && config.requireSingleSenseBoundaryReview === true
+      && ['included', 'corrected'].includes(row.decision)
+      && singleSenseBoundaryReview === undefined) {
+      fail(`${senseLabel}.single_sense_boundary_review is required for fresh single-sense admission`, 'SINGLE_SENSE_BOUNDARY_REVIEW', config);
+    }
+    if (singleSenseBoundaryReview !== undefined) {
+      if (candidate.senses.length !== 1) {
+        fail(`${senseLabel}.single_sense_boundary_review cannot replace multi-sense pairwise evidence`, 'SINGLE_SENSE_BOUNDARY_REVIEW', config);
+      }
+      try {
+        validateSingleSenseBoundaryReview(candidate, singleSenseBoundaryReview, {
+          productionDecision: row.decision,
+          decisionSourceId,
+          action: senseReview.boundary_action,
+          classification: senseReview.boundary_classification,
+          boundaryDecision: senseReview.boundary_decision,
+          label: `${senseLabel}.single_sense_boundary_review`,
+        });
+      } catch (error) {
+        fail(`${senseLabel} single-sense boundary evidence failed: ${error.message}`, 'SINGLE_SENSE_BOUNDARY_REVIEW', config);
+      }
+    }
+    if (singleSenseBoundaryReview?.decision === 'split') {
+      if (row.decision !== 'held'
+        || senseReview.boundary_action !== 'split'
+        || senseReview.boundary_classification !== 'separated'
+        || senseReview.boundary_decision !== 'split') {
+        fail(`${senseLabel} split boundary must remain held until a source-bound multi-sense record is available`, 'SINGLE_SENSE_BOUNDARY_REVIEW', config);
+      }
+    } else if (senseReview.boundary_action !== 'retain' || senseReview.boundary_classification !== 'atomic') {
       fail(`${senseLabel} must retain an atomic writer-facing unit`, 'DECISION_SOURCE_BINDING', config);
     }
     const domains = inspectWriterDomainEvidence(sense.gloss);
-    const expectedBoundaryDecision = domains.axes.length > 1 ? 'coordinated' : 'atomic';
+    const expectedBoundaryDecision = singleSenseBoundaryReview?.decision === 'split'
+      ? 'split'
+      : domains.axes.length > 1 ? 'coordinated' : 'atomic';
     if (senseReview.boundary_decision !== expectedBoundaryDecision) {
       fail(`${senseLabel}.boundary_decision does not bind the reviewed gloss domains`, 'DECISION_SOURCE_BINDING', config);
     }

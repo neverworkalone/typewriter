@@ -8,7 +8,7 @@ Parent: Issue #218. Source canonical revision: `3e07c1b224cc7f7324f044b807cef9e1
 | --- | ---: |
 | Multi-sense records reviewed | 249 |
 | Senses in those records | 511 |
-| Canonical senses | 5338 |
+| Canonical senses | 5356 |
 | Retain split with authored frame and route contrast | 42 |
 | Merge over-split senses | 0 |
 | Hold unresolved boundaries | 207 |

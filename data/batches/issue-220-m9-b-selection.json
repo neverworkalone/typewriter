@@ -1,0 +1,3685 @@
+{
+  "schema_version": "1",
+  "contract_version": "m9-recovery-batch-selection-v2",
+  "issue": 220,
+  "parent_issue": 218,
+  "selected_count": 40,
+  "baseline": {
+    "canonical_commit": "17a3b31cc17f7775fccf69f9ecb0ecd03fff7dde",
+    "canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e",
+    "canonical_record_count": 5076,
+    "canonical_start_count": 5034,
+    "issue_210_inventory_path": "data/batches/issue-220-m9-b-base-issue-210-recovery-inventory.json",
+    "issue_210_inventory_sha256": "5dbe54ee92b5f8548e41208a46e73f5b68c3fb1d1562afefd5a39f85d9670dde",
+    "seed_path": "data/batches/issue-220-m9-b-base-seed.json",
+    "seed_sha256": "394f7fa65fc22a1706af2dbb663e9eb2880ad265ecb2c6a619d6d6d5c59687f7"
+  },
+  "policy": {
+    "id": "m9-historical-capacity-reserve-prefix-v1",
+    "priority": "M5-13 fit capacity reserves not yet reviewed under M9, before legacy/open rows and unresolved holds",
+    "eligible_reserve_count": 54,
+    "cohort": "M5-13 Typewriter-authored fit capacity reserves",
+    "selected_count": 40,
+    "batch_size": 20,
+    "selected_order": "first 40 eligible rows by numeric M5 inventory identity, split into two consecutive 20-row batches",
+    "rationale": "The Issue #210 baseline marks every selected row admit-candidate with no current canonical lemma match; the M5-13 source and fit/reserve outcome establish historical lineage and review priority only. Each M9-B disposition is independently authored and does not inherit prior admission authority.",
+    "no_admission_quota": true,
+    "relation_enrichment_required": false
+  },
+  "prior_source_bindings": {
+    "candidate_source": {
+      "path": "data/batches/m5-13-lexical-unit-source.json",
+      "source_id": "m5-13-typewriter-authored-lexical-units-20260922-r4",
+      "file_sha256": "ac8087e4a9f9dc71a4be0814213fb56aa6fa254249b8423f4ed1d11e9b170aa3",
+      "artifact_sha256": "1d427b8c3e571bbfb52ca9adf8bc8f7a950b719b26cdabbe2de90f4df85c4d71"
+    },
+    "semantic_decisions": {
+      "path": "data/batches/m5-13-semantic-decisions.json",
+      "source_id": "m5-13-authored-semantic-decisions-20260923-r6",
+      "file_sha256": "b3e238b8715c46ed813e4faacac442ad66333b206c245c202d72a00c08ad5bf1",
+      "artifact_sha256": "6ee1835952f11ca713a8cebe4648f235e793bc770ab3ca760f40a8921a736f2b"
+    }
+  },
+  "selected_candidates": [
+    {
+      "order": 1,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2153",
+      "source_inventory_row_sha256": "6e41ca66d3cdc88b7f0b386fe9d314df051588cf2ae94209d90783e2f3d7d196",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2153",
+        "lemma": "악의",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "악의"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2153 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2153 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2153 w2233: 남을 해치거나 곤란하게 만들려는 나쁜 의도다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "악의",
+              "status": "no-match",
+              "normalized_query": "악의",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2233",
+      "historical_candidate_record_sha256": "fffbc86c68e84bd935aa54ea80cb51a2a2ffb7b000538e5642ba3b297b6d29c3",
+      "historical_decision_row_sha256": "fbae97d8a4bd6378223f1515c40e23d8273957274eb939691bd08b8d0c9d0995",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0153",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0153",
+        "lemma": "악의",
+        "axis": "E",
+        "flags": [
+          "mood-range"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "남을 해치거나 곤란하게 만들려는 나쁜 뜻.",
+        "writer_gloss": "남을 해치거나 곤란하게 만들려는 나쁜 뜻."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2153",
+        "historical_candidate_record_id": "w2233",
+        "candidate_record_id": "w5384",
+        "lemma": "악의"
+      }
+    },
+    {
+      "order": 2,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2154",
+      "source_inventory_row_sha256": "befbbe9dfcadea08bcc17a23676b2f7366992bea510b1532ad2b52ffa5fa3a0a",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2154",
+        "lemma": "질투심",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "질투심"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2154 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2154 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2154 w2234: 애정·관심을 빼앗길까 염려하는 질투의 뜻을 담는다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "질투심",
+              "status": "no-match",
+              "normalized_query": "질투심",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2234",
+      "historical_candidate_record_sha256": "90d74009f15490a7ca26a3c127775dd1e090ca2c4c6010f8bebe255813f53f05",
+      "historical_decision_row_sha256": "3ae66bf3aebe904a010bc12c0b39dcefee84baec926b30f63baefdf32d4f624e",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0154",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0154",
+        "lemma": "질투심",
+        "axis": "E",
+        "flags": [
+          "mood-range"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "사랑이나 관심을 다른 이에게 빼앗길까 염려하며 느끼는 시기.",
+        "writer_gloss": "사랑이나 관심을 다른 이에게 빼앗길까 염려하며 느끼는 시기."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2154",
+        "historical_candidate_record_id": "w2234",
+        "candidate_record_id": "w5385",
+        "lemma": "질투심"
+      }
+    },
+    {
+      "order": 3,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2155",
+      "source_inventory_row_sha256": "6d7e01fac79495974026ba786d8edb7b92f94b94a04f1b692159318cb643b5a9",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2155",
+        "lemma": "미움",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "미움"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2155 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2155 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2155 w2235: 대상에 반감을 품고 싫어하는 마음을 나타낸다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "미움",
+              "status": "no-match",
+              "normalized_query": "미움",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2235",
+      "historical_candidate_record_sha256": "b5c7228d437c4eec2b3a1b2da93b69bd7332c8bac3fd1142609f56137dfee9f6",
+      "historical_decision_row_sha256": "ce92408db48dd18d97321d4ac9f4440f7c512d57ba9cc28857f2b6d6a21a178d",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0155",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0155",
+        "lemma": "미움",
+        "axis": "E",
+        "flags": [
+          "mood-range"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "대상에 반감을 품고 싫어하는 마음.",
+        "writer_gloss": "대상에 반감을 품고 싫어하는 마음."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2155",
+        "historical_candidate_record_id": "w2235",
+        "candidate_record_id": "w5386",
+        "lemma": "미움"
+      }
+    },
+    {
+      "order": 4,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2156",
+      "source_inventory_row_sha256": "e6bc44c60fb73186c78e329e7f55e55c0177e8a9ebd943e50466bed512e334fa",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2156",
+        "lemma": "미운 정",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "미운 정"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2156 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2156 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2156 w2236: 미움과 오랜 관계의 정이 함께 남는 복합 감정이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "미운 정",
+              "status": "no-match",
+              "normalized_query": "미운 정",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2236",
+      "historical_candidate_record_sha256": "8d3300bff539d488991ce275d7073325980ab0c78232e319c5613a4a8c6aab8f",
+      "historical_decision_row_sha256": "2ebc7375a2ff0289e6e930cf397a60c8310f1ca1915a0abff6415e241a596b51",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0156",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0156",
+        "lemma": "미운 정",
+        "axis": "E",
+        "flags": [
+          "mood-range"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "미워하면서도 오랜 관계 때문에 쉽게 끊지 못하는 정.",
+        "writer_gloss": "미워하면서도 오랜 관계 때문에 쉽게 끊지 못하는 정."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2156",
+        "historical_candidate_record_id": "w2236",
+        "candidate_record_id": "w5387",
+        "lemma": "미운 정"
+      }
+    },
+    {
+      "order": 5,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2157",
+      "source_inventory_row_sha256": "78cb6bc260a07ee21d6e4577f1fd6698e23148d39a7b12a6c3013b55f67c1375",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2157",
+        "lemma": "싫증",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "싫증"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2157 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2157 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2157 w2237: 반복된 대상에 더는 마음이 가지 않는 상태다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "싫증",
+              "status": "no-match",
+              "normalized_query": "싫증",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2237",
+      "historical_candidate_record_sha256": "2627b1b9b90b1e72a0c734b86c871cf3b10287fcf1b791ce8e8840e27d001971",
+      "historical_decision_row_sha256": "8e936e213620afefc098ef1ce97525a5aac26a98f1aa90e39b65d099b100a67c",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0157",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0157",
+        "lemma": "싫증",
+        "axis": "E",
+        "flags": [
+          "mood-range"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "같은 대상이나 일이 되풀이되어 더는 마음이 가지 않음.",
+        "writer_gloss": "같은 대상이나 일이 되풀이되어 더는 마음이 가지 않음."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2157",
+        "historical_candidate_record_id": "w2237",
+        "candidate_record_id": "w5388",
+        "lemma": "싫증"
+      }
+    },
+    {
+      "order": 6,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2158",
+      "source_inventory_row_sha256": "934e0a60d8470f470d8fcbf04edfe11213345cce3882bf39d6db3388e6d82fc5",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2158",
+        "lemma": "싫증남",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "싫증남"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2158 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2158 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2158 w2238: 반복·익숙함 뒤 흥미가 사라진 상태를 나타낸다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "싫증남",
+              "status": "no-match",
+              "normalized_query": "싫증남",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2238",
+      "historical_candidate_record_sha256": "edaa0305c8c3ac63568f7c7bf1f0d83af42953824b98dd9c85e2561fbe2cb874",
+      "historical_decision_row_sha256": "d5e4a7d84c59206553715a6c3e62ec893e2e1a4315dacc86d3126dc3cc2d13bc",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0158",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0158",
+        "lemma": "싫증남",
+        "axis": "E",
+        "flags": [
+          "mood-range"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "반복이나 익숙함 때문에 대상에 흥미가 사라진 상태.",
+        "writer_gloss": "반복이나 익숙함 때문에 대상에 흥미가 사라진 상태."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2158",
+        "historical_candidate_record_id": "w2238",
+        "candidate_record_id": "w5389",
+        "lemma": "싫증남"
+      }
+    },
+    {
+      "order": 7,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2159",
+      "source_inventory_row_sha256": "f40bcc6ebec1ee85d097da2e04679cc88c68206bcf3236191d18d38dd19942cd",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2159",
+        "lemma": "권태감",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "권태감"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2159 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2159 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2159 w2239: 단조로운 생활·관계에서 생기는 싫증의 기분이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "권태감",
+              "status": "no-match",
+              "normalized_query": "권태감",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2239",
+      "historical_candidate_record_sha256": "1af959457997d09dc47354577a360b0f6d500f9a3d2998a31d60242b3168fe23",
+      "historical_decision_row_sha256": "34a0b83fcc7a302d95389b5294d2052a42d79bc6f68c8c1d11cdaf69f11f62dc",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0159",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0159",
+        "lemma": "권태감",
+        "axis": "E",
+        "flags": [
+          "mood-range"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "생활이나 관계가 단조롭게 느껴져 싫증이 나는 기분.",
+        "writer_gloss": "생활이나 관계가 단조롭게 느껴져 싫증이 나는 기분."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2159",
+        "historical_candidate_record_id": "w2239",
+        "candidate_record_id": "w5390",
+        "lemma": "권태감"
+      }
+    },
+    {
+      "order": 8,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2160",
+      "source_inventory_row_sha256": "139827a985d1c291989945210b3c922306e5538dd3f6fc649aef07f09a383435",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2160",
+        "lemma": "무기력",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "무기력"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2160 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2160 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2160 w2240: 의욕과 기운이 없어 행동할 힘이 나지 않는 상태다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "무기력",
+              "status": "no-match",
+              "normalized_query": "무기력",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2240",
+      "historical_candidate_record_sha256": "375c758c461735b7ce834e339999e6059ccfa2d2c774929d52ce03f5a5b7b201",
+      "historical_decision_row_sha256": "a67eec23b6bd4d3370b6d205f3e21fa4697dbef26fa98aee31750956a2cd08af",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0160",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0160",
+        "lemma": "무기력",
+        "axis": "E",
+        "flags": [
+          "mood-range"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "의욕이나 기운이 없어 무엇을 하려는 힘이 나지 않는 상태.",
+        "writer_gloss": "의욕이나 기운이 없어 무엇을 하려는 힘이 나지 않는 상태."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2160",
+        "historical_candidate_record_id": "w2240",
+        "candidate_record_id": "w5391",
+        "lemma": "무기력"
+      }
+    },
+    {
+      "order": 9,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2311",
+      "source_inventory_row_sha256": "ef81c58869e96ac5052c06e1465ee22a388ef74bd9794285fa65ae2e26ae9647",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2311",
+        "lemma": "단절",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "단절"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2311 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2311 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2311 w2391: 이어지던 관계나 흐름이 끊어진 상태를 뜻한다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "단절",
+              "status": "no-match",
+              "normalized_query": "단절",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2391",
+      "historical_candidate_record_sha256": "35e3c2b6e09d4f4ae9c8deb5303c0a47a3ecd60afd17fc6f88da763e06db4df7",
+      "historical_decision_row_sha256": "fcfc32c4ba78762d21185b811cae8b240cbd1e0b7ee48f0564bd4f32b22090d1",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0311",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0311",
+        "lemma": "단절",
+        "axis": "Q",
+        "flags": [
+          "direct-boundary"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "이어지던 관계나 흐름이 끊어진 상태.",
+        "writer_gloss": "이어지던 관계나 흐름이 끊어진 상태."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2311",
+        "historical_candidate_record_id": "w2391",
+        "candidate_record_id": "w5392",
+        "lemma": "단절"
+      }
+    },
+    {
+      "order": 10,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2312",
+      "source_inventory_row_sha256": "d9188506888d9ff2ae514f6bc76c14d68cd7644d31fae1538a99c833415dd944",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2312",
+        "lemma": "잔여",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "잔여"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2312 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2312 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2312 w2392: 사용·제거 뒤에도 남아 있는 몫이라는 의미다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "잔여",
+              "status": "no-match",
+              "normalized_query": "잔여",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2392",
+      "historical_candidate_record_sha256": "1c91298b7df70fded2f1a2182b4d00aee2cbe9c6b019015032648d1830dc0d31",
+      "historical_decision_row_sha256": "0ba5ec0641cac2a95bd6941a02310abed6506990523bc58be8588bf132846c34",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0312",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0312",
+        "lemma": "잔여",
+        "axis": "Q",
+        "flags": [
+          "direct-boundary"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "쓰거나 덜어 낸 뒤에도 남아 있는 부분.",
+        "writer_gloss": "쓰거나 덜어 낸 뒤에도 남아 있는 부분."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2312",
+        "historical_candidate_record_id": "w2392",
+        "candidate_record_id": "w5393",
+        "lemma": "잔여"
+      }
+    },
+    {
+      "order": 11,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2314",
+      "source_inventory_row_sha256": "ef105d4c66c2e645d4af8130d05a48843a31b128302ea8767c7c5faaff0a59e7",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2314",
+        "lemma": "흔들림",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "흔들림"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2314 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2314 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2314 w2394: 중심을 기준으로 물체가 이리저리 움직이는 상태다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "흔들림",
+              "status": "no-match",
+              "normalized_query": "흔들림",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2394",
+      "historical_candidate_record_sha256": "fde2d04386735623fbcc8a28e95454e3f79a974eb4532ffa73f691a213891191",
+      "historical_decision_row_sha256": "d7b0e18b90430a81f9d29eb6594bcfd91c7cfb843276b209097626e115b79048",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0314",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0314",
+        "lemma": "흔들림",
+        "axis": "Q",
+        "flags": [
+          "direct-boundary"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "물체가 중심을 기준으로 이리저리 움직이는 상태.",
+        "writer_gloss": "물체가 중심을 기준으로 이리저리 움직이는 상태."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2314",
+        "historical_candidate_record_id": "w2394",
+        "candidate_record_id": "w5394",
+        "lemma": "흔들림"
+      }
+    },
+    {
+      "order": 12,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2315",
+      "source_inventory_row_sha256": "a65bfcbce2bb467dc385409bb830cd8e5cac749e0e42fe097eb479ed6bafa397",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2315",
+        "lemma": "정돈",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "정돈"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2315 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2315 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2315 w2395: 흩어진 물건·내용을 가지런하게 정리하는 작용이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "정돈",
+              "status": "no-match",
+              "normalized_query": "정돈",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2395",
+      "historical_candidate_record_sha256": "8cdbb5bc6bca6cb71d372fa3cc4cecf5bde1c307eeb17ed10745118ade8a3ec3",
+      "historical_decision_row_sha256": "74397081190ec5fff8cd9bfec3133521a32ae766bd08bffcb8855f8fec9a5c9d",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0315",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0315",
+        "lemma": "정돈",
+        "axis": "Q",
+        "flags": [
+          "direct-boundary"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "흩어진 물건이나 내용을 가지런히 정리함.",
+        "writer_gloss": "흩어진 물건이나 내용을 가지런히 정리함."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2315",
+        "historical_candidate_record_id": "w2395",
+        "candidate_record_id": "w5395",
+        "lemma": "정돈"
+      }
+    },
+    {
+      "order": 13,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2316",
+      "source_inventory_row_sha256": "e6e5ad2f52b351df6a1e92e698c176dd0f8bcd3fe70f2ec61c5f6581c378b539",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2316",
+        "lemma": "뒤섞임",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "뒤섞임"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2316 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2316 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2316 w2396: 서로 다른 요소가 구분되지 않게 섞인 상태를 나타낸다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "뒤섞임",
+              "status": "no-match",
+              "normalized_query": "뒤섞임",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2396",
+      "historical_candidate_record_sha256": "cf8c5756baac355c2b0a92552e7b9bd5ba01ef663c2337994584928152f9e273",
+      "historical_decision_row_sha256": "e1597fa2516cc24c227654aa4004d70182267f660da2f881b0bc662036b1461a",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0316",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0316",
+        "lemma": "뒤섞임",
+        "axis": "Q",
+        "flags": [
+          "direct-boundary"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "서로 다른 요소가 구분되지 않게 한데 섞인 상태.",
+        "writer_gloss": "서로 다른 요소가 구분되지 않게 한데 섞인 상태."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2316",
+        "historical_candidate_record_id": "w2396",
+        "candidate_record_id": "w5396",
+        "lemma": "뒤섞임"
+      }
+    },
+    {
+      "order": 14,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2317",
+      "source_inventory_row_sha256": "f67bca86af3f261bd79b37c1746130e0596c526ff985c08867df771f386ea3f3",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2317",
+        "lemma": "배치",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "배치"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2317 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2317 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2317 w2397: 사물·요소를 자리와 순서에 놓는 방식을 말한다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "배치",
+              "status": "no-match",
+              "normalized_query": "배치",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2397",
+      "historical_candidate_record_sha256": "eab914062dd196d4d66f49b8197eb471e526641443a06389319ded49ad2596b0",
+      "historical_decision_row_sha256": "c04a8fce7c7eb88e50ed88b49d5f2a42e52d9407be6e6b808c0486604f4065e4",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0317",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0317",
+        "lemma": "배치",
+        "axis": "Q",
+        "flags": [
+          "direct-boundary"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "사물이나 요소를 일정한 자리와 순서에 놓는 방식.",
+        "writer_gloss": "사물이나 요소를 일정한 자리와 순서에 놓는 방식."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2317",
+        "historical_candidate_record_id": "w2397",
+        "candidate_record_id": "w5397",
+        "lemma": "배치"
+      }
+    },
+    {
+      "order": 15,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2318",
+      "source_inventory_row_sha256": "85614f6a5c49e0809839751df95d38a707cd2a74b647a0f324f497b929fdce5b",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2318",
+        "lemma": "배경",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "배경"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2318 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2318 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2318 w2398: 앞쪽 대상 뒤에서 장면·내용을 받치는 환경이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "배경",
+              "status": "no-match",
+              "normalized_query": "배경",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2398",
+      "historical_candidate_record_sha256": "fd7a526e63673427c74876f3070dc398fa679eae57fe92319b66123da3b167c2",
+      "historical_decision_row_sha256": "e3e742fbc4b1f6784749a2cc2900f407d6876fe19512e08ddb8be760e03e68d0",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0318",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0318",
+        "lemma": "배경",
+        "axis": "Q",
+        "flags": [
+          "direct-boundary"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "앞에 놓인 대상 뒤에서 장면이나 내용을 받치는 환경.",
+        "writer_gloss": "앞에 놓인 대상 뒤에서 장면이나 내용을 받치는 환경."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2318",
+        "historical_candidate_record_id": "w2398",
+        "candidate_record_id": "w5398",
+        "lemma": "배경"
+      }
+    },
+    {
+      "order": 16,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2319",
+      "source_inventory_row_sha256": "b833396ae3268f9394e6a6dc103ad30c21065354d06f2583210758266f42e36d",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2319",
+        "lemma": "전경",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "전경"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2319 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2319 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2319 w2399: 장면에서 관찰자에게 가까이 드러나는 부분을 지칭한다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "전경",
+              "status": "no-match",
+              "normalized_query": "전경",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2399",
+      "historical_candidate_record_sha256": "0f049557f4e6c4cb52d0472a66cef5bc6a03c0bd4b0ef60cf455e133db821c75",
+      "historical_decision_row_sha256": "b76d6c3a4b0a926e559077a4938d9ea48a2353cb30f4fcc7fba0f6bf2347f967",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0319",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0319",
+        "lemma": "전경",
+        "axis": "Q",
+        "flags": [
+          "direct-boundary"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "장면에서 관찰자에게 가장 가까이 드러나는 부분.",
+        "writer_gloss": "장면에서 관찰자에게 가장 가까이 드러나는 부분."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2319",
+        "historical_candidate_record_id": "w2399",
+        "candidate_record_id": "w5399",
+        "lemma": "전경"
+      }
+    },
+    {
+      "order": 17,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2473",
+      "source_inventory_row_sha256": "fc82e303ee1a6c8d14776f776c4332fb5bb8fdd22489b91c43204a98b6bd1abf",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2473",
+        "lemma": "손끝의 저림",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "손끝의 저림"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2473 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2473 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2473 w2553: 손가락 끝이 찌릿하거나 둔해지는 감각을 나타낸다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "손끝의 저림",
+              "status": "no-match",
+              "normalized_query": "손끝의 저림",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2553",
+      "historical_candidate_record_sha256": "1596462f1f6de66b1fb3ad9520b61bff30d4b64aa31818e0db187b07d58acb4f",
+      "historical_decision_row_sha256": "b787c7892db7d612f0ea85153d33d69493dfc54ee90ecd5f0b5cd89c1fa08eaa",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0473",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0473",
+        "lemma": "손끝의 저림",
+        "axis": "S",
+        "flags": [
+          "sensory-transfer"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "손가락 끝이 찌릿하거나 감각이 둔해지는 느낌.",
+        "writer_gloss": "손가락 끝이 찌릿하거나 감각이 둔해지는 느낌."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2473",
+        "historical_candidate_record_id": "w2553",
+        "candidate_record_id": "w5400",
+        "lemma": "손끝의 저림"
+      }
+    },
+    {
+      "order": 18,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2474",
+      "source_inventory_row_sha256": "225adb161a6b9c5f0b925db41092516d0a2d6698096713a2caaacb10b6395de7",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2474",
+        "lemma": "손끝의 온도",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "손끝의 온도"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2474 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2474 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2474 w2554: 손가락 끝으로 감지하는 따뜻함·차가움의 정도다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "손끝의 온도",
+              "status": "no-match",
+              "normalized_query": "손끝의 온도",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2554",
+      "historical_candidate_record_sha256": "480af97d95b1b01b6f358b17dbdfe819b23763ed28ead73e0ada97c34b1efed7",
+      "historical_decision_row_sha256": "997bb3519058b3e883eaca30792f770d3d1e44eb84a9b44f6f3342d15ab9ba38",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0474",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0474",
+        "lemma": "손끝의 온도",
+        "axis": "S",
+        "flags": [
+          "sensory-transfer"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "손가락 끝에서 알아차리는 따뜻함이나 차가움.",
+        "writer_gloss": "손가락 끝에서 알아차리는 따뜻함이나 차가움."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2474",
+        "historical_candidate_record_id": "w2554",
+        "candidate_record_id": "w5401",
+        "lemma": "손끝의 온도"
+      }
+    },
+    {
+      "order": 19,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2475",
+      "source_inventory_row_sha256": "9896ab65fa75fe84c69a0cedd5cc59e26199ec2a40d3bc8abb9ad385ef7e7662",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2475",
+        "lemma": "발바닥의 감각",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "발바닥의 감각"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2475 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2475 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2475 w2555: 발바닥에서 압력과 바닥 질감을 느끼는 경험이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "발바닥의 감각",
+              "status": "no-match",
+              "normalized_query": "발바닥의 감각",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2555",
+      "historical_candidate_record_sha256": "f85f425ad1c323d9eabd86fb86496e86de77fcf78bbe2013a5e224744e679a9f",
+      "historical_decision_row_sha256": "71e4fe280d4ba5071b330209ea625d91539d2d0fae3e556b370ff7a284441361",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0475",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0475",
+        "lemma": "발바닥의 감각",
+        "axis": "S",
+        "flags": [
+          "sensory-transfer"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "바닥에 닿는 발의 아래쪽에서 느끼는 압력과 질감.",
+        "writer_gloss": "바닥에 닿는 발의 아래쪽에서 느끼는 압력과 질감."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2475",
+        "historical_candidate_record_id": "w2555",
+        "candidate_record_id": "w5402",
+        "lemma": "발바닥의 감각"
+      }
+    },
+    {
+      "order": 20,
+      "batch_number": 1,
+      "source_inventory_id": "m5-2476",
+      "source_inventory_row_sha256": "d6a36053cbe897761195e5501a6d5918a4334144a96a70b0c9626952d9d1c675",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2476",
+        "lemma": "발목의 긴장",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "발목의 긴장"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2476 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2476 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2476 w2556: 발목 근육이 굳고 당기는 신체 감각을 가리킨다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "발목의 긴장",
+              "status": "no-match",
+              "normalized_query": "발목의 긴장",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2556",
+      "historical_candidate_record_sha256": "bf11a39c72ac36fc700f2fda9a143fa3b16c55ab57247c31e465e71fe319b3ad",
+      "historical_decision_row_sha256": "e7b29ffdb9a2c636cc7b7d2ddb8479a2a8dd5dce022dd7f63d7a8a105752675a",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0476",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0476",
+        "lemma": "발목의 긴장",
+        "axis": "S",
+        "flags": [
+          "sensory-transfer"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "발목 주변 근육이 굳고 당기는 느낌.",
+        "writer_gloss": "발목 주변 근육이 굳고 당기는 느낌."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2476",
+        "historical_candidate_record_id": "w2556",
+        "candidate_record_id": "w5403",
+        "lemma": "발목의 긴장"
+      }
+    },
+    {
+      "order": 21,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2477",
+      "source_inventory_row_sha256": "e284e20210523d2156e0282abfa2a7c040f5aae814636a50b5c547520e388441",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2477",
+        "lemma": "피부의 소름",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "피부의 소름"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2477 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2477 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2477 w2557: 추위·감정 자극으로 피부 털구멍이 도드라지는 반응이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "피부의 소름",
+              "status": "no-match",
+              "normalized_query": "피부의 소름",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2557",
+      "historical_candidate_record_sha256": "3055bd891468306f24e6ffdbb65aa89d46c20ec69be59e8405f86c3aba390293",
+      "historical_decision_row_sha256": "2602c71498481319d1b609a3fe00511ec2fcb208ed954da82bc77aace6458f8d",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0477",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0477",
+        "lemma": "피부의 소름",
+        "axis": "S",
+        "flags": [
+          "sensory-transfer"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "추위나 감정 자극으로 피부의 털구멍이 도드라지는 반응.",
+        "writer_gloss": "추위나 감정 자극으로 피부의 털구멍이 도드라지는 반응."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2477",
+        "historical_candidate_record_id": "w2557",
+        "candidate_record_id": "w5404",
+        "lemma": "피부의 소름"
+      }
+    },
+    {
+      "order": 22,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2478",
+      "source_inventory_row_sha256": "59319cc06a86265b90573ed3f333fa531b0524a8a9ecde5943d68782ff1dc44d",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2478",
+        "lemma": "살갗의 떨림",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "살갗의 떨림"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2478 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2478 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2478 w2558: 피부 표면·근육이 작게 떨리는 느낌을 포착한다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "살갗의 떨림",
+              "status": "no-match",
+              "normalized_query": "살갗의 떨림",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2558",
+      "historical_candidate_record_sha256": "963e7b01f0a9fd770dcd65d786e5b090de9121d2a3ba4c57875657edcd840510",
+      "historical_decision_row_sha256": "9820ca88bf89f0fc2ca696ff8b366e9c2e182c2d00d834d4dabf34d12c780e5c",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0478",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0478",
+        "lemma": "살갗의 떨림",
+        "axis": "S",
+        "flags": [
+          "sensory-transfer"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "피부 표면이나 근육이 작게 흔들리는 감각.",
+        "writer_gloss": "피부 표면이나 근육이 작게 흔들리는 감각."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2478",
+        "historical_candidate_record_id": "w2558",
+        "candidate_record_id": "w5405",
+        "lemma": "살갗의 떨림"
+      }
+    },
+    {
+      "order": 23,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2479",
+      "source_inventory_row_sha256": "ab0af0fe56e04ccc731fb2b32ba3a08274cf9e0b751f7efdeb32a1f5e5d00c39",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2479",
+        "lemma": "몸속의 진동",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "몸속의 진동"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2479 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2479 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2479 w2559: 외부 충격·소리가 몸 안에서 떨림으로 느껴지는 현상이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "몸속의 진동",
+              "status": "no-match",
+              "normalized_query": "몸속의 진동",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2559",
+      "historical_candidate_record_sha256": "48c2828bd122d74dee9d4e3fea5f3730286b01fccb44cf789821055e2cae8c4b",
+      "historical_decision_row_sha256": "c4e598512db262dc8218daca8c8f7a5cf9620bacc6e0b542a10cdf3d14e40b8f",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0479",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0479",
+        "lemma": "몸속의 진동",
+        "axis": "S",
+        "flags": [
+          "sensory-transfer"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "외부의 소리나 충격이 몸 안에서 떨림으로 전해지는 느낌.",
+        "writer_gloss": "외부의 소리나 충격이 몸 안에서 떨림으로 전해지는 느낌."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2479",
+        "historical_candidate_record_id": "w2559",
+        "candidate_record_id": "w5406",
+        "lemma": "몸속의 진동"
+      }
+    },
+    {
+      "order": 24,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2480",
+      "source_inventory_row_sha256": "5628f341d88bf49309db0ef8a692871d9297861f699255095da054089fcf58e3",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2480",
+        "lemma": "몸에 밴 냄새",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "몸에 밴 냄새"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2480 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2480 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2480 w2560: 옷·피부에 오래 스며들어 남는 냄새라는 감각어다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "몸에 밴 냄새",
+              "status": "no-match",
+              "normalized_query": "몸에 밴 냄새",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2560",
+      "historical_candidate_record_sha256": "3f4ee69b83a1baad176ba2a427be2b044a7747ef88892205f54e6fd583fa04b5",
+      "historical_decision_row_sha256": "6ab38cf785dcb92f478f49e87c1b4cae48a632638d8190c31ef5b16f45b30b4d",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0480",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0480",
+        "lemma": "몸에 밴 냄새",
+        "axis": "S",
+        "flags": [
+          "sensory-transfer"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "옷이나 피부에 오래 스며들어 쉽게 사라지지 않는 냄새.",
+        "writer_gloss": "옷이나 피부에 오래 스며들어 쉽게 사라지지 않는 냄새."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2480",
+        "historical_candidate_record_id": "w2560",
+        "candidate_record_id": "w5407",
+        "lemma": "몸에 밴 냄새"
+      }
+    },
+    {
+      "order": 25,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2633",
+      "source_inventory_row_sha256": "13b10848b9fae45e4fa86ec5c1ecce3baa26e260f33a5a9fc25a5aa32415e254",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2633",
+        "lemma": "골목 안쪽",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "골목 안쪽"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2633 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2633 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2633 w2713: 골목 입구보다 안으로 들어간 부분이라는 위치 관계다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "골목 안쪽",
+              "status": "no-match",
+              "normalized_query": "골목 안쪽",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2713",
+      "historical_candidate_record_sha256": "3bb8569c307523269afc7ad4ebb7bf508912b55c5148f0a203181f8d5177f89e",
+      "historical_decision_row_sha256": "d97bb76689a2331d513f4bc8cad1fbd2bad44f5a7a1e404f551f41533e36e24f",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0633",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0633",
+        "lemma": "골목 안쪽",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "골목 입구에서 더 들어가 바깥길과 멀어진 부분.",
+        "writer_gloss": "골목 입구에서 더 들어가 바깥길과 멀어진 부분."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2633",
+        "historical_candidate_record_id": "w2713",
+        "candidate_record_id": "w5408",
+        "lemma": "골목 안쪽"
+      }
+    },
+    {
+      "order": 26,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2634",
+      "source_inventory_row_sha256": "5f6cefc94433754368d3201a51a166380206167b6aadb92b8b44fb883cd97825",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2634",
+        "lemma": "시장 입구",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "시장 입구"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2634 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2634 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2634 w2714: 시장 구역으로 진입하는 첫머리를 가리킨다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "시장 입구",
+              "status": "no-match",
+              "normalized_query": "시장 입구",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2714",
+      "historical_candidate_record_sha256": "5412939bce8ca45135a005877b1104a43afa60124d254c08c68cc6aa57312fa8",
+      "historical_decision_row_sha256": "f3e0818f6cb3c15590e5f87619abdbd538c6080200d2bcd9159deaa26b933941",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0634",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0634",
+        "lemma": "시장 입구",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "시장 구역으로 들어가는 첫머리.",
+        "writer_gloss": "시장 구역으로 들어가는 첫머리."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2634",
+        "historical_candidate_record_id": "w2714",
+        "candidate_record_id": "w5409",
+        "lemma": "시장 입구"
+      }
+    },
+    {
+      "order": 27,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2635",
+      "source_inventory_row_sha256": "e8306c2bc4352c202c9cdab56f23818942f704a540da3055018bd3c7bb3ff973",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2635",
+        "lemma": "역 앞",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "역 앞"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2635 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2635 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2635 w2715: 역 출입구와 마주한 외부 공간이라는 뜻이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "역 앞",
+              "status": "no-match",
+              "normalized_query": "역 앞",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2715",
+      "historical_candidate_record_sha256": "ca5eaed71c9d071ff0b5aec80305421a9659af4afef9b928959c3cdacb4d52c3",
+      "historical_decision_row_sha256": "c5224de08e548bcbdfcbcce35def20c2665418bd23af45ed62b46c71b74b93b5",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0635",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0635",
+        "lemma": "역 앞",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "역의 출입구와 마주한 바깥쪽 공간.",
+        "writer_gloss": "역의 출입구와 마주한 바깥쪽 공간."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2635",
+        "historical_candidate_record_id": "w2715",
+        "candidate_record_id": "w5410",
+        "lemma": "역 앞"
+      }
+    },
+    {
+      "order": 28,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2636",
+      "source_inventory_row_sha256": "cddf9b6c388182bbde56c64b8830f191acb4dca19dc6c01681541d6cef409892",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2636",
+        "lemma": "학교 뒤",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "학교 뒤"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2636 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2636 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2636 w2716: 학교 건물 뒤쪽이나 그에 이어진 장소를 말한다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "학교 뒤",
+              "status": "no-match",
+              "normalized_query": "학교 뒤",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2716",
+      "historical_candidate_record_sha256": "b05dd7df5011d1c2772c43a5b72f5a81d397da987eebeec74ce785db80b0f82a",
+      "historical_decision_row_sha256": "374ec9da237d0487d70b2653f708936a9a52eb3305ccea7ec93dd9aa2d24a305",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0636",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0636",
+        "lemma": "학교 뒤",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "학교 건물의 뒷면이나 그쪽에 이어진 자리.",
+        "writer_gloss": "학교 건물의 뒷면이나 그쪽에 이어진 자리."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2636",
+        "historical_candidate_record_id": "w2716",
+        "candidate_record_id": "w5411",
+        "lemma": "학교 뒤"
+      }
+    },
+    {
+      "order": 29,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2637",
+      "source_inventory_row_sha256": "7009feff900b82fa3d2632fab848187776772a7e43ac021bdf7aa48e087bbe45",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2637",
+        "lemma": "병원 옆",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "병원 옆"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2637 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2637 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2637 w2717: 병원 건물에 인접한 바깥 공간이라는 위치어다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "병원 옆",
+              "status": "no-match",
+              "normalized_query": "병원 옆",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2717",
+      "historical_candidate_record_sha256": "258edc7056cadd141af99680e29e8d29f79a01f787063b673631d4eb615d0f68",
+      "historical_decision_row_sha256": "0c2979c6c4b49a0d47f3307cfd78b65be37b1b9f2d10a5593f86443d0b5ee5bc",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0637",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0637",
+        "lemma": "병원 옆",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "병원 건물과 나란히 붙어 있거나 가까운 공간.",
+        "writer_gloss": "병원 건물과 나란히 붙어 있거나 가까운 공간."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2637",
+        "historical_candidate_record_id": "w2717",
+        "candidate_record_id": "w5412",
+        "lemma": "병원 옆"
+      }
+    },
+    {
+      "order": 30,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2638",
+      "source_inventory_row_sha256": "4d9c3caee09e2a7c381e4720d354476e3db78142223ce5b843b50f613b669159",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2638",
+        "lemma": "공원 한쪽",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "공원 한쪽"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2638 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2638 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2638 w2718: 공원의 한쪽으로 치우친 구역이라는 뜻이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "공원 한쪽",
+              "status": "no-match",
+              "normalized_query": "공원 한쪽",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2718",
+      "historical_candidate_record_sha256": "8adc428db0bb1b51bddd82a14f52cbd4a735771d8ecb1df712f6e10b6940015b",
+      "historical_decision_row_sha256": "fd3e7bf42347e3d27b391a72ee74844810e0e7467caaff1b5db0e0d66efa7d27",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0638",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0638",
+        "lemma": "공원 한쪽",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "공원의 전체 공간 중 한쪽에 치우친 부분.",
+        "writer_gloss": "공원의 전체 공간 중 한쪽에 치우친 부분."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2638",
+        "historical_candidate_record_id": "w2718",
+        "candidate_record_id": "w5413",
+        "lemma": "공원 한쪽"
+      }
+    },
+    {
+      "order": 31,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2639",
+      "source_inventory_row_sha256": "1b17eae927ab4f1d1e3cd0d7179b8fe5705473003dbd4b5556bb88b869decd78",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2639",
+        "lemma": "집 앞",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "집 앞"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2639 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2639 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2639 w2719: 집 출입구와 맞닿은 바깥 공간을 가리킨다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "집 앞",
+              "status": "no-match",
+              "normalized_query": "집 앞",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2719",
+      "historical_candidate_record_sha256": "d9ec415085d2f10bf89c64cc9781013fcc1b9d9abb196270c758107159919050",
+      "historical_decision_row_sha256": "e22f1eadf37de138569ce3da1d706eda33fc25a30ec5f829e1a92552c1a020b6",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0639",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0639",
+        "lemma": "집 앞",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "집의 출입구와 맞닿은 바깥 공간.",
+        "writer_gloss": "집의 출입구와 맞닿은 바깥 공간."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2639",
+        "historical_candidate_record_id": "w2719",
+        "candidate_record_id": "w5414",
+        "lemma": "집 앞"
+      }
+    },
+    {
+      "order": 32,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2640",
+      "source_inventory_row_sha256": "d859ca4b30b24ac07895b1e9ff660efd7cb7c7b959a0bdd86e987a0ad948716e",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2640",
+        "lemma": "집 뒤",
+        "proposed_pos": [
+          "noun"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "집 뒤"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2640 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2640 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2640 w2720: 집 뒷면에 이어지는 바깥 자리라는 공간어다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "집 뒤",
+              "status": "no-match",
+              "normalized_query": "집 뒤",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2720",
+      "historical_candidate_record_sha256": "448fd9b42008e968a19ed26a902f6563736b2fa8cd23502c35b518a0599a6982",
+      "historical_decision_row_sha256": "b373a316d2808f2a6de18b9e2af36dc48654df3e9242205e920ec761530e8ad3",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0640",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0640",
+        "lemma": "집 뒤",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "entry",
+        "pos": "noun",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "집의 뒷면에 이어지는 바깥 공간.",
+        "writer_gloss": "집의 뒷면에 이어지는 바깥 공간."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2640",
+        "historical_candidate_record_id": "w2720",
+        "candidate_record_id": "w5415",
+        "lemma": "집 뒤"
+      }
+    },
+    {
+      "order": 33,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2811",
+      "source_inventory_row_sha256": "30cd70030e8b360b9f499b92ed3772a33237f532494797bb52510e8bcc0e5a38",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2811",
+        "lemma": "믿다",
+        "proposed_pos": [
+          "verb"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "믿다"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2811 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2811 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2811 w2891: 사람·말을 참되고 믿을 만하다고 여기는 동사다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "믿다",
+              "status": "no-match",
+              "normalized_query": "믿다",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2891",
+      "historical_candidate_record_sha256": "4d8e70f7201be1fff00eeb2fa05ca1eb8376223097434f3e75150a16b8fe2a69",
+      "historical_decision_row_sha256": "52139ecbd4876473993d495bdd3dfd60aaead6c3340304b088f067ac9478528f",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0811",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0811",
+        "lemma": "믿다",
+        "axis": "A",
+        "flags": [
+          "action-direction"
+        ],
+        "record_type": "entry",
+        "pos": "verb",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "사람이나 말이 참되고 믿을 만하다고 여기다.",
+        "writer_gloss": "사람이나 말이 참되고 믿을 만하다고 여기다."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2811",
+        "historical_candidate_record_id": "w2891",
+        "candidate_record_id": "w5416",
+        "lemma": "믿다"
+      }
+    },
+    {
+      "order": 34,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2812",
+      "source_inventory_row_sha256": "8f1aa5c0bc599d70b00d991a0c5c9cb33675ede2b86c5556afba1d9042cb6ab7",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2812",
+        "lemma": "망각하다",
+        "proposed_pos": [
+          "verb"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "망각하다"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2812 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2812 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2812 w2892: 기억해야 할 내용을 마음에서 잊어버리는 행위다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "망각하다",
+              "status": "no-match",
+              "normalized_query": "망각하다",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2892",
+      "historical_candidate_record_sha256": "a437f2549b4d18d1d9c9c9ff0eeb93078752ec363b1b45af928daa33d34eeee8",
+      "historical_decision_row_sha256": "986472c136ab64a7e0b919f3779b863ce57dea1c53ae53724d728745a7fddf76",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0812",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0812",
+        "lemma": "망각하다",
+        "axis": "A",
+        "flags": [
+          "action-direction"
+        ],
+        "record_type": "entry",
+        "pos": "verb",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "기억해야 할 일이나 사실을 마음에서 잊어버리다.",
+        "writer_gloss": "기억해야 할 일이나 사실을 마음에서 잊어버리다."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2812",
+        "historical_candidate_record_id": "w2892",
+        "candidate_record_id": "w5417",
+        "lemma": "망각하다"
+      }
+    },
+    {
+      "order": 35,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2813",
+      "source_inventory_row_sha256": "e959536fb67acfeb96c6a1617e4bc839412aa5a518513cf006c91f9218858021",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2813",
+        "lemma": "되새기다",
+        "proposed_pos": [
+          "verb"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "되새기다"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2813 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2813 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2813 w2893: 이미 겪은 일을 다시 떠올려 깊이 생각하는 동사다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "되새기다",
+              "status": "no-match",
+              "normalized_query": "되새기다",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2893",
+      "historical_candidate_record_sha256": "4d28e7ce2c440863380017cc84a7b1b74f8deedfaa6928c5f10d1aa234b1e283",
+      "historical_decision_row_sha256": "cf1618e4fd927b647e3ab8a5d1038208c8e4bcf6e747efc30d5886fd8c2032d7",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0813",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0813",
+        "lemma": "되새기다",
+        "axis": "A",
+        "flags": [
+          "action-direction"
+        ],
+        "record_type": "entry",
+        "pos": "verb",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "이미 한 말이나 겪은 일을 다시 떠올려 곰곰이 생각하다.",
+        "writer_gloss": "이미 한 말이나 겪은 일을 다시 떠올려 곰곰이 생각하다."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2813",
+        "historical_candidate_record_id": "w2893",
+        "candidate_record_id": "w5418",
+        "lemma": "되새기다"
+      }
+    },
+    {
+      "order": 36,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2814",
+      "source_inventory_row_sha256": "9784f0d6a03719c4e20449b84d2704bbc4496df6368ac97af243d9f66856e615",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2814",
+        "lemma": "새겨두다",
+        "proposed_pos": [
+          "verb"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "새겨두다"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2814 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2814 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2814 w2894: 말·일을 잊지 않도록 마음이나 기록에 새기는 표현이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "새겨두다",
+              "status": "no-match",
+              "normalized_query": "새겨두다",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2894",
+      "historical_candidate_record_sha256": "a5c3dfbb2427bb65961cf344f601429aaa20bf794e26760bab4d75d00086ddbc",
+      "historical_decision_row_sha256": "ee20f04aac981902a13c31169322d95d7cd24db7dfb039b416701ff507da1556",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0814",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0814",
+        "lemma": "새겨두다",
+        "axis": "A",
+        "flags": [
+          "action-direction"
+        ],
+        "record_type": "entry",
+        "pos": "verb",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "말이나 일을 잊지 않도록 마음이나 기록에 깊이 남기다.",
+        "writer_gloss": "말이나 일을 잊지 않도록 마음이나 기록에 깊이 남기다."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2814",
+        "historical_candidate_record_id": "w2894",
+        "candidate_record_id": "w5419",
+        "lemma": "새겨두다"
+      }
+    },
+    {
+      "order": 37,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2815",
+      "source_inventory_row_sha256": "98ee5ef21b6a5866fb58ebc855a13f17d5024e1b725125f3d10da86aea7566e8",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2815",
+        "lemma": "기다려주다",
+        "proposed_pos": [
+          "verb"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "기다려주다"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2815 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2815 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2815 w2895: 상대가 도착·준비할 때까지 기다려 주는 배려 표현이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "기다려주다",
+              "status": "no-match",
+              "normalized_query": "기다려주다",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2895",
+      "historical_candidate_record_sha256": "db225d3a03126125f176504c6aa90a8ef80f435108500058e455d0b507ddaaed",
+      "historical_decision_row_sha256": "5b080c6abf0dde3a18f1f6388696a6513cdf9212feeff0d4c606b7895878dc83",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0815",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0815",
+        "lemma": "기다려주다",
+        "axis": "A",
+        "flags": [
+          "action-direction"
+        ],
+        "record_type": "entry",
+        "pos": "verb",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "상대가 도착하거나 준비할 때까지 떠나지 않고 기다리다.",
+        "writer_gloss": "상대가 도착하거나 준비할 때까지 떠나지 않고 기다리다."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2815",
+        "historical_candidate_record_id": "w2895",
+        "candidate_record_id": "w5420",
+        "lemma": "기다려주다"
+      }
+    },
+    {
+      "order": 38,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2817",
+      "source_inventory_row_sha256": "9ec0044caa4caa629de2c33d9abf6f97893dc2961347186ac56c26c9f17b9ef4",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2817",
+        "lemma": "다가와주다",
+        "proposed_pos": [
+          "verb"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "다가와주다"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2817 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2817 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2817 w2897: 상대가 있는 방향으로 가까이 이동해 주는 표현이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "다가와주다",
+              "status": "no-match",
+              "normalized_query": "다가와주다",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2897",
+      "historical_candidate_record_sha256": "b45193d595afade3e5589b1ca937dbad54694cc47a9d350f3f9d37f7930baff0",
+      "historical_decision_row_sha256": "1166ca2a7733a6d23f7ebc4683cde165ef2145b56ac5625b9639d161a76a2d48",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0817",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0817",
+        "lemma": "다가와주다",
+        "axis": "A",
+        "flags": [
+          "action-direction"
+        ],
+        "record_type": "entry",
+        "pos": "verb",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "상대가 있는 쪽으로 가까이 이동해 주다.",
+        "writer_gloss": "상대가 있는 쪽으로 가까이 이동해 주다."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2817",
+        "historical_candidate_record_id": "w2897",
+        "candidate_record_id": "w5421",
+        "lemma": "다가와주다"
+      }
+    },
+    {
+      "order": 39,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2818",
+      "source_inventory_row_sha256": "3db51f1b003bb4fdb1985ee2fd121139def15cb39f7912657dabebb24747840a",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2818",
+        "lemma": "떠나가다",
+        "proposed_pos": [
+          "verb"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "떠나가다"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2818 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2818 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2818 w2898: 있던 장소를 벗어나 다른 곳으로 이동하는 동사다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "떠나가다",
+              "status": "no-match",
+              "normalized_query": "떠나가다",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2898",
+      "historical_candidate_record_sha256": "355a5cf178d8fd0a71cf9ab2181a27af8dd9d4c9de20a4af5adeb3c397513000",
+      "historical_decision_row_sha256": "a2e338978fce5e374e028f0390de206830ab2eabf83560badfca91e43a769d6d",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0818",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0818",
+        "lemma": "떠나가다",
+        "axis": "A",
+        "flags": [
+          "action-direction"
+        ],
+        "record_type": "entry",
+        "pos": "verb",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "있던 장소를 벗어나 다른 곳으로 가다.",
+        "writer_gloss": "있던 장소를 벗어나 다른 곳으로 가다."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2818",
+        "historical_candidate_record_id": "w2898",
+        "candidate_record_id": "w5422",
+        "lemma": "떠나가다"
+      }
+    },
+    {
+      "order": 40,
+      "batch_number": 2,
+      "source_inventory_id": "m5-2819",
+      "source_inventory_row_sha256": "0323ef670a69b392335693a3fb576a2f23d06b94c29b8e5517b1f371d3072ee1",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 99,
+            "batch": "m5-13-expansion-20260922",
+            "artifact": "data/batches/m5-13-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-2819",
+        "lemma": "떠나보내다",
+        "proposed_pos": [
+          "verb"
+        ],
+        "record_type": "entry",
+        "search_forms": [
+          "떠나보내다"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-2819 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-2819 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+          },
+          {
+            "source_issue": 99,
+            "source_batch": "m5-13-expansion-20260922",
+            "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-2819 w2899: 사람·대상을 붙잡지 않고 떠나도록 놓아주는 동작이다."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "떠나보내다",
+              "status": "no-match",
+              "normalized_query": "떠나보내다",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w2899",
+      "historical_candidate_record_sha256": "5a655280578b36cb446b91a74936df17c4a164719b94429ba93cb2f49f332681",
+      "historical_decision_row_sha256": "d967510fa82dbc0a840e52e200a6e31ab6c88e82350877d3761592099b96110a",
+      "historical_selection_outcome": "reserve",
+      "historical_source_unit_id": "m5-13-source-unit-0819",
+      "current_source_unit": {
+        "source_unit_id": "m5-13-source-unit-0819",
+        "lemma": "떠나보내다",
+        "axis": "A",
+        "flags": [
+          "action-direction"
+        ],
+        "record_type": "entry",
+        "pos": "verb",
+        "source_kind": "typewriter-authored-lexical-unit",
+        "writer_use": "사람이나 대상을 붙잡지 않고 떠나도록 놓아주다.",
+        "writer_gloss": "사람이나 대상을 붙잡지 않고 떠나도록 놓아주다."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-2819",
+        "historical_candidate_record_id": "w2899",
+        "candidate_record_id": "w5423",
+        "lemma": "떠나보내다"
+      }
+    }
+  ]
+}

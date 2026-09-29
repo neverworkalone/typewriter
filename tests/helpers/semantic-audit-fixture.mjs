@@ -91,6 +91,7 @@ function makeProductionSemanticReview(record, {
   holdBasis,
   rejectionBasis,
   topicAnalyses = {},
+  singleSenseBoundaryReview,
 } = {}) {
   const decisionSourceId = `${artifactId}:decision-source`;
   const multiSense = record.senses.length > 1;
@@ -181,6 +182,12 @@ function makeProductionSemanticReview(record, {
           action,
           classification,
           rationale: `${record.id} ${sense.id} boundary was independently reviewed from the authored decision source`,
+          ...(singleSenseBoundaryReview ? {
+            single_sense_boundary_review: {
+              ...structuredClone(singleSenseBoundaryReview),
+              decision_source_id: decisionSourceId,
+            },
+          } : {}),
           semantic_evidence: {
             status: 'pass',
             gloss_sha256: sha256Json(sense.gloss),
@@ -287,6 +294,9 @@ export function makeProductionState({
         holdBasis,
         rejectionBasis,
         topicAnalyses,
+        singleSenseBoundaryReview: disposition.sense_reviews
+          ?.find(({ sense_id: senseId }) => senseId === candidate.senses[0]?.id)
+          ?.single_sense_boundary_review,
       }),
       ...(reviewedRecord ? { reviewed_record: reviewedRecord } : {}),
     };

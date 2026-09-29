@@ -81,12 +81,12 @@ async function issue211DecisionFixture() {
   const baseSeedTargets = seed.targets.filter(({ inventory_id: id }) => (
     !semanticSource.decisions.some((decision) => decision.inventory_id === id)
   ));
-  const firstInventoryNumber = Math.max(...baseSeedTargets.map(({ inventory_id: id }) => (
-    Number(id.match(/^m5-(\d+)$/u)?.[1] ?? 0)
-  ))) + 1;
-  const firstCanonicalNumber = Math.max(...baseRecords.map(({ record }) => (
-    Number(record.id.match(/^w(\d+)$/u)?.[1] ?? 0)
-  ))) + 1;
+  // Rebuild the historical Issue #211 identity range from its authored decision
+  // source. Later issues can append canonical IDs, so deriving this range from
+  // the live dataset would silently retarget this regression fixture.
+  const firstDecision = semanticSource.decisions[0];
+  const firstInventoryNumber = Number(firstDecision.inventory_id.match(/^m5-(\d+)$/u)?.[1]);
+  const firstCanonicalNumber = Number(firstDecision.candidate_record_id.match(/^w(\d+)$/u)?.[1]);
   const candidateSet = materializeLexicalUnitCandidates({
     batchId: candidateSource.batch_id,
     source: candidateSource,

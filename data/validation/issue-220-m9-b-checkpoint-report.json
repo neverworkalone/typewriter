@@ -1,0 +1,1016 @@
+{
+  "schema_version": 1,
+  "report_id": "issue-220-m9-b-checkpoint-report-v1",
+  "issue": 220,
+  "parent_issue": 218,
+  "selection_id": "m9-historical-capacity-reserve-prefix-v1",
+  "baseline": {
+    "canonical_commit": "17a3b31cc17f7775fccf69f9ecb0ecd03fff7dde",
+    "canonical_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e",
+    "canonical_record_count": 5076,
+    "canonical_start_count": 5034,
+    "issue_210_inventory_sha256": "5dbe54ee92b5f8548e41208a46e73f5b68c3fb1d1562afefd5a39f85d9670dde",
+    "seed_sha256": "394f7fa65fc22a1706af2dbb663e9eb2880ad265ecb2c6a619d6d6d5c59687f7",
+    "canonical_search_form_count": 5332
+  },
+  "selection": {
+    "eligible_capacity_reserve_count": 54,
+    "selected_count": 40,
+    "batch_size": 20,
+    "ordering": "first 40 eligible rows by numeric M5 inventory identity, split into two consecutive 20-row batches",
+    "candidate_sources_sha256": [
+      "35e8a05ddaf63202ca66ef648cd0ac057676b1177760aef22ca96d5d72503011",
+      "e190d5f30333756eb11caa0ac28332100da2dc47c2566e24a8a214e6d17c1fed"
+    ],
+    "semantic_sources_sha256": [
+      "3ce1c8db0f214449a6c3b1489ac2958f5385e6c3996c878899c0d95bbcb2d6c4",
+      "01c1415e6b51ae14f0e2db08fad0dd5e2f0a73b32bbc9f1431496e636d5199d6"
+    ]
+  },
+  "outcomes": {
+    "reviewed_count": 40,
+    "admitted_count": 18,
+    "held_count": 22,
+    "rejected_count": 0,
+    "duplicate_count": 0,
+    "collision_count": 0,
+    "corrected_count": 0,
+    "correction_rate": 0,
+    "relation_count": 0,
+    "zero_relation_admission_count": 18
+  },
+  "batches": [
+    {
+      "number": 1,
+      "batch_id": "m9-b-issue-220-historical-batch-01-20260929",
+      "reviewed_count": 20,
+      "admitted_count": 13,
+      "held_count": 7,
+      "rejected_count": 0,
+      "duplicate_count": 0,
+      "collision_count": 0,
+      "corrected_count": 0
+    },
+    {
+      "number": 2,
+      "batch_id": "m9-b-issue-220-historical-batch-02-20260929",
+      "reviewed_count": 20,
+      "admitted_count": 5,
+      "held_count": 15,
+      "rejected_count": 0,
+      "duplicate_count": 0,
+      "collision_count": 0,
+      "corrected_count": 0
+    }
+  ],
+  "candidates": [
+    {
+      "selection_order": 1,
+      "batch_number": 1,
+      "inventory_id": "m5-2153",
+      "candidate_record_id": "w5384",
+      "canonical_id": "w5384",
+      "lemma": "악의",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0153",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5384"
+      ]
+    },
+    {
+      "selection_order": 2,
+      "batch_number": 1,
+      "inventory_id": "m5-2154",
+      "candidate_record_id": "w5385",
+      "canonical_id": "w5385",
+      "lemma": "질투심",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0154",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5385"
+      ]
+    },
+    {
+      "selection_order": 3,
+      "batch_number": 1,
+      "inventory_id": "m5-2155",
+      "candidate_record_id": "w5386",
+      "canonical_id": "w5386",
+      "lemma": "미움",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0155",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5386"
+      ]
+    },
+    {
+      "selection_order": 4,
+      "batch_number": 1,
+      "inventory_id": "m5-2156",
+      "candidate_record_id": "w5387",
+      "canonical_id": null,
+      "lemma": "미운 정",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0156",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 5,
+      "batch_number": 1,
+      "inventory_id": "m5-2157",
+      "candidate_record_id": "w5388",
+      "canonical_id": "w5388",
+      "lemma": "싫증",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0157",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5388"
+      ]
+    },
+    {
+      "selection_order": 6,
+      "batch_number": 1,
+      "inventory_id": "m5-2158",
+      "candidate_record_id": "w5389",
+      "canonical_id": null,
+      "lemma": "싫증남",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0158",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 7,
+      "batch_number": 1,
+      "inventory_id": "m5-2159",
+      "candidate_record_id": "w5390",
+      "canonical_id": "w5390",
+      "lemma": "권태감",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0159",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5390"
+      ]
+    },
+    {
+      "selection_order": 8,
+      "batch_number": 1,
+      "inventory_id": "m5-2160",
+      "candidate_record_id": "w5391",
+      "canonical_id": "w5391",
+      "lemma": "무기력",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0160",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5391"
+      ]
+    },
+    {
+      "selection_order": 9,
+      "batch_number": 1,
+      "inventory_id": "m5-2311",
+      "candidate_record_id": "w5392",
+      "canonical_id": "w5392",
+      "lemma": "단절",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0311",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5392"
+      ]
+    },
+    {
+      "selection_order": 10,
+      "batch_number": 1,
+      "inventory_id": "m5-2312",
+      "candidate_record_id": "w5393",
+      "canonical_id": "w5393",
+      "lemma": "잔여",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0312",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5393"
+      ]
+    },
+    {
+      "selection_order": 11,
+      "batch_number": 1,
+      "inventory_id": "m5-2314",
+      "candidate_record_id": "w5394",
+      "canonical_id": "w5394",
+      "lemma": "흔들림",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0314",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5394"
+      ]
+    },
+    {
+      "selection_order": 12,
+      "batch_number": 1,
+      "inventory_id": "m5-2315",
+      "candidate_record_id": "w5395",
+      "canonical_id": "w5395",
+      "lemma": "정돈",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0315",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5395"
+      ]
+    },
+    {
+      "selection_order": 13,
+      "batch_number": 1,
+      "inventory_id": "m5-2316",
+      "candidate_record_id": "w5396",
+      "canonical_id": "w5396",
+      "lemma": "뒤섞임",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0316",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5396"
+      ]
+    },
+    {
+      "selection_order": 14,
+      "batch_number": 1,
+      "inventory_id": "m5-2317",
+      "candidate_record_id": "w5397",
+      "canonical_id": "w5397",
+      "lemma": "배치",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0317",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5397"
+      ]
+    },
+    {
+      "selection_order": 15,
+      "batch_number": 1,
+      "inventory_id": "m5-2318",
+      "candidate_record_id": "w5398",
+      "canonical_id": null,
+      "lemma": "배경",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0318",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 16,
+      "batch_number": 1,
+      "inventory_id": "m5-2319",
+      "candidate_record_id": "w5399",
+      "canonical_id": "w5399",
+      "lemma": "전경",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0319",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5399"
+      ]
+    },
+    {
+      "selection_order": 17,
+      "batch_number": 1,
+      "inventory_id": "m5-2473",
+      "candidate_record_id": "w5400",
+      "canonical_id": null,
+      "lemma": "손끝의 저림",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0473",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 18,
+      "batch_number": 1,
+      "inventory_id": "m5-2474",
+      "candidate_record_id": "w5401",
+      "canonical_id": null,
+      "lemma": "손끝의 온도",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0474",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 19,
+      "batch_number": 1,
+      "inventory_id": "m5-2475",
+      "candidate_record_id": "w5402",
+      "canonical_id": null,
+      "lemma": "발바닥의 감각",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0475",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 20,
+      "batch_number": 1,
+      "inventory_id": "m5-2476",
+      "candidate_record_id": "w5403",
+      "canonical_id": null,
+      "lemma": "발목의 긴장",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0476",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 21,
+      "batch_number": 2,
+      "inventory_id": "m5-2477",
+      "candidate_record_id": "w5404",
+      "canonical_id": null,
+      "lemma": "피부의 소름",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0477",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 22,
+      "batch_number": 2,
+      "inventory_id": "m5-2478",
+      "candidate_record_id": "w5405",
+      "canonical_id": null,
+      "lemma": "살갗의 떨림",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0478",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 23,
+      "batch_number": 2,
+      "inventory_id": "m5-2479",
+      "candidate_record_id": "w5406",
+      "canonical_id": null,
+      "lemma": "몸속의 진동",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0479",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 24,
+      "batch_number": 2,
+      "inventory_id": "m5-2480",
+      "candidate_record_id": "w5407",
+      "canonical_id": null,
+      "lemma": "몸에 밴 냄새",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0480",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 25,
+      "batch_number": 2,
+      "inventory_id": "m5-2633",
+      "candidate_record_id": "w5408",
+      "canonical_id": null,
+      "lemma": "골목 안쪽",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0633",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 26,
+      "batch_number": 2,
+      "inventory_id": "m5-2634",
+      "candidate_record_id": "w5409",
+      "canonical_id": null,
+      "lemma": "시장 입구",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0634",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 27,
+      "batch_number": 2,
+      "inventory_id": "m5-2635",
+      "candidate_record_id": "w5410",
+      "canonical_id": null,
+      "lemma": "역 앞",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0635",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 28,
+      "batch_number": 2,
+      "inventory_id": "m5-2636",
+      "candidate_record_id": "w5411",
+      "canonical_id": null,
+      "lemma": "학교 뒤",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0636",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 29,
+      "batch_number": 2,
+      "inventory_id": "m5-2637",
+      "candidate_record_id": "w5412",
+      "canonical_id": null,
+      "lemma": "병원 옆",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0637",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 30,
+      "batch_number": 2,
+      "inventory_id": "m5-2638",
+      "candidate_record_id": "w5413",
+      "canonical_id": null,
+      "lemma": "공원 한쪽",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0638",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 31,
+      "batch_number": 2,
+      "inventory_id": "m5-2639",
+      "candidate_record_id": "w5414",
+      "canonical_id": null,
+      "lemma": "집 앞",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0639",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 32,
+      "batch_number": 2,
+      "inventory_id": "m5-2640",
+      "candidate_record_id": "w5415",
+      "canonical_id": null,
+      "lemma": "집 뒤",
+      "pos": "noun",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0640",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 33,
+      "batch_number": 2,
+      "inventory_id": "m5-2811",
+      "candidate_record_id": "w5416",
+      "canonical_id": "w5416",
+      "lemma": "믿다",
+      "pos": "verb",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0811",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5416"
+      ]
+    },
+    {
+      "selection_order": 34,
+      "batch_number": 2,
+      "inventory_id": "m5-2812",
+      "candidate_record_id": "w5417",
+      "canonical_id": "w5417",
+      "lemma": "망각하다",
+      "pos": "verb",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0812",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5417"
+      ]
+    },
+    {
+      "selection_order": 35,
+      "batch_number": 2,
+      "inventory_id": "m5-2813",
+      "candidate_record_id": "w5418",
+      "canonical_id": "w5418",
+      "lemma": "되새기다",
+      "pos": "verb",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0813",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5418"
+      ]
+    },
+    {
+      "selection_order": 36,
+      "batch_number": 2,
+      "inventory_id": "m5-2814",
+      "candidate_record_id": "w5419",
+      "canonical_id": null,
+      "lemma": "새겨두다",
+      "pos": "verb",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0814",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 37,
+      "batch_number": 2,
+      "inventory_id": "m5-2815",
+      "candidate_record_id": "w5420",
+      "canonical_id": null,
+      "lemma": "기다려주다",
+      "pos": "verb",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0815",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 38,
+      "batch_number": 2,
+      "inventory_id": "m5-2817",
+      "candidate_record_id": "w5421",
+      "canonical_id": null,
+      "lemma": "다가와주다",
+      "pos": "verb",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0817",
+      "prior_selection_outcome": "reserve",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": []
+    },
+    {
+      "selection_order": 39,
+      "batch_number": 2,
+      "inventory_id": "m5-2818",
+      "candidate_record_id": "w5422",
+      "canonical_id": "w5422",
+      "lemma": "떠나가다",
+      "pos": "verb",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0818",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5422"
+      ]
+    },
+    {
+      "selection_order": 40,
+      "batch_number": 2,
+      "inventory_id": "m5-2819",
+      "candidate_record_id": "w5423",
+      "canonical_id": "w5423",
+      "lemma": "떠나보내다",
+      "pos": "verb",
+      "record_type": "entry",
+      "source_unit_id": "m5-13-source-unit-0819",
+      "prior_selection_outcome": "reserve",
+      "decision": "included",
+      "lexical_unit_status": "supported",
+      "relation_count": 0,
+      "baseline_exact_result_ids": [],
+      "search_result_ids": [
+        "w5423"
+      ]
+    }
+  ],
+  "historical_pool": {
+    "candidate_count": 584,
+    "potentially_recoverable_before_count": 545,
+    "potentially_recoverable_after_count": 527,
+    "recovery_ceiling": 5621,
+    "target_count": 6000,
+    "shortfall_to_6000": 379,
+    "recovered_count": 42,
+    "remaining_counts_by_disposition": [
+      {
+        "disposition": "admit-candidate",
+        "count": 248
+      },
+      {
+        "disposition": "duplicate",
+        "count": 2
+      },
+      {
+        "disposition": "hold",
+        "count": 251
+      },
+      {
+        "disposition": "invalid-lemma",
+        "count": 2
+      },
+      {
+        "disposition": "needs-sense-split",
+        "count": 28
+      },
+      {
+        "disposition": "not-a-lexical-unit",
+        "count": 10
+      },
+      {
+        "disposition": "search-surface-collision",
+        "count": 1
+      },
+      {
+        "disposition": "unsupported-scope",
+        "count": 0
+      },
+      {
+        "disposition": "wrong-pos",
+        "count": 0
+      }
+    ]
+  },
+  "current": {
+    "canonical_sha256": "0e47a9675a0c7a9e268ee34bab7185a53d0dc9cba0ada9c0595c7c8b238cd185",
+    "canonical_record_count": 5094,
+    "canonical_start_count": 5052,
+    "reference_only_count": 42,
+    "sense_count": 5356,
+    "relation_count": 487,
+    "canonical_search_form_count": 5350,
+    "searchable_lemma_count": 5094,
+    "record_type_counts": {
+      "entry": 3940,
+      "expression": 1154
+    },
+    "sense_pos_counts": {
+      "adjective": 316,
+      "adverb": 4,
+      "expression": 1176,
+      "noun": 3185,
+      "verb": 675
+    },
+    "relation_empty_searchable_record_count": 4758,
+    "exact_search_coverage": {
+      "expected_lemma_count": 5094,
+      "covered_lemma_count": 5094,
+      "non_searchable_record_count": 0,
+      "non_searchable_records": [],
+      "distinct_search_form_count": 5350,
+      "expected_form_owner_key_count": 5350,
+      "covered_form_owner_key_count": 5350,
+      "missing_form_owner_key_count": 0,
+      "unexpected_form_owner_key_count": 0,
+      "cross_record_collision_key_count": 0
+    },
+    "surface_form_regressions": [
+      {
+        "record_id": "w5418",
+        "lemma": "되새기다",
+        "included_forms": [
+          "되새기는",
+          "되새긴",
+          "되새길"
+        ],
+        "excluded_forms": [
+          "되새겼다"
+        ],
+        "result": "pass"
+      },
+      {
+        "record_id": "w5423",
+        "lemma": "떠나보내다",
+        "included_forms": [
+          "떠나보내는",
+          "떠나보낸",
+          "떠나보낼"
+        ],
+        "excluded_forms": [
+          "떠나보냈다"
+        ],
+        "result": "pass"
+      }
+    ],
+    "inventory_validation": "pass",
+    "production_admission": "pass",
+    "semantic_audit": "pass",
+    "deterministic_sqlite": "pass",
+    "logical_database_digest": "83b992a57f6a5a3904cb913cf92009faa20a4507c92949819823b278f46ffefe"
+  },
+  "defect_findings": [
+    {
+      "defect_class": "Historical lexical-unit fixedness is not established by the retained source",
+      "occurrence_count": 21,
+      "affected_batches": [
+        1,
+        2
+      ],
+      "affected_candidate_ids": [
+        "w5387",
+        "w5389",
+        "w5400",
+        "w5401",
+        "w5402",
+        "w5403",
+        "w5404",
+        "w5405",
+        "w5406",
+        "w5407",
+        "w5408",
+        "w5409",
+        "w5410",
+        "w5411",
+        "w5412",
+        "w5413",
+        "w5414",
+        "w5415",
+        "w5419",
+        "w5420",
+        "w5421"
+      ],
+      "disposition": "Held by the shared source-bound lexical-unit contract; no row-specific admission exception was added."
+    },
+    {
+      "defect_class": "Authored topic-span analysis was omitted from the shared production evidence projection",
+      "occurrence_count": 1,
+      "affected_batches": [
+        1
+      ],
+      "affected_candidate_ids": [
+        "w5399"
+      ],
+      "disposition": "Fixed in the shared projection so authored topic_analysis and topic_analyses reach the exact-span semantic audit."
+    },
+    {
+      "defect_class": "A fresh one-sense gloss combined distinct sentence frames and writer routes",
+      "occurrence_count": 1,
+      "affected_batches": [
+        1
+      ],
+      "affected_candidate_ids": [
+        "w5398"
+      ],
+      "disposition": "Kept the candidate held until separately reviewed senses are authored; the shared frame-and-route gate requires a genuine writer-route difference, not a different argument frame alone."
+    },
+    {
+      "defect_class": "Two admitted verb senses needed explicit M6-3 surface-form decisions",
+      "occurrence_count": 2,
+      "affected_batches": [
+        2
+      ],
+      "affected_candidate_ids": [
+        "w5418",
+        "w5423"
+      ],
+      "disposition": "Added sense-bound authored classifications/exclusions to the shared M6-3 review source; the common projection gate remains fail-closed."
+    }
+  ],
+  "system_fixes": [
+    {
+      "area": "single-sense writer-boundary admission",
+      "batches": [
+        1,
+        2
+      ],
+      "files": [
+        "scripts/validate/lexical-quality.mjs",
+        "scripts/batch/authored-semantic-decision-source.mjs"
+      ],
+      "summary": "The shared source-bound gate requires exact-gloss frame spans and compares sentence frames together with writer routes; unresolved splits stay held until a multi-sense candidate is authored."
+    },
+    {
+      "area": "historical candidate materialization",
+      "batches": [
+        1,
+        2
+      ],
+      "files": [
+        "scripts/batch/lexical-production.mjs"
+      ],
+      "summary": "The common producer accepts explicit historical inventory identities and retains source positions when a pinned source pool is split into bounded review batches."
+    },
+    {
+      "area": "authored semantic evidence projection",
+      "batches": [
+        1
+      ],
+      "files": [
+        "scripts/batch/validate-issue-211.mjs"
+      ],
+      "summary": "The common producer projects authored topic_analysis and topic_analyses into the shared semantic evidence for the exact reviewed span, including w5399."
+    },
+    {
+      "area": "surface-form decision coverage",
+      "batches": [
+        2
+      ],
+      "files": [
+        "data/validation/m6-3-surface-form-review.json"
+      ],
+      "summary": "Added sense-bound M6-3 decisions for the two admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed."
+    }
+  ],
+  "normal_ci": {
+    "command": "npm run ci:normal",
+    "result": "pass",
+    "canonical_sha256": "0e47a9675a0c7a9e268ee34bab7185a53d0dc9cba0ada9c0595c7c8b238cd185"
+  }
+}

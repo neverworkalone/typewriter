@@ -150,6 +150,22 @@ function productionSemanticReview(record, identity, decisionRow, decisionSource,
       rationale: senseReview.semantic_rationale,
       boundary_decision: senseReview.boundary_decision,
       decision_source_id: sourceId,
+      ...(senseReview.review_basis?.topic_analysis
+        ? {
+          topic_analysis: {
+            ...structuredClone(senseReview.review_basis.topic_analysis),
+            decision_source_id: sourceId,
+          },
+        }
+        : {}),
+      ...(Array.isArray(senseReview.review_basis?.topic_analyses)
+        ? {
+          topic_analyses: senseReview.review_basis.topic_analyses.map((analysis) => ({
+            ...structuredClone(analysis),
+            decision_source_id: sourceId,
+          })),
+        }
+        : {}),
     };
   };
   const reviewedRecordSha256 = sha256Json(record);
@@ -207,6 +223,9 @@ function productionSemanticReview(record, identity, decisionRow, decisionSource,
           action: senseReview.boundary_action,
           classification: senseReview.boundary_classification,
           rationale: senseReview.boundary_rationale,
+          ...(senseReview.single_sense_boundary_review
+            ? { single_sense_boundary_review: structuredClone(senseReview.single_sense_boundary_review) }
+            : {}),
           semantic_evidence: semanticEvidenceForSense(sense),
         };
       }),
@@ -652,6 +671,11 @@ export async function validateIssue211({ writeReport = false } = {}) {
     baseRecords,
     prospectiveRecords: historicalCanonical.records,
     semanticAudit: historicalSemanticAudit,
+    // Issue #211 is already part of the canonical history. Revalidate its
+    // original source-bound admission as a replay instead of applying newer
+    // fresh-admission evidence requirements to that historical decision.
+    allowReplay: true,
+    historicalReplay: true,
     stageEvidence: productionStageEvidence({
       candidateSourceBytes,
       semanticSourceBytes,

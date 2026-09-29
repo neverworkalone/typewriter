@@ -1,0 +1,507 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-candidate-source-v2",
+  "kind": "typewriter-authored-lexical-unit-source",
+  "source_id": "issue-220-m9-b-batch-02-source-bound-recovery-20260929-r1",
+  "authoring_mode": "historical-typewriter-authored-source-slice",
+  "batch_id": "m9-b-issue-220-historical-batch-02-20260929",
+  "base_canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e",
+  "base_seed_sha256": "394f7fa65fc22a1706af2dbb663e9eb2880ad265ecb2c6a619d6d6d5c59687f7",
+  "base_issue_210_inventory_sha256": "5dbe54ee92b5f8548e41208a46e73f5b68c3fb1d1562afefd5a39f85d9670dde",
+  "generation_pass_id": "issue-220-historical-slice-selection-20260929-r1",
+  "candidate_buffer": 0,
+  "axis_counts": {
+    "E": 0,
+    "Q": 0,
+    "S": 4,
+    "C": 8,
+    "A": 8,
+    "O": 0,
+    "X": 0
+  },
+  "pool_sha256": "9eb208a915b773d6a4a068f3c691b3ee1b0334cca0018edcbb22c15d09e08182",
+  "candidate_count": 20,
+  "units": [
+    {
+      "source_unit_id": "m5-13-source-unit-0477",
+      "lemma": "피부의 소름",
+      "axis": "S",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "추위나 감정 자극으로 피부의 털구멍이 도드라지는 반응.",
+      "writer_gloss": "추위나 감정 자극으로 피부의 털구멍이 도드라지는 반응.",
+      "inventory_id": "m5-2477",
+      "candidate_record_id": "w5404",
+      "historical_candidate_record_id": "w2557",
+      "historical_candidate_record_sha256": "3055bd891468306f24e6ffdbb65aa89d46c20ec69be59e8405f86c3aba390293",
+      "historical_decision_row_sha256": "2602c71498481319d1b609a3fe00511ec2fcb208ed954da82bc77aace6458f8d",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "e284e20210523d2156e0282abfa2a7c040f5aae814636a50b5c547520e388441",
+      "source_position": {
+        "source_unit_index": 476,
+        "catalog_index": 476
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0478",
+      "lemma": "살갗의 떨림",
+      "axis": "S",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "피부 표면이나 근육이 작게 흔들리는 감각.",
+      "writer_gloss": "피부 표면이나 근육이 작게 흔들리는 감각.",
+      "inventory_id": "m5-2478",
+      "candidate_record_id": "w5405",
+      "historical_candidate_record_id": "w2558",
+      "historical_candidate_record_sha256": "963e7b01f0a9fd770dcd65d786e5b090de9121d2a3ba4c57875657edcd840510",
+      "historical_decision_row_sha256": "9820ca88bf89f0fc2ca696ff8b366e9c2e182c2d00d834d4dabf34d12c780e5c",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "59319cc06a86265b90573ed3f333fa531b0524a8a9ecde5943d68782ff1dc44d",
+      "source_position": {
+        "source_unit_index": 477,
+        "catalog_index": 477
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0479",
+      "lemma": "몸속의 진동",
+      "axis": "S",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "외부의 소리나 충격이 몸 안에서 떨림으로 전해지는 느낌.",
+      "writer_gloss": "외부의 소리나 충격이 몸 안에서 떨림으로 전해지는 느낌.",
+      "inventory_id": "m5-2479",
+      "candidate_record_id": "w5406",
+      "historical_candidate_record_id": "w2559",
+      "historical_candidate_record_sha256": "48c2828bd122d74dee9d4e3fea5f3730286b01fccb44cf789821055e2cae8c4b",
+      "historical_decision_row_sha256": "c4e598512db262dc8218daca8c8f7a5cf9620bacc6e0b542a10cdf3d14e40b8f",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "ab0af0fe56e04ccc731fb2b32ba3a08274cf9e0b751f7efdeb32a1f5e5d00c39",
+      "source_position": {
+        "source_unit_index": 478,
+        "catalog_index": 478
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0480",
+      "lemma": "몸에 밴 냄새",
+      "axis": "S",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "옷이나 피부에 오래 스며들어 쉽게 사라지지 않는 냄새.",
+      "writer_gloss": "옷이나 피부에 오래 스며들어 쉽게 사라지지 않는 냄새.",
+      "inventory_id": "m5-2480",
+      "candidate_record_id": "w5407",
+      "historical_candidate_record_id": "w2560",
+      "historical_candidate_record_sha256": "3f4ee69b83a1baad176ba2a427be2b044a7747ef88892205f54e6fd583fa04b5",
+      "historical_decision_row_sha256": "6ab38cf785dcb92f478f49e87c1b4cae48a632638d8190c31ef5b16f45b30b4d",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "5628f341d88bf49309db0ef8a692871d9297861f699255095da054089fcf58e3",
+      "source_position": {
+        "source_unit_index": 479,
+        "catalog_index": 479
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0633",
+      "lemma": "골목 안쪽",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "골목 입구에서 더 들어가 바깥길과 멀어진 부분.",
+      "writer_gloss": "골목 입구에서 더 들어가 바깥길과 멀어진 부분.",
+      "inventory_id": "m5-2633",
+      "candidate_record_id": "w5408",
+      "historical_candidate_record_id": "w2713",
+      "historical_candidate_record_sha256": "3bb8569c307523269afc7ad4ebb7bf508912b55c5148f0a203181f8d5177f89e",
+      "historical_decision_row_sha256": "d97bb76689a2331d513f4bc8cad1fbd2bad44f5a7a1e404f551f41533e36e24f",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "13b10848b9fae45e4fa86ec5c1ecce3baa26e260f33a5a9fc25a5aa32415e254",
+      "source_position": {
+        "source_unit_index": 632,
+        "catalog_index": 632
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0634",
+      "lemma": "시장 입구",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "시장 구역으로 들어가는 첫머리.",
+      "writer_gloss": "시장 구역으로 들어가는 첫머리.",
+      "inventory_id": "m5-2634",
+      "candidate_record_id": "w5409",
+      "historical_candidate_record_id": "w2714",
+      "historical_candidate_record_sha256": "5412939bce8ca45135a005877b1104a43afa60124d254c08c68cc6aa57312fa8",
+      "historical_decision_row_sha256": "f3e0818f6cb3c15590e5f87619abdbd538c6080200d2bcd9159deaa26b933941",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "5f6cefc94433754368d3201a51a166380206167b6aadb92b8b44fb883cd97825",
+      "source_position": {
+        "source_unit_index": 633,
+        "catalog_index": 633
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0635",
+      "lemma": "역 앞",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "역의 출입구와 마주한 바깥쪽 공간.",
+      "writer_gloss": "역의 출입구와 마주한 바깥쪽 공간.",
+      "inventory_id": "m5-2635",
+      "candidate_record_id": "w5410",
+      "historical_candidate_record_id": "w2715",
+      "historical_candidate_record_sha256": "ca5eaed71c9d071ff0b5aec80305421a9659af4afef9b928959c3cdacb4d52c3",
+      "historical_decision_row_sha256": "c5224de08e548bcbdfcbcce35def20c2665418bd23af45ed62b46c71b74b93b5",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "e8306c2bc4352c202c9cdab56f23818942f704a540da3055018bd3c7bb3ff973",
+      "source_position": {
+        "source_unit_index": 634,
+        "catalog_index": 634
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0636",
+      "lemma": "학교 뒤",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "학교 건물의 뒷면이나 그쪽에 이어진 자리.",
+      "writer_gloss": "학교 건물의 뒷면이나 그쪽에 이어진 자리.",
+      "inventory_id": "m5-2636",
+      "candidate_record_id": "w5411",
+      "historical_candidate_record_id": "w2716",
+      "historical_candidate_record_sha256": "b05dd7df5011d1c2772c43a5b72f5a81d397da987eebeec74ce785db80b0f82a",
+      "historical_decision_row_sha256": "374ec9da237d0487d70b2653f708936a9a52eb3305ccea7ec93dd9aa2d24a305",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "cddf9b6c388182bbde56c64b8830f191acb4dca19dc6c01681541d6cef409892",
+      "source_position": {
+        "source_unit_index": 635,
+        "catalog_index": 635
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0637",
+      "lemma": "병원 옆",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "병원 건물과 나란히 붙어 있거나 가까운 공간.",
+      "writer_gloss": "병원 건물과 나란히 붙어 있거나 가까운 공간.",
+      "inventory_id": "m5-2637",
+      "candidate_record_id": "w5412",
+      "historical_candidate_record_id": "w2717",
+      "historical_candidate_record_sha256": "258edc7056cadd141af99680e29e8d29f79a01f787063b673631d4eb615d0f68",
+      "historical_decision_row_sha256": "0c2979c6c4b49a0d47f3307cfd78b65be37b1b9f2d10a5593f86443d0b5ee5bc",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "7009feff900b82fa3d2632fab848187776772a7e43ac021bdf7aa48e087bbe45",
+      "source_position": {
+        "source_unit_index": 636,
+        "catalog_index": 636
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0638",
+      "lemma": "공원 한쪽",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "공원의 전체 공간 중 한쪽에 치우친 부분.",
+      "writer_gloss": "공원의 전체 공간 중 한쪽에 치우친 부분.",
+      "inventory_id": "m5-2638",
+      "candidate_record_id": "w5413",
+      "historical_candidate_record_id": "w2718",
+      "historical_candidate_record_sha256": "8adc428db0bb1b51bddd82a14f52cbd4a735771d8ecb1df712f6e10b6940015b",
+      "historical_decision_row_sha256": "fd3e7bf42347e3d27b391a72ee74844810e0e7467caaff1b5db0e0d66efa7d27",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "4d9c3caee09e2a7c381e4720d354476e3db78142223ce5b843b50f613b669159",
+      "source_position": {
+        "source_unit_index": 637,
+        "catalog_index": 637
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0639",
+      "lemma": "집 앞",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "집의 출입구와 맞닿은 바깥 공간.",
+      "writer_gloss": "집의 출입구와 맞닿은 바깥 공간.",
+      "inventory_id": "m5-2639",
+      "candidate_record_id": "w5414",
+      "historical_candidate_record_id": "w2719",
+      "historical_candidate_record_sha256": "d9ec415085d2f10bf89c64cc9781013fcc1b9d9abb196270c758107159919050",
+      "historical_decision_row_sha256": "e22f1eadf37de138569ce3da1d706eda33fc25a30ec5f829e1a92552c1a020b6",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "1b17eae927ab4f1d1e3cd0d7179b8fe5705473003dbd4b5556bb88b869decd78",
+      "source_position": {
+        "source_unit_index": 638,
+        "catalog_index": 638
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0640",
+      "lemma": "집 뒤",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "집의 뒷면에 이어지는 바깥 공간.",
+      "writer_gloss": "집의 뒷면에 이어지는 바깥 공간.",
+      "inventory_id": "m5-2640",
+      "candidate_record_id": "w5415",
+      "historical_candidate_record_id": "w2720",
+      "historical_candidate_record_sha256": "448fd9b42008e968a19ed26a902f6563736b2fa8cd23502c35b518a0599a6982",
+      "historical_decision_row_sha256": "b373a316d2808f2a6de18b9e2af36dc48654df3e9242205e920ec761530e8ad3",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "d859ca4b30b24ac07895b1e9ff660efd7cb7c7b959a0bdd86e987a0ad948716e",
+      "source_position": {
+        "source_unit_index": 639,
+        "catalog_index": 639
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0811",
+      "lemma": "믿다",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "record_type": "entry",
+      "pos": "verb",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "사람이나 말이 참되고 믿을 만하다고 여기다.",
+      "writer_gloss": "사람이나 말이 참되고 믿을 만하다고 여기다.",
+      "inventory_id": "m5-2811",
+      "candidate_record_id": "w5416",
+      "historical_candidate_record_id": "w2891",
+      "historical_candidate_record_sha256": "4d8e70f7201be1fff00eeb2fa05ca1eb8376223097434f3e75150a16b8fe2a69",
+      "historical_decision_row_sha256": "52139ecbd4876473993d495bdd3dfd60aaead6c3340304b088f067ac9478528f",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "30cd70030e8b360b9f499b92ed3772a33237f532494797bb52510e8bcc0e5a38",
+      "source_position": {
+        "source_unit_index": 810,
+        "catalog_index": 810
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0812",
+      "lemma": "망각하다",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "record_type": "entry",
+      "pos": "verb",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "기억해야 할 일이나 사실을 마음에서 잊어버리다.",
+      "writer_gloss": "기억해야 할 일이나 사실을 마음에서 잊어버리다.",
+      "inventory_id": "m5-2812",
+      "candidate_record_id": "w5417",
+      "historical_candidate_record_id": "w2892",
+      "historical_candidate_record_sha256": "a437f2549b4d18d1d9c9c9ff0eeb93078752ec363b1b45af928daa33d34eeee8",
+      "historical_decision_row_sha256": "986472c136ab64a7e0b919f3779b863ce57dea1c53ae53724d728745a7fddf76",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "8f1aa5c0bc599d70b00d991a0c5c9cb33675ede2b86c5556afba1d9042cb6ab7",
+      "source_position": {
+        "source_unit_index": 811,
+        "catalog_index": 811
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0813",
+      "lemma": "되새기다",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "record_type": "entry",
+      "pos": "verb",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "이미 한 말이나 겪은 일을 다시 떠올려 곰곰이 생각하다.",
+      "writer_gloss": "이미 한 말이나 겪은 일을 다시 떠올려 곰곰이 생각하다.",
+      "inventory_id": "m5-2813",
+      "candidate_record_id": "w5418",
+      "historical_candidate_record_id": "w2893",
+      "historical_candidate_record_sha256": "4d28e7ce2c440863380017cc84a7b1b74f8deedfaa6928c5f10d1aa234b1e283",
+      "historical_decision_row_sha256": "cf1618e4fd927b647e3ab8a5d1038208c8e4bcf6e747efc30d5886fd8c2032d7",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "e959536fb67acfeb96c6a1617e4bc839412aa5a518513cf006c91f9218858021",
+      "source_position": {
+        "source_unit_index": 812,
+        "catalog_index": 812
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0814",
+      "lemma": "새겨두다",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "record_type": "entry",
+      "pos": "verb",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "말이나 일을 잊지 않도록 마음이나 기록에 깊이 남기다.",
+      "writer_gloss": "말이나 일을 잊지 않도록 마음이나 기록에 깊이 남기다.",
+      "inventory_id": "m5-2814",
+      "candidate_record_id": "w5419",
+      "historical_candidate_record_id": "w2894",
+      "historical_candidate_record_sha256": "a5c3dfbb2427bb65961cf344f601429aaa20bf794e26760bab4d75d00086ddbc",
+      "historical_decision_row_sha256": "ee20f04aac981902a13c31169322d95d7cd24db7dfb039b416701ff507da1556",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "9784f0d6a03719c4e20449b84d2704bbc4496df6368ac97af243d9f66856e615",
+      "source_position": {
+        "source_unit_index": 813,
+        "catalog_index": 813
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0815",
+      "lemma": "기다려주다",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "record_type": "entry",
+      "pos": "verb",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "상대가 도착하거나 준비할 때까지 떠나지 않고 기다리다.",
+      "writer_gloss": "상대가 도착하거나 준비할 때까지 떠나지 않고 기다리다.",
+      "inventory_id": "m5-2815",
+      "candidate_record_id": "w5420",
+      "historical_candidate_record_id": "w2895",
+      "historical_candidate_record_sha256": "db225d3a03126125f176504c6aa90a8ef80f435108500058e455d0b507ddaaed",
+      "historical_decision_row_sha256": "5b080c6abf0dde3a18f1f6388696a6513cdf9212feeff0d4c606b7895878dc83",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "98ee5ef21b6a5866fb58ebc855a13f17d5024e1b725125f3d10da86aea7566e8",
+      "source_position": {
+        "source_unit_index": 814,
+        "catalog_index": 814
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0817",
+      "lemma": "다가와주다",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "record_type": "entry",
+      "pos": "verb",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "상대가 있는 쪽으로 가까이 이동해 주다.",
+      "writer_gloss": "상대가 있는 쪽으로 가까이 이동해 주다.",
+      "inventory_id": "m5-2817",
+      "candidate_record_id": "w5421",
+      "historical_candidate_record_id": "w2897",
+      "historical_candidate_record_sha256": "b45193d595afade3e5589b1ca937dbad54694cc47a9d350f3f9d37f7930baff0",
+      "historical_decision_row_sha256": "1166ca2a7733a6d23f7ebc4683cde165ef2145b56ac5625b9639d161a76a2d48",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "9ec0044caa4caa629de2c33d9abf6f97893dc2961347186ac56c26c9f17b9ef4",
+      "source_position": {
+        "source_unit_index": 816,
+        "catalog_index": 816
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0818",
+      "lemma": "떠나가다",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "record_type": "entry",
+      "pos": "verb",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "있던 장소를 벗어나 다른 곳으로 가다.",
+      "writer_gloss": "있던 장소를 벗어나 다른 곳으로 가다.",
+      "inventory_id": "m5-2818",
+      "candidate_record_id": "w5422",
+      "historical_candidate_record_id": "w2898",
+      "historical_candidate_record_sha256": "355a5cf178d8fd0a71cf9ab2181a27af8dd9d4c9de20a4af5adeb3c397513000",
+      "historical_decision_row_sha256": "a2e338978fce5e374e028f0390de206830ab2eabf83560badfca91e43a769d6d",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "3db51f1b003bb4fdb1985ee2fd121139def15cb39f7912657dabebb24747840a",
+      "source_position": {
+        "source_unit_index": 817,
+        "catalog_index": 817
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0819",
+      "lemma": "떠나보내다",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "record_type": "entry",
+      "pos": "verb",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "사람이나 대상을 붙잡지 않고 떠나도록 놓아주다.",
+      "writer_gloss": "사람이나 대상을 붙잡지 않고 떠나도록 놓아주다.",
+      "inventory_id": "m5-2819",
+      "candidate_record_id": "w5423",
+      "historical_candidate_record_id": "w2899",
+      "historical_candidate_record_sha256": "5a655280578b36cb446b91a74936df17c4a164719b94429ba93cb2f49f332681",
+      "historical_decision_row_sha256": "d967510fa82dbc0a840e52e200a6e31ab6c88e82350877d3761592099b96110a",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "0323ef670a69b392335693a3fb576a2f23d06b94c29b8e5517b1f371d3072ee1",
+      "source_position": {
+        "source_unit_index": 818,
+        "catalog_index": 818
+      }
+    }
+  ],
+  "artifact_sha256": "f6370fd33d9206649578a4e267c0dcb5bcfa074649e407003bab433c7d7cfaba"
+}

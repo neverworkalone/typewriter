@@ -134,7 +134,7 @@ export function materializeLexicalUnitCandidates({
   if (!Number.isInteger(firstCanonicalNumber) || firstCanonicalNumber < 1) {
     fail('candidate_source.first_canonical_number must be a positive integer', 'LEXICAL_PRODUCTION_VALUE');
   }
-  if (source.contract_version !== 'lexical-candidate-source-v1'
+  if (!['lexical-candidate-source-v1', 'lexical-candidate-source-v2'].includes(source.contract_version)
     || source.kind !== 'typewriter-authored-lexical-unit-source'
     || typeof source.source_id !== 'string'
     || !/^[0-9a-f]{64}$/u.test(source.base_canonical_records_sha256)
@@ -164,6 +164,8 @@ export function materializeLexicalUnitCandidates({
   const observedAxisCounts = Object.fromEntries([...LEXICAL_SELECTION_AXES].map((axis) => [axis, 0]));
   const seenUnitIds = new Set();
   const seenLemmas = new Set();
+  const seenInventoryIds = new Set();
+  const seenCandidateRecordIds = new Set();
   const reopenedIdSet = new Set();
   const reopenedTargetById = new Map();
   for (const [index, inventoryId] of reopenedSeedTargetIds.entries()) {
@@ -236,10 +238,31 @@ export function materializeLexicalUnitCandidates({
       fail(`${label}.record_type and POS do not describe one supported lexical unit`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
     }
     observedAxisCounts[unit.axis] += 1;
+    const hasExplicitRecoveryIdentity = Object.hasOwn(unit, 'inventory_id')
+      || Object.hasOwn(unit, 'candidate_record_id');
+    if (source.contract_version === 'lexical-candidate-source-v2' && !hasExplicitRecoveryIdentity) {
+      fail(`${label} must bind explicit recovery identities under lexical-candidate-source-v2`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
+    if (hasExplicitRecoveryIdentity
+      && (typeof unit.inventory_id !== 'string'
+        || !/^m5-[0-9]+$/u.test(unit.inventory_id)
+        || typeof unit.candidate_record_id !== 'string'
+        || !/^w[0-9]+$/u.test(unit.candidate_record_id))) {
+      fail(`${label} explicit recovery identity must bind an M5 inventory row to a canonical record ID`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
     const inventoryNumber = firstInventoryNumber + index;
     const canonicalNumber = firstCanonicalNumber + index;
-    const inventoryId = `m5-${String(inventoryNumber).padStart(4, '0')}`;
-    const candidateRecordId = `w${String(canonicalNumber).padStart(4, '0')}`;
+    const inventoryId = hasExplicitRecoveryIdentity
+      ? unit.inventory_id
+      : `m5-${String(inventoryNumber).padStart(4, '0')}`;
+    const candidateRecordId = hasExplicitRecoveryIdentity
+      ? unit.candidate_record_id
+      : `w${String(canonicalNumber).padStart(4, '0')}`;
+    if (seenInventoryIds.has(inventoryId) || seenCandidateRecordIds.has(candidateRecordId)) {
+      fail(`${label} duplicates a recovery inventory or canonical identity`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
+    seenInventoryIds.add(inventoryId);
+    seenCandidateRecordIds.add(candidateRecordId);
     const reopenedTarget = reopenedTargetById.get(inventoryId);
     if (reopenedTarget) {
       const exactTargetIdentity = reopenedTarget.lemma === unit.lemma
@@ -277,8 +300,12 @@ export function materializeLexicalUnitCandidates({
         writer_gloss: unit.writer_gloss,
         source_kind: unit.source_kind,
         source_position: {
-          source_unit_index: index,
-          catalog_index: index,
+          source_unit_index: Number.isInteger(unit.source_position?.source_unit_index)
+            ? unit.source_position.source_unit_index
+            : index,
+          catalog_index: Number.isInteger(unit.source_position?.catalog_index)
+            ? unit.source_position.catalog_index
+            : index,
         },
       },
     };

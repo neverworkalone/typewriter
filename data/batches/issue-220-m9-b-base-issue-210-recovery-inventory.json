@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "91cfad7fee114ceb01c904844506b4d59a98203671acf33e81e9f6d5694fc68f",
+    "current_canonical_revision": "8eb926d94bacc14b94ea7fb9457d3ae8de78e334a3cf4fb1052e01048cbead14",
     "source_manifest": [
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -127,121 +127,6 @@
         "byte_count": 67684
       },
       {
-        "path": "data/batches/issue-220-m9-b-base-canonical/issue-204-corpus-pilot.jsonl",
-        "sha256": "d600ef23a911afa4c8e6bbb7ecce51260767225601c0c9c9adeb62287ae72843",
-        "byte_count": 2538
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/issue-211-bounded-recovery.jsonl",
-        "sha256": "3844cfa4d38e4d99cfd4623670913b224f6b77feaf507d8d48589fb3e95531e9",
-        "byte_count": 5450
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/issue-219-m9-a-recovery.jsonl",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "byte_count": 0
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-10-wave-a.jsonl",
-        "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
-        "byte_count": 15089
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-10-wave-b.jsonl",
-        "sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
-        "byte_count": 35450
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-10a-wave-a2.jsonl",
-        "sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-        "byte_count": 14710
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-11-expansion.jsonl",
-        "sha256": "8d3d51bae63503b209e1a7713e8a67fc74616ca03cd80f135a37a0247cf763ed",
-        "byte_count": 120101
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-12a-expansion.jsonl",
-        "sha256": "3f4362a8fb109a6d2d44bf9cc42f63d64cb58c5ddae0084dcab5ac5fe347be45",
-        "byte_count": 275704
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-13-expansion.jsonl",
-        "sha256": "4af53e85dba0ee65906c51d7ba68d439e78b7bdd77ab50438e42f3afb0fda426",
-        "byte_count": 247169
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-14-expansion.jsonl",
-        "sha256": "53ce22151cb109b651a16f842c7cc73f43663fcf065b503222472e129658bf87",
-        "byte_count": 243588
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-15-expansion.jsonl",
-        "sha256": "69a686c84da2f65effc659fda3dee969de460cc9ea853d9723d0dbf9f36026b4",
-        "byte_count": 261989
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-3-calibration.jsonl",
-        "sha256": "2a080a0d473a071917d58860621d9e9b965c7737776b753fd1534a96f50c7d3a",
-        "byte_count": 33822
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-5-recalibration.jsonl",
-        "sha256": "8e75e819159891ce60d2c4c5c7821cc89f30f54efcee1c38ea9c5a102fe980a0",
-        "byte_count": 13336
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-7-recalibration.jsonl",
-        "sha256": "a37677f7569e016e5e8f9525b978ec4911ff0c9afb5ba7f65d3c40dae5fc71c1",
-        "byte_count": 11155
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/m5-9-expansion.jsonl",
-        "sha256": "a47e9322813780efd2eae29b2b5784bcd2948d7c3f7de621174ebee4a35ce4c4",
-        "byte_count": 27603
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-canonical/pilot.jsonl",
-        "sha256": "d45c15164ef6f146ee51d40e265746515120a556b1e2fb65e057ed36781dff1d",
-        "byte_count": 144320
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-issue-210-recovery-inventory.json",
-        "sha256": "5dbe54ee92b5f8548e41208a46e73f5b68c3fb1d1562afefd5a39f85d9670dde",
-        "byte_count": 1583556
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-base-seed.json",
-        "sha256": "394f7fa65fc22a1706af2dbb663e9eb2880ad265ecb2c6a619d6d6d5c59687f7",
-        "byte_count": 864546
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json",
-        "sha256": "35e8a05ddaf63202ca66ef648cd0ac057676b1177760aef22ca96d5d72503011",
-        "byte_count": 21835
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-        "sha256": "3ce1c8db0f214449a6c3b1489ac2958f5385e6c3996c878899c0d95bbcb2d6c4",
-        "byte_count": 74156
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-batch-02-lexical-unit-source.json",
-        "sha256": "e190d5f30333756eb11caa0ac28332100da2dc47c2566e24a8a214e6d17c1fed",
-        "byte_count": 21818
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-        "sha256": "01c1415e6b51ae14f0e2db08fad0dd5e2f0a73b32bbc9f1431496e636d5199d6",
-        "byte_count": 68321
-      },
-      {
-        "path": "data/batches/issue-220-m9-b-selection.json",
-        "sha256": "6ecc172fb2286cf0babd010c3b125cacd6553300ca66f5fa7b11afd981bd0be9",
-        "byte_count": 154037
-      },
-      {
         "path": "data/batches/m5-10-wave-a.json",
         "sha256": "dfa26d82b83eafee4f957d6320ead3e193dce45b192845c5f84b8b35fe2d6720",
         "byte_count": 25554
@@ -315,11 +200,6 @@
         "path": "data/batches/m5-13-admission.json",
         "sha256": "ae131f70eea91fb8f4361773c25c15c7f589343d60b5539be72ed70c8e91c7a2",
         "byte_count": 8261
-      },
-      {
-        "path": "data/batches/m5-13-lexical-unit-source.json",
-        "sha256": "ac8087e4a9f9dc71a4be0814213fb56aa6fa254249b8423f4ed1d11e9b170aa3",
-        "byte_count": 497482
       },
       {
         "path": "data/batches/m5-13-review.json",
@@ -407,16 +287,6 @@
         "byte_count": 0
       },
       {
-        "path": "data/canonical/issue-220-m9-b-batch-01.jsonl",
-        "sha256": "84a9f17fdd0de8c867ad961ed90404db3e7e8b76efaba4dd0ee7d50c9ebd8216",
-        "byte_count": 3084
-      },
-      {
-        "path": "data/canonical/issue-220-m9-b-batch-02.jsonl",
-        "sha256": "b57ae64af48cd99b8395c055c99b0bc09f7e5333d396eb9025cd01a4b9de51db",
-        "byte_count": 1227
-      },
-      {
         "path": "data/canonical/m5-10-wave-a.jsonl",
         "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
         "byte_count": 15089
@@ -483,28 +353,23 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "213bb80d8c85c93f37a4345add0517725b88f517eff5a3c7902a5c5c925b38de",
-        "byte_count": 2513898
+        "sha256": "39612f60bda0d8d73bc7b39cdd8e2b579a2e41826c6ae41f71a030633965de59",
+        "byte_count": 2501876
       },
       {
         "path": "data/inventory/m5-target-seed.json",
-        "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd",
-        "byte_count": 856700
+        "sha256": "394f7fa65fc22a1706af2dbb663e9eb2880ad265ecb2c6a619d6d6d5c59687f7",
+        "byte_count": 864546
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "caf3d9e2e7adbd573924d602a77ef340ed2bf72f68426153b50f654ec91acf03",
-        "byte_count": 4866343
+        "sha256": "a4e8c22c15cc0fa37f42ec5ace4ddc280023458fadeb6a362219c6bb2f34b006",
+        "byte_count": 4849898
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "7d5e9602f5baae9c20729c16a4260557b21a4b0db2c4fcf5a05559e91cbaffa8",
+        "sha256": "e843761a4c7b557fa7d3da000c38b91aac130352e61b2cb77e2c6a77e71d4434",
         "byte_count": 11354
-      },
-      {
-        "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "dafd27e29e4c1974dbed226b5f5aaae9436c607588feec1560f6b2985d9dc5a6",
-        "byte_count": 29626
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
@@ -513,8 +378,8 @@
       },
       {
         "path": "data/validation/m6-3-surface-form-review.json",
-        "sha256": "06c8bc9612c99124dae0b3b4fc38ab9aa757ad5024f380150aa1f089165eaf65",
-        "byte_count": 311609
+        "sha256": "0f6cc8f968c7a208dfcee33e33d82936827dbe2ea9433de27ab4c249501cce60",
+        "byte_count": 310540
       },
       {
         "path": "docs/editorial-model.md",
@@ -538,13 +403,8 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "f0a782e66dde3223a061f70164e5524997ee6d9a875cc509a065a07169a1e502",
+        "sha256": "f4ad6ec50f759f95c2ea42b359e5079a74ddf4390d3bc5301ab13d27f4ecacd8",
         "byte_count": 5991
-      },
-      {
-        "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "20cf5046b592a6a2837d4c05e36ebf79d8a43b0cb1065ad5b25c391b4f90c9af",
-        "byte_count": 8732
       },
       {
         "path": "docs/m3-handoff.md",
@@ -593,13 +453,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "6776a797679d84ffc48c5dae15bc3e76471d9a15a2fdd480a28ed3210ba88e8c",
-        "byte_count": 10147
-      },
-      {
-        "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
-        "sha256": "ca40281d0863a36e36b6a2d5f3d7886efc0cc136ffddff8117a4a306d27e1710",
-        "byte_count": 13751
+        "sha256": "a48194838e85799a532707ed6448a8b4f4c59b8985bdf8278c4b38b221967e0f",
+        "byte_count": 9983
       },
       {
         "path": "schema/m9-lexical-batch-report.schema.json",
@@ -608,33 +463,18 @@
       },
       {
         "path": "scripts/batch/authored-semantic-decision-source.mjs",
-        "sha256": "e608d8eb7f09059d23b831d4fba8b8425654aebe5e094e7b09c2f486f0efde14",
-        "byte_count": 30037
+        "sha256": "6476c9c7fb588c908cfd3310802064d2fcf0e0b80696110e6aeb6e4f60524e9c",
+        "byte_count": 28237
       },
       {
         "path": "scripts/batch/lexical-production.mjs",
-        "sha256": "a47c6e7ecb955b2d6e807d3d8fb2998724d0e126990f4b8b70a0680a290ba44e",
-        "byte_count": 36073
-      },
-      {
-        "path": "scripts/batch/lexical-selection.mjs",
-        "sha256": "4a80f1b9a6391536f46e2faaf53bed87508b649211837471c0545a64a32a1e9c",
-        "byte_count": 10850
-      },
-      {
-        "path": "scripts/batch/m5-13-candidate-source.mjs",
-        "sha256": "e7fdb25526acf99e42c2f12891e7f74e56b41a93cbfd0036628a1d334566cb69",
-        "byte_count": 4143
-      },
-      {
-        "path": "scripts/batch/m5-13-decision-source.mjs",
-        "sha256": "a4c5972f19608b74fefc89cd86bf31d453c2fac17033471cba5aead527516537",
-        "byte_count": 4443
+        "sha256": "a629507a10d28b24e8092f98ba91b03b362960fd11f63a94778aaa3c192eefa6",
+        "byte_count": 34503
       },
       {
         "path": "scripts/batch/validate-issue-211.mjs",
-        "sha256": "f9f448819aae8b701d5db8ec8d7e99fe4f0df710f9ebae9ae2d9d53ec248d898",
-        "byte_count": 35197
+        "sha256": "661f8ca260d3b477806cbf2744122d103094baecc3b8a3f7c0f60cd9fdf7a7e7",
+        "byte_count": 34207
       },
       {
         "path": "scripts/batch/validate-issue-219.mjs",
@@ -642,24 +482,14 @@
         "byte_count": 34517
       },
       {
-        "path": "scripts/batch/validate-issue-220.mjs",
-        "sha256": "8409b74aa2b2e336e93b09e2d2b1705bf468041ffb854b0cdbc0617a7ba9c201",
-        "byte_count": 56651
-      },
-      {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "02fa81e3f3edc2175a502cf2782eece2402812ce590d8f5772ef5981c31eb946",
-        "byte_count": 12651
+        "sha256": "4f987aea0c52062ebce819d6b31ce43652db42b80055fd63e0be766baef3e2f4",
+        "byte_count": 12553
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "d3246c9c1e002dd664d9550b909c76857d9846e9eb0c98bea129c823fc9f6cf0",
-        "byte_count": 71537
-      },
-      {
-        "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "455ffab77f27069d73712974dbf79c703e7b9b90de0be152a831c23d08a5704f",
-        "byte_count": 112561
+        "sha256": "705bfb6834edb359b54b3c635bf6f51b2dc1e30d8d0298c14d9efac3dc5ea8f2",
+        "byte_count": 60701
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",
@@ -668,8 +498,8 @@
       },
       {
         "path": "tests/issue-211-search.test.mjs",
-        "sha256": "0010c76cc0eced37c3ac51d3993c66b4d700a1d5d3dc2872fc0171ced5af2351",
-        "byte_count": 7417
+        "sha256": "2c8936af05ef33e592cc9482f239ef75609ebcfbd992a2ade1b79856897cde25",
+        "byte_count": 7228
       },
       {
         "path": "tests/issue-219-content-digest.test.mjs",
@@ -683,49 +513,41 @@
       },
       {
         "path": "tests/lexical-production-candidates.test.mjs",
-        "sha256": "cbfdf7b81d734823def0fb38bd31507d81fd2ad5e6af63a1151e1233fc42563b",
-        "byte_count": 6383
+        "sha256": "323d63a9b6252f0ceae89a26c266527abb6ce98d36a51ee47e18fd75bab1b3a8",
+        "byte_count": 5304
       },
       {
         "path": "tests/searchable-start-contract.test.mjs",
-        "sha256": "c6b8ee44b120c358bb7c01fddcb968d232d24153185d43da47d8fe7ec1938c1d",
-        "byte_count": 40210
+        "sha256": "8e2014fae124aef7a5f4afd597ff1761ab1dca3884040fe89cdf3c65b15f6c85",
+        "byte_count": 38763
       }
     ]
   },
   "audit_scope": {
     "m1_m4": "Reviewed the durable M1 pilot selection, canonical pilot records, M3/M4 handoffs, and current reference-only population. These artifacts do not contain a complete durable candidate rejection/defer ledger; no missing ephemeral output or external material was reconstructed.",
-    "m5": "Screened all 1,562 M5 target rows, including Issue #220 recoveries; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219/#220 recovery outcomes. Issue #219 reviewed 20 expressions; Issue #220 reviewed 40 historical reserves, admitting 18 and holding 22.",
+    "m5": "Screened all 1,562 current M5 seed rows; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219 recovery outcomes. Issue #219 reviewed 20 expressions: 0 admitted, 10 held, and 10 rejected.",
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
-    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; Issue #220 then reviewed 40 M5-13 reserve candidates and admitted 18 through current shared admission.",
+    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; 0 admitted, 10 held, and 10 rejected as compositional phrases.",
     "source_material_boundary": "Uses tracked Typewriter decision artifacts only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
     "m5_target_rows_screened": 1562,
     "m5_target_status_counts": {
       "promoted": 978,
-      "held": 221,
+      "held": 199,
       "duplicate": 3,
       "inflected-form": 2,
       "candidate": 19,
-      "deferred": 259,
+      "deferred": 299,
       "rejected": 62
     },
     "m5_promoted_seed_rows_present_in_canonical": 978,
-    "m5_promotion_ledger_events_audited": 3774,
+    "m5_promotion_ledger_events_audited": 3756,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
     "issue_219_admitted_count": 0,
     "issue_219_held_count": 10,
     "issue_219_rejected_count": 10,
-    "issue_220_decisions_audited": 40,
-    "issue_220_admitted_count": 18,
-    "issue_220_held_count": 22,
-    "issue_220_rejected_count": 0,
-    "issue_220_priority_reserve_remaining": 194,
-    "issue_220_historical_candidate_pool_count": 584,
-    "historical_recovery_ceiling_count": 5621,
-    "historical_recovery_shortfall_to_6000": 379,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
     "recovery_candidate_count": 584,
@@ -737,24 +559,24 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 5094,
-    "exact_search_key_count": 5350,
+    "directly_searchable_canonical_record_count": 5076,
+    "exact_search_key_count": 5332,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
-    "unresolved_sense_pos_or_context_case_count": 204,
+    "unresolved_sense_pos_or_context_case_count": 182,
     "additional_rationale_or_lexical_unit_holds": 75,
     "search_collision_count": 1,
     "unsupported_scope_candidate_count": 0,
     "unsupported_lexical_category_count": 0,
     "review_state_counts": {
-      "hold": 251,
+      "hold": 230,
       "duplicate": 2,
       "invalid-lemma": 2,
-      "admit-candidate": 248,
-      "recovered": 42,
-      "needs-sense-split": 28,
+      "admit-candidate": 288,
       "not-a-lexical-unit": 10,
+      "recovered": 24,
+      "needs-sense-split": 27,
       "search-surface-collision": 1
     },
     "reference_only_by_record_type": {
@@ -771,20 +593,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 5094,
-    "directly_searchable_record_count": 5094,
+    "canonical_record_count": 5076,
+    "directly_searchable_record_count": 5076,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 5350,
+    "exact_search_key_count": 5332,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 5052,
+      "start": 5034,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 3899,
+      "start/entry": 3881,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
@@ -11657,21 +11479,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2153",
@@ -11703,49 +11510,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2153 w2233: 남을 해치거나 곤란하게 만들려는 나쁜 의도다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2153 w5384: 해치려는 의도를 나타내는 추상 명사 하나로 gloss와 표제어가 맞물린다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5384"
-        ],
-        "all_query_match_ids": [
-          "w5384"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "악의",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "악의",
-            "matches": [
-              {
-                "record_id": "w5384",
-                "lemma": "악의",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "악의",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5384"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -11758,21 +11540,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2154",
@@ -11804,49 +11571,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2154 w2234: 애정·관심을 빼앗길까 염려하는 질투의 뜻을 담는다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2154 w5385: 애정이나 관심을 잃을까 염려하는 한 가지 감정 명사로 경계가 분명하다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5385"
-        ],
-        "all_query_match_ids": [
-          "w5385"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "질투심",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "질투심",
-            "matches": [
-              {
-                "record_id": "w5385",
-                "lemma": "질투심",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "질투심",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5385"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -11859,21 +11601,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2155",
@@ -11905,49 +11632,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2155 w2235: 대상에 반감을 품고 싫어하는 마음을 나타낸다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2155 w5386: 대상에 대한 반감과 싫어하는 마음을 나타내는 단일 감정 명사다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5386"
-        ],
-        "all_query_match_ids": [
-          "w5386"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "미움",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "미움",
-            "matches": [
-              {
-                "record_id": "w5386",
-                "lemma": "미움",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "미움",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5386"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -11957,9 +11659,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2156",
@@ -11972,25 +11674,25 @@
         "미운 정"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2156 w5387: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2156 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2156 w5387: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2156 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2156 w5387: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2156 w2236: 미움과 오랜 관계의 정이 함께 남는 복합 감정이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -12007,8 +11709,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -12021,21 +11723,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2157",
@@ -12067,49 +11754,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2157 w2237: 반복된 대상에 더는 마음이 가지 않는 상태다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2157 w5388: 반복 뒤 관심이 사라지는 상태라는 하나의 정서 개념을 나타낸다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5388"
-        ],
-        "all_query_match_ids": [
-          "w5388"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "싫증",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "싫증",
-            "matches": [
-              {
-                "record_id": "w5388",
-                "lemma": "싫증",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "싫증",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5388"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -12119,9 +11781,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2158",
@@ -12134,25 +11796,25 @@
         "싫증남"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2158 w5389: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2158 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2158 w5389: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2158 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2158 w5389: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2158 w2238: 반복·익숙함 뒤 흥미가 사라진 상태를 나타낸다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -12169,8 +11831,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -12183,21 +11845,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2159",
@@ -12229,49 +11876,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2159 w2239: 단조로운 생활·관계에서 생기는 싫증의 기분이다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2159 w5390: 단조로운 생활이나 관계에서 생기는 권태의 기분이라는 한 감정 단위다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5390"
-        ],
-        "all_query_match_ids": [
-          "w5390"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "권태감",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "권태감",
-            "matches": [
-              {
-                "record_id": "w5390",
-                "lemma": "권태감",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "권태감",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5390"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -12284,21 +11906,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2160",
@@ -12330,49 +11937,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2160 w2240: 의욕과 기운이 없어 행동할 힘이 나지 않는 상태다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2160 w5391: 의욕과 기운이 없어 행동할 힘이 나지 않는 한 상태를 나타낸다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5391"
-        ],
-        "all_query_match_ids": [
-          "w5391"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "무기력",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "무기력",
-            "matches": [
-              {
-                "record_id": "w5391",
-                "lemma": "무기력",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "무기력",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5391"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -12690,21 +12272,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2311",
@@ -12736,49 +12303,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2311 w2391: 이어지던 관계나 흐름이 끊어진 상태를 뜻한다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2311 w5392: 관계나 흐름의 연결이 끊어진 결과 상태를 나타내는 단일 명사다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5392"
-        ],
-        "all_query_match_ids": [
-          "w5392"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "단절",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "단절",
-            "matches": [
-              {
-                "record_id": "w5392",
-                "lemma": "단절",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "단절",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5392"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -12791,21 +12333,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2312",
@@ -12837,49 +12364,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2312 w2392: 사용·제거 뒤에도 남아 있는 몫이라는 의미다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2312 w5393: 사용하거나 덜어 낸 뒤 남은 몫이라는 한 개념을 나타낸다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5393"
-        ],
-        "all_query_match_ids": [
-          "w5393"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "잔여",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "잔여",
-            "matches": [
-              {
-                "record_id": "w5393",
-                "lemma": "잔여",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "잔여",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5393"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -12953,21 +12455,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2314",
@@ -12999,49 +12486,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2314 w2394: 중심을 기준으로 물체가 이리저리 움직이는 상태다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2314 w5394: 중심을 기준으로 물체가 움직이는 상태라는 하나의 감각·동작 단위다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5394"
-        ],
-        "all_query_match_ids": [
-          "w5394"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "흔들림",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "흔들림",
-            "matches": [
-              {
-                "record_id": "w5394",
-                "lemma": "흔들림",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "흔들림",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5394"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13054,21 +12516,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2315",
@@ -13100,49 +12547,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2315 w2395: 흩어진 물건·내용을 가지런하게 정리하는 작용이다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2315 w5395: 흩어진 대상이나 내용을 가지런히 하는 작용을 나타내는 명사다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5395"
-        ],
-        "all_query_match_ids": [
-          "w5395"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "정돈",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "정돈",
-            "matches": [
-              {
-                "record_id": "w5395",
-                "lemma": "정돈",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "정돈",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5395"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13155,21 +12577,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2316",
@@ -13201,49 +12608,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2316 w2396: 서로 다른 요소가 구분되지 않게 섞인 상태를 나타낸다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2316 w5396: 서로 다른 요소가 구분되지 않게 섞인 상태를 나타내는 명사다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5396"
-        ],
-        "all_query_match_ids": [
-          "w5396"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "뒤섞임",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "뒤섞임",
-            "matches": [
-              {
-                "record_id": "w5396",
-                "lemma": "뒤섞임",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "뒤섞임",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5396"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13256,21 +12638,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2317",
@@ -13302,49 +12669,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2317 w2397: 사물·요소를 자리와 순서에 놓는 방식을 말한다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2317 w5397: 요소를 자리와 순서에 두는 방식이라는 단일 개념이다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5397"
-        ],
-        "all_query_match_ids": [
-          "w5397"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "배치",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "배치",
-            "matches": [
-              {
-                "record_id": "w5397",
-                "lemma": "배치",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "배치",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5397"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13354,9 +12696,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2318",
@@ -13369,25 +12711,25 @@
         "배경"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2318 w5398: the single-sense gloss has distinct sentence frames and writer routes. Keep it held until source-bound separate senses are authored.",
+      "historical_rationale": "m5-2318 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2318 w5398: the single-sense gloss has distinct sentence frames and writer routes. Keep it held until source-bound separate senses are authored."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2318 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2318 w5398: independently reviewed frames and next writer routes diverge inside the one-sense gloss; hold until source-bound separate senses are authored."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2318 w2398: 앞쪽 대상 뒤에서 장면·내용을 받치는 환경이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -13404,8 +12746,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "needs-sense-split",
-      "follow_up_reason_and_evidence": "Issue #220 found distinct sentence frames and writer routes inside the one-sense candidate. Keep it held until a source-bound multi-sense record resolves that boundary."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13418,21 +12760,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2319",
@@ -13464,49 +12791,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2319 w2399: 장면에서 관찰자에게 가까이 드러나는 부분을 지칭한다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2319 w5399: 관찰자 가까이에 놓인 장면 부분이라는 하나의 공간 의미를 나타낸다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5399"
-        ],
-        "all_query_match_ids": [
-          "w5399"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "전경",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "전경",
-            "matches": [
-              {
-                "record_id": "w5399",
-                "lemma": "전경",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "전경",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5399"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13760,9 +13062,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2473",
@@ -13775,25 +13077,25 @@
         "손끝의 저림"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2473 w5400: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2473 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2473 w5400: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2473 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2473 w5400: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2473 w2553: 손가락 끝이 찌릿하거나 둔해지는 감각을 나타낸다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -13810,8 +13112,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13821,9 +13123,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2474",
@@ -13836,25 +13138,25 @@
         "손끝의 온도"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2474 w5401: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2474 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2474 w5401: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2474 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2474 w5401: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2474 w2554: 손가락 끝으로 감지하는 따뜻함·차가움의 정도다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -13871,8 +13173,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13882,9 +13184,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2475",
@@ -13897,25 +13199,25 @@
         "발바닥의 감각"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2475 w5402: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2475 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2475 w5402: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2475 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2475 w5402: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2475 w2555: 발바닥에서 압력과 바닥 질감을 느끼는 경험이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -13932,8 +13234,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -13943,9 +13245,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2476",
@@ -13958,25 +13260,25 @@
         "발목의 긴장"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2476 w5403: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2476 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2476 w5403: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2476 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-01-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2476 w5403: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2476 w2556: 발목 근육이 굳고 당기는 신체 감각을 가리킨다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -13993,8 +13295,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14004,9 +13306,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2477",
@@ -14019,25 +13321,25 @@
         "피부의 소름"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2477 w5404: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2477 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2477 w5404: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2477 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2477 w5404: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2477 w2557: 추위·감정 자극으로 피부 털구멍이 도드라지는 반응이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14054,8 +13356,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14065,9 +13367,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2478",
@@ -14080,25 +13382,25 @@
         "살갗의 떨림"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2478 w5405: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2478 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2478 w5405: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2478 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2478 w5405: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2478 w2558: 피부 표면·근육이 작게 떨리는 느낌을 포착한다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14115,8 +13417,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14126,9 +13428,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2479",
@@ -14141,25 +13443,25 @@
         "몸속의 진동"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2479 w5406: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2479 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2479 w5406: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2479 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2479 w5406: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2479 w2559: 외부 충격·소리가 몸 안에서 떨림으로 느껴지는 현상이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14176,8 +13478,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14187,9 +13489,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2480",
@@ -14202,25 +13504,25 @@
         "몸에 밴 냄새"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2480 w5407: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2480 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2480 w5407: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2480 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2480 w5407: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2480 w2560: 옷·피부에 오래 스며들어 남는 냄새라는 감각어다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14237,8 +13539,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14492,9 +13794,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2633",
@@ -14507,25 +13809,25 @@
         "골목 안쪽"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2633 w5408: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2633 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2633 w5408: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2633 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2633 w5408: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2633 w2713: 골목 입구보다 안으로 들어간 부분이라는 위치 관계다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14542,8 +13844,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14553,9 +13855,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2634",
@@ -14568,25 +13870,25 @@
         "시장 입구"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2634 w5409: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2634 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2634 w5409: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2634 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2634 w5409: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2634 w2714: 시장 구역으로 진입하는 첫머리를 가리킨다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14603,8 +13905,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14614,9 +13916,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2635",
@@ -14629,25 +13931,25 @@
         "역 앞"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2635 w5410: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2635 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2635 w5410: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2635 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2635 w5410: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2635 w2715: 역 출입구와 마주한 외부 공간이라는 뜻이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14664,8 +13966,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14675,9 +13977,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2636",
@@ -14690,25 +13992,25 @@
         "학교 뒤"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2636 w5411: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2636 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2636 w5411: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2636 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2636 w5411: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2636 w2716: 학교 건물 뒤쪽이나 그에 이어진 장소를 말한다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14725,8 +14027,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14736,9 +14038,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2637",
@@ -14751,25 +14053,25 @@
         "병원 옆"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2637 w5412: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2637 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2637 w5412: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2637 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2637 w5412: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2637 w2717: 병원 건물에 인접한 바깥 공간이라는 위치어다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14786,8 +14088,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14797,9 +14099,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2638",
@@ -14812,25 +14114,25 @@
         "공원 한쪽"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2638 w5413: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2638 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2638 w5413: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2638 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2638 w5413: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2638 w2718: 공원의 한쪽으로 치우친 구역이라는 뜻이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14847,8 +14149,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14858,9 +14160,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2639",
@@ -14873,25 +14175,25 @@
         "집 앞"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2639 w5414: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2639 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2639 w5414: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2639 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2639 w5414: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2639 w2719: 집 출입구와 맞닿은 바깥 공간을 가리킨다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14908,8 +14210,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -14919,9 +14221,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2640",
@@ -14934,25 +14236,25 @@
         "집 뒤"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2640 w5415: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2640 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2640 w5415: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2640 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2640 w5415: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2640 w2720: 집 뒷면에 이어지는 바깥 자리라는 공간어다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -14969,8 +14271,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -15837,21 +15139,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2811",
@@ -15883,49 +15170,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2811 w2891: 사람·말을 참되고 믿을 만하다고 여기는 동사다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2811 w5416: trusting a person and believing a statement use different frames but lead to the same trust and confidence writer route."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5416"
-        ],
-        "all_query_match_ids": [
-          "w5416"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "믿다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "믿다",
-            "matches": [
-              {
-                "record_id": "w5416",
-                "lemma": "믿다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "믿다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5416"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -15938,21 +15200,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2812",
@@ -15984,49 +15231,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2812 w2892: 기억해야 할 내용을 마음에서 잊어버리는 행위다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2812 w5417: 기억해야 할 사실이나 일을 마음에서 잊는 하나의 행위를 나타낸다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5417"
-        ],
-        "all_query_match_ids": [
-          "w5417"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "망각하다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "망각하다",
-            "matches": [
-              {
-                "record_id": "w5417",
-                "lemma": "망각하다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "망각하다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5417"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -16039,21 +15261,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2813",
@@ -16085,49 +15292,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2813 w2893: 이미 겪은 일을 다시 떠올려 깊이 생각하는 동사다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2813 w5418: 이미 한 말이나 겪은 일을 다시 떠올려 깊이 생각하는 하나의 동사 의미다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5418"
-        ],
-        "all_query_match_ids": [
-          "w5418"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "되새기다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "되새기다",
-            "matches": [
-              {
-                "record_id": "w5418",
-                "lemma": "되새기다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "되새기다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5418"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -16137,9 +15319,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2814",
@@ -16152,25 +15334,25 @@
         "새겨두다"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2814 w5419: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2814 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2814 w5419: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2814 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2814 w5419: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2814 w2894: 말·일을 잊지 않도록 마음이나 기록에 새기는 표현이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -16187,8 +15369,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -16198,9 +15380,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2815",
@@ -16213,25 +15395,25 @@
         "기다려주다"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2815 w5420: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2815 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2815 w5420: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2815 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2815 w5420: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2815 w2895: 상대가 도착·준비할 때까지 기다려 주는 배려 표현이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -16248,8 +15430,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -16320,9 +15502,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-2817",
@@ -16335,25 +15517,25 @@
         "다가와주다"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2817 w5421: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "historical_rationale": "m5-2817 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2817 w5421: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2817 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
         },
         {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2817 w5421: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다."
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2817 w2897: 상대가 있는 방향으로 가까이 이동해 주는 표현이다."
         }
       ],
       "current_canonical_search_coverage": {
@@ -16370,8 +15552,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #220 keeps the exact source form held because its lexical-unit or morphological boundary needs candidate-specific evidence. Reopen only when that evidence is available."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -16384,21 +15566,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2818",
@@ -16430,49 +15597,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2818 w2898: 있던 장소를 벗어나 다른 곳으로 이동하는 동사다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2818 w5422: 있던 곳을 벗어나 다른 곳으로 이동하는 하나의 동사 의미다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5422"
-        ],
-        "all_query_match_ids": [
-          "w5422"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "떠나가다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "떠나가다",
-            "matches": [
-              {
-                "record_id": "w5422",
-                "lemma": "떠나가다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "떠나가다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5422"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -16485,21 +15627,6 @@
           "issue": 99,
           "batch": "m5-13-expansion-20260922",
           "artifact": "data/batches/m5-13-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-lexical-unit-source.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
-        },
-        {
-          "issue": 220,
-          "batch": "m9-b-recovery-selection-v1",
-          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2819",
@@ -16531,49 +15658,24 @@
           "source_artifact": "data/batches/m5-13-semantic-decisions.json",
           "historical_disposition": "included/fit",
           "historical_rationale": "m5-2819 w2899: 사람·대상을 붙잡지 않고 떠나도록 놓아주는 동작이다."
-        },
-        {
-          "source_issue": 220,
-          "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
-          "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-2819 w5423: 사람이나 대상을 붙잡지 않고 떠나도록 놓아주는 하나의 동사 의미다."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5423"
-        ],
-        "all_query_match_ids": [
-          "w5423"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "떠나보내다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "떠나보내다",
-            "matches": [
-              {
-                "record_id": "w5423",
-                "lemma": "떠나보내다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "떠나보내다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
-      "current_canonical_id": "w5423"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -41125,9 +40227,9 @@
     {
       "sequence": 2,
       "group": "Previously included M5-13/14/15 reserve candidates deferred only by capacity",
-      "count": 194,
+      "count": 234,
       "batching": "Issue #219 calibrated a 20-record first batch; review later batches in bounded groups sized from observed defects and workload.",
-      "gate": "Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota. Issues #219 and #220 reviewed 60 rows; #220 admitted 18 and held 22 for unresolved lexical-unit evidence."
+      "gate": "Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota. Issue #219 admitted 0 of the original 254; 10 remain held and 10 were rejected as compositional phrases."
     },
     {
       "sequence": 3,
@@ -41139,9 +40241,9 @@
     {
       "sequence": 4,
       "group": "Held or otherwise unresolved rows",
-      "count": 279,
+      "count": 257,
       "batching": "Resolve blockers individually, then place only cleared records into later bounded batches.",
-      "gate": "Keep the 203 explicit sense/POS/context/lexical-unit cases and 75 additional rationale holds visible until their evidence is complete."
+      "gate": "Keep the 172 explicit sense/POS/context cases and 75 other rationale or lexical-unit holds visible until their evidence is complete."
     },
     {
       "sequence": 5,
@@ -41151,5 +40253,5 @@
       "gate": "Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes."
     }
   ],
-  "canonical_mutation": "Issue #219 admitted 0 M5-15 reserves; Issue #220 admitted 18 M5-13 reserves through ordinary shared lexical production and admission."
+  "canonical_mutation": "Issue #219 admitted no previously capacity-deferred M5-15 candidate; the reviewed slice retained its holds and rejections without changing canonical data."
 }
