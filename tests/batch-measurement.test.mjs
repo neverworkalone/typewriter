@@ -22,6 +22,10 @@ import {
 } from '../scripts/validate/canonical-jsonl.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
+const M5_3_HISTORICAL_CANONICAL_DIRECTORY = path.join(
+  BATCH_DIRECTORY,
+  'm5-10a-wave-a-base-canonical',
+);
 
 async function readBatchJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
@@ -210,8 +214,12 @@ test('M5-3 metrics reproduce from manifest, relation diff, and canonical records
     readBatchJson('m5-3-calibration.json'),
     readBatchJson('m5-3-relation-diff.json'),
     readBatchJson('m5-3-calibration-metrics.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(M5_3_HISTORICAL_CANONICAL_DIRECTORY),
   ]);
+  assert.equal(
+    checkedInMetrics.source.canonical_directory,
+    path.relative(process.cwd(), M5_3_HISTORICAL_CANONICAL_DIRECTORY),
+  );
   const derivedArtifact = createMetricsArtifact({
     manifest,
     relationDiff,
@@ -221,6 +229,12 @@ test('M5-3 metrics reproduce from manifest, relation diff, and canonical records
 
   assert.deepEqual(derivedArtifact.derived, checkedInMetrics.derived);
   assert.doesNotThrow(() => assertMetricsMatch(derivedArtifact, checkedInMetrics));
+  await deriveMetricsMain([
+    '--manifest=data/batches/m5-3-calibration.json',
+    '--relation-diff=data/batches/m5-3-relation-diff.json',
+    '--canonical-dir=data/batches/m5-10a-wave-a-base-canonical',
+    '--check=data/batches/m5-3-calibration-metrics.json',
+  ]);
 
   const tampered = structuredClone(checkedInMetrics);
   tampered.derived.relation_diff.removed_count = 0;
@@ -248,7 +262,7 @@ test('completed metrics reject incomplete timing and cannot hide audit findings'
   const [manifest, relationDiff, canonicalResult] = await Promise.all([
     readBatchJson('m5-3-calibration.json'),
     readBatchJson('m5-3-relation-diff.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(M5_3_HISTORICAL_CANONICAL_DIRECTORY),
   ]);
 
   const missingDigest = structuredClone(manifest);

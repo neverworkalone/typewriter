@@ -1,0 +1,846 @@
+{
+  "schema_version": "2",
+  "contract_version": "issue-225-sense-boundary-decisions-v2",
+  "issue": 225,
+  "parent_issue": 218,
+  "source_revision": "3e07c1b224cc7f7324f044b807cef9e17d321c2c",
+  "default_hold_basis": "Keep each current split while an independently authored writer-route contrast or a concrete frame review is missing. Existing canonical relation tuples may corroborate an editorial decision, but neither missing tuples nor matching tuples establish sense equivalence. Do not invent relations to justify a split.",
+  "keep_split": [
+    {
+      "record_id": "w308",
+      "frames": {
+        "w308-s1": "One target receives love and dislike at the same time.",
+        "w308-s2": "A person wants to leave a loved relationship or target but cannot let go."
+      },
+      "writer_routes": {
+        "w308-s1": {
+          "relation_type": "mood",
+          "target_class": "simultaneous love and dislike"
+        },
+        "w308-s2": {
+          "relation_type": "mood",
+          "target_class": "attachment and difficulty separating"
+        }
+      },
+      "route_contrast": "Simultaneous love and dislike leads toward mixed emotion; inability to leave an attachment leads toward conflicted attachment and separation.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Simultaneous love and dislike leads toward mixed emotion; inability to leave an attachment leads toward conflicted attachment and separation."
+    },
+    {
+      "record_id": "w315",
+      "frames": {
+        "w315-s1": "A physical object or fastening is loose rather than taut.",
+        "w315-s2": "A rule or a state of tension is lenient and leaves room."
+      },
+      "writer_routes": {
+        "w315-s1": {
+          "relation_type": "sensory",
+          "target_class": "loose objects or fastenings"
+        },
+        "w315-s2": {
+          "relation_type": "association",
+          "target_class": "lenient rules or reduced tension"
+        }
+      },
+      "route_contrast": "A loose fastening leads toward touch and physical slack; lenient rules or tension lead toward flexibility and restraint.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: A loose fastening leads toward touch and physical slack; lenient rules or tension lead toward flexibility and restraint."
+    },
+    {
+      "record_id": "w325",
+      "frames": {
+        "w325-s1": "A localized part of the body feels slightly numb and painful.",
+        "w325-s2": "An emotion is touched and the heart aches."
+      },
+      "writer_routes": {
+        "w325-s1": {
+          "relation_type": "sensory",
+          "target_class": "localized bodily pain"
+        },
+        "w325-s2": {
+          "relation_type": "mood",
+          "target_class": "emotional ache or longing"
+        }
+      },
+      "route_contrast": "A bodily ache leads toward pain sensation; an aching heart leads toward emotion and longing.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: A bodily ache leads toward pain sensation; an aching heart leads toward emotion and longing."
+    },
+    {
+      "record_id": "w326",
+      "frames": {
+        "w326-s1": "Teeth or joints ache with a cold or throbbing bodily sensation.",
+        "w326-s2": "The heart aches emotionally and rises into a sudden feeling."
+      },
+      "writer_routes": {
+        "w326-s1": {
+          "relation_type": "sensory",
+          "target_class": "teeth or joint pain"
+        },
+        "w326-s2": {
+          "relation_type": "mood",
+          "target_class": "sadness or emotional ache"
+        }
+      },
+      "route_contrast": "Teeth or joints aching leads toward bodily pain; an aching heart leads toward sadness or sudden emotion.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Teeth or joints aching leads toward bodily pain; an aching heart leads toward sadness or sudden emotion."
+    },
+    {
+      "record_id": "w328",
+      "frames": {
+        "w328-s1": "Light grows in the darkness before sunrise.",
+        "w328-s2": "A sign appears that an event or era is about to begin."
+      },
+      "writer_routes": {
+        "w328-s1": {
+          "relation_type": "sensory",
+          "target_class": "dawn light"
+        },
+        "w328-s2": {
+          "relation_type": "association",
+          "target_class": "signs of a new beginning"
+        }
+      },
+      "route_contrast": "Light before sunrise leads toward dawn and visible light; an opening sign leads toward beginnings and hope.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Light before sunrise leads toward dawn and visible light; an opening sign leads toward beginnings and hope."
+    },
+    {
+      "record_id": "w336",
+      "frames": {
+        "w336-s1": "Water or another liquid moves continuously in one direction.",
+        "w336-s2": "Time or a state passes without stopping."
+      },
+      "writer_routes": {
+        "w336-s1": {
+          "relation_type": "scene",
+          "target_class": "liquid and movement"
+        },
+        "w336-s2": {
+          "relation_type": "scene",
+          "target_class": "time and seasonal change"
+        }
+      },
+      "route_contrast": "Liquid moving in one direction leads toward water and motion scenes; time passing leads toward seasons and temporal change.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Liquid moving in one direction leads toward water and motion scenes; time passing leads toward seasons and temporal change."
+    },
+    {
+      "record_id": "w337",
+      "frames": {
+        "w337-s1": "Liquid or light passes through a gap into an interior.",
+        "w337-s2": "An emotion or thought gradually spreads into the mind."
+      },
+      "writer_routes": {
+        "w337-s1": {
+          "relation_type": "sensory",
+          "target_class": "liquid, light, or moisture"
+        },
+        "w337-s2": {
+          "relation_type": "mood",
+          "target_class": "thoughts or feelings spreading"
+        }
+      },
+      "route_contrast": "Liquid or light entering a space leads toward sensory material; a thought or feeling spreading inward leads toward mood.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Liquid or light entering a space leads toward sensory material; a thought or feeling spreading inward leads toward mood."
+    },
+    {
+      "record_id": "w339",
+      "frames": {
+        "w339-s1": "Something visible or present can no longer be seen or found.",
+        "w339-s2": "A memory or emotion gradually ceases to remain."
+      },
+      "writer_routes": {
+        "w339-s1": {
+          "relation_type": "near",
+          "target_class": "visual absence or faintness"
+        },
+        "w339-s2": {
+          "relation_type": "near",
+          "target_class": "memory or emotional loss"
+        }
+      },
+      "route_contrast": "A visible thing disappearing leads toward visibility and faintness; a memory or emotion disappearing leads toward forgetting and loss.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: A visible thing disappearing leads toward visibility and faintness; a memory or emotion disappearing leads toward forgetting and loss."
+    },
+    {
+      "record_id": "w340",
+      "frames": {
+        "w340-s1": "Liquid or color spreads outward over a surface.",
+        "w340-s2": "An emotion or expression spreads outward and becomes visible to others."
+      },
+      "writer_routes": {
+        "w340-s1": {
+          "relation_type": "sensory",
+          "target_class": "liquid, color, or surface"
+        },
+        "w340-s2": {
+          "relation_type": "mood",
+          "target_class": "emotion or expression"
+        }
+      },
+      "route_contrast": "Liquid or color spreading leads toward visual and material qualities; emotion or expression spreading leads toward mood.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Liquid or color spreading leads toward visual and material qualities; emotion or expression spreading leads toward mood."
+    },
+    {
+      "record_id": "w342",
+      "frames": {
+        "w342-s1": "A hand or sense searches by feeling along a physical space.",
+        "w342-s2": "A speaker struggles to retrieve a word or memory."
+      },
+      "writer_routes": {
+        "w342-s1": {
+          "relation_type": "action",
+          "target_class": "tactile searching"
+        },
+        "w342-s2": {
+          "relation_type": "association",
+          "target_class": "word or memory retrieval"
+        }
+      },
+      "route_contrast": "Searching by touch leads toward physical finding; struggling to retrieve a word or memory leads toward recall and language.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Searching by touch leads toward physical finding; struggling to retrieve a word or memory leads toward recall and language."
+    },
+    {
+      "record_id": "w349",
+      "frames": {
+        "w349-s1": "Water or dirt leaves a visible mark on a surface.",
+        "w349-s2": "A memory or reputation retains a lasting stain."
+      },
+      "writer_routes": {
+        "w349-s1": {
+          "relation_type": "sensory",
+          "target_class": "color and surface marks"
+        },
+        "w349-s2": {
+          "relation_type": "association",
+          "target_class": "memory or reputation traces"
+        }
+      },
+      "route_contrast": "A physical stain leads toward color and surface marks; a lasting mark on memory or reputation leads toward trace and recollection.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: A physical stain leads toward color and surface marks; a lasting mark on memory or reputation leads toward trace and recollection."
+    },
+    {
+      "record_id": "w048",
+      "frames": {
+        "w048-s1": "An object's physical weight is low.",
+        "w048-s2": "The burden of a task or feeling is small."
+      },
+      "writer_routes": {
+        "w048-s1": {
+          "relation_type": "sensory",
+          "target_class": "object mass and weight"
+        },
+        "w048-s2": {
+          "relation_type": "association",
+          "target_class": "task or emotional burden"
+        }
+      },
+      "route_contrast": "Low object weight leads toward physical mass; low burden leads toward task or emotional load.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Low object weight leads toward physical mass; low burden leads toward task or emotional load."
+    },
+    {
+      "record_id": "w049",
+      "frames": {
+        "w049-s1": "An object's physical weight is high.",
+        "w049-s2": "A task or feeling places a substantial burden on someone."
+      },
+      "writer_routes": {
+        "w049-s1": {
+          "relation_type": "sensory",
+          "target_class": "object mass and weight"
+        },
+        "w049-s2": {
+          "relation_type": "association",
+          "target_class": "task or emotional burden"
+        }
+      },
+      "route_contrast": "High object weight leads toward physical mass; a heavy task or feeling leads toward burden and strain.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: High object weight leads toward physical mass; a heavy task or feeling leads toward burden and strain."
+    },
+    {
+      "record_id": "w066",
+      "frames": {
+        "w066-s1": "Light makes a dark scene or an object visible.",
+        "w066-s2": "A surface or color presents a particular brightness and hue."
+      },
+      "writer_routes": {
+        "w066-s1": {
+          "relation_type": "sensory",
+          "target_class": "illumination and visibility"
+        },
+        "w066-s2": {
+          "relation_type": "sensory",
+          "target_class": "surface color and hue"
+        }
+      },
+      "route_contrast": "Illuminating light leads toward visibility in a scene; light as a surface quality leads toward hue and color.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Illuminating light leads toward visibility in a scene; light as a surface quality leads toward hue and color."
+    },
+    {
+      "record_id": "w133",
+      "frames": {
+        "w133-s1": "A body organ receives light so a person can see objects.",
+        "w133-s2": "White ice grains fall from the sky into a weather scene."
+      },
+      "writer_routes": {
+        "w133-s1": {
+          "relation_type": "action",
+          "target_class": "seeing and looking"
+        },
+        "w133-s2": {
+          "relation_type": "scene",
+          "target_class": "snowfall and landscape"
+        }
+      },
+      "route_contrast": "The seeing organ leads toward looking and perception; falling ice grains lead toward weather and landscape scenes.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: The seeing organ leads toward looking and perception; falling ice grains lead toward weather and landscape scenes."
+    },
+    {
+      "record_id": "w237",
+      "frames": {
+        "w237-s1": "A person makes and records written language.",
+        "w237-s2": "A person operates a tool or object for a purpose.",
+        "w237-s3": "A person puts on or wears clothing or an accessory.",
+        "w237-s4": "A taste is perceived by the tongue as unpleasant and sharp."
+      },
+      "writer_routes": {
+        "w237-s1": {
+          "relation_type": "direct",
+          "target_class": "writing and recorded text"
+        },
+        "w237-s2": {
+          "relation_type": "direct",
+          "target_class": "tools and practical use"
+        },
+        "w237-s3": {
+          "relation_type": "direct",
+          "target_class": "clothing worn on the body"
+        },
+        "w237-s4": {
+          "relation_type": "association",
+          "target_class": "bitter flavor or medicine"
+        }
+      },
+      "route_contrast": "Writing leads toward composing text; using a tool toward practical operation; wearing toward clothing; bitter taste toward flavor and medicine.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Writing leads toward composing text; using a tool toward practical operation; wearing toward clothing; bitter taste toward flavor and medicine."
+    },
+    {
+      "record_id": "w271",
+      "frames": {
+        "w271-s1": "A person's inner life feels thoughts and emotions.",
+        "w271-s2": "A person forms an intention or willingness to act."
+      },
+      "writer_routes": {
+        "w271-s1": {
+          "relation_type": "mood",
+          "target_class": "thoughts and emotions"
+        },
+        "w271-s2": {
+          "relation_type": "action",
+          "target_class": "intention or willingness to act"
+        }
+      },
+      "route_contrast": "Inner life leads toward feelings and moods; intention leads toward choosing and acting.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Inner life leads toward feelings and moods; intention leads toward choosing and acting."
+    },
+    {
+      "record_id": "w044",
+      "frames": {
+        "w044-s1": "A touched surface feels uneven and coarse.",
+        "w044-s2": "A person's speech or manner is forceful and unpolished."
+      },
+      "writer_routes": {
+        "w044-s1": {
+          "relation_type": "sensory",
+          "target_class": "physical surface texture"
+        },
+        "w044-s2": {
+          "relation_type": "mood",
+          "target_class": "speech or interpersonal manner"
+        }
+      },
+      "route_contrast": "Surface roughness leads toward touch and material qualities; rough speech or manner leads toward interpersonal tone.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Surface roughness leads toward touch and material qualities; rough speech or manner leads toward interpersonal tone."
+    },
+    {
+      "record_id": "w045",
+      "frames": {
+        "w045-s1": "A touched surface feels smooth rather than coarse.",
+        "w045-s2": "A person's manner is gentle and puts another person at ease."
+      },
+      "writer_routes": {
+        "w045-s1": {
+          "relation_type": "sensory",
+          "target_class": "physical surface texture"
+        },
+        "w045-s2": {
+          "relation_type": "mood",
+          "target_class": "interpersonal manner"
+        }
+      },
+      "route_contrast": "A touched surface leads toward tactile smoothness; a gentle manner leads toward interpersonal warmth.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: A touched surface leads toward tactile smoothness; a gentle manner leads toward interpersonal warmth."
+    },
+    {
+      "record_id": "w046",
+      "frames": {
+        "w046-s1": "An edge or point is physically sharp and can cut.",
+        "w046-s2": "A sense or response is sensitive and quick."
+      },
+      "writer_routes": {
+        "w046-s1": {
+          "relation_type": "sensory",
+          "target_class": "cutting edge or point"
+        },
+        "w046-s2": {
+          "relation_type": "action",
+          "target_class": "sensitivity or quick response"
+        }
+      },
+      "route_contrast": "A cutting edge leads toward physical sharpness; sensitive perception leads toward quick response or awareness.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: A cutting edge leads toward physical sharpness; sensitive perception leads toward quick response or awareness."
+    },
+    {
+      "record_id": "w047",
+      "frames": {
+        "w047-s1": "An edge or point is physically blunt and does not cut well.",
+        "w047-s2": "A sense or response is slow and not very sensitive."
+      },
+      "writer_routes": {
+        "w047-s1": {
+          "relation_type": "sensory",
+          "target_class": "physical edge or cutting ability"
+        },
+        "w047-s2": {
+          "relation_type": "mood",
+          "target_class": "perception or response speed"
+        }
+      },
+      "route_contrast": "A blunt edge leads toward cutting ability; a dull sense or response leads toward slowness or reduced sensitivity.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: A blunt edge leads toward cutting ability; a dull sense or response leads toward slowness or reduced sensitivity."
+    },
+    {
+      "record_id": "w068",
+      "frames": {
+        "w068-s1": "An object blocks light and casts a dark shape behind or below it.",
+        "w068-s2": "An influence or trace follows a person or event over time."
+      },
+      "writer_routes": {
+        "w068-s1": {
+          "relation_type": "sensory",
+          "target_class": "visible light and shape"
+        },
+        "w068-s2": {
+          "relation_type": "association",
+          "target_class": "lasting influence or trace"
+        }
+      },
+      "route_contrast": "A cast shadow leads toward visible light and shape; a lasting shadow leads toward influence or trace.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: A cast shadow leads toward visible light and shape; a lasting shadow leads toward influence or trace."
+    },
+    {
+      "record_id": "w070",
+      "frames": {
+        "w070-s1": "A color or light weakens as time passes.",
+        "w070-s2": "The clarity of a memory or emotion weakens over time."
+      },
+      "writer_routes": {
+        "w070-s1": {
+          "relation_type": "sensory",
+          "target_class": "color or light fading"
+        },
+        "w070-s2": {
+          "relation_type": "mood",
+          "target_class": "memory or emotional clarity"
+        }
+      },
+      "route_contrast": "Fading color leads toward visual and light qualities; fading memory or feeling leads toward emotional residue.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Fading color leads toward visual and light qualities; fading memory or feeling leads toward emotional residue."
+    },
+    {
+      "record_id": "w075",
+      "frames": {
+        "w075-s1": "A physical object or space has a measurable hot or cold state.",
+        "w075-s2": "A person or relationship gives off a warm or cold atmosphere."
+      },
+      "writer_routes": {
+        "w075-s1": {
+          "relation_type": "sensory",
+          "target_class": "physical heat or cold"
+        },
+        "w075-s2": {
+          "relation_type": "mood",
+          "target_class": "relational warmth or coldness"
+        }
+      },
+      "route_contrast": "Physical temperature leads toward bodily heat or cold; relational temperature leads toward emotional atmosphere.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Physical temperature leads toward bodily heat or cold; relational temperature leads toward emotional atmosphere."
+    },
+    {
+      "record_id": "w076",
+      "frames": {
+        "w076-s1": "Air or an object gives off physical heat.",
+        "w076-s2": "A group becomes absorbed and collectively excited."
+      },
+      "writer_routes": {
+        "w076-s1": {
+          "relation_type": "sensory",
+          "target_class": "physical heat"
+        },
+        "w076-s2": {
+          "relation_type": "mood",
+          "target_class": "collective excitement"
+        }
+      },
+      "route_contrast": "Heat in air or an object leads toward bodily sensation; collective heat leads toward shared excitement and mood.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Heat in air or an object leads toward bodily sensation; collective heat leads toward shared excitement and mood."
+    },
+    {
+      "record_id": "w081",
+      "frames": {
+        "w081-s1": "Air or a physical scene feels slightly cold.",
+        "w081-s2": "A tone or atmosphere feels cold and eerie."
+      },
+      "writer_routes": {
+        "w081-s1": {
+          "relation_type": "sensory",
+          "target_class": "physical coldness"
+        },
+        "w081-s2": {
+          "relation_type": "mood",
+          "target_class": "eerie atmosphere or tone"
+        }
+      },
+      "route_contrast": "Slight physical cold leads toward temperature sensation; an eerie tone leads toward atmosphere and mood.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Slight physical cold leads toward temperature sensation; an eerie tone leads toward atmosphere and mood."
+    },
+    {
+      "record_id": "w134",
+      "frames": {
+        "w134-s1": "Moving air touches skin or moves objects in a scene.",
+        "w134-s2": "A person hopes for an outcome to come true."
+      },
+      "writer_routes": {
+        "w134-s1": {
+          "relation_type": "sensory",
+          "target_class": "moving air and bodily sensation"
+        },
+        "w134-s2": {
+          "relation_type": "mood",
+          "target_class": "wish or desired outcome"
+        }
+      },
+      "route_contrast": "Moving air leads toward bodily sensation and surrounding scenes; a wish leads toward hope and desired outcomes.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Moving air leads toward bodily sensation and surrounding scenes; a wish leads toward hope and desired outcomes."
+    },
+    {
+      "record_id": "w185",
+      "frames": {
+        "w185-s1": "A person turns the body or gaze toward a place behind or already passed.",
+        "w185-s2": "A person considers past events or other people."
+      },
+      "writer_routes": {
+        "w185-s1": {
+          "relation_type": "action",
+          "target_class": "turning and looking"
+        },
+        "w185-s2": {
+          "relation_type": "association",
+          "target_class": "reflection on events or people"
+        }
+      },
+      "route_contrast": "Turning the body or gaze leads toward physical looking back; considering the past leads toward reflection or attention.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Turning the body or gaze leads toward physical looking back; considering the past leads toward reflection or attention."
+    },
+    {
+      "record_id": "w186",
+      "frames": {
+        "w186-s1": "A person leaves a place or another person's side and goes elsewhere.",
+        "w186-s2": "A person reaches the end of life."
+      },
+      "writer_routes": {
+        "w186-s1": {
+          "relation_type": "scene",
+          "target_class": "departure and places"
+        },
+        "w186-s2": {
+          "relation_type": "mood",
+          "target_class": "death, grief, or loss"
+        }
+      },
+      "route_contrast": "Leaving a place leads toward travel and departure scenes; reaching life’s end leads toward grief and loss.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Leaving a place leads toward travel and departure scenes; reaching life’s end leads toward grief and loss."
+    },
+    {
+      "record_id": "w200",
+      "frames": {
+        "w200-s1": "A speaker expresses a thought or feeling as audible speech.",
+        "w200-s2": "A speaker informs another person of content or a fact."
+      },
+      "writer_routes": {
+        "w200-s1": {
+          "relation_type": "sensory",
+          "target_class": "speech and voice"
+        },
+        "w200-s2": {
+          "relation_type": "association",
+          "target_class": "news or conveyed information"
+        }
+      },
+      "route_contrast": "Voicing a thought leads toward speech and sound; informing another person leads toward news or conveyed content.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Voicing a thought leads toward speech and sound; informing another person leads toward news or conveyed content."
+    },
+    {
+      "record_id": "w248",
+      "frames": {
+        "w248-s1": "A physical part at the front of the head contains the eyes, nose, and mouth.",
+        "w248-s2": "A person's expression or outward appearance is visible to others."
+      },
+      "writer_routes": {
+        "w248-s1": {
+          "relation_type": "sensory",
+          "target_class": "facial features and appearance"
+        },
+        "w248-s2": {
+          "relation_type": "action",
+          "target_class": "expression and gesture"
+        }
+      },
+      "route_contrast": "The physical face leads toward visible features and color; a face as expression leads toward gestures and reactions.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: The physical face leads toward visible features and color; a face as expression leads toward gestures and reactions."
+    },
+    {
+      "record_id": "w250",
+      "frames": {
+        "w250-s1": "A body part at the end of an arm grasps or moves objects.",
+        "w250-s2": "A person or force contributes help or labor."
+      },
+      "writer_routes": {
+        "w250-s1": {
+          "relation_type": "action",
+          "target_class": "grasping and physical movement"
+        },
+        "w250-s2": {
+          "relation_type": "association",
+          "target_class": "assistance or labor"
+        }
+      },
+      "route_contrast": "The body part leads toward grasping and movement; a helping hand leads toward assistance and labor.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: The body part leads toward grasping and movement; a helping hand leads toward assistance and labor."
+    },
+    {
+      "record_id": "w251",
+      "frames": {
+        "w251-s1": "A body part at the end of a leg supports the body and enables walking.",
+        "w251-s2": "A step or trace marks movement from one place to another."
+      },
+      "writer_routes": {
+        "w251-s1": {
+          "relation_type": "action",
+          "target_class": "walking and bodily movement"
+        },
+        "w251-s2": {
+          "relation_type": "scene",
+          "target_class": "footsteps and paths"
+        }
+      },
+      "route_contrast": "The body part leads toward walking and movement; a step or trace leads toward paths and movement scenes.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: The body part leads toward walking and movement; a step or trace leads toward paths and movement scenes."
+    },
+    {
+      "record_id": "w252",
+      "frames": {
+        "w252-s1": "The physical part above the neck contains the brain and face.",
+        "w252-s2": "A person thinks and judges with a mental capacity."
+      },
+      "writer_routes": {
+        "w252-s1": {
+          "relation_type": "sensory",
+          "target_class": "head and facial anatomy"
+        },
+        "w252-s2": {
+          "relation_type": "association",
+          "target_class": "thought or judgement"
+        }
+      },
+      "route_contrast": "The physical head leads toward anatomy and appearance; the mental capacity leads toward thought and judgement.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: The physical head leads toward anatomy and appearance; the mental capacity leads toward thought and judgement."
+    },
+    {
+      "record_id": "w253",
+      "frames": {
+        "w253-s1": "A physical part joins the arm and torso.",
+        "w253-s2": "A person takes a position of responsibility or burden."
+      },
+      "writer_routes": {
+        "w253-s1": {
+          "relation_type": "sensory",
+          "target_class": "shoulder and bodily sensation"
+        },
+        "w253-s2": {
+          "relation_type": "association",
+          "target_class": "responsibility or burden"
+        }
+      },
+      "route_contrast": "The body joint leads toward bodily sensation; shouldering responsibility leads toward burden and obligation.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: The body joint leads toward bodily sensation; shouldering responsibility leads toward burden and obligation."
+    },
+    {
+      "record_id": "w272",
+      "frames": {
+        "w272-s1": "A person mentally considers or recalls a subject or event.",
+        "w272-s2": "A person settles on an opinion or judgment about a matter."
+      },
+      "writer_routes": {
+        "w272-s1": {
+          "relation_type": "action",
+          "target_class": "considering or recalling"
+        },
+        "w272-s2": {
+          "relation_type": "association",
+          "target_class": "opinion, reasons, or judgement"
+        }
+      },
+      "route_contrast": "Considering or recalling leads toward mental activity; a settled opinion leads toward reasons and judgement.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Considering or recalling leads toward mental activity; a settled opinion leads toward reasons and judgement."
+    },
+    {
+      "record_id": "w273",
+      "frames": {
+        "w273-s1": "A word or sentence expresses a person's thought or intention.",
+        "w273-s2": "A person speaks a story or utterance aloud."
+      },
+      "writer_routes": {
+        "w273-s1": {
+          "relation_type": "association",
+          "target_class": "written or expressed language"
+        },
+        "w273-s2": {
+          "relation_type": "sensory",
+          "target_class": "spoken utterance and voice"
+        }
+      },
+      "route_contrast": "Words and sentences lead toward language and meaning; spoken utterances lead toward voice and sound.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Words and sentences lead toward language and meaning; spoken utterances lead toward voice and sound."
+    },
+    {
+      "record_id": "w280",
+      "frames": {
+        "w280-s1": "New information arrives about a person or event.",
+        "w280-s2": "A message communicates someone's well-being or recent circumstances."
+      },
+      "writer_routes": {
+        "w280-s1": {
+          "relation_type": "association",
+          "target_class": "news or new information"
+        },
+        "w280-s2": {
+          "relation_type": "mood",
+          "target_class": "personal wellbeing or longing"
+        }
+      },
+      "route_contrast": "New information leads toward messages and reports; an update about someone leads toward personal concern and longing.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: New information leads toward messages and reports; an update about someone leads toward personal concern and longing."
+    },
+    {
+      "record_id": "w291",
+      "frames": {
+        "w291-s1": "A person's feet cannot move, so the person cannot leave a place.",
+        "w291-s2": "Circumstances prevent a person from acting or moving freely."
+      },
+      "writer_routes": {
+        "w291-s1": {
+          "relation_type": "near",
+          "target_class": "physical immobility"
+        },
+        "w291-s2": {
+          "relation_type": "mood",
+          "target_class": "constraint and helplessness"
+        }
+      },
+      "route_contrast": "Being unable to leave a place leads toward stopping movement; being constrained by circumstances leads toward helplessness or frustration.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Being unable to leave a place leads toward stopping movement; being constrained by circumstances leads toward helplessness or frustration."
+    },
+    {
+      "record_id": "w052",
+      "frames": {
+        "w052-s1": "A physical space has a large distance to its bottom or end.",
+        "w052-s2": "Thought or emotion continues broadly and deeply over time."
+      },
+      "writer_routes": {
+        "w052-s1": {
+          "relation_type": "scene",
+          "target_class": "physical space and distance"
+        },
+        "w052-s2": {
+          "relation_type": "mood",
+          "target_class": "reflection or emotional depth"
+        }
+      },
+      "route_contrast": "Physical depth leads toward spatial extent; deep thought or feeling leads toward reflection and inner life.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Physical depth leads toward spatial extent; deep thought or feeling leads toward reflection and inner life."
+    },
+    {
+      "record_id": "w053",
+      "frames": {
+        "w053-s1": "A physical space has a small distance to its bottom or end.",
+        "w053-s2": "Thought or emotion stays superficial rather than examining a matter."
+      },
+      "writer_routes": {
+        "w053-s1": {
+          "relation_type": "scene",
+          "target_class": "physical space and distance"
+        },
+        "w053-s2": {
+          "relation_type": "association",
+          "target_class": "reflection or judgement"
+        }
+      },
+      "route_contrast": "Shallow space leads toward physical distance; shallow thought leads toward incomplete reflection or judgement.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Shallow space leads toward physical distance; shallow thought leads toward incomplete reflection or judgement."
+    },
+    {
+      "record_id": "w085",
+      "frames": {
+        "w085-s1": "A physical surface or state has lost moisture or vitality and is dry.",
+        "w085-s2": "An emotion or relationship lacks warmth and liveliness."
+      },
+      "writer_routes": {
+        "w085-s1": {
+          "relation_type": "sensory",
+          "target_class": "dryness and texture"
+        },
+        "w085-s2": {
+          "relation_type": "mood",
+          "target_class": "emotional or relational distance"
+        }
+      },
+      "route_contrast": "Loss of moisture leads toward dry texture; loss of warmth or energy in a relationship leads toward emotional distance.",
+      "rationale": "Concrete frames and separately authored next-route evidence distinguish this split: Loss of moisture leads toward dry texture; loss of warmth or energy in a relationship leads toward emotional distance."
+    }
+  ],
+  "merge_senses": [],
+  "hold_overrides": [
+    {
+      "record_id": "w321",
+      "rationale": "The two senses describe different frames: physical temperature and a figurative response or attitude. Their current tuples are both near → r042-s1, whose broad gloss covers both uses. That shared tuple is not positive evidence that the writer-facing boundary is equivalent. Preserve both senses and hold pending independently authored next-route evidence."
+    },
+    {
+      "record_id": "w5356",
+      "rationale": "The glosses distinguish the mental act of retaining past events from remembered content that returns to mind. Preserve both senses; no independently authored evidence yet establishes how their next writer-facing relation direction or target POS/semantic class differs."
+    }
+  ],
+  "frame_review_hold_basis": "Concrete frame contrasts are recorded, but this audit has no separately authored explanation of how the writer's next relation direction or target POS/semantic class differs. Keep the current split pending that evidence; current canonical relation tuples remain corroborating observations only.",
+  "frame_reviews": [
+    {
+      "record_id": "w321",
+      "frames": {
+        "w321-s1": "The temperature of an object or space is neither hot nor cold.",
+        "w321-s2": "A person or group responds without enthusiasm, or holds a lukewarm attitude."
+      }
+    },
+    {
+      "record_id": "w5356",
+      "frames": {
+        "w5356-s1": "A person mentally retains an earlier event or experience.",
+        "w5356-s2": "An earlier event or experience remains as content that returns to mind."
+      }
+    }
+  ]
+}

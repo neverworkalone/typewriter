@@ -827,7 +827,34 @@
             "evidence_basis": "string",
             "distinguishing_feature": "string",
             "decision_source_id": "string",
-            "rationale": "string"
+            "rationale": "string",
+            "writer_boundary": "object"
+          },
+          "$.decisions.*.boundary_pairs.*.writer_boundary": {
+            "left_frame": "object",
+            "right_frame": "object",
+            "frame_contrast": "string",
+            "left_route": "object",
+            "right_route": "object",
+            "route_contrast": "string"
+          },
+          "$.decisions.*.boundary_pairs.*.writer_boundary.left_frame": {
+            "gloss_excerpt": "string",
+            "sentence_frame": "string"
+          },
+          "$.decisions.*.boundary_pairs.*.writer_boundary.right_frame": {
+            "gloss_excerpt": "string",
+            "sentence_frame": "string"
+          },
+          "$.decisions.*.boundary_pairs.*.writer_boundary.left_route": {
+            "relation_type": "string",
+            "target_pos": "string",
+            "target_class": "string"
+          },
+          "$.decisions.*.boundary_pairs.*.writer_boundary.right_route": {
+            "relation_type": "string",
+            "target_pos": "string",
+            "target_class": "string"
           },
           "$.decisions.*.sense_reviews.*": {
             "sense_id": "string",
@@ -1019,7 +1046,12 @@
           "$.decisions.*.correction.record": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
           "$.decisions.*.correction.record.senses.*": ["id", "pos", "gloss", "relations"],
           "$.decisions.*.correction.record.senses.*.relations.*": ["target", "target_sense", "type", "note"],
-          "$.decisions.*.boundary_pairs.*": ["left_sense_id", "right_sense_id", "relationship", "decision", "left_gloss_sha256", "right_gloss_sha256", "evidence_basis", "distinguishing_feature", "decision_source_id", "rationale"],
+          "$.decisions.*.boundary_pairs.*": ["left_sense_id", "right_sense_id", "relationship", "decision", "left_gloss_sha256", "right_gloss_sha256", "evidence_basis", "distinguishing_feature", "decision_source_id", "rationale", "writer_boundary"],
+          "$.decisions.*.boundary_pairs.*.writer_boundary": ["left_frame", "right_frame", "frame_contrast", "left_route", "right_route", "route_contrast"],
+          "$.decisions.*.boundary_pairs.*.writer_boundary.left_frame": ["gloss_excerpt", "sentence_frame"],
+          "$.decisions.*.boundary_pairs.*.writer_boundary.right_frame": ["gloss_excerpt", "sentence_frame"],
+          "$.decisions.*.boundary_pairs.*.writer_boundary.left_route": ["relation_type"],
+          "$.decisions.*.boundary_pairs.*.writer_boundary.right_route": ["relation_type"],
           "$.decisions.*.sense_reviews.*": ["sense_id", "boundary_action", "boundary_classification", "boundary_decision", "boundary_rationale", "semantic_rationale", "relation_decision", "relation_count", "relation_ids", "no_relation_rationale", "review_basis"],
           "$.decisions.*.sense_reviews.*.review_basis": ["topic_analysis", "topic_analyses"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
@@ -1563,6 +1595,7 @@
             "decision",
             "before_record_sha256",
             "after_record_sha256",
+            "review_id",
             "rationale"
           ],
           "$.authored_review.review_pass.correction_source": [
@@ -1743,6 +1776,7 @@
             "decision": "string",
             "before_record_sha256": "string",
             "after_record_sha256": "string",
+            "review_id": "string",
             "rationale": "string"
           },
           "$.authored_review.review_pass.correction_source": {

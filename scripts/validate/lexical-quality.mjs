@@ -7,7 +7,12 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
 } from './canonical-jsonl.mjs';
 import { loadCanonicalContext } from './canonical-context.mjs';
-import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
+import {
+  hasDistinctAuthoredWriterRoutes,
+  inspectSenseBoundaryPairs,
+  WRITER_ROUTE_RELATION_TYPES,
+  WRITER_ROUTE_TARGET_POS,
+} from './sense-boundary.mjs';
 
 /**
  * Shared lexical-quality rules used by canonical validation and every reviewed
@@ -859,7 +864,11 @@ function validateAuthoredBoundaryPairs(
   record,
   boundary,
   label,
-  { decisionSourceId, productionDecision } = {},
+  {
+    decisionSourceId,
+    productionDecision,
+    requireWriterBoundaryEvidence = false,
+  } = {},
 ) {
   requireString(boundary.review_id, `${label}.review_id`);
   requireString(boundary.method, `${label}.method`);
@@ -918,6 +927,69 @@ function validateAuthoredBoundaryPairs(
     requireString(item.decision_source_id, `${pairLabel}.decision_source_id`);
     if (item.decision_source_id !== decisionSourceId) {
       fail(`${pairLabel}.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+    }
+    if (requireWriterBoundaryEvidence
+      && ['included', 'corrected'].includes(productionDecision)
+      && item.decision === 'retain') {
+      const writerBoundary = requireObject(
+        item.writer_boundary,
+        `${pairLabel}.writer_boundary`,
+      );
+      const leftFrame = requireObject(
+        writerBoundary.left_frame,
+        `${pairLabel}.writer_boundary.left_frame`,
+      );
+      const rightFrame = requireObject(
+        writerBoundary.right_frame,
+        `${pairLabel}.writer_boundary.right_frame`,
+      );
+      requireString(leftFrame.gloss_excerpt, `${pairLabel}.writer_boundary.left_frame.gloss_excerpt`);
+      requireString(leftFrame.sentence_frame, `${pairLabel}.writer_boundary.left_frame.sentence_frame`);
+      requireString(rightFrame.gloss_excerpt, `${pairLabel}.writer_boundary.right_frame.gloss_excerpt`);
+      requireString(rightFrame.sentence_frame, `${pairLabel}.writer_boundary.right_frame.sentence_frame`);
+      requireString(writerBoundary.frame_contrast, `${pairLabel}.writer_boundary.frame_contrast`);
+      requireString(writerBoundary.route_contrast, `${pairLabel}.writer_boundary.route_contrast`);
+      if (!leftSense.gloss.includes(leftFrame.gloss_excerpt)
+        || !rightSense.gloss.includes(rightFrame.gloss_excerpt)
+        || leftFrame.gloss_excerpt === rightFrame.gloss_excerpt
+        || leftFrame.sentence_frame === rightFrame.sentence_frame) {
+        fail(
+          `${pairLabel}.writer_boundary must cite distinct exact gloss frames for both senses`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
+      const leftRoute = requireObject(
+        writerBoundary.left_route,
+        `${pairLabel}.writer_boundary.left_route`,
+      );
+      const rightRoute = requireObject(
+        writerBoundary.right_route,
+        `${pairLabel}.writer_boundary.right_route`,
+      );
+      for (const [route, routeLabel] of [
+        [leftRoute, `${pairLabel}.writer_boundary.left_route`],
+        [rightRoute, `${pairLabel}.writer_boundary.right_route`],
+      ]) {
+        requireEnum(route.relation_type, WRITER_ROUTE_RELATION_TYPES, `${routeLabel}.relation_type`);
+        if (route.target_pos !== undefined) {
+          requireEnum(route.target_pos, WRITER_ROUTE_TARGET_POS, `${routeLabel}.target_pos`);
+        }
+        if (route.target_class !== undefined) {
+          requireString(route.target_class, `${routeLabel}.target_class`);
+        }
+        if (route.target_pos === undefined && route.target_class === undefined) {
+          fail(
+            `${routeLabel} must name an expected target POS or semantic class`,
+            'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+          );
+        }
+      }
+      if (!hasDistinctAuthoredWriterRoutes(leftRoute, rightRoute)) {
+        fail(
+          `${pairLabel} cannot retain a split without a distinct authored writer-facing route`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
     }
     if (!item.rationale.includes(record.id)
       || !item.rationale.includes(item.left_sense_id)
@@ -1701,6 +1773,7 @@ export function validateLexicalSemanticReview(review, {
   rejectAnyBroadConnector = false,
   requireSemanticEvidence = false,
   requireIndependentDecisionEvidence = false,
+  requireWriterBoundaryEvidence = false,
   selectionRationaleTokens = ['verification', 'coverage'],
 } = {}) {
   requireObject(review, label);
@@ -1739,6 +1812,7 @@ export function validateLexicalSemanticReview(review, {
     validateAuthoredBoundaryPairs(record, boundary, `${label}.sense_boundary`, {
       decisionSourceId,
       productionDecision: decision,
+      requireWriterBoundaryEvidence,
     });
   }
   const findings = requireArray(boundary.findings, `${label}.sense_boundary.findings`, { minItems: 1 });

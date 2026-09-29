@@ -614,6 +614,7 @@ export function validateLexicalProduction({
   if (semanticAudit === undefined) {
     fail('production.semantic_audit is required; semantic coverage cannot be inferred from a batch delta', 'SEMANTIC_AUDIT_REQUIRED');
   }
+  const baseRecordIds = new Set(baseRecords.map((recordInfo) => recordOf(recordInfo).id));
   const candidateRecordsById = new Map();
   for (const [index, candidateInfo] of candidates.entries()) {
     const candidate = recordOf(candidateInfo);
@@ -706,6 +707,9 @@ export function validateLexicalProduction({
         catalogCount: catalogCount ?? candidates.length,
         requireSemanticEvidence: true,
         requireIndependentDecisionEvidence,
+        requireWriterBoundaryEvidence: historicalReplay !== true
+          && ['included', 'corrected'].includes(entry.decision)
+          && (!baseRecordIds.has(candidate.id) || entry.decision === 'corrected'),
         selectionRationaleTokens: ['verification', 'coverage'],
       });
     } catch (error) {
@@ -753,6 +757,8 @@ export function validateLexicalProduction({
         catalogCount: catalogCount ?? Math.max(candidates.length, 1),
         requireSemanticEvidence: true,
         requireIndependentDecisionEvidence,
+        requireWriterBoundaryEvidence: historicalReplay !== true
+          && reviewedRecord.senses.length > 1,
         selectionRationaleTokens: ['verification', 'coverage'],
       });
     } catch (error) {

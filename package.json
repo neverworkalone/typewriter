@@ -21,6 +21,7 @@
     "validate:evidence": "node scripts/validate/evidence-footprint.mjs",
     "audit:semantic:build": "node scripts/validate/build-semantic-audit.mjs",
     "audit:semantic:corrections": "node scripts/validate/apply-semantic-corrections.mjs --corrections=data/validation/canonical-semantic-correction-manifest.json --amend-existing=true",
+    "audit:issue-225": "node scripts/validate/issue-225-sense-boundary-audit.mjs",
     "inventory:generate": "node scripts/inventory/generate-target-inventory.mjs",
     "inventory:issue-210": "node scripts/inventory/build-issue-210-recovery-inventory.mjs --check",
     "inventory:issue-210:write": "node scripts/inventory/build-issue-210-recovery-inventory.mjs --write",

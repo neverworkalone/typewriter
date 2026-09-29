@@ -305,5 +305,9 @@ npm run test:unit
 
 `batch:process:check` also verifies the exact 470/428/42/557/449/23 baseline,
 the phase contract, the seven-stage ladder, candidate-buffer arithmetic, and
-the no-next-stage-after-failure rule. It adds no canonical record or generated
+the no-next-stage-after-failure rule. The plan keeps its historical sense and
+relation counts; the live check pins record membership, roles, and expression
+count so later source-bound sense or relation corrections do not rewrite that
+historical checkpoint. The complete current canonical and semantic audits
+validate those live values. The process adds no canonical record or generated
 SQLite content.

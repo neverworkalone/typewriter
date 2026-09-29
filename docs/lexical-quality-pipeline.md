@@ -53,6 +53,27 @@ The shared implementation is:
 - `scripts/validate/dataset-integrity.mjs` — invokes the lexical audit for every
   canonical validation, including `npm run validate` and CI.
 
+## Current sense-boundary rule (Issue #225)
+
+A newly admitted or corrected multi-sense record may retain a split only when
+each sense pair has both a concrete writer-facing sentence/argument/scene frame
+contrast and separately authored next-route evidence that differs by relation
+family/direction or target POS/semantic class. The shared live admission
+validator binds each frame to an exact gloss excerpt and validates those route
+descriptions without requiring canonical relation tuples. Existing relations
+may corroborate an editorial decision, but matching or missing tuples do not
+establish sense equivalence. If either proof is missing, keep the current
+senses and hold the unresolved boundary; a merge needs positive semantic
+evidence.
+
+The complete review of the Issue #225 base snapshot is reproducible with
+`npm run audit:issue-225`. Its authored dispositions are in
+[`docs/audits/issue-225-sense-boundary-decisions.json`](audits/issue-225-sense-boundary-decisions.json),
+the generated record-by-record evidence is in
+[`docs/audits/issue-225-sense-boundary-audit.json`](audits/issue-225-sense-boundary-audit.json),
+and the concise report is in
+[`docs/audits/issue-225-sense-boundary-audit.md`](audits/issue-225-sense-boundary-audit.md).
+
 ## Durable batch evidence contract
 
 M5-12A uses the v2 decision-source contract. The tracked
