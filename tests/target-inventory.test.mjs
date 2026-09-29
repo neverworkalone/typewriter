@@ -46,9 +46,9 @@ test('validates the M5-16 inventory and keeps independent start counts', async (
   assert.equal(summary.currentReferenceOnlyCount, 42);
   assert.equal(summary.candidateStartCount, 19);
   assert.equal(summary.plannedStartCount, 5053);
-  assert.equal(summary.heldCount, 189);
-  assert.equal(summary.rejectedCount, 52);
-  assert.equal(summary.deferredCount, 319);
+  assert.equal(summary.heldCount, 199);
+  assert.equal(summary.rejectedCount, 62);
+  assert.equal(summary.deferredCount, 299);
   assert.equal(summary.duplicateCount, 3);
   assert.equal(summary.inflectedFormCount, 2);
   const inventory = await readInventory();

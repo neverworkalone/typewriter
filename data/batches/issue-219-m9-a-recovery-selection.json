@@ -1,0 +1,2001 @@
+{
+  "schema_version": "1",
+  "contract_version": "m9-recovery-batch-selection-v1",
+  "issue": 219,
+  "parent_issue": 218,
+  "baseline": {
+    "canonical_commit": "ed98057a36e3908f6cedb464cceb4684da0d6800",
+    "issue_210_inventory_path": "data/inventory/issue-210-recovery-inventory.json",
+    "issue_210_inventory_sha256": "fcaa572119d307a1efc0f15782b8d77a0585f4e9786e735ce42623dd4710e539",
+    "canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e",
+    "seed_path": "data/batches/issue-219-m9-a-base-seed.json",
+    "seed_sha256": "28f2d5a1b0d9f75386d7c39e8d41a923db6a2ade020c0eb57c6fa4832b2f32da"
+  },
+  "policy": {
+    "id": "m9-high-confidence-capacity-reserve-prefix-v1",
+    "eligible_reserve_count": 254,
+    "cohort": "M5-15 axis C capacity reserves",
+    "cohort_count": 32,
+    "selected_order": "first 20 by numeric historical inventory identity",
+    "rationale": "Start with a coherent Typewriter-authored transportation-scene slice from the highest-priority capacity-reserve group. All selected rows were included/fit and reserve under M5-15, remain admit-candidate in the exact Issue #210 baseline, and have no canonical lemma/search coverage. Prior fit and reserve outcomes are evidence for selection only, not the current admission decision.",
+    "no_admission_quota": true,
+    "relation_enrichment_required": false
+  },
+  "prior_source_bindings": {
+    "candidate_source": {
+      "path": "data/batches/m5-15-lexical-unit-source.json",
+      "source_id": "m5-15-typewriter-authored-lexical-units-20260923-r1",
+      "file_sha256": "0d06d49d80046293124622276a8acdd323d2a939d61216dc28fc622159039814",
+      "artifact_sha256": "ff281710deb2d40af9b5314e76109af30d132f720fc0b1f85481c3d6cbbf646f"
+    },
+    "semantic_decisions": {
+      "path": "data/batches/m5-15-semantic-decisions.json",
+      "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+      "file_sha256": "01698848d7f2d8f3704429c41a934e7e81997bc25c46ca7c1a16b2dc2084e366",
+      "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70"
+    }
+  },
+  "selected_count": 20,
+  "selected_candidates": [
+    {
+      "order": 1,
+      "source_inventory_id": "m5-4619",
+      "source_inventory_row_sha256": "9f7a4d70b2c373aa5649d3b97426ed5aac801cfaa5a70e1f441489b3d7427486",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4619",
+        "lemma": "택배물류 허브",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "택배물류 허브"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4619 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4619 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4619 w4699: the source-bound lemma “택배물류 허브”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "택배물류 허브",
+              "status": "no-match",
+              "normalized_query": "택배물류 허브",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4699",
+      "historical_source_unit_id": "m5-15-source-unit-0419",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4619",
+        "candidate_record_id": "w4699",
+        "candidate_record_sha256": "fba549eb85a22fd81eeeded135df8d9310ccdf3464636a4ba0c66b3db539c2e2",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 419,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0419",
+        "lemma": "택배물류 허브",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "여러 지역에서 온 상자를 모아 목적지별로 다시 나누는 시설.",
+        "writer_gloss": "여러 지역에서 온 상자를 모아 목적지별로 다시 나누는 시설."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4619",
+        "candidate_record_id": "w4699",
+        "lemma": "택배물류 허브"
+      }
+    },
+    {
+      "order": 2,
+      "source_inventory_id": "m5-4620",
+      "source_inventory_row_sha256": "bd71ff34d0043f7e7030fcdd4bd5380a9e8f7f9188c4b975dc6885ff9cdc2b59",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4620",
+        "lemma": "화물터미널 야적장",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "화물터미널 야적장"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4620 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4620 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4620 w4700: the source-bound lemma “화물터미널 야적장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "화물터미널 야적장",
+              "status": "no-match",
+              "normalized_query": "화물터미널 야적장",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4700",
+      "historical_source_unit_id": "m5-15-source-unit-0420",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4620",
+        "candidate_record_id": "w4700",
+        "candidate_record_sha256": "76a3b072e0aed774ea7999020b56045a8060b7eec7e54718a710cdcb8af8f7e2",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 420,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0420",
+        "lemma": "화물터미널 야적장",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "트럭과 화물 상자를 임시로 세우고 쌓아 두는 넓은 바깥 공간.",
+        "writer_gloss": "트럭과 화물 상자를 임시로 세우고 쌓아 두는 넓은 바깥 공간."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4620",
+        "candidate_record_id": "w4700",
+        "lemma": "화물터미널 야적장"
+      }
+    },
+    {
+      "order": 3,
+      "source_inventory_id": "m5-4621",
+      "source_inventory_row_sha256": "f8b81175864c98fa1229a7656159c97afacbb07b0803b4ee1ccce46662b76380",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4621",
+        "lemma": "컨테이너 야드",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "컨테이너 야드"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4621 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4621 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4621 w4701: the source-bound lemma “컨테이너 야드”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "컨테이너 야드",
+              "status": "no-match",
+              "normalized_query": "컨테이너 야드",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4701",
+      "historical_source_unit_id": "m5-15-source-unit-0421",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4621",
+        "candidate_record_id": "w4701",
+        "candidate_record_sha256": "f2a4a872f6e03660da6626077d7e5ea3e30829ff24b52f97f79293072fd107cd",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 421,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0421",
+        "lemma": "컨테이너 야드",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "화물 컨테이너를 크레인으로 쌓아 두는 항만이나 물류 구역.",
+        "writer_gloss": "화물 컨테이너를 크레인으로 쌓아 두는 항만이나 물류 구역."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4621",
+        "candidate_record_id": "w4701",
+        "lemma": "컨테이너 야드"
+      }
+    },
+    {
+      "order": 4,
+      "source_inventory_id": "m5-4622",
+      "source_inventory_row_sha256": "d8296069378b79902f9edd982085845d447b37820486c05baeeaaa10f6f03aa5",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4622",
+        "lemma": "철도 화물역",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "철도 화물역"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4622 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4622 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4622 w4702: the source-bound lemma “철도 화물역”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "철도 화물역",
+              "status": "no-match",
+              "normalized_query": "철도 화물역",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4702",
+      "historical_source_unit_id": "m5-15-source-unit-0422",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4622",
+        "candidate_record_id": "w4702",
+        "candidate_record_sha256": "af71366526289b16d338e7a9856bdfd5b3a22c3edcb425f6f1092d162892e791",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 422,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0422",
+        "lemma": "철도 화물역",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "여객보다 화물열차와 적재 작업을 중심으로 운영하는 역.",
+        "writer_gloss": "여객보다 화물열차와 적재 작업을 중심으로 운영하는 역."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4622",
+        "candidate_record_id": "w4702",
+        "lemma": "철도 화물역"
+      }
+    },
+    {
+      "order": 5,
+      "source_inventory_id": "m5-4623",
+      "source_inventory_row_sha256": "b27a6e1b5aa31c1af97761c4c43a70ccddf35e6361a7109488c9247295350500",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4623",
+        "lemma": "철도 차량기지",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "철도 차량기지"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4623 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4623 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4623 w4703: the source-bound lemma “철도 차량기지”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "철도 차량기지",
+              "status": "no-match",
+              "normalized_query": "철도 차량기지",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4703",
+      "historical_source_unit_id": "m5-15-source-unit-0423",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4623",
+        "candidate_record_id": "w4703",
+        "candidate_record_sha256": "f8b4e5f63c5e42adbda36061256830b52a2f0097e3f3fe0f9cf14a6590adcd43",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 423,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0423",
+        "lemma": "철도 차량기지",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "열차를 밤새 세우고 바퀴와 전기 설비를 점검하는 시설.",
+        "writer_gloss": "열차를 밤새 세우고 바퀴와 전기 설비를 점검하는 시설."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4623",
+        "candidate_record_id": "w4703",
+        "lemma": "철도 차량기지"
+      }
+    },
+    {
+      "order": 6,
+      "source_inventory_id": "m5-4624",
+      "source_inventory_row_sha256": "80b2287621350f3bda0980820cfb1ddc66f8fdf184d6a958af138f099ec48796",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4624",
+        "lemma": "지하철 유치선",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "지하철 유치선"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4624 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4624 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4624 w4704: the source-bound lemma “지하철 유치선”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "지하철 유치선",
+              "status": "no-match",
+              "normalized_query": "지하철 유치선",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4704",
+      "historical_source_unit_id": "m5-15-source-unit-0424",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4624",
+        "candidate_record_id": "w4704",
+        "candidate_record_sha256": "7ffd50dc332d379ab64b1daf02d370c6bdafccf5f730102de88f8138409f284e",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 424,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0424",
+        "lemma": "지하철 유치선",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "운행하지 않는 전철 차량을 잠시 세워 두는 옆 선로.",
+        "writer_gloss": "운행하지 않는 전철 차량을 잠시 세워 두는 옆 선로."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4624",
+        "candidate_record_id": "w4704",
+        "lemma": "지하철 유치선"
+      }
+    },
+    {
+      "order": 7,
+      "source_inventory_id": "m5-4625",
+      "source_inventory_row_sha256": "fd4a6764e31326ae5eea4e33ae08eb59e1c205c5f6a3d3704586265947438103",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4625",
+        "lemma": "전철 종착역 승강장",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "전철 종착역 승강장"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4625 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4625 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4625 w4705: the source-bound lemma “전철 종착역 승강장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "전철 종착역 승강장",
+              "status": "no-match",
+              "normalized_query": "전철 종착역 승강장",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4705",
+      "historical_source_unit_id": "m5-15-source-unit-0425",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4625",
+        "candidate_record_id": "w4705",
+        "candidate_record_sha256": "0aa56fa1813bb9e640ec96775b55724488e1a3307643422eb65abe9e48b6c9fc",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 425,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0425",
+        "lemma": "전철 종착역 승강장",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "노선의 마지막 역에서 열차가 되돌아가거나 운행을 마치는 플랫폼.",
+        "writer_gloss": "노선의 마지막 역에서 열차가 되돌아가거나 운행을 마치는 플랫폼."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4625",
+        "candidate_record_id": "w4705",
+        "lemma": "전철 종착역 승강장"
+      }
+    },
+    {
+      "order": 8,
+      "source_inventory_id": "m5-4626",
+      "source_inventory_row_sha256": "00a4e68c6931e7f354f50ab7d8d65cebeb897fd40d9965c4c42a28ef0e56700c",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4626",
+        "lemma": "역무실 옆 계단",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "역무실 옆 계단"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4626 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4626 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4626 w4706: the source-bound lemma “역무실 옆 계단”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "역무실 옆 계단",
+              "status": "no-match",
+              "normalized_query": "역무실 옆 계단",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4706",
+      "historical_source_unit_id": "m5-15-source-unit-0426",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4626",
+        "candidate_record_id": "w4706",
+        "candidate_record_sha256": "af158121066f33ec7b4d95d1a8cb55969d51be00fd1234fb7e1becb7d7525eb6",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 426,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0426",
+        "lemma": "역무실 옆 계단",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "역 직원 공간과 승강장 출입구 가까이에 놓인 계단.",
+        "writer_gloss": "역 직원 공간과 승강장 출입구 가까이에 놓인 계단."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4626",
+        "candidate_record_id": "w4706",
+        "lemma": "역무실 옆 계단"
+      }
+    },
+    {
+      "order": 9,
+      "source_inventory_id": "m5-4627",
+      "source_inventory_row_sha256": "70335d029a60ebe85a5db91a38d6af9fd829bc8482963151645438d19ade7d09",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4627",
+        "lemma": "역 구내 지하도",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "역 구내 지하도"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4627 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4627 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4627 w4707: the source-bound lemma “역 구내 지하도”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "역 구내 지하도",
+              "status": "no-match",
+              "normalized_query": "역 구내 지하도",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4707",
+      "historical_source_unit_id": "m5-15-source-unit-0427",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4627",
+        "candidate_record_id": "w4707",
+        "candidate_record_sha256": "c5916a2241bd0d5e93ad221dcf0791e2f481a7d8b3b9f4af43c74f7580c5e538",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 427,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0427",
+        "lemma": "역 구내 지하도",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "선로 아래에서 서로 다른 승강장을 잇는 보행 통로.",
+        "writer_gloss": "선로 아래에서 서로 다른 승강장을 잇는 보행 통로."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4627",
+        "candidate_record_id": "w4707",
+        "lemma": "역 구내 지하도"
+      }
+    },
+    {
+      "order": 10,
+      "source_inventory_id": "m5-4628",
+      "source_inventory_row_sha256": "4f4b9eec33074893652b86ffb3ef347cc286688cdbe0fe23258134b11e269fb8",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4628",
+        "lemma": "철도 건널목 경비실",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "철도 건널목 경비실"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4628 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4628 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4628 w4708: the source-bound lemma “철도 건널목 경비실”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "철도 건널목 경비실",
+              "status": "no-match",
+              "normalized_query": "철도 건널목 경비실",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4708",
+      "historical_source_unit_id": "m5-15-source-unit-0428",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4628",
+        "candidate_record_id": "w4708",
+        "candidate_record_sha256": "0d36754b9b5d5a15aae6a5c9f7dffda9434b395a968602822b1a7c772b6ca6a0",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 428,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0428",
+        "lemma": "철도 건널목 경비실",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "열차가 지나갈 때 차단기를 내리고 주변을 살피는 작은 방.",
+        "writer_gloss": "열차가 지나갈 때 차단기를 내리고 주변을 살피는 작은 방."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4628",
+        "candidate_record_id": "w4708",
+        "lemma": "철도 건널목 경비실"
+      }
+    },
+    {
+      "order": 11,
+      "source_inventory_id": "m5-4629",
+      "source_inventory_row_sha256": "043872d9935c5dfdcecde2054c03b00836799fbc43b59d7106046f69d45bfbc2",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4629",
+        "lemma": "버스 환승센터 대기실",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "버스 환승센터 대기실"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4629 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4629 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4629 w4709: the source-bound lemma “버스 환승센터 대기실”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "버스 환승센터 대기실",
+              "status": "no-match",
+              "normalized_query": "버스 환승센터 대기실",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4709",
+      "historical_source_unit_id": "m5-15-source-unit-0429",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4629",
+        "candidate_record_id": "w4709",
+        "candidate_record_sha256": "26a82613688df88fb0dfed5f55b107fb116cd97f7bc7e6d745a39a8dbf3be8e1",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 429,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0429",
+        "lemma": "버스 환승센터 대기실",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "여러 노선으로 갈아타는 사람들이 차례를 기다리는 실내 공간.",
+        "writer_gloss": "여러 노선으로 갈아타는 사람들이 차례를 기다리는 실내 공간."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4629",
+        "candidate_record_id": "w4709",
+        "lemma": "버스 환승센터 대기실"
+      }
+    },
+    {
+      "order": 12,
+      "source_inventory_id": "m5-4630",
+      "source_inventory_row_sha256": "f5dbc656e7c1133776e68719bd547870119e3652beadd2e77072122d17992de5",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4630",
+        "lemma": "시외버스터미널 승차장",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "시외버스터미널 승차장"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4630 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4630 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4630 w4710: the source-bound lemma “시외버스터미널 승차장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "시외버스터미널 승차장",
+              "status": "no-match",
+              "normalized_query": "시외버스터미널 승차장",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4710",
+      "historical_source_unit_id": "m5-15-source-unit-0430",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4630",
+        "candidate_record_id": "w4710",
+        "candidate_record_sha256": "f73f8755d11d03d31ff3ffb681510987d0db726e3fbe1b93a646682ed3bfc5a1",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 430,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0430",
+        "lemma": "시외버스터미널 승차장",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "도시 밖으로 가는 버스가 정차하고 손님이 오르는 구역.",
+        "writer_gloss": "도시 밖으로 가는 버스가 정차하고 손님이 오르는 구역."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4630",
+        "candidate_record_id": "w4710",
+        "lemma": "시외버스터미널 승차장"
+      }
+    },
+    {
+      "order": 13,
+      "source_inventory_id": "m5-4631",
+      "source_inventory_row_sha256": "eca433afc56f0b538adb21d97d1f2d6e391a21f299d1c5f8f61b9421bfead7fa",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4631",
+        "lemma": "고속버스 화물칸 앞",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "고속버스 화물칸 앞"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4631 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4631 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4631 w4711: the source-bound lemma “고속버스 화물칸 앞”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "고속버스 화물칸 앞",
+              "status": "no-match",
+              "normalized_query": "고속버스 화물칸 앞",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4711",
+      "historical_source_unit_id": "m5-15-source-unit-0431",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4631",
+        "candidate_record_id": "w4711",
+        "candidate_record_sha256": "beb430011947b839c3410506f8d467c62b758679c72f62a68632e172c0928bf3",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 431,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0431",
+        "lemma": "고속버스 화물칸 앞",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "수화물을 싣고 빼는 버스 옆 짐칸 입구의 자리.",
+        "writer_gloss": "수화물을 싣고 빼는 버스 옆 짐칸 입구의 자리."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4631",
+        "candidate_record_id": "w4711",
+        "lemma": "고속버스 화물칸 앞"
+      }
+    },
+    {
+      "order": 14,
+      "source_inventory_id": "m5-4632",
+      "source_inventory_row_sha256": "6589c2aca38b2d649f907fe26d9dc92f31e2a86627f624920a97aeff4c1c7dc0",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4632",
+        "lemma": "공항 리무진 정류장",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "공항 리무진 정류장"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4632 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4632 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4632 w4712: the source-bound lemma “공항 리무진 정류장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "공항 리무진 정류장",
+              "status": "no-match",
+              "normalized_query": "공항 리무진 정류장",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4712",
+      "historical_source_unit_id": "m5-15-source-unit-0432",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4632",
+        "candidate_record_id": "w4712",
+        "candidate_record_sha256": "99b54f273b7de5473c10a36b0b9179febc7030aee00f2b03b6fce57494d07634",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 432,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0432",
+        "lemma": "공항 리무진 정류장",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "공항과 도심을 오가는 버스를 타고 내리는 전용 장소.",
+        "writer_gloss": "공항과 도심을 오가는 버스를 타고 내리는 전용 장소."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4632",
+        "candidate_record_id": "w4712",
+        "lemma": "공항 리무진 정류장"
+      }
+    },
+    {
+      "order": 15,
+      "source_inventory_id": "m5-4633",
+      "source_inventory_row_sha256": "d336d635f24961def077b5d55939a560d05182a791a3becc84bfc4008d694db4",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4633",
+        "lemma": "택시 대기열 맨끝",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "택시 대기열 맨끝"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4633 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4633 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4633 w4713: the source-bound lemma “택시 대기열 맨끝”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "택시 대기열 맨끝",
+              "status": "no-match",
+              "normalized_query": "택시 대기열 맨끝",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4713",
+      "historical_source_unit_id": "m5-15-source-unit-0433",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4633",
+        "candidate_record_id": "w4713",
+        "candidate_record_sha256": "44ca9e16e5ff673c94c846b2602daf4fbbdb7257685087581160af0c91bc5b66",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 433,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0433",
+        "lemma": "택시 대기열 맨끝",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "손님을 태우려는 택시가 늘어선 줄의 가장 뒤쪽.",
+        "writer_gloss": "손님을 태우려는 택시가 늘어선 줄의 가장 뒤쪽."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4633",
+        "candidate_record_id": "w4713",
+        "lemma": "택시 대기열 맨끝"
+      }
+    },
+    {
+      "order": 16,
+      "source_inventory_id": "m5-4634",
+      "source_inventory_row_sha256": "ecdf0d8d55a1bc144b3ea23c0ced10f9fda719cceb2266914533a45ee55bb55b",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4634",
+        "lemma": "승객 없는 정류장",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "승객 없는 정류장"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4634 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4634 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4634 w4714: the source-bound lemma “승객 없는 정류장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "승객 없는 정류장",
+              "status": "no-match",
+              "normalized_query": "승객 없는 정류장",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4714",
+      "historical_source_unit_id": "m5-15-source-unit-0434",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4634",
+        "candidate_record_id": "w4714",
+        "candidate_record_sha256": "c627118942988e0419c12ae19a5bda8463a1e568143a7c5a475c3155cf524e77",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 434,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0434",
+        "lemma": "승객 없는 정류장",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "차량은 지나가지만 기다리거나 내리는 사람이 보이지 않는 자리.",
+        "writer_gloss": "차량은 지나가지만 기다리거나 내리는 사람이 보이지 않는 자리."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4634",
+        "candidate_record_id": "w4714",
+        "lemma": "승객 없는 정류장"
+      }
+    },
+    {
+      "order": 17,
+      "source_inventory_id": "m5-4635",
+      "source_inventory_row_sha256": "fc0a64b1dbd974b7fe75390d9c63b4d4403ed897f6d3ed0a4a51eb34251356c1",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4635",
+        "lemma": "종점 회차공간",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "종점 회차공간"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4635 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4635 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4635 w4715: the source-bound lemma “종점 회차공간”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "종점 회차공간",
+              "status": "no-match",
+              "normalized_query": "종점 회차공간",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4715",
+      "historical_source_unit_id": "m5-15-source-unit-0435",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4635",
+        "candidate_record_id": "w4715",
+        "candidate_record_sha256": "5597c7178138a71aae92c351ec2b4a66acad82ef5735f2c9be74a1cc33e5ee61",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 435,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0435",
+        "lemma": "종점 회차공간",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "버스가 방향을 돌려 반대편으로 출발하도록 비워 둔 넓은 구역.",
+        "writer_gloss": "버스가 방향을 돌려 반대편으로 출발하도록 비워 둔 넓은 구역."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4635",
+        "candidate_record_id": "w4715",
+        "lemma": "종점 회차공간"
+      }
+    },
+    {
+      "order": 18,
+      "source_inventory_id": "m5-4636",
+      "source_inventory_row_sha256": "1f7af5c8fafb22892fb8e6599c83f7ad6d0b4d987ae63b6f90e1f7613da1a71e",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4636",
+        "lemma": "도로공사 우회구간",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "도로공사 우회구간"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4636 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4636 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4636 w4716: the source-bound lemma “도로공사 우회구간”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "도로공사 우회구간",
+              "status": "no-match",
+              "normalized_query": "도로공사 우회구간",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4716",
+      "historical_source_unit_id": "m5-15-source-unit-0436",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4636",
+        "candidate_record_id": "w4716",
+        "candidate_record_sha256": "79a07ac3c502b630b7063b3d5f87cc9948dcf89c7755f114f3c291f750918d88",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 436,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0436",
+        "lemma": "도로공사 우회구간",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "차량이 공사장을 피해 임시로 다른 길을 따라 지나가는 부분.",
+        "writer_gloss": "차량이 공사장을 피해 임시로 다른 길을 따라 지나가는 부분."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4636",
+        "candidate_record_id": "w4716",
+        "lemma": "도로공사 우회구간"
+      }
+    },
+    {
+      "order": 19,
+      "source_inventory_id": "m5-4637",
+      "source_inventory_row_sha256": "a5f54e8d2b7fc826db72824b5c65d368208e7b12e216f8fcb6080742ffe62f5d",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4637",
+        "lemma": "임시 보행자통로",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "임시 보행자통로"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4637 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4637 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4637 w4717: the source-bound lemma “임시 보행자통로”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "임시 보행자통로",
+              "status": "no-match",
+              "normalized_query": "임시 보행자통로",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4717",
+      "historical_source_unit_id": "m5-15-source-unit-0437",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4637",
+        "candidate_record_id": "w4717",
+        "candidate_record_sha256": "3ac617ecca5d58cf797cfa03d17a9258876bc758fe08c05b4cf4dd13cbcc3a44",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 437,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0437",
+        "lemma": "임시 보행자통로",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "공사나 사고로 원래 길이 막혀 사람을 위해 따로 낸 통로.",
+        "writer_gloss": "공사나 사고로 원래 길이 막혀 사람을 위해 따로 낸 통로."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4637",
+        "candidate_record_id": "w4717",
+        "lemma": "임시 보행자통로"
+      }
+    },
+    {
+      "order": 20,
+      "source_inventory_id": "m5-4638",
+      "source_inventory_row_sha256": "d7430fe87e1789d78f1353d06e2c4ca67129af0d5e319d3994ebdeffa28f35e5",
+      "source_inventory_row": {
+        "source_issue_batch_artifacts": [
+          {
+            "issue": null,
+            "batch": "m5-16",
+            "artifact": "data/inventory/m5-target-seed.json"
+          },
+          {
+            "issue": 101,
+            "batch": "m5-15-expansion-20260923",
+            "artifact": "data/batches/m5-15-semantic-decisions.json"
+          }
+        ],
+        "source_inventory_id": "m5-4638",
+        "lemma": "차량 통제선 안쪽",
+        "proposed_pos": [
+          "expression"
+        ],
+        "record_type": "expression",
+        "search_forms": [
+          "차량 통제선 안쪽"
+        ],
+        "historical_role_disposition": {
+          "planned_role": null,
+          "disposition": "deferred",
+          "related_canonical_id": null
+        },
+        "historical_rationale": "m5-4638 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
+        "historical_decision_events": [
+          {
+            "source_issue": null,
+            "source_batch": "m5-16",
+            "source_artifact": "data/inventory/m5-target-seed.json",
+            "historical_disposition": "deferred",
+            "historical_rationale": "m5-4638 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+          },
+          {
+            "source_issue": 101,
+            "source_batch": "m5-15-expansion-20260923",
+            "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+            "historical_disposition": "included/fit",
+            "historical_rationale": "m5-4638 w4718: the source-bound lemma “차량 통제선 안쪽”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
+          }
+        ],
+        "current_canonical_search_coverage": {
+          "status": "no-canonical-lemma-match",
+          "exact_lemma_match_ids": [],
+          "all_query_match_ids": [],
+          "queries": [
+            {
+              "query": "차량 통제선 안쪽",
+              "status": "no-match",
+              "normalized_query": "차량 통제선 안쪽",
+              "matches": []
+            }
+          ]
+        },
+        "historical_rationale_conflicts_with_new_invariant": "no",
+        "new_review_state": "admit-candidate",
+        "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
+      },
+      "historical_candidate_record_id": "w4718",
+      "historical_source_unit_id": "m5-15-source-unit-0438",
+      "historical_decision": {
+        "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+        "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+        "inventory_id": "m5-4638",
+        "candidate_record_id": "w4718",
+        "candidate_record_sha256": "dd0b8a7e587077350d39c16d96f142a3e37b71fa1fbce5332a642a5018d5e6fd",
+        "decision": "included",
+        "gloss_judgment": "fit",
+        "rank": 438,
+        "selection_axis": "C",
+        "selection_outcome": "reserve"
+      },
+      "current_source_unit": {
+        "source_unit_id": "m5-15-source-unit-0438",
+        "lemma": "차량 통제선 안쪽",
+        "axis": "C",
+        "flags": [
+          "scene-expansion"
+        ],
+        "record_type": "expression",
+        "pos": "expression",
+        "source_kind": "typewriter-authored-expression",
+        "writer_use": "행사나 작업 때문에 일반 차량이 들어오지 못하게 막은 구역.",
+        "writer_gloss": "행사나 작업 때문에 일반 차량이 들어오지 못하게 막은 구역."
+      },
+      "admitted_identity": {
+        "inventory_id": "m5-4638",
+        "candidate_record_id": "w4718",
+        "lemma": "차량 통제선 안쪽"
+      }
+    }
+  ]
+}

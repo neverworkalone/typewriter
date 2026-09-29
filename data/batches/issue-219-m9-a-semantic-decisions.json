@@ -1,0 +1,1335 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "kind": "separately-authored-semantic-decision-source",
+  "source_id": "issue-219-authored-semantic-decisions-20260929-r2",
+  "issue": 219,
+  "parent_issue": 218,
+  "batch_id": "m9-a-issue-219-first-recovery-20260929",
+  "authoring_mode": "agent-authored-decision",
+  "provenance": {
+    "generator": "codex",
+    "generator_version": "issue-219-authored-semantic-review-v2",
+    "generation_pass_id": "issue-219-historical-slice-selection-20260929-r1",
+    "verification_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+    "human_reviewed": false,
+    "authoring_note": "A separate Issue #219 pass classified every exact expression as fixed/lexicalized, compositional, or unresolved before admission. Only the exact fixed unit with candidate-specific external terminology evidence remains eligible; prior M5-15 fit and reserve outcomes are lineage evidence, not authorization."
+  },
+  "review": {
+    "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+    "reviewer": "codex-agent",
+    "status": "complete",
+    "candidate_count": 20,
+    "reviewed_candidate_count": 20,
+    "method": "Candidate-by-candidate review of source-bound identity, exact expression fixedness, evidence for fixed units, compositional structure, unresolved lexical status, and then ordinary shared admission. The prior M5-15 fit decision only selected the bounded candidates for review.",
+    "criteria": [
+      "source-unit and candidate identity binding",
+      "exact-phrase fixed or lexicalized-unit judgment",
+      "candidate-specific evidence for any admitted fixed expression",
+      "compositional phrase rejection or unresolved lexical hold",
+      "supported Typewriter lexical scope and bounded sense",
+      "zero-relation allowance without relation fabrication"
+    ],
+    "decision_counts": {
+      "included": 0,
+      "corrected": 0,
+      "held": 10,
+      "rejected": 10,
+      "deferred": 0
+    },
+    "prior_generator_replaced": true,
+    "prior_generator_verification_pass_id": "issue-219-historical-slice-selection-20260929-r1",
+    "counts": {
+      "included": 0,
+      "corrected": 0,
+      "held": 10,
+      "rejected": 10,
+      "deferred": 0
+    },
+    "correction_passes": [],
+    "expression_lexical_unit_review_contract_version": "m9-expression-lexical-unit-review-v1"
+  },
+  "candidate_source": {
+    "source_id": "issue-219-m9-a-source-bound-recovery-20260929-r1",
+    "identity_sha256": "014c6b1f84e7decdb553486a155aa3cedc44df1d29429e0c00e9565d37cae045",
+    "identity_count": 20
+  },
+  "selection": {
+    "policy": "shared-authored-axis-coverage-selection-v6",
+    "capacity": 20,
+    "imported": 0,
+    "reserve": 0,
+    "coverage_field": "selection_axis",
+    "coverage_basis": [
+      "source-bound Typewriter lexical axis after semantic eligibility"
+    ],
+    "selection_rationale": "Admission count follows separately authored dispositions: no candidate has currently usable candidate-specific fixedness evidence, unresolved candidates remain held, and compositional scene phrases are rejected. The 20-row review scope is not an admission quota."
+  },
+  "candidate_records": [
+    {
+      "id": "w4699",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4699",
+      "lemma": "택배물류 허브",
+      "search_forms": [
+        "택배물류 허브"
+      ],
+      "senses": [
+        {
+          "id": "w4699-s1",
+          "pos": "expression",
+          "gloss": "여러 지역에서 온 상자를 모아 목적지별로 다시 나누는 시설."
+        }
+      ]
+    },
+    {
+      "id": "w4700",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4700",
+      "lemma": "화물터미널 야적장",
+      "search_forms": [
+        "화물터미널 야적장"
+      ],
+      "senses": [
+        {
+          "id": "w4700-s1",
+          "pos": "expression",
+          "gloss": "트럭과 화물 상자를 임시로 세우고 쌓아 두는 넓은 바깥 공간."
+        }
+      ]
+    },
+    {
+      "id": "w4701",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4701",
+      "lemma": "컨테이너 야드",
+      "search_forms": [
+        "컨테이너 야드"
+      ],
+      "senses": [
+        {
+          "id": "w4701-s1",
+          "pos": "expression",
+          "gloss": "화물 컨테이너를 크레인으로 쌓아 두는 항만이나 물류 구역."
+        }
+      ]
+    },
+    {
+      "id": "w4702",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4702",
+      "lemma": "철도 화물역",
+      "search_forms": [
+        "철도 화물역"
+      ],
+      "senses": [
+        {
+          "id": "w4702-s1",
+          "pos": "expression",
+          "gloss": "여객보다 화물열차와 적재 작업을 중심으로 운영하는 역."
+        }
+      ]
+    },
+    {
+      "id": "w4703",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4703",
+      "lemma": "철도 차량기지",
+      "search_forms": [
+        "철도 차량기지"
+      ],
+      "senses": [
+        {
+          "id": "w4703-s1",
+          "pos": "expression",
+          "gloss": "열차를 밤새 세우고 바퀴와 전기 설비를 점검하는 시설."
+        }
+      ]
+    },
+    {
+      "id": "w4704",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4704",
+      "lemma": "지하철 유치선",
+      "search_forms": [
+        "지하철 유치선"
+      ],
+      "senses": [
+        {
+          "id": "w4704-s1",
+          "pos": "expression",
+          "gloss": "운행하지 않는 전철 차량을 잠시 세워 두는 옆 선로."
+        }
+      ]
+    },
+    {
+      "id": "w4705",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4705",
+      "lemma": "전철 종착역 승강장",
+      "search_forms": [
+        "전철 종착역 승강장"
+      ],
+      "senses": [
+        {
+          "id": "w4705-s1",
+          "pos": "expression",
+          "gloss": "노선의 마지막 역에서 열차가 되돌아가거나 운행을 마치는 플랫폼."
+        }
+      ]
+    },
+    {
+      "id": "w4706",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4706",
+      "lemma": "역무실 옆 계단",
+      "search_forms": [
+        "역무실 옆 계단"
+      ],
+      "senses": [
+        {
+          "id": "w4706-s1",
+          "pos": "expression",
+          "gloss": "역 직원 공간과 승강장 출입구 가까이에 놓인 계단."
+        }
+      ]
+    },
+    {
+      "id": "w4707",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4707",
+      "lemma": "역 구내 지하도",
+      "search_forms": [
+        "역 구내 지하도"
+      ],
+      "senses": [
+        {
+          "id": "w4707-s1",
+          "pos": "expression",
+          "gloss": "선로 아래에서 서로 다른 승강장을 잇는 보행 통로."
+        }
+      ]
+    },
+    {
+      "id": "w4708",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4708",
+      "lemma": "철도 건널목 경비실",
+      "search_forms": [
+        "철도 건널목 경비실"
+      ],
+      "senses": [
+        {
+          "id": "w4708-s1",
+          "pos": "expression",
+          "gloss": "열차가 지나갈 때 차단기를 내리고 주변을 살피는 작은 방."
+        }
+      ]
+    },
+    {
+      "id": "w4709",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4709",
+      "lemma": "버스 환승센터 대기실",
+      "search_forms": [
+        "버스 환승센터 대기실"
+      ],
+      "senses": [
+        {
+          "id": "w4709-s1",
+          "pos": "expression",
+          "gloss": "여러 노선으로 갈아타는 사람들이 차례를 기다리는 실내 공간."
+        }
+      ]
+    },
+    {
+      "id": "w4710",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4710",
+      "lemma": "시외버스터미널 승차장",
+      "search_forms": [
+        "시외버스터미널 승차장"
+      ],
+      "senses": [
+        {
+          "id": "w4710-s1",
+          "pos": "expression",
+          "gloss": "도시 밖으로 가는 버스가 정차하고 손님이 오르는 구역."
+        }
+      ]
+    },
+    {
+      "id": "w4711",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4711",
+      "lemma": "고속버스 화물칸 앞",
+      "search_forms": [
+        "고속버스 화물칸 앞"
+      ],
+      "senses": [
+        {
+          "id": "w4711-s1",
+          "pos": "expression",
+          "gloss": "수화물을 싣고 빼는 버스 옆 짐칸 입구의 자리."
+        }
+      ]
+    },
+    {
+      "id": "w4712",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4712",
+      "lemma": "공항 리무진 정류장",
+      "search_forms": [
+        "공항 리무진 정류장"
+      ],
+      "senses": [
+        {
+          "id": "w4712-s1",
+          "pos": "expression",
+          "gloss": "공항과 도심을 오가는 버스를 타고 내리는 전용 장소."
+        }
+      ]
+    },
+    {
+      "id": "w4713",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4713",
+      "lemma": "택시 대기열 맨끝",
+      "search_forms": [
+        "택시 대기열 맨끝"
+      ],
+      "senses": [
+        {
+          "id": "w4713-s1",
+          "pos": "expression",
+          "gloss": "손님을 태우려는 택시가 늘어선 줄의 가장 뒤쪽."
+        }
+      ]
+    },
+    {
+      "id": "w4714",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4714",
+      "lemma": "승객 없는 정류장",
+      "search_forms": [
+        "승객 없는 정류장"
+      ],
+      "senses": [
+        {
+          "id": "w4714-s1",
+          "pos": "expression",
+          "gloss": "차량은 지나가지만 기다리거나 내리는 사람이 보이지 않는 자리."
+        }
+      ]
+    },
+    {
+      "id": "w4715",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4715",
+      "lemma": "종점 회차공간",
+      "search_forms": [
+        "종점 회차공간"
+      ],
+      "senses": [
+        {
+          "id": "w4715-s1",
+          "pos": "expression",
+          "gloss": "버스가 방향을 돌려 반대편으로 출발하도록 비워 둔 넓은 구역."
+        }
+      ]
+    },
+    {
+      "id": "w4716",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4716",
+      "lemma": "도로공사 우회구간",
+      "search_forms": [
+        "도로공사 우회구간"
+      ],
+      "senses": [
+        {
+          "id": "w4716-s1",
+          "pos": "expression",
+          "gloss": "차량이 공사장을 피해 임시로 다른 길을 따라 지나가는 부분."
+        }
+      ]
+    },
+    {
+      "id": "w4717",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4717",
+      "lemma": "임시 보행자통로",
+      "search_forms": [
+        "임시 보행자통로"
+      ],
+      "senses": [
+        {
+          "id": "w4717-s1",
+          "pos": "expression",
+          "gloss": "공사나 사고로 원래 길이 막혀 사람을 위해 따로 낸 통로."
+        }
+      ]
+    },
+    {
+      "id": "w4718",
+      "record_type": "expression",
+      "role": "start",
+      "candidate_id": "w4718",
+      "lemma": "차량 통제선 안쪽",
+      "search_forms": [
+        "차량 통제선 안쪽"
+      ],
+      "senses": [
+        {
+          "id": "w4718-s1",
+          "pos": "expression",
+          "gloss": "행사나 작업 때문에 일반 차량이 들어오지 못하게 막은 구역."
+        }
+      ]
+    }
+  ],
+  "candidate_records_sha256": "4d410a989c7c6af6fd5faf1a13a3704d2920d73d7eacfa3e75325dbde37dd2ff",
+  "decisions": [
+    {
+      "candidate_record_id": "w4699",
+      "inventory_id": "m5-4619",
+      "candidate_record_sha256": "fba549eb85a22fd81eeeded135df8d9310ccdf3464636a4ba0c66b3db539c2e2",
+      "decision": "held",
+      "rank": 1,
+      "decision_rationale": "m5-4619 w4699: “택배물류 허브” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4699-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4619 w4699 w4699-s1: the authored gloss “여러 지역에서 온 상자를 모아 목적지별로 다시 나누는 시설.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 a3cd479b1a36.",
+          "semantic_rationale": "“택배물류 허브” denotes 여러 지역에서 온 상자를 모아 목적지별로 다시 나누는 시설.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4619 w4699-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4699",
+        "candidate_record_sha256": "fba549eb85a22fd81eeeded135df8d9310ccdf3464636a4ba0c66b3db539c2e2",
+        "decision_evidence_sha256": "591d31d64c46c09a3f173f6deacfc0e57d0d9b1fd231c20bc1b35b92fd4d8bcf",
+        "sense_evidence": [
+          {
+            "sense_id": "w4699-s1",
+            "sense_sha256": "73b03dd50fd313ae878813e877c254b7e411f994dcd16b6fcbb8622e6c284f35",
+            "gloss_sha256": "a3cd479b1a369b7a13ea52282f3dd7bbcb953f4d1ccaafc17d3faea7628515a7",
+            "evidence_sha256": "c22ef1243403d99f32f3dd6cd17e06daec2e29334807f945ca8be5839d61b376"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4619 w4699 “택배물류 허브”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4700",
+      "inventory_id": "m5-4620",
+      "candidate_record_sha256": "76a3b072e0aed774ea7999020b56045a8060b7eec7e54718a710cdcb8af8f7e2",
+      "decision": "held",
+      "rank": 2,
+      "decision_rationale": "m5-4620 w4700: “화물터미널 야적장” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4700-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4620 w4700 w4700-s1: the authored gloss “트럭과 화물 상자를 임시로 세우고 쌓아 두는 넓은 바깥 공간.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 77365ea7ddec.",
+          "semantic_rationale": "“화물터미널 야적장” denotes 트럭과 화물 상자를 임시로 세우고 쌓아 두는 넓은 바깥 공간.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4620 w4700-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4700",
+        "candidate_record_sha256": "76a3b072e0aed774ea7999020b56045a8060b7eec7e54718a710cdcb8af8f7e2",
+        "decision_evidence_sha256": "bfa5a5c34ef852e8110fabcc8c8ecd3d91767fd45db0a04ffc46462252aa5c2b",
+        "sense_evidence": [
+          {
+            "sense_id": "w4700-s1",
+            "sense_sha256": "4406130875958d3f828e6d404e751672a536ae14e5a5c476e52c7b27844a709a",
+            "gloss_sha256": "77365ea7ddec3695b9f29a7145875ff85a6a8bc1d795f9589943c09fe048965a",
+            "evidence_sha256": "87ca452d40925132f5f6e9455a8e9ea0d672e80c26567119904349dc8dce3e62"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4620 w4700 “화물터미널 야적장”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4701",
+      "inventory_id": "m5-4621",
+      "candidate_record_sha256": "f2a4a872f6e03660da6626077d7e5ea3e30829ff24b52f97f79293072fd107cd",
+      "decision": "held",
+      "rank": 3,
+      "decision_rationale": "m5-4621 w4701: keep the exact expression outside canonical admission while the only candidate-specific fixedness evidence remains pending its applicable source terms.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4701-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4621 w4701 w4701-s1: the authored gloss “화물 컨테이너를 크레인으로 쌓아 두는 항만이나 물류 구역.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 c244ec489791.",
+          "semantic_rationale": "“컨테이너 야드” denotes 화물 컨테이너를 크레인으로 쌓아 두는 항만이나 물류 구역.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4621 w4701-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4701",
+        "candidate_record_sha256": "f2a4a872f6e03660da6626077d7e5ea3e30829ff24b52f97f79293072fd107cd",
+        "decision_evidence_sha256": "822dca552565106b63565d404560ce0a6af3f9eb091fc6bbd888d98ed7bd3513",
+        "sense_evidence": [
+          {
+            "sense_id": "w4701-s1",
+            "sense_sha256": "836545def5cbc4b9cdc389a1e190937b830b22abfc55ed60ce8308c3ce2e019c",
+            "gloss_sha256": "c244ec4897919274ff2ecb327fd8d40bba0ab2502a478397afb38e6cc6b4e84f",
+            "evidence_sha256": "8d2f23288094070b2b2f83b1c7bd5adfb62d9a2d257f262a5e4de5e972b3436e"
+          }
+        ]
+      },
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4621 w4701 컨테이너 야드: fixedness remains unresolved while the only candidate-specific external evidence is pending its applicable reuse terms; hold until independently usable evidence is available.",
+        "evidence": []
+      },
+      "hold_basis": "unresolved-lexical-unit"
+    },
+    {
+      "candidate_record_id": "w4702",
+      "inventory_id": "m5-4622",
+      "candidate_record_sha256": "af71366526289b16d338e7a9856bdfd5b3a22c3edcb425f6f1092d162892e791",
+      "decision": "held",
+      "rank": 4,
+      "decision_rationale": "m5-4622 w4702: “철도 화물역” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4702-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4622 w4702 w4702-s1: the authored gloss “여객보다 화물열차와 적재 작업을 중심으로 운영하는 역.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 253d243291ae.",
+          "semantic_rationale": "“철도 화물역” denotes 여객보다 화물열차와 적재 작업을 중심으로 운영하는 역.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4622 w4702-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4702",
+        "candidate_record_sha256": "af71366526289b16d338e7a9856bdfd5b3a22c3edcb425f6f1092d162892e791",
+        "decision_evidence_sha256": "397eaaeeb0f995ea872d647c1001b9ad2a1175aa986803a234b841584e72006a",
+        "sense_evidence": [
+          {
+            "sense_id": "w4702-s1",
+            "sense_sha256": "f24853227d2a052f22dd8f373c6dfc2e716e7f70929b354721e473accbce854b",
+            "gloss_sha256": "253d243291ae605e2b86c49d2e603bc73c729a0f6efa63382d3df45c1580c35d",
+            "evidence_sha256": "d7b7a66668b8fe321802b6f34554725c5ca4ca1fc2bbf913f5323b83620b2c2a"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4622 w4702 “철도 화물역”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4703",
+      "inventory_id": "m5-4623",
+      "candidate_record_sha256": "f8b4e5f63c5e42adbda36061256830b52a2f0097e3f3fe0f9cf14a6590adcd43",
+      "decision": "held",
+      "rank": 5,
+      "decision_rationale": "m5-4623 w4703: “철도 차량기지” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4703-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4623 w4703 w4703-s1: the authored gloss “열차를 밤새 세우고 바퀴와 전기 설비를 점검하는 시설.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 7ef233235045.",
+          "semantic_rationale": "“철도 차량기지” denotes 열차를 밤새 세우고 바퀴와 전기 설비를 점검하는 시설.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4623 w4703-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4703",
+        "candidate_record_sha256": "f8b4e5f63c5e42adbda36061256830b52a2f0097e3f3fe0f9cf14a6590adcd43",
+        "decision_evidence_sha256": "04a19e804ef2f78f01caa69b068f0193d65fa3f89800d365aa12b10ada78c004",
+        "sense_evidence": [
+          {
+            "sense_id": "w4703-s1",
+            "sense_sha256": "5ddf7fbcc1b05e7d26009e0ff45b4ca0f6bfa749b2c57f6e345291989aed5459",
+            "gloss_sha256": "7ef23323504505567e811bedde4f67641b96c5164280c902cb0a529236ac421c",
+            "evidence_sha256": "e794c50843e5e58932130cbe7df3c56123ba8c7b7e4fb318f51720a5c471f862"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4623 w4703 “철도 차량기지”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4704",
+      "inventory_id": "m5-4624",
+      "candidate_record_sha256": "7ffd50dc332d379ab64b1daf02d370c6bdafccf5f730102de88f8138409f284e",
+      "decision": "held",
+      "rank": 6,
+      "decision_rationale": "m5-4624 w4704: “지하철 유치선” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4704-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4624 w4704 w4704-s1: the authored gloss “운행하지 않는 전철 차량을 잠시 세워 두는 옆 선로.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 f61c2b44549e.",
+          "semantic_rationale": "“지하철 유치선” denotes 운행하지 않는 전철 차량을 잠시 세워 두는 옆 선로.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4624 w4704-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4704",
+        "candidate_record_sha256": "7ffd50dc332d379ab64b1daf02d370c6bdafccf5f730102de88f8138409f284e",
+        "decision_evidence_sha256": "0dfea69659e9d1a5925d715d0cfebfe794a34e30bd2253921120c23a6ca1f387",
+        "sense_evidence": [
+          {
+            "sense_id": "w4704-s1",
+            "sense_sha256": "dd312a224574c307ade88fb40ef4b877464c04e95e30571fb2e942a60e05fd94",
+            "gloss_sha256": "f61c2b44549e3e2f066da9e2188cdfe0f7a24812d3af009e236c74b7c55a4cec",
+            "evidence_sha256": "5e6f89396dea95ad5fd6db7c7a468b1ec27110876019cec5b956f57b1e6a6d11"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4624 w4704 “지하철 유치선”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4705",
+      "inventory_id": "m5-4625",
+      "candidate_record_sha256": "0aa56fa1813bb9e640ec96775b55724488e1a3307643422eb65abe9e48b6c9fc",
+      "decision": "rejected",
+      "rank": 7,
+      "decision_rationale": "m5-4625 w4705: “전철 종착역 승강장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4705-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4625 w4705 w4705-s1: the authored gloss “노선의 마지막 역에서 열차가 되돌아가거나 운행을 마치는 플랫폼.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 b9632d3d2825.",
+          "semantic_rationale": "“전철 종착역 승강장” denotes 노선의 마지막 역에서 열차가 되돌아가거나 운행을 마치는 플랫폼.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4625 w4705-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4705",
+        "candidate_record_sha256": "0aa56fa1813bb9e640ec96775b55724488e1a3307643422eb65abe9e48b6c9fc",
+        "decision_evidence_sha256": "0dee0021b4a4d49613ecb16fee75e5bc49db9eeb44702f97cb46ab39e751b9d6",
+        "sense_evidence": [
+          {
+            "sense_id": "w4705-s1",
+            "sense_sha256": "e862e2a9a742d10ac07de3bd2c25a0aa38ff13761cf0248d8c7bff47ba7a79dc",
+            "gloss_sha256": "b9632d3d28252311378faf8396644f50eae3e0e477be1161785bd1f20625bcf0",
+            "evidence_sha256": "674025d708ce6791026c06c9327596abf838dcd2f34f3932653b2e44706dd8c0"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4625 w4705 “전철 종착역 승강장”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4706",
+      "inventory_id": "m5-4626",
+      "candidate_record_sha256": "af158121066f33ec7b4d95d1a8cb55969d51be00fd1234fb7e1becb7d7525eb6",
+      "decision": "rejected",
+      "rank": 8,
+      "decision_rationale": "m5-4626 w4706: “역무실 옆 계단” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4706-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4626 w4706 w4706-s1: the authored gloss “역 직원 공간과 승강장 출입구 가까이에 놓인 계단.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 54f0bdd5063a.",
+          "semantic_rationale": "“역무실 옆 계단” denotes 역 직원 공간과 승강장 출입구 가까이에 놓인 계단.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4626 w4706-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4706",
+        "candidate_record_sha256": "af158121066f33ec7b4d95d1a8cb55969d51be00fd1234fb7e1becb7d7525eb6",
+        "decision_evidence_sha256": "05c7dd9cd4c4a1bc8ed5d22c4036468e47a45c38b03a30459ef8313ee15b22b5",
+        "sense_evidence": [
+          {
+            "sense_id": "w4706-s1",
+            "sense_sha256": "2233e93cac81379d17f5fcc1adec4fc22ab76a0477748df9d82b0f48a4f6166e",
+            "gloss_sha256": "54f0bdd5063aa5c85fe0b449cfd6117cf8b49073c3b7cd5ec6053ca3c2b19380",
+            "evidence_sha256": "29df0c433e132610894b0d85704f21dbaf58b1b2747d04b6b53dd93b9f7efe32"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4626 w4706 “역무실 옆 계단”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4707",
+      "inventory_id": "m5-4627",
+      "candidate_record_sha256": "c5916a2241bd0d5e93ad221dcf0791e2f481a7d8b3b9f4af43c74f7580c5e538",
+      "decision": "held",
+      "rank": 9,
+      "decision_rationale": "m5-4627 w4707: “역 구내 지하도” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4707-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4627 w4707 w4707-s1: the authored gloss “선로 아래에서 서로 다른 승강장을 잇는 보행 통로.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 772b5dc8d8ad.",
+          "semantic_rationale": "“역 구내 지하도” denotes 선로 아래에서 서로 다른 승강장을 잇는 보행 통로.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4627 w4707-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4707",
+        "candidate_record_sha256": "c5916a2241bd0d5e93ad221dcf0791e2f481a7d8b3b9f4af43c74f7580c5e538",
+        "decision_evidence_sha256": "9df78b32e05e955264f2fb1e9153a9b39d3e904290b795f868f01aa630c3a274",
+        "sense_evidence": [
+          {
+            "sense_id": "w4707-s1",
+            "sense_sha256": "0755b474532f3039c79b466bea744b5dd3e79d3ad036d736e2192b9833834c30",
+            "gloss_sha256": "772b5dc8d8addddeb0f15820798a6a10521402532bdb1332371606318a36ef80",
+            "evidence_sha256": "0a09bc70bdb62965de866d62afae1134b9e8b8e68bdd942e4fe0bd1252e0f2fd"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4627 w4707 “역 구내 지하도”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4708",
+      "inventory_id": "m5-4628",
+      "candidate_record_sha256": "0d36754b9b5d5a15aae6a5c9f7dffda9434b395a968602822b1a7c772b6ca6a0",
+      "decision": "rejected",
+      "rank": 10,
+      "decision_rationale": "m5-4628 w4708: “철도 건널목 경비실” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4708-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4628 w4708 w4708-s1: the authored gloss “열차가 지나갈 때 차단기를 내리고 주변을 살피는 작은 방.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 f0459be3ee8d.",
+          "semantic_rationale": "“철도 건널목 경비실” denotes 열차가 지나갈 때 차단기를 내리고 주변을 살피는 작은 방.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4628 w4708-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4708",
+        "candidate_record_sha256": "0d36754b9b5d5a15aae6a5c9f7dffda9434b395a968602822b1a7c772b6ca6a0",
+        "decision_evidence_sha256": "a5f000a7edff68668eb507a54a1c966e9522c5db54a34807931e1779e1210b4e",
+        "sense_evidence": [
+          {
+            "sense_id": "w4708-s1",
+            "sense_sha256": "604b800da6e1de64b9251908b99756aaf2ddb0485b186d26bdb0c333a9f1b0ee",
+            "gloss_sha256": "f0459be3ee8de53728a8bb928eb38991afd25f083c89e1cede22fe4e0ab9f9a1",
+            "evidence_sha256": "efb5d5000d7aa1235950380173af5452eae720826863d1c452892ea347e21226"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4628 w4708 “철도 건널목 경비실”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4709",
+      "inventory_id": "m5-4629",
+      "candidate_record_sha256": "26a82613688df88fb0dfed5f55b107fb116cd97f7bc7e6d745a39a8dbf3be8e1",
+      "decision": "rejected",
+      "rank": 11,
+      "decision_rationale": "m5-4629 w4709: “버스 환승센터 대기실” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4709-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4629 w4709 w4709-s1: the authored gloss “여러 노선으로 갈아타는 사람들이 차례를 기다리는 실내 공간.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 72afe9089305.",
+          "semantic_rationale": "“버스 환승센터 대기실” denotes 여러 노선으로 갈아타는 사람들이 차례를 기다리는 실내 공간.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4629 w4709-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4709",
+        "candidate_record_sha256": "26a82613688df88fb0dfed5f55b107fb116cd97f7bc7e6d745a39a8dbf3be8e1",
+        "decision_evidence_sha256": "7e5d0015bf66fec5aaabf3dde0e43778f4b579339680bcf9c8f2a0efb2273793",
+        "sense_evidence": [
+          {
+            "sense_id": "w4709-s1",
+            "sense_sha256": "5822c8f76393d63a6263c2ac6147f9d6b1ad702f47a466c18448456f36581e6e",
+            "gloss_sha256": "72afe9089305889a5ce4abbf8cfd8d0dd7a9ca75c3540f3362c049087fc7f6d5",
+            "evidence_sha256": "ffe31579e24aa4e8aef538533bc91c28ad2d3a355278baefa86603761cdba5af"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4629 w4709 “버스 환승센터 대기실”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4710",
+      "inventory_id": "m5-4630",
+      "candidate_record_sha256": "f73f8755d11d03d31ff3ffb681510987d0db726e3fbe1b93a646682ed3bfc5a1",
+      "decision": "rejected",
+      "rank": 12,
+      "decision_rationale": "m5-4630 w4710: “시외버스터미널 승차장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4710-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4630 w4710 w4710-s1: the authored gloss “도시 밖으로 가는 버스가 정차하고 손님이 오르는 구역.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 f5ae4ea23c47.",
+          "semantic_rationale": "“시외버스터미널 승차장” denotes 도시 밖으로 가는 버스가 정차하고 손님이 오르는 구역.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4630 w4710-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4710",
+        "candidate_record_sha256": "f73f8755d11d03d31ff3ffb681510987d0db726e3fbe1b93a646682ed3bfc5a1",
+        "decision_evidence_sha256": "f31add4cff8e4d43e07ee2f7d182e85ccc112868753c9a4f5d5fbcb2a7e4c07e",
+        "sense_evidence": [
+          {
+            "sense_id": "w4710-s1",
+            "sense_sha256": "e39101c41ba82d6e650d269bf5d820b786a8153417f547bc1e3cbd35d52598a5",
+            "gloss_sha256": "f5ae4ea23c47b788eab51d65acdbbc23ae9baac797c8acb6d2e05064e50ac1a4",
+            "evidence_sha256": "01362ca4611c93dc6e77fabefc5550604bc51162918e39c003e364d378167db0"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4630 w4710 “시외버스터미널 승차장”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4711",
+      "inventory_id": "m5-4631",
+      "candidate_record_sha256": "beb430011947b839c3410506f8d467c62b758679c72f62a68632e172c0928bf3",
+      "decision": "rejected",
+      "rank": 13,
+      "decision_rationale": "m5-4631 w4711: “고속버스 화물칸 앞” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4711-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4631 w4711 w4711-s1: the authored gloss “수화물을 싣고 빼는 버스 옆 짐칸 입구의 자리.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 2cddaa3b8566.",
+          "semantic_rationale": "“고속버스 화물칸 앞” denotes 수화물을 싣고 빼는 버스 옆 짐칸 입구의 자리.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4631 w4711-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4711",
+        "candidate_record_sha256": "beb430011947b839c3410506f8d467c62b758679c72f62a68632e172c0928bf3",
+        "decision_evidence_sha256": "9090ccaa05b7b79ccc1509d5d6441d5abb22f7fba800f1e221f9557b5a2bb378",
+        "sense_evidence": [
+          {
+            "sense_id": "w4711-s1",
+            "sense_sha256": "e2fa940d4710efccfa8b8cb137ce5345758328a7add64ac75c7c662a23b8d865",
+            "gloss_sha256": "2cddaa3b8566928c89b336a4071e93e30f5365ac5b3931fa9569698ae1dde9df",
+            "evidence_sha256": "f65fde0a734f7958b7b835532e34ada726113cc615d66b992d72db8135d0305f"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4631 w4711 “고속버스 화물칸 앞”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4712",
+      "inventory_id": "m5-4632",
+      "candidate_record_sha256": "99b54f273b7de5473c10a36b0b9179febc7030aee00f2b03b6fce57494d07634",
+      "decision": "held",
+      "rank": 14,
+      "decision_rationale": "m5-4632 w4712: “공항 리무진 정류장” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4712-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4632 w4712 w4712-s1: the authored gloss “공항과 도심을 오가는 버스를 타고 내리는 전용 장소.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 258ba6602c9a.",
+          "semantic_rationale": "“공항 리무진 정류장” denotes 공항과 도심을 오가는 버스를 타고 내리는 전용 장소.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4632 w4712-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4712",
+        "candidate_record_sha256": "99b54f273b7de5473c10a36b0b9179febc7030aee00f2b03b6fce57494d07634",
+        "decision_evidence_sha256": "aadba37784353ea768a6a99836768d56c4a88e9620cdaf8a3755a37847423991",
+        "sense_evidence": [
+          {
+            "sense_id": "w4712-s1",
+            "sense_sha256": "b57c2d4bf2ff9f6e3b622e1b1d125b12801eea5caca769e0ddf27a025c334e1d",
+            "gloss_sha256": "258ba6602c9a523578636a8848b877b7079738ec424d0a9d0c9461d08acdd08a",
+            "evidence_sha256": "af6ee5344d46a0b08f00db9b79b8167ea2085bec4fafac077d65cd34ec1555ee"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4632 w4712 “공항 리무진 정류장”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4713",
+      "inventory_id": "m5-4633",
+      "candidate_record_sha256": "44ca9e16e5ff673c94c846b2602daf4fbbdb7257685087581160af0c91bc5b66",
+      "decision": "rejected",
+      "rank": 15,
+      "decision_rationale": "m5-4633 w4713: “택시 대기열 맨끝” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4713-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4633 w4713 w4713-s1: the authored gloss “손님을 태우려는 택시가 늘어선 줄의 가장 뒤쪽.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 b52660320428.",
+          "semantic_rationale": "“택시 대기열 맨끝” denotes 손님을 태우려는 택시가 늘어선 줄의 가장 뒤쪽.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4633 w4713-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4713",
+        "candidate_record_sha256": "44ca9e16e5ff673c94c846b2602daf4fbbdb7257685087581160af0c91bc5b66",
+        "decision_evidence_sha256": "227d38e0a313462b87470c3a59aca01188ea01fddff326cbbe26a905c3813dd5",
+        "sense_evidence": [
+          {
+            "sense_id": "w4713-s1",
+            "sense_sha256": "07073baea1078ab8b9a8ff23e9cfa6b6d3594800e0a3ad450ed10c3953d99aff",
+            "gloss_sha256": "b52660320428a9bc19120e4bc59d8525f848b8bc6112ceaa2659a1b9f4d008d7",
+            "evidence_sha256": "b0e8ec8f3c5dfeca8f69c7f4254298957993514e7e9574086682ab7fd62340c5"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4633 w4713 “택시 대기열 맨끝”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4714",
+      "inventory_id": "m5-4634",
+      "candidate_record_sha256": "c627118942988e0419c12ae19a5bda8463a1e568143a7c5a475c3155cf524e77",
+      "decision": "rejected",
+      "rank": 16,
+      "decision_rationale": "m5-4634 w4714: “승객 없는 정류장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4714-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4634 w4714 w4714-s1: the authored gloss “차량은 지나가지만 기다리거나 내리는 사람이 보이지 않는 자리.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 1808b2ca3b07.",
+          "semantic_rationale": "“승객 없는 정류장” denotes 차량은 지나가지만 기다리거나 내리는 사람이 보이지 않는 자리.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4634 w4714-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4714",
+        "candidate_record_sha256": "c627118942988e0419c12ae19a5bda8463a1e568143a7c5a475c3155cf524e77",
+        "decision_evidence_sha256": "c16d86c16c4ac0fa87a45be8fcf4049b571c61d7ebe2879e260bff15016849af",
+        "sense_evidence": [
+          {
+            "sense_id": "w4714-s1",
+            "sense_sha256": "7088fb3e2df824a8d516007cf15e2e8059eaa75407cf6f6943dde7e628b11f18",
+            "gloss_sha256": "1808b2ca3b07bb19d5853880521cb15b52d8ff5b4839e6c152cf1350538001e8",
+            "evidence_sha256": "4305070886719fccc42f1981698d415190607e236eb90636195cc8777d5c9802"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4634 w4714 “승객 없는 정류장”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4715",
+      "inventory_id": "m5-4635",
+      "candidate_record_sha256": "5597c7178138a71aae92c351ec2b4a66acad82ef5735f2c9be74a1cc33e5ee61",
+      "decision": "held",
+      "rank": 17,
+      "decision_rationale": "m5-4635 w4715: “종점 회차공간” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4715-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4635 w4715 w4715-s1: the authored gloss “버스가 방향을 돌려 반대편으로 출발하도록 비워 둔 넓은 구역.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 a6971ea72255.",
+          "semantic_rationale": "“종점 회차공간” denotes 버스가 방향을 돌려 반대편으로 출발하도록 비워 둔 넓은 구역.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4635 w4715-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4715",
+        "candidate_record_sha256": "5597c7178138a71aae92c351ec2b4a66acad82ef5735f2c9be74a1cc33e5ee61",
+        "decision_evidence_sha256": "2e7a0e2e455861027e2f05ab923b670280a7815b4a6a9437eabb7bdc178899a1",
+        "sense_evidence": [
+          {
+            "sense_id": "w4715-s1",
+            "sense_sha256": "4e74d6318ff12ab0a56602953c045acdb28e0b1d9b8c7c73cee0fcbbb9084554",
+            "gloss_sha256": "a6971ea722558d22a39103ed81641328b110f4a775cac15849d69958f3c8bc0b",
+            "evidence_sha256": "3d55868d1e847e1a8f4de35bd6e39e3ab8568af27fd32468b1b181f039ddddd3"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4635 w4715 “종점 회차공간”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4716",
+      "inventory_id": "m5-4636",
+      "candidate_record_sha256": "79a07ac3c502b630b7063b3d5f87cc9948dcf89c7755f114f3c291f750918d88",
+      "decision": "rejected",
+      "rank": 18,
+      "decision_rationale": "m5-4636 w4716: “도로공사 우회구간” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4716-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4636 w4716 w4716-s1: the authored gloss “차량이 공사장을 피해 임시로 다른 길을 따라 지나가는 부분.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 69d3f09fec41.",
+          "semantic_rationale": "“도로공사 우회구간” denotes 차량이 공사장을 피해 임시로 다른 길을 따라 지나가는 부분.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4636 w4716-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4716",
+        "candidate_record_sha256": "79a07ac3c502b630b7063b3d5f87cc9948dcf89c7755f114f3c291f750918d88",
+        "decision_evidence_sha256": "51d2dcd0690fe25916621c0572377c62434e28c91772db74af0ee5f13004120d",
+        "sense_evidence": [
+          {
+            "sense_id": "w4716-s1",
+            "sense_sha256": "4a83af045fece828d5b21876fd82021fb19c350f0a4c31a3da2c46a012f1dd39",
+            "gloss_sha256": "69d3f09fec41efbc5d6d2bd67a5a94df5635a5bf21449f02268f750a93bd5bda",
+            "evidence_sha256": "2b2920b246c8d565be6388b6ff0528a1cdb6c3886cbafc96cbd3fc1a2b0b5898"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4636 w4716 “도로공사 우회구간”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4717",
+      "inventory_id": "m5-4637",
+      "candidate_record_sha256": "3ac617ecca5d58cf797cfa03d17a9258876bc758fe08c05b4cf4dd13cbcc3a44",
+      "decision": "held",
+      "rank": 19,
+      "decision_rationale": "m5-4637 w4717: “임시 보행자통로” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w4717-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4637 w4717 w4717-s1: the authored gloss “공사나 사고로 원래 길이 막혀 사람을 위해 따로 낸 통로.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 4e6ee70de40d.",
+          "semantic_rationale": "“임시 보행자통로” denotes 공사나 사고로 원래 길이 막혀 사람을 위해 따로 낸 통로.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4637 w4717-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4717",
+        "candidate_record_sha256": "3ac617ecca5d58cf797cfa03d17a9258876bc758fe08c05b4cf4dd13cbcc3a44",
+        "decision_evidence_sha256": "3c2e3b10dcbe6fec93ff00039df96c4ff6d60c99e295f7b9e2ef01b5804b1b9c",
+        "sense_evidence": [
+          {
+            "sense_id": "w4717-s1",
+            "sense_sha256": "eb8641e9b0873862a6c711e8d5266df037b7768fadd1c5ada572c797e5c36b78",
+            "gloss_sha256": "4e6ee70de40d018efe001f5235a5ae6324bf1c76d2b20f177e2b283fa574d27d",
+            "evidence_sha256": "ba012a2c2ee6e59c6cd6d2c3d9ba3e6791cfcbab1394e1480c49d7d996645676"
+          }
+        ]
+      },
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-4637 w4717 “임시 보행자통로”: the exact expression's lexicalized status remains uncertain without candidate-specific evidence; keep the candidate held.",
+        "evidence": []
+      }
+    },
+    {
+      "candidate_record_id": "w4718",
+      "inventory_id": "m5-4638",
+      "candidate_record_sha256": "dd0b8a7e587077350d39c16d96f142a3e37b71fa1fbce5332a642a5018d5e6fd",
+      "decision": "rejected",
+      "rank": 20,
+      "decision_rationale": "m5-4638 w4718: “차량 통제선 안쪽” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "reject",
+      "sense_reviews": [
+        {
+          "sense_id": "w4718-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-4638 w4718 w4718-s1: the authored gloss “행사나 작업 때문에 일반 차량이 들어오지 못하게 막은 구역.” describes one bounded transport facility, area, or position without combining a second lexical use. Reviewed gloss SHA-256 2f781443f817.",
+          "semantic_rationale": "“차량 통제선 안쪽” denotes 행사나 작업 때문에 일반 차량이 들어오지 못하게 막은 구역.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-4638 w4718-s1: no separately authored relation tuple is supported in this batch source; zero relations are valid and do not block admission."
+        }
+      ],
+      "selection_axis": "C",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w4718",
+        "candidate_record_sha256": "dd0b8a7e587077350d39c16d96f142a3e37b71fa1fbce5332a642a5018d5e6fd",
+        "decision_evidence_sha256": "34826ff00feeae48a2db3856e859210b59329dacc00b5d886f5f590c7d99cc7d",
+        "sense_evidence": [
+          {
+            "sense_id": "w4718-s1",
+            "sense_sha256": "bbcccbc0cbc6d1891bcbcd8a4a551273ef1f79547b2beacbfdaaeb6cc23d0816",
+            "gloss_sha256": "2f781443f8173b9c5bd5580791063d4e59c4925d3a78303e3df531d5c698d957",
+            "evidence_sha256": "11ffbf2726cc100a50d2feda8cbdfd9175c5d9e3eb92692599913a55a9087f27"
+          }
+        ]
+      },
+      "rejection_basis": "not-a-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "compositional-phrase",
+        "rationale": "m5-4638 w4718 “차량 통제선 안쪽”: the expression composes a scene from independently meaningful modifiers and a head, with no evidence of a fixed whole-phrase unit; reject it as not a lexical unit.",
+        "evidence": []
+      }
+    }
+  ],
+  "artifact_sha256": "25af7917228eb6576f9c311153c2858825a1cafa68e406b718ef8fabe52a27f0"
+}

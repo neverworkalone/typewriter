@@ -80,7 +80,7 @@ test('shared lexical producer rejects duplicate candidate lemmas', () => {
   }), /duplicates a source unit identity or lemma/u);
 });
 
-test('shared lexical producer rejects canonical collisions and only reopens rejected seed rows', () => {
+test('shared lexical producer rejects canonical collisions and only reopens rejected seed rows by default', () => {
   const { source, sourceBytes } = sourceWithUnits([unit('unit-1', '기쁨')]);
 
   assert.throws(() => materializeLexicalUnitCandidates({
@@ -111,4 +111,47 @@ test('shared lexical producer rejects canonical collisions and only reopens reje
     firstCanonicalNumber: 3181,
     baseSeedTargets: [{ inventory_id: 'm5-0001', status: 'rejected', lemma: '기쁨', search_forms: [] }],
   }), 'a rejected historical target is not an active search owner during a source-bound recovery');
+});
+
+test('shared lexical producer can reopen an exactly matched deferred seed identity', () => {
+  const { source, sourceBytes } = sourceWithUnits([unit('unit-1', '기쁨')]);
+  const deferredTarget = {
+    inventory_id: 'm5-3101',
+    status: 'deferred',
+    record_type: 'entry',
+    lemma: '기쁨',
+    search_forms: ['기쁨'],
+    pos: ['noun'],
+  };
+  const common = {
+    batchId: 'test-batch',
+    source,
+    sourceBytes,
+    firstInventoryNumber: 3101,
+    firstCanonicalNumber: 3181,
+    baseSeedTargets: [deferredTarget],
+    reopenedSeedTargetIds: [deferredTarget.inventory_id],
+  };
+
+  const result = materializeLexicalUnitCandidates(common);
+  assert.equal(result.identities[0].inventory_id, deferredTarget.inventory_id);
+  assert.equal(result.identities[0].lemma, deferredTarget.lemma);
+
+  for (const change of [
+    { status: 'held' },
+    { lemma: '희망' },
+    { record_type: 'expression' },
+    { pos: ['verb'] },
+    { search_forms: ['기쁜'] },
+  ]) {
+    assert.throws(() => materializeLexicalUnitCandidates({
+      ...common,
+      baseSeedTargets: [{ ...deferredTarget, ...change }],
+    }), /deferred seed target|one deferred seed target/u);
+  }
+
+  assert.throws(() => materializeLexicalUnitCandidates({
+    ...common,
+    firstInventoryNumber: 3102,
+  }), /not covered by candidate identities/u);
 });

@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import {
+  M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
   candidateRecordsFromAuthoredSemanticDecisionSource,
   serializeAuthoredSemanticDecisionSource,
   validateAuthoredDecisionDisposition,
@@ -154,6 +155,71 @@ async function makeSourceBoundDispositionFixture() {
     selectionCount: identities.length,
     importCount: 1,
     reserveCount: identities.length - 1,
+  };
+  return { ...serialized, config, identities, candidates };
+}
+
+function makeExpressionLexicalUnitReviewFixture(fixture) {
+  const identities = structuredClone(fixture.identities);
+  const candidates = structuredClone(fixture.candidates);
+  const source = structuredClone(fixture.source);
+  const rowByCandidateId = new Map(source.decisions.map((row) => [row.candidate_record_id, row]));
+  for (const [index, lemma] of [[0, '등을 돌리다'], [3, '역무실 옆 계단']]) {
+    const identity = identities[index];
+    const candidate = candidates[index];
+    identity.lemma = lemma;
+    identity.record_type = 'expression';
+    identity.pos = 'expression';
+    identity.source_basis.lexical_unit = lemma;
+    candidate.lemma = lemma;
+    candidate.record_type = 'expression';
+    candidate.search_forms = [lemma];
+    candidate.senses = candidate.senses.map((sense) => ({ ...sense, pos: 'expression' }));
+    const row = rowByCandidateId.get(candidate.id);
+    row.candidate_record_sha256 = sha256Json(candidate);
+    row.lexical_unit_review = index === 0
+      ? {
+        contract_version: M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
+        judgment: 'fixed-or-lexicalized-unit',
+        rationale: `${identity.inventory_id} ${candidate.id} ${lemma}: the existing Typewriter expression record supplies a fixed-unit precedent.`,
+        evidence: [{
+          source: 'data/batches/m5-9-postimport-canonical/pilot.jsonl',
+          observation: 'The curated pilot records the exact expression 등을 돌리다 as a multi-sense fixed phrase.',
+        }],
+      }
+      : {
+        contract_version: M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
+        judgment: 'compositional-phrase',
+        rationale: `${identity.inventory_id} ${candidate.id} ${lemma}: this is a freely composed location phrase; the place relation is supplied by 옆 and 계단 rather than a fixed lexical unit.`,
+        evidence: [],
+      };
+    row.decision_rationale = `${identity.inventory_id} ${candidate.id}: source-bound fixture for ${lemma}.`;
+    row.sense_reviews = row.sense_reviews.map((senseReview) => ({
+      ...senseReview,
+      semantic_rationale: `${lemma} is represented by the fixture candidate sense.`,
+    }));
+  }
+  source.candidate_records = candidates;
+  source.candidate_records_sha256 = sha256Json(candidates);
+  source.candidate_source.identity_sha256 = sha256Json(identities);
+  source.candidate_source.identity_count = identities.length;
+  source.selection = { ...source.selection, imported: 1, reserve: 0 };
+  source.review = {
+    ...source.review,
+    expression_lexical_unit_review_contract_version: M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
+  };
+  for (const row of source.decisions) {
+    const candidate = candidates.find(({ id }) => id === row.candidate_record_id);
+    row.review_binding = authorSemanticReviewBinding(row, candidate);
+  }
+  const serialized = serializeAuthoredSemanticDecisionSource(source);
+  const config = {
+    ...fixture.config,
+    importCount: 1,
+    importCountFromDecisions: true,
+    noAdmissionQuota: true,
+    reserveCount: 0,
+    expressionLexicalUnitReviewContractVersion: M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
   };
   return { ...serialized, config, identities, candidates };
 }
@@ -536,6 +602,106 @@ test('a source-bound unresolved hold and lexical rejections are excluded before 
     }),
     (error) => error.code === 'M5_13_DECISION_SOURCE_BINDING',
     'a valid but changed hold basis must remain covered by the authored review binding',
+  );
+});
+
+test('M9 expression admission requires a source-bound fixedness judgment and keeps compositional phrases out', async () => {
+  const baseFixture = await makeSourceBoundDispositionFixture();
+  const fixture = makeExpressionLexicalUnitReviewFixture(baseFixture);
+  const validateFixture = (serialized) => validateAuthoredSemanticDecisionSource({
+    source: serialized.source,
+    sourceBytes: serialized.bytes,
+    identities: fixture.identities,
+    candidateRecords: fixture.candidates,
+    config: fixture.config,
+  });
+
+  const validation = validateFixture(fixture);
+  assert.equal(validation.selection.selected.length, 1);
+  assert.equal(validation.selection.reserve.length, 0);
+  assert.equal(validation.selection.selected[0].candidate_record_id, fixture.candidates[0].id);
+  assert.equal(validation.rows[3].decision, 'rejected');
+  assert.equal(validation.rows[3].rejection_basis, 'not-a-lexical-unit');
+
+  const oldBlanketAdmission = structuredClone(fixture.source);
+  const compositional = oldBlanketAdmission.decisions.find(({ candidate_record_id: id }) => id === fixture.candidates[3].id);
+  compositional.decision = 'included';
+  compositional.gloss_judgment = 'fit';
+  delete compositional.rejection_basis;
+  compositional.decision_rationale = `${fixture.identities[3].inventory_id} ${fixture.candidates[3].id}: deliberately attempts to admit a compositional phrase.`;
+  oldBlanketAdmission.selection = { ...oldBlanketAdmission.selection, imported: 2 };
+  oldBlanketAdmission.review = {
+    ...oldBlanketAdmission.review,
+    decision_counts: { included: 2, corrected: 0, held: 1, rejected: 1, deferred: 0 },
+    counts: { included: 2, corrected: 0, held: 1, rejected: 1, deferred: 0 },
+  };
+  for (const row of oldBlanketAdmission.decisions) {
+    const candidate = fixture.candidates.find(({ id }) => id === row.candidate_record_id);
+    row.review_binding = authorSemanticReviewBinding(row, candidate);
+  }
+  const invalidSerialized = serializeAuthoredSemanticDecisionSource(oldBlanketAdmission);
+  assert.throws(
+    () => validateFixture(invalidSerialized),
+    (error) => error.code === 'M5_13_EXPRESSION_LEXICAL_UNIT_REVIEW',
+    'the prior blanket admission must fail before shared lexical admission',
+  );
+
+  const missingFixedness = structuredClone(fixture.source);
+  const fixedExpression = missingFixedness.decisions.find(({ candidate_record_id: id }) => id === fixture.candidates[0].id);
+  delete fixedExpression.lexical_unit_review;
+  fixedExpression.review_binding = authorSemanticReviewBinding(fixedExpression, fixture.candidates[0]);
+  const missingReviewSerialized = serializeAuthoredSemanticDecisionSource(missingFixedness);
+  assert.throws(
+    () => validateFixture(missingReviewSerialized),
+    (error) => error.code === 'M5_13_EXPRESSION_LEXICAL_UNIT_REVIEW',
+    'a supported fixed expression cannot be admitted without the independent fixedness judgment',
+  );
+
+  const m9SourceWithoutCallerContract = structuredClone(fixture.source);
+  m9SourceWithoutCallerContract.issue = 220;
+  m9SourceWithoutCallerContract.parent_issue = 218;
+  m9SourceWithoutCallerContract.batch_id = 'm9-future-batch-without-caller-contract';
+  const m9FixedExpression = m9SourceWithoutCallerContract.decisions.find(
+    ({ candidate_record_id: id }) => id === fixture.candidates[0].id,
+  );
+  delete m9FixedExpression.lexical_unit_review;
+  m9FixedExpression.review_binding = authorSemanticReviewBinding(m9FixedExpression, fixture.candidates[0]);
+  const m9ConfigWithoutContract = {
+    ...fixture.config,
+    issue: 220,
+    parentIssue: 218,
+    batchId: m9SourceWithoutCallerContract.batch_id,
+  };
+  delete m9ConfigWithoutContract.expressionLexicalUnitReviewContractVersion;
+  const m9WithoutFixedness = serializeAuthoredSemanticDecisionSource(m9SourceWithoutCallerContract);
+  assert.throws(
+    () => validateAuthoredSemanticDecisionSource({
+      source: m9WithoutFixedness.source,
+      sourceBytes: m9WithoutFixedness.bytes,
+      identities: fixture.identities,
+      candidateRecords: fixture.candidates,
+      config: m9ConfigWithoutContract,
+    }),
+    (error) => error.code === 'M5_13_EXPRESSION_LEXICAL_UNIT_REVIEW',
+    'an M9 child cannot omit expression fixedness by leaving the config option unset',
+  );
+
+  const m9SourceWithoutHeaderContract = structuredClone(fixture.source);
+  m9SourceWithoutHeaderContract.issue = 220;
+  m9SourceWithoutHeaderContract.parent_issue = 218;
+  m9SourceWithoutHeaderContract.batch_id = 'm9-future-batch-without-review-header-contract';
+  delete m9SourceWithoutHeaderContract.review.expression_lexical_unit_review_contract_version;
+  const m9WithoutReviewHeader = serializeAuthoredSemanticDecisionSource(m9SourceWithoutHeaderContract);
+  assert.throws(
+    () => validateAuthoredSemanticDecisionSource({
+      source: m9WithoutReviewHeader.source,
+      sourceBytes: m9WithoutReviewHeader.bytes,
+      identities: fixture.identities,
+      candidateRecords: fixture.candidates,
+      config: { ...m9ConfigWithoutContract, batchId: m9SourceWithoutHeaderContract.batch_id },
+    }),
+    (error) => error.code === 'M5_13_EXPRESSION_LEXICAL_UNIT_REVIEW',
+    'an M9 child must declare the shared fixedness contract in its review metadata',
   );
 });
 

@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "8eb926d94bacc14b94ea7fb9457d3ae8de78e334a3cf4fb1052e01048cbead14",
+    "current_canonical_revision": "98264ef2163ea9eb43a759978766aefa090a21d8bc8cf7b5c9c9dd47f5cdfe34",
     "source_manifest": [
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -25,106 +25,6 @@
         "path": "data/batches/issue-211-semantic-decisions.json",
         "sha256": "f55f82ba211c68a4c427f2a133ab1f36ab4b0fcada315d692c239ffe13cf6262",
         "byte_count": 69789
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/issue-204-corpus-pilot.jsonl",
-        "sha256": "d600ef23a911afa4c8e6bbb7ecce51260767225601c0c9c9adeb62287ae72843",
-        "byte_count": 2538
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/issue-211-bounded-recovery.jsonl",
-        "sha256": "3844cfa4d38e4d99cfd4623670913b224f6b77feaf507d8d48589fb3e95531e9",
-        "byte_count": 5450
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-10-wave-a.jsonl",
-        "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
-        "byte_count": 15089
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-10-wave-b.jsonl",
-        "sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
-        "byte_count": 35450
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-10a-wave-a2.jsonl",
-        "sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-        "byte_count": 14710
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-11-expansion.jsonl",
-        "sha256": "8d3d51bae63503b209e1a7713e8a67fc74616ca03cd80f135a37a0247cf763ed",
-        "byte_count": 120101
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-12a-expansion.jsonl",
-        "sha256": "3f4362a8fb109a6d2d44bf9cc42f63d64cb58c5ddae0084dcab5ac5fe347be45",
-        "byte_count": 275704
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-13-expansion.jsonl",
-        "sha256": "4af53e85dba0ee65906c51d7ba68d439e78b7bdd77ab50438e42f3afb0fda426",
-        "byte_count": 247169
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-14-expansion.jsonl",
-        "sha256": "53ce22151cb109b651a16f842c7cc73f43663fcf065b503222472e129658bf87",
-        "byte_count": 243588
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-15-expansion.jsonl",
-        "sha256": "69a686c84da2f65effc659fda3dee969de460cc9ea853d9723d0dbf9f36026b4",
-        "byte_count": 261989
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-3-calibration.jsonl",
-        "sha256": "2a080a0d473a071917d58860621d9e9b965c7737776b753fd1534a96f50c7d3a",
-        "byte_count": 33822
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-5-recalibration.jsonl",
-        "sha256": "8e75e819159891ce60d2c4c5c7821cc89f30f54efcee1c38ea9c5a102fe980a0",
-        "byte_count": 13336
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-7-recalibration.jsonl",
-        "sha256": "a37677f7569e016e5e8f9525b978ec4911ff0c9afb5ba7f65d3c40dae5fc71c1",
-        "byte_count": 11155
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/m5-9-expansion.jsonl",
-        "sha256": "a47e9322813780efd2eae29b2b5784bcd2948d7c3f7de621174ebee4a35ce4c4",
-        "byte_count": 27603
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-canonical/pilot.jsonl",
-        "sha256": "d45c15164ef6f146ee51d40e265746515120a556b1e2fb65e057ed36781dff1d",
-        "byte_count": 144320
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-issue-210-recovery-inventory.json",
-        "sha256": "fcaa572119d307a1efc0f15782b8d77a0585f4e9786e735ce42623dd4710e539",
-        "byte_count": 1567326
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-base-seed.json",
-        "sha256": "28f2d5a1b0d9f75386d7c39e8d41a923db6a2ade020c0eb57c6fa4832b2f32da",
-        "byte_count": 862291
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-lexical-unit-source.json",
-        "sha256": "65c1b93e16840cb339ff3fb8a522f044783a909c265dff14fdad38cdc3dbb1c2",
-        "byte_count": 10776
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-recovery-selection.json",
-        "sha256": "ac16f899ae4e16267b4703888e5caf6a045ff3db2f8b707e6697f316b4de4ed0",
-        "byte_count": 85601
-      },
-      {
-        "path": "data/batches/issue-219-m9-a-semantic-decisions.json",
-        "sha256": "0b1ccd65f45ec2fe3f5051c9a0c0792bd38b54219757b0c2534b52fbc4b48416",
-        "byte_count": 67684
       },
       {
         "path": "data/batches/m5-10-wave-a.json",
@@ -282,11 +182,6 @@
         "byte_count": 5450
       },
       {
-        "path": "data/canonical/issue-219-m9-a-recovery.jsonl",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "byte_count": 0
-      },
-      {
         "path": "data/canonical/m5-10-wave-a.jsonl",
         "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
         "byte_count": 15089
@@ -358,18 +253,13 @@
       },
       {
         "path": "data/inventory/m5-target-seed.json",
-        "sha256": "394f7fa65fc22a1706af2dbb663e9eb2880ad265ecb2c6a619d6d6d5c59687f7",
-        "byte_count": 864546
+        "sha256": "28f2d5a1b0d9f75386d7c39e8d41a923db6a2ade020c0eb57c6fa4832b2f32da",
+        "byte_count": 862291
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
         "sha256": "a4e8c22c15cc0fa37f42ec5ace4ddc280023458fadeb6a362219c6bb2f34b006",
         "byte_count": 4849898
-      },
-      {
-        "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "e843761a4c7b557fa7d3da000c38b91aac130352e61b2cb77e2c6a77e71d4434",
-        "byte_count": 11354
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
@@ -387,11 +277,6 @@
         "byte_count": 99794
       },
       {
-        "path": "docs/external-material-review-customs-terminology.md",
-        "sha256": "ce7395c649ba9d4eecf2ed3362be2f9859116a398aee85534005e1ea624bce2a",
-        "byte_count": 1698
-      },
-      {
         "path": "docs/issue-208-searchable-start-retrospective.md",
         "sha256": "3e5dfd512389b4a505010686c10c32e0cdfdbb328290e1f4f0bc92a8f6aa6621",
         "byte_count": 16379
@@ -400,11 +285,6 @@
         "path": "docs/issue-211-bounded-lexical-recovery.md",
         "sha256": "e0a264b879f612b32fd20ebbb3c0a475d324ded5f461d4d0406f27bcb820a294",
         "byte_count": 4917
-      },
-      {
-        "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "f4ad6ec50f759f95c2ea42b359e5079a74ddf4390d3bc5301ab13d27f4ecacd8",
-        "byte_count": 5991
       },
       {
         "path": "docs/m3-handoff.md",
@@ -442,112 +322,53 @@
         "byte_count": 15468
       },
       {
-        "path": "docs/m9-bounded-lexical-batches.md",
-        "sha256": "3ca7c3b62e5beecb8dca7d073cecea65265ba00e72fa1026015cb37d090cc91a",
-        "byte_count": 4613
-      },
-      {
         "path": "docs/pilot-scope.md",
         "sha256": "9d1d23b63c828838e5b326ee69e080f57a68ffae6e0e31dfe05e99d0865e6881",
         "byte_count": 14914
       },
       {
         "path": "package.json",
-        "sha256": "646d30d330d3ec73bf7e49075e65045145a6af2e0820898ee48f7c0deb5550c8",
-        "byte_count": 9900
-      },
-      {
-        "path": "schema/m9-lexical-batch-report.schema.json",
-        "sha256": "e2137ba54f1610f11412c8e6ce6da2cafc3f9b8b7a8b51dedb03c93b1db76dcb",
-        "byte_count": 5828
-      },
-      {
-        "path": "scripts/batch/authored-semantic-decision-source.mjs",
-        "sha256": "6476c9c7fb588c908cfd3310802064d2fcf0e0b80696110e6aeb6e4f60524e9c",
-        "byte_count": 28237
-      },
-      {
-        "path": "scripts/batch/lexical-production.mjs",
-        "sha256": "ff86fba91b48dbcf8cafaf87199f22b64d8fff57a3cee3e2a32e8f3f93fa2d91",
-        "byte_count": 34088
+        "sha256": "0ef95e0d3e45fcd7f08d01e39b012d6cb93e76ca7bc4e54106c36e6bff171b48",
+        "byte_count": 9736
       },
       {
         "path": "scripts/batch/validate-issue-211.mjs",
-        "sha256": "661f8ca260d3b477806cbf2744122d103094baecc3b8a3f7c0f60cd9fdf7a7e7",
-        "byte_count": 34207
-      },
-      {
-        "path": "scripts/batch/validate-issue-219.mjs",
-        "sha256": "44e8366633a2f977f68ff4f8375e9ff886fabab9d9af91425998009acf420587",
-        "byte_count": 34517
-      },
-      {
-        "path": "scripts/ci/registry.mjs",
-        "sha256": "4f987aea0c52062ebce819d6b31ce43652db42b80055fd63e0be766baef3e2f4",
-        "byte_count": 12553
+        "sha256": "d3e8e15ccfcfc59cab25395b12753bd83e6682a07187f5fb4fd316fde4f5fe75",
+        "byte_count": 31642
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "705bfb6834edb359b54b3c635bf6f51b2dc1e30d8d0298c14d9efac3dc5ea8f2",
-        "byte_count": 60701
-      },
-      {
-        "path": "scripts/validate/semantic-decision-row.mjs",
-        "sha256": "3019f5ce59c778a6e913f30c49c915508dfbb1792db891f410af86ff6a857d3e",
-        "byte_count": 8224
+        "sha256": "63e58f102694deee0b98681b6e5bd25e55e1eb108214d34d42c09fc27e5d4ea0",
+        "byte_count": 54401
       },
       {
         "path": "tests/issue-211-search.test.mjs",
         "sha256": "2c8936af05ef33e592cc9482f239ef75609ebcfbd992a2ade1b79856897cde25",
         "byte_count": 7228
-      },
-      {
-        "path": "tests/issue-219-content-digest.test.mjs",
-        "sha256": "a6d5daecfb4985724cb5e14a74269f1cad0ca44697199f30a689ce4a532beeda",
-        "byte_count": 2192
-      },
-      {
-        "path": "tests/issue-219-search.test.mjs",
-        "sha256": "fef7a0aa61b2afdc6f44bdc1513bca7c737b0a6ed7fdbf66ff3338be64dd0ad3",
-        "byte_count": 1873
-      },
-      {
-        "path": "tests/lexical-production-candidates.test.mjs",
-        "sha256": "323d63a9b6252f0ceae89a26c266527abb6ce98d36a51ee47e18fd75bab1b3a8",
-        "byte_count": 5304
-      },
-      {
-        "path": "tests/searchable-start-contract.test.mjs",
-        "sha256": "8e2014fae124aef7a5f4afd597ff1761ab1dca3884040fe89cdf3c65b15f6c85",
-        "byte_count": 38763
       }
     ]
   },
   "audit_scope": {
     "m1_m4": "Reviewed the durable M1 pilot selection, canonical pilot records, M3/M4 handoffs, and current reference-only population. These artifacts do not contain a complete durable candidate rejection/defer ledger; no missing ephemeral output or external material was reconstructed.",
-    "m5": "Screened all 1,562 current M5 seed rows; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219 recovery outcomes. Issue #219 reviewed 20 expressions: 0 admitted, 10 held, and 10 rejected.",
+    "m5": "Screened all 1,562 rows in the M5 target seed; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and Issue #211 re-review outcomes where applicable.",
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
-    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; 0 admitted, 10 held, and 10 rejected as compositional phrases.",
+    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split.",
     "source_material_boundary": "Uses tracked Typewriter decision artifacts only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
     "m5_target_rows_screened": 1562,
     "m5_target_status_counts": {
       "promoted": 978,
-      "held": 199,
+      "held": 189,
       "duplicate": 3,
       "inflected-form": 2,
       "candidate": 19,
-      "deferred": 299,
-      "rejected": 62
+      "deferred": 319,
+      "rejected": 52
     },
     "m5_promoted_seed_rows_present_in_canonical": 978,
     "m5_promotion_ledger_events_audited": 3756,
     "issue_204_decisions_audited": 100,
-    "issue_219_decisions_audited": 20,
-    "issue_219_admitted_count": 0,
-    "issue_219_held_count": 10,
-    "issue_219_rejected_count": 10,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
     "recovery_candidate_count": 584,
@@ -563,18 +384,17 @@
     "exact_search_key_count": 5332,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
-    "non_lexical_proposal_count_confirmed": 10,
-    "unresolved_sense_pos_or_context_case_count": 182,
+    "non_lexical_proposal_count_confirmed": 0,
+    "unresolved_sense_pos_or_context_case_count": 172,
     "additional_rationale_or_lexical_unit_holds": 75,
     "search_collision_count": 1,
     "unsupported_scope_candidate_count": 0,
     "unsupported_lexical_category_count": 0,
     "review_state_counts": {
-      "hold": 230,
+      "hold": 220,
       "duplicate": 2,
       "invalid-lemma": 2,
-      "admit-candidate": 288,
-      "not-a-lexical-unit": 10,
+      "admit-candidate": 308,
       "recovered": 24,
       "needs-sense-split": 27,
       "search-surface-collision": 1
@@ -24225,9 +24045,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4619",
@@ -24240,25 +24060,25 @@
         "택배물류 허브"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4619 w4699 unresolved: m5-4619 w4699: “택배물류 허브” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4619 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4619 w4699 unresolved: m5-4619 w4699: “택배물류 허브” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4619 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4619 w4699: “택배물류 허브” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4619 w4699: the source-bound lemma “택배물류 허브”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24275,8 +24095,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24286,9 +24106,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4620",
@@ -24301,25 +24121,25 @@
         "화물터미널 야적장"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4620 w4700 unresolved: m5-4620 w4700: “화물터미널 야적장” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4620 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4620 w4700 unresolved: m5-4620 w4700: “화물터미널 야적장” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4620 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4620 w4700: “화물터미널 야적장” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4620 w4700: the source-bound lemma “화물터미널 야적장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24336,8 +24156,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24347,9 +24167,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4621",
@@ -24362,25 +24182,25 @@
         "컨테이너 야드"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4621 w4701 held: exact-expression fixedness remains unresolved while the external source terms are pending; keep this Typewriter-authored candidate outside canonical admission.",
+      "historical_rationale": "m5-4621 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4621 w4701 held: exact-expression fixedness remains unresolved while the external source terms are pending; keep this Typewriter-authored candidate outside canonical admission."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4621 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4621 w4701: keep the exact expression outside canonical admission while the only candidate-specific fixedness evidence remains pending its applicable source terms."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4621 w4701: the source-bound lemma “컨테이너 야드”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24397,8 +24217,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24408,9 +24228,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4622",
@@ -24423,25 +24243,25 @@
         "철도 화물역"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4622 w4702 unresolved: m5-4622 w4702: “철도 화물역” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4622 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4622 w4702 unresolved: m5-4622 w4702: “철도 화물역” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4622 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4622 w4702: “철도 화물역” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4622 w4702: the source-bound lemma “철도 화물역”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24458,8 +24278,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24469,9 +24289,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4623",
@@ -24484,25 +24304,25 @@
         "철도 차량기지"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4623 w4703 unresolved: m5-4623 w4703: “철도 차량기지” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4623 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4623 w4703 unresolved: m5-4623 w4703: “철도 차량기지” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4623 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4623 w4703: “철도 차량기지” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4623 w4703: the source-bound lemma “철도 차량기지”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24519,8 +24339,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24530,9 +24350,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4624",
@@ -24545,25 +24365,25 @@
         "지하철 유치선"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4624 w4704 unresolved: m5-4624 w4704: “지하철 유치선” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4624 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4624 w4704 unresolved: m5-4624 w4704: “지하철 유치선” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4624 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4624 w4704: “지하철 유치선” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4624 w4704: the source-bound lemma “지하철 유치선”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24580,8 +24400,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24591,9 +24411,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4625",
@@ -24607,24 +24427,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4625 w4705 compositional-phrase: m5-4625 w4705: “전철 종착역 승강장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4625 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4625 w4705 compositional-phrase: m5-4625 w4705: “전철 종착역 승강장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4625 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4625 w4705: “전철 종착역 승강장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4625 w4705: the source-bound lemma “전철 종착역 승강장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24641,8 +24461,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24652,9 +24472,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4626",
@@ -24668,24 +24488,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4626 w4706 compositional-phrase: m5-4626 w4706: “역무실 옆 계단” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4626 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4626 w4706 compositional-phrase: m5-4626 w4706: “역무실 옆 계단” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4626 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4626 w4706: “역무실 옆 계단” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4626 w4706: the source-bound lemma “역무실 옆 계단”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24702,8 +24522,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24713,9 +24533,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4627",
@@ -24728,25 +24548,25 @@
         "역 구내 지하도"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4627 w4707 unresolved: m5-4627 w4707: “역 구내 지하도” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4627 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4627 w4707 unresolved: m5-4627 w4707: “역 구내 지하도” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4627 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4627 w4707: “역 구내 지하도” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4627 w4707: the source-bound lemma “역 구내 지하도”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24763,8 +24583,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24774,9 +24594,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4628",
@@ -24790,24 +24610,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4628 w4708 compositional-phrase: m5-4628 w4708: “철도 건널목 경비실” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4628 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4628 w4708 compositional-phrase: m5-4628 w4708: “철도 건널목 경비실” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4628 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4628 w4708: “철도 건널목 경비실” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4628 w4708: the source-bound lemma “철도 건널목 경비실”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24824,8 +24644,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24835,9 +24655,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4629",
@@ -24851,24 +24671,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4629 w4709 compositional-phrase: m5-4629 w4709: “버스 환승센터 대기실” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4629 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4629 w4709 compositional-phrase: m5-4629 w4709: “버스 환승센터 대기실” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4629 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4629 w4709: “버스 환승센터 대기실” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4629 w4709: the source-bound lemma “버스 환승센터 대기실”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24885,8 +24705,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24896,9 +24716,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4630",
@@ -24912,24 +24732,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4630 w4710 compositional-phrase: m5-4630 w4710: “시외버스터미널 승차장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4630 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4630 w4710 compositional-phrase: m5-4630 w4710: “시외버스터미널 승차장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4630 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4630 w4710: “시외버스터미널 승차장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4630 w4710: the source-bound lemma “시외버스터미널 승차장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -24946,8 +24766,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24957,9 +24777,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4631",
@@ -24973,24 +24793,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4631 w4711 compositional-phrase: m5-4631 w4711: “고속버스 화물칸 앞” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4631 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4631 w4711 compositional-phrase: m5-4631 w4711: “고속버스 화물칸 앞” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4631 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4631 w4711: “고속버스 화물칸 앞” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4631 w4711: the source-bound lemma “고속버스 화물칸 앞”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -25007,8 +24827,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25018,9 +24838,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4632",
@@ -25033,25 +24853,25 @@
         "공항 리무진 정류장"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4632 w4712 unresolved: m5-4632 w4712: “공항 리무진 정류장” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4632 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4632 w4712 unresolved: m5-4632 w4712: “공항 리무진 정류장” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4632 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4632 w4712: “공항 리무진 정류장” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4632 w4712: the source-bound lemma “공항 리무진 정류장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -25068,8 +24888,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25079,9 +24899,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4633",
@@ -25095,24 +24915,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4633 w4713 compositional-phrase: m5-4633 w4713: “택시 대기열 맨끝” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4633 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4633 w4713 compositional-phrase: m5-4633 w4713: “택시 대기열 맨끝” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4633 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4633 w4713: “택시 대기열 맨끝” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4633 w4713: the source-bound lemma “택시 대기열 맨끝”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -25129,8 +24949,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25140,9 +24960,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4634",
@@ -25156,24 +24976,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4634 w4714 compositional-phrase: m5-4634 w4714: “승객 없는 정류장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4634 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4634 w4714 compositional-phrase: m5-4634 w4714: “승객 없는 정류장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4634 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4634 w4714: “승객 없는 정류장” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4634 w4714: the source-bound lemma “승객 없는 정류장”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -25190,8 +25010,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25201,9 +25021,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4635",
@@ -25216,25 +25036,25 @@
         "종점 회차공간"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4635 w4715 unresolved: m5-4635 w4715: “종점 회차공간” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4635 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4635 w4715 unresolved: m5-4635 w4715: “종점 회차공간” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4635 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4635 w4715: “종점 회차공간” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4635 w4715: the source-bound lemma “종점 회차공간”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -25251,8 +25071,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25262,9 +25082,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4636",
@@ -25278,24 +25098,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4636 w4716 compositional-phrase: m5-4636 w4716: “도로공사 우회구간” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4636 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4636 w4716 compositional-phrase: m5-4636 w4716: “도로공사 우회구간” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4636 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4636 w4716: “도로공사 우회구간” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4636 w4716: the source-bound lemma “도로공사 우회구간”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -25312,8 +25132,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25323,9 +25143,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4637",
@@ -25338,25 +25158,25 @@
         "임시 보행자통로"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4637 w4717 unresolved: m5-4637 w4717: “임시 보행자통로” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question.",
+      "historical_rationale": "m5-4637 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-4637 w4717 unresolved: m5-4637 w4717: “임시 보행자통로” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4637 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-4637 w4717: “임시 보행자통로” may name a domain-specific place or expression, but this pass found no candidate-specific evidence establishing that this exact spacing and phrase is fixed or lexicalized. Preserve it as an unresolved lexical-unit question."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4637 w4717: the source-bound lemma “임시 보행자통로”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -25373,8 +25193,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25384,9 +25204,9 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
-          "issue": 219,
-          "batch": "m9-a-issue-219-first-recovery-20260929",
-          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+          "issue": 101,
+          "batch": "m5-15-expansion-20260923",
+          "artifact": "data/batches/m5-15-semantic-decisions.json"
         }
       ],
       "source_inventory_id": "m5-4638",
@@ -25400,24 +25220,24 @@
       ],
       "historical_role_disposition": {
         "planned_role": null,
-        "disposition": "rejected",
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-4638 w4718 compositional-phrase: m5-4638 w4718: “차량 통제선 안쪽” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit.",
+      "historical_rationale": "m5-4638 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "rejected",
-          "historical_rationale": "m5-4638 w4718 compositional-phrase: m5-4638 w4718: “차량 통제선 안쪽” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-4638 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
         },
         {
-          "source_issue": 219,
-          "source_batch": "m9-a-issue-219-first-recovery-20260929",
-          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
-          "historical_disposition": "rejected/reject",
-          "historical_rationale": "m5-4638 w4718: “차량 통제선 안쪽” is a compositional scene phrase. Its modifiers, spatial relation, and head combine productively to describe a place or position; the exact whole phrase is not established as a fixed lexical unit."
+          "source_issue": 101,
+          "source_batch": "m5-15-expansion-20260923",
+          "source_artifact": "data/batches/m5-15-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-4638 w4718: the source-bound lemma “차량 통제선 안쪽”, expression POS, and one-sense gloss form a coherent writer-facing scene unit."
         }
       ],
       "current_canonical_search_coverage": {
@@ -25434,8 +25254,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "not-a-lexical-unit",
-      "follow_up_reason_and_evidence": "Issue #219 reviewed this exact phrase as a compositional scene description and rejected it as a lexical unit. Reopen only if evidence establishes a fixed whole-phrase use."
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Revisit only in a bounded batch under the current lexical-validity contract; prior fit and reserve status are evidence, not admission authorization."
     },
     {
       "source_issue_batch_artifacts": [
@@ -40227,9 +40047,9 @@
     {
       "sequence": 2,
       "group": "Previously included M5-13/14/15 reserve candidates deferred only by capacity",
-      "count": 234,
-      "batching": "Issue #219 calibrated a 20-record first batch; review later batches in bounded groups sized from observed defects and workload.",
-      "gate": "Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota. Issue #219 admitted 0 of the original 254; 10 remain held and 10 were rejected as compositional phrases."
+      "count": 254,
+      "batching": "10–20 records per reviewed batch after the mandatory seed.",
+      "gate": "Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota."
     },
     {
       "sequence": 3,
@@ -40241,7 +40061,7 @@
     {
       "sequence": 4,
       "group": "Held or otherwise unresolved rows",
-      "count": 257,
+      "count": 247,
       "batching": "Resolve blockers individually, then place only cleared records into later bounded batches.",
       "gate": "Keep the 172 explicit sense/POS/context cases and 75 other rationale or lexical-unit holds visible until their evidence is complete."
     },
@@ -40253,5 +40073,5 @@
       "gate": "Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes."
     }
   ],
-  "canonical_mutation": "Issue #219 admitted no previously capacity-deferred M5-15 candidate; the reviewed slice retained its holds and rejections without changing canonical data."
+  "canonical_mutation": "none"
 }

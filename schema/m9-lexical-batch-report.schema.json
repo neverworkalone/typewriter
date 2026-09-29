@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://typewriter.neverworkalone.net/schema/m9-lexical-batch-report.schema.json",
+  "title": "Typewriter M9 lexical recovery batch report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "issue",
+    "parent_issue",
+    "batch_id",
+    "baseline",
+    "selection",
+    "outcomes",
+    "candidates",
+    "current"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "report_id": { "const": "issue-219-m9-lexical-batch-report-v1" },
+    "issue": { "const": 219 },
+    "parent_issue": { "const": 218 },
+    "batch_id": { "type": "string", "minLength": 1 },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_commit", "issue_210_inventory_sha256", "canonical_sha256", "seed_sha256", "canonical_start_count"],
+      "properties": {
+        "canonical_commit": { "type": "string", "minLength": 7 },
+        "issue_210_inventory_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_sha256": { "$ref": "#/$defs/sha256" },
+        "seed_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_start_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_id", "eligible_capacity_reserve_count", "cohort", "cohort_count", "selection_order", "candidate_source_sha256", "semantic_source_sha256"],
+      "properties": {
+        "policy_id": { "type": "string", "minLength": 1 },
+        "eligible_capacity_reserve_count": { "type": "integer", "minimum": 0 },
+        "cohort": { "type": "string", "minLength": 1 },
+        "cohort_count": { "type": "integer", "minimum": 0 },
+        "selection_order": { "type": "string", "minLength": 1 },
+        "candidate_source_sha256": { "$ref": "#/$defs/sha256" },
+        "semantic_source_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "outcomes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewed_count", "admitted_count", "held_count", "rejected_count", "corrected_count", "duplicate_count", "search_collision_count", "new_sense_count", "new_relation_count", "new_expression_count", "zero_relation_admission_count", "defect_classes", "review_duration"],
+      "properties": {
+        "reviewed_count": { "type": "integer", "minimum": 0 },
+        "admitted_count": { "type": "integer", "minimum": 0 },
+        "held_count": { "type": "integer", "minimum": 0 },
+        "rejected_count": { "type": "integer", "minimum": 0 },
+        "corrected_count": { "type": "integer", "minimum": 0 },
+        "duplicate_count": { "type": "integer", "minimum": 0 },
+        "search_collision_count": { "type": "integer", "minimum": 0 },
+        "new_sense_count": { "type": "integer", "minimum": 0 },
+        "new_relation_count": { "type": "integer", "minimum": 0 },
+        "new_expression_count": { "type": "integer", "minimum": 0 },
+        "zero_relation_admission_count": { "type": "integer", "minimum": 0 },
+        "defect_classes": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "review_duration": { "enum": ["NOT_MEASURED"] }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["selection_order", "inventory_id", "candidate_record_id", "canonical_id", "lemma", "pos", "record_type", "source_unit_id", "decision", "lexical_unit_judgment", "relation_count", "baseline_exact_result_ids", "search_result_ids"],
+        "properties": {
+          "selection_order": { "type": "integer", "minimum": 1 },
+          "inventory_id": { "type": "string", "pattern": "^m5-[0-9]+$" },
+          "candidate_record_id": { "type": "string", "pattern": "^w[0-9]+$" },
+          "canonical_id": {
+            "anyOf": [
+              { "type": "string", "pattern": "^w[0-9]+$" },
+              { "type": "null" }
+            ]
+          },
+          "lemma": { "type": "string", "minLength": 1 },
+          "pos": { "type": "string", "minLength": 1 },
+          "record_type": { "enum": ["entry", "expression"] },
+          "source_unit_id": { "type": "string", "minLength": 1 },
+          "decision": { "enum": ["included", "corrected", "held", "rejected"] },
+          "lexical_unit_judgment": { "enum": ["fixed-or-lexicalized-unit", "compositional-phrase", "unresolved"] },
+          "relation_count": { "type": "integer", "minimum": 0 },
+          "baseline_exact_result_ids": { "type": "array", "items": { "type": "string" } },
+          "search_result_ids": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "current": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_sha256", "canonical_start_count", "inventory_validation", "production_admission", "semantic_audit", "deterministic_sqlite", "logical_database_record_count", "logical_database_digest"],
+      "properties": {
+        "canonical_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_start_count": { "type": "integer", "minimum": 0 },
+        "inventory_validation": { "const": "pass" },
+        "production_admission": { "const": "pass" },
+        "semantic_audit": { "const": "pass" },
+        "deterministic_sqlite": { "const": "pass" },
+        "logical_database_record_count": { "type": "integer", "minimum": 0 },
+        "logical_database_digest": {
+          "$ref": "#/$defs/sha256",
+          "description": "Stable logical-content digest excluding Git provenance and Node/SQLite execution-environment metadata."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

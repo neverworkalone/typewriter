@@ -119,6 +119,7 @@ export function materializeLexicalUnitCandidates({
   firstCanonicalNumber,
   baseRecords = [],
   baseSeedTargets = [],
+  reopenedSeedTargetIds = [],
 } = {}) {
   requireString(batchId, 'candidate_source.batch_id');
   requireObject(source, 'candidate_source');
@@ -126,6 +127,7 @@ export function materializeLexicalUnitCandidates({
   requireSourceBytes(sourceBytes, 'candidate_source.source_bytes');
   requireArray(baseRecords, 'candidate_source.base_records');
   requireArray(baseSeedTargets, 'candidate_source.base_seed_targets');
+  requireArray(reopenedSeedTargetIds, 'candidate_source.reopened_seed_target_ids');
   if (!Number.isInteger(firstInventoryNumber) || firstInventoryNumber < 1) {
     fail('candidate_source.first_inventory_number must be a positive integer', 'LEXICAL_PRODUCTION_VALUE');
   }
@@ -162,6 +164,23 @@ export function materializeLexicalUnitCandidates({
   const observedAxisCounts = Object.fromEntries([...LEXICAL_SELECTION_AXES].map((axis) => [axis, 0]));
   const seenUnitIds = new Set();
   const seenLemmas = new Set();
+  const reopenedIdSet = new Set();
+  const reopenedTargetById = new Map();
+  for (const [index, inventoryId] of reopenedSeedTargetIds.entries()) {
+    requireString(inventoryId, `candidate_source.reopened_seed_target_ids[${index}]`);
+    if (reopenedIdSet.has(inventoryId)) {
+      fail(`candidate_source.reopened_seed_target_ids duplicates ${inventoryId}`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
+    const matches = baseSeedTargets.filter((target) => target?.inventory_id === inventoryId);
+    if (matches.length !== 1 || matches[0].status !== 'deferred') {
+      fail(
+        `candidate_source.reopened_seed_target_ids[${index}] must identify one deferred seed target`,
+        'LEXICAL_PRODUCTION_SOURCE_BINDING',
+      );
+    }
+    reopenedIdSet.add(inventoryId);
+    reopenedTargetById.set(inventoryId, matches[0]);
+  }
   const baseTerms = new Map();
   for (const [index, recordValue] of baseRecords.entries()) {
     const record = recordOf(recordValue);
@@ -174,10 +193,12 @@ export function materializeLexicalUnitCandidates({
   }
   for (const [index, target] of baseSeedTargets.entries()) {
     requireObject(target, `candidate_source.base_seed_targets[${index}]`);
-    // Only historical rejected rows may be re-opened under a new identity by
-    // a separately authored recovery source. Held, deferred, inflected-form,
-    // candidate, and legacy statusless rows retain collision ownership.
-    if (target.status === 'rejected') continue;
+    // Rejected historical rows may be re-opened under a new identity. A
+    // deferred row may be reopened only when its exact inventory identity is
+    // explicitly selected and later matches the source unit at that identity.
+    // Other deferred, held, candidate, inflected-form, and legacy rows retain
+    // collision ownership.
+    if (target.status === 'rejected' || reopenedIdSet.has(target.inventory_id)) continue;
     for (const term of [target.lemma, ...(Array.isArray(target.search_forms) ? target.search_forms : [])]) {
       if (typeof term === 'string' && term.length > 0) {
         baseTerms.set(term.normalize('NFC'), `seed:${target.inventory_id ?? index}`);
@@ -219,6 +240,20 @@ export function materializeLexicalUnitCandidates({
     const canonicalNumber = firstCanonicalNumber + index;
     const inventoryId = `m5-${String(inventoryNumber).padStart(4, '0')}`;
     const candidateRecordId = `w${String(canonicalNumber).padStart(4, '0')}`;
+    const reopenedTarget = reopenedTargetById.get(inventoryId);
+    if (reopenedTarget) {
+      const exactTargetIdentity = reopenedTarget.lemma === unit.lemma
+        && reopenedTarget.record_type === unit.record_type
+        && JSON.stringify(reopenedTarget.search_forms) === JSON.stringify([unit.lemma])
+        && JSON.stringify(reopenedTarget.pos) === JSON.stringify([unit.pos]);
+      if (!exactTargetIdentity) {
+        fail(
+          `${label} does not exactly match deferred seed target ${inventoryId}`,
+          'LEXICAL_PRODUCTION_SOURCE_BINDING',
+        );
+      }
+      reopenedTargetById.delete(inventoryId);
+    }
     const identity = {
       catalog_index: index,
       slot_id: `${batchId}-slot-${String(index + 1).padStart(4, '0')}`,
@@ -272,6 +307,12 @@ export function materializeLexicalUnitCandidates({
     }
     identities.push(identity);
     candidateRecords.push(candidateRecord);
+  }
+  if (reopenedTargetById.size > 0) {
+    fail(
+      `candidate_source.reopened_seed_target_ids are not covered by candidate identities: ${[...reopenedTargetById.keys()].join(', ')}`,
+      'LEXICAL_PRODUCTION_SOURCE_BINDING',
+    );
   }
   if (source.axis_counts !== undefined
     && JSON.stringify(observedAxisCounts) !== JSON.stringify(source.axis_counts)) {

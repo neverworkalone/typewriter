@@ -49,6 +49,8 @@ const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const CANDIDATE_SOURCE_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-211-lexical-unit-source.json');
 const SEMANTIC_DECISION_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-211-semantic-decisions.json');
 const CANONICAL_IMPORT_PATH = path.join(REPOSITORY_DIRECTORY, 'data/canonical/issue-211-bounded-recovery.jsonl');
+const M9_BASE_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-219-m9-a-base-canonical');
+const M9_BASE_SEED_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-219-m9-a-base-seed.json');
 const ROOT_DECISION_SOURCE_PATH = path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-decision-source.json');
 const TARGET_SEED_PATH = DEFAULT_SEED_PATH;
 const PROMOTION_LEDGER_PATH = DEFAULT_PROMOTION_PATH;
@@ -102,6 +104,18 @@ function semanticDecisionConfig(candidateSource, semanticSource) {
   };
 }
 
+export function projectDecisionSourceToCanonical(sourceValue, recordInfos) {
+  const source = structuredClone(sourceValue);
+  const recordIds = new Set(recordInfos.map((recordInfo) => recordOf(recordInfo).id));
+  const digest = canonicalRecordsSha256(recordInfos);
+  source.source.canonical_records_sha256 = digest;
+  source.authored_review.source.canonical_records_sha256 = digest;
+  source.authored_review.records = source.authored_review.records
+    .filter(({ record_id: recordId }) => recordIds.has(recordId));
+  source.authored_review_sha256 = sha256Json(source.authored_review);
+  return source;
+}
+
 export function validateIssue211SemanticDecisionSource({
   candidateSource,
   semanticSource,
@@ -118,9 +132,10 @@ export function validateIssue211SemanticDecisionSource({
   });
 }
 
-function productionSemanticReview(record, identity, decisionRow, decisionSource, selectionStatus) {
+function productionSemanticReview(record, identity, decisionRow, decisionSource, selectionStatus, options = {}) {
   const sourceId = decisionSource.source.source_id;
-  const semanticReviewSourcePath = 'data/batches/issue-211-semantic-decisions.json';
+  const semanticReviewSourcePath = options.semanticReviewSourcePath ?? 'data/batches/issue-211-semantic-decisions.json';
+  const verificationPassId = options.verificationPassId ?? VERIFICATION_PASS_ID;
   const senseReviews = decisionRow.sense_reviews;
   const senseReviewById = new Map(senseReviews.map((row) => [row.sense_id, row]));
   const semanticEvidenceForSense = (sense) => {
@@ -177,7 +192,7 @@ function productionSemanticReview(record, identity, decisionRow, decisionSource,
     sense_boundary: {
       status: 'pass',
       decision_source_id: sourceId,
-      review_id: `${VERIFICATION_PASS_ID}:canonical:${record.id}:boundary`,
+      review_id: `${verificationPassId}:canonical:${record.id}:boundary`,
       method: 'gloss-and-usage-pairwise-v2',
       independence: {
         independent_of_sense_count: true,
@@ -203,7 +218,7 @@ function productionSemanticReview(record, identity, decisionRow, decisionSource,
       decision: 'verified',
       observed_pos: record.senses.map(({ pos }) => pos),
       decision_source_id: sourceId,
-      rationale: `${identity.inventory_id} POS was verified in ${VERIFICATION_PASS_ID}.`,
+      rationale: `${identity.inventory_id} POS was verified in ${verificationPassId}.`,
     },
     expression: {
       status: 'pass',
@@ -211,7 +226,7 @@ function productionSemanticReview(record, identity, decisionRow, decisionSource,
       expected_record_type: record.record_type,
       observed_record_type: record.record_type,
       decision_source_id: sourceId,
-      rationale: `${identity.inventory_id} record type was verified in ${VERIFICATION_PASS_ID}.`,
+      rationale: `${identity.inventory_id} record type was verified in ${verificationPassId}.`,
     },
     relation: {
       status: 'pass',
@@ -234,7 +249,7 @@ function productionSemanticReview(record, identity, decisionRow, decisionSource,
   };
 }
 
-function productionReviewRows(identities, candidateRecords, semanticDecisionSource) {
+export function productionReviewRows(identities, candidateRecords, semanticDecisionSource, options = {}) {
   const selectionStatuses = selectionOutcomeById(semanticDecisionSource.selection);
   return identities.map((identity, index) => {
     const candidate = candidateRecords[index];
@@ -263,44 +278,56 @@ function productionReviewRows(identities, candidateRecords, semanticDecisionSour
         row,
         semanticDecisionSource,
         selectionStatus,
+        options,
       ),
       ...(reviewedRecord ? { reviewed_record: reviewedRecord } : {}),
     };
   });
 }
 
-function productionStageEvidence({ candidateSourceBytes, semanticSourceBytes, prospectiveRecords, semanticAudit }) {
+export function productionStageEvidence({
+  candidateSourceBytes,
+  semanticSourceBytes,
+  prospectiveRecords,
+  semanticAudit,
+  issue = 211,
+  batchId = 'm5-211-issue-204-bounded-recovery-20260928',
+  generationPassId = 'issue-211-candidate-authoring-20260928-r1',
+  verificationPassId = VERIFICATION_PASS_ID,
+  candidateSourcePath = 'data/batches/issue-211-lexical-unit-source.json',
+  semanticSourcePath = 'data/batches/issue-211-semantic-decisions.json',
+}) {
   const prospectiveBytes = jsonlBytes(prospectiveRecords.map(recordOf));
   const auditBytes = serializeSemanticAuditArtifact(semanticAudit);
   const authorizationBytes = productionSourceBytes({
-    issue: 211,
-    batch_id: 'm5-211-issue-204-bounded-recovery-20260928',
-    generation_pass_id: 'issue-211-candidate-authoring-20260928-r1',
-    verification_pass_id: VERIFICATION_PASS_ID,
+    issue,
+    batch_id: batchId,
+    generation_pass_id: generationPassId,
+    verification_pass_id: verificationPassId,
     decision: 'admit',
   });
   const admissionBytes = jsonBytes({
     artifact_id: 'issue-211-admission-stage',
-    issue: 211,
-    batch_id: 'm5-211-issue-204-bounded-recovery-20260928',
+    issue,
+    batch_id: batchId,
     authorization_sha256: productionBytesSha256(authorizationBytes),
   });
   return {
     candidate_intake: {
       status: 'complete',
-      source_path: 'data/batches/issue-211-lexical-unit-source.json',
+      source_path: candidateSourcePath,
       source_bytes: candidateSourceBytes,
       source_sha256: sha256Bytes(candidateSourceBytes),
     },
     semantic_review: {
       status: 'complete',
-      source_path: 'data/batches/issue-211-semantic-decisions.json',
+      source_path: semanticSourcePath,
       source_bytes: semanticSourceBytes,
       source_sha256: sha256Bytes(semanticSourceBytes),
     },
     selection: {
       status: 'complete',
-      source_path: 'data/batches/issue-211-semantic-decisions.json',
+      source_path: semanticSourcePath,
       source_bytes: semanticSourceBytes,
       source_sha256: sha256Bytes(semanticSourceBytes),
       policy: 'shared-authored-axis-coverage-selection-v6',
@@ -339,11 +366,19 @@ function readJsonl(bytes, label) {
   });
 }
 
-async function validateExactSearch({ baseRecords, admittedRecords, units }) {
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-211-'));
+export async function validateExactSearch({
+  baseRecords,
+  admittedRecords,
+  units,
+  batchLabel = 'Issue #211',
+  temporaryPrefix = 'typewriter-issue-211-',
+  workflowLemmas = ['사람', '없다'],
+}) {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), temporaryPrefix));
   const baseDirectory = path.join(temporaryDirectory, 'base-canonical');
   const baseDatabasePath = path.join(temporaryDirectory, 'base.sqlite');
   const currentDatabasePath = path.join(temporaryDirectory, 'current.sqlite');
+  const baselineResultIdsByLemma = new Map();
   await import('node:fs/promises').then(({ mkdir }) => mkdir(baseDirectory, { recursive: true }));
   await writeFile(path.join(baseDirectory, 'base.jsonl'), jsonlBytes(baseRecords.map(recordOf)));
   let baseDatabase;
@@ -365,19 +400,21 @@ async function validateExactSearch({ baseRecords, admittedRecords, units }) {
     currentDatabase = new DatabaseSync(currentDatabasePath, { readOnly: true });
 
     for (const unit of units) {
+      const baselineResultIds = findRecordsByExactTerm(baseDatabase, unit.lemma).map(({ id }) => id);
       assert.deepEqual(
-        findRecordsByExactTerm(baseDatabase, unit.lemma).map(({ id }) => id),
+        baselineResultIds,
         [],
-        `${unit.lemma} must have no pre-existing exact canonical or generated-surface result`,
+        `${batchLabel}: ${unit.lemma} must have no pre-existing exact canonical or generated-surface result`,
       );
+      baselineResultIdsByLemma.set(unit.lemma, baselineResultIds);
     }
 
     const resultByLemma = new Map();
     for (const record of admittedRecords) {
       const exactRows = findRecordsByExactTerm(currentDatabase, record.lemma);
-      assert.deepEqual(exactRows.map(({ id }) => id), [record.id], `${record.lemma} exact result`);
+      assert.deepEqual(exactRows.map(({ id }) => id), [record.id], `${batchLabel}: ${record.lemma} exact result`);
       const response = findRecordsBySearchTerm(currentDatabase, record.lemma);
-      assert.equal(response.status, 'ready', `${record.lemma} search status`);
+      assert.equal(response.status, 'ready', `${batchLabel}: ${record.lemma} search status`);
       assert.deepEqual(response.matches.map(({ id, match }) => ({
         id,
         kind: match.kind,
@@ -388,16 +425,21 @@ async function validateExactSearch({ baseRecords, admittedRecords, units }) {
         kind: 'exact-lemma',
         field: 'lemma',
         value: record.lemma,
-      }], `${record.lemma} exact precedence`);
+      }], `${batchLabel}: ${record.lemma} exact precedence`);
       const relationCount = record.senses.reduce(
         (count, sense) => count + getSenseRelations(currentDatabase, sense.id).length,
         0,
       );
-      assert.equal(relationCount, 0, `${record.lemma} relation-empty admission`);
-      resultByLemma.set(record.lemma, { record_id: record.id, result_ids: exactRows.map(({ id }) => id), relation_count: relationCount });
+      assert.equal(relationCount, 0, `${batchLabel}: ${record.lemma} relation-empty admission`);
+      resultByLemma.set(record.lemma, {
+        record_id: record.id,
+        baseline_result_ids: baselineResultIdsByLemma.get(record.lemma) ?? [],
+        result_ids: exactRows.map(({ id }) => id),
+        relation_count: relationCount,
+      });
     }
 
-    for (const lemma of ['사람', '없다']) {
+    for (const lemma of workflowLemmas) {
       const record = admittedRecords.find(({ lemma: candidateLemma }) => candidateLemma === lemma);
       const response = findRecordsBySearchTerm(currentDatabase, lemma);
       assert.equal(response.status, 'ready', `${lemma} writer workflow status`);
@@ -488,17 +530,19 @@ function renderReport({ semanticSource, identities, recordsById, searchResults }
 }
 
 export async function validateIssue211({ writeReport = false } = {}) {
-  const [candidateSourceBytes, semanticSourceBytes, importBytes, seedBytes, oldDecisionBytes] = await Promise.all([
+  const [candidateSourceBytes, semanticSourceBytes, importBytes, seedBytes, baseSeedSnapshotBytes, oldDecisionBytes] = await Promise.all([
     readFile(CANDIDATE_SOURCE_PATH),
     readFile(SEMANTIC_DECISION_PATH),
     readFile(CANONICAL_IMPORT_PATH),
     readFile(TARGET_SEED_PATH),
+    readFile(M9_BASE_SEED_PATH),
     readFile(path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-204-pilot-decisions.json')),
   ]);
   const candidateSource = JSON.parse(candidateSourceBytes.toString('utf8'));
   const semanticSource = JSON.parse(semanticSourceBytes.toString('utf8'));
   const importRecords = readJsonl(importBytes, 'Issue #211 canonical import');
   const seed = JSON.parse(seedBytes.toString('utf8'));
+  const historicalSeed = JSON.parse(baseSeedSnapshotBytes.toString('utf8'));
   const oldLedger = JSON.parse(oldDecisionBytes.toString('utf8'));
   const historicalRejected = oldLedger.decisions.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'reject');
   assert.equal(historicalRejected.length, EXPECTED_LEMMAS.length, 'Issue #204 rejected candidate count');
@@ -515,7 +559,13 @@ export async function validateIssue211({ writeReport = false } = {}) {
     assert.equal(unit.pos, historical.morphology_proposal.pos, `${unit.lemma} independently reviewed POS`);
   }
 
-  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const historicalCanonical = await readCanonicalRecords(M9_BASE_CANONICAL_DIRECTORY);
+  const currentCanonicalById = new Map(currentCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
+  for (const recordInfo of historicalCanonical.records) {
+    const record = recordOf(recordInfo);
+    assert.deepEqual(currentCanonicalById.get(record.id), record, `${record.id} frozen Issue #219 base record is unchanged`);
+  }
   const candidateIds = new Set(semanticSource.candidate_records.map(({ id }) => id));
   assert.equal(candidateIds.size, EXPECTED_LEMMAS.length, 'candidate record identities are unique');
   const admittedDecisionIds = new Set(semanticSource.decisions
@@ -524,7 +574,7 @@ export async function validateIssue211({ writeReport = false } = {}) {
   const importedIds = new Set(importRecords.map(({ id }) => id));
   assert.deepEqual([...importedIds].sort(), [...admittedDecisionIds].sort(), 'canonical import contains exactly selected decisions');
   assert.equal(importRecords.length, EXPECTED_LEMMAS.length - 1, 'Issue #211 admitted start count');
-  const canonicalById = new Map(canonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
+  const canonicalById = currentCanonicalById;
   for (const candidate of semanticSource.candidate_records) {
     const decision = semanticSource.decisions.find(({ candidate_record_id: id }) => id === candidate.id);
     const canonicalRecord = canonicalById.get(candidate.id);
@@ -538,12 +588,12 @@ export async function validateIssue211({ writeReport = false } = {}) {
   assert.deepEqual(importRecords, semanticSource.candidate_records.filter(({ id }) => admittedDecisionIds.has(id)), 'canonical import bytes match authored candidate records');
 
   const baseSeed = {
-    ...structuredClone(seed),
-    targets: seed.targets.filter(({ inventory_id: id }) => !semanticSource.decisions.some((decision) => decision.inventory_id === id)),
+    ...structuredClone(historicalSeed),
+    targets: historicalSeed.targets.filter(({ inventory_id: id }) => !semanticSource.decisions.some((decision) => decision.inventory_id === id)),
   };
   const baseSeedBytes = jsonBytes(baseSeed);
   assert.equal(sha256Bytes(baseSeedBytes), candidateSource.base_seed_sha256, 'candidate source base seed binding');
-  const baseRecords = canonical.records.filter((recordInfo) => !importedIds.has(recordOf(recordInfo).id));
+  const baseRecords = historicalCanonical.records.filter((recordInfo) => !importedIds.has(recordOf(recordInfo).id));
   assert.equal(canonicalRecordsSha256(baseRecords), candidateSource.base_canonical_records_sha256, 'candidate source base canonical binding');
   const firstInventoryNumber = Math.max(...baseSeed.targets.map(({ inventory_id: id }) => Number(id.match(/^m5-(\d+)$/u)?.[1] ?? 0))) + 1;
   const firstCanonicalNumber = Math.max(...baseRecords.map((recordInfo) => Number(recordOf(recordInfo).id.match(/^w(\d+)$/u)?.[1] ?? 0))) + 1;
@@ -580,11 +630,16 @@ export async function validateIssue211({ writeReport = false } = {}) {
   assert.equal(activeHeldRows.length, 1, 'only the held Issue #211 decision is retained in the target seed');
   assert.equal(activeHeldRows[0].status, 'held', 'held Issue #211 target status');
 
-  const rootDecisionSource = await readSemanticDecisionSourceArtifact(ROOT_DECISION_SOURCE_PATH);
-  const prospectiveDigest = canonicalRecordsSha256(canonical.records);
-  assert.equal(rootDecisionSource.source.canonical_records_sha256, prospectiveDigest, 'complete canonical decision source digest');
+  const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(ROOT_DECISION_SOURCE_PATH);
+  const currentDigest = canonicalRecordsSha256(currentCanonical.records);
+  assert.equal(currentRootDecisionSource.source.canonical_records_sha256, currentDigest, 'complete current canonical decision source digest');
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
-  const semanticAudit = buildSemanticAuditFromDecisionSource(canonical.records, rootDecisionSource, {
+  buildSemanticAuditFromDecisionSource(currentCanonical.records, currentRootDecisionSource, {
+    artifactId: 'issue-211-current-canonical-semantic-audit',
+    batchDecisionSources,
+  });
+  const rootDecisionSource = projectDecisionSourceToCanonical(currentRootDecisionSource, historicalCanonical.records);
+  const historicalSemanticAudit = buildSemanticAuditFromDecisionSource(historicalCanonical.records, rootDecisionSource, {
     artifactId: 'issue-211-complete-canonical-semantic-audit',
     baseRecords,
     batchDecisionSources,
@@ -595,13 +650,13 @@ export async function validateIssue211({ writeReport = false } = {}) {
     candidateRecords: candidateSet.candidateRecords,
     reviews: reviewRows,
     baseRecords,
-    prospectiveRecords: canonical.records,
-    semanticAudit,
+    prospectiveRecords: historicalCanonical.records,
+    semanticAudit: historicalSemanticAudit,
     stageEvidence: productionStageEvidence({
       candidateSourceBytes,
       semanticSourceBytes,
-      prospectiveRecords: canonical.records,
-      semanticAudit,
+      prospectiveRecords: historicalCanonical.records,
+      semanticAudit: historicalSemanticAudit,
     }),
     catalogCount: EXPECTED_LEMMAS.length,
     expectedSelectedCount: importRecords.length,
@@ -646,8 +701,8 @@ export async function validateIssue211({ writeReport = false } = {}) {
     admitted_relation_count: importRecords.reduce((count, record) => count + record.senses.reduce((inner, sense) => inner + (sense.relations?.length ?? 0), 0), 0),
     relation_empty_admitted_count: importRecords.filter((record) => record.senses.every((sense) => (sense.relations ?? []).length === 0)).length,
     expression_count: importRecords.filter(({ record_type: recordType }) => recordType === 'expression').length,
-    canonical_record_count: canonical.records.length,
-    canonical_digest: prospectiveDigest,
+    canonical_record_count: currentCanonical.records.length,
+    canonical_digest: currentDigest,
     production_admission: 'pass',
     inventory_validation: inventoryValidation.status ?? 'pass',
     search_results: Object.fromEntries(importRecords.map(({ lemma }) => [lemma, searchResults[lemma]])),
