@@ -40,6 +40,8 @@ The first repeatability run used the pinned 2025 Written Corpus snapshot: 3,410 
 
 The authored review included 9 of 20 candidates and held 11 for unresolved morphology, sense boundaries, or unmeasured writer-usefulness evidence; it rejected none. The 9 canonical entries have zero relations because this slice did not author candidate-specific relation evidence. Their Typewriter-authored diagnostic sentence frames are not corpus quotations or writer-outcome measurements. Only the reviewed candidate/evidence metadata, semantic source, and canonical JSONL are tracked. Local paragraph contexts, index, candidate inventory, selection, and text-free local evidence remain ignored under `data/reference/`.
 
+Candidate inventory IDs `m5-5426` through `m5-5445` were allocated after the existing promotion ledger's highest ID (`m5-5425`), including the 11 held rows so later review cannot reuse their identities. Only the nine admitted IDs have canonical promotion rows; the M5 target seed remains a historical snapshot and is not rewritten for this corpus batch.
+
 The validation binds the tracked review ledger to the byte hashes of the ignored selection and text-free evidence artifacts, checks their exact morphology/coverage/provenance fields, then runs shared source-bound semantic admission and complete canonical coverage. Reproducing the exact candidate set requires the same approved corpus snapshot, exclusion sources, canonical surface revision, candidate limit, and pinned Kiwi/Node/SQLite tools.
 
 ## Validate and reuse
