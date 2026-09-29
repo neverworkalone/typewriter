@@ -21,9 +21,9 @@ function parseJsonl(bytes) {
   return bytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
 }
 
-test('Issue #219 admissions resolve their exact writer queries with zero relations', async () => {
+test('Issue #219 admitted expression resolves its exact writer query with zero relations', async () => {
   const records = parseJsonl(await readFile(IMPORT_PATH));
-  assert.equal(records.length, 20);
+  assert.deepEqual(records.map(({ id }) => id), ['w4701']);
   const outputDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-219-search-'));
   const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
   let database;
