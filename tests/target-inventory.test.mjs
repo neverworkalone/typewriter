@@ -40,12 +40,12 @@ async function validateModifiedInventory(mutator) {
 test('validates the M5-16 inventory and keeps independent start counts', async () => {
   const summary = await validateTargetInventory();
 
-  assert.equal(summary.inventoryEntryCount, 5669);
-  assert.equal(summary.canonicalRecordCount, 5103);
-  assert.equal(summary.currentStartCount, 5061);
+  assert.equal(summary.inventoryEntryCount, 5671);
+  assert.equal(summary.canonicalRecordCount, 5105);
+  assert.equal(summary.currentStartCount, 5063);
   assert.equal(summary.currentReferenceOnlyCount, 42);
   assert.equal(summary.candidateStartCount, 19);
-  assert.equal(summary.plannedStartCount, 5080);
+  assert.equal(summary.plannedStartCount, 5082);
   assert.equal(summary.heldCount, 221);
   assert.equal(summary.rejectedCount, 62);
   assert.equal(summary.deferredCount, 259);
@@ -63,11 +63,11 @@ test('validates the M5-16 inventory and keeps independent start counts', async (
     E: 452,
     O: 915,
     Q: 437,
-    S: 654,
+    S: 656,
     X: 337,
   });
   assert.deepEqual(summary.recordTypeCounts, {
-    entry: 3921,
+    entry: 3923,
     expression: 1159,
   });
 });
@@ -78,8 +78,8 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
   try {
     const generated = await generateTargetInventory({ outputPath });
-    assert.equal(generated.entries.length, 5669);
-    assert.equal(generated.canonical_snapshot.record_count, 5103);
+    assert.equal(generated.entries.length, 5671);
+    assert.equal(generated.canonical_snapshot.record_count, 5105);
     assert.equal(
       generated.entries.find((entry) => entry.inventory_id === 'm5-001').source,
       'canonical',
@@ -101,7 +101,7 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
 test('inventory candidates remain outside canonical input and SQLite build scope', async () => {
   const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  assert.equal(canonical.records.length, 5103);
+  assert.equal(canonical.records.length, 5105);
   assert.equal(canonical.records.some(({ record }) => record.id === 'm5-001'), false);
   assert.equal(canonical.records.some(({ record }) => record.id === 'w301'), true);
   assert.equal(canonical.records.some(({ record }) => record.lemma === '말문이 막히다'), false);
