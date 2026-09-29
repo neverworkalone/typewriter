@@ -163,3 +163,13 @@ exact-search SQL, result filtering, the M4 fixture, M5 candidate planning, and
 M6 reachability denominators all preserve the older start/reference-only split.
 Task B must update those shared boundaries before any bounded recovery. No
 historical candidate row is reclassified by this report.
+
+## Completion note
+
+This retrospective records the pre-implementation boundary. Issue #209
+implemented Task B across shared lexical admission, canonical validation,
+search, and Extension/Web disclosure. Issues #210 and #211 then audited the
+historical inventory and completed the bounded re-review of Issue #204; Issue
+#212 records the final current-state coverage and the handoff contract. The
+original impact table and counts above remain historical evidence, not current
+eligibility rules. See the [Issue #212 final coverage audit](issue-212-final-coverage-handoff.md).

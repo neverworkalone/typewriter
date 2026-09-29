@@ -88,13 +88,14 @@ deterministic source/ID ties; it does not use frequency or generated scores.
   SQLite WASM runtime assets.
 
 The main-thread adapter in [`src/runtime/query-adapter.js`](../src/runtime/query-adapter.js)
-exposes only exact start-record search, record/sense/relation reads, metadata, and
+exposes exact lexical-record search, record/sense/relation reads, metadata, and
 runtime status. The worker and Node helper share
 [`src/runtime/sqlite-query.js`](../src/runtime/sqlite-query.js), which uses
 [`src/runtime/search-query.js`](../src/runtime/search-query.js) for the pure search
 normalizer and response contract.
-Reference-only records can be fetched by ID for relation display, but are never
-returned from free-term search. The worker loads its own packaged
+Historical `reference-only` role does not restrict exact lexical search; every
+valid in-scope lexical record can be returned by a matching lemma or curated
+search form. The worker loads its own packaged
 database with extension-relative URLs, keeps one initialization promise, enables
 `PRAGMA query_only = ON`, and returns structured errors for asset, WASM, database,
 query, and lifecycle failures. During the same product load it verifies that a

@@ -1,5 +1,11 @@
 # M5-16 final 5K audit and M6 handoff
 
+> Historical snapshot: the counts and `start`/`reference-only` eligibility
+> wording in this M5 report describe the M5-15 state. Issue #209 made valid,
+> supported lexical records searchable regardless of historical role. See the
+> [Issue #212 final coverage audit](issue-212-final-coverage-handoff.md) for
+> current counts and the operative search contract.
+
 ## Decision
 
 The final M5 canonical snapshot reaches exactly 5,000 search-start records. The
