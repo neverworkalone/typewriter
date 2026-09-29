@@ -156,7 +156,7 @@ When current data and current requirements are fully represented by a simpler de
 
 Unless the user explicitly requests another base, start every new issue implementation from the latest remote `master` head.
 
-Fetch the remote before creating the issue branch. Do not base new issue work on a stale local `master`, a previous issue branch, or an existing PR branch.
+Check remote `master` with `git ls-remote`; run `git fetch` only if that commit is not available locally. Do not base new issue work on a stale local `master`, a previous issue branch, or an existing PR branch.
 
 Preserve unrelated local changes. Use a separate worktree when necessary.
 
