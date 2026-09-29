@@ -195,11 +195,11 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/validation/m6-2-inflection-exceptions.json` | `037661676b8ab5e106a4a9889f3e018d97c9b5d8c4c4b18367d4247cbc8916c6` |
 | `data/validation/m6-3-surface-form-review.json` | `0f6cc8f968c7a208dfcee33e33d82936827dbe2ea9433de27ab4c249501cce60` |
 | `docs/editorial-model.md` | `308d56389339f8aa82247ef6382f314637087351b911e4cf642bee055ae2bdaf` |
-| `docs/issue-208-searchable-start-retrospective.md` | `2412184b048853d870a5914f28d0eec6d65de4562585d62b113d7a0c3ac3f8b6` |
+| `docs/issue-208-searchable-start-retrospective.md` | `3e5dfd512389b4a505010686c10c32e0cdfdbb328290e1f4f0bc92a8f6aa6621` |
 | `docs/issue-211-bounded-lexical-recovery.md` | `e0a264b879f612b32fd20ebbb3c0a475d324ded5f461d4d0406f27bcb820a294` |
 | `docs/m3-handoff.md` | `215dedb02808c108ba06c9d20258d9fde5c03b3c5a35da556320a8c652ab3b04` |
 | `docs/m4-handoff.md` | `4492845b7a362c70b4ddb7a4c7582f2d37b3e6d2c9a9afa394edb414ed714c49` |
-| `docs/m5-16-final-audit-report.md` | `d464778dbe32f4f79f9831e12ad68271bc25fcac70eedca675e9d69d386e249a` |
+| `docs/m5-16-final-audit-report.md` | `a60a58a20551d72c0388b8fd99fe5d92b3fd19c3a76cd3701c7d7e8fc82739f8` |
 | `docs/m5-target-inventory.md` | `a819063b520935291f310d59a78ca37c9616d3266039ebd4952a61e48a82f88e` |
 | `docs/m6-1-quality-baseline.json` | `4eb83fd3d19c8ff0b522300430e4107f002850907161f2bdcd97ba3872195209` |
 | `docs/m6-1-searchable-lexical-baseline.json` | `1bb15c9a6f65c5120c9bfdd651521f0c73ab8583e0c8a4a3fd76b75751f86d53` |

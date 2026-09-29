@@ -2,6 +2,12 @@
 
 Audit date: 2026-09-27
 
+> Historical release-candidate snapshot: the source revision, counts, and
+> package digests below remain bound to that candidate. Its 5,000-start role
+> count is not the current search-eligibility denominator. Issue #212 records
+> the current role-independent coverage; this note does not change M8's
+> independent data-redistribution hold.
+
 ## Decision
 
 **M7 engineering acceptance: PASS** on the exact candidate source revision below.

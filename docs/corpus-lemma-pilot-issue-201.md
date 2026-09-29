@@ -57,6 +57,29 @@ the database file is never loaded into a JavaScript or Python buffer.
   literal count is for that observed surface; it is not a lemma or token
   frequency. Search rows are limited in SQL before reaching JavaScript.
 
+## Future corpus expansion handoff (Issue #212)
+
+Corpus frequency can help identify words for later relation-enrichment work; it
+does not determine whether a valid, in-scope lexical record may be admitted.
+Do not exclude an otherwise valid entry because it is common, general, has low
+standalone writer usefulness, or has no relations. An admitted record may keep
+an empty relation list until bounded editorial evidence supports enrichment.
+
+Before proposing admission, keep the approved source and permitted use, source
+or index digest, observed surface, analyzed morpheme span, proposed lemma and
+POS, ambiguity, and bounded evidence provenance traceable. Check lexical-unit
+identity, supported POS and sense boundaries, exact canonical lemma coverage,
+curated search-form coverage, supported generated-surface collisions, and
+cross-record duplicates. Resolve uncertain identity, sense, or collisions
+before admission. Do not commit raw corpus text or evidence excerpts.
+
+Pass cleared records through the ordinary shared lexical producer, admission,
+canonical validator, and direct-search contract. Historical `start` and
+`reference-only` roles do not alter eligibility. Keep relation enrichment as a
+separate evidence-bound editorial decision. This handoff defines how a future
+bounded batch should work; it does not authorize a larger corpus batch in Issue
+#212.
+
 ## Local outputs and publication gate
 
 The run writes only under ignored `data/reference/pilots/issue-201/`:
