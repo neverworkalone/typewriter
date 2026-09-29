@@ -134,7 +134,7 @@ export function materializeLexicalUnitCandidates({
   if (!Number.isInteger(firstCanonicalNumber) || firstCanonicalNumber < 1) {
     fail('candidate_source.first_canonical_number must be a positive integer', 'LEXICAL_PRODUCTION_VALUE');
   }
-  if (source.contract_version !== 'lexical-candidate-source-v1'
+  if (!['lexical-candidate-source-v1', 'lexical-candidate-source-v2'].includes(source.contract_version)
     || source.kind !== 'typewriter-authored-lexical-unit-source'
     || typeof source.source_id !== 'string'
     || !/^[0-9a-f]{64}$/u.test(source.base_canonical_records_sha256)
@@ -240,6 +240,9 @@ export function materializeLexicalUnitCandidates({
     observedAxisCounts[unit.axis] += 1;
     const hasExplicitRecoveryIdentity = Object.hasOwn(unit, 'inventory_id')
       || Object.hasOwn(unit, 'candidate_record_id');
+    if (source.contract_version === 'lexical-candidate-source-v2' && !hasExplicitRecoveryIdentity) {
+      fail(`${label} must bind explicit recovery identities under lexical-candidate-source-v2`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
     if (hasExplicitRecoveryIdentity
       && (typeof unit.inventory_id !== 'string'
         || !/^m5-[0-9]+$/u.test(unit.inventory_id)

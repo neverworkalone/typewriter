@@ -218,28 +218,28 @@
       },
       {
         "path": "data/batches/issue-220-m9-b-batch-01-lexical-unit-source.json",
-        "sha256": "b85568a31c1d2dd87892ddaa0dea3160bf7c0dd92d2315329d734db8e9b6cb48",
+        "sha256": "35e8a05ddaf63202ca66ef648cd0ac057676b1177760aef22ca96d5d72503011",
         "byte_count": 21835
       },
       {
         "path": "data/batches/issue-220-m9-b-batch-01-semantic-decisions.json",
-        "sha256": "294e96995bfc7b49f58e04e95b4aaf0cee4aeb423df50dcfdb553ae500fb4406",
+        "sha256": "b5ff1276b356873a6ac4ba1a0490d78294ab4028bb5e84c4b0ea3f2d21074427",
         "byte_count": 57303
       },
       {
         "path": "data/batches/issue-220-m9-b-batch-02-lexical-unit-source.json",
-        "sha256": "ef6d10774ad0968e60ca933a5e383c33a6c9f95e7306a90cde515e6d0e50960f",
+        "sha256": "e190d5f30333756eb11caa0ac28332100da2dc47c2566e24a8a214e6d17c1fed",
         "byte_count": 21818
       },
       {
         "path": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-        "sha256": "351d6391bac08eb2256c8fb3966769ac3ca80490b0c92fd74aaedb6c25782fad",
+        "sha256": "b2a6f934a9da04cd7db40fe7f0bd32f4d30f4e15018bf8b76f15e6db409fb739",
         "byte_count": 61489
       },
       {
         "path": "data/batches/issue-220-m9-b-selection.json",
-        "sha256": "98fae63f7e7cfef333f3637505435d52a1316db6b90ec3f61a12681dfbe7c3c9",
-        "byte_count": 154013
+        "sha256": "6ecc172fb2286cf0babd010c3b125cacd6553300ca66f5fa7b11afd981bd0be9",
+        "byte_count": 154037
       },
       {
         "path": "data/batches/m5-10-wave-a.json",
@@ -483,7 +483,7 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "f10a25887ee3abd456e6922879525439d7ef839ef760695bea2030af7619a512",
+        "sha256": "95a35449f069a3e81f701d750f12fffb966e3f2896ba55437485788a1be66d64",
         "byte_count": 2514539
       },
       {
@@ -493,7 +493,7 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "12ff39f932da33037066c67c9f059724d436722b78b3b67b856ab1d1034d0d16",
+        "sha256": "09fdb1bf41b88b8f130252efb04c7a852a03e58e7efcfdf12ae9acf740d4f692",
         "byte_count": 4867257
       },
       {
@@ -503,7 +503,7 @@
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "3db6bbb02225e3577ed53dc11c89d88da43a49ae803ee557c46c1e6b47e2ce33",
+        "sha256": "c2afc014c0a7d40c056478002923a561e6c7bfccb340182e85e50785ab78982d",
         "byte_count": 29019
       },
       {
@@ -613,8 +613,8 @@
       },
       {
         "path": "scripts/batch/lexical-production.mjs",
-        "sha256": "564eee4feb02fbbcd00b995ba80bb80be8784ace33ddbb4fa4a7d8f69643d34b",
-        "byte_count": 35792
+        "sha256": "a47c6e7ecb955b2d6e807d3d8fb2998724d0e126990f4b8b70a0680a290ba44e",
+        "byte_count": 36073
       },
       {
         "path": "scripts/batch/lexical-selection.mjs",
@@ -643,8 +643,8 @@
       },
       {
         "path": "scripts/batch/validate-issue-220.mjs",
-        "sha256": "dd62055714563b2abdd6055bd0ed7b69af2a4a56cdce7548707621c0650f5035",
-        "byte_count": 55431
+        "sha256": "6fb9b52742e6ca943b127ef033380c2ec20dab6d0669db4c3b8ba379371edaff",
+        "byte_count": 55477
       },
       {
         "path": "scripts/ci/registry.mjs",
@@ -668,8 +668,8 @@
       },
       {
         "path": "tests/issue-211-search.test.mjs",
-        "sha256": "2c8936af05ef33e592cc9482f239ef75609ebcfbd992a2ade1b79856897cde25",
-        "byte_count": 7228
+        "sha256": "0010c76cc0eced37c3ac51d3993c66b4d700a1d5d3dc2872fc0171ced5af2351",
+        "byte_count": 7417
       },
       {
         "path": "tests/issue-219-content-digest.test.mjs",
@@ -683,8 +683,8 @@
       },
       {
         "path": "tests/lexical-production-candidates.test.mjs",
-        "sha256": "323d63a9b6252f0ceae89a26c266527abb6ce98d36a51ee47e18fd75bab1b3a8",
-        "byte_count": 5304
+        "sha256": "cbfdf7b81d734823def0fb38bd31507d81fd2ad5e6af63a1151e1233fc42563b",
+        "byte_count": 6383
       },
       {
         "path": "tests/searchable-start-contract.test.mjs",

@@ -9,10 +9,10 @@ import {
   productionValueSha256,
 } from '../scripts/batch/lexical-production-state.mjs';
 
-function sourceWithUnits(units) {
+function sourceWithUnits(units, contractVersion = 'lexical-candidate-source-v1') {
   const source = {
     schema_version: '1',
-    contract_version: 'lexical-candidate-source-v1',
+    contract_version: contractVersion,
     kind: 'typewriter-authored-lexical-unit-source',
     source_id: 'test-authored-lexical-unit-source',
     authoring_mode: 'agent-authored-per-unit-semantic-source',
@@ -63,6 +63,35 @@ test('shared lexical producer materializes explicit units with immutable source 
   assert.equal(result.candidateRecords[0].senses[0].gloss, source.units[0].writer_gloss);
   assert.equal(result.identities[0].source_basis.source_artifact_sha256, source.artifact_sha256);
   assert.equal(result.sourceSha256, productionBytesSha256(sourceBytes));
+});
+
+test('v2 recovery sources require explicit inventory and canonical identities', () => {
+  const explicitUnit = {
+    ...unit('unit-1', '기쁨'),
+    inventory_id: 'm5-4101',
+    candidate_record_id: 'w4181',
+  };
+  const { source, sourceBytes } = sourceWithUnits([explicitUnit], 'lexical-candidate-source-v2');
+  const result = materializeLexicalUnitCandidates({
+    batchId: 'test-recovery-batch',
+    source,
+    sourceBytes,
+    firstInventoryNumber: 1,
+    firstCanonicalNumber: 1,
+  });
+  assert.deepEqual(result.identities.map(({ inventory_id, candidate_record_id }) => [
+    inventory_id,
+    candidate_record_id,
+  ]), [['m5-4101', 'w4181']]);
+
+  const missingIdentity = sourceWithUnits([unit('unit-1', '기쁨')], 'lexical-candidate-source-v2');
+  assert.throws(() => materializeLexicalUnitCandidates({
+    batchId: 'test-recovery-batch',
+    source: missingIdentity.source,
+    sourceBytes: missingIdentity.sourceBytes,
+    firstInventoryNumber: 1,
+    firstCanonicalNumber: 1,
+  }), /must bind explicit recovery identities/u);
 });
 
 test('shared lexical producer rejects duplicate candidate lemmas', () => {

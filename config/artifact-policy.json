@@ -52,6 +52,7 @@
     "data/inventory/m5-target-promotions.jsonl",
     "data/inventory/issue-210-recovery-inventory.json",
     "data/validation/issue-219-m9-lexical-batch-report.json",
+    "data/validation/issue-220-m9-b-checkpoint-report.json",
     "data/validation/canonical-semantic-boundary-decisions.json",
     "data/validation/canonical-semantic-correction-manifest.json",
     "data/validation/canonical-semantic-decision-source.json",
@@ -86,7 +87,10 @@
       "data/batches/m5-12-stage.json",
       "data/batches/issue-219-m9-a-base-canonical/**",
       "data/batches/issue-219-m9-a-base-issue-210-recovery-inventory.json",
-      "data/batches/issue-219-m9-a-base-seed.json"
+      "data/batches/issue-219-m9-a-base-seed.json",
+      "data/batches/issue-220-m9-b-base-canonical/**",
+      "data/batches/issue-220-m9-b-base-issue-210-recovery-inventory.json",
+      "data/batches/issue-220-m9-b-base-seed.json"
     ],
     "contract_path_patterns": [
       {
@@ -126,8 +130,16 @@
       "contract": "candidate_source"
     },
     {
+      "pattern": "data/batches/issue-220-m9-b-batch-*-lexical-unit-source.json",
+      "contract": "issue_220_candidate_source"
+    },
+    {
       "pattern": "data/batches/issue-219-m9-a-recovery-selection.json",
       "contract": "m9_recovery_selection"
+    },
+    {
+      "pattern": "data/batches/issue-220-m9-b-selection.json",
+      "contract": "issue_220_recovery_selection"
     },
     {
       "pattern": "data/batches/m5-13-review.json",
@@ -2533,6 +2545,425 @@
           "$.decisions.*.editorial_judgment.competing_canonical_matches.*": {
             "record_id": "string",
             "match_kind": "string"
+          }
+        }
+      },
+      "issue_220_candidate_source": {
+        "contract_versions": [
+          "lexical-candidate-source-v2"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "source_id",
+          "authoring_mode",
+          "base_canonical_records_sha256",
+          "base_seed_sha256",
+          "generation_pass_id",
+          "candidate_buffer",
+          "pool_sha256",
+          "axis_counts",
+          "candidate_count",
+          "units",
+          "artifact_sha256",
+          "batch_id",
+          "base_issue_210_inventory_sha256"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "source_id": "string",
+          "authoring_mode": "string",
+          "base_canonical_records_sha256": "string",
+          "base_seed_sha256": "string",
+          "generation_pass_id": "string",
+          "candidate_buffer": "number",
+          "pool_sha256": "string",
+          "axis_counts": "object",
+          "candidate_count": "number",
+          "units": "array<object>",
+          "artifact_sha256": "string",
+          "batch_id": "string",
+          "base_issue_210_inventory_sha256": "string"
+        },
+        "nested_field_types": {
+          "$.axis_counts": {
+            "E": "number",
+            "Q": "number",
+            "S": "number",
+            "C": "number",
+            "A": "number",
+            "O": "number",
+            "X": "number"
+          },
+          "$.units.*": {
+            "source_unit_id": "string",
+            "lemma": "string",
+            "axis": "string",
+            "flags": "array<string>",
+            "record_type": "string",
+            "pos": "string",
+            "source_kind": "string",
+            "writer_use": "string",
+            "writer_gloss": "string",
+            "inventory_id": "string",
+            "candidate_record_id": "string",
+            "historical_candidate_record_id": "string",
+            "historical_candidate_record_sha256": "string",
+            "historical_decision_row_sha256": "string",
+            "historical_selection_outcome": "string",
+            "source_inventory_row_sha256": "string",
+            "source_position": "object"
+          },
+          "$.units.*.source_position": {
+            "source_unit_index": "integer",
+            "catalog_index": "integer"
+          }
+        },
+        "nested_allowed_fields": {
+          "$.axis_counts": [
+            "E",
+            "Q",
+            "S",
+            "C",
+            "A",
+            "O",
+            "X"
+          ],
+          "$.units.*": [
+            "source_unit_id",
+            "lemma",
+            "axis",
+            "flags",
+            "record_type",
+            "pos",
+            "source_kind",
+            "writer_use",
+            "writer_gloss",
+            "inventory_id",
+            "candidate_record_id",
+            "historical_candidate_record_id",
+            "historical_candidate_record_sha256",
+            "historical_decision_row_sha256",
+            "historical_selection_outcome",
+            "source_inventory_row_sha256",
+            "source_position"
+          ],
+          "$.units.*.source_position": [
+            "source_unit_index",
+            "catalog_index"
+          ]
+        },
+        "required_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "source_id",
+          "authoring_mode",
+          "base_canonical_records_sha256",
+          "base_seed_sha256",
+          "generation_pass_id",
+          "candidate_buffer",
+          "pool_sha256",
+          "axis_counts",
+          "candidate_count",
+          "units",
+          "artifact_sha256",
+          "batch_id",
+          "base_issue_210_inventory_sha256"
+        ]
+      },
+      "issue_220_recovery_selection": {
+        "contract_versions": [
+          "m9-recovery-batch-selection-v2"
+        ],
+        "required_fields": [
+          "schema_version",
+          "contract_version",
+          "issue",
+          "parent_issue",
+          "baseline",
+          "policy",
+          "prior_source_bindings",
+          "selected_count",
+          "selected_candidates"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "issue",
+          "parent_issue",
+          "baseline",
+          "policy",
+          "prior_source_bindings",
+          "selected_count",
+          "selected_candidates"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "issue": "integer",
+          "parent_issue": "integer",
+          "baseline": "object",
+          "policy": "object",
+          "prior_source_bindings": "object",
+          "selected_count": "integer",
+          "selected_candidates": "array<object>"
+        },
+        "nested_allowed_fields": {
+          "$.baseline": [
+            "canonical_commit",
+            "issue_210_inventory_path",
+            "issue_210_inventory_sha256",
+            "canonical_records_sha256",
+            "seed_path",
+            "seed_sha256",
+            "canonical_record_count",
+            "canonical_start_count"
+          ],
+          "$.policy": [
+            "id",
+            "eligible_reserve_count",
+            "cohort",
+            "cohort_count",
+            "selected_order",
+            "rationale",
+            "no_admission_quota",
+            "relation_enrichment_required",
+            "priority",
+            "selected_count",
+            "batch_size"
+          ],
+          "$.prior_source_bindings": [
+            "candidate_source",
+            "semantic_decisions"
+          ],
+          "$.prior_source_bindings.candidate_source": [
+            "path",
+            "source_id",
+            "file_sha256",
+            "artifact_sha256"
+          ],
+          "$.prior_source_bindings.semantic_decisions": [
+            "path",
+            "source_id",
+            "file_sha256",
+            "artifact_sha256"
+          ],
+          "$.selected_candidates.*": [
+            "order",
+            "source_inventory_id",
+            "source_inventory_row_sha256",
+            "source_inventory_row",
+            "historical_candidate_record_id",
+            "historical_source_unit_id",
+            "historical_decision",
+            "current_source_unit",
+            "admitted_identity",
+            "batch_number",
+            "historical_candidate_record_sha256",
+            "historical_decision_row_sha256",
+            "historical_selection_outcome"
+          ],
+          "$.selected_candidates.*.source_inventory_row": [
+            "source_issue_batch_artifacts",
+            "source_inventory_id",
+            "lemma",
+            "proposed_pos",
+            "record_type",
+            "search_forms",
+            "historical_role_disposition",
+            "historical_rationale",
+            "historical_decision_events",
+            "current_canonical_search_coverage",
+            "historical_rationale_conflicts_with_new_invariant",
+            "new_review_state",
+            "follow_up_reason_and_evidence"
+          ],
+          "$.selected_candidates.*.source_inventory_row.source_issue_batch_artifacts.*": [
+            "issue",
+            "batch",
+            "artifact"
+          ],
+          "$.selected_candidates.*.source_inventory_row.historical_role_disposition": [
+            "planned_role",
+            "disposition",
+            "related_canonical_id"
+          ],
+          "$.selected_candidates.*.source_inventory_row.historical_decision_events.*": [
+            "source_issue",
+            "source_batch",
+            "source_artifact",
+            "historical_disposition",
+            "historical_rationale"
+          ],
+          "$.selected_candidates.*.source_inventory_row.current_canonical_search_coverage": [
+            "status",
+            "exact_lemma_match_ids",
+            "all_query_match_ids",
+            "queries"
+          ],
+          "$.selected_candidates.*.source_inventory_row.current_canonical_search_coverage.queries.*": [
+            "query",
+            "status",
+            "normalized_query",
+            "matches"
+          ],
+          "$.selected_candidates.*.historical_decision": [
+            "source_id",
+            "artifact_sha256",
+            "inventory_id",
+            "candidate_record_id",
+            "candidate_record_sha256",
+            "decision",
+            "gloss_judgment",
+            "rank",
+            "selection_axis",
+            "selection_outcome"
+          ],
+          "$.selected_candidates.*.current_source_unit": [
+            "source_unit_id",
+            "lemma",
+            "axis",
+            "flags",
+            "record_type",
+            "pos",
+            "source_kind",
+            "writer_use",
+            "writer_gloss"
+          ],
+          "$.selected_candidates.*.admitted_identity": [
+            "inventory_id",
+            "candidate_record_id",
+            "lemma",
+            "historical_candidate_record_id"
+          ]
+        },
+        "nested_field_types": {
+          "$.baseline": {
+            "canonical_commit": "string",
+            "issue_210_inventory_path": "string",
+            "issue_210_inventory_sha256": "string",
+            "canonical_records_sha256": "string",
+            "seed_path": "string",
+            "seed_sha256": "string",
+            "canonical_record_count": "integer",
+            "canonical_start_count": "integer"
+          },
+          "$.policy": {
+            "id": "string",
+            "eligible_reserve_count": "integer",
+            "cohort": "string",
+            "cohort_count": "integer",
+            "selected_order": "string",
+            "rationale": "string",
+            "no_admission_quota": "boolean",
+            "relation_enrichment_required": "boolean",
+            "priority": "string",
+            "selected_count": "integer",
+            "batch_size": "integer"
+          },
+          "$.prior_source_bindings.candidate_source": {
+            "path": "string",
+            "source_id": "string",
+            "file_sha256": "string",
+            "artifact_sha256": "string"
+          },
+          "$.prior_source_bindings.semantic_decisions": {
+            "path": "string",
+            "source_id": "string",
+            "file_sha256": "string",
+            "artifact_sha256": "string"
+          },
+          "$.selected_candidates.*": {
+            "order": "integer",
+            "source_inventory_id": "string",
+            "source_inventory_row_sha256": "string",
+            "source_inventory_row": "object",
+            "historical_candidate_record_id": "string",
+            "historical_source_unit_id": "string",
+            "historical_decision": "object",
+            "current_source_unit": "object",
+            "admitted_identity": "object",
+            "batch_number": "integer",
+            "historical_candidate_record_sha256": "string",
+            "historical_decision_row_sha256": "string",
+            "historical_selection_outcome": "string"
+          },
+          "$.selected_candidates.*.source_inventory_row": {
+            "source_issue_batch_artifacts": "array<object>",
+            "source_inventory_id": "string",
+            "lemma": "string",
+            "proposed_pos": "array<string>",
+            "record_type": "string",
+            "search_forms": "array<string>",
+            "historical_role_disposition": "object",
+            "historical_rationale": "string",
+            "historical_decision_events": "array<object>",
+            "current_canonical_search_coverage": "object",
+            "historical_rationale_conflicts_with_new_invariant": "string",
+            "new_review_state": "string",
+            "follow_up_reason_and_evidence": "string"
+          },
+          "$.selected_candidates.*.source_inventory_row.source_issue_batch_artifacts.*": {
+            "issue": "integer|null",
+            "batch": "string",
+            "artifact": "string"
+          },
+          "$.selected_candidates.*.source_inventory_row.historical_role_disposition": {
+            "planned_role": "null|string",
+            "disposition": "string",
+            "related_canonical_id": "null|string"
+          },
+          "$.selected_candidates.*.source_inventory_row.historical_decision_events.*": {
+            "source_issue": "integer|null",
+            "source_batch": "string",
+            "source_artifact": "string",
+            "historical_disposition": "string",
+            "historical_rationale": "string"
+          },
+          "$.selected_candidates.*.source_inventory_row.current_canonical_search_coverage": {
+            "status": "string",
+            "exact_lemma_match_ids": "array<string>",
+            "all_query_match_ids": "array<string>",
+            "queries": "array<object>"
+          },
+          "$.selected_candidates.*.source_inventory_row.current_canonical_search_coverage.queries.*": {
+            "query": "string",
+            "status": "string",
+            "normalized_query": "string",
+            "matches": "array<object>"
+          },
+          "$.selected_candidates.*.historical_decision": {
+            "source_id": "string",
+            "artifact_sha256": "string",
+            "inventory_id": "string",
+            "candidate_record_id": "string",
+            "candidate_record_sha256": "string",
+            "decision": "string",
+            "gloss_judgment": "string",
+            "rank": "integer",
+            "selection_axis": "string",
+            "selection_outcome": "string"
+          },
+          "$.selected_candidates.*.current_source_unit": {
+            "source_unit_id": "string",
+            "lemma": "string",
+            "axis": "string",
+            "flags": "array<string>",
+            "record_type": "string",
+            "pos": "string",
+            "source_kind": "string",
+            "writer_use": "string",
+            "writer_gloss": "string"
+          },
+          "$.selected_candidates.*.admitted_identity": {
+            "inventory_id": "string",
+            "candidate_record_id": "string",
+            "lemma": "string",
+            "historical_candidate_record_id": "string"
           }
         }
       },

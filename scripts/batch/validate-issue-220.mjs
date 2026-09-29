@@ -193,9 +193,10 @@ function assertPinnedSelection({
   m513DecisionBytes,
 }) {
   assert.equal(selection.schema_version, '1');
-  assert.equal(selection.contract_version, 'm9-recovery-batch-selection-v1');
+  assert.equal(selection.contract_version, 'm9-recovery-batch-selection-v2');
   assert.equal(selection.issue, 220);
   assert.equal(selection.parent_issue, 218);
+  assert.equal(selection.selected_count, 40);
   assert.equal(selection.baseline.issue_210_inventory_sha256, BASELINE_INVENTORY_SHA256);
   assert.equal(sha256Bytes(baseInventoryBytes), BASELINE_INVENTORY_SHA256, 'frozen Issue #210 inventory digest');
   assert.equal(sha256Bytes(m513SourceBytes), selection.prior_source_bindings.candidate_source.file_sha256);
@@ -273,7 +274,7 @@ function assertCandidateSourceBindsSelection(
   baseInventoryBytes,
   baseCanonicalRecords,
 ) {
-  assert.equal(candidateSource.contract_version, 'lexical-candidate-source-v1');
+  assert.equal(candidateSource.contract_version, 'lexical-candidate-source-v2');
   assert.equal(candidateSource.kind, 'typewriter-authored-lexical-unit-source');
   assert.equal(candidateSource.authoring_mode, 'historical-typewriter-authored-source-slice');
   assert.match(candidateSource.batch_id, /^m9-b-issue-220-historical-batch-(01|02)-20260929$/u);
