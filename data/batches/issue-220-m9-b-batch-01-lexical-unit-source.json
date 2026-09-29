@@ -1,0 +1,507 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-candidate-source-v1",
+  "kind": "typewriter-authored-lexical-unit-source",
+  "source_id": "issue-220-m9-b-batch-01-source-bound-recovery-20260929-r1",
+  "authoring_mode": "historical-typewriter-authored-source-slice",
+  "batch_id": "m9-b-issue-220-historical-batch-01-20260929",
+  "base_canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e",
+  "base_seed_sha256": "394f7fa65fc22a1706af2dbb663e9eb2880ad265ecb2c6a619d6d6d5c59687f7",
+  "base_issue_210_inventory_sha256": "5dbe54ee92b5f8548e41208a46e73f5b68c3fb1d1562afefd5a39f85d9670dde",
+  "generation_pass_id": "issue-220-historical-slice-selection-20260929-r1",
+  "candidate_buffer": 0,
+  "axis_counts": {
+    "E": 8,
+    "Q": 8,
+    "S": 4,
+    "C": 0,
+    "A": 0,
+    "O": 0,
+    "X": 0
+  },
+  "pool_sha256": "00630c5be5f9a24d023aed70d34b40f8807c82d38120d8a4bdaeb2d691b08f87",
+  "candidate_count": 20,
+  "units": [
+    {
+      "source_unit_id": "m5-13-source-unit-0153",
+      "lemma": "악의",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "남을 해치거나 곤란하게 만들려는 나쁜 뜻.",
+      "writer_gloss": "남을 해치거나 곤란하게 만들려는 나쁜 뜻.",
+      "inventory_id": "m5-2153",
+      "candidate_record_id": "w5384",
+      "historical_candidate_record_id": "w2233",
+      "historical_candidate_record_sha256": "fffbc86c68e84bd935aa54ea80cb51a2a2ffb7b000538e5642ba3b297b6d29c3",
+      "historical_decision_row_sha256": "fbae97d8a4bd6378223f1515c40e23d8273957274eb939691bd08b8d0c9d0995",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "6e41ca66d3cdc88b7f0b386fe9d314df051588cf2ae94209d90783e2f3d7d196",
+      "source_position": {
+        "source_unit_index": 152,
+        "catalog_index": 152
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0154",
+      "lemma": "질투심",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "사랑이나 관심을 다른 이에게 빼앗길까 염려하며 느끼는 시기.",
+      "writer_gloss": "사랑이나 관심을 다른 이에게 빼앗길까 염려하며 느끼는 시기.",
+      "inventory_id": "m5-2154",
+      "candidate_record_id": "w5385",
+      "historical_candidate_record_id": "w2234",
+      "historical_candidate_record_sha256": "90d74009f15490a7ca26a3c127775dd1e090ca2c4c6010f8bebe255813f53f05",
+      "historical_decision_row_sha256": "3ae66bf3aebe904a010bc12c0b39dcefee84baec926b30f63baefdf32d4f624e",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "befbbe9dfcadea08bcc17a23676b2f7366992bea510b1532ad2b52ffa5fa3a0a",
+      "source_position": {
+        "source_unit_index": 153,
+        "catalog_index": 153
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0155",
+      "lemma": "미움",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "대상에 반감을 품고 싫어하는 마음.",
+      "writer_gloss": "대상에 반감을 품고 싫어하는 마음.",
+      "inventory_id": "m5-2155",
+      "candidate_record_id": "w5386",
+      "historical_candidate_record_id": "w2235",
+      "historical_candidate_record_sha256": "b5c7228d437c4eec2b3a1b2da93b69bd7332c8bac3fd1142609f56137dfee9f6",
+      "historical_decision_row_sha256": "ce92408db48dd18d97321d4ac9f4440f7c512d57ba9cc28857f2b6d6a21a178d",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "6d7e01fac79495974026ba786d8edb7b92f94b94a04f1b692159318cb643b5a9",
+      "source_position": {
+        "source_unit_index": 154,
+        "catalog_index": 154
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0156",
+      "lemma": "미운 정",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "미워하면서도 오랜 관계 때문에 쉽게 끊지 못하는 정.",
+      "writer_gloss": "미워하면서도 오랜 관계 때문에 쉽게 끊지 못하는 정.",
+      "inventory_id": "m5-2156",
+      "candidate_record_id": "w5387",
+      "historical_candidate_record_id": "w2236",
+      "historical_candidate_record_sha256": "8d3300bff539d488991ce275d7073325980ab0c78232e319c5613a4a8c6aab8f",
+      "historical_decision_row_sha256": "2ebc7375a2ff0289e6e930cf397a60c8310f1ca1915a0abff6415e241a596b51",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "e6bc44c60fb73186c78e329e7f55e55c0177e8a9ebd943e50466bed512e334fa",
+      "source_position": {
+        "source_unit_index": 155,
+        "catalog_index": 155
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0157",
+      "lemma": "싫증",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "같은 대상이나 일이 되풀이되어 더는 마음이 가지 않음.",
+      "writer_gloss": "같은 대상이나 일이 되풀이되어 더는 마음이 가지 않음.",
+      "inventory_id": "m5-2157",
+      "candidate_record_id": "w5388",
+      "historical_candidate_record_id": "w2237",
+      "historical_candidate_record_sha256": "2627b1b9b90b1e72a0c734b86c871cf3b10287fcf1b791ce8e8840e27d001971",
+      "historical_decision_row_sha256": "8e936e213620afefc098ef1ce97525a5aac26a98f1aa90e39b65d099b100a67c",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "78cb6bc260a07ee21d6e4577f1fd6698e23148d39a7b12a6c3013b55f67c1375",
+      "source_position": {
+        "source_unit_index": 156,
+        "catalog_index": 156
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0158",
+      "lemma": "싫증남",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "반복이나 익숙함 때문에 대상에 흥미가 사라진 상태.",
+      "writer_gloss": "반복이나 익숙함 때문에 대상에 흥미가 사라진 상태.",
+      "inventory_id": "m5-2158",
+      "candidate_record_id": "w5389",
+      "historical_candidate_record_id": "w2238",
+      "historical_candidate_record_sha256": "edaa0305c8c3ac63568f7c7bf1f0d83af42953824b98dd9c85e2561fbe2cb874",
+      "historical_decision_row_sha256": "d5e4a7d84c59206553715a6c3e62ec893e2e1a4315dacc86d3126dc3cc2d13bc",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "934e0a60d8470f470d8fcbf04edfe11213345cce3882bf39d6db3388e6d82fc5",
+      "source_position": {
+        "source_unit_index": 157,
+        "catalog_index": 157
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0159",
+      "lemma": "권태감",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "생활이나 관계가 단조롭게 느껴져 싫증이 나는 기분.",
+      "writer_gloss": "생활이나 관계가 단조롭게 느껴져 싫증이 나는 기분.",
+      "inventory_id": "m5-2159",
+      "candidate_record_id": "w5390",
+      "historical_candidate_record_id": "w2239",
+      "historical_candidate_record_sha256": "1af959457997d09dc47354577a360b0f6d500f9a3d2998a31d60242b3168fe23",
+      "historical_decision_row_sha256": "34a0b83fcc7a302d95389b5294d2052a42d79bc6f68c8c1d11cdaf69f11f62dc",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "f40bcc6ebec1ee85d097da2e04679cc88c68206bcf3236191d18d38dd19942cd",
+      "source_position": {
+        "source_unit_index": 158,
+        "catalog_index": 158
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0160",
+      "lemma": "무기력",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "의욕이나 기운이 없어 무엇을 하려는 힘이 나지 않는 상태.",
+      "writer_gloss": "의욕이나 기운이 없어 무엇을 하려는 힘이 나지 않는 상태.",
+      "inventory_id": "m5-2160",
+      "candidate_record_id": "w5391",
+      "historical_candidate_record_id": "w2240",
+      "historical_candidate_record_sha256": "375c758c461735b7ce834e339999e6059ccfa2d2c774929d52ce03f5a5b7b201",
+      "historical_decision_row_sha256": "a67eec23b6bd4d3370b6d205f3e21fa4697dbef26fa98aee31750956a2cd08af",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "139827a985d1c291989945210b3c922306e5538dd3f6fc649aef07f09a383435",
+      "source_position": {
+        "source_unit_index": 159,
+        "catalog_index": 159
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0311",
+      "lemma": "단절",
+      "axis": "Q",
+      "flags": [
+        "direct-boundary"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "이어지던 관계나 흐름이 끊어진 상태.",
+      "writer_gloss": "이어지던 관계나 흐름이 끊어진 상태.",
+      "inventory_id": "m5-2311",
+      "candidate_record_id": "w5392",
+      "historical_candidate_record_id": "w2391",
+      "historical_candidate_record_sha256": "35e3c2b6e09d4f4ae9c8deb5303c0a47a3ecd60afd17fc6f88da763e06db4df7",
+      "historical_decision_row_sha256": "fcfc32c4ba78762d21185b811cae8b240cbd1e0b7ee48f0564bd4f32b22090d1",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "ef81c58869e96ac5052c06e1465ee22a388ef74bd9794285fa65ae2e26ae9647",
+      "source_position": {
+        "source_unit_index": 310,
+        "catalog_index": 310
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0312",
+      "lemma": "잔여",
+      "axis": "Q",
+      "flags": [
+        "direct-boundary"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "쓰거나 덜어 낸 뒤에도 남아 있는 부분.",
+      "writer_gloss": "쓰거나 덜어 낸 뒤에도 남아 있는 부분.",
+      "inventory_id": "m5-2312",
+      "candidate_record_id": "w5393",
+      "historical_candidate_record_id": "w2392",
+      "historical_candidate_record_sha256": "1c91298b7df70fded2f1a2182b4d00aee2cbe9c6b019015032648d1830dc0d31",
+      "historical_decision_row_sha256": "0ba5ec0641cac2a95bd6941a02310abed6506990523bc58be8588bf132846c34",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "d9188506888d9ff2ae514f6bc76c14d68cd7644d31fae1538a99c833415dd944",
+      "source_position": {
+        "source_unit_index": 311,
+        "catalog_index": 311
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0314",
+      "lemma": "흔들림",
+      "axis": "Q",
+      "flags": [
+        "direct-boundary"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "물체가 중심을 기준으로 이리저리 움직이는 상태.",
+      "writer_gloss": "물체가 중심을 기준으로 이리저리 움직이는 상태.",
+      "inventory_id": "m5-2314",
+      "candidate_record_id": "w5394",
+      "historical_candidate_record_id": "w2394",
+      "historical_candidate_record_sha256": "fde2d04386735623fbcc8a28e95454e3f79a974eb4532ffa73f691a213891191",
+      "historical_decision_row_sha256": "d7b0e18b90430a81f9d29eb6594bcfd91c7cfb843276b209097626e115b79048",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "ef105d4c66c2e645d4af8130d05a48843a31b128302ea8767c7c5faaff0a59e7",
+      "source_position": {
+        "source_unit_index": 313,
+        "catalog_index": 313
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0315",
+      "lemma": "정돈",
+      "axis": "Q",
+      "flags": [
+        "direct-boundary"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "흩어진 물건이나 내용을 가지런히 정리함.",
+      "writer_gloss": "흩어진 물건이나 내용을 가지런히 정리함.",
+      "inventory_id": "m5-2315",
+      "candidate_record_id": "w5395",
+      "historical_candidate_record_id": "w2395",
+      "historical_candidate_record_sha256": "8cdbb5bc6bca6cb71d372fa3cc4cecf5bde1c307eeb17ed10745118ade8a3ec3",
+      "historical_decision_row_sha256": "74397081190ec5fff8cd9bfec3133521a32ae766bd08bffcb8855f8fec9a5c9d",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "a65bfcbce2bb467dc385409bb830cd8e5cac749e0e42fe097eb479ed6bafa397",
+      "source_position": {
+        "source_unit_index": 314,
+        "catalog_index": 314
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0316",
+      "lemma": "뒤섞임",
+      "axis": "Q",
+      "flags": [
+        "direct-boundary"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "서로 다른 요소가 구분되지 않게 한데 섞인 상태.",
+      "writer_gloss": "서로 다른 요소가 구분되지 않게 한데 섞인 상태.",
+      "inventory_id": "m5-2316",
+      "candidate_record_id": "w5396",
+      "historical_candidate_record_id": "w2396",
+      "historical_candidate_record_sha256": "cf8c5756baac355c2b0a92552e7b9bd5ba01ef663c2337994584928152f9e273",
+      "historical_decision_row_sha256": "e1597fa2516cc24c227654aa4004d70182267f660da2f881b0bc662036b1461a",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "e6e5ad2f52b351df6a1e92e698c176dd0f8bcd3fe70f2ec61c5f6581c378b539",
+      "source_position": {
+        "source_unit_index": 315,
+        "catalog_index": 315
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0317",
+      "lemma": "배치",
+      "axis": "Q",
+      "flags": [
+        "direct-boundary"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "사물이나 요소를 일정한 자리와 순서에 놓는 방식.",
+      "writer_gloss": "사물이나 요소를 일정한 자리와 순서에 놓는 방식.",
+      "inventory_id": "m5-2317",
+      "candidate_record_id": "w5397",
+      "historical_candidate_record_id": "w2397",
+      "historical_candidate_record_sha256": "eab914062dd196d4d66f49b8197eb471e526641443a06389319ded49ad2596b0",
+      "historical_decision_row_sha256": "c04a8fce7c7eb88e50ed88b49d5f2a42e52d9407be6e6b808c0486604f4065e4",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "f67bca86af3f261bd79b37c1746130e0596c526ff985c08867df771f386ea3f3",
+      "source_position": {
+        "source_unit_index": 316,
+        "catalog_index": 316
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0318",
+      "lemma": "배경",
+      "axis": "Q",
+      "flags": [
+        "direct-boundary"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "앞에 놓인 대상 뒤에서 장면이나 내용을 받치는 환경.",
+      "writer_gloss": "앞에 놓인 대상 뒤에서 장면이나 내용을 받치는 환경.",
+      "inventory_id": "m5-2318",
+      "candidate_record_id": "w5398",
+      "historical_candidate_record_id": "w2398",
+      "historical_candidate_record_sha256": "fd7a526e63673427c74876f3070dc398fa679eae57fe92319b66123da3b167c2",
+      "historical_decision_row_sha256": "e3e742fbc4b1f6784749a2cc2900f407d6876fe19512e08ddb8be760e03e68d0",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "85614f6a5c49e0809839751df95d38a707cd2a74b647a0f324f497b929fdce5b",
+      "source_position": {
+        "source_unit_index": 317,
+        "catalog_index": 317
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0319",
+      "lemma": "전경",
+      "axis": "Q",
+      "flags": [
+        "direct-boundary"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "장면에서 관찰자에게 가장 가까이 드러나는 부분.",
+      "writer_gloss": "장면에서 관찰자에게 가장 가까이 드러나는 부분.",
+      "inventory_id": "m5-2319",
+      "candidate_record_id": "w5399",
+      "historical_candidate_record_id": "w2399",
+      "historical_candidate_record_sha256": "0f049557f4e6c4cb52d0472a66cef5bc6a03c0bd4b0ef60cf455e133db821c75",
+      "historical_decision_row_sha256": "b76d6c3a4b0a926e559077a4938d9ea48a2353cb30f4fcc7fba0f6bf2347f967",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "b833396ae3268f9394e6a6dc103ad30c21065354d06f2583210758266f42e36d",
+      "source_position": {
+        "source_unit_index": 318,
+        "catalog_index": 318
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0473",
+      "lemma": "손끝의 저림",
+      "axis": "S",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "손가락 끝이 찌릿하거나 감각이 둔해지는 느낌.",
+      "writer_gloss": "손가락 끝이 찌릿하거나 감각이 둔해지는 느낌.",
+      "inventory_id": "m5-2473",
+      "candidate_record_id": "w5400",
+      "historical_candidate_record_id": "w2553",
+      "historical_candidate_record_sha256": "1596462f1f6de66b1fb3ad9520b61bff30d4b64aa31818e0db187b07d58acb4f",
+      "historical_decision_row_sha256": "b787c7892db7d612f0ea85153d33d69493dfc54ee90ecd5f0b5cd89c1fa08eaa",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "fc82e303ee1a6c8d14776f776c4332fb5bb8fdd22489b91c43204a98b6bd1abf",
+      "source_position": {
+        "source_unit_index": 472,
+        "catalog_index": 472
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0474",
+      "lemma": "손끝의 온도",
+      "axis": "S",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "손가락 끝에서 알아차리는 따뜻함이나 차가움.",
+      "writer_gloss": "손가락 끝에서 알아차리는 따뜻함이나 차가움.",
+      "inventory_id": "m5-2474",
+      "candidate_record_id": "w5401",
+      "historical_candidate_record_id": "w2554",
+      "historical_candidate_record_sha256": "480af97d95b1b01b6f358b17dbdfe819b23763ed28ead73e0ada97c34b1efed7",
+      "historical_decision_row_sha256": "997bb3519058b3e883eaca30792f770d3d1e44eb84a9b44f6f3342d15ab9ba38",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "225adb161a6b9c5f0b925db41092516d0a2d6698096713a2caaacb10b6395de7",
+      "source_position": {
+        "source_unit_index": 473,
+        "catalog_index": 473
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0475",
+      "lemma": "발바닥의 감각",
+      "axis": "S",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "바닥에 닿는 발의 아래쪽에서 느끼는 압력과 질감.",
+      "writer_gloss": "바닥에 닿는 발의 아래쪽에서 느끼는 압력과 질감.",
+      "inventory_id": "m5-2475",
+      "candidate_record_id": "w5402",
+      "historical_candidate_record_id": "w2555",
+      "historical_candidate_record_sha256": "f85f425ad1c323d9eabd86fb86496e86de77fcf78bbe2013a5e224744e679a9f",
+      "historical_decision_row_sha256": "71e4fe280d4ba5071b330209ea625d91539d2d0fae3e556b370ff7a284441361",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "9896ab65fa75fe84c69a0cedd5cc59e26199ec2a40d3bc8abb9ad385ef7e7662",
+      "source_position": {
+        "source_unit_index": 474,
+        "catalog_index": 474
+      }
+    },
+    {
+      "source_unit_id": "m5-13-source-unit-0476",
+      "lemma": "발목의 긴장",
+      "axis": "S",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "record_type": "entry",
+      "pos": "noun",
+      "source_kind": "typewriter-authored-lexical-unit",
+      "writer_use": "발목 주변 근육이 굳고 당기는 느낌.",
+      "writer_gloss": "발목 주변 근육이 굳고 당기는 느낌.",
+      "inventory_id": "m5-2476",
+      "candidate_record_id": "w5403",
+      "historical_candidate_record_id": "w2556",
+      "historical_candidate_record_sha256": "bf11a39c72ac36fc700f2fda9a143fa3b16c55ab57247c31e465e71fe319b3ad",
+      "historical_decision_row_sha256": "e7b29ffdb9a2c636cc7b7d2ddb8479a2a8dd5dce022dd7f63d7a8a105752675a",
+      "historical_selection_outcome": "reserve",
+      "source_inventory_row_sha256": "d6a36053cbe897761195e5501a6d5918a4334144a96a70b0c9626952d9d1c675",
+      "source_position": {
+        "source_unit_index": 475,
+        "catalog_index": 475
+      }
+    }
+  ],
+  "artifact_sha256": "171419832d778672a1025169b6f1ce53a489aa3af8ec9a72bcd8c1b3187f8fca"
+}

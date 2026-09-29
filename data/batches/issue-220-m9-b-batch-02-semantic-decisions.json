@@ -1,0 +1,1299 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "kind": "separately-authored-semantic-decision-source",
+  "source_id": "issue-220-authored-semantic-decisions-batch-02-20260929-r1",
+  "issue": 220,
+  "parent_issue": 218,
+  "batch_id": "m9-b-issue-220-historical-batch-02-20260929",
+  "authoring_mode": "agent-authored-decision",
+  "provenance": {
+    "generator": "codex",
+    "generator_version": "issue-220-authored-semantic-review-v1",
+    "generation_pass_id": "issue-220-historical-slice-selection-20260929-r1",
+    "verification_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+    "human_reviewed": false,
+    "authoring_note": "This source records a separate candidate-by-candidate M9-B review. M5 fit and reserve evidence sets historical order only; new lexical dispositions, exact-search checks, and ordinary shared admission determine current recovery."
+  },
+  "review": {
+    "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+    "reviewer": "codex-agent",
+    "status": "complete",
+    "candidate_count": 20,
+    "reviewed_candidate_count": 20,
+    "method": "Review each selected historical source row, exact authored lexical unit and gloss, present canonical/search identity, supported POS and bounded sense; hold unresolved multiword or morphology boundaries; admit only source-supported standalone units through shared admission; add no unsupported relations.",
+    "criteria": [
+      "exact historical inventory and M5-13 source identity binding",
+      "fresh lexical-unit and supported POS review independent of M5 fit/reserve",
+      "bounded current sense without unsupported sense splitting",
+      "exact canonical and generated-search ownership absence",
+      "zero relations allowed without relation fabrication"
+    ],
+    "decision_counts": {
+      "included": 5,
+      "corrected": 0,
+      "held": 15,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "counts": {
+      "included": 5,
+      "corrected": 0,
+      "held": 15,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "prior_generator_replaced": true,
+    "prior_generator_verification_pass_id": "issue-220-historical-slice-selection-20260929-r1",
+    "correction_passes": [],
+    "expression_lexical_unit_review_contract_version": "m9-expression-lexical-unit-review-v1"
+  },
+  "candidate_source": {
+    "source_id": "issue-220-m9-b-batch-02-source-bound-recovery-20260929-r1",
+    "identity_sha256": "ceaa957b2084354ab0a242a22bb86a6bfbdffdb4a14fff723b4c11443bd293cb",
+    "identity_count": 20
+  },
+  "selection": {
+    "policy": "shared-authored-axis-coverage-selection-v6",
+    "capacity": 20,
+    "imported": 5,
+    "reserve": 0,
+    "coverage_field": "selection_axis",
+    "coverage_basis": [
+      "fresh M9-B lexical eligibility after source-bound candidate review"
+    ],
+    "selection_rationale": "The 20-row slice size controls independent review workload only. 5 source-bound dispositions qualify for ordinary admission; 15 remain held for unresolved lexical identity. No admission or relation quota applies."
+  },
+  "decisions": [
+    {
+      "candidate_record_id": "w5404",
+      "inventory_id": "m5-2477",
+      "candidate_record_sha256": "f362a365120e4147159c4c4163e370ad57d36b8a43f3c2be1744f130d1a348f3",
+      "decision": "held",
+      "rank": 1,
+      "decision_rationale": "m5-2477 w5404: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5404-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "coordinated",
+          "boundary_rationale": "m5-2477 w5404 w5404-s1: source-bound gloss “추위나 감정 자극으로 피부의 털구멍이 도드라지는 반응.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: d41d8486f6f0.",
+          "semantic_rationale": "피부의 소름: 추위나 감정 자극으로 피부의 털구멍이 도드라지는 반응.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2477 w5404-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "S",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2477 w5404 “피부의 소름”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5404",
+        "candidate_record_sha256": "f362a365120e4147159c4c4163e370ad57d36b8a43f3c2be1744f130d1a348f3",
+        "decision_evidence_sha256": "df274f006de32cb35215d25ba0182549aa5153b4d0c41d0cee249ecaa8391a44",
+        "sense_evidence": [
+          {
+            "sense_id": "w5404-s1",
+            "sense_sha256": "76889f0a6effe4ca6fab08a31b37ee505419fca34b43d114b54ca35b6b257acc",
+            "gloss_sha256": "d41d8486f6f05ee4daa095675940f5003c52079f9542fc54a6e45fd522189e6c",
+            "evidence_sha256": "56d6c78d4be97d9c70af2ce384740e96c0eb41f48d3e4d9b5855f7029661ee4b"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5405",
+      "inventory_id": "m5-2478",
+      "candidate_record_sha256": "fadfdefc83097b64d8b071a7becebaa87c0def23c38f3a2473040328e4ea7197",
+      "decision": "held",
+      "rank": 2,
+      "decision_rationale": "m5-2478 w5405: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5405-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "coordinated",
+          "boundary_rationale": "m5-2478 w5405 w5405-s1: source-bound gloss “피부 표면이나 근육이 작게 흔들리는 감각.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 2511ac39f410.",
+          "semantic_rationale": "살갗의 떨림: 피부 표면이나 근육이 작게 흔들리는 감각.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2478 w5405-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "S",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2478 w5405 “살갗의 떨림”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5405",
+        "candidate_record_sha256": "fadfdefc83097b64d8b071a7becebaa87c0def23c38f3a2473040328e4ea7197",
+        "decision_evidence_sha256": "5564c72dc64dc3131cbb3ecade566258d3ce1fdd1176767e0a64e2aec58bd94c",
+        "sense_evidence": [
+          {
+            "sense_id": "w5405-s1",
+            "sense_sha256": "cf3eb2dd2b8f66f770fc3bfe66e2042c16b53a8dfa45424433500dcdfbc5ef8c",
+            "gloss_sha256": "2511ac39f4102ecf1e651f47b4c098836e7db5c23953249e8c076abc5f26eb6c",
+            "evidence_sha256": "ba2212fa7580a3f8361aec68494bb367e7b27cf412542fda2a0b1fd287e4a42d"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5406",
+      "inventory_id": "m5-2479",
+      "candidate_record_sha256": "bac596a8d411bf3314c916a0f3ee86f1ba87a199b084703a731e93715ebc7ac4",
+      "decision": "held",
+      "rank": 3,
+      "decision_rationale": "m5-2479 w5406: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5406-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "coordinated",
+          "boundary_rationale": "m5-2479 w5406 w5406-s1: source-bound gloss “외부의 소리나 충격이 몸 안에서 떨림으로 전해지는 느낌.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: ce5b187990c4.",
+          "semantic_rationale": "몸속의 진동: 외부의 소리나 충격이 몸 안에서 떨림으로 전해지는 느낌.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2479 w5406-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "S",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2479 w5406 “몸속의 진동”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5406",
+        "candidate_record_sha256": "bac596a8d411bf3314c916a0f3ee86f1ba87a199b084703a731e93715ebc7ac4",
+        "decision_evidence_sha256": "48719a85edb73a0d6a03ced701f4e1edb2d65722ec28f5eddfbdb69ad66aae12",
+        "sense_evidence": [
+          {
+            "sense_id": "w5406-s1",
+            "sense_sha256": "60b922ab9a13d676abe9a13224b1ccb65779a1fea1979e6fb7eaebcaeed1456b",
+            "gloss_sha256": "ce5b187990c44327294e93091d2008a97c7c33fd75bba605c2589e739fd93018",
+            "evidence_sha256": "95f36fbe1dc93ff78514d851d86d3c2eefde57bb042da49e8d416fe6f9999424"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5407",
+      "inventory_id": "m5-2480",
+      "candidate_record_sha256": "495f8866938ab997ef58f1f25d0eccd3537adea27251e12a70162111cc19b11f",
+      "decision": "held",
+      "rank": 4,
+      "decision_rationale": "m5-2480 w5407: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5407-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "coordinated",
+          "boundary_rationale": "m5-2480 w5407 w5407-s1: source-bound gloss “옷이나 피부에 오래 스며들어 쉽게 사라지지 않는 냄새.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 5b5da31ab2fc.",
+          "semantic_rationale": "몸에 밴 냄새: 옷이나 피부에 오래 스며들어 쉽게 사라지지 않는 냄새.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2480 w5407-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "S",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2480 w5407 “몸에 밴 냄새”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5407",
+        "candidate_record_sha256": "495f8866938ab997ef58f1f25d0eccd3537adea27251e12a70162111cc19b11f",
+        "decision_evidence_sha256": "259774f8486976b5591c0cf1410972270622cae595d1168d5b71efebf448b8a1",
+        "sense_evidence": [
+          {
+            "sense_id": "w5407-s1",
+            "sense_sha256": "d853761c50489b463be3c4b123b2286e88128cc0b587f2488195b909a2949e79",
+            "gloss_sha256": "5b5da31ab2fc78c4202a3872113890296dca0b793c9ce097b1869ec6fd86fe6b",
+            "evidence_sha256": "205a039ed002fada43ff470a7fdb12828cb99d98a632043dc3a7e3551b22e609"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5408",
+      "inventory_id": "m5-2633",
+      "candidate_record_sha256": "9bd5392987ec8c33e060a5d414bd75fe427d6fa1f2dbf155559f1544d0f19d19",
+      "decision": "held",
+      "rank": 5,
+      "decision_rationale": "m5-2633 w5408: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5408-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2633 w5408 w5408-s1: source-bound gloss “골목 입구에서 더 들어가 바깥길과 멀어진 부분.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: b715ecebcabc.",
+          "semantic_rationale": "골목 안쪽: 골목 입구에서 더 들어가 바깥길과 멀어진 부분.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2633 w5408-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "C",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2633 w5408 “골목 안쪽”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5408",
+        "candidate_record_sha256": "9bd5392987ec8c33e060a5d414bd75fe427d6fa1f2dbf155559f1544d0f19d19",
+        "decision_evidence_sha256": "7ff6872662fd794799c4411b1248997ae61fdfac770d65edb33d87ff1e1b1e56",
+        "sense_evidence": [
+          {
+            "sense_id": "w5408-s1",
+            "sense_sha256": "51467ac33afae1cb1f41ccf5e28d86dc5eab01044fb76a1fee0f6a8f1011fde3",
+            "gloss_sha256": "b715ecebcabc024bd663bdcb0eedbdaba9808dea4f9feeeecc0509a717d16001",
+            "evidence_sha256": "3efe4816aef320a9902b9491383e66d67a0542aa2bc1646d9aaf33e14752ae20"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5409",
+      "inventory_id": "m5-2634",
+      "candidate_record_sha256": "d3c68c5d1b5ec3b41d160f8a4d2fcbfbbb07fe9106c31ebf0d7f9ce366a1255f",
+      "decision": "held",
+      "rank": 6,
+      "decision_rationale": "m5-2634 w5409: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5409-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2634 w5409 w5409-s1: source-bound gloss “시장 구역으로 들어가는 첫머리.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 28f4e3c284d9.",
+          "semantic_rationale": "시장 입구: 시장 구역으로 들어가는 첫머리.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2634 w5409-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "C",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2634 w5409 “시장 입구”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5409",
+        "candidate_record_sha256": "d3c68c5d1b5ec3b41d160f8a4d2fcbfbbb07fe9106c31ebf0d7f9ce366a1255f",
+        "decision_evidence_sha256": "082892ec469482be9e504b04b7dde4eb353560142c6a62e5a0ad74af6a9523ae",
+        "sense_evidence": [
+          {
+            "sense_id": "w5409-s1",
+            "sense_sha256": "151bbd82474ec7de3059d22a8d87800e5e23502cf05185f21ccc809798281bc2",
+            "gloss_sha256": "28f4e3c284d9ece71a28a42df8f0d74cb874dca935f7982f681f2cf432a6521d",
+            "evidence_sha256": "4e617fbc90603f9ba82bbeb13ff0f3fb23f8f80a462628a8e5506eb673cf63b2"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5410",
+      "inventory_id": "m5-2635",
+      "candidate_record_sha256": "e99a205edfad0ac9366b90b20d1e1333a57e8a17c91c19ee4055b44aeb4c0f83",
+      "decision": "held",
+      "rank": 7,
+      "decision_rationale": "m5-2635 w5410: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5410-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2635 w5410 w5410-s1: source-bound gloss “역의 출입구와 마주한 바깥쪽 공간.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: adfe8c298d76.",
+          "semantic_rationale": "역 앞: 역의 출입구와 마주한 바깥쪽 공간.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2635 w5410-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "C",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2635 w5410 “역 앞”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5410",
+        "candidate_record_sha256": "e99a205edfad0ac9366b90b20d1e1333a57e8a17c91c19ee4055b44aeb4c0f83",
+        "decision_evidence_sha256": "d493a52f7d53cd9da271fed79c00d1ad296bfa54587f08c4d64901dcbaf514d3",
+        "sense_evidence": [
+          {
+            "sense_id": "w5410-s1",
+            "sense_sha256": "266b623cd47b0427fbd2d5550e29dd3bb5bef0ea3dc660185ca9dcaadf1321af",
+            "gloss_sha256": "adfe8c298d7603fb066726e4547965915442d7aaf27a509f3f8bf3817104b72a",
+            "evidence_sha256": "492d2103e7f59a6887ca132921e9054626cf8479f63aa9b3980458e66535d6b0"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5411",
+      "inventory_id": "m5-2636",
+      "candidate_record_sha256": "9da570a5c993a002b34b653eadfe25b5727b4601de77cd303782316f5db45198",
+      "decision": "held",
+      "rank": 8,
+      "decision_rationale": "m5-2636 w5411: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5411-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2636 w5411 w5411-s1: source-bound gloss “학교 건물의 뒷면이나 그쪽에 이어진 자리.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 4c6467dbd6df.",
+          "semantic_rationale": "학교 뒤: 학교 건물의 뒷면이나 그쪽에 이어진 자리.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2636 w5411-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "C",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2636 w5411 “학교 뒤”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5411",
+        "candidate_record_sha256": "9da570a5c993a002b34b653eadfe25b5727b4601de77cd303782316f5db45198",
+        "decision_evidence_sha256": "6b18b3f02c1b55a4115abbd96a22b20399693be9f2e7076ce67dbde43816b7c8",
+        "sense_evidence": [
+          {
+            "sense_id": "w5411-s1",
+            "sense_sha256": "0594d58121c1f981c5ee75d77d1033501d657a0094268bfc34f5fb4ce7b1bf5b",
+            "gloss_sha256": "4c6467dbd6df8e253c101846ddc0551ec1b67df5b94d74c503dced4cea61e025",
+            "evidence_sha256": "1f0ab0c38bbbe69d3fddadcce8b9fcf234c763d535ed7f494253eb528c8689bd"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5412",
+      "inventory_id": "m5-2637",
+      "candidate_record_sha256": "425b2c11fde56d287cc7b94bb898ae5ac8282ba55e00726c09a9d4206a259e64",
+      "decision": "held",
+      "rank": 9,
+      "decision_rationale": "m5-2637 w5412: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5412-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2637 w5412 w5412-s1: source-bound gloss “병원 건물과 나란히 붙어 있거나 가까운 공간.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: ae410a4ee509.",
+          "semantic_rationale": "병원 옆: 병원 건물과 나란히 붙어 있거나 가까운 공간.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2637 w5412-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "C",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2637 w5412 “병원 옆”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5412",
+        "candidate_record_sha256": "425b2c11fde56d287cc7b94bb898ae5ac8282ba55e00726c09a9d4206a259e64",
+        "decision_evidence_sha256": "95564dee675e6ae4c495d4072ee7373d5473b32e0c76c986698ed80dab0da009",
+        "sense_evidence": [
+          {
+            "sense_id": "w5412-s1",
+            "sense_sha256": "2b4df73c5285f626c327ea1b376a07667c615411a7901899d618d75aebab8a16",
+            "gloss_sha256": "ae410a4ee509927d5f47468f7d4d640aaa26d0c06563bde7c194157234f506f6",
+            "evidence_sha256": "251abc083ed635902c5e22c80247538573cb058afb2a67843c6385134bc46687"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5413",
+      "inventory_id": "m5-2638",
+      "candidate_record_sha256": "00be9e5a1fa86ac5a17bb029a6e6e74795661f2c8451e8a0d2b46666d7990841",
+      "decision": "held",
+      "rank": 10,
+      "decision_rationale": "m5-2638 w5413: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5413-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2638 w5413 w5413-s1: source-bound gloss “공원의 전체 공간 중 한쪽에 치우친 부분.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 69bd49cab3c0.",
+          "semantic_rationale": "공원 한쪽: 공원의 전체 공간 중 한쪽에 치우친 부분.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2638 w5413-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "C",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2638 w5413 “공원 한쪽”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5413",
+        "candidate_record_sha256": "00be9e5a1fa86ac5a17bb029a6e6e74795661f2c8451e8a0d2b46666d7990841",
+        "decision_evidence_sha256": "1f01570949d171d0aa7945240009dc946ff9211247b88b18ab33155fe974c929",
+        "sense_evidence": [
+          {
+            "sense_id": "w5413-s1",
+            "sense_sha256": "dfd7e3f7b26ee003e94fc0d6972380b29e3d6f377d7748aaa472b014f3318c63",
+            "gloss_sha256": "69bd49cab3c039dee3e44eff04a06c81177a0971ea7889eeac25185b4f5655ce",
+            "evidence_sha256": "41186cd68cfcf8530709a936a70dca4c8f2448179ec4a48f1eb86ed0a6860451"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5414",
+      "inventory_id": "m5-2639",
+      "candidate_record_sha256": "c39d67106f8adfdd36a26e7e0cbb4efb4916a8fd6de0b0f510b34cc1f31fa117",
+      "decision": "held",
+      "rank": 11,
+      "decision_rationale": "m5-2639 w5414: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5414-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2639 w5414 w5414-s1: source-bound gloss “집의 출입구와 맞닿은 바깥 공간.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 53c17bc6c64e.",
+          "semantic_rationale": "집 앞: 집의 출입구와 맞닿은 바깥 공간.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2639 w5414-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "C",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2639 w5414 “집 앞”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5414",
+        "candidate_record_sha256": "c39d67106f8adfdd36a26e7e0cbb4efb4916a8fd6de0b0f510b34cc1f31fa117",
+        "decision_evidence_sha256": "b9806fdeecd6ffb3d2f34427e697906fa01f682f4a2d60bff118e332223488de",
+        "sense_evidence": [
+          {
+            "sense_id": "w5414-s1",
+            "sense_sha256": "b9cfe49a41aed55c1659791760d887efc53a2eb572f96f155c83fc51606a86a3",
+            "gloss_sha256": "53c17bc6c64e855dfe10de30c71373c96b47e8dd968da42a60ecafb59fae38da",
+            "evidence_sha256": "135716c45a8534c422c2160265631c007eedd98dbb5b841e80d330af3f355387"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5415",
+      "inventory_id": "m5-2640",
+      "candidate_record_sha256": "908aabcd20bbe7ac5a356266c71593bdea5b758ec6e6d9e93ec4267511a2865f",
+      "decision": "held",
+      "rank": 12,
+      "decision_rationale": "m5-2640 w5415: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5415-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2640 w5415 w5415-s1: source-bound gloss “집의 뒷면에 이어지는 바깥 공간.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: c880ba681aac.",
+          "semantic_rationale": "집 뒤: 집의 뒷면에 이어지는 바깥 공간.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2640 w5415-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "C",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2640 w5415 “집 뒤”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5415",
+        "candidate_record_sha256": "908aabcd20bbe7ac5a356266c71593bdea5b758ec6e6d9e93ec4267511a2865f",
+        "decision_evidence_sha256": "bbfbe8c72c507d668664fb323f8dd180462f18fee69cc77612f0510c1671bb34",
+        "sense_evidence": [
+          {
+            "sense_id": "w5415-s1",
+            "sense_sha256": "35d10d852c643b2cb133b6e053c9ef8a280660c4749a063335c260dfeb6fbeb6",
+            "gloss_sha256": "c880ba681aac2293c3e0e14b3562edc5d98027fa45096b2481d7073b53ada846",
+            "evidence_sha256": "f2a5fcab45ece9f33114ca5bb5918c7b8aa3553630533393cb944afdf8874dcb"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5416",
+      "inventory_id": "m5-2811",
+      "candidate_record_sha256": "5e0981f2dda1a619851f45ca1a9ed6adef66f6e1076b5491ab85cb6f6190f982",
+      "decision": "included",
+      "rank": 13,
+      "decision_rationale": "m5-2811 w5416: 사람이나 말이 참되고 믿을 만하다고 판단하는 단일 동사 의미다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5416-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2811 w5416 w5416-s1: source-bound gloss “사람이나 말이 참되고 믿을 만하다고 여기다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 93852bd75aa6.",
+          "semantic_rationale": "믿다: 사람이나 말이 참되고 믿을 만하다고 여기다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2811 w5416-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5416",
+        "candidate_record_sha256": "5e0981f2dda1a619851f45ca1a9ed6adef66f6e1076b5491ab85cb6f6190f982",
+        "decision_evidence_sha256": "4edf681b494517d664f7c7d517494b66452747674556e12ad0fb5d9c059ec778",
+        "sense_evidence": [
+          {
+            "sense_id": "w5416-s1",
+            "sense_sha256": "d8576f3fe555a61aef9f17f37bcc9aa0ac3ebd91d785758e655ffa2f287456a9",
+            "gloss_sha256": "93852bd75aa6608388b966026f942bed65d3332b255b8b2f9d9a98329ea962e9",
+            "evidence_sha256": "9ed31958d372d2a9d6b6d623bb8aea05b32ed99ab7d8a89cc7f49e4e2d052eb2"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5417",
+      "inventory_id": "m5-2812",
+      "candidate_record_sha256": "d9657629b98da9f399798ce90063c8a794afe5cdb0191d90e3ccf477d0c49c41",
+      "decision": "included",
+      "rank": 14,
+      "decision_rationale": "m5-2812 w5417: 기억해야 할 사실이나 일을 마음에서 잊는 하나의 행위를 나타낸다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5417-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2812 w5417 w5417-s1: source-bound gloss “기억해야 할 일이나 사실을 마음에서 잊어버리다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 586f610241e7.",
+          "semantic_rationale": "망각하다: 기억해야 할 일이나 사실을 마음에서 잊어버리다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2812 w5417-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5417",
+        "candidate_record_sha256": "d9657629b98da9f399798ce90063c8a794afe5cdb0191d90e3ccf477d0c49c41",
+        "decision_evidence_sha256": "d21b985bd820b6231a1d28cb8315b42245181e1f3f85e965b6b093c047b8a920",
+        "sense_evidence": [
+          {
+            "sense_id": "w5417-s1",
+            "sense_sha256": "38d77e43af6a9ac8a284b7453086d3f7caed6b966b1330b53c4c107822060e65",
+            "gloss_sha256": "586f610241e723640994d1922a3538454f0e644234ec7b6b62ec871719e2b77a",
+            "evidence_sha256": "9ae838d4b337b5cf1c099cb363fddd2dbcbe42381e8a2b458a9851e4aa63a81c"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5418",
+      "inventory_id": "m5-2813",
+      "candidate_record_sha256": "719b38aecd51bf26b5f43f5195280cf09dea14c413be89bc8f9fe135b09fc696",
+      "decision": "included",
+      "rank": 15,
+      "decision_rationale": "m5-2813 w5418: 이미 한 말이나 겪은 일을 다시 떠올려 깊이 생각하는 하나의 동사 의미다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5418-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2813 w5418 w5418-s1: source-bound gloss “이미 한 말이나 겪은 일을 다시 떠올려 곰곰이 생각하다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 58222484ec97.",
+          "semantic_rationale": "되새기다: 이미 한 말이나 겪은 일을 다시 떠올려 곰곰이 생각하다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2813 w5418-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5418",
+        "candidate_record_sha256": "719b38aecd51bf26b5f43f5195280cf09dea14c413be89bc8f9fe135b09fc696",
+        "decision_evidence_sha256": "6fdf5b44e914852d0467f43a65a32c28875fcd630871c92d7149aefe4f9a6d12",
+        "sense_evidence": [
+          {
+            "sense_id": "w5418-s1",
+            "sense_sha256": "49bf20c721cc0890af892fc7a4ffc17882429ea302ef0d900e395e2196e5fdfd",
+            "gloss_sha256": "58222484ec978d00421114768a54cf8a7f666c970931c8acf8b801837969fd86",
+            "evidence_sha256": "ac8fe839b90f74947dc33a31f8d8dc242aa5c2851206ef56554e77e691ef2d72"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5419",
+      "inventory_id": "m5-2814",
+      "candidate_record_sha256": "c5ccad1bf5a806c4f29f0b82562ecfae79c787115447c88fbf384cf769b68d7b",
+      "decision": "held",
+      "rank": 16,
+      "decision_rationale": "m5-2814 w5419: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5419-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2814 w5419 w5419-s1: source-bound gloss “말이나 일을 잊지 않도록 마음이나 기록에 깊이 남기다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 9b4ce520d1e0.",
+          "semantic_rationale": "새겨두다: 말이나 일을 잊지 않도록 마음이나 기록에 깊이 남기다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2814 w5419-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "A",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2814 w5419 “새겨두다”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5419",
+        "candidate_record_sha256": "c5ccad1bf5a806c4f29f0b82562ecfae79c787115447c88fbf384cf769b68d7b",
+        "decision_evidence_sha256": "dc1b29cc84dc3f8f1c4cecc77ca3ea7bed1a3072e4c0f2f96ce626249cefb6a6",
+        "sense_evidence": [
+          {
+            "sense_id": "w5419-s1",
+            "sense_sha256": "bbd9f00e811bb107b101748673a90c0f77c2a7eedeace8739dbac4bc7d96f8a7",
+            "gloss_sha256": "9b4ce520d1e056ee2e41abb6027d2905606c65f803e28d2e763346e201d3fb28",
+            "evidence_sha256": "eccb6181da98a0472143fe3a6d78a68563fbeb57f58842060cce61dc267613aa"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5420",
+      "inventory_id": "m5-2815",
+      "candidate_record_sha256": "c19ad795c57167f134eed3afca622a7b5b3f01cccdc5851090c4450b5de2a6a4",
+      "decision": "held",
+      "rank": 17,
+      "decision_rationale": "m5-2815 w5420: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5420-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2815 w5420 w5420-s1: source-bound gloss “상대가 도착하거나 준비할 때까지 떠나지 않고 기다리다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 9ced9d174606.",
+          "semantic_rationale": "기다려주다: 상대가 도착하거나 준비할 때까지 떠나지 않고 기다리다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2815 w5420-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "A",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2815 w5420 “기다려주다”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5420",
+        "candidate_record_sha256": "c19ad795c57167f134eed3afca622a7b5b3f01cccdc5851090c4450b5de2a6a4",
+        "decision_evidence_sha256": "0b990943d90f81135e33c970a28f6b68ce7650df858bd70ab10c2ecee4566f1e",
+        "sense_evidence": [
+          {
+            "sense_id": "w5420-s1",
+            "sense_sha256": "6e47764a8d054a614b9bd8f96de803e6164b5c5347f72fcdca236f3582b78654",
+            "gloss_sha256": "9ced9d17460617c0a5a145736ab10d1bd4e4d65672fbf3e0b28d121c8a89b858",
+            "evidence_sha256": "12653bc79117c22306ad5277f6ded90b2f741b8be856fc68ce98fc3421465e6e"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5421",
+      "inventory_id": "m5-2817",
+      "candidate_record_sha256": "eaebccdafe2566588646725671a8e2cae4fab4c28a95a68ca4f813c13295798d",
+      "decision": "held",
+      "rank": 18,
+      "decision_rationale": "m5-2817 w5421: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5421-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2817 w5421 w5421-s1: source-bound gloss “상대가 있는 쪽으로 가까이 이동해 주다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 05b5ffdc8780.",
+          "semantic_rationale": "다가와주다: 상대가 있는 쪽으로 가까이 이동해 주다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2817 w5421-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "A",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2817 w5421 “다가와주다”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5421",
+        "candidate_record_sha256": "eaebccdafe2566588646725671a8e2cae4fab4c28a95a68ca4f813c13295798d",
+        "decision_evidence_sha256": "c4b5761dbbe18c74adadc2cd33db025230968ff837e95ca56eebde2832503c38",
+        "sense_evidence": [
+          {
+            "sense_id": "w5421-s1",
+            "sense_sha256": "97c33f77e069b0d4709ea14b3905357b79abd78fe28168bbdf1571ec2d798726",
+            "gloss_sha256": "05b5ffdc878024a977bffea94b546b1d8fdcfc1c81287f603656e87a4a7e6832",
+            "evidence_sha256": "4b7f1a1a25c062d435e6fe1ff9392875fc25c8bee893fca57ab3a63bebbf7251"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5422",
+      "inventory_id": "m5-2818",
+      "candidate_record_sha256": "0505f611ed4106985de59dac2959dbe4bb7a7a5868159aaaa4154e3304e79e8f",
+      "decision": "included",
+      "rank": 19,
+      "decision_rationale": "m5-2818 w5422: 있던 곳을 벗어나 다른 곳으로 이동하는 하나의 동사 의미다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5422-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2818 w5422 w5422-s1: source-bound gloss “있던 장소를 벗어나 다른 곳으로 가다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 9d357c57a8f7.",
+          "semantic_rationale": "떠나가다: 있던 장소를 벗어나 다른 곳으로 가다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2818 w5422-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5422",
+        "candidate_record_sha256": "0505f611ed4106985de59dac2959dbe4bb7a7a5868159aaaa4154e3304e79e8f",
+        "decision_evidence_sha256": "bf110e3087441f784f4d8f81897c3315f65d06b3872f5fa8d613d481d4f6f178",
+        "sense_evidence": [
+          {
+            "sense_id": "w5422-s1",
+            "sense_sha256": "09144d46d560d9a716e40641a17001852f4f4298907430b47a8930e16cd5d591",
+            "gloss_sha256": "9d357c57a8f7b967e3589044fdf88a80128fd05bb044b941dd1d38ba2246e449",
+            "evidence_sha256": "164a34cbdab71624b1d30c9e5566a6745473d2972083f6a51d64075d200e9c47"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5423",
+      "inventory_id": "m5-2819",
+      "candidate_record_sha256": "6f75897c5a36d6f33669572deb205116656308756003ead7b7f04539127f2f3b",
+      "decision": "included",
+      "rank": 20,
+      "decision_rationale": "m5-2819 w5423: 사람이나 대상을 붙잡지 않고 떠나도록 놓아주는 하나의 동사 의미다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5423-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2819 w5423 w5423-s1: source-bound gloss “사람이나 대상을 붙잡지 않고 떠나도록 놓아주다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 51a8c4f7763a.",
+          "semantic_rationale": "떠나보내다: 사람이나 대상을 붙잡지 않고 떠나도록 놓아주다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2819 w5423-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5423",
+        "candidate_record_sha256": "6f75897c5a36d6f33669572deb205116656308756003ead7b7f04539127f2f3b",
+        "decision_evidence_sha256": "aec3a9ade854538fcba0ebed09dabc3d35502e007a31b66de4be2eaad57d4c87",
+        "sense_evidence": [
+          {
+            "sense_id": "w5423-s1",
+            "sense_sha256": "30a1fae8480502e413bcb73020cc1db0ac3da110a5aa75c47e00a95bbbf5e0d4",
+            "gloss_sha256": "51a8c4f7763a7ec2a7deedb4fce9b48dd39a2a7e9baf44115c5f9a8bd6815e6f",
+            "evidence_sha256": "8025b0acd84e85e5ca619414beeb38547caa30b5ebcc1f0fe62e1d3fb1bda1e9"
+          }
+        ]
+      }
+    }
+  ],
+  "candidate_records": [
+    {
+      "id": "w5404",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5404",
+      "lemma": "피부의 소름",
+      "search_forms": [
+        "피부의 소름"
+      ],
+      "senses": [
+        {
+          "id": "w5404-s1",
+          "pos": "noun",
+          "gloss": "추위나 감정 자극으로 피부의 털구멍이 도드라지는 반응."
+        }
+      ]
+    },
+    {
+      "id": "w5405",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5405",
+      "lemma": "살갗의 떨림",
+      "search_forms": [
+        "살갗의 떨림"
+      ],
+      "senses": [
+        {
+          "id": "w5405-s1",
+          "pos": "noun",
+          "gloss": "피부 표면이나 근육이 작게 흔들리는 감각."
+        }
+      ]
+    },
+    {
+      "id": "w5406",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5406",
+      "lemma": "몸속의 진동",
+      "search_forms": [
+        "몸속의 진동"
+      ],
+      "senses": [
+        {
+          "id": "w5406-s1",
+          "pos": "noun",
+          "gloss": "외부의 소리나 충격이 몸 안에서 떨림으로 전해지는 느낌."
+        }
+      ]
+    },
+    {
+      "id": "w5407",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5407",
+      "lemma": "몸에 밴 냄새",
+      "search_forms": [
+        "몸에 밴 냄새"
+      ],
+      "senses": [
+        {
+          "id": "w5407-s1",
+          "pos": "noun",
+          "gloss": "옷이나 피부에 오래 스며들어 쉽게 사라지지 않는 냄새."
+        }
+      ]
+    },
+    {
+      "id": "w5408",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5408",
+      "lemma": "골목 안쪽",
+      "search_forms": [
+        "골목 안쪽"
+      ],
+      "senses": [
+        {
+          "id": "w5408-s1",
+          "pos": "noun",
+          "gloss": "골목 입구에서 더 들어가 바깥길과 멀어진 부분."
+        }
+      ]
+    },
+    {
+      "id": "w5409",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5409",
+      "lemma": "시장 입구",
+      "search_forms": [
+        "시장 입구"
+      ],
+      "senses": [
+        {
+          "id": "w5409-s1",
+          "pos": "noun",
+          "gloss": "시장 구역으로 들어가는 첫머리."
+        }
+      ]
+    },
+    {
+      "id": "w5410",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5410",
+      "lemma": "역 앞",
+      "search_forms": [
+        "역 앞"
+      ],
+      "senses": [
+        {
+          "id": "w5410-s1",
+          "pos": "noun",
+          "gloss": "역의 출입구와 마주한 바깥쪽 공간."
+        }
+      ]
+    },
+    {
+      "id": "w5411",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5411",
+      "lemma": "학교 뒤",
+      "search_forms": [
+        "학교 뒤"
+      ],
+      "senses": [
+        {
+          "id": "w5411-s1",
+          "pos": "noun",
+          "gloss": "학교 건물의 뒷면이나 그쪽에 이어진 자리."
+        }
+      ]
+    },
+    {
+      "id": "w5412",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5412",
+      "lemma": "병원 옆",
+      "search_forms": [
+        "병원 옆"
+      ],
+      "senses": [
+        {
+          "id": "w5412-s1",
+          "pos": "noun",
+          "gloss": "병원 건물과 나란히 붙어 있거나 가까운 공간."
+        }
+      ]
+    },
+    {
+      "id": "w5413",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5413",
+      "lemma": "공원 한쪽",
+      "search_forms": [
+        "공원 한쪽"
+      ],
+      "senses": [
+        {
+          "id": "w5413-s1",
+          "pos": "noun",
+          "gloss": "공원의 전체 공간 중 한쪽에 치우친 부분."
+        }
+      ]
+    },
+    {
+      "id": "w5414",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5414",
+      "lemma": "집 앞",
+      "search_forms": [
+        "집 앞"
+      ],
+      "senses": [
+        {
+          "id": "w5414-s1",
+          "pos": "noun",
+          "gloss": "집의 출입구와 맞닿은 바깥 공간."
+        }
+      ]
+    },
+    {
+      "id": "w5415",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5415",
+      "lemma": "집 뒤",
+      "search_forms": [
+        "집 뒤"
+      ],
+      "senses": [
+        {
+          "id": "w5415-s1",
+          "pos": "noun",
+          "gloss": "집의 뒷면에 이어지는 바깥 공간."
+        }
+      ]
+    },
+    {
+      "id": "w5416",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5416",
+      "lemma": "믿다",
+      "search_forms": [
+        "믿다"
+      ],
+      "senses": [
+        {
+          "id": "w5416-s1",
+          "pos": "verb",
+          "gloss": "사람이나 말이 참되고 믿을 만하다고 여기다."
+        }
+      ]
+    },
+    {
+      "id": "w5417",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5417",
+      "lemma": "망각하다",
+      "search_forms": [
+        "망각하다"
+      ],
+      "senses": [
+        {
+          "id": "w5417-s1",
+          "pos": "verb",
+          "gloss": "기억해야 할 일이나 사실을 마음에서 잊어버리다."
+        }
+      ]
+    },
+    {
+      "id": "w5418",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5418",
+      "lemma": "되새기다",
+      "search_forms": [
+        "되새기다"
+      ],
+      "senses": [
+        {
+          "id": "w5418-s1",
+          "pos": "verb",
+          "gloss": "이미 한 말이나 겪은 일을 다시 떠올려 곰곰이 생각하다."
+        }
+      ]
+    },
+    {
+      "id": "w5419",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5419",
+      "lemma": "새겨두다",
+      "search_forms": [
+        "새겨두다"
+      ],
+      "senses": [
+        {
+          "id": "w5419-s1",
+          "pos": "verb",
+          "gloss": "말이나 일을 잊지 않도록 마음이나 기록에 깊이 남기다."
+        }
+      ]
+    },
+    {
+      "id": "w5420",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5420",
+      "lemma": "기다려주다",
+      "search_forms": [
+        "기다려주다"
+      ],
+      "senses": [
+        {
+          "id": "w5420-s1",
+          "pos": "verb",
+          "gloss": "상대가 도착하거나 준비할 때까지 떠나지 않고 기다리다."
+        }
+      ]
+    },
+    {
+      "id": "w5421",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5421",
+      "lemma": "다가와주다",
+      "search_forms": [
+        "다가와주다"
+      ],
+      "senses": [
+        {
+          "id": "w5421-s1",
+          "pos": "verb",
+          "gloss": "상대가 있는 쪽으로 가까이 이동해 주다."
+        }
+      ]
+    },
+    {
+      "id": "w5422",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5422",
+      "lemma": "떠나가다",
+      "search_forms": [
+        "떠나가다"
+      ],
+      "senses": [
+        {
+          "id": "w5422-s1",
+          "pos": "verb",
+          "gloss": "있던 장소를 벗어나 다른 곳으로 가다."
+        }
+      ]
+    },
+    {
+      "id": "w5423",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5423",
+      "lemma": "떠나보내다",
+      "search_forms": [
+        "떠나보내다"
+      ],
+      "senses": [
+        {
+          "id": "w5423-s1",
+          "pos": "verb",
+          "gloss": "사람이나 대상을 붙잡지 않고 떠나도록 놓아주다."
+        }
+      ]
+    }
+  ],
+  "candidate_records_sha256": "8c227292f1f7e96b3ffcf4742a81dd2bb0835a68db1f09b15b6839a082b945f8",
+  "artifact_sha256": "6199cfc2aec6d7ec1e42fd6ef31a12f1c7b4859b72315d065972dc30e5e4c522"
+}

@@ -150,6 +150,22 @@ function productionSemanticReview(record, identity, decisionRow, decisionSource,
       rationale: senseReview.semantic_rationale,
       boundary_decision: senseReview.boundary_decision,
       decision_source_id: sourceId,
+      ...(senseReview.review_basis?.topic_analysis
+        ? {
+          topic_analysis: {
+            ...structuredClone(senseReview.review_basis.topic_analysis),
+            decision_source_id: sourceId,
+          },
+        }
+        : {}),
+      ...(Array.isArray(senseReview.review_basis?.topic_analyses)
+        ? {
+          topic_analyses: senseReview.review_basis.topic_analyses.map((analysis) => ({
+            ...structuredClone(analysis),
+            decision_source_id: sourceId,
+          })),
+        }
+        : {}),
     };
   };
   const reviewedRecordSha256 = sha256Json(record);

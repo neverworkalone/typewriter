@@ -1,0 +1,1251 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "kind": "separately-authored-semantic-decision-source",
+  "source_id": "issue-220-authored-semantic-decisions-batch-01-20260929-r1",
+  "issue": 220,
+  "parent_issue": 218,
+  "batch_id": "m9-b-issue-220-historical-batch-01-20260929",
+  "authoring_mode": "agent-authored-decision",
+  "provenance": {
+    "generator": "codex",
+    "generator_version": "issue-220-authored-semantic-review-v1",
+    "generation_pass_id": "issue-220-historical-slice-selection-20260929-r1",
+    "verification_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+    "human_reviewed": false,
+    "authoring_note": "This source records a separate candidate-by-candidate M9-B review. M5 fit and reserve evidence sets historical order only; new lexical dispositions, exact-search checks, and ordinary shared admission determine current recovery."
+  },
+  "review": {
+    "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+    "reviewer": "codex-agent",
+    "status": "complete",
+    "candidate_count": 20,
+    "reviewed_candidate_count": 20,
+    "method": "Review each selected historical source row, exact authored lexical unit and gloss, present canonical/search identity, supported POS and bounded sense; hold unresolved multiword or morphology boundaries; admit only source-supported standalone units through shared admission; add no unsupported relations.",
+    "criteria": [
+      "exact historical inventory and M5-13 source identity binding",
+      "fresh lexical-unit and supported POS review independent of M5 fit/reserve",
+      "bounded current sense without unsupported sense splitting",
+      "exact canonical and generated-search ownership absence",
+      "zero relations allowed without relation fabrication"
+    ],
+    "decision_counts": {
+      "included": 14,
+      "corrected": 0,
+      "held": 6,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "counts": {
+      "included": 14,
+      "corrected": 0,
+      "held": 6,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "prior_generator_replaced": true,
+    "prior_generator_verification_pass_id": "issue-220-historical-slice-selection-20260929-r1",
+    "correction_passes": [],
+    "expression_lexical_unit_review_contract_version": "m9-expression-lexical-unit-review-v1"
+  },
+  "candidate_source": {
+    "source_id": "issue-220-m9-b-batch-01-source-bound-recovery-20260929-r1",
+    "identity_sha256": "303806fb8ca6b82f19d301d94056c98048492058f74f4c3f4218b9d12f0f78b0",
+    "identity_count": 20
+  },
+  "selection": {
+    "policy": "shared-authored-axis-coverage-selection-v6",
+    "capacity": 20,
+    "imported": 14,
+    "reserve": 0,
+    "coverage_field": "selection_axis",
+    "coverage_basis": [
+      "fresh M9-B lexical eligibility after source-bound candidate review"
+    ],
+    "selection_rationale": "The 20-row slice size controls independent review workload only. 14 source-bound dispositions qualify for ordinary admission; 6 remain held for unresolved lexical identity. No admission or relation quota applies."
+  },
+  "decisions": [
+    {
+      "candidate_record_id": "w5384",
+      "inventory_id": "m5-2153",
+      "candidate_record_sha256": "cc751e46df2d3aee02727edd4b6a70fd67d4366da2e658cec0de35c9f80c25b5",
+      "decision": "included",
+      "rank": 1,
+      "decision_rationale": "m5-2153 w5384: 해치려는 의도를 나타내는 추상 명사 하나로 gloss와 표제어가 맞물린다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5384-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2153 w5384 w5384-s1: source-bound gloss “남을 해치거나 곤란하게 만들려는 나쁜 뜻.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 3d865b9e1753.",
+          "semantic_rationale": "악의: 남을 해치거나 곤란하게 만들려는 나쁜 뜻.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2153 w5384-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5384",
+        "candidate_record_sha256": "cc751e46df2d3aee02727edd4b6a70fd67d4366da2e658cec0de35c9f80c25b5",
+        "decision_evidence_sha256": "3bf2934f44675905985852b3cc9d3cf8ba6ebbe0367b831dccd5a78ecb3aa8ca",
+        "sense_evidence": [
+          {
+            "sense_id": "w5384-s1",
+            "sense_sha256": "f443319a57c2e296e234a78b9de54879a374a018f0ef07786754ba78c05cb727",
+            "gloss_sha256": "3d865b9e1753577ea311d9f086fa4833763ac1f9fba3680efd6f678d7711a102",
+            "evidence_sha256": "2a873f835044b6e3914ce17223aabc27a73f37861afa8539e8142dc91f5ab472"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5385",
+      "inventory_id": "m5-2154",
+      "candidate_record_sha256": "9acfed0a64ab804a87d86dd370f7d056c2402fa65889e83b5e4145afd325421a",
+      "decision": "included",
+      "rank": 2,
+      "decision_rationale": "m5-2154 w5385: 애정이나 관심을 잃을까 염려하는 한 가지 감정 명사로 경계가 분명하다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5385-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2154 w5385 w5385-s1: source-bound gloss “사랑이나 관심을 다른 이에게 빼앗길까 염려하며 느끼는 시기.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: d0e3e41e46ee.",
+          "semantic_rationale": "질투심: 사랑이나 관심을 다른 이에게 빼앗길까 염려하며 느끼는 시기.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2154 w5385-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5385",
+        "candidate_record_sha256": "9acfed0a64ab804a87d86dd370f7d056c2402fa65889e83b5e4145afd325421a",
+        "decision_evidence_sha256": "342b39a124d5c072d0ebb1539762964f107430bcf21880b8cd461ee1211dee5c",
+        "sense_evidence": [
+          {
+            "sense_id": "w5385-s1",
+            "sense_sha256": "7a2dc15c77a6b2cae0c751e6d7cb69f7b0e756b99bbdfffec64cc9c4109a713d",
+            "gloss_sha256": "d0e3e41e46eeab228202a9ed0b50cbdd1817d97f7e237bd4008a36f814e5bb71",
+            "evidence_sha256": "5e6514c8a70b51f0ae0115e4a81dfcd1e0b196090186edea146b499bc78c89d2"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5386",
+      "inventory_id": "m5-2155",
+      "candidate_record_sha256": "33b71b2cdbf552ceb87d2eae68a3f3d5efa5d4d1dff69445bf04d361c464e787",
+      "decision": "included",
+      "rank": 3,
+      "decision_rationale": "m5-2155 w5386: 대상에 대한 반감과 싫어하는 마음을 나타내는 단일 감정 명사다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5386-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2155 w5386 w5386-s1: source-bound gloss “대상에 반감을 품고 싫어하는 마음.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 6643cdb4c948.",
+          "semantic_rationale": "미움: 대상에 반감을 품고 싫어하는 마음.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2155 w5386-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5386",
+        "candidate_record_sha256": "33b71b2cdbf552ceb87d2eae68a3f3d5efa5d4d1dff69445bf04d361c464e787",
+        "decision_evidence_sha256": "68cbc0e6323278753ce06b5b767473de4bb6df53da8fcfcb21d2d299c47b8a00",
+        "sense_evidence": [
+          {
+            "sense_id": "w5386-s1",
+            "sense_sha256": "350d512e380ab35d9262a6be55001292c0a34ea3dca664a3cd14d4c5be0007f2",
+            "gloss_sha256": "6643cdb4c9488adfd2993623828f08ae9a7449c897d7e5bfee92a6507be6a3ed",
+            "evidence_sha256": "4bdf175a4d58a835f633b22ca38808526d03f12fe222d865edef86f594002caa"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5387",
+      "inventory_id": "m5-2156",
+      "candidate_record_sha256": "793191e6a2c615eadc686a87353ba905500ac43b6b2988b4a02f858e1b3cde88",
+      "decision": "held",
+      "rank": 4,
+      "decision_rationale": "m5-2156 w5387: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5387-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2156 w5387 w5387-s1: source-bound gloss “미워하면서도 오랜 관계 때문에 쉽게 끊지 못하는 정.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 9e2bb945912b.",
+          "semantic_rationale": "미운 정: 미워하면서도 오랜 관계 때문에 쉽게 끊지 못하는 정.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2156 w5387-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "E",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2156 w5387 “미운 정”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5387",
+        "candidate_record_sha256": "793191e6a2c615eadc686a87353ba905500ac43b6b2988b4a02f858e1b3cde88",
+        "decision_evidence_sha256": "2d12ba7300f68fa31436df71103b42442f8b497e4efbf87a582765a2354843ba",
+        "sense_evidence": [
+          {
+            "sense_id": "w5387-s1",
+            "sense_sha256": "d19b52c4f44aec5955638eba0656ac01109d1d3b8f5b9c4a399f62b5d6044d4f",
+            "gloss_sha256": "9e2bb945912bb1817f11b9a14b8b80c4ee7d63979f8929d5f0004859f565caca",
+            "evidence_sha256": "9e7fb7f6cecdfd36ba148db2dfb15e8342674c88837d0d36d23a668d0f76c7c1"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5388",
+      "inventory_id": "m5-2157",
+      "candidate_record_sha256": "728c98b2c04fdebc3413227996c96d8ae31cd61092d8828a33927f57ec1a6339",
+      "decision": "included",
+      "rank": 5,
+      "decision_rationale": "m5-2157 w5388: 반복 뒤 관심이 사라지는 상태라는 하나의 정서 개념을 나타낸다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5388-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2157 w5388 w5388-s1: source-bound gloss “같은 대상이나 일이 되풀이되어 더는 마음이 가지 않음.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 17bd23cecad2.",
+          "semantic_rationale": "싫증: 같은 대상이나 일이 되풀이되어 더는 마음이 가지 않음.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2157 w5388-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5388",
+        "candidate_record_sha256": "728c98b2c04fdebc3413227996c96d8ae31cd61092d8828a33927f57ec1a6339",
+        "decision_evidence_sha256": "57e26e561bb4db09ebcdb1e0678d0ec2cd854f4fc1b0347bcd002823bbe30456",
+        "sense_evidence": [
+          {
+            "sense_id": "w5388-s1",
+            "sense_sha256": "1715a175c194293ee43bf71ccd045b0b2450eaf75c8882706ab2cc7caf83c886",
+            "gloss_sha256": "17bd23cecad25241b08b022075be628dc6023eb3ea71ad977672eeb044912efd",
+            "evidence_sha256": "9f3709cd979601fae12b13210283fcb6dc5f2eb484be12c4a31687d5969ceacb"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5389",
+      "inventory_id": "m5-2158",
+      "candidate_record_sha256": "8c1dc3d8708dc3d5213817cd1ea0b6a68bd540a974c1d52c40268ca3e7f4873d",
+      "decision": "held",
+      "rank": 6,
+      "decision_rationale": "m5-2158 w5389: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5389-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2158 w5389 w5389-s1: source-bound gloss “반복이나 익숙함 때문에 대상에 흥미가 사라진 상태.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: b3be18f03079.",
+          "semantic_rationale": "싫증남: 반복이나 익숙함 때문에 대상에 흥미가 사라진 상태.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2158 w5389-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "E",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2158 w5389 “싫증남”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5389",
+        "candidate_record_sha256": "8c1dc3d8708dc3d5213817cd1ea0b6a68bd540a974c1d52c40268ca3e7f4873d",
+        "decision_evidence_sha256": "2987cd33cfe43a41f42ba66698a0c5a92ae0cc1a6515e5518fe526f7a0fb6c5f",
+        "sense_evidence": [
+          {
+            "sense_id": "w5389-s1",
+            "sense_sha256": "1622cd0d0f604af8b34aaf75072392faa7accb3acd4eac3f6f421c6b8ec93a3e",
+            "gloss_sha256": "b3be18f030791290d47b05a5e511ea84588aed5f8e7e5922e2f808f2a36626e5",
+            "evidence_sha256": "afb01aa081a84aa613ceb9e4d5641c7b984a641082fd70bf258d46288dd1a7e4"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5390",
+      "inventory_id": "m5-2159",
+      "candidate_record_sha256": "c50dcd40e8201c110078a83db8fac06052ad0942362bdc07a4b5736839f5a370",
+      "decision": "included",
+      "rank": 7,
+      "decision_rationale": "m5-2159 w5390: 단조로운 생활이나 관계에서 생기는 권태의 기분이라는 한 감정 단위다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5390-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2159 w5390 w5390-s1: source-bound gloss “생활이나 관계가 단조롭게 느껴져 싫증이 나는 기분.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 1f4dd0169a36.",
+          "semantic_rationale": "권태감: 생활이나 관계가 단조롭게 느껴져 싫증이 나는 기분.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2159 w5390-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5390",
+        "candidate_record_sha256": "c50dcd40e8201c110078a83db8fac06052ad0942362bdc07a4b5736839f5a370",
+        "decision_evidence_sha256": "91297604ec8af2a2ceaedad15ae3249d141d203aa8901f1685bcaae1056e9180",
+        "sense_evidence": [
+          {
+            "sense_id": "w5390-s1",
+            "sense_sha256": "722914201c5f6388d20149b382fc24ba1abe54ff37e1b1efd836ce082d1be1c5",
+            "gloss_sha256": "1f4dd0169a36e127f5a6d1bc88f9c8aead6b1faa7318ed45f465e966fc2266f3",
+            "evidence_sha256": "27ba439685a7d65e676d2a83e1c533e7e321e8bb3e5feb93c2bbdb36a7a18a33"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5391",
+      "inventory_id": "m5-2160",
+      "candidate_record_sha256": "760855b0eb04ef867f90ce3026282b320ffa8374d2dcacf96e1fff63d6454cbe",
+      "decision": "included",
+      "rank": 8,
+      "decision_rationale": "m5-2160 w5391: 의욕과 기운이 없어 행동할 힘이 나지 않는 한 상태를 나타낸다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5391-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2160 w5391 w5391-s1: source-bound gloss “의욕이나 기운이 없어 무엇을 하려는 힘이 나지 않는 상태.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 5087fdd6d64b.",
+          "semantic_rationale": "무기력: 의욕이나 기운이 없어 무엇을 하려는 힘이 나지 않는 상태.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2160 w5391-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5391",
+        "candidate_record_sha256": "760855b0eb04ef867f90ce3026282b320ffa8374d2dcacf96e1fff63d6454cbe",
+        "decision_evidence_sha256": "cc2125091e0af194011151fdbc4cace9a5a433cd05506fcf5238aa2a9d0320ba",
+        "sense_evidence": [
+          {
+            "sense_id": "w5391-s1",
+            "sense_sha256": "f328e0201181add3e8b0af71cd10d0f4f388ae3f3c89763442d0d504447cfbcc",
+            "gloss_sha256": "5087fdd6d64b482562d757df6cd6b4deadf6fbde3577b2c98418963a97bb451f",
+            "evidence_sha256": "09a824084e18bde4cbd742e76bf2dd2d144cb968b4535332730fc1b49f80c2ed"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5392",
+      "inventory_id": "m5-2311",
+      "candidate_record_sha256": "d9fd749aa76b3f25b6c1f5b303b5569f6d85f1fb39f120e550aef6f2752ec212",
+      "decision": "included",
+      "rank": 9,
+      "decision_rationale": "m5-2311 w5392: 관계나 흐름의 연결이 끊어진 결과 상태를 나타내는 단일 명사다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5392-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2311 w5392 w5392-s1: source-bound gloss “이어지던 관계나 흐름이 끊어진 상태.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 61b644318fe7.",
+          "semantic_rationale": "단절: 이어지던 관계나 흐름이 끊어진 상태.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2311 w5392-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "Q",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5392",
+        "candidate_record_sha256": "d9fd749aa76b3f25b6c1f5b303b5569f6d85f1fb39f120e550aef6f2752ec212",
+        "decision_evidence_sha256": "35d032dc16df3e8d729471d6707dfdce548e577b78a7b8ccbfdd0f5bd34ba99b",
+        "sense_evidence": [
+          {
+            "sense_id": "w5392-s1",
+            "sense_sha256": "d2ada6a11caefa2fcbd9db26382e138681ed280751f69d0a5e5bfa1ed181af9f",
+            "gloss_sha256": "61b644318fe712fce45b6d6909689ef6055e93f3191f021c4b08b7a2b392c950",
+            "evidence_sha256": "26f1639c01233725ccd8be35a01b1191f1cd97e44a563901a52b1193fc96e562"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5393",
+      "inventory_id": "m5-2312",
+      "candidate_record_sha256": "9c1a445bcbbfe883b1bd81c26a734428c74a4078c255f25082bf74488627b750",
+      "decision": "included",
+      "rank": 10,
+      "decision_rationale": "m5-2312 w5393: 사용하거나 덜어 낸 뒤 남은 몫이라는 한 개념을 나타낸다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5393-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2312 w5393 w5393-s1: source-bound gloss “쓰거나 덜어 낸 뒤에도 남아 있는 부분.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 1fa1cd08a1f6.",
+          "semantic_rationale": "잔여: 쓰거나 덜어 낸 뒤에도 남아 있는 부분.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2312 w5393-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "Q",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5393",
+        "candidate_record_sha256": "9c1a445bcbbfe883b1bd81c26a734428c74a4078c255f25082bf74488627b750",
+        "decision_evidence_sha256": "2fb16242df732394a7f1d914d89037065c3982f5ca09c2ee438871fbb7d85b45",
+        "sense_evidence": [
+          {
+            "sense_id": "w5393-s1",
+            "sense_sha256": "3159fd5d46fd484fdcc95d8e70e9f7446d42d385f07cc0d736510ad3b794cd31",
+            "gloss_sha256": "1fa1cd08a1f6353ff5d8566e57932764c0a787295c18de29173bd3a2c11ff484",
+            "evidence_sha256": "28dfc6d290807f694ba1e0be223f6c04baf1626f2f4f0ec2dd5d18a2b49b14af"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5394",
+      "inventory_id": "m5-2314",
+      "candidate_record_sha256": "5e7337ce288a41a5479c7ab4ac392cde4e56606f503d22084e5eaa041d8f63e7",
+      "decision": "included",
+      "rank": 11,
+      "decision_rationale": "m5-2314 w5394: 중심을 기준으로 물체가 움직이는 상태라는 하나의 감각·동작 단위다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5394-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2314 w5394 w5394-s1: source-bound gloss “물체가 중심을 기준으로 이리저리 움직이는 상태.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 941e59441df0.",
+          "semantic_rationale": "흔들림: 물체가 중심을 기준으로 이리저리 움직이는 상태.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2314 w5394-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "Q",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5394",
+        "candidate_record_sha256": "5e7337ce288a41a5479c7ab4ac392cde4e56606f503d22084e5eaa041d8f63e7",
+        "decision_evidence_sha256": "3ad27ecc54b1eb3e33f54e1ed06200d4db0981a7ea0ddce1dd05e9f4adf3b2d6",
+        "sense_evidence": [
+          {
+            "sense_id": "w5394-s1",
+            "sense_sha256": "05d343533770d9c026081f42f994a07604779dcd9464411b04f1737df02b913e",
+            "gloss_sha256": "941e59441df03a6016de479c1a079a65da4947e607f857a5e0a620452a56367b",
+            "evidence_sha256": "1f994686952f541801bf1b1592bb5821094e694387bbab1fb2ab9d63a835ecfd"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5395",
+      "inventory_id": "m5-2315",
+      "candidate_record_sha256": "c0078a229076eb2e59fd8dd95d4842a932f2c5a8c19d4a7176f15449e2aceca2",
+      "decision": "included",
+      "rank": 12,
+      "decision_rationale": "m5-2315 w5395: 흩어진 대상이나 내용을 가지런히 하는 작용을 나타내는 명사다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5395-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2315 w5395 w5395-s1: source-bound gloss “흩어진 물건이나 내용을 가지런히 정리함.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: aad4b67a54ab.",
+          "semantic_rationale": "정돈: 흩어진 물건이나 내용을 가지런히 정리함.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2315 w5395-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "Q",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5395",
+        "candidate_record_sha256": "c0078a229076eb2e59fd8dd95d4842a932f2c5a8c19d4a7176f15449e2aceca2",
+        "decision_evidence_sha256": "03e1b39fc584dffed1c41693ccbf29eb18c084368281732928addadda22604c0",
+        "sense_evidence": [
+          {
+            "sense_id": "w5395-s1",
+            "sense_sha256": "a1b68604d5400df47f6b7932608b896fe8ccda56c987da1b69323e7ae9ac5085",
+            "gloss_sha256": "aad4b67a54ab8af5942998fff6b1d85eb0c7f1588a696f191151ccf0ac412498",
+            "evidence_sha256": "5f81fcbfb623f5be6175b6ef6c64bc91df0f3583f8c603a5e38e1409f6058334"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5396",
+      "inventory_id": "m5-2316",
+      "candidate_record_sha256": "8331110ec89cadc02a7a939f35540ade7f1932bcf58a5cff8052eeeec3f69452",
+      "decision": "included",
+      "rank": 13,
+      "decision_rationale": "m5-2316 w5396: 서로 다른 요소가 구분되지 않게 섞인 상태를 나타내는 명사다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5396-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2316 w5396 w5396-s1: source-bound gloss “서로 다른 요소가 구분되지 않게 한데 섞인 상태.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 46e3c76e2e87.",
+          "semantic_rationale": "뒤섞임: 서로 다른 요소가 구분되지 않게 한데 섞인 상태.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2316 w5396-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "Q",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5396",
+        "candidate_record_sha256": "8331110ec89cadc02a7a939f35540ade7f1932bcf58a5cff8052eeeec3f69452",
+        "decision_evidence_sha256": "890fc19819f4c927a8c32e5f913d287ee885b91f85d735610802a79e51d5cb93",
+        "sense_evidence": [
+          {
+            "sense_id": "w5396-s1",
+            "sense_sha256": "32cc675be78b5b085edbdd037ffaa221b5e33e70e5b3d99ad5923e20ede205de",
+            "gloss_sha256": "46e3c76e2e8707851d66cec225c43a97954f1c0c5f7aa8f79f3e18fcdc926e95",
+            "evidence_sha256": "0d92f9f5bb8a1630fe7800d82833821e69d9a836813f00a978496f5bbd82a278"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5397",
+      "inventory_id": "m5-2317",
+      "candidate_record_sha256": "42fef158e589cbf7f2726ffb4d972d92143b59422b46c8c94690acbf95e3b7a8",
+      "decision": "included",
+      "rank": 14,
+      "decision_rationale": "m5-2317 w5397: 요소를 자리와 순서에 두는 방식이라는 단일 개념이다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5397-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2317 w5397 w5397-s1: source-bound gloss “사물이나 요소를 일정한 자리와 순서에 놓는 방식.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 69ff49f30de0.",
+          "semantic_rationale": "배치: 사물이나 요소를 일정한 자리와 순서에 놓는 방식.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2317 w5397-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "Q",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5397",
+        "candidate_record_sha256": "42fef158e589cbf7f2726ffb4d972d92143b59422b46c8c94690acbf95e3b7a8",
+        "decision_evidence_sha256": "4a2b190a3595981d86e899413ee5ef693041f6491ed4b94cd73576ea55db6e67",
+        "sense_evidence": [
+          {
+            "sense_id": "w5397-s1",
+            "sense_sha256": "4658b80b93e799d6a8cb271f6940a03ce46c6836f01957b706cbcdfd07fa3473",
+            "gloss_sha256": "69ff49f30de02471a2ed674711a788d502cfb4034521350c2d365777d51d535f",
+            "evidence_sha256": "dd35c97bfd39c04e9c73014549a1c742cd65bf3d503201e81d67e8830ac8cf90"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5398",
+      "inventory_id": "m5-2318",
+      "candidate_record_sha256": "55c13b7714df77ca63a7770316256a22f1e6b9c6d38bb500e2783be6ea44e40e",
+      "decision": "included",
+      "rank": 15,
+      "decision_rationale": "m5-2318 w5398: 장면이나 내용을 받치는 환경이라는 gloss의 단일 공간 의미만 유지한다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5398-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2318 w5398 w5398-s1: source-bound gloss “앞에 놓인 대상 뒤에서 장면이나 내용을 받치는 환경.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 255bc59b17b4.",
+          "semantic_rationale": "배경: 앞에 놓인 대상 뒤에서 장면이나 내용을 받치는 환경.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2318 w5398-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "Q",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5398",
+        "candidate_record_sha256": "55c13b7714df77ca63a7770316256a22f1e6b9c6d38bb500e2783be6ea44e40e",
+        "decision_evidence_sha256": "d927e5db7438266636f497bbcedef87d6d518793d0bfaec6eab1dfee733a5c7c",
+        "sense_evidence": [
+          {
+            "sense_id": "w5398-s1",
+            "sense_sha256": "7f966ba4a65c77908be8c816e5fbb118537fe6e26aa1e66ca02d8b6d9b95e078",
+            "gloss_sha256": "255bc59b17b47c77156c7cc3a7d9e8d27b10d038703d89274c7832ca127e72a8",
+            "evidence_sha256": "76e528c2d1a484ecb198a5307a2b90b7bb2aa8977a6ef84dd419c1da3fb62517"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5399",
+      "inventory_id": "m5-2319",
+      "candidate_record_sha256": "b99b773825db2b71d382b8361de62a2533087240c552dcadcdd177190f0eca9a",
+      "decision": "included",
+      "rank": 16,
+      "decision_rationale": "m5-2319 w5399: 관찰자 가까이에 놓인 장면 부분이라는 하나의 공간 의미를 나타낸다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5399-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2319 w5399 w5399-s1: source-bound gloss “장면에서 관찰자에게 가장 가까이 드러나는 부분.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: a3463850c54d.",
+          "semantic_rationale": "전경: 장면에서 관찰자에게 가장 가까이 드러나는 부분.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2319 w5399-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search.",
+          "review_basis": {
+            "topic_analyses": [
+              {
+                "status": "pass",
+                "state": "unsupported",
+                "gloss_sha256": "a3463850c54d2caa5fc311f6d3f70241f8e7d98344e1a6c5d70d50e0f8cf8b11",
+                "topic": "가까",
+                "particle": "이",
+                "predicate": "드러나는",
+                "token_index": 3,
+                "decision_source_id": "issue-220-authored-semantic-decisions-batch-01-20260929-r1",
+                "rationale": "M9-B re-read the exact source gloss span “가까이 드러나는”: it functions as an adverbial or modifier here, not as a noun-topic sense boundary."
+              }
+            ]
+          }
+        }
+      ],
+      "selection_axis": "Q",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5399",
+        "candidate_record_sha256": "b99b773825db2b71d382b8361de62a2533087240c552dcadcdd177190f0eca9a",
+        "decision_evidence_sha256": "629f60c31a962491da51ab6989673a3ae879a7817b9243917fbf5a3e96e858ff",
+        "sense_evidence": [
+          {
+            "sense_id": "w5399-s1",
+            "sense_sha256": "8f70151e06e6d4dc43418d2def936879cead1e8878fa4469172c0afbbc04736e",
+            "gloss_sha256": "a3463850c54d2caa5fc311f6d3f70241f8e7d98344e1a6c5d70d50e0f8cf8b11",
+            "evidence_sha256": "53cfc84a2dcbcdc9ef703304e27747eb692b1bb9d208b05282eaa7cf3a9f78ae"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5400",
+      "inventory_id": "m5-2473",
+      "candidate_record_sha256": "9c0e9419d9b2d526ec69abc93fe2f68d715beebafe7879cbcaeaae489ab33754",
+      "decision": "held",
+      "rank": 17,
+      "decision_rationale": "m5-2473 w5400: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5400-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2473 w5400 w5400-s1: source-bound gloss “손가락 끝이 찌릿하거나 감각이 둔해지는 느낌.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: f9b598d7548d.",
+          "semantic_rationale": "손끝의 저림: 손가락 끝이 찌릿하거나 감각이 둔해지는 느낌.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2473 w5400-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "S",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2473 w5400 “손끝의 저림”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5400",
+        "candidate_record_sha256": "9c0e9419d9b2d526ec69abc93fe2f68d715beebafe7879cbcaeaae489ab33754",
+        "decision_evidence_sha256": "fdfec35bf522b3becd0e7fedb74d358a183b6e2b6549f92d70608efccb3e767a",
+        "sense_evidence": [
+          {
+            "sense_id": "w5400-s1",
+            "sense_sha256": "c1f78f3ee37f89b25bdc103522b112661d3ca985b17afa2fb34ffb6e276a2be4",
+            "gloss_sha256": "f9b598d7548df6776383c36566fbaeae470b6239289f9fac130fc3d2da3856b9",
+            "evidence_sha256": "ce0019323776eb4820856bc3d763c862ca2307e0b3ff1dd375175a6b3ed71bbf"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5401",
+      "inventory_id": "m5-2474",
+      "candidate_record_sha256": "dec095817013a806523aa06c6c781e353a9c50299030c4c7ffa2a5dac43b7356",
+      "decision": "held",
+      "rank": 18,
+      "decision_rationale": "m5-2474 w5401: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5401-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2474 w5401 w5401-s1: source-bound gloss “손가락 끝에서 알아차리는 따뜻함이나 차가움.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 1be1655cdc60.",
+          "semantic_rationale": "손끝의 온도: 손가락 끝에서 알아차리는 따뜻함이나 차가움.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2474 w5401-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "S",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2474 w5401 “손끝의 온도”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5401",
+        "candidate_record_sha256": "dec095817013a806523aa06c6c781e353a9c50299030c4c7ffa2a5dac43b7356",
+        "decision_evidence_sha256": "a5df25b8a5b059ce53fbabbd659c3c6cf8c5864bb8d48d6ed9844e12b223ae07",
+        "sense_evidence": [
+          {
+            "sense_id": "w5401-s1",
+            "sense_sha256": "560ee9914f40c6579ea738769d970917cae076814e889775c6dc64a552cc83f8",
+            "gloss_sha256": "1be1655cdc60a4fa7d6ab707ae2995bfbc79e9097b87dcb3fc0e98e9f34d4e99",
+            "evidence_sha256": "47e2443029e8b252fc5c605d422a4ecbb280f257cb8ccac1de4bc18d37005bb7"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5402",
+      "inventory_id": "m5-2475",
+      "candidate_record_sha256": "7af66042fcce191bbbf3827313dc0ff890f8e9e63adbd9211c3ecf0738081900",
+      "decision": "held",
+      "rank": 19,
+      "decision_rationale": "m5-2475 w5402: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5402-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2475 w5402 w5402-s1: source-bound gloss “바닥에 닿는 발의 아래쪽에서 느끼는 압력과 질감.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 588b86280a5d.",
+          "semantic_rationale": "발바닥의 감각: 바닥에 닿는 발의 아래쪽에서 느끼는 압력과 질감.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2475 w5402-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "S",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2475 w5402 “발바닥의 감각”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5402",
+        "candidate_record_sha256": "7af66042fcce191bbbf3827313dc0ff890f8e9e63adbd9211c3ecf0738081900",
+        "decision_evidence_sha256": "ae25e04641630bef070db45255a2836450acef65570334a85510ebe2dd63398e",
+        "sense_evidence": [
+          {
+            "sense_id": "w5402-s1",
+            "sense_sha256": "ec0b881f256826274790f81903006cd21b054038ca24f4195c20844a9f8e1a47",
+            "gloss_sha256": "588b86280a5dcb959a8f7c26497bfa24ddba87f40116b1033846f5579b6fca48",
+            "evidence_sha256": "e248218d7f9a63fbcc823dba5d5f8b5aa1d7dab93ed6e841881dd8c811179ced"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5403",
+      "inventory_id": "m5-2476",
+      "candidate_record_sha256": "e68430869689c184ec6a02c76974d2d76bc6c7b149ff43c3ef733390f71e432b",
+      "decision": "held",
+      "rank": 20,
+      "decision_rationale": "m5-2476 w5403: 현재 source는 이 정확한 표기가 독립 lexical unit으로 고정되었는지 입증하지 않는다. 단어 내부의 형태 경계 또는 조사·수식 관계가 살아 있어 lexical-unit 경계를 보류하고, 새 sense나 relation은 만들지 않는다.",
+      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "needs-context",
+      "sense_reviews": [
+        {
+          "sense_id": "w5403-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2476 w5403 w5403-s1: source-bound gloss “발목 주변 근육이 굳고 당기는 느낌.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 7ea2b34d9497.",
+          "semantic_rationale": "발목의 긴장: 발목 주변 근육이 굳고 당기는 느낌.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-2476 w5403-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+        }
+      ],
+      "selection_axis": "S",
+      "hold_basis": "unresolved-lexical-unit",
+      "lexical_unit_review": {
+        "contract_version": "m9-expression-lexical-unit-review-v1",
+        "judgment": "unresolved",
+        "rationale": "m5-2476 w5403 “발목의 긴장”: exact form의 독립 lexical-unit 근거가 후보 본문에 없으므로 보류한다.",
+        "evidence": []
+      },
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5403",
+        "candidate_record_sha256": "e68430869689c184ec6a02c76974d2d76bc6c7b149ff43c3ef733390f71e432b",
+        "decision_evidence_sha256": "bf417e228970bb9da4ca89fc77dd92803d4f5a9fbab6985d2324baab176633af",
+        "sense_evidence": [
+          {
+            "sense_id": "w5403-s1",
+            "sense_sha256": "95ea864bada7ac2e948a2557b9edb6a7e493437199d92816086daea59b1b5789",
+            "gloss_sha256": "7ea2b34d94976134ff2a719046ff5cdbb86767361b657071abe16ad5f6edd18d",
+            "evidence_sha256": "9e615159431e270e8e2ddf0d44fd4c9f4c7a512e039c00428e3bfa3e62eb2082"
+          }
+        ]
+      }
+    }
+  ],
+  "candidate_records": [
+    {
+      "id": "w5384",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5384",
+      "lemma": "악의",
+      "search_forms": [
+        "악의"
+      ],
+      "senses": [
+        {
+          "id": "w5384-s1",
+          "pos": "noun",
+          "gloss": "남을 해치거나 곤란하게 만들려는 나쁜 뜻."
+        }
+      ]
+    },
+    {
+      "id": "w5385",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5385",
+      "lemma": "질투심",
+      "search_forms": [
+        "질투심"
+      ],
+      "senses": [
+        {
+          "id": "w5385-s1",
+          "pos": "noun",
+          "gloss": "사랑이나 관심을 다른 이에게 빼앗길까 염려하며 느끼는 시기."
+        }
+      ]
+    },
+    {
+      "id": "w5386",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5386",
+      "lemma": "미움",
+      "search_forms": [
+        "미움"
+      ],
+      "senses": [
+        {
+          "id": "w5386-s1",
+          "pos": "noun",
+          "gloss": "대상에 반감을 품고 싫어하는 마음."
+        }
+      ]
+    },
+    {
+      "id": "w5387",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5387",
+      "lemma": "미운 정",
+      "search_forms": [
+        "미운 정"
+      ],
+      "senses": [
+        {
+          "id": "w5387-s1",
+          "pos": "noun",
+          "gloss": "미워하면서도 오랜 관계 때문에 쉽게 끊지 못하는 정."
+        }
+      ]
+    },
+    {
+      "id": "w5388",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5388",
+      "lemma": "싫증",
+      "search_forms": [
+        "싫증"
+      ],
+      "senses": [
+        {
+          "id": "w5388-s1",
+          "pos": "noun",
+          "gloss": "같은 대상이나 일이 되풀이되어 더는 마음이 가지 않음."
+        }
+      ]
+    },
+    {
+      "id": "w5389",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5389",
+      "lemma": "싫증남",
+      "search_forms": [
+        "싫증남"
+      ],
+      "senses": [
+        {
+          "id": "w5389-s1",
+          "pos": "noun",
+          "gloss": "반복이나 익숙함 때문에 대상에 흥미가 사라진 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5390",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5390",
+      "lemma": "권태감",
+      "search_forms": [
+        "권태감"
+      ],
+      "senses": [
+        {
+          "id": "w5390-s1",
+          "pos": "noun",
+          "gloss": "생활이나 관계가 단조롭게 느껴져 싫증이 나는 기분."
+        }
+      ]
+    },
+    {
+      "id": "w5391",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5391",
+      "lemma": "무기력",
+      "search_forms": [
+        "무기력"
+      ],
+      "senses": [
+        {
+          "id": "w5391-s1",
+          "pos": "noun",
+          "gloss": "의욕이나 기운이 없어 무엇을 하려는 힘이 나지 않는 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5392",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5392",
+      "lemma": "단절",
+      "search_forms": [
+        "단절"
+      ],
+      "senses": [
+        {
+          "id": "w5392-s1",
+          "pos": "noun",
+          "gloss": "이어지던 관계나 흐름이 끊어진 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5393",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5393",
+      "lemma": "잔여",
+      "search_forms": [
+        "잔여"
+      ],
+      "senses": [
+        {
+          "id": "w5393-s1",
+          "pos": "noun",
+          "gloss": "쓰거나 덜어 낸 뒤에도 남아 있는 부분."
+        }
+      ]
+    },
+    {
+      "id": "w5394",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5394",
+      "lemma": "흔들림",
+      "search_forms": [
+        "흔들림"
+      ],
+      "senses": [
+        {
+          "id": "w5394-s1",
+          "pos": "noun",
+          "gloss": "물체가 중심을 기준으로 이리저리 움직이는 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5395",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5395",
+      "lemma": "정돈",
+      "search_forms": [
+        "정돈"
+      ],
+      "senses": [
+        {
+          "id": "w5395-s1",
+          "pos": "noun",
+          "gloss": "흩어진 물건이나 내용을 가지런히 정리함."
+        }
+      ]
+    },
+    {
+      "id": "w5396",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5396",
+      "lemma": "뒤섞임",
+      "search_forms": [
+        "뒤섞임"
+      ],
+      "senses": [
+        {
+          "id": "w5396-s1",
+          "pos": "noun",
+          "gloss": "서로 다른 요소가 구분되지 않게 한데 섞인 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5397",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5397",
+      "lemma": "배치",
+      "search_forms": [
+        "배치"
+      ],
+      "senses": [
+        {
+          "id": "w5397-s1",
+          "pos": "noun",
+          "gloss": "사물이나 요소를 일정한 자리와 순서에 놓는 방식."
+        }
+      ]
+    },
+    {
+      "id": "w5398",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5398",
+      "lemma": "배경",
+      "search_forms": [
+        "배경"
+      ],
+      "senses": [
+        {
+          "id": "w5398-s1",
+          "pos": "noun",
+          "gloss": "앞에 놓인 대상 뒤에서 장면이나 내용을 받치는 환경."
+        }
+      ]
+    },
+    {
+      "id": "w5399",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5399",
+      "lemma": "전경",
+      "search_forms": [
+        "전경"
+      ],
+      "senses": [
+        {
+          "id": "w5399-s1",
+          "pos": "noun",
+          "gloss": "장면에서 관찰자에게 가장 가까이 드러나는 부분."
+        }
+      ]
+    },
+    {
+      "id": "w5400",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5400",
+      "lemma": "손끝의 저림",
+      "search_forms": [
+        "손끝의 저림"
+      ],
+      "senses": [
+        {
+          "id": "w5400-s1",
+          "pos": "noun",
+          "gloss": "손가락 끝이 찌릿하거나 감각이 둔해지는 느낌."
+        }
+      ]
+    },
+    {
+      "id": "w5401",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5401",
+      "lemma": "손끝의 온도",
+      "search_forms": [
+        "손끝의 온도"
+      ],
+      "senses": [
+        {
+          "id": "w5401-s1",
+          "pos": "noun",
+          "gloss": "손가락 끝에서 알아차리는 따뜻함이나 차가움."
+        }
+      ]
+    },
+    {
+      "id": "w5402",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5402",
+      "lemma": "발바닥의 감각",
+      "search_forms": [
+        "발바닥의 감각"
+      ],
+      "senses": [
+        {
+          "id": "w5402-s1",
+          "pos": "noun",
+          "gloss": "바닥에 닿는 발의 아래쪽에서 느끼는 압력과 질감."
+        }
+      ]
+    },
+    {
+      "id": "w5403",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5403",
+      "lemma": "발목의 긴장",
+      "search_forms": [
+        "발목의 긴장"
+      ],
+      "senses": [
+        {
+          "id": "w5403-s1",
+          "pos": "noun",
+          "gloss": "발목 주변 근육이 굳고 당기는 느낌."
+        }
+      ]
+    }
+  ],
+  "candidate_records_sha256": "80961869054a283b8ba25ee902187309fd0547bc2cf196c50bd7c59aacb32515",
+  "artifact_sha256": "31ef860ce21235a1f25ba53d02ec693ceb2a5931092e514cb2b2cef431245c3c"
+}
