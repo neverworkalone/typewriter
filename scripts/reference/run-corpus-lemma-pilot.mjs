@@ -20,21 +20,18 @@ const LOCAL_PILOT_DIRECTORY = path.join(
   REPOSITORY_DIRECTORY,
   'data/reference/pilots/issue-201',
 );
-const STAGING_DATABASE_PATH = path.join(
-  LOCAL_PILOT_DIRECTORY,
-  'candidate-analysis.sqlite',
-);
-const CANDIDATE_SELECTION_PATH = path.join(
-  LOCAL_PILOT_DIRECTORY,
-  'candidate-selection.json',
-);
-const INVENTORY_PATH = path.join(LOCAL_PILOT_DIRECTORY, 'pilot-inventory.json');
+const REFERENCE_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/reference');
 const ROW_RESULT_LIMIT = 3;
 const EXPECTED_PILOT_SIZE = 100;
+const MAX_CANDIDATE_LIMIT = 200;
 
 function parseArguments(argumentsList) {
   const options = {
     python: process.env.TYPEWRITER_PYTHON || 'python3',
+    candidateLimit: EXPECTED_PILOT_SIZE,
+    outputDirectory: LOCAL_PILOT_DIRECTORY,
+    exclusionLemmaSources: [],
+    batchId: 'issue-201-pilot',
   };
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
@@ -47,11 +44,51 @@ function parseArguments(argumentsList) {
       index += 1;
       continue;
     }
+    if (argument === '--candidate-limit') {
+      const value = Number(argumentsList[index + 1]);
+      if (!Number.isSafeInteger(value) || value < 1 || value > MAX_CANDIDATE_LIMIT) {
+        throw new Error(`--candidate-limit must be an integer from 1 to ${MAX_CANDIDATE_LIMIT}.`);
+      }
+      options.candidateLimit = value;
+      index += 1;
+      continue;
+    }
+    if (argument === '--output-directory') {
+      const value = argumentsList[index + 1];
+      if (!value || value.startsWith('--')) throw new Error('--output-directory requires a path.');
+      options.outputDirectory = path.resolve(REPOSITORY_DIRECTORY, value);
+      index += 1;
+      continue;
+    }
+    if (argument === '--exclude-decision-source' || argument === '--exclude-lemma-source') {
+      const value = argumentsList[index + 1];
+      if (!value || value.startsWith('--')) {
+        throw new Error(`${argument} requires a tracked decision or candidate artifact path.`);
+      }
+      options.exclusionLemmaSources.push(path.resolve(REPOSITORY_DIRECTORY, value));
+      index += 1;
+      continue;
+    }
+    if (argument === '--batch-id') {
+      const value = argumentsList[index + 1];
+      if (!value || !/^[a-z0-9][a-z0-9-]{0,63}$/u.test(value)) {
+        throw new Error('--batch-id must be lowercase hyphenated and at most 64 characters.');
+      }
+      options.batchId = value;
+      index += 1;
+      continue;
+    }
     if (argument === '--help') {
       options.help = true;
       continue;
     }
     throw new Error('Unknown argument: ' + argument);
+  }
+  const relativeOutputDirectory = path.relative(REFERENCE_DIRECTORY, options.outputDirectory);
+  if (!relativeOutputDirectory
+    || relativeOutputDirectory.startsWith('..')
+    || path.isAbsolute(relativeOutputDirectory)) {
+    throw new Error('Corpus candidate outputs must remain under ignored data/reference/.');
   }
   return options;
 }
@@ -60,15 +97,82 @@ function hashFileContents(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function runPythonExtractor({ python, dictionaryPath }) {
+export function excludedLemmasForArtifact(artifact, relativePath) {
+  let sourceLemmas;
+  if ((artifact.contract_version === 'issue-204-pilot-review-v1'
+    || artifact.contract_version === 'm9-corpus-candidate-review-v1')
+    && Array.isArray(artifact.decisions)) {
+    sourceLemmas = artifact.decisions.map((row) => row?.morphology_proposal?.lemma);
+  } else if (Array.isArray(artifact.candidate_records)) {
+    sourceLemmas = artifact.candidate_records.map((row) => row?.lemma);
+  } else if (Array.isArray(artifact.targets)) {
+    sourceLemmas = artifact.targets.map((row) => row?.lemma);
+  } else {
+    throw new Error(`Unsupported exclusion decision contract: ${relativePath}`);
+  }
+  if (sourceLemmas.length === 0 || sourceLemmas.some((lemma) => (
+    typeof lemma !== 'string'
+    || lemma.length === 0
+    || lemma !== lemma.trim()
+    || lemma.normalize('NFC') !== lemma
+  ))) {
+    throw new Error(`Exclusion decisions must contain reviewed trimmed NFC lemmas: ${relativePath}`);
+  }
+  return sourceLemmas;
+}
+
+async function buildExclusionManifest(sourcePaths) {
+  const sourceArtifacts = [];
+  const lemmas = new Set();
+  for (const sourcePath of sourcePaths) {
+    const relativePath = path.relative(REPOSITORY_DIRECTORY, sourcePath);
+    if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      throw new Error('Exclusion decision sources must be repository files.');
+    }
+    const sourceBytes = await readFile(sourcePath);
+    let artifact;
+    try {
+      artifact = JSON.parse(sourceBytes.toString('utf8'));
+    } catch (error) {
+      throw new Error(`Could not parse exclusion source ${relativePath}: ${error.message}`);
+    }
+    const sourceLemmas = excludedLemmasForArtifact(artifact, relativePath);
+    for (const lemma of sourceLemmas) lemmas.add(lemma);
+    sourceArtifacts.push({
+      path: relativePath.split(path.sep).join('/'),
+      sha256: hashFileContents(sourceBytes),
+    });
+  }
+  sourceArtifacts.sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
+  const payload = {
+    lemmas: [...lemmas].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0)),
+    schema_version: 'm9-reviewed-lemma-exclusions-v1',
+    source_artifacts: sourceArtifacts,
+  };
+  return {
+    ...payload,
+    exclusion_sha256: hashFileContents(Buffer.from(JSON.stringify(payload), 'utf8')),
+  };
+}
+
+function runPythonExtractor({
+  python,
+  dictionaryPath,
+  stagingDatabasePath,
+  candidateSelectionPath,
+  candidateLimit,
+  exclusionManifestPath,
+}) {
   return new Promise((resolve, reject) => {
     const child = spawn(
       python,
       [
         PYTHON_EXTRACTOR_PATH,
         '--dictionary', dictionaryPath,
-        '--staging-db', STAGING_DATABASE_PATH,
-        '--candidate-json', CANDIDATE_SELECTION_PATH,
+        '--staging-db', stagingDatabasePath,
+        '--candidate-json', candidateSelectionPath,
+        '--candidate-limit', String(candidateLimit),
+        '--exclusion-manifest', exclusionManifestPath,
       ],
       {
         cwd: REPOSITORY_DIRECTORY,
@@ -121,12 +225,79 @@ function evidenceHit(hit) {
   };
 }
 
-async function addBoundedCorpusEvidence(selection) {
+function safeEvidenceHit(hit) {
+  return {
+    source_path: hit.source_path,
+    corpus_id: hit.corpus_id,
+    document_id: hit.document_id,
+    document_ordinal: hit.document_ordinal,
+    paragraph_id: hit.paragraph_id,
+    paragraph_ordinal: hit.paragraph_ordinal,
+    source_category: hit.source_category,
+    source_year: hit.source_year,
+  };
+}
+
+export function buildTextFreeCandidateEvidence(inventory) {
+  return {
+    schema_version: '1',
+    contract_version: 'm9-corpus-candidate-evidence-v1',
+    publication_state: inventory.publication_state,
+    permission_record_sha256: inventory.permission_record_sha256,
+    index: structuredClone(inventory.index),
+    typewriter_surface: structuredClone(inventory.typewriter_surface),
+    extractor: structuredClone(inventory.extractor),
+    selection: structuredClone(inventory.selection),
+    yield: structuredClone(inventory.yield),
+    evidence_collection: structuredClone(inventory.evidence_collection),
+    orchestration: {
+      batch_id: inventory.orchestration.batch_id,
+      requested_candidate_limit: inventory.orchestration.requested_candidate_limit,
+      exclusion_manifest_sha256: inventory.orchestration.exclusion_manifest_sha256,
+      node_version: inventory.orchestration.node_version,
+      node_sqlite_version: inventory.orchestration.node_sqlite_version,
+      orchestrator_script_sha256: inventory.orchestration.orchestrator_script_sha256,
+      canonical_build: structuredClone(inventory.orchestration.canonical_build),
+      candidate_selection_sha256: inventory.orchestration.candidate_selection_sha256,
+    },
+    candidates: inventory.candidates.map((candidate) => ({
+      proposed_lemma: candidate.proposed_lemma,
+      proposed_pos: candidate.proposed_pos,
+      analyzer_pos: candidate.analyzer_pos,
+      kiwi_morpheme_occurrences_in_sample: candidate.kiwi_morpheme_occurrences_in_sample,
+      oov_morpheme_occurrences_in_sample: candidate.oov_morpheme_occurrences_in_sample,
+      paragraph_hits_in_sample: candidate.paragraph_hits_in_sample,
+      distinct_documents_in_sample: candidate.distinct_documents_in_sample,
+      distinct_sources_in_sample: candidate.distinct_sources_in_sample,
+      max_source_morpheme_occurrences_in_sample: candidate.max_source_morpheme_occurrences_in_sample,
+      source_concentration_ratio_in_sample: candidate.source_concentration_ratio_in_sample,
+      pos_interpretation_count_in_sample: candidate.pos_interpretation_count_in_sample,
+      ambiguous_observed_surface_count_in_sample: candidate.ambiguous_observed_surface_count_in_sample,
+      ambiguity_status: candidate.ambiguity_status,
+      analyzer_confidence: candidate.analyzer_confidence,
+      coverage_status: candidate.coverage_status,
+      typewriter_surface_matches: structuredClone(candidate.typewriter_surface_matches),
+      observed_surface_forms: structuredClone(candidate.observed_surface_forms),
+      observed_morpheme_spans: structuredClone(candidate.observed_morpheme_spans),
+      coverage_normalized_key: candidate.coverage_normalized_key,
+      evidence: {
+        evidence_type: candidate.evidence.evidence_type,
+        literal_match_query: candidate.evidence.literal_match_query,
+        literal_match_count: candidate.evidence.literal_match_count,
+        count_method: candidate.evidence.count_method,
+        search_mode: candidate.evidence.search_mode,
+        representative_hits_limit: candidate.evidence.representative_hits_limit,
+        representative_hit_count: candidate.evidence.representative_hits.length,
+        representative_hits: candidate.evidence.representative_hits.map(safeEvidenceHit),
+      },
+    })),
+  };
+}
+
+async function addBoundedCorpusEvidence(selection, candidateLimit) {
   const candidates = selection.candidates;
-  if (!Array.isArray(candidates) || candidates.length !== EXPECTED_PILOT_SIZE) {
-    throw new Error(
-      'Candidate extraction must produce exactly ' + EXPECTED_PILOT_SIZE + ' uncovered candidates.',
-    );
+  if (!Array.isArray(candidates) || candidates.length > candidateLimit) {
+    throw new Error('Candidate extraction exceeded its requested bounded candidate limit.');
   }
 
   const candidatesWithEvidence = [];
@@ -194,17 +365,30 @@ async function main() {
   if (options.help) {
     console.log(
       'Usage: node scripts/reference/run-corpus-lemma-pilot.mjs --python <venv-python>\n'
-        + 'Runs the local/manual 100-candidate pilot. Requires the ignored full-corpus index '
+        + 'Runs local/manual bounded candidate production. Options: --candidate-limit 1-200, '
+        + '--batch-id <id>, --output-directory data/reference/<path>, repeated '
+        + '--exclude-lemma-source <tracked-json>. Requires the ignored full-corpus index '
         + 'and kiwipiepy==0.24.0 installed in the selected Python environment.',
     );
     return;
   }
 
   await assertCorpusPermission();
-  await mkdir(LOCAL_PILOT_DIRECTORY, { recursive: true });
+  const outputDirectory = options.outputDirectory;
+  await mkdir(outputDirectory, { recursive: true });
+  const stagingDatabasePath = path.join(outputDirectory, 'candidate-analysis.sqlite');
+  const candidateSelectionPath = path.join(outputDirectory, 'candidate-selection.json');
+  const inventoryPath = path.join(
+    outputDirectory,
+    outputDirectory === LOCAL_PILOT_DIRECTORY ? 'pilot-inventory.json' : 'candidate-inventory.json',
+  );
+  const textFreeEvidencePath = path.join(outputDirectory, 'candidate-evidence.json');
+  const exclusionManifestPath = path.join(outputDirectory, 'reviewed-lemma-exclusions.json');
+  const exclusionManifest = await buildExclusionManifest(options.exclusionLemmaSources);
+  await writeFile(exclusionManifestPath, JSON.stringify(exclusionManifest, null, 2) + '\n', 'utf8');
 
   const temporaryDirectory = await mkdtemp(
-    path.join(os.tmpdir(), 'typewriter-issue-201-dictionary-'),
+    path.join(os.tmpdir(), 'typewriter-corpus-candidate-dictionary-'),
   );
   const dictionaryPath = path.join(temporaryDirectory, 'dictionary.sqlite');
   try {
@@ -226,14 +410,22 @@ async function main() {
     const extractorSummary = await runPythonExtractor({
       python: options.python,
       dictionaryPath,
+      stagingDatabasePath,
+      candidateSelectionPath,
+      candidateLimit: options.candidateLimit,
+      exclusionManifestPath,
     });
-    const selection = JSON.parse(await readFile(CANDIDATE_SELECTION_PATH, 'utf8'));
-    if (selection.candidates.length !== EXPECTED_PILOT_SIZE) {
-      throw new Error('The extraction summary and local candidate selection do not match.');
+    const selection = JSON.parse(await readFile(candidateSelectionPath, 'utf8'));
+    if (selection.candidates.length > options.candidateLimit
+      || selection.selection?.selected_candidate_count !== selection.candidates.length) {
+      throw new Error('Candidate extraction exceeded or misreported the requested batch bound.');
     }
-    const selectionBytes = await readFile(CANDIDATE_SELECTION_PATH);
-    const evidenceInventory = await addBoundedCorpusEvidence(selection);
+    const selectionBytes = await readFile(candidateSelectionPath);
+    const evidenceInventory = await addBoundedCorpusEvidence(selection, options.candidateLimit);
     evidenceInventory.orchestration = {
+      batch_id: options.batchId,
+      requested_candidate_limit: options.candidateLimit,
+      exclusion_manifest_sha256: exclusionManifest.exclusion_sha256,
       node_version: process.version,
       node_sqlite_version: process.versions.sqlite,
       orchestrator_script_sha256: hashFileContents(await readFile(fileURLToPath(import.meta.url))),
@@ -249,19 +441,31 @@ async function main() {
       publication_state: 'local_reference_only_pending_owner_publication_confirmation',
     };
 
-    const temporaryInventoryPath = INVENTORY_PATH + '.tmp';
+    const temporaryInventoryPath = inventoryPath + '.tmp';
     await writeFile(
       temporaryInventoryPath,
       JSON.stringify(evidenceInventory, null, 2) + '\n',
       'utf8',
     );
-    await rename(temporaryInventoryPath, INVENTORY_PATH);
+    await rename(temporaryInventoryPath, inventoryPath);
+
+    const textFreeEvidence = buildTextFreeCandidateEvidence(evidenceInventory);
+    const textFreeBytes = Buffer.from(JSON.stringify(textFreeEvidence, null, 2) + '\n', 'utf8');
+    const temporaryTextFreePath = textFreeEvidencePath + '.tmp';
+    await writeFile(temporaryTextFreePath, textFreeBytes);
+    await rename(temporaryTextFreePath, textFreeEvidencePath);
 
     process.stdout.write(
       JSON.stringify({
-        phase: 'pilot_inventory_ready',
-        inventory_path: INVENTORY_PATH,
-        candidate_inventory_count: EXPECTED_PILOT_SIZE,
+        phase: 'corpus_candidate_inventory_ready',
+        batch_id: options.batchId,
+        inventory_path: inventoryPath,
+        text_free_candidate_evidence_path: textFreeEvidencePath,
+        text_free_candidate_evidence_sha256: hashFileContents(textFreeBytes),
+        requested_candidate_limit: options.candidateLimit,
+        candidate_inventory_count: selection.candidates.length,
+        excluded_candidate_lemma_count: exclusionManifest.lemmas.length,
+        exclusion_manifest_sha256: exclusionManifest.exclusion_sha256,
         held_candidates: selection.candidates.filter(
           (candidate) => candidate.decision_state === 'held',
         ).length,

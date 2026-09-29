@@ -1,0 +1,3019 @@
+{
+  "schema_version": "1",
+  "contract_version": "m9-corpus-candidate-review-v1",
+  "kind": "bounded-corpus-candidate-review-source",
+  "source_id": "issue-221-corpus-candidate-review-20260929-r1",
+  "issue": 221,
+  "parent_issue": 218,
+  "batch_id": "issue-221-m9-c-batch-01-20260929",
+  "authoring_mode": "agent-authored-decision",
+  "reviewer": "codex-agent",
+  "human_reviewed": false,
+  "publication_state": "local_reference_only_pending_owner_publication_confirmation",
+  "provenance": {
+    "generation_pass_id": "issue-221-corpus-extraction-20260929-r1",
+    "review_pass_id": "issue-221-agent-candidate-review-20260929-r1",
+    "generator_version": "m9-corpus-lemma-extractor-v2",
+    "method": "Review bounded local contexts and source-bound observed morphology; verify Typewriter surface ownership; keep unresolved analyzer, POS, identity, and sense boundaries held; admit no candidate by frequency or count."
+  },
+  "source": {
+    "name": "NIKL Written Corpus 2025 local reference snapshot",
+    "permission_record_path": "docs/external-material-review-written-corpus-2025.md",
+    "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
+    "source_text_committed": false,
+    "index": {
+      "source_count": 3410,
+      "document_count": 3410,
+      "paragraph_count": 4988970,
+      "input_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
+      "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
+      "sqlite_version": "3.53.3",
+      "database_bytes": 3940503552,
+      "sample_policy": "one paragraph when paragraph ordinal modulo 20 is zero, within each source-ordered document",
+      "sample_every_paragraphs": 20,
+      "sample_paragraph_count": 251086,
+      "sample_fraction": 0.050328,
+      "sample_document_count": 3410,
+      "sample_source_count": 3410
+    },
+    "tools": {
+      "node_version": "v24.19.0",
+      "node_sqlite_version": "3.53.3",
+      "python_version": "3.11.10",
+      "kiwipiepy_version": "0.24.0",
+      "kiwipiepy_model_version": "0.24.0",
+      "extractor_version": "2",
+      "extractor_script_sha256": "a65060846e1f5f0fb300823590965d569772bc952368be18d95f018ab297faeb",
+      "orchestrator_script_sha256": "0a191127a90597c75361ead054c723119872b2c9ead2703361959e9f993b674c"
+    },
+    "typewriter_surface": {
+      "dictionary_version": "m2-pilot-1",
+      "canonical_revision": "91cfad7fee114ceb01c904844506b4d59a98203671acf33e81e9f6d5694fc68f",
+      "record_count": 5094,
+      "search_form_count": 5350,
+      "generated_surface_form_count": 3349,
+      "normalized_surface_key_count": 8199,
+      "normalized_keys_with_canonical_lemmas": 5094,
+      "normalized_keys_with_curated_search_forms": 5350,
+      "normalized_keys_with_generated_surface_forms": 2859,
+      "normalization": "Unicode NFC plus surrounding whitespace trim, matching runtime search input"
+    }
+  },
+  "selection": {
+    "contract_version": "m9-corpus-candidate-selection-v1",
+    "candidate_limit": 20,
+    "selected_candidate_count": 20,
+    "ordering": [
+      "source_count descending",
+      "document_count descending",
+      "analyzer_morpheme_observations_in_sample descending",
+      "lemma Unicode binary ascending"
+    ],
+    "sample_policy": "one paragraph when paragraph ordinal modulo 20 is zero, within each source-ordered document",
+    "sample_every_paragraphs": 20,
+    "candidate_selection_sha256": "ecdae67504cf3efda994ba69a062426e6b61bf2516a5c2834b3c7a9659317dd0",
+    "exclusion_sha256": "b0225e52b474275cef3efb982e198e9681eeccaf19de95c8ef2241d11f782b3f",
+    "exclusion_source_artifacts": [
+      {
+        "path": "data/batches/issue-204-pilot-decisions.json",
+        "sha256": "f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b"
+      },
+      {
+        "path": "data/inventory/m5-target-seed.json",
+        "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd"
+      }
+    ],
+    "selection_rationale": "Selection order sets a bounded review queue only. Lexical eligibility and admission come from authored decisions and shared validation, never corpus frequency."
+  },
+  "source_artifacts": {
+    "candidate_evidence_path": "data/reference/production/issue-221/batch-01/candidate-evidence.json",
+    "candidate_evidence_sha256": "3af9f450ff5086188608cc0fe0bf2870d19474dbbb71d64104f48eada29666bc",
+    "candidate_selection_path": "data/reference/production/issue-221/batch-01/candidate-selection.json",
+    "candidate_selection_sha256": "ecdae67504cf3efda994ba69a062426e6b61bf2516a5c2834b3c7a9659317dd0",
+    "exclusion_manifest_sha256": "b0225e52b474275cef3efb982e198e9681eeccaf19de95c8ef2241d11f782b3f",
+    "exclusion_source_artifacts": [
+      {
+        "path": "data/batches/issue-204-pilot-decisions.json",
+        "sha256": "f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b"
+      },
+      {
+        "path": "data/inventory/m5-target-seed.json",
+        "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd"
+      }
+    ]
+  },
+  "yield": {
+    "eligible_pos_token_observations_before_shape_filter": 4744393,
+    "accepted_morpheme_observations_in_sample": 4073787,
+    "rejected_lemma_shape_observations": 669364,
+    "rejected_span_observations": 1242,
+    "unique_lemma_pos_candidates_before_coverage": 55649,
+    "unique_lemma_candidates_before_coverage": 55580,
+    "exact_canonical_lemma_candidates": 2022,
+    "candidate_lemmas_without_exact_canonical_match": 53558,
+    "search_form_collision_lemma_candidates": 25,
+    "generated_surface_collision_lemma_candidates": 16,
+    "search_and_generated_surface_collision_lemma_candidates": 0,
+    "total_surface_collision_lemma_candidates": 41,
+    "coverage_status_counts_by_distinct_lemma": {
+      "exact_canonical_lemma": 2022,
+      "generated_surface_collision": 16,
+      "search_form_collision": 25,
+      "uncovered": 53517
+    },
+    "exact_lemma_covered_candidate_count": 2022,
+    "curated_or_generated_surface_collision_candidate_count": 41,
+    "ambiguous_lemma_candidates_before_coverage": 930,
+    "oov_lemma_candidates_before_coverage": 22845,
+    "selected_inventory_count": 20,
+    "selected_count": 0,
+    "admitted_count": 0,
+    "correction_rate": "NOT_MEASURED_NO_HUMAN_REVIEW",
+    "editorial_workload": "NOT_MEASURED_NO_WRITER_REVIEW",
+    "extraction_error_classes": [
+      "one-best morphology can misclassify unknown or context-ambiguous forms",
+      "compound segmentation can surface morphemes that still need lexical-boundary review",
+      "POS and lemma confidence have no calibrated score in this pilot"
+    ],
+    "excluded_candidate_lemma_count": 1551,
+    "selected_candidate_count": 20,
+    "selected_with_bounded_evidence": 20,
+    "maximum_total_paragraph_rows_materialized": 60,
+    "literal_fallback_query_count": 8,
+    "writer_usefulness": "NOT_MEASURED_NO_WRITER_REVIEW"
+  },
+  "decision_counts": {
+    "admit": 9,
+    "hold": 11,
+    "reject": 0
+  },
+  "decisions": [
+    {
+      "candidate_ordinal": 1,
+      "inventory_id": "m5-5407",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0001",
+      "morphology_proposal": {
+        "lemma": "대신",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2574,
+        "paragraph_hits_in_sample": 2302,
+        "distinct_documents_in_sample": 1526,
+        "distinct_sources_in_sample": 1526,
+        "source_concentration_ratio_in_sample": 0.0078,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "대신",
+        "literal_match_count": 43992,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "literal-scan"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "대신",
+          "kiwi_morpheme_occurrences_in_sample": 1805,
+          "paragraph_hits_in_sample": 1671,
+          "distinct_documents_in_sample": 1255,
+          "distinct_sources_in_sample": 1255,
+          "max_source_morpheme_occurrences_in_sample": 9
+        },
+        {
+          "surface": "대신에",
+          "kiwi_morpheme_occurrences_in_sample": 205,
+          "paragraph_hits_in_sample": 191,
+          "distinct_documents_in_sample": 163,
+          "distinct_sources_in_sample": 163,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "대신해",
+          "kiwi_morpheme_occurrences_in_sample": 76,
+          "paragraph_hits_in_sample": 75,
+          "distinct_documents_in_sample": 71,
+          "distinct_sources_in_sample": 71,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "대신해서",
+          "kiwi_morpheme_occurrences_in_sample": 55,
+          "paragraph_hits_in_sample": 51,
+          "distinct_documents_in_sample": 50,
+          "distinct_sources_in_sample": 50,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "대신할",
+          "kiwi_morpheme_occurrences_in_sample": 48,
+          "paragraph_hits_in_sample": 46,
+          "distinct_documents_in_sample": 45,
+          "distinct_sources_in_sample": 45,
+          "max_source_morpheme_occurrences_in_sample": 2
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "대신",
+          "kiwi_morpheme_occurrences_in_sample": 2574,
+          "paragraph_hits_in_sample": 2302,
+          "distinct_documents_in_sample": 1526,
+          "distinct_sources_in_sample": 1526,
+          "max_source_morpheme_occurrences_in_sample": 20,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.61",
+            "paragraph_ordinal": 60,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.68",
+            "paragraph_ordinal": 67,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.116",
+            "paragraph_ordinal": 115,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "명사 분석과 세 개 이하의 현지 맥락에서 대체 관계가 일관된다. 표제어 검색으로 대체 대상을 찾는 writer route가 분명하고, 빈도는 승인 근거로 쓰지 않았다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5424",
+        "writer_use_axis": "A",
+        "writer_gloss": "본래 맡기로 한 대상의 자리를 다른 대상이 대신함.",
+        "writer_use": "대체 대상을 찾거나, 빠진 인물이나 사물의 자리를 표현할 때 시작점으로 쓴다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 2,
+      "inventory_id": "m5-5408",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0002",
+      "morphology_proposal": {
+        "lemma": "행복",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 4274,
+        "paragraph_hits_in_sample": 2880,
+        "distinct_documents_in_sample": 1509,
+        "distinct_sources_in_sample": 1509,
+        "source_concentration_ratio_in_sample": 0.0089,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "행복한",
+        "literal_match_count": 12717,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "행복한",
+          "kiwi_morpheme_occurrences_in_sample": 760,
+          "paragraph_hits_in_sample": 643,
+          "distinct_documents_in_sample": 517,
+          "distinct_sources_in_sample": 517,
+          "max_source_morpheme_occurrences_in_sample": 26
+        },
+        {
+          "surface": "행복을",
+          "kiwi_morpheme_occurrences_in_sample": 576,
+          "paragraph_hits_in_sample": 457,
+          "distinct_documents_in_sample": 376,
+          "distinct_sources_in_sample": 376,
+          "max_source_morpheme_occurrences_in_sample": 8
+        },
+        {
+          "surface": "행복하게",
+          "kiwi_morpheme_occurrences_in_sample": 385,
+          "paragraph_hits_in_sample": 357,
+          "distinct_documents_in_sample": 297,
+          "distinct_sources_in_sample": 297,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "행복은",
+          "kiwi_morpheme_occurrences_in_sample": 166,
+          "paragraph_hits_in_sample": 132,
+          "distinct_documents_in_sample": 114,
+          "distinct_sources_in_sample": 114,
+          "max_source_morpheme_occurrences_in_sample": 10
+        },
+        {
+          "surface": "행복의",
+          "kiwi_morpheme_occurrences_in_sample": 151,
+          "paragraph_hits_in_sample": 135,
+          "distinct_documents_in_sample": 126,
+          "distinct_sources_in_sample": 126,
+          "max_source_morpheme_occurrences_in_sample": 5
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "행복",
+          "kiwi_morpheme_occurrences_in_sample": 4274,
+          "paragraph_hits_in_sample": 2880,
+          "distinct_documents_in_sample": 1509,
+          "distinct_sources_in_sample": 1509,
+          "max_source_morpheme_occurrences_in_sample": 38,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.666",
+            "paragraph_ordinal": 665,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1162",
+            "paragraph_ordinal": 1161,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000101.json",
+            "corpus_id": "WARW2500000101",
+            "document_id": "WARW2500000101.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000101.1.392",
+            "paragraph_ordinal": 391,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "관찰된 행복 형태에서 행복이라는 명사 형태소가 반복되고, 기쁨과 만족의 감정 개념이 한 sense로 설명된다. 표면형 행복한의 부분 문자열 수를 lemma frequency로 해석하지 않았다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5425",
+        "writer_use_axis": "E",
+        "writer_gloss": "마음이 기쁘고 만족스러워 흐뭇한 상태.",
+        "writer_use": "인물의 기분이나 삶의 만족을 감정의 색으로 탐색하는 출발점으로 쓴다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 3,
+      "inventory_id": "m5-5409",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0003",
+      "morphology_proposal": {
+        "lemma": "행동",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 3290,
+        "paragraph_hits_in_sample": 2532,
+        "distinct_documents_in_sample": 1503,
+        "distinct_sources_in_sample": 1503,
+        "source_concentration_ratio_in_sample": 0.0091,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "행동을",
+        "literal_match_count": 12781,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "행동을",
+          "kiwi_morpheme_occurrences_in_sample": 743,
+          "paragraph_hits_in_sample": 653,
+          "distinct_documents_in_sample": 555,
+          "distinct_sources_in_sample": 555,
+          "max_source_morpheme_occurrences_in_sample": 9
+        },
+        {
+          "surface": "행동이",
+          "kiwi_morpheme_occurrences_in_sample": 307,
+          "paragraph_hits_in_sample": 278,
+          "distinct_documents_in_sample": 253,
+          "distinct_sources_in_sample": 253,
+          "max_source_morpheme_occurrences_in_sample": 8
+        },
+        {
+          "surface": "행동에",
+          "kiwi_morpheme_occurrences_in_sample": 242,
+          "paragraph_hits_in_sample": 230,
+          "distinct_documents_in_sample": 219,
+          "distinct_sources_in_sample": 219,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "행동은",
+          "kiwi_morpheme_occurrences_in_sample": 237,
+          "paragraph_hits_in_sample": 225,
+          "distinct_documents_in_sample": 206,
+          "distinct_sources_in_sample": 206,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "행동",
+          "kiwi_morpheme_occurrences_in_sample": 206,
+          "paragraph_hits_in_sample": 196,
+          "distinct_documents_in_sample": 183,
+          "distinct_sources_in_sample": 183,
+          "max_source_morpheme_occurrences_in_sample": 4
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "행동",
+          "kiwi_morpheme_occurrences_in_sample": 3290,
+          "paragraph_hits_in_sample": 2532,
+          "distinct_documents_in_sample": 1503,
+          "distinct_sources_in_sample": 1503,
+          "max_source_morpheme_occurrences_in_sample": 30,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.691",
+            "paragraph_ordinal": 690,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.956",
+            "paragraph_ordinal": 955,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.2152",
+            "paragraph_ordinal": 2151,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "명사 분석과 bounded 맥락이 행동 또는 처신을 가리킨다. 장면 속 인물 행위를 표현할 출발점이 있으며, 관찰 빈도와 writer usefulness를 동일시하지 않았다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5426",
+        "writer_use_axis": "A",
+        "writer_gloss": "사람이 실제로 하는 행위.",
+        "writer_use": "인물의 움직임과 처신을 행동의 종류나 양상으로 탐색한다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 4,
+      "inventory_id": "m5-5410",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0004",
+      "morphology_proposal": {
+        "lemma": "얼마",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2568,
+        "paragraph_hits_in_sample": 2248,
+        "distinct_documents_in_sample": 1501,
+        "distinct_sources_in_sample": 1501,
+        "source_concentration_ratio_in_sample": 0.0074,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "얼마",
+        "literal_match_count": 110719,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "literal-scan"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "얼마",
+          "kiwi_morpheme_occurrences_in_sample": 1770,
+          "paragraph_hits_in_sample": 1610,
+          "distinct_documents_in_sample": 1178,
+          "distinct_sources_in_sample": 1178,
+          "max_source_morpheme_occurrences_in_sample": 10
+        },
+        {
+          "surface": "얼마든지",
+          "kiwi_morpheme_occurrences_in_sample": 360,
+          "paragraph_hits_in_sample": 322,
+          "distinct_documents_in_sample": 280,
+          "distinct_sources_in_sample": 280,
+          "max_source_morpheme_occurrences_in_sample": 8
+        },
+        {
+          "surface": "얼마를",
+          "kiwi_morpheme_occurrences_in_sample": 82,
+          "paragraph_hits_in_sample": 76,
+          "distinct_documents_in_sample": 74,
+          "distinct_sources_in_sample": 74,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "얼마만큼",
+          "kiwi_morpheme_occurrences_in_sample": 38,
+          "paragraph_hits_in_sample": 35,
+          "distinct_documents_in_sample": 35,
+          "distinct_sources_in_sample": 35,
+          "max_source_morpheme_occurrences_in_sample": 2
+        },
+        {
+          "surface": "얼마쯤",
+          "kiwi_morpheme_occurrences_in_sample": 35,
+          "paragraph_hits_in_sample": 34,
+          "distinct_documents_in_sample": 33,
+          "distinct_sources_in_sample": 33,
+          "max_source_morpheme_occurrences_in_sample": 2
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "얼마",
+          "kiwi_morpheme_occurrences_in_sample": 2543,
+          "paragraph_hits_in_sample": 2228,
+          "distinct_documents_in_sample": 1495,
+          "distinct_sources_in_sample": 1495,
+          "max_source_morpheme_occurrences_in_sample": 19,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "얼만",
+          "kiwi_morpheme_occurrences_in_sample": 23,
+          "paragraph_hits_in_sample": 23,
+          "distinct_documents_in_sample": 23,
+          "distinct_sources_in_sample": 23,
+          "max_source_morpheme_occurrences_in_sample": 1,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "얼맙",
+          "kiwi_morpheme_occurrences_in_sample": 2,
+          "paragraph_hits_in_sample": 2,
+          "distinct_documents_in_sample": 2,
+          "distinct_sources_in_sample": 2,
+          "max_source_morpheme_occurrences_in_sample": 1,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.50",
+            "paragraph_ordinal": 49,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.234",
+            "paragraph_ordinal": 233,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.285",
+            "paragraph_ordinal": 284,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "분석기는 명사로 제안했지만 bounded 용례에 수량·정도·시간 간격의 쓰임이 섞여 있다. 정확한 표제어 기능과 sense 범위를 정하기 전에는 승인하지 않는다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 5,
+      "inventory_id": "m5-5411",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0005",
+      "morphology_proposal": {
+        "lemma": "상태",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 3078,
+        "paragraph_hits_in_sample": 2559,
+        "distinct_documents_in_sample": 1498,
+        "distinct_sources_in_sample": 1498,
+        "source_concentration_ratio_in_sample": 0.0068,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "상태로",
+        "literal_match_count": 9033,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "상태로",
+          "kiwi_morpheme_occurrences_in_sample": 449,
+          "paragraph_hits_in_sample": 431,
+          "distinct_documents_in_sample": 382,
+          "distinct_sources_in_sample": 382,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "상태를",
+          "kiwi_morpheme_occurrences_in_sample": 348,
+          "paragraph_hits_in_sample": 325,
+          "distinct_documents_in_sample": 298,
+          "distinct_sources_in_sample": 298,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "상태가",
+          "kiwi_morpheme_occurrences_in_sample": 346,
+          "paragraph_hits_in_sample": 330,
+          "distinct_documents_in_sample": 300,
+          "distinct_sources_in_sample": 300,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "상태였다",
+          "kiwi_morpheme_occurrences_in_sample": 295,
+          "paragraph_hits_in_sample": 284,
+          "distinct_documents_in_sample": 248,
+          "distinct_sources_in_sample": 248,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "상태에서",
+          "kiwi_morpheme_occurrences_in_sample": 288,
+          "paragraph_hits_in_sample": 279,
+          "distinct_documents_in_sample": 247,
+          "distinct_sources_in_sample": 247,
+          "max_source_morpheme_occurrences_in_sample": 4
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "상태",
+          "kiwi_morpheme_occurrences_in_sample": 3078,
+          "paragraph_hits_in_sample": 2559,
+          "distinct_documents_in_sample": 1498,
+          "distinct_sources_in_sample": 1498,
+          "max_source_morpheme_occurrences_in_sample": 21,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1323",
+            "paragraph_ordinal": 1322,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1877",
+            "paragraph_ordinal": 1876,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.2821",
+            "paragraph_ordinal": 2820,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "형태와 POS 제안은 안정적이지만 상태는 신체·감정·상황을 두루 덮는 넓은 범주어다. 이 배치의 근거만으로 작가가 찾을 구별된 방향을 확정하지 않고 writer-use evidence를 NOT_MEASURED로 남긴다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 6,
+      "inventory_id": "m5-5412",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0006",
+      "morphology_proposal": {
+        "lemma": "높다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2606,
+        "paragraph_hits_in_sample": 2193,
+        "distinct_documents_in_sample": 1497,
+        "distinct_sources_in_sample": 1497,
+        "source_concentration_ratio_in_sample": 0.0077,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "높은",
+        "literal_match_count": 24924,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "literal-scan"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "높은",
+          "kiwi_morpheme_occurrences_in_sample": 1468,
+          "paragraph_hits_in_sample": 1256,
+          "distinct_documents_in_sample": 969,
+          "distinct_sources_in_sample": 969,
+          "max_source_morpheme_occurrences_in_sample": 15
+        },
+        {
+          "surface": "높고",
+          "kiwi_morpheme_occurrences_in_sample": 146,
+          "paragraph_hits_in_sample": 136,
+          "distinct_documents_in_sample": 132,
+          "distinct_sources_in_sample": 132,
+          "max_source_morpheme_occurrences_in_sample": 10
+        },
+        {
+          "surface": "높다",
+          "kiwi_morpheme_occurrences_in_sample": 99,
+          "paragraph_hits_in_sample": 97,
+          "distinct_documents_in_sample": 93,
+          "distinct_sources_in_sample": 93,
+          "max_source_morpheme_occurrences_in_sample": 2
+        },
+        {
+          "surface": "높게",
+          "kiwi_morpheme_occurrences_in_sample": 85,
+          "paragraph_hits_in_sample": 82,
+          "distinct_documents_in_sample": 81,
+          "distinct_sources_in_sample": 81,
+          "max_source_morpheme_occurrences_in_sample": 2
+        },
+        {
+          "surface": "높았다",
+          "kiwi_morpheme_occurrences_in_sample": 83,
+          "paragraph_hits_in_sample": 83,
+          "distinct_documents_in_sample": 80,
+          "distinct_sources_in_sample": 80,
+          "max_source_morpheme_occurrences_in_sample": 2
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "높",
+          "kiwi_morpheme_occurrences_in_sample": 2606,
+          "paragraph_hits_in_sample": 2193,
+          "distinct_documents_in_sample": 1497,
+          "distinct_sources_in_sample": 1497,
+          "max_source_morpheme_occurrences_in_sample": 20,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.31",
+            "paragraph_ordinal": 30,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.214",
+            "paragraph_ordinal": 213,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.321",
+            "paragraph_ordinal": 320,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "형태소 분석은 명확하지만 높이는 물리적 높이와 온도·정도처럼 다른 축에 쓰인다. 이 pilot의 bounded evidence만으로 sense 경계를 하나로 합치지 않고 분리 검토를 보류한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 7,
+      "inventory_id": "m5-5413",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0007",
+      "morphology_proposal": {
+        "lemma": "나타나다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 3031,
+        "paragraph_hits_in_sample": 2451,
+        "distinct_documents_in_sample": 1492,
+        "distinct_sources_in_sample": 1492,
+        "source_concentration_ratio_in_sample": 0.0082,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "나타났다",
+        "literal_match_count": 11633,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "나타났다",
+          "kiwi_morpheme_occurrences_in_sample": 568,
+          "paragraph_hits_in_sample": 539,
+          "distinct_documents_in_sample": 449,
+          "distinct_sources_in_sample": 449,
+          "max_source_morpheme_occurrences_in_sample": 7
+        },
+        {
+          "surface": "나타난",
+          "kiwi_morpheme_occurrences_in_sample": 398,
+          "paragraph_hits_in_sample": 366,
+          "distinct_documents_in_sample": 329,
+          "distinct_sources_in_sample": 329,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "나타나",
+          "kiwi_morpheme_occurrences_in_sample": 316,
+          "paragraph_hits_in_sample": 279,
+          "distinct_documents_in_sample": 248,
+          "distinct_sources_in_sample": 248,
+          "max_source_morpheme_occurrences_in_sample": 12
+        },
+        {
+          "surface": "나타나는",
+          "kiwi_morpheme_occurrences_in_sample": 276,
+          "paragraph_hits_in_sample": 245,
+          "distinct_documents_in_sample": 220,
+          "distinct_sources_in_sample": 220,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "나타나지",
+          "kiwi_morpheme_occurrences_in_sample": 158,
+          "paragraph_hits_in_sample": 151,
+          "distinct_documents_in_sample": 148,
+          "distinct_sources_in_sample": 148,
+          "max_source_morpheme_occurrences_in_sample": 3
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "나타나",
+          "kiwi_morpheme_occurrences_in_sample": 1345,
+          "paragraph_hits_in_sample": 1113,
+          "distinct_documents_in_sample": 870,
+          "distinct_sources_in_sample": 870,
+          "max_source_morpheme_occurrences_in_sample": 18,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "나타났",
+          "kiwi_morpheme_occurrences_in_sample": 900,
+          "paragraph_hits_in_sample": 824,
+          "distinct_documents_in_sample": 668,
+          "distinct_sources_in_sample": 668,
+          "max_source_morpheme_occurrences_in_sample": 8,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "나타난",
+          "kiwi_morpheme_occurrences_in_sample": 594,
+          "paragraph_hits_in_sample": 534,
+          "distinct_documents_in_sample": 457,
+          "distinct_sources_in_sample": 457,
+          "max_source_morpheme_occurrences_in_sample": 6,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "나타날",
+          "kiwi_morpheme_occurrences_in_sample": 164,
+          "paragraph_hits_in_sample": 157,
+          "distinct_documents_in_sample": 153,
+          "distinct_sources_in_sample": 153,
+          "max_source_morpheme_occurrences_in_sample": 2,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "나타납",
+          "kiwi_morpheme_occurrences_in_sample": 17,
+          "paragraph_hits_in_sample": 17,
+          "distinct_documents_in_sample": 16,
+          "distinct_sources_in_sample": 16,
+          "max_source_morpheme_occurrences_in_sample": 2,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.847",
+            "paragraph_ordinal": 846,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1112",
+            "paragraph_ordinal": 1111,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1193",
+            "paragraph_ordinal": 1192,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "동사 표제어 나타나다와 관찰된 활용형이 맞고, 검토한 bounded 맥락에서 장소에 모습을 드러내는 한 sense가 유지된다. 추상적 결과 발생으로 확장하지 않았다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5427",
+        "writer_use_axis": "S",
+        "writer_gloss": "보이지 않던 대상이 장면에 드러나 보이게 되다.",
+        "writer_use": "장면에 사람이나 사물이 들어와 눈에 띄는 순간을 표현할 때 찾는다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 8,
+      "inventory_id": "m5-5414",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0008",
+      "morphology_proposal": {
+        "lemma": "생활",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 3359,
+        "paragraph_hits_in_sample": 2399,
+        "distinct_documents_in_sample": 1485,
+        "distinct_sources_in_sample": 1485,
+        "source_concentration_ratio_in_sample": 0.0095,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "생활을",
+        "literal_match_count": 16645,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "생활을",
+          "kiwi_morpheme_occurrences_in_sample": 766,
+          "paragraph_hits_in_sample": 624,
+          "distinct_documents_in_sample": 530,
+          "distinct_sources_in_sample": 530,
+          "max_source_morpheme_occurrences_in_sample": 12
+        },
+        {
+          "surface": "생활",
+          "kiwi_morpheme_occurrences_in_sample": 350,
+          "paragraph_hits_in_sample": 316,
+          "distinct_documents_in_sample": 289,
+          "distinct_sources_in_sample": 289,
+          "max_source_morpheme_occurrences_in_sample": 5
+        },
+        {
+          "surface": "생활이",
+          "kiwi_morpheme_occurrences_in_sample": 239,
+          "paragraph_hits_in_sample": 215,
+          "distinct_documents_in_sample": 202,
+          "distinct_sources_in_sample": 202,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "생활에",
+          "kiwi_morpheme_occurrences_in_sample": 221,
+          "paragraph_hits_in_sample": 197,
+          "distinct_documents_in_sample": 189,
+          "distinct_sources_in_sample": 189,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "생활의",
+          "kiwi_morpheme_occurrences_in_sample": 177,
+          "paragraph_hits_in_sample": 149,
+          "distinct_documents_in_sample": 143,
+          "distinct_sources_in_sample": 143,
+          "max_source_morpheme_occurrences_in_sample": 7
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "생활",
+          "kiwi_morpheme_occurrences_in_sample": 3359,
+          "paragraph_hits_in_sample": 2399,
+          "distinct_documents_in_sample": 1485,
+          "distinct_sources_in_sample": 1485,
+          "max_source_morpheme_occurrences_in_sample": 32,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.78",
+            "paragraph_ordinal": 77,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.213",
+            "paragraph_ordinal": 212,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.281",
+            "paragraph_ordinal": 280,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "명사 분석과 bounded 맥락은 일상의 삶을 가리킨다. 생활은 장면과 인물의 일상을 찾는 출발점이 될 수 있으며, corpus breadth 자체를 승인 이유로 삼지 않았다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5428",
+        "writer_use_axis": "S",
+        "writer_gloss": "사람이 하루를 이어 가며 보내는 일상.",
+        "writer_use": "인물의 일과와 환경, 일상의 결을 탐색하는 출발점으로 쓴다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 9,
+      "inventory_id": "m5-5415",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0009",
+      "morphology_proposal": {
+        "lemma": "갖다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2943,
+        "paragraph_hits_in_sample": 2429,
+        "distinct_documents_in_sample": 1485,
+        "distinct_sources_in_sample": 1485,
+        "source_concentration_ratio_in_sample": 0.0068,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "갖고",
+        "literal_match_count": 22338,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "literal-scan"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "갖고",
+          "kiwi_morpheme_occurrences_in_sample": 1288,
+          "paragraph_hits_in_sample": 1118,
+          "distinct_documents_in_sample": 821,
+          "distinct_sources_in_sample": 821,
+          "max_source_morpheme_occurrences_in_sample": 12
+        },
+        {
+          "surface": "갖다",
+          "kiwi_morpheme_occurrences_in_sample": 437,
+          "paragraph_hits_in_sample": 368,
+          "distinct_documents_in_sample": 327,
+          "distinct_sources_in_sample": 327,
+          "max_source_morpheme_occurrences_in_sample": 12
+        },
+        {
+          "surface": "갖게",
+          "kiwi_morpheme_occurrences_in_sample": 368,
+          "paragraph_hits_in_sample": 347,
+          "distinct_documents_in_sample": 304,
+          "distinct_sources_in_sample": 304,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "갖지",
+          "kiwi_morpheme_occurrences_in_sample": 212,
+          "paragraph_hits_in_sample": 197,
+          "distinct_documents_in_sample": 187,
+          "distinct_sources_in_sample": 187,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "갖는",
+          "kiwi_morpheme_occurrences_in_sample": 188,
+          "paragraph_hits_in_sample": 181,
+          "distinct_documents_in_sample": 164,
+          "distinct_sources_in_sample": 164,
+          "max_source_morpheme_occurrences_in_sample": 5
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "갖",
+          "kiwi_morpheme_occurrences_in_sample": 2943,
+          "paragraph_hits_in_sample": 2429,
+          "distinct_documents_in_sample": 1485,
+          "distinct_sources_in_sample": 1485,
+          "max_source_morpheme_occurrences_in_sample": 20,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.905",
+            "paragraph_ordinal": 904,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.943",
+            "paragraph_ordinal": 942,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.994",
+            "paragraph_ordinal": 993,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "관찰된 갖고에서 동사 형태소 갖을 분리했고, pinned 추출 규칙의 VV 인용형 규칙으로 갖다를 제안했다. 검토한 bounded 용례의 소유 의미와 표제어가 맞는다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5429",
+        "writer_use_axis": "A",
+        "writer_gloss": "어떤 대상을 자기 것으로 지니다.",
+        "writer_use": "인물이나 사물이 가진 대상과 상태를 표현하는 동사 출발점으로 쓴다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 10,
+      "inventory_id": "m5-5416",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0010",
+      "morphology_proposal": {
+        "lemma": "이제",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 1,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2880,
+        "paragraph_hits_in_sample": 2296,
+        "distinct_documents_in_sample": 1484,
+        "distinct_sources_in_sample": 1484,
+        "source_concentration_ratio_in_sample": 0.0135,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "이제는",
+        "literal_match_count": 25811,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "이제는",
+          "kiwi_morpheme_occurrences_in_sample": 1554,
+          "paragraph_hits_in_sample": 1358,
+          "distinct_documents_in_sample": 1017,
+          "distinct_sources_in_sample": 1017,
+          "max_source_morpheme_occurrences_in_sample": 16
+        },
+        {
+          "surface": "이젠",
+          "kiwi_morpheme_occurrences_in_sample": 682,
+          "paragraph_hits_in_sample": 509,
+          "distinct_documents_in_sample": 409,
+          "distinct_sources_in_sample": 409,
+          "max_source_morpheme_occurrences_in_sample": 18
+        },
+        {
+          "surface": "이제부터",
+          "kiwi_morpheme_occurrences_in_sample": 205,
+          "paragraph_hits_in_sample": 189,
+          "distinct_documents_in_sample": 173,
+          "distinct_sources_in_sample": 173,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "이제까지",
+          "kiwi_morpheme_occurrences_in_sample": 165,
+          "paragraph_hits_in_sample": 147,
+          "distinct_documents_in_sample": 128,
+          "distinct_sources_in_sample": 128,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "이제부터는",
+          "kiwi_morpheme_occurrences_in_sample": 83,
+          "paragraph_hits_in_sample": 82,
+          "distinct_documents_in_sample": 78,
+          "distinct_sources_in_sample": 78,
+          "max_source_morpheme_occurrences_in_sample": 2
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "이제",
+          "kiwi_morpheme_occurrences_in_sample": 2195,
+          "paragraph_hits_in_sample": 1855,
+          "distinct_documents_in_sample": 1291,
+          "distinct_sources_in_sample": 1291,
+          "max_source_morpheme_occurrences_in_sample": 22,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "이젠",
+          "kiwi_morpheme_occurrences_in_sample": 682,
+          "paragraph_hits_in_sample": 509,
+          "distinct_documents_in_sample": 409,
+          "distinct_sources_in_sample": 409,
+          "max_source_morpheme_occurrences_in_sample": 18,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "이젤",
+          "kiwi_morpheme_occurrences_in_sample": 3,
+          "paragraph_hits_in_sample": 3,
+          "distinct_documents_in_sample": 3,
+          "distinct_sources_in_sample": 3,
+          "max_source_morpheme_occurrences_in_sample": 1,
+          "interpretation_count_in_sample": 2
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.124",
+            "paragraph_ordinal": 123,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.729",
+            "paragraph_ordinal": 728,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.932",
+            "paragraph_ordinal": 931,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "이제 표면에 서로 다른 analyzer interpretation이 반복되어 명사 POS와 lexeme identity가 확정되지 않았다. 빈도나 다수 해석으로 한 분석을 선택하지 않는다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 11,
+      "inventory_id": "m5-5417",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0011",
+      "morphology_proposal": {
+        "lemma": "지키다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 1,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2732,
+        "paragraph_hits_in_sample": 2325,
+        "distinct_documents_in_sample": 1472,
+        "distinct_sources_in_sample": 1472,
+        "source_concentration_ratio_in_sample": 0.0055,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "지키고",
+        "literal_match_count": 6141,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "지키고",
+          "kiwi_morpheme_occurrences_in_sample": 335,
+          "paragraph_hits_in_sample": 318,
+          "distinct_documents_in_sample": 292,
+          "distinct_sources_in_sample": 292,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "지키는",
+          "kiwi_morpheme_occurrences_in_sample": 301,
+          "paragraph_hits_in_sample": 290,
+          "distinct_documents_in_sample": 259,
+          "distinct_sources_in_sample": 259,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "지켜",
+          "kiwi_morpheme_occurrences_in_sample": 182,
+          "paragraph_hits_in_sample": 171,
+          "distinct_documents_in_sample": 151,
+          "distinct_sources_in_sample": 151,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "지켜야",
+          "kiwi_morpheme_occurrences_in_sample": 176,
+          "paragraph_hits_in_sample": 171,
+          "distinct_documents_in_sample": 166,
+          "distinct_sources_in_sample": 166,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "지킬",
+          "kiwi_morpheme_occurrences_in_sample": 174,
+          "paragraph_hits_in_sample": 167,
+          "distinct_documents_in_sample": 156,
+          "distinct_sources_in_sample": 156,
+          "max_source_morpheme_occurrences_in_sample": 4
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "지키",
+          "kiwi_morpheme_occurrences_in_sample": 1452,
+          "paragraph_hits_in_sample": 1301,
+          "distinct_documents_in_sample": 955,
+          "distinct_sources_in_sample": 955,
+          "max_source_morpheme_occurrences_in_sample": 12,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "지켜",
+          "kiwi_morpheme_occurrences_in_sample": 801,
+          "paragraph_hits_in_sample": 735,
+          "distinct_documents_in_sample": 630,
+          "distinct_sources_in_sample": 630,
+          "max_source_morpheme_occurrences_in_sample": 6,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "지킬",
+          "kiwi_morpheme_occurrences_in_sample": 182,
+          "paragraph_hits_in_sample": 174,
+          "distinct_documents_in_sample": 159,
+          "distinct_sources_in_sample": 159,
+          "max_source_morpheme_occurrences_in_sample": 4,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "지켰",
+          "kiwi_morpheme_occurrences_in_sample": 179,
+          "paragraph_hits_in_sample": 170,
+          "distinct_documents_in_sample": 160,
+          "distinct_sources_in_sample": 160,
+          "max_source_morpheme_occurrences_in_sample": 3,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "지킨",
+          "kiwi_morpheme_occurrences_in_sample": 98,
+          "paragraph_hits_in_sample": 96,
+          "distinct_documents_in_sample": 95,
+          "distinct_sources_in_sample": 95,
+          "max_source_morpheme_occurrences_in_sample": 2,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.3565",
+            "paragraph_ordinal": 3564,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000101.json",
+            "corpus_id": "WARW2500000101",
+            "document_id": "WARW2500000101.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000101.1.741",
+            "paragraph_ordinal": 740,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000101.json",
+            "corpus_id": "WARW2500000101",
+            "document_id": "WARW2500000101.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000101.1.2561",
+            "paragraph_ordinal": 2560,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "지키다 활용형에서 analyzer interpretation이 겹친다. 보호·준수 등 의미 검토에 앞서 해당 형태의 analyzer POS와 span을 확인할 때까지 보류한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 12,
+      "inventory_id": "m5-5418",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0012",
+      "morphology_proposal": {
+        "lemma": "이번",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 3017,
+        "paragraph_hits_in_sample": 2584,
+        "distinct_documents_in_sample": 1471,
+        "distinct_sources_in_sample": 1471,
+        "source_concentration_ratio_in_sample": 0.0106,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "이번",
+        "literal_match_count": 49959,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "literal-scan"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "이번",
+          "kiwi_morpheme_occurrences_in_sample": 1046,
+          "paragraph_hits_in_sample": 932,
+          "distinct_documents_in_sample": 682,
+          "distinct_sources_in_sample": 682,
+          "max_source_morpheme_occurrences_in_sample": 15
+        },
+        {
+          "surface": "이번에는",
+          "kiwi_morpheme_occurrences_in_sample": 906,
+          "paragraph_hits_in_sample": 807,
+          "distinct_documents_in_sample": 628,
+          "distinct_sources_in_sample": 628,
+          "max_source_morpheme_occurrences_in_sample": 15
+        },
+        {
+          "surface": "이번에",
+          "kiwi_morpheme_occurrences_in_sample": 339,
+          "paragraph_hits_in_sample": 316,
+          "distinct_documents_in_sample": 267,
+          "distinct_sources_in_sample": 267,
+          "max_source_morpheme_occurrences_in_sample": 7
+        },
+        {
+          "surface": "이번엔",
+          "kiwi_morpheme_occurrences_in_sample": 281,
+          "paragraph_hits_in_sample": 273,
+          "distinct_documents_in_sample": 235,
+          "distinct_sources_in_sample": 235,
+          "max_source_morpheme_occurrences_in_sample": 5
+        },
+        {
+          "surface": "이번에도",
+          "kiwi_morpheme_occurrences_in_sample": 248,
+          "paragraph_hits_in_sample": 241,
+          "distinct_documents_in_sample": 216,
+          "distinct_sources_in_sample": 216,
+          "max_source_morpheme_occurrences_in_sample": 6
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "이번",
+          "kiwi_morpheme_occurrences_in_sample": 3017,
+          "paragraph_hits_in_sample": 2584,
+          "distinct_documents_in_sample": 1471,
+          "distinct_sources_in_sample": 1471,
+          "max_source_morpheme_occurrences_in_sample": 32,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.63",
+            "paragraph_ordinal": 62,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.334",
+            "paragraph_ordinal": 333,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.378",
+            "paragraph_ordinal": 377,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "이번은 분석기상 명사지만 시간 지시 기능 중심으로 관찰됐다. 작가용 시작어로서의 구별된 sense와 검색 경로를 이 배치에서 확정하지 않는다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 13,
+      "inventory_id": "m5-5419",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0013",
+      "morphology_proposal": {
+        "lemma": "나이",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 1,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2781,
+        "paragraph_hits_in_sample": 2222,
+        "distinct_documents_in_sample": 1463,
+        "distinct_sources_in_sample": 1463,
+        "source_concentration_ratio_in_sample": 0.0061,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "나이",
+        "literal_match_count": 57422,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "literal-scan"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "나이",
+          "kiwi_morpheme_occurrences_in_sample": 809,
+          "paragraph_hits_in_sample": 720,
+          "distinct_documents_in_sample": 600,
+          "distinct_sources_in_sample": 600,
+          "max_source_morpheme_occurrences_in_sample": 11
+        },
+        {
+          "surface": "나이가",
+          "kiwi_morpheme_occurrences_in_sample": 690,
+          "paragraph_hits_in_sample": 630,
+          "distinct_documents_in_sample": 531,
+          "distinct_sources_in_sample": 531,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "나이에",
+          "kiwi_morpheme_occurrences_in_sample": 313,
+          "paragraph_hits_in_sample": 295,
+          "distinct_documents_in_sample": 277,
+          "distinct_sources_in_sample": 277,
+          "max_source_morpheme_occurrences_in_sample": 5
+        },
+        {
+          "surface": "나이를",
+          "kiwi_morpheme_occurrences_in_sample": 199,
+          "paragraph_hits_in_sample": 178,
+          "distinct_documents_in_sample": 166,
+          "distinct_sources_in_sample": 166,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "나이는",
+          "kiwi_morpheme_occurrences_in_sample": 192,
+          "paragraph_hits_in_sample": 183,
+          "distinct_documents_in_sample": 174,
+          "distinct_sources_in_sample": 174,
+          "max_source_morpheme_occurrences_in_sample": 3
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "나이",
+          "kiwi_morpheme_occurrences_in_sample": 2776,
+          "paragraph_hits_in_sample": 2217,
+          "distinct_documents_in_sample": 1461,
+          "distinct_sources_in_sample": 1461,
+          "max_source_morpheme_occurrences_in_sample": 17,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "나인",
+          "kiwi_morpheme_occurrences_in_sample": 3,
+          "paragraph_hits_in_sample": 3,
+          "distinct_documents_in_sample": 3,
+          "distinct_sources_in_sample": 3,
+          "max_source_morpheme_occurrences_in_sample": 1,
+          "interpretation_count_in_sample": 2
+        },
+        {
+          "surface": "나입",
+          "kiwi_morpheme_occurrences_in_sample": 2,
+          "paragraph_hits_in_sample": 2,
+          "distinct_documents_in_sample": 2,
+          "distinct_sources_in_sample": 2,
+          "max_source_morpheme_occurrences_in_sample": 1,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.68",
+            "paragraph_ordinal": 67,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.119",
+            "paragraph_ordinal": 118,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.234",
+            "paragraph_ordinal": 233,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "나이 표면의 analyzer interpretation이 겹쳐 정확한 형태소 분석이 확정되지 않았다. 형태와 POS를 해결하기 전에는 lexical candidate로 보내지 않는다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 14,
+      "inventory_id": "m5-5420",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0014",
+      "morphology_proposal": {
+        "lemma": "지내다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2784,
+        "paragraph_hits_in_sample": 2267,
+        "distinct_documents_in_sample": 1458,
+        "distinct_sources_in_sample": 1458,
+        "source_concentration_ratio_in_sample": 0.009,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "지내는",
+        "literal_match_count": 6166,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "지내는",
+          "kiwi_morpheme_occurrences_in_sample": 312,
+          "paragraph_hits_in_sample": 294,
+          "distinct_documents_in_sample": 273,
+          "distinct_sources_in_sample": 273,
+          "max_source_morpheme_occurrences_in_sample": 5
+        },
+        {
+          "surface": "지내고",
+          "kiwi_morpheme_occurrences_in_sample": 258,
+          "paragraph_hits_in_sample": 247,
+          "distinct_documents_in_sample": 223,
+          "distinct_sources_in_sample": 223,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "지낼",
+          "kiwi_morpheme_occurrences_in_sample": 256,
+          "paragraph_hits_in_sample": 247,
+          "distinct_documents_in_sample": 234,
+          "distinct_sources_in_sample": 234,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "지낸",
+          "kiwi_morpheme_occurrences_in_sample": 218,
+          "paragraph_hits_in_sample": 209,
+          "distinct_documents_in_sample": 200,
+          "distinct_sources_in_sample": 200,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "지냈다",
+          "kiwi_morpheme_occurrences_in_sample": 167,
+          "paragraph_hits_in_sample": 156,
+          "distinct_documents_in_sample": 146,
+          "distinct_sources_in_sample": 146,
+          "max_source_morpheme_occurrences_in_sample": 4
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "지내",
+          "kiwi_morpheme_occurrences_in_sample": 1628,
+          "paragraph_hits_in_sample": 1385,
+          "distinct_documents_in_sample": 1041,
+          "distinct_sources_in_sample": 1041,
+          "max_source_morpheme_occurrences_in_sample": 13,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "지냈",
+          "kiwi_morpheme_occurrences_in_sample": 551,
+          "paragraph_hits_in_sample": 513,
+          "distinct_documents_in_sample": 457,
+          "distinct_sources_in_sample": 457,
+          "max_source_morpheme_occurrences_in_sample": 4,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "지낸",
+          "kiwi_morpheme_occurrences_in_sample": 315,
+          "paragraph_hits_in_sample": 296,
+          "distinct_documents_in_sample": 279,
+          "distinct_sources_in_sample": 279,
+          "max_source_morpheme_occurrences_in_sample": 6,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "지낼",
+          "kiwi_morpheme_occurrences_in_sample": 272,
+          "paragraph_hits_in_sample": 259,
+          "distinct_documents_in_sample": 242,
+          "distinct_sources_in_sample": 242,
+          "max_source_morpheme_occurrences_in_sample": 6,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "지냅",
+          "kiwi_morpheme_occurrences_in_sample": 15,
+          "paragraph_hits_in_sample": 15,
+          "distinct_documents_in_sample": 15,
+          "distinct_sources_in_sample": 15,
+          "max_source_morpheme_occurrences_in_sample": 1,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1127",
+            "paragraph_ordinal": 1126,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1672",
+            "paragraph_ordinal": 1671,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.2807",
+            "paragraph_ordinal": 2806,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "지내다는 생활을 이어감, 관계를 유지함, 일정 기간을 보냄 등 경계가 다른 용법이 관찰된다. source-bound sense 분리 판단이 준비될 때까지 한 gloss로 승인하지 않는다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 15,
+      "inventory_id": "m5-5421",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0015",
+      "morphology_proposal": {
+        "lemma": "마시다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 1,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 3409,
+        "paragraph_hits_in_sample": 2540,
+        "distinct_documents_in_sample": 1453,
+        "distinct_sources_in_sample": 1453,
+        "source_concentration_ratio_in_sample": 0.0091,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "마시고",
+        "literal_match_count": 12547,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "마시고",
+          "kiwi_morpheme_occurrences_in_sample": 569,
+          "paragraph_hits_in_sample": 502,
+          "distinct_documents_in_sample": 434,
+          "distinct_sources_in_sample": 434,
+          "max_source_morpheme_occurrences_in_sample": 7
+        },
+        {
+          "surface": "마셨다",
+          "kiwi_morpheme_occurrences_in_sample": 326,
+          "paragraph_hits_in_sample": 283,
+          "distinct_documents_in_sample": 237,
+          "distinct_sources_in_sample": 237,
+          "max_source_morpheme_occurrences_in_sample": 8
+        },
+        {
+          "surface": "마시는",
+          "kiwi_morpheme_occurrences_in_sample": 282,
+          "paragraph_hits_in_sample": 260,
+          "distinct_documents_in_sample": 235,
+          "distinct_sources_in_sample": 235,
+          "max_source_morpheme_occurrences_in_sample": 9
+        },
+        {
+          "surface": "마실",
+          "kiwi_morpheme_occurrences_in_sample": 235,
+          "paragraph_hits_in_sample": 224,
+          "distinct_documents_in_sample": 211,
+          "distinct_sources_in_sample": 211,
+          "max_source_morpheme_occurrences_in_sample": 6
+        },
+        {
+          "surface": "마신",
+          "kiwi_morpheme_occurrences_in_sample": 205,
+          "paragraph_hits_in_sample": 193,
+          "distinct_documents_in_sample": 178,
+          "distinct_sources_in_sample": 178,
+          "max_source_morpheme_occurrences_in_sample": 3
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "마시",
+          "kiwi_morpheme_occurrences_in_sample": 2009,
+          "paragraph_hits_in_sample": 1599,
+          "distinct_documents_in_sample": 1093,
+          "distinct_sources_in_sample": 1093,
+          "max_source_morpheme_occurrences_in_sample": 19,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "마셨",
+          "kiwi_morpheme_occurrences_in_sample": 543,
+          "paragraph_hits_in_sample": 464,
+          "distinct_documents_in_sample": 378,
+          "distinct_sources_in_sample": 378,
+          "max_source_morpheme_occurrences_in_sample": 11,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "마신",
+          "kiwi_morpheme_occurrences_in_sample": 286,
+          "paragraph_hits_in_sample": 267,
+          "distinct_documents_in_sample": 245,
+          "distinct_sources_in_sample": 245,
+          "max_source_morpheme_occurrences_in_sample": 4,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "마셔",
+          "kiwi_morpheme_occurrences_in_sample": 284,
+          "paragraph_hits_in_sample": 255,
+          "distinct_documents_in_sample": 228,
+          "distinct_sources_in_sample": 228,
+          "max_source_morpheme_occurrences_in_sample": 5,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "마실",
+          "kiwi_morpheme_occurrences_in_sample": 275,
+          "paragraph_hits_in_sample": 260,
+          "distinct_documents_in_sample": 243,
+          "distinct_sources_in_sample": 243,
+          "max_source_morpheme_occurrences_in_sample": 6,
+          "interpretation_count_in_sample": 2
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1508",
+            "paragraph_ordinal": 1507,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1547",
+            "paragraph_ordinal": 1546,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1675",
+            "paragraph_ordinal": 1674,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "마시다 활용 표면에 analyzer interpretation이 겹친다. 의미상 쉬워 보이는 동사라도 현재 형태 분석의 불확실성을 무시해 승인하지 않는다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 16,
+      "inventory_id": "m5-5422",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0016",
+      "morphology_proposal": {
+        "lemma": "발견",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2711,
+        "paragraph_hits_in_sample": 2254,
+        "distinct_documents_in_sample": 1452,
+        "distinct_sources_in_sample": 1452,
+        "source_concentration_ratio_in_sample": 0.0111,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "발견했다",
+        "literal_match_count": 7197,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "발견했다",
+          "kiwi_morpheme_occurrences_in_sample": 367,
+          "paragraph_hits_in_sample": 348,
+          "distinct_documents_in_sample": 308,
+          "distinct_sources_in_sample": 308,
+          "max_source_morpheme_occurrences_in_sample": 5
+        },
+        {
+          "surface": "발견한",
+          "kiwi_morpheme_occurrences_in_sample": 328,
+          "paragraph_hits_in_sample": 317,
+          "distinct_documents_in_sample": 296,
+          "distinct_sources_in_sample": 296,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "발견하고",
+          "kiwi_morpheme_occurrences_in_sample": 211,
+          "paragraph_hits_in_sample": 203,
+          "distinct_documents_in_sample": 191,
+          "distinct_sources_in_sample": 191,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "발견할",
+          "kiwi_morpheme_occurrences_in_sample": 198,
+          "paragraph_hits_in_sample": 185,
+          "distinct_documents_in_sample": 172,
+          "distinct_sources_in_sample": 172,
+          "max_source_morpheme_occurrences_in_sample": 7
+        },
+        {
+          "surface": "발견하지",
+          "kiwi_morpheme_occurrences_in_sample": 87,
+          "paragraph_hits_in_sample": 80,
+          "distinct_documents_in_sample": 79,
+          "distinct_sources_in_sample": 79,
+          "max_source_morpheme_occurrences_in_sample": 3
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "발견",
+          "kiwi_morpheme_occurrences_in_sample": 2711,
+          "paragraph_hits_in_sample": 2254,
+          "distinct_documents_in_sample": 1452,
+          "distinct_sources_in_sample": 1452,
+          "max_source_morpheme_occurrences_in_sample": 30,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1345",
+            "paragraph_ordinal": 1344,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.2679",
+            "paragraph_ordinal": 2678,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.2820",
+            "paragraph_ordinal": 2819,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "명사 형태소 발견이 동작의 이름으로 사용된 bounded 맥락과 부합한다. 하나의 알아냄 의미로 한정했으며 관계 수를 채우기 위한 연결어를 추가하지 않는다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5430",
+        "writer_use_axis": "S",
+        "writer_gloss": "전에 알지 못했던 것을 새로 알아내는 일.",
+        "writer_use": "새로운 표정이나 단서를 알아채는 장면과 행위를 표현할 때 찾는다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 17,
+      "inventory_id": "m5-5423",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0017",
+      "morphology_proposal": {
+        "lemma": "말씀",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 5018,
+        "paragraph_hits_in_sample": 3478,
+        "distinct_documents_in_sample": 1449,
+        "distinct_sources_in_sample": 1449,
+        "source_concentration_ratio_in_sample": 0.0191,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "말씀을",
+        "literal_match_count": 13552,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "말씀을",
+          "kiwi_morpheme_occurrences_in_sample": 819,
+          "paragraph_hits_in_sample": 687,
+          "distinct_documents_in_sample": 412,
+          "distinct_sources_in_sample": 412,
+          "max_source_morpheme_occurrences_in_sample": 33
+        },
+        {
+          "surface": "말씀이",
+          "kiwi_morpheme_occurrences_in_sample": 342,
+          "paragraph_hits_in_sample": 311,
+          "distinct_documents_in_sample": 229,
+          "distinct_sources_in_sample": 229,
+          "max_source_morpheme_occurrences_in_sample": 9
+        },
+        {
+          "surface": "말씀",
+          "kiwi_morpheme_occurrences_in_sample": 325,
+          "paragraph_hits_in_sample": 301,
+          "distinct_documents_in_sample": 249,
+          "distinct_sources_in_sample": 249,
+          "max_source_morpheme_occurrences_in_sample": 14
+        },
+        {
+          "surface": "말씀은",
+          "kiwi_morpheme_occurrences_in_sample": 184,
+          "paragraph_hits_in_sample": 168,
+          "distinct_documents_in_sample": 142,
+          "distinct_sources_in_sample": 142,
+          "max_source_morpheme_occurrences_in_sample": 5
+        },
+        {
+          "surface": "말씀하셨다",
+          "kiwi_morpheme_occurrences_in_sample": 180,
+          "paragraph_hits_in_sample": 138,
+          "distinct_documents_in_sample": 112,
+          "distinct_sources_in_sample": 112,
+          "max_source_morpheme_occurrences_in_sample": 21
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "말씀",
+          "kiwi_morpheme_occurrences_in_sample": 5018,
+          "paragraph_hits_in_sample": 3478,
+          "distinct_documents_in_sample": 1449,
+          "distinct_sources_in_sample": 1449,
+          "max_source_morpheme_occurrences_in_sample": 96,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000101.json",
+            "corpus_id": "WARW2500000101",
+            "document_id": "WARW2500000101.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000101.1.2515",
+            "paragraph_ordinal": 2514,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000101.json",
+            "corpus_id": "WARW2500000101",
+            "document_id": "WARW2500000101.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000101.1.4585",
+            "paragraph_ordinal": 4584,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000151.json",
+            "corpus_id": "WARW2500000151",
+            "document_id": "WARW2500000151.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000151.1.357",
+            "paragraph_ordinal": 356,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "명사 형태소 말씀은 공손한 대화의 말로 관찰됐고, 높임 register라는 writer-facing 구별이 있다. corpus frequency가 아니라 register 기능을 근거로 승인했다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5431",
+        "writer_use_axis": "S",
+        "writer_gloss": "상대의 말을 높여 이르는 표현.",
+        "writer_use": "대화에서 높임과 공손한 거리감을 표현할 때 말의 격식을 찾는다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 18,
+      "inventory_id": "m5-5424",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0018",
+      "morphology_proposal": {
+        "lemma": "잃다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 0,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2513,
+        "paragraph_hits_in_sample": 2135,
+        "distinct_documents_in_sample": 1447,
+        "distinct_sources_in_sample": 1447,
+        "source_concentration_ratio_in_sample": 0.0056,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "잃고",
+        "literal_match_count": 9233,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "literal-scan"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "잃고",
+          "kiwi_morpheme_occurrences_in_sample": 553,
+          "paragraph_hits_in_sample": 506,
+          "distinct_documents_in_sample": 453,
+          "distinct_sources_in_sample": 453,
+          "max_source_morpheme_occurrences_in_sample": 8
+        },
+        {
+          "surface": "잃은",
+          "kiwi_morpheme_occurrences_in_sample": 488,
+          "paragraph_hits_in_sample": 448,
+          "distinct_documents_in_sample": 402,
+          "distinct_sources_in_sample": 402,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "잃지",
+          "kiwi_morpheme_occurrences_in_sample": 219,
+          "paragraph_hits_in_sample": 207,
+          "distinct_documents_in_sample": 192,
+          "distinct_sources_in_sample": 192,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "잃었다",
+          "kiwi_morpheme_occurrences_in_sample": 148,
+          "paragraph_hits_in_sample": 142,
+          "distinct_documents_in_sample": 128,
+          "distinct_sources_in_sample": 128,
+          "max_source_morpheme_occurrences_in_sample": 3
+        },
+        {
+          "surface": "잃게",
+          "kiwi_morpheme_occurrences_in_sample": 124,
+          "paragraph_hits_in_sample": 119,
+          "distinct_documents_in_sample": 117,
+          "distinct_sources_in_sample": 117,
+          "max_source_morpheme_occurrences_in_sample": 2
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "잃",
+          "kiwi_morpheme_occurrences_in_sample": 2513,
+          "paragraph_hits_in_sample": 2135,
+          "distinct_documents_in_sample": 1447,
+          "distinct_sources_in_sample": 1447,
+          "max_source_morpheme_occurrences_in_sample": 14,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000101.json",
+            "corpus_id": "WARW2500000101",
+            "document_id": "WARW2500000101.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000101.1.3041",
+            "paragraph_ordinal": 3040,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000101.json",
+            "corpus_id": "WARW2500000101",
+            "document_id": "WARW2500000101.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000101.1.4515",
+            "paragraph_ordinal": 4514,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000101.json",
+            "corpus_id": "WARW2500000101",
+            "document_id": "WARW2500000101.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000101.1.5988",
+            "paragraph_ordinal": 5987,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "동사 표제어 잃다와 관찰형이 맞고, bounded 맥락은 관심을 더 이상 두지 않는 상실 의미를 보여 준다. 물리적·추상적 대상을 아우르는 핵심 의미에 한정했다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": "w5432",
+        "writer_use_axis": "E",
+        "writer_gloss": "가지고 있던 것을 더 이상 자기 것으로 유지하지 못하다.",
+        "writer_use": "물건이나 자신감·관심처럼 잃는 대상의 장면을 표현하는 동사 출발점으로 쓴다.",
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 19,
+      "inventory_id": "m5-5425",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0019",
+      "morphology_proposal": {
+        "lemma": "오르다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 2,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2631,
+        "paragraph_hits_in_sample": 2183,
+        "distinct_documents_in_sample": 1422,
+        "distinct_sources_in_sample": 1422,
+        "source_concentration_ratio_in_sample": 0.0087,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "올라",
+        "literal_match_count": 74888,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "literal-scan"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "올라",
+          "kiwi_morpheme_occurrences_in_sample": 336,
+          "paragraph_hits_in_sample": 322,
+          "distinct_documents_in_sample": 289,
+          "distinct_sources_in_sample": 289,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "올랐다",
+          "kiwi_morpheme_occurrences_in_sample": 329,
+          "paragraph_hits_in_sample": 315,
+          "distinct_documents_in_sample": 283,
+          "distinct_sources_in_sample": 283,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "오르는",
+          "kiwi_morpheme_occurrences_in_sample": 259,
+          "paragraph_hits_in_sample": 241,
+          "distinct_documents_in_sample": 228,
+          "distinct_sources_in_sample": 228,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "오른",
+          "kiwi_morpheme_occurrences_in_sample": 252,
+          "paragraph_hits_in_sample": 241,
+          "distinct_documents_in_sample": 219,
+          "distinct_sources_in_sample": 219,
+          "max_source_morpheme_occurrences_in_sample": 4
+        },
+        {
+          "surface": "오를",
+          "kiwi_morpheme_occurrences_in_sample": 146,
+          "paragraph_hits_in_sample": 143,
+          "distinct_documents_in_sample": 134,
+          "distinct_sources_in_sample": 134,
+          "max_source_morpheme_occurrences_in_sample": 3
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "올",
+          "kiwi_morpheme_occurrences_in_sample": 1067,
+          "paragraph_hits_in_sample": 963,
+          "distinct_documents_in_sample": 773,
+          "distinct_sources_in_sample": 773,
+          "max_source_morpheme_occurrences_in_sample": 8,
+          "interpretation_count_in_sample": 2
+        },
+        {
+          "surface": "오르",
+          "kiwi_morpheme_occurrences_in_sample": 1005,
+          "paragraph_hits_in_sample": 883,
+          "distinct_documents_in_sample": 730,
+          "distinct_sources_in_sample": 730,
+          "max_source_morpheme_occurrences_in_sample": 8,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "오른",
+          "kiwi_morpheme_occurrences_in_sample": 367,
+          "paragraph_hits_in_sample": 344,
+          "distinct_documents_in_sample": 309,
+          "distinct_sources_in_sample": 309,
+          "max_source_morpheme_occurrences_in_sample": 4,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "오를",
+          "kiwi_morpheme_occurrences_in_sample": 175,
+          "paragraph_hits_in_sample": 169,
+          "distinct_documents_in_sample": 159,
+          "distinct_sources_in_sample": 159,
+          "max_source_morpheme_occurrences_in_sample": 4,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "오름",
+          "kiwi_morpheme_occurrences_in_sample": 10,
+          "paragraph_hits_in_sample": 10,
+          "distinct_documents_in_sample": 10,
+          "distinct_sources_in_sample": 10,
+          "max_source_morpheme_occurrences_in_sample": 1,
+          "interpretation_count_in_sample": 2
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.109",
+            "paragraph_ordinal": 108,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.220",
+            "paragraph_ordinal": 219,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.504",
+            "paragraph_ordinal": 503,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "오르다의 관찰 표면에서 analyzer interpretation이 둘 이상이다. 같은 활용형으로 보이는 표면의 분석이 단일하지 않으므로 정체성 해결까지 보류한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    },
+    {
+      "candidate_ordinal": 20,
+      "inventory_id": "m5-5426",
+      "candidate_id": "issue-221-m9-c-batch-01-20260929-candidate-0020",
+      "morphology_proposal": {
+        "lemma": "움직이다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "analyzer_confidence": "not_calibrated",
+        "pos_interpretation_count_in_sample": 1,
+        "ambiguous_observed_surface_count_in_sample": 1,
+        "oov_morpheme_occurrences_in_sample": 0
+      },
+      "corpus_evidence": {
+        "kiwi_morpheme_occurrences_in_sample": 2771,
+        "paragraph_hits_in_sample": 2284,
+        "distinct_documents_in_sample": 1421,
+        "distinct_sources_in_sample": 1421,
+        "source_concentration_ratio_in_sample": 0.0083,
+        "sample_paragraph_count": 251086,
+        "sample_fraction": 0.050328,
+        "coverage_status": "uncovered",
+        "literal_match_query": "움직이는",
+        "literal_match_count": 8265,
+        "literal_match_count_semantics": "literal substring paragraph count; not lemma frequency",
+        "search_mode": "fts5-trigram-literal-confirmed"
+      },
+      "coverage_status": "uncovered",
+      "typewriter_surface_matches": [],
+      "observed_surface_forms": [
+        {
+          "surface": "움직이는",
+          "kiwi_morpheme_occurrences_in_sample": 472,
+          "paragraph_hits_in_sample": 432,
+          "distinct_documents_in_sample": 388,
+          "distinct_sources_in_sample": 388,
+          "max_source_morpheme_occurrences_in_sample": 5
+        },
+        {
+          "surface": "움직이지",
+          "kiwi_morpheme_occurrences_in_sample": 329,
+          "paragraph_hits_in_sample": 305,
+          "distinct_documents_in_sample": 265,
+          "distinct_sources_in_sample": 265,
+          "max_source_morpheme_occurrences_in_sample": 7
+        },
+        {
+          "surface": "움직일",
+          "kiwi_morpheme_occurrences_in_sample": 295,
+          "paragraph_hits_in_sample": 273,
+          "distinct_documents_in_sample": 254,
+          "distinct_sources_in_sample": 254,
+          "max_source_morpheme_occurrences_in_sample": 5
+        },
+        {
+          "surface": "움직였다",
+          "kiwi_morpheme_occurrences_in_sample": 285,
+          "paragraph_hits_in_sample": 268,
+          "distinct_documents_in_sample": 242,
+          "distinct_sources_in_sample": 242,
+          "max_source_morpheme_occurrences_in_sample": 8
+        },
+        {
+          "surface": "움직이고",
+          "kiwi_morpheme_occurrences_in_sample": 205,
+          "paragraph_hits_in_sample": 186,
+          "distinct_documents_in_sample": 177,
+          "distinct_sources_in_sample": 177,
+          "max_source_morpheme_occurrences_in_sample": 5
+        }
+      ],
+      "observed_morpheme_spans": [
+        {
+          "surface": "움직이",
+          "kiwi_morpheme_occurrences_in_sample": 1652,
+          "paragraph_hits_in_sample": 1409,
+          "distinct_documents_in_sample": 1024,
+          "distinct_sources_in_sample": 1024,
+          "max_source_morpheme_occurrences_in_sample": 17,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "움직였",
+          "kiwi_morpheme_occurrences_in_sample": 389,
+          "paragraph_hits_in_sample": 366,
+          "distinct_documents_in_sample": 325,
+          "distinct_sources_in_sample": 325,
+          "max_source_morpheme_occurrences_in_sample": 8,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "움직일",
+          "kiwi_morpheme_occurrences_in_sample": 307,
+          "paragraph_hits_in_sample": 283,
+          "distinct_documents_in_sample": 264,
+          "distinct_sources_in_sample": 264,
+          "max_source_morpheme_occurrences_in_sample": 5,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "움직여",
+          "kiwi_morpheme_occurrences_in_sample": 274,
+          "paragraph_hits_in_sample": 261,
+          "distinct_documents_in_sample": 249,
+          "distinct_sources_in_sample": 249,
+          "max_source_morpheme_occurrences_in_sample": 4,
+          "interpretation_count_in_sample": 1
+        },
+        {
+          "surface": "움직인",
+          "kiwi_morpheme_occurrences_in_sample": 129,
+          "paragraph_hits_in_sample": 126,
+          "distinct_documents_in_sample": 123,
+          "distinct_sources_in_sample": 123,
+          "max_source_morpheme_occurrences_in_sample": 3,
+          "interpretation_count_in_sample": 1
+        }
+      ],
+      "bounded_provenance": {
+        "evidence_type": "literal_text_match_count_and_bounded_paragraph_hits",
+        "representative_hit_limit": 3,
+        "representative_hit_count": 3,
+        "representative_hits": [
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.1991",
+            "paragraph_ordinal": 1990,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.2225",
+            "paragraph_ordinal": 2224,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          },
+          {
+            "source_path": "WARW2500000091.json",
+            "corpus_id": "WARW2500000091",
+            "document_id": "WARW2500000091.1",
+            "document_ordinal": 0,
+            "paragraph_id": "WARW2500000091.1.2864",
+            "paragraph_ordinal": 2863,
+            "source_category": "문어 > 책-상상 > 문학",
+            "source_year": "2025"
+          }
+        ]
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "움직이다 활용 표면에 복수 analyzer interpretation이 남아 있다. 단일 동사 분석이라고 가정하지 않고 후속 morphology review로 보낸다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "candidate_record_id": null
+      }
+    }
+  ],
+  "artifact_sha256": "2b1271304a0581e97cb43fbe6c3e3b22491808b666b81d8fbcfaa5791a989aa0"
+}
