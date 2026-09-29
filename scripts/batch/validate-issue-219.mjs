@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 import Ajv from 'ajv';
 
@@ -33,6 +35,7 @@ import {
 import { materializeLexicalUnitCandidates, validateLexicalProduction } from './lexical-production.mjs';
 import { productionValueSha256 } from './lexical-production-state.mjs';
 import {
+  assertHistoricalRecordsRemainSourceBound,
   productionReviewRows,
   productionStageEvidence,
   projectDecisionSourceToCanonical,
@@ -62,6 +65,8 @@ const MACHINE_REPORT_PATH = path.join(ROOT, 'data/validation/issue-219-m9-lexica
 const REPORT_SCHEMA_PATH = path.join(ROOT, 'schema/m9-lexical-batch-report.schema.json');
 const BATCH_ID = 'm9-a-issue-219-first-recovery-20260929';
 const VERIFICATION_PASS_ID = 'issue-219-separate-semantic-verification-20260929-r2';
+const ISSUE_219_BASE_SOURCE_COMMIT = '1b1b50d2d5f10a55ddd416b54d45732dabd3fe89';
+const ISSUE_225_BASE_SOURCE_COMMIT = '3e07c1b224cc7f7324f044b807cef9e17d321c2c';
 const BASELINE_INVENTORY_SHA256 = 'fcaa572119d307a1efc0f15782b8d77a0585f4e9786e735ce42623dd4710e539';
 const LOGICAL_CONTENT_EXCLUDED_METADATA_KEYS = new Set([
   'source_revision',
@@ -79,6 +84,15 @@ const jsonlBytes = (records) => Buffer.from(records.length === 0
   ? ''
   : `${records.map((record) => JSON.stringify(record)).join('\n')}\n`, 'utf8');
 const recordOf = (recordInfo) => recordInfo?.record ?? recordInfo;
+const execFileAsync = promisify(execFile);
+
+async function readGitJson(commit, filePath) {
+  const { stdout } = await execFileAsync('git', ['show', `${commit}:${filePath}`], {
+    cwd: ROOT,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  return JSON.parse(stdout);
+}
 
 function readJsonl(bytes, label) {
   return bytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map((line, index) => {
@@ -337,9 +351,16 @@ export async function validateIssue219({ writeReport = false } = {}) {
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const historicalById = new Map(historicalCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
   const currentById = new Map(currentCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
-  for (const [id, record] of historicalById) {
-    assert.deepEqual(currentById.get(id), record, `${id} frozen baseline record remains unchanged`);
-  }
+  const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(CURRENT_ROOT_SOURCE_PATH);
+  assertHistoricalRecordsRemainSourceBound(
+    historicalCanonical.records,
+    currentCanonical.records,
+    currentRootDecisionSource,
+  );
+  const issue219BaseDecisionSource = await readGitJson(
+    ISSUE_219_BASE_SOURCE_COMMIT,
+    'data/validation/canonical-semantic-decision-source.json',
+  );
 
   const selectedInventoryIds = selection.selected_candidates.map(({ source_inventory_id: id }) => id);
   const materialized = materializeLexicalUnitCandidates({
@@ -380,7 +401,6 @@ export async function validateIssue219({ writeReport = false } = {}) {
   const importRecords = readJsonl(importBytes, 'Issue #219 canonical import');
   assert.deepEqual(importRecords, expectedImportRecords, 'Issue #219 canonical import contains only source-bound admitted candidates');
 
-  const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(CURRENT_ROOT_SOURCE_PATH);
   const currentDigest = canonicalRecordsSha256(currentCanonical.records);
   assert.equal(currentRootDecisionSource.source.canonical_records_sha256, currentDigest, 'current root semantic decision source digest');
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
@@ -390,7 +410,11 @@ export async function validateIssue219({ writeReport = false } = {}) {
   });
 
   const prospectiveRecords = [...historicalCanonical.records, ...importRecords];
-  const projectedDecisionSource = projectDecisionSourceToCanonical(currentRootDecisionSource, prospectiveRecords);
+  const projectedDecisionSource = projectDecisionSourceToCanonical(
+    currentRootDecisionSource,
+    prospectiveRecords,
+    issue219BaseDecisionSource,
+  );
   const semanticAudit = buildSemanticAuditFromDecisionSource(prospectiveRecords, projectedDecisionSource, {
     artifactId: 'issue-219-prospective-canonical-semantic-audit',
     baseRecords: historicalCanonical.records,
@@ -400,6 +424,10 @@ export async function validateIssue219({ writeReport = false } = {}) {
     semanticReviewSourcePath: 'data/batches/issue-219-m9-a-semantic-decisions.json',
     verificationPassId: VERIFICATION_PASS_ID,
   });
+  const historicalSurfaceFormReviewManifest = await readGitJson(
+    ISSUE_225_BASE_SOURCE_COMMIT,
+    'data/validation/m6-3-surface-form-review.json',
+  );
   const production = validateLexicalProduction({
     batchId: semanticSource.batch_id,
     candidateRecords: materialized.candidateRecords,
@@ -407,6 +435,10 @@ export async function validateIssue219({ writeReport = false } = {}) {
     baseRecords: historicalCanonical.records,
     prospectiveRecords,
     semanticAudit,
+    canonicalContext: {
+      records: prospectiveRecords,
+      derived: { surfaceFormReviewManifest: historicalSurfaceFormReviewManifest },
+    },
     stageEvidence: productionStageEvidence({
       candidateSourceBytes,
       semanticSourceBytes,
@@ -471,6 +503,7 @@ export async function validateIssue219({ writeReport = false } = {}) {
     baseRecords: historicalCanonical.records,
     admittedRecords: importRecords,
     units: candidateSource.units,
+    surfaceFormReviewManifest: historicalSurfaceFormReviewManifest,
     batchLabel: 'Issue #219',
     temporaryPrefix: 'typewriter-issue-219-search-',
     workflowLemmas: [],
