@@ -52,7 +52,6 @@
     "data/inventory/m5-target-promotions.jsonl",
     "data/inventory/issue-210-recovery-inventory.json",
     "data/validation/issue-219-m9-lexical-batch-report.json",
-    "data/validation/issue-225-semantic-correction-manifest.json",
     "data/validation/canonical-semantic-boundary-decisions.json",
     "data/validation/canonical-semantic-correction-manifest.json",
     "data/validation/canonical-semantic-decision-source.json",
@@ -835,7 +834,9 @@
             "left_frame": "object",
             "right_frame": "object",
             "frame_contrast": "string",
-            "relation_path_rationale": "string"
+            "left_route": "object",
+            "right_route": "object",
+            "route_contrast": "string"
           },
           "$.decisions.*.boundary_pairs.*.writer_boundary.left_frame": {
             "gloss_excerpt": "string",
@@ -844,6 +845,16 @@
           "$.decisions.*.boundary_pairs.*.writer_boundary.right_frame": {
             "gloss_excerpt": "string",
             "sentence_frame": "string"
+          },
+          "$.decisions.*.boundary_pairs.*.writer_boundary.left_route": {
+            "relation_type": "string",
+            "target_pos": "string",
+            "target_class": "string"
+          },
+          "$.decisions.*.boundary_pairs.*.writer_boundary.right_route": {
+            "relation_type": "string",
+            "target_pos": "string",
+            "target_class": "string"
           },
           "$.decisions.*.sense_reviews.*": {
             "sense_id": "string",
@@ -1036,9 +1047,11 @@
           "$.decisions.*.correction.record.senses.*": ["id", "pos", "gloss", "relations"],
           "$.decisions.*.correction.record.senses.*.relations.*": ["target", "target_sense", "type", "note"],
           "$.decisions.*.boundary_pairs.*": ["left_sense_id", "right_sense_id", "relationship", "decision", "left_gloss_sha256", "right_gloss_sha256", "evidence_basis", "distinguishing_feature", "decision_source_id", "rationale", "writer_boundary"],
-          "$.decisions.*.boundary_pairs.*.writer_boundary": ["left_frame", "right_frame", "frame_contrast", "relation_path_rationale"],
+          "$.decisions.*.boundary_pairs.*.writer_boundary": ["left_frame", "right_frame", "frame_contrast", "left_route", "right_route", "route_contrast"],
           "$.decisions.*.boundary_pairs.*.writer_boundary.left_frame": ["gloss_excerpt", "sentence_frame"],
           "$.decisions.*.boundary_pairs.*.writer_boundary.right_frame": ["gloss_excerpt", "sentence_frame"],
+          "$.decisions.*.boundary_pairs.*.writer_boundary.left_route": ["relation_type"],
+          "$.decisions.*.boundary_pairs.*.writer_boundary.right_route": ["relation_type"],
           "$.decisions.*.sense_reviews.*": ["sense_id", "boundary_action", "boundary_classification", "boundary_decision", "boundary_rationale", "semantic_rationale", "relation_decision", "relation_count", "relation_ids", "no_relation_rationale", "review_basis"],
           "$.decisions.*.sense_reviews.*.review_basis": ["topic_analysis", "topic_analyses"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],

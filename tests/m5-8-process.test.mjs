@@ -307,22 +307,13 @@ async function createStageFixture({
     await writeFile(verificationPath, `${JSON.stringify(verification, null, 2)}\n`, 'utf8');
 
     const processedStartCount = included + corrected + held + rejected;
-    const liveBaseline = {
-      record_count: baselineRecords.length,
-      start_count: baselineRecords.filter(({ record }) => record.role === 'start').length,
-      reference_only_count: baselineRecords.filter(({ record }) => record.role === 'reference-only').length,
-      sense_count: baselineRecords.reduce((count, { record }) => count + record.senses.length, 0),
-      relation_count: baselineRecords.reduce((count, { record }) => count
-        + record.senses.reduce((senseCount, sense) => senseCount + (sense.relations?.length ?? 0), 0), 0),
-      expression_count: baselineRecords.filter(({ record }) => record.record_type === 'expression').length,
-    };
     const actualSnapshot = {
-      record_count: liveBaseline.record_count + approvedCount,
-      start_count: liveBaseline.start_count + approvedCount,
-      reference_only_count: liveBaseline.reference_only_count,
-      sense_count: liveBaseline.sense_count + approvedCount,
-      relation_count: liveBaseline.relation_count,
-      expression_count: liveBaseline.expression_count,
+      record_count: BASELINE_SNAPSHOT.record_count + approvedCount,
+      start_count: BASELINE_SNAPSHOT.start_count + approvedCount,
+      reference_only_count: BASELINE_SNAPSHOT.reference_only_count,
+      sense_count: BASELINE_SNAPSHOT.sense_count + approvedCount,
+      relation_count: BASELINE_SNAPSHOT.relation_count,
+      expression_count: BASELINE_SNAPSHOT.expression_count,
     };
     const correctionRate = corrected / processedStartCount;
     const editorSeconds = metrics.derived.timing.total_editor_seconds;
@@ -719,7 +710,7 @@ test('follow-up stages require a digest-bound previous passed report', async () 
   }
 });
 
-test('M5-7 regressions remain bound while later sense and relation corrections update the live corpus', async () => {
+test('M5-7 sense/POS and relation failures are regressions with no canonical count change', async () => {
   const [plan, fixture, relationDiff, canonicalResult] = await Promise.all([
     readJson(PLAN_PATH),
     readJson(FIXTURE_PATH),
@@ -740,7 +731,6 @@ test('M5-7 regressions remain bound while later sense and relation corrections u
 
   assert.equal(result.regressions.sense_case_count, 5);
   assert.equal(result.regressions.relation_case_count, 3);
-  assert.notEqual(canonical.records.reduce((count, { record }) => count + record.senses.length, 0), BASELINE_SNAPSHOT.sense_count);
   assert.equal(canonical.records.length, 470);
   assert.equal(
     canonical.records.filter(({ record }) => record.role === 'start').length,
@@ -749,16 +739,6 @@ test('M5-7 regressions remain bound while later sense and relation corrections u
   assert.equal(
     canonical.records.filter(({ record }) => record.role === 'reference-only').length,
     42,
-  );
-
-  assert.throws(
-    () => validateM58Process({
-      plan,
-      fixture,
-      canonicalRecordInfos: canonical.records.slice(1),
-      relationDiff,
-    }),
-    (error) => error.code === 'CANONICAL_MEMBERSHIP_CHANGED',
   );
 
   const missingRegression = structuredClone(fixture);

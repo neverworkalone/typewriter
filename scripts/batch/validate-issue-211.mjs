@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../build/dictionary.mjs';
@@ -25,7 +23,6 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import {
   buildSemanticAuditFromDecisionSource,
   canonicalRecordsSha256,
@@ -54,8 +51,6 @@ const SEMANTIC_DECISION_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/iss
 const CANONICAL_IMPORT_PATH = path.join(REPOSITORY_DIRECTORY, 'data/canonical/issue-211-bounded-recovery.jsonl');
 const M9_BASE_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-219-m9-a-base-canonical');
 const M9_BASE_SEED_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-219-m9-a-base-seed.json');
-const ISSUE_219_BASE_SOURCE_COMMIT = '1b1b50d2d5f10a55ddd416b54d45732dabd3fe89';
-const ISSUE_225_BASE_SOURCE_COMMIT = '3e07c1b224cc7f7324f044b807cef9e17d321c2c';
 const ROOT_DECISION_SOURCE_PATH = path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-decision-source.json');
 const TARGET_SEED_PATH = DEFAULT_SEED_PATH;
 const PROMOTION_LEDGER_PATH = DEFAULT_PROMOTION_PATH;
@@ -67,7 +62,6 @@ const EXPECTED_LEMMAS = Object.freeze([
   '친구', '그때', '오늘', '여자', '이해', '인간', '남자', '준비', '중요', '넣다',
   '가능', '마지막', '아버지', '아래', '조금',
 ]);
-const execFileAsync = promisify(execFile);
 
 function sha256Bytes(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -83,55 +77,6 @@ function jsonlBytes(records) {
 
 function recordOf(recordInfo) {
   return recordInfo?.record ?? recordInfo;
-}
-
-export function assertHistoricalRecordsRemainSourceBound(historicalRecords, currentRecords, decisionSource) {
-  const currentById = new Map(currentRecords.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
-  const correctionsById = new Map();
-  for (const correction of decisionSource.authored_review.review_pass.correction_history ?? []) {
-    const rows = correctionsById.get(correction.record_id) ?? [];
-    rows.push(correction);
-    correctionsById.set(correction.record_id, rows);
-  }
-  const boundaryHistoryById = new Map();
-  for (const change of decisionSource.authored_review.review_pass.boundary_decision_history ?? []) {
-    const rows = boundaryHistoryById.get(change.record_id) ?? [];
-    rows.push(change);
-    boundaryHistoryById.set(change.record_id, rows);
-  }
-
-  for (const recordInfo of historicalRecords) {
-    const record = recordOf(recordInfo);
-    const current = currentById.get(record.id);
-    assert.ok(current, `${record.id} frozen Issue #219 base record remains present`);
-    if (JSON.stringify(current) === JSON.stringify(record)) continue;
-
-    const beforeDigest = sha256Json(record);
-    const afterDigest = sha256Json(current);
-    const correctionHistory = correctionsById.get(record.id) ?? [];
-    assert.notEqual(correctionHistory.length, 0, `${record.id} later change has a semantic correction history`);
-    assert.equal(
-      correctionHistory[0].before_record_sha256,
-      beforeDigest,
-      `${record.id} correction history starts at the frozen Issue #219 record`,
-    );
-    assert.equal(
-      correctionHistory.at(-1).after_record_sha256,
-      afterDigest,
-      `${record.id} correction history ends at the current canonical record`,
-    );
-    const boundaryHistory = boundaryHistoryById.get(record.id) ?? [];
-    assert.equal(
-      boundaryHistory[0]?.before_record_sha256,
-      beforeDigest,
-      `${record.id} boundary history starts at the frozen Issue #219 record`,
-    );
-    assert.equal(
-      boundaryHistory.at(-1)?.after_record_sha256,
-      afterDigest,
-      `${record.id} boundary history ends at the current canonical record`,
-    );
-  }
 }
 
 function fail(message) {
@@ -159,67 +104,14 @@ function semanticDecisionConfig(candidateSource, semanticSource) {
   };
 }
 
-function projectReviewHistory(history, recordsById, label) {
-  const rowsById = new Map();
-  for (const row of history ?? []) {
-    const rows = rowsById.get(row.record_id) ?? [];
-    rows.push(row);
-    rowsById.set(row.record_id, rows);
-  }
-  const projected = [];
-  for (const [recordId, rows] of rowsById) {
-    const record = recordsById.get(recordId);
-    if (!record) continue;
-    const digest = sha256Json(record);
-    const matchingRevisionIndex = rows.findIndex((row) => row.after_record_sha256 === digest);
-    if (matchingRevisionIndex >= 0) {
-      projected.push(...rows.slice(0, matchingRevisionIndex + 1));
-      continue;
-    }
-    if (rows[0].before_record_sha256 === digest) continue;
-    throw new Error(`${label} cannot project ${recordId} to the requested canonical revision`);
-  }
-  return projected;
-}
-
-function reviewCoversRecord(review, record) {
-  return JSON.stringify((review?.sense_reviews ?? []).map(({ sense_id: id }) => id).sort())
-    === JSON.stringify(record.senses.map(({ id }) => id).sort());
-}
-
-export function projectDecisionSourceToCanonical(sourceValue, recordInfos, historicalSource) {
+export function projectDecisionSourceToCanonical(sourceValue, recordInfos) {
   const source = structuredClone(sourceValue);
-  const recordsById = new Map(recordInfos.map((recordInfo) => {
-    const record = recordOf(recordInfo);
-    return [record.id, record];
-  }));
-  const historicalReviewsById = new Map(
-    (historicalSource?.authored_review?.records ?? []).map((review) => [review.record_id, review]),
-  );
+  const recordIds = new Set(recordInfos.map((recordInfo) => recordOf(recordInfo).id));
   const digest = canonicalRecordsSha256(recordInfos);
   source.source.canonical_records_sha256 = digest;
   source.authored_review.source.canonical_records_sha256 = digest;
   source.authored_review.records = source.authored_review.records
-    .filter(({ record_id: recordId }) => recordsById.has(recordId))
-    .map((review) => {
-      const record = recordsById.get(review.record_id);
-      if (reviewCoversRecord(review, record)) return review;
-      const historicalReview = historicalReviewsById.get(review.record_id);
-      if (reviewCoversRecord(historicalReview, record)) return structuredClone(historicalReview);
-      return review;
-    });
-  const reviewPass = source.authored_review.review_pass;
-  reviewPass.correction_history = projectReviewHistory(
-    reviewPass.correction_history,
-    recordsById,
-    'correction history',
-  );
-  reviewPass.correction_count = reviewPass.correction_history.length;
-  reviewPass.boundary_decision_history = projectReviewHistory(
-    reviewPass.boundary_decision_history,
-    recordsById,
-    'boundary decision history',
-  );
+    .filter(({ record_id: recordId }) => recordIds.has(recordId));
   source.authored_review_sha256 = sha256Json(source.authored_review);
   return source;
 }
@@ -478,7 +370,6 @@ export async function validateExactSearch({
   baseRecords,
   admittedRecords,
   units,
-  surfaceFormReviewManifest,
   batchLabel = 'Issue #211',
   temporaryPrefix = 'typewriter-issue-211-',
   workflowLemmas = ['사람', '없다'],
@@ -493,16 +384,11 @@ export async function validateExactSearch({
   let baseDatabase;
   let currentDatabase;
   try {
-    const baseCanonicalContext = await loadCanonicalContext({ directory: baseDirectory });
-    if (surfaceFormReviewManifest) {
-      baseCanonicalContext.derived.surfaceFormReviewManifest = surfaceFormReviewManifest;
-    }
     await buildDictionary({
       inputDirectory: baseDirectory,
       outputPath: baseDatabasePath,
       allowDirty: true,
       repositoryDirectory: REPOSITORY_DIRECTORY,
-      canonicalContext: baseCanonicalContext,
     });
     await buildDictionary({
       inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
@@ -676,12 +562,10 @@ export async function validateIssue211({ writeReport = false } = {}) {
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const historicalCanonical = await readCanonicalRecords(M9_BASE_CANONICAL_DIRECTORY);
   const currentCanonicalById = new Map(currentCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
-  const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(ROOT_DECISION_SOURCE_PATH);
-  assertHistoricalRecordsRemainSourceBound(
-    historicalCanonical.records,
-    currentCanonical.records,
-    currentRootDecisionSource,
-  );
+  for (const recordInfo of historicalCanonical.records) {
+    const record = recordOf(recordInfo);
+    assert.deepEqual(currentCanonicalById.get(record.id), record, `${record.id} frozen Issue #219 base record is unchanged`);
+  }
   const candidateIds = new Set(semanticSource.candidate_records.map(({ id }) => id));
   assert.equal(candidateIds.size, EXPECTED_LEMMAS.length, 'candidate record identities are unique');
   const admittedDecisionIds = new Set(semanticSource.decisions
@@ -746,6 +630,7 @@ export async function validateIssue211({ writeReport = false } = {}) {
   assert.equal(activeHeldRows.length, 1, 'only the held Issue #211 decision is retained in the target seed');
   assert.equal(activeHeldRows[0].status, 'held', 'held Issue #211 target status');
 
+  const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(ROOT_DECISION_SOURCE_PATH);
   const currentDigest = canonicalRecordsSha256(currentCanonical.records);
   assert.equal(currentRootDecisionSource.source.canonical_records_sha256, currentDigest, 'complete current canonical decision source digest');
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
@@ -753,40 +638,12 @@ export async function validateIssue211({ writeReport = false } = {}) {
     artifactId: 'issue-211-current-canonical-semantic-audit',
     batchDecisionSources,
   });
-  const { stdout: issue219BaseDecisionSourceBytes } = await execFileAsync(
-    'git',
-    [
-      'show',
-      `${ISSUE_219_BASE_SOURCE_COMMIT}:data/validation/canonical-semantic-decision-source.json`,
-    ],
-    { cwd: REPOSITORY_DIRECTORY, maxBuffer: 20 * 1024 * 1024 },
-  );
-  const issue219BaseDecisionSource = JSON.parse(issue219BaseDecisionSourceBytes);
-  const rootDecisionSource = projectDecisionSourceToCanonical(
-    currentRootDecisionSource,
-    historicalCanonical.records,
-    issue219BaseDecisionSource,
-  );
+  const rootDecisionSource = projectDecisionSourceToCanonical(currentRootDecisionSource, historicalCanonical.records);
   const historicalSemanticAudit = buildSemanticAuditFromDecisionSource(historicalCanonical.records, rootDecisionSource, {
     artifactId: 'issue-211-complete-canonical-semantic-audit',
     baseRecords,
     batchDecisionSources,
   });
-  const { stdout: historicalSurfaceFormReviewBytes } = await execFileAsync(
-    'git',
-    [
-      'show',
-      `${ISSUE_225_BASE_SOURCE_COMMIT}:data/validation/m6-3-surface-form-review.json`,
-    ],
-    { cwd: REPOSITORY_DIRECTORY, maxBuffer: 10 * 1024 * 1024 },
-  );
-  const historicalSurfaceFormReviewManifest = JSON.parse(historicalSurfaceFormReviewBytes);
-  const historicalProductionContext = {
-    ...historicalCanonical,
-    derived: {
-      surfaceFormReviewManifest: historicalSurfaceFormReviewManifest,
-    },
-  };
   const reviewRows = productionReviewRows(candidateSet.identities, candidateSet.candidateRecords, semanticDecisionSource);
   const production = validateLexicalProduction({
     batchId: candidateSource.batch_id,
@@ -795,7 +652,6 @@ export async function validateIssue211({ writeReport = false } = {}) {
     baseRecords,
     prospectiveRecords: historicalCanonical.records,
     semanticAudit: historicalSemanticAudit,
-    canonicalContext: historicalProductionContext,
     stageEvidence: productionStageEvidence({
       candidateSourceBytes,
       semanticSourceBytes,
@@ -822,7 +678,6 @@ export async function validateIssue211({ writeReport = false } = {}) {
     baseRecords,
     admittedRecords: importRecords,
     units: candidateSource.units,
-    surfaceFormReviewManifest: historicalSurfaceFormReviewManifest,
   });
   const renderedReport = renderReport({
     semanticSource,

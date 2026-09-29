@@ -13,12 +13,16 @@ import {
   readAuthoredBatchDecisionSources,
   sha256Json,
 } from './semantic-audit.mjs';
-import { inspectWriterRelationPath } from './sense-boundary.mjs';
+import {
+  hasDistinctAuthoredWriterRoutes,
+  inspectWriterRelationPath,
+  WRITER_ROUTE_RELATION_TYPES,
+  WRITER_ROUTE_TARGET_POS,
+} from './sense-boundary.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const DECISIONS_PATH = path.join(REPOSITORY_DIRECTORY, 'docs/audits/issue-225-sense-boundary-decisions.json');
-const CORRECTION_PATH = path.join(REPOSITORY_DIRECTORY, 'data/validation/issue-225-semantic-correction-manifest.json');
 const DECISION_SOURCE_PATH = path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-decision-source.json');
 const SURFACE_FORM_REVIEW_PATH = path.join(REPOSITORY_DIRECTORY, 'data/validation/m6-3-surface-form-review.json');
 const INVENTORY_PATH = path.join(REPOSITORY_DIRECTORY, 'docs/audits/issue-225-sense-boundary-audit.json');
@@ -28,6 +32,12 @@ function fail(message) {
   const error = new Error(message);
   error.code = 'ISSUE_225_SENSE_BOUNDARY_AUDIT';
   throw error;
+}
+
+function requireNonEmptyString(value, label) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    fail(`${label} must be a non-empty string`);
+  }
 }
 
 function digestBytes(bytes) {
@@ -107,55 +117,55 @@ function summarizeBoundaryReview(review) {
   };
 }
 
-async function buildReport({ decisions, correction, canonical, decisionSource, batchDecisionSources }) {
-  if (decisions.schema_version !== '1'
-    || decisions.contract_version !== 'issue-225-sense-boundary-decisions-v1'
+async function buildReport({ decisions, canonical, decisionSource, batchDecisionSources }) {
+  if (decisions.schema_version !== '2'
+    || decisions.contract_version !== 'issue-225-sense-boundary-decisions-v2'
     || decisions.issue !== 225
     || decisions.parent_issue !== 218) {
     fail('authored decision file must use the Issue #225 / parent #218 contract');
   }
-  if (correction.corrections?.length !== 1 || correction.corrections[0].record_id !== 'w321') {
-    fail('the Issue #225 correction manifest must contain only the reviewed w321 merge');
-  }
-  const w321Correction = correction.corrections[0];
   const currentById = new Map(canonical.records.map(({ record }) => [record.id, record]));
   const currentDigest = canonicalRecordsSha256(canonical.records);
-  if (currentDigest !== correction.prospective_canonical_records_sha256) {
-    fail('current canonical snapshot does not match the correction manifest prospective digest');
-  }
-  const currentW321 = currentById.get('w321');
-  if (!currentW321 || sha256Json(currentW321) !== w321Correction.after_record_sha256) {
-    fail('canonical w321 does not match the bound corrected record');
-  }
-  const baseRecords = canonical.records.map((recordInfo) => ({
-    ...recordInfo,
-    record: recordInfo.record.id === 'w321'
-      ? w321Correction.before_record
-      : recordInfo.record,
-  }));
-  const baseDigest = canonicalRecordsSha256(baseRecords);
-  if (baseDigest !== correction.base_canonical_records_sha256
-    || !correction.source_revision.endsWith(decisions.source_revision)) {
-    fail('the reconstructed pre-correction canonical snapshot is not bound to the authored audit sources');
-  }
   if (decisionSource.source.canonical_records_sha256 !== currentDigest) {
-    fail('current semantic decision source does not bind the corrected canonical snapshot');
+    fail('current semantic decision source does not bind the audited canonical snapshot');
   }
-
-  const baseById = new Map(baseRecords.map(({ record }) => [record.id, record]));
-  const baselineMultisense = [...baseById.values()]
+  const multisenseRecords = [...currentById.values()]
     .filter((record) => record.senses.length > 1)
     .sort((left, right) => left.id.localeCompare(right.id));
-  const currentMultisense = [...currentById.values()].filter((record) => record.senses.length > 1);
   const keepById = new Map(decisions.keep_split.map((entry) => [entry.record_id, entry]));
   const mergeById = new Map(decisions.merge_senses.map((entry) => [entry.record_id, entry]));
   const holdById = new Map(decisions.hold_overrides.map((entry) => [entry.record_id, entry]));
+  const frameReviewById = new Map(decisions.frame_reviews.map((entry) => [entry.record_id, entry]));
   if (keepById.size !== decisions.keep_split.length
     || mergeById.size !== decisions.merge_senses.length
-    || holdById.size !== decisions.hold_overrides.length) {
+    || holdById.size !== decisions.hold_overrides.length
+    || frameReviewById.size !== decisions.frame_reviews.length) {
     fail('authored decision file contains duplicate record IDs');
   }
-  if (keepById.has('w321') || holdById.has('w321')) fail('w321 must have only the merge disposition');
+  if (mergeById.size !== 0) {
+    fail('this audit has no merge supported by positive semantic evidence; relation-path equality is insufficient');
+  }
+  if (multisenseRecords.length !== 249
+    || multisenseRecords.reduce((sum, record) => sum + record.senses.length, 0) !== 511) {
+    fail('the source snapshot no longer matches 249 multi-sense records and 511 senses');
+  }
+  if (frameReviewById.size !== 2) {
+    fail(`expected explicit held frame reviews for w321 and w5356, found ${frameReviewById.size}`);
+  }
+  if (holdById.size !== 2 || !holdById.has('w321') || !holdById.has('w5356')) {
+    fail('w321 and w5356 must retain their explicit unresolved-boundary rationales');
+  }
+
+  const expectedIds = new Set(multisenseRecords.map(({ id }) => id));
+  const authoredIds = new Set([
+    ...keepById.keys(),
+    ...mergeById.keys(),
+    ...holdById.keys(),
+    ...frameReviewById.keys(),
+  ]);
+  if ([...authoredIds].some((id) => !expectedIds.has(id))) {
+    fail('authored frame and disposition decisions include a record outside the complete multisense inventory');
+  }
 
   const materializedReview = materializeSemanticReviewArtifact(
     canonical.records,
@@ -166,36 +176,15 @@ async function buildReport({ decisions, correction, canonical, decisionSource, b
     },
   );
   const reviewById = new Map(materializedReview.records.map((review) => [review.record_id, review]));
-  const canonicalById = new Map([...currentById, ...baseById]);
-  const relationTargetsById = canonicalById;
-  const correctionManifestBytes = await readFile(CORRECTION_PATH);
+  const relationTargetsById = currentById;
+  const routeTypes = new Set(WRITER_ROUTE_RELATION_TYPES);
+  const targetPos = new Set(WRITER_ROUTE_TARGET_POS);
 
-  if (baselineMultisense.length !== 249) {
-    fail(`expected 249 pre-correction multisense records, found ${baselineMultisense.length}`);
-  }
-  if (currentMultisense.length !== 248) {
-    fail(`expected 248 post-correction multisense records, found ${currentMultisense.length}`);
-  }
-  if (baselineMultisense.reduce((sum, record) => sum + record.senses.length, 0) !== 511) {
-    fail('pre-correction multisense inventory no longer matches 511 senses');
-  }
-  if (keepById.size !== 42 || mergeById.size !== 1
-    || baselineMultisense.length - keepById.size - mergeById.size !== 206) {
-    fail('authored dispositions must cover 42 retained splits, one merge, and 206 holds');
-  }
-  if (holdById.size !== 1 || !holdById.has('w5356')) {
-    fail('w5356 must retain its separately authored process/content hold rationale');
-  }
-  const expectedIds = new Set(baselineMultisense.map(({ id }) => id));
-  const authoredIds = new Set([...keepById.keys(), ...mergeById.keys(), ...holdById.keys()]);
-  if ([...authoredIds].some((id) => !expectedIds.has(id))) {
-    fail('authored keep and merge decisions plus the default hold do not cover the complete multisense inventory');
-  }
-
-  const entries = baselineMultisense.map((record) => {
+  const entries = multisenseRecords.map((record) => {
     const keep = keepById.get(record.id);
     const merge = mergeById.get(record.id);
     const hold = holdById.get(record.id);
+    const frameReview = frameReviewById.get(record.id);
     const priorReview = reviewById.get(record.id);
     const relationPaths = record.senses.map((sense) => ({
       sense_id: sense.id,
@@ -204,79 +193,82 @@ async function buildReport({ decisions, correction, canonical, decisionSource, b
     const missingRelationSenseIds = relationPaths
       .filter(({ path: relationPath }) => relationPath.length === 0)
       .map(({ sense_id: senseId }) => senseId);
-    const frames = keep?.frames ?? {};
-    const frameSenseIds = Object.keys(frames).sort();
+    const frames = keep?.frames ?? frameReview?.frames;
+    const frameSenseIds = Object.keys(frames ?? {}).sort();
     const expectedSenseIds = record.senses.map(({ id }) => id).sort();
-
-    let disposition;
-    let rationale;
     let frameEvidence;
-    if (keep) {
+    if (frames !== undefined) {
       if (JSON.stringify(frameSenseIds) !== JSON.stringify(expectedSenseIds)) {
-        fail(`${record.id} retained split frame summaries do not cover its exact sense IDs`);
+        fail(`${record.id} frame summaries do not cover its exact sense IDs`);
       }
-      const frameSummaries = record.senses.map((sense) => {
+      frameEvidence = record.senses.map((sense) => {
         const summary = frames[sense.id];
         if (typeof summary !== 'string' || summary.trim().length < 20) {
           fail(`${record.id}/${sense.id} needs a concrete sentence/argument/scene frame summary`);
         }
         return { sense_id: sense.id, summary };
       });
-      if (new Set(frameSummaries.map(({ summary }) => summary)).size !== frameSummaries.length) {
-        fail(`${record.id} retained split frame summaries must distinguish every sense`);
+      if (new Set(frameEvidence.map(({ summary }) => summary)).size !== frameEvidence.length) {
+        fail(`${record.id} frame summaries must distinguish every sense`);
       }
+    }
+
+    let disposition = 'hold-boundary';
+    let rationale = hold?.rationale
+      ?? (frameReview ? decisions.frame_review_hold_basis : decisions.default_hold_basis);
+    let writerRouteEvidence;
+    if (keep) {
+      if (!frameEvidence) fail(`${record.id} cannot retain a split without authored frame evidence`);
+      requireNonEmptyString(keep.route_contrast, `${record.id}.route_contrast`);
+      requireNonEmptyString(keep.rationale, `${record.id}.rationale`);
+      const routes = keep.writer_routes;
+      if (!routes || JSON.stringify(Object.keys(routes).sort()) !== JSON.stringify(expectedSenseIds)) {
+        fail(`${record.id} authored routes must cover its exact sense IDs`);
+      }
+      writerRouteEvidence = record.senses.map((sense) => {
+        const route = routes[sense.id];
+        if (!routeTypes.has(route.relation_type)) {
+          fail(`${record.id}/${sense.id} has an unsupported authored relation direction`);
+        }
+        if (route.target_pos !== undefined && !targetPos.has(route.target_pos)) {
+          fail(`${record.id}/${sense.id} has an unsupported authored target POS`);
+        }
+        if (route.target_class !== undefined
+          && (typeof route.target_class !== 'string' || route.target_class.trim().length === 0)) {
+          fail(`${record.id}/${sense.id} target_class must be a non-empty authored description`);
+        }
+        if (route.target_pos === undefined && route.target_class === undefined) {
+          fail(`${record.id}/${sense.id} must name an expected target POS or semantic class`);
+        }
+        return { sense_id: sense.id, ...route };
+      });
       for (let leftIndex = 0; leftIndex < record.senses.length; leftIndex += 1) {
         for (let rightIndex = leftIndex + 1; rightIndex < record.senses.length; rightIndex += 1) {
-          const left = record.senses[leftIndex];
-          const right = record.senses[rightIndex];
-          const leftPath = inspectWriterRelationPath(record, left.id);
-          const rightPath = inspectWriterRelationPath(record, right.id);
-          if (leftPath.length === 0 || rightPath.length === 0
-            || relationPathSignature(leftPath) === relationPathSignature(rightPath)) {
-            fail(`${record.id} cannot retain ${left.id}/${right.id} without distinct non-empty writer relation paths`);
+          const leftId = record.senses[leftIndex].id;
+          const rightId = record.senses[rightIndex].id;
+          if (!hasDistinctAuthoredWriterRoutes(routes[leftId], routes[rightId])) {
+            fail(`${record.id} cannot retain ${leftId}/${rightId} without distinct authored writer routes`);
           }
         }
       }
       if (!priorReview?.boundary_review) fail(`${record.id} has no materialized semantic boundary review provenance`);
       disposition = 'keep-split';
-      rationale = 'Concrete writer-facing frames and distinct non-empty relation paths are both present for every sense pair.';
-      frameEvidence = frameSummaries;
+      rationale = keep.rationale;
     } else if (merge) {
-      if (record.id !== 'w321'
-        || JSON.stringify(merge.removed_sense_ids) !== JSON.stringify(w321Correction.removed_sense_ids)
-        || sha256Json(record) !== w321Correction.before_record_sha256) {
-        fail('w321 merge evidence does not reproduce its exact base record and removed sense set');
-      }
-      if (JSON.stringify(mergeById.get('w321').removed_sense_ids) !== JSON.stringify(['w321-s2'])) {
-        fail('w321 must preserve w321-s1 and remove only w321-s2');
-      }
-      const paths = record.senses.map((sense) => relationPathSignature(inspectWriterRelationPath(record, sense.id)));
-      if (paths.some((signature) => signature === '[]') || new Set(paths).size !== 1) {
-        fail('w321 can merge only because both senses have the same non-empty writer route');
-      }
-      if (JSON.stringify(currentW321.search_forms) !== JSON.stringify(record.search_forms)
-        || currentW321.id !== record.id
-        || currentW321.lemma !== record.lemma
-        || currentW321.senses.length !== 1
-        || currentW321.senses[0].id !== 'w321-s1'
-        || currentW321.senses[0].gloss !== merge.merged_gloss
-        || currentW321.senses[0].relations.length !== 1) {
-        fail('w321 correction must preserve identity, exact-search fields, the surviving sense ID, and one shared route');
-      }
-      disposition = 'merge-senses';
-      rationale = merge.rationale;
-    } else {
-      if (!priorReview?.boundary_review) fail(`${record.id} has no materialized semantic boundary review provenance`);
-      disposition = 'hold-boundary';
-      rationale = hold?.rationale ?? decisions.default_hold_basis;
-      if (hold && record.id !== 'w5356') fail(`unexpected explicit hold override for ${record.id}`);
+      fail(`${record.id} merge evidence must be added with a positive semantic review, not relation-path equality`);
+    } else if (!priorReview?.boundary_review) {
+      fail(`${record.id} has no materialized semantic boundary review provenance`);
     }
 
-    const recordPaths = relationDescriptors(record, canonicalById);
+    const recordPaths = relationDescriptors(record, relationTargetsById);
     const targetPathSummary = relationPaths.map(({ sense_id: senseId, path: relationPath }) => ({
       sense_id: senseId,
       route: routeSummary(relationPath, relationTargetsById),
     }));
+    const currentPathSignatures = relationPaths.map(({ path: relationPath }) => relationPathSignature(relationPath));
+    const currentPathComparison = missingRelationSenseIds.length > 0
+      ? 'incomplete'
+      : new Set(currentPathSignatures).size === 1 ? 'same' : 'different';
     const currentReviewRecord = reviewById.get(record.id);
     return {
       record_id: record.id,
@@ -288,12 +280,17 @@ async function buildReport({ decisions, correction, canonical, decisionSource, b
       disposition,
       rationale,
       ...(frameEvidence ? { writer_frames: frameEvidence } : {}),
+      ...(writerRouteEvidence ? {
+        writer_route_contrast: keep.route_contrast,
+        authored_writer_routes: writerRouteEvidence,
+      } : {}),
       senses: record.senses.map((sense) => ({
         sense_id: sense.id,
         pos: sense.pos,
         gloss: sense.gloss,
         relations: recordPaths.find(({ sense_id: senseId }) => senseId === sense.id).relations,
       })),
+      relation_path_comparison: currentPathComparison,
       relation_path_signatures: relationPaths.map(({ sense_id: senseId, path: relationPath }) => ({
         sense_id: senseId,
         path: relationPath,
@@ -301,65 +298,52 @@ async function buildReport({ decisions, correction, canonical, decisionSource, b
         route_summary: targetPathSummary.find(({ sense_id: targetSenseId }) => targetSenseId === senseId).route,
       })),
       missing_relation_sense_ids: missingRelationSenseIds,
+      missing_independent_writer_route_evidence: disposition === 'hold-boundary',
       semantic_boundary_review: summarizeBoundaryReview(currentReviewRecord?.boundary_review),
       semantic_review_binding: currentReviewRecord ? {
         decision_source_id: decisionSource.source_id,
         reviewed_record_sha256: currentReviewRecord.record_sha256,
         matches_baseline_record: currentReviewRecord.record_sha256 === sha256Json(record),
       } : null,
-      ...(merge ? {
-        correction_manifest_sha256: digestBytes(correctionManifestBytes),
-        removed_sense_ids: merge.removed_sense_ids,
-        exact_search_preserved: true,
-        correction_evidence: {
-          source_revision: correction.source_revision,
-          before_record_sha256: w321Correction.before_record_sha256,
-          after_record_sha256: w321Correction.after_record_sha256,
-          boundary_review_id: w321Correction.semantic_review.boundary.review_id,
-          boundary_reviewed_sense_ids: w321Correction.semantic_review.boundary.reviewed_sense_ids,
-          boundary_rationale: w321Correction.semantic_review.boundary.rationale,
-          relation_decision_rationale: w321Correction.semantic_review.senses[0].relation.rationale,
-        },
-      } : {}),
     };
   });
 
   const counts = Object.fromEntries(['keep-split', 'merge-senses', 'hold-boundary']
     .map((disposition) => [disposition, entries.filter((entry) => entry.disposition === disposition).length]));
   const holdGapCounts = {
-    missing_relation_path: entries.filter((entry) => entry.disposition === 'hold-boundary'
+    missing_current_relation_path: entries.filter((entry) => entry.disposition === 'hold-boundary'
       && entry.missing_relation_sense_ids.length > 0).length,
     missing_authored_frame_contrast: entries.filter((entry) => entry.disposition === 'hold-boundary'
       && entry.writer_frames === undefined).length,
+    missing_independent_writer_route_evidence: entries.filter((entry) => entry.missing_independent_writer_route_evidence).length,
+    frame_reviewed_but_route_unresolved: entries.filter((entry) => entry.disposition === 'hold-boundary'
+      && entry.writer_frames !== undefined).length,
   };
-  if (counts['keep-split'] !== 42 || counts['merge-senses'] !== 1 || counts['hold-boundary'] !== 206) {
-    fail('generated disposition counts do not match the complete review');
+  if (counts['keep-split'] !== 42 || counts['merge-senses'] !== 0 || counts['hold-boundary'] !== 207) {
+    fail('the reviewed snapshot must retain 42 independently supported splits and hold 207 unresolved boundaries');
   }
   const decisionsBytes = await readFile(DECISIONS_PATH);
   const semanticDecisionSourceBytes = await readFile(DECISION_SOURCE_PATH);
   const surfaceFormReviewBytes = await readFile(SURFACE_FORM_REVIEW_PATH);
+  const totalSenseCount = canonical.records.reduce((sum, { record }) => sum + record.senses.length, 0);
   const inventory = {
     schema_version: '1',
-    contract_version: 'issue-225-sense-boundary-audit-v1',
+    contract_version: 'issue-225-sense-boundary-audit-v2',
     issue: 225,
     parent_issue: 218,
     source_revision: decisions.source_revision,
     source_digests: {
-      base_canonical_records_sha256: baseDigest,
-      current_canonical_records_sha256: currentDigest,
+      canonical_records_sha256: currentDigest,
       authored_decisions_sha256: digestBytes(decisionsBytes),
-      correction_manifest_sha256: digestBytes(correctionManifestBytes),
       semantic_decision_source_sha256: digestBytes(semanticDecisionSourceBytes),
       surface_form_review_sha256: digestBytes(surfaceFormReviewBytes),
     },
     inventory: {
       canonical_record_count: canonical.records.length,
-      baseline_canonical_sense_count: baseRecords.reduce((sum, { record }) => sum + record.senses.length, 0),
-      current_canonical_sense_count: canonical.records.reduce((sum, { record }) => sum + record.senses.length, 0),
-      baseline_multisense_record_count: baselineMultisense.length,
-      baseline_multisense_sense_count: 511,
-      current_multisense_record_count: currentMultisense.length,
-      baseline_writer_relation_path_count: entries.reduce((sum, entry) => sum
+      canonical_sense_count: totalSenseCount,
+      multisense_record_count: multisenseRecords.length,
+      multisense_sense_count: multisenseRecords.reduce((sum, record) => sum + record.senses.length, 0),
+      writer_relation_path_count: entries.reduce((sum, entry) => sum
         + entry.relation_path_signatures.reduce((senseSum, item) => senseSum + item.path.length, 0), 0),
       dispositions: counts,
       hold_evidence_gaps: holdGapCounts,
@@ -371,7 +355,9 @@ async function buildReport({ decisions, correction, canonical, decisionSource, b
   const holdRows = entries.filter((entry) => entry.disposition === 'hold-boundary');
   const keepTable = keepRows.map((entry) => {
     const frames = entry.writer_frames.map(({ sense_id: senseId, summary }) => `${senseId}: ${summary}`).join('<br>');
-    const routes = entry.relation_path_signatures.map(({ sense_id: senseId, route_summary: route }) => `${senseId}: ${route}`).join('<br>');
+    const routes = entry.authored_writer_routes.map(({ sense_id: senseId, relation_type: direction, target_pos: pos, target_class: targetClass }) => (
+      `${senseId}: ${direction} → ${pos ?? targetClass}`
+    )).join('<br>');
     return `| ${mdCell(entry.record_id)} | ${mdCell(entry.lemma)} | ${mdCell(frames)} | ${mdCell(routes)} |`;
   }).join('\n');
   const holdIds = holdRows.map(({ record_id: recordId }) => recordId).join(', ');
@@ -384,39 +370,40 @@ async function buildReport({ decisions, correction, canonical, decisionSource, b
     '',
     '| Measure | Result |',
     '| --- | ---: |',
-    `| Multisense records reviewed before correction | ${baselineMultisense.length} |`,
-    `| Senses in those records before correction | 511 |`,
-    `| Retain split with concrete frame and distinct routes | ${counts['keep-split']} |`,
+    `| Multi-sense records reviewed | ${multisenseRecords.length} |`,
+    `| Senses in those records | ${inventory.inventory.multisense_sense_count} |`,
+    `| Canonical senses | ${totalSenseCount} |`,
+    `| Retain split with authored frame and route contrast | ${counts['keep-split']} |`,
     `| Merge over-split senses | ${counts['merge-senses']} |`,
     `| Hold unresolved boundaries | ${counts['hold-boundary']} |`,
-    `| Canonical senses after correction | ${inventory.inventory.current_canonical_sense_count} |`,
-    `| Multisense records after correction | ${currentMultisense.length} |`,
     '',
     '## Decision rule',
     '',
-    'A split is retained only when each sense pair has a concrete sentence, argument, or scene frame contrast and a distinct, non-empty writer relation path. Route identity uses relation type and target sense; note wording and relation count do not make routes distinct. A missing route is not evidence that senses are equivalent, so unresolved rows stay split and are held for later evidence.',
+    'Retain a split only when concrete frame evidence and a separately authored next-route contrast both distinguish every sense pair. Route evidence records an expected relation family/direction and a target POS or semantic class; an existing relation tuple is not required. Current tuples are corroborating observations only: matching routes do not establish equivalence, and missing routes do not justify a merge. Hold the current split whenever writer-facing evidence is incomplete.',
     '',
     '## Retained splits',
     '',
-    '| ID | Lemma | Writer-facing frames | Relation routes |',
+    '| ID | Lemma | Writer-facing frames | Authored next routes |',
     '| --- | --- | --- | --- |',
     keepTable,
     '',
     '## Merge',
     '',
-    'Only `w321 미지근하다` was merged. Its physical-temperature and figurative-response glosses reached the same `near → r042-s1` writer route. The correction keeps record ID `w321`, surviving sense ID `w321-s1`, the lemma, and curated exact search forms; it combines the two frames in one gloss and retains one existing route.',
+    'No over-split is confirmed by positive semantic evidence in this audit. Matching current relation paths alone do not justify merging senses.',
     '',
     '## Holds',
     '',
-    `${holdRows.length} records remain split because this audit lacks both required proof elements for retention. ${holdGapCounts.missing_relation_path} have at least one sense without an authored relation path; all ${holdGapCounts.missing_authored_frame_contrast} lack an authored Issue #225 frame contrast. No relation was invented to complete the inventory.`,
+    `${holdRows.length} current splits remain unchanged. ${holdGapCounts.missing_authored_frame_contrast} lack an authored frame contrast, and ${holdGapCounts.missing_independent_writer_route_evidence} lack independently authored next-route evidence. ${holdGapCounts.frame_reviewed_but_route_unresolved} have recorded frame distinctions but still need that route evidence. Existing relation paths remain in the machine inventory as corroborating observations only.`,
     '',
-    'For `w5356 기억`, the glosses distinguish the mental act of retaining past events from the remembered content that returns to mind. Merging would erase that process/content contrast, but neither sense has an authored relation path. Keep both senses pending concrete writer-facing route evidence.',
+    `For \`w321 미지근하다\`, the physical-temperature and figurative-response frames differ, but both current tuples point to \`near → r042-s1\`. That shared target is not positive evidence that the writer-facing boundary is equivalent, so both senses remain pending independently authored route evidence.`,
+    '',
+    'For `w5356 기억`, the glosses distinguish the mental act of retaining past events from remembered content that returns to mind. Preserve both senses pending concrete evidence about the writer’s next relation direction or target POS/semantic class.',
     '',
     'Held record IDs:',
     '',
     holdIds,
     '',
-    `The complete sense text, POS, relation target lemma/POS, source-bound semantic boundary review, missing-route IDs, and per-record rationale are in [the machine inventory](issue-225-sense-boundary-audit.json).`,
+    `The complete sense text, POS, current relation-path observations, authored frame reviews, and per-record rationale are in [the machine inventory](issue-225-sense-boundary-audit.json).`,
     '',
   ].join('\n');
 
@@ -435,16 +422,14 @@ function parseArguments(argv) {
 }
 
 export async function runIssue225Audit({ write = false } = {}) {
-  const [decisions, correction, canonical, decisionSource, batchDecisionSources] = await Promise.all([
+  const [decisions, canonical, decisionSource, batchDecisionSources] = await Promise.all([
     readJson(DECISIONS_PATH),
-    readJson(CORRECTION_PATH),
     readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
     readJson(DECISION_SOURCE_PATH),
     readAuthoredBatchDecisionSources(),
   ]);
   const outputs = await buildReport({
     decisions,
-    correction,
     canonical,
     decisionSource,
     batchDecisionSources,

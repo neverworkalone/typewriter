@@ -57,12 +57,14 @@ The shared implementation is:
 
 A newly admitted or corrected multi-sense record may retain a split only when
 each sense pair has both a concrete writer-facing sentence/argument/scene frame
-contrast and a distinct, non-empty relation path. The shared live admission
-validator binds each frame to an exact gloss excerpt and compares paths by
-relation type, target record, and target sense. Relation count and note wording
-do not make two paths distinct. If either proof is missing, keep the existing
-senses and hold the unresolved boundary; a missing route alone never justifies
-merging.
+contrast and separately authored next-route evidence that differs by relation
+family/direction or target POS/semantic class. The shared live admission
+validator binds each frame to an exact gloss excerpt and validates those route
+descriptions without requiring canonical relation tuples. Existing relations
+may corroborate an editorial decision, but matching or missing tuples do not
+establish sense equivalence. If either proof is missing, keep the current
+senses and hold the unresolved boundary; a merge needs positive semantic
+evidence.
 
 The complete review of the Issue #225 base snapshot is reproducible with
 `npm run audit:issue-225`. Its authored dispositions are in

@@ -2153,7 +2153,7 @@ function multiSenseProductionReview(record, {
     pos: {
       status: 'pass',
       decision: 'verified',
-      observed_pos: ['noun', 'noun'],
+      observed_pos: record.senses.map(({ pos }) => pos),
       decision_source_id: decisionSourceId,
       rationale: `${record.id} POS was explicitly verified`,
     },
@@ -2191,16 +2191,21 @@ function multiSenseProductionReview(record, {
   };
 }
 
-function writerBoundary(leftGloss, leftFrame, rightGloss, rightFrame) {
+function writerBoundary(leftGloss, leftFrame, rightGloss, rightFrame, {
+  leftRoute = { relation_type: 'near', target_pos: 'adjective' },
+  rightRoute = { relation_type: 'near', target_pos: 'adjective' },
+} = {}) {
   return {
     left_frame: { gloss_excerpt: leftGloss, sentence_frame: leftFrame },
     right_frame: { gloss_excerpt: rightGloss, sentence_frame: rightFrame },
     frame_contrast: 'The subject, argument, and scene frame differ in a way that changes the writer-facing reading.',
-    relation_path_rationale: 'Each sense leads to a different authored relation destination or direction.',
+    left_route: leftRoute,
+    right_route: rightRoute,
+    route_contrast: 'The expected next relation direction or target meaningfully differs by sense.',
   };
 }
 
-test('fresh splits reject dictionary-distinguishable senses with the same writer route', () => {
+test('fresh splits reject dictionary-distinguishable senses with the same authored writer route', () => {
   const record = {
     id: 'w-same-writer-route',
     record_type: 'entry',
@@ -2240,11 +2245,11 @@ test('fresh splits reject dictionary-distinguishable senses with the same writer
       requireWriterBoundaryEvidence: true,
     }),
     (error) => error.code === 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER'
-      && error.message.includes('distinct writer-facing relation paths'),
+      && error.message.includes('distinct authored writer-facing route'),
   );
 });
 
-test('fresh genuine polysemy passes when both its frame and relation destination differ', () => {
+test('fresh genuine polysemy passes with no relations when authored frames and routes differ', () => {
   const record = {
     id: 'w-genuine-polysemy',
     record_type: 'entry',
@@ -2257,13 +2262,11 @@ test('fresh genuine polysemy passes when both its frame and relation destination
         id: 'w-genuine-polysemy-s1',
         pos: 'noun',
         gloss: '빛을 받아 사물을 보는 몸의 기관.',
-        relations: [{ type: 'action', target: 'w-look', target_sense: 'w-look-s1' }],
       },
       {
         id: 'w-genuine-polysemy-s2',
         pos: 'noun',
         gloss: '하늘에서 내리는 흰 얼음 알갱이.',
-        relations: [{ type: 'scene', target: 'w-snowfield', target_sense: 'w-snowfield-s1' }],
       },
     ],
   };
@@ -2273,6 +2276,10 @@ test('fresh genuine polysemy passes when both its frame and relation destination
       'a body organ that receives light and sees objects',
       record.senses[1].gloss,
       'ice grains falling from the sky into a weather scene',
+      {
+        leftRoute: { relation_type: 'near', target_pos: 'verb' },
+        rightRoute: { relation_type: 'near', target_pos: 'noun' },
+      },
     ),
   });
   assert.doesNotThrow(() => validateLexicalSemanticReview(review, {
@@ -2284,35 +2291,39 @@ test('fresh genuine polysemy passes when both its frame and relation destination
   }));
 });
 
-test('fresh splits may be supported by a different relation direction', () => {
+test('identical existing relation tuples do not override distinct authored writer routes', () => {
   const record = {
-    id: 'w-different-writer-direction',
+    id: 'w-shared-current-route',
     record_type: 'entry',
     role: 'start',
-    candidate_id: 'w-different-writer-direction',
-    lemma: '손',
-    search_forms: ['손'],
+    candidate_id: 'w-shared-current-route',
+    lemma: '미지근한 합성 예',
+    search_forms: ['미지근한 합성 예'],
     senses: [
       {
-        id: 'w-different-writer-direction-s1',
-        pos: 'noun',
-        gloss: '팔 끝에 붙어 물건을 잡거나 움직이는 몸의 부분.',
-        relations: [{ type: 'action', target: 'w-grasp', target_sense: 'w-grasp-s1' }],
+        id: 'w-shared-current-route-s1',
+        pos: 'adjective',
+        gloss: '온도가 뜨겁지도 차갑지도 않다.',
+        relations: [{ type: 'near', target: 'r-temperature', target_sense: 'r-temperature-s1' }],
       },
       {
-        id: 'w-different-writer-direction-s2',
-        pos: 'noun',
-        gloss: '도움이나 일손을 보태는 사람 또는 힘.',
-        relations: [{ type: 'association', target: 'w-help', target_sense: 'w-help-s1' }],
+        id: 'w-shared-current-route-s2',
+        pos: 'adjective',
+        gloss: '반응이 적극적이지 않고 시큰둥하다.',
+        relations: [{ type: 'near', target: 'r-temperature', target_sense: 'r-temperature-s1' }],
       },
     ],
   };
   const review = multiSenseProductionReview(record, {
     writerBoundary: writerBoundary(
       record.senses[0].gloss,
-      'a body part that grasps or moves objects',
+      'temperature of a physical object or space',
       record.senses[1].gloss,
-      'a person or force that helps with work',
+      'a restrained response or attitude',
+      {
+        leftRoute: { relation_type: 'sensory', target_class: 'physical temperature qualities' },
+        rightRoute: { relation_type: 'mood', target_class: 'emotional engagement' },
+      },
     ),
   });
   assert.doesNotThrow(() => validateLexicalSemanticReview(review, {

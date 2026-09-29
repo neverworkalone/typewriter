@@ -4,6 +4,13 @@ const TOOL_HEAD_PATTERN = /(?:도구|농기구|쇠붙이|그릇)$/u;
 const WRITING_CONTEXT_PATTERN = /^(?:글|말|대화|문장|이야기|발화)$/u;
 const PARAPHRASE_TAIL_PATTERN = /(?:함께|같이|서로)?\s*(?:느끼는|이해하는)\s+일$/u;
 
+export const WRITER_ROUTE_RELATION_TYPES = Object.freeze([
+  'direct', 'near', 'mood', 'scene', 'sensory', 'action', 'association', 'antonym',
+]);
+export const WRITER_ROUTE_TARGET_POS = Object.freeze([
+  'noun', 'adjective', 'verb', 'adverb', 'expression',
+]);
+
 function boundaryTokens(gloss) {
   if (typeof gloss !== 'string') return [];
   return gloss
@@ -152,9 +159,10 @@ export function inspectSenseBoundaryPairs(record) {
 }
 
 /**
- * Return the writer-facing relation path for one sense. Relation notes are
- * deliberately excluded: two editorial explanations for the same path do
- * not create two different paths.
+ * Return the current canonical relation path for one sense. Relation notes
+ * are deliberately excluded: two editorial explanations for the same path
+ * do not create two different paths. This is supporting audit evidence; it
+ * does not establish whether two senses have different writer-facing routes.
  */
 export function inspectWriterRelationPath(record, senseId) {
   const sense = record?.senses?.find(({ id }) => id === senseId);
@@ -169,12 +177,21 @@ export function inspectWriterRelationPath(record, senseId) {
 }
 
 /**
- * The writer-facing route must differ by relation direction or destination.
- * Relation count and note wording alone never establish a distinct path.
+ * Compare separately authored next-route evidence. Canonical relation tuples
+ * are intentionally not inputs: enrichment may be absent or may still point
+ * both senses at one broad target while their useful next writing directions
+ * differ.
  */
-export function hasDistinctWriterRelationPaths(record, leftSenseId, rightSenseId) {
-  const left = inspectWriterRelationPath(record, leftSenseId);
-  const right = inspectWriterRelationPath(record, rightSenseId);
-  if (left.length === 0 || right.length === 0) return false;
-  return JSON.stringify(left) !== JSON.stringify(right);
+export function hasDistinctAuthoredWriterRoutes(leftRoute, rightRoute) {
+  if (!leftRoute || !rightRoute) return false;
+  const relationDirectionDiffers = leftRoute.relation_type !== rightRoute.relation_type;
+  const targetPosDiffers = typeof leftRoute.target_pos === 'string'
+    && typeof rightRoute.target_pos === 'string'
+    && leftRoute.target_pos !== rightRoute.target_pos;
+  const targetClassDiffers = typeof leftRoute.target_class === 'string'
+    && typeof rightRoute.target_class === 'string'
+    && leftRoute.target_class.normalize('NFC').trim().toLocaleLowerCase('en')
+      !== rightRoute.target_class.normalize('NFC').trim().toLocaleLowerCase('en');
+  const targetDiffers = targetPosDiffers || targetClassDiffers;
+  return relationDirectionDiffers || targetDiffers;
 }

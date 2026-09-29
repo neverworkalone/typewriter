@@ -8,8 +8,10 @@ import {
 } from './canonical-jsonl.mjs';
 import { loadCanonicalContext } from './canonical-context.mjs';
 import {
-  hasDistinctWriterRelationPaths,
+  hasDistinctAuthoredWriterRoutes,
   inspectSenseBoundaryPairs,
+  WRITER_ROUTE_RELATION_TYPES,
+  WRITER_ROUTE_TARGET_POS,
 } from './sense-boundary.mjs';
 
 /**
@@ -946,7 +948,7 @@ function validateAuthoredBoundaryPairs(
       requireString(rightFrame.gloss_excerpt, `${pairLabel}.writer_boundary.right_frame.gloss_excerpt`);
       requireString(rightFrame.sentence_frame, `${pairLabel}.writer_boundary.right_frame.sentence_frame`);
       requireString(writerBoundary.frame_contrast, `${pairLabel}.writer_boundary.frame_contrast`);
-      requireString(writerBoundary.relation_path_rationale, `${pairLabel}.writer_boundary.relation_path_rationale`);
+      requireString(writerBoundary.route_contrast, `${pairLabel}.writer_boundary.route_contrast`);
       if (!leftSense.gloss.includes(leftFrame.gloss_excerpt)
         || !rightSense.gloss.includes(rightFrame.gloss_excerpt)
         || leftFrame.gloss_excerpt === rightFrame.gloss_excerpt
@@ -956,9 +958,35 @@ function validateAuthoredBoundaryPairs(
           'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
         );
       }
-      if (!hasDistinctWriterRelationPaths(record, item.left_sense_id, item.right_sense_id)) {
+      const leftRoute = requireObject(
+        writerBoundary.left_route,
+        `${pairLabel}.writer_boundary.left_route`,
+      );
+      const rightRoute = requireObject(
+        writerBoundary.right_route,
+        `${pairLabel}.writer_boundary.right_route`,
+      );
+      for (const [route, routeLabel] of [
+        [leftRoute, `${pairLabel}.writer_boundary.left_route`],
+        [rightRoute, `${pairLabel}.writer_boundary.right_route`],
+      ]) {
+        requireEnum(route.relation_type, WRITER_ROUTE_RELATION_TYPES, `${routeLabel}.relation_type`);
+        if (route.target_pos !== undefined) {
+          requireEnum(route.target_pos, WRITER_ROUTE_TARGET_POS, `${routeLabel}.target_pos`);
+        }
+        if (route.target_class !== undefined) {
+          requireString(route.target_class, `${routeLabel}.target_class`);
+        }
+        if (route.target_pos === undefined && route.target_class === undefined) {
+          fail(
+            `${routeLabel} must name an expected target POS or semantic class`,
+            'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+          );
+        }
+      }
+      if (!hasDistinctAuthoredWriterRoutes(leftRoute, rightRoute)) {
         fail(
-          `${pairLabel} cannot retain a split without distinct writer-facing relation paths`,
+          `${pairLabel} cannot retain a split without a distinct authored writer-facing route`,
           'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
         );
       }

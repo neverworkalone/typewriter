@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
 import test from 'node:test';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { promisify } from 'node:util';
 
 import {
   M5_11_AUDIT_TIMING_PASS_IDS,
@@ -67,8 +65,6 @@ import {
 } from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_ID = 'm5-11-expansion-20260913';
-const HISTORICAL_SEMANTIC_SOURCE_COMMIT = '1b1b50d2d5f10a55ddd416b54d45732dabd3fe89';
-const execFileAsync = promisify(execFile);
 
 function fileSource(path, value, bytes = Buffer.from(JSON.stringify(value), 'utf8')) {
   return {
@@ -109,43 +105,20 @@ async function createM511PromotionTransactionFixture() {
   await writeFile(currentSeedPath, initialSeedBytes);
 
   // M5-11 is a historical 1,320-record boundary. The live decision source
-  // now includes later promotions and the Issue #225 merge, so restore the
-  // exact historical w321 review before deriving this older fixture.
+  // now includes the promoted M5-12A rows, so derive the exact historical
+  // source in this isolated fixture instead of binding an older snapshot to
+  // a newer canonical authority.
   const historicalDecisionSourcePath = path.join(temporaryDirectory, 'm5-11-decision-source.json');
   const historicalCanonical = await readCanonicalRecords(prospectiveCanonicalDirectory);
   const historicalIds = new Set(historicalCanonical.records.map(({ record }) => record.id));
   const historicalDecisionSource = JSON.parse(
     await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'),
   );
-  const { stdout: m511DecisionSourceBytes } = await execFileAsync(
-    'git',
-    [
-      'show',
-      `${HISTORICAL_SEMANTIC_SOURCE_COMMIT}:data/validation/canonical-semantic-decision-source.json`,
-    ],
-    { cwd: process.cwd(), maxBuffer: 20 * 1024 * 1024 },
-  );
-  const m511DecisionSource = JSON.parse(m511DecisionSourceBytes);
   const historicalReview = historicalDecisionSource.authored_review;
   const historicalRecords = historicalCanonical.records.map(({ record }) => record);
   const historicalSenseCount = historicalRecords.reduce((sum, record) => sum + record.senses.length, 0);
   const historicalDigest = canonicalRecordsSha256(historicalCanonical.records);
   historicalReview.records = historicalReview.records.filter(({ record_id: recordId }) => historicalIds.has(recordId));
-  const historicalW321 = m511DecisionSource.authored_review.records.find(
-    ({ record_id: recordId }) => recordId === 'w321',
-  );
-  const w321Index = historicalReview.records.findIndex(({ record_id: recordId }) => recordId === 'w321');
-  assert.ok(historicalW321, 'the pinned M5-11 source must contain w321 review evidence');
-  assert.notEqual(w321Index, -1, 'w321 must remain inside the M5-11 canonical snapshot');
-  historicalReview.records[w321Index] = structuredClone(historicalW321);
-  const reviewPass = historicalReview.review_pass;
-  reviewPass.correction_history = reviewPass.correction_history.filter(
-    ({ record_id: recordId }) => recordId !== 'w321',
-  );
-  reviewPass.correction_count = reviewPass.correction_history.length;
-  reviewPass.boundary_decision_history = reviewPass.boundary_decision_history.filter(
-    ({ record_id: recordId }) => recordId !== 'w321',
-  );
   historicalReview.record_count = historicalRecords.length;
   historicalReview.sense_count = historicalSenseCount;
   historicalReview.source.canonical_records_sha256 = historicalDigest;
