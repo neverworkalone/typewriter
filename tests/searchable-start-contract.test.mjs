@@ -656,6 +656,53 @@ test('M9 expression admission requires a source-bound fixedness judgment and kee
     (error) => error.code === 'M5_13_EXPRESSION_LEXICAL_UNIT_REVIEW',
     'a supported fixed expression cannot be admitted without the independent fixedness judgment',
   );
+
+  const m9SourceWithoutCallerContract = structuredClone(fixture.source);
+  m9SourceWithoutCallerContract.issue = 220;
+  m9SourceWithoutCallerContract.parent_issue = 218;
+  m9SourceWithoutCallerContract.batch_id = 'm9-future-batch-without-caller-contract';
+  const m9FixedExpression = m9SourceWithoutCallerContract.decisions.find(
+    ({ candidate_record_id: id }) => id === fixture.candidates[0].id,
+  );
+  delete m9FixedExpression.lexical_unit_review;
+  m9FixedExpression.review_binding = authorSemanticReviewBinding(m9FixedExpression, fixture.candidates[0]);
+  const m9ConfigWithoutContract = {
+    ...fixture.config,
+    issue: 220,
+    parentIssue: 218,
+    batchId: m9SourceWithoutCallerContract.batch_id,
+  };
+  delete m9ConfigWithoutContract.expressionLexicalUnitReviewContractVersion;
+  const m9WithoutFixedness = serializeAuthoredSemanticDecisionSource(m9SourceWithoutCallerContract);
+  assert.throws(
+    () => validateAuthoredSemanticDecisionSource({
+      source: m9WithoutFixedness.source,
+      sourceBytes: m9WithoutFixedness.bytes,
+      identities: fixture.identities,
+      candidateRecords: fixture.candidates,
+      config: m9ConfigWithoutContract,
+    }),
+    (error) => error.code === 'M5_13_EXPRESSION_LEXICAL_UNIT_REVIEW',
+    'an M9 child cannot omit expression fixedness by leaving the config option unset',
+  );
+
+  const m9SourceWithoutHeaderContract = structuredClone(fixture.source);
+  m9SourceWithoutHeaderContract.issue = 220;
+  m9SourceWithoutHeaderContract.parent_issue = 218;
+  m9SourceWithoutHeaderContract.batch_id = 'm9-future-batch-without-review-header-contract';
+  delete m9SourceWithoutHeaderContract.review.expression_lexical_unit_review_contract_version;
+  const m9WithoutReviewHeader = serializeAuthoredSemanticDecisionSource(m9SourceWithoutHeaderContract);
+  assert.throws(
+    () => validateAuthoredSemanticDecisionSource({
+      source: m9WithoutReviewHeader.source,
+      sourceBytes: m9WithoutReviewHeader.bytes,
+      identities: fixture.identities,
+      candidateRecords: fixture.candidates,
+      config: { ...m9ConfigWithoutContract, batchId: m9SourceWithoutHeaderContract.batch_id },
+    }),
+    (error) => error.code === 'M5_13_EXPRESSION_LEXICAL_UNIT_REVIEW',
+    'an M9 child must declare the shared fixedness contract in its review metadata',
+  );
 });
 
 test('active shared production constrains mixed common-general zero-relation dispositions', () => {

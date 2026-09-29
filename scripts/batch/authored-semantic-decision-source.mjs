@@ -26,6 +26,7 @@ const EXPRESSION_LEXICAL_UNIT_JUDGMENTS = new Set([
   'unresolved',
 ]);
 const MAX_CORRECTION_RATE = 0.5;
+const M9_PARENT_ISSUE = 218;
 export const M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION = 'm9-expression-lexical-unit-review-v1';
 
 export class AuthoredSemanticDecisionSourceError extends Error {
@@ -348,8 +349,14 @@ export function validateAuthoredSemanticDecisionSource({
   sourceBytes,
   identities,
   candidateRecords,
-  config,
+  config: callerConfig,
 } = {}) {
+  const config = source?.parent_issue === M9_PARENT_ISSUE
+    ? {
+      ...callerConfig,
+      expressionLexicalUnitReviewContractVersion: M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
+    }
+    : callerConfig;
   requireObject(source, `${config.label} semantic decision source`, config);
   if (!Buffer.isBuffer(sourceBytes)) fail(`${config.label} semantic decision source bytes are required`, 'DECISION_SOURCE_BINDING', config);
   const sourceSha256 = createHash('sha256').update(sourceBytes).digest('hex');

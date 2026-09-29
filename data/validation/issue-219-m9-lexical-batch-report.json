@@ -18,22 +18,23 @@
     "cohort_count": 32,
     "selection_order": "first 20 by numeric historical inventory identity",
     "candidate_source_sha256": "65c1b93e16840cb339ff3fb8a522f044783a909c265dff14fdad38cdc3dbb1c2",
-    "semantic_source_sha256": "3768d2a12398989d012d003c1c93f5f661d8be4ca00091542d74284d37e49d07"
+    "semantic_source_sha256": "0b1ccd65f45ec2fe3f5051c9a0c0792bd38b54219757b0c2534b52fbc4b48416"
   },
   "outcomes": {
     "reviewed_count": 20,
-    "admitted_count": 1,
-    "held_count": 9,
+    "admitted_count": 0,
+    "held_count": 10,
     "rejected_count": 10,
     "corrected_count": 0,
     "duplicate_count": 0,
     "search_collision_count": 0,
-    "new_sense_count": 1,
+    "new_sense_count": 0,
     "new_relation_count": 0,
-    "new_expression_count": 1,
-    "zero_relation_admission_count": 1,
+    "new_expression_count": 0,
+    "zero_relation_admission_count": 0,
     "defect_classes": [
-      "expression-lexical-unit-fixedness"
+      "expression-lexical-unit-fixedness",
+      "external-material-terms-pending"
     ],
     "review_duration": "NOT_MEASURED"
   },
@@ -72,18 +73,16 @@
       "selection_order": 3,
       "inventory_id": "m5-4621",
       "candidate_record_id": "w4701",
-      "canonical_id": "w4701",
+      "canonical_id": null,
       "lemma": "컨테이너 야드",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0421",
-      "decision": "included",
-      "lexical_unit_judgment": "fixed-or-lexicalized-unit",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4701"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 4,
@@ -342,13 +341,13 @@
     }
   ],
   "current": {
-    "canonical_sha256": "3b63273a5b43d7e33c104cc41e8d20169512258c20bd62efa54ff1801b8c9ed1",
-    "canonical_start_count": 5035,
+    "canonical_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e",
+    "canonical_start_count": 5034,
     "inventory_validation": "pass",
     "production_admission": "pass",
     "semantic_audit": "pass",
     "deterministic_sqlite": "pass",
-    "logical_database_record_count": 5077,
-    "logical_database_digest": "0b33b01c37ba5b9c0beb54e311832e516d8dacafb676c7968da55819027a43b6"
+    "logical_database_record_count": 5076,
+    "logical_database_digest": "dbfdfb0e9a58a4f695b21c16dba152dbe6ef6f2054f91d0cbedb91fb4b03e6d7"
   }
 }

@@ -223,7 +223,9 @@ function renderReport(report) {
     `| Observed defect classes | ${report.outcomes.defect_classes.join(', ') || 'none'} |`,
     `| Review duration | ${report.outcomes.review_duration} |`,
     '',
-    'Only candidates marked `included` or `corrected` enter the canonical import. Held and rejected rows remain visible in the recovery seed with their source-bound decisions. The admitted records keep their Typewriter-authored senses and no relations; zero relations do not block search admission.',
+    'The Customs glossary used during the initial fixedness review has no confirmed permission for this verification role. Its external-material review is pending in [the source review record](external-material-review-customs-terminology.md); `m5-4621` remains held outside canonical data until the terms are resolved.',
+    '',
+    'Only candidates marked `included` or `corrected` enter the canonical import. Held and rejected rows remain visible in the recovery seed with their source-bound decisions. Admitted records retain their Typewriter-authored senses and do not gain unsupported relations; zero relations do not block search admission.',
     '',
     '## Candidate and search results',
     '',
@@ -231,11 +233,13 @@ function renderReport(report) {
     '| ---: | --- | --- | --- | --- | --- | ---: | --- |',
     rows,
     '',
-    'The frozen baseline dictionary produced no exact canonical or generated-surface result for any candidate. The current dictionary returns the admitted lemma as its own `ready` exact-lemma result; held and rejected proposals have no current search result.',
+    report.outcomes.admitted_count > 0
+      ? 'The frozen baseline dictionary produced no exact canonical or generated-surface result for any candidate. The current dictionary returns each admitted lemma as its own `ready` exact-lemma result; held and rejected proposals have no current search result.'
+      : 'The frozen baseline dictionary produced no exact canonical or generated-surface result for any candidate. No candidate was admitted, so all 20 proposals have no current search result.',
     '',
     '## Batch-size calibration',
     '',
-    'Use 20 candidates as the initial M9 review batch size: this coherent slice completed a candidate-by-candidate fixedness review, shared admission, and exact-search validation after the generalized expression rule was added. Review duration was not measured, so 20 is a slice-size calibration, not a throughput estimate. Reassess the size from later defect and workload observations; the size is not an admission quota.',
+    'Use 20 candidates as the initial M9 review-slice size: this coherent slice completed candidate-by-candidate fixedness review, shared admission validation, and exact-search validation after the generalized expression rule was added. Review duration was not measured, so 20 is a slice-size calibration, not a throughput estimate. Reassess the size from later defect and workload observations; the size is not an admission quota.',
     '',
     `The batch added ${report.outcomes.admitted_count} searchable start${report.outcomes.admitted_count === 1 ? '' : 's'} and brought the canonical start count from ${report.baseline.canonical_start_count} to ${report.current.canonical_start_count}. This issue does not target 6,000 starts or corpus expansion.`,
     '',
@@ -505,7 +509,7 @@ export async function validateIssue219({ writeReport = false } = {}) {
     new_relation_count: importRecords.reduce((count, record) => count + record.senses.reduce((inner, sense) => inner + (sense.relations?.length ?? 0), 0), 0),
     new_expression_count: importRecords.filter(({ record_type: type }) => type === 'expression').length,
     zero_relation_admission_count: importRecords.filter((record) => record.senses.every((sense) => (sense.relations ?? []).length === 0)).length,
-    defect_classes: ['expression-lexical-unit-fixedness'],
+    defect_classes: ['expression-lexical-unit-fixedness', 'external-material-terms-pending'],
     review_duration: 'NOT_MEASURED',
   };
   assert.equal(outcomes.new_relation_count, 0);

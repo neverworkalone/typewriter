@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "9fde48934823df9ad2df163034c805de0296464c465a3e2cbc862021c9682768",
+    "current_canonical_revision": "8eb926d94bacc14b94ea7fb9457d3ae8de78e334a3cf4fb1052e01048cbead14",
     "source_manifest": [
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -123,8 +123,8 @@
       },
       {
         "path": "data/batches/issue-219-m9-a-semantic-decisions.json",
-        "sha256": "3768d2a12398989d012d003c1c93f5f661d8be4ca00091542d74284d37e49d07",
-        "byte_count": 68178
+        "sha256": "0b1ccd65f45ec2fe3f5051c9a0c0792bd38b54219757b0c2534b52fbc4b48416",
+        "byte_count": 67684
       },
       {
         "path": "data/batches/m5-10-wave-a.json",
@@ -283,8 +283,8 @@
       },
       {
         "path": "data/canonical/issue-219-m9-a-recovery.jsonl",
-        "sha256": "a5835bf370977fb468eba4ad60e051ac4ac8ad54f67f9adb3f34a7378447828d",
-        "byte_count": 288
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "byte_count": 0
       },
       {
         "path": "data/canonical/m5-10-wave-a.jsonl",
@@ -353,23 +353,23 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "745227dbdb59f11e1026193fd759fe15526e278374a0f115b88676503c7afaa5",
-        "byte_count": 2502556
+        "sha256": "39612f60bda0d8d73bc7b39cdd8e2b579a2e41826c6ae41f71a030633965de59",
+        "byte_count": 2501876
       },
       {
         "path": "data/inventory/m5-target-seed.json",
-        "sha256": "60ffc2ed4625678166438561b3eff3c39a2348b99fe411b1717be1cdceee875a",
-        "byte_count": 863898
+        "sha256": "394f7fa65fc22a1706af2dbb663e9eb2880ad265ecb2c6a619d6d6d5c59687f7",
+        "byte_count": 864546
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "d8d89c5eff46511a0dd45708dab8615968980496f8ced9c51fc92ebfef7428d1",
-        "byte_count": 4850802
+        "sha256": "a4e8c22c15cc0fa37f42ec5ace4ddc280023458fadeb6a362219c6bb2f34b006",
+        "byte_count": 4849898
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "e447704d92f979a27950c29f871c3c952970b883c266f44f047f3a10f9a001ee",
-        "byte_count": 11357
+        "sha256": "e843761a4c7b557fa7d3da000c38b91aac130352e61b2cb77e2c6a77e71d4434",
+        "byte_count": 11354
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
@@ -387,6 +387,11 @@
         "byte_count": 99794
       },
       {
+        "path": "docs/external-material-review-customs-terminology.md",
+        "sha256": "ce7395c649ba9d4eecf2ed3362be2f9859116a398aee85534005e1ea624bce2a",
+        "byte_count": 1698
+      },
+      {
         "path": "docs/issue-208-searchable-start-retrospective.md",
         "sha256": "3e5dfd512389b4a505010686c10c32e0cdfdbb328290e1f4f0bc92a8f6aa6621",
         "byte_count": 16379
@@ -398,8 +403,8 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "4505a8872a0547e0a9713687b43fc2a5fe753f28a5c3f65170b5081af7996cb5",
-        "byte_count": 5705
+        "sha256": "f4ad6ec50f759f95c2ea42b359e5079a74ddf4390d3bc5301ab13d27f4ecacd8",
+        "byte_count": 5991
       },
       {
         "path": "docs/m3-handoff.md",
@@ -438,8 +443,8 @@
       },
       {
         "path": "docs/m9-bounded-lexical-batches.md",
-        "sha256": "19d605c2721690cb28dfdb5726c84443cd88ccdfd32ceb97e030b34b0fff8e68",
-        "byte_count": 4310
+        "sha256": "3ca7c3b62e5beecb8dca7d073cecea65265ba00e72fa1026015cb37d090cc91a",
+        "byte_count": 4613
       },
       {
         "path": "docs/pilot-scope.md",
@@ -458,8 +463,8 @@
       },
       {
         "path": "scripts/batch/authored-semantic-decision-source.mjs",
-        "sha256": "e5248f1956a6db753b3927c1314fa439cbf704c906393ab51dbe79ea2fb069ee",
-        "byte_count": 27977
+        "sha256": "6476c9c7fb588c908cfd3310802064d2fcf0e0b80696110e6aeb6e4f60524e9c",
+        "byte_count": 28237
       },
       {
         "path": "scripts/batch/lexical-production.mjs",
@@ -473,8 +478,8 @@
       },
       {
         "path": "scripts/batch/validate-issue-219.mjs",
-        "sha256": "03cfa1a1ff8a8fc05e7192fa135d8608b2cf5d0c732679526fb49cb5f3b178fd",
-        "byte_count": 33887
+        "sha256": "44e8366633a2f977f68ff4f8375e9ff886fabab9d9af91425998009acf420587",
+        "byte_count": 34517
       },
       {
         "path": "scripts/ci/registry.mjs",
@@ -483,8 +488,8 @@
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "a53bf4817c8629211c42203b4a48320f0e157a7d51ba5c73b833fbf0c6b27289",
-        "byte_count": 60375
+        "sha256": "705bfb6834edb359b54b3c635bf6f51b2dc1e30d8d0298c14d9efac3dc5ea8f2",
+        "byte_count": 60701
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",
@@ -503,8 +508,8 @@
       },
       {
         "path": "tests/issue-219-search.test.mjs",
-        "sha256": "5251920ce88977d5ea2cd26f7e7861264e773f2a0b97aea819e8b78e125967b1",
-        "byte_count": 2398
+        "sha256": "fef7a0aa61b2afdc6f44bdc1513bca7c737b0a6ed7fdbf66ff3338be64dd0ad3",
+        "byte_count": 1873
       },
       {
         "path": "tests/lexical-production-candidates.test.mjs",
@@ -513,23 +518,23 @@
       },
       {
         "path": "tests/searchable-start-contract.test.mjs",
-        "sha256": "b655b1fff0ceb85c261802b09f81c470a623f6c8a2318c57226fb129d6159092",
-        "byte_count": 36455
+        "sha256": "8e2014fae124aef7a5f4afd597ff1761ab1dca3884040fe89cdf3c65b15f6c85",
+        "byte_count": 38763
       }
     ]
   },
   "audit_scope": {
     "m1_m4": "Reviewed the durable M1 pilot selection, canonical pilot records, M3/M4 handoffs, and current reference-only population. These artifacts do not contain a complete durable candidate rejection/defer ledger; no missing ephemeral output or external material was reconstructed.",
-    "m5": "Screened all 1,561 current M5 seed rows; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219 recovery outcomes. Issue #219 reviewed 20 expressions: 1 admitted, 9 held, and 10 rejected.",
+    "m5": "Screened all 1,562 current M5 seed rows; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219 recovery outcomes. Issue #219 reviewed 20 expressions: 0 admitted, 10 held, and 10 rejected.",
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
-    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; 1 admitted, 9 held, and 10 rejected as compositional phrases.",
+    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; 0 admitted, 10 held, and 10 rejected as compositional phrases.",
     "source_material_boundary": "Uses tracked Typewriter decision artifacts only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
-    "m5_target_rows_screened": 1561,
+    "m5_target_rows_screened": 1562,
     "m5_target_status_counts": {
       "promoted": 978,
-      "held": 198,
+      "held": 199,
       "duplicate": 3,
       "inflected-form": 2,
       "candidate": 19,
@@ -537,15 +542,15 @@
       "rejected": 62
     },
     "m5_promoted_seed_rows_present_in_canonical": 978,
-    "m5_promotion_ledger_events_audited": 3757,
+    "m5_promotion_ledger_events_audited": 3756,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
-    "issue_219_admitted_count": 1,
-    "issue_219_held_count": 9,
+    "issue_219_admitted_count": 0,
+    "issue_219_held_count": 10,
     "issue_219_rejected_count": 10,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
-    "recovery_candidate_count": 583,
+    "recovery_candidate_count": 584,
     "current_reference_only_record_count": 42,
     "resolved_historical_policy_case_count": 4,
     "issue_204_mandatory_reject_count": 25,
@@ -554,18 +559,18 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 5077,
-    "exact_search_key_count": 5333,
+    "directly_searchable_canonical_record_count": 5076,
+    "exact_search_key_count": 5332,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
-    "unresolved_sense_pos_or_context_case_count": 181,
+    "unresolved_sense_pos_or_context_case_count": 182,
     "additional_rationale_or_lexical_unit_holds": 75,
     "search_collision_count": 1,
     "unsupported_scope_candidate_count": 0,
     "unsupported_lexical_category_count": 0,
     "review_state_counts": {
-      "hold": 229,
+      "hold": 230,
       "duplicate": 2,
       "invalid-lemma": 2,
       "admit-candidate": 288,
@@ -588,21 +593,21 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 5077,
-    "directly_searchable_record_count": 5077,
+    "canonical_record_count": 5076,
+    "directly_searchable_record_count": 5076,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 5333,
+    "exact_search_key_count": 5332,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 5035,
+      "start": 5034,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
       "start/entry": 3881,
-      "start/expression": 1154,
+      "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
     }
@@ -24271,7 +24276,7 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24332,7 +24337,68 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
+    },
+    {
+      "source_issue_batch_artifacts": [
+        {
+          "issue": null,
+          "batch": "m5-16",
+          "artifact": "data/inventory/m5-target-seed.json"
+        },
+        {
+          "issue": 219,
+          "batch": "m9-a-issue-219-first-recovery-20260929",
+          "artifact": "data/batches/issue-219-m9-a-semantic-decisions.json"
+        }
+      ],
+      "source_inventory_id": "m5-4621",
+      "lemma": "컨테이너 야드",
+      "proposed_pos": [
+        "expression"
+      ],
+      "record_type": "expression",
+      "search_forms": [
+        "컨테이너 야드"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "held",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "m5-4621 w4701 held: exact-expression fixedness remains unresolved while the external source terms are pending; keep this Typewriter-authored candidate outside canonical admission.",
+      "historical_decision_events": [
+        {
+          "source_issue": null,
+          "source_batch": "m5-16",
+          "source_artifact": "data/inventory/m5-target-seed.json",
+          "historical_disposition": "held",
+          "historical_rationale": "m5-4621 w4701 held: exact-expression fixedness remains unresolved while the external source terms are pending; keep this Typewriter-authored candidate outside canonical admission."
+        },
+        {
+          "source_issue": 219,
+          "source_batch": "m9-a-issue-219-first-recovery-20260929",
+          "source_artifact": "data/batches/issue-219-m9-a-semantic-decisions.json",
+          "historical_disposition": "held/needs-context",
+          "historical_rationale": "m5-4621 w4701: keep the exact expression outside canonical admission while the only candidate-specific fixedness evidence remains pending its applicable source terms."
+        }
+      ],
+      "current_canonical_search_coverage": {
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
+        "queries": [
+          {
+            "query": "컨테이너 야드",
+            "status": "no-match",
+            "normalized_query": "컨테이너 야드",
+            "matches": []
+          }
+        ]
+      },
+      "historical_rationale_conflicts_with_new_invariant": "no",
+      "new_review_state": "hold",
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24393,7 +24459,7 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24454,7 +24520,7 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24515,7 +24581,7 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -24698,7 +24764,7 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25003,7 +25069,7 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25186,7 +25252,7 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -25308,7 +25374,7 @@
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
-      "follow_up_reason_and_evidence": "Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded."
+      "follow_up_reason_and_evidence": "Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded."
     },
     {
       "source_issue_batch_artifacts": [
@@ -40163,7 +40229,7 @@
       "group": "Previously included M5-13/14/15 reserve candidates deferred only by capacity",
       "count": 234,
       "batching": "Issue #219 calibrated a 20-record first batch; review later batches in bounded groups sized from observed defects and workload.",
-      "gate": "Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota. Issue #219 admitted 1 of the original 254; 9 remain held and 10 were rejected as compositional phrases."
+      "gate": "Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota. Issue #219 admitted 0 of the original 254; 10 remain held and 10 were rejected as compositional phrases."
     },
     {
       "sequence": 3,
@@ -40175,7 +40241,7 @@
     {
       "sequence": 4,
       "group": "Held or otherwise unresolved rows",
-      "count": 256,
+      "count": 257,
       "batching": "Resolve blockers individually, then place only cleared records into later bounded batches.",
       "gate": "Keep the 172 explicit sense/POS/context cases and 75 other rationale or lexical-unit holds visible until their evidence is complete."
     },
@@ -40187,5 +40253,5 @@
       "gate": "Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes."
     }
   ],
-  "canonical_mutation": "Issue #219 admitted 1 previously capacity-deferred M5-15 candidate through ordinary shared lexical production and admission."
+  "canonical_mutation": "Issue #219 admitted no previously capacity-deferred M5-15 candidate; the reviewed slice retained its holds and rejections without changing canonical data."
 }

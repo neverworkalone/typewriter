@@ -23,13 +23,13 @@ Every batch binds the issue and parent, a pinned baseline canonical and inventor
 - final exact search result after admission;
 - promotion-ledger binding to the decision source and canonical record digest.
 
-For `record_type: expression`, the shared authored semantic-decision contract also requires an explicit candidate-bound lexical-unit judgment: `fixed-or-lexicalized-unit`, `compositional-phrase`, or `unresolved`. A fixed or lexicalized judgment needs evidence that names the exact form. A compositional phrase cannot be included; it must be rejected as `not-a-lexical-unit` or held as `unresolved-lexical-unit`. An unresolved judgment must remain held. This separates fixedness from an atomic scene description and applies to each future M9 batch using the contract.
+For `record_type: expression`, the shared authored semantic-decision validator requires an explicit candidate-bound lexical-unit judgment: `fixed-or-lexicalized-unit`, `compositional-phrase`, or `unresolved`. Every source with `parent_issue: 218` must declare this contract in review metadata, and the validator enforces it even when a batch caller omits a configuration option. A fixed or lexicalized judgment needs evidence that names the exact form. A compositional phrase cannot be included; it must be rejected as `not-a-lexical-unit` or held as `unresolved-lexical-unit`. An unresolved judgment must remain held. This separates fixedness from an atomic scene description and applies automatically to current and future M9 batches.
 
 The machine report records reviewed and admitted counts, holds, rejections, corrections, duplicates, search collisions, senses, relations, expressions, observed defect classes, validation status, and any measured review duration. Preserve `NOT_MEASURED` when a duration was not recorded; do not infer throughput from candidate count.
 
 ## Initial batch-size calibration
 
-Issue #219 reviewed the first 20 rows in a coherent M5-15 axis C capacity-reserve cohort. All 20 passed fresh lexical, POS, sense, baseline-search, complete-audit, and ordinary admission checks. That result supports 20 as the initial M9 batch size for follow-up batches. Review duration was not measured, so 20 is a successful-slice calibration rather than a throughput estimate. Reassess it using later defect rates and review workload.
+Issue #219 reviewed the first 20 rows in a coherent M5-15 axis C capacity-reserve cohort. All 20 were reviewed through fresh lexical, POS, sense, baseline-search, and complete-audit checks; 10 were held, 10 were rejected, and none was admitted while the only candidate-specific fixedness evidence remained under pending source terms. This supports 20 as the initial M9 review-slice size for follow-up batches. Review duration was not measured, so 20 is a slice-size calibration rather than a throughput estimate. Reassess it using later defect rates and review workload.
 
 Batch size controls review scope only. It does not define how many candidates must be admitted, and M9-A does not advance the separate 6,000-start milestone or authorize corpus expansion.
 

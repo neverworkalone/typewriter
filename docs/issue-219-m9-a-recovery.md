@@ -6,22 +6,24 @@ M9 recovery selects historical candidates from a pinned source inventory, but ev
 
 The recovery contract prioritizes high-confidence capacity-deferred source candidates, then source-recoverable legacy deferred candidates and open M5 candidates. For every `expression`, the shared semantic decision contract separately records whether the exact phrase is fixed or lexicalized, compositional, or unresolved. A compositional phrase cannot be admitted; it must be held for an unresolved lexical question or rejected as not a lexical unit. A fixedness admission needs candidate-specific evidence. Every row records inventory and candidate identity, lemma, POS, source unit, lexical-unit judgment, disposition, relation outcome, baseline search ownership, and final exact search result. There is no commonness, usefulness, vividness, or relation quota.
 
-The first slice is the first 20 numeric identities in the 32-row M5-15 axis C reserve cohort, selected from the exact Issue #210 baseline. All 20 were separately reviewed under #219; their previous M5-15 fit status only selected them for review. The fresh review classified the exact phrase as fixed/lexicalized for 1, compositional for 10, and unresolved for 9.
+The first slice is the first 20 numeric identities in the 32-row M5-15 axis C reserve cohort, selected from the exact Issue #210 baseline. All 20 were separately reviewed under #219; their previous M5-15 fit status only selected them for review. The fresh review classified the exact phrase as fixed/lexicalized for 0, compositional for 10, and unresolved for 10.
 
 ## Outcome
 
 | Measure | Result |
 | --- | ---: |
 | Reviewed | 20 |
-| Admitted | 1 |
-| Held / rejected / corrected | 9 / 10 / 0 |
+| Admitted | 0 |
+| Held / rejected / corrected | 10 / 10 / 0 |
 | Duplicate / search collision | 0 / 0 |
-| New senses / relations / expressions | 1 / 0 / 1 |
-| Admitted with zero relations | 1 |
-| Observed defect classes | expression-lexical-unit-fixedness |
+| New senses / relations / expressions | 0 / 0 / 0 |
+| Admitted with zero relations | 0 |
+| Observed defect classes | expression-lexical-unit-fixedness, external-material-terms-pending |
 | Review duration | NOT_MEASURED |
 
-Only candidates marked `included` or `corrected` enter the canonical import. Held and rejected rows remain visible in the recovery seed with their source-bound decisions. The admitted records keep their Typewriter-authored senses and no relations; zero relations do not block search admission.
+The Customs glossary used during the initial fixedness review has no confirmed permission for this verification role. Its external-material review is pending in [the source review record](external-material-review-customs-terminology.md); `m5-4621` remains held outside canonical data until the terms are resolved.
+
+Only candidates marked `included` or `corrected` enter the canonical import. Held and rejected rows remain visible in the recovery seed with their source-bound decisions. Admitted records retain their Typewriter-authored senses and do not gain unsupported relations; zero relations do not block search admission.
 
 ## Candidate and search results
 
@@ -29,7 +31,7 @@ Only candidates marked `included` or `corrected` enter the canonical import. Hel
 | ---: | --- | --- | --- | --- | --- | ---: | --- |
 | 1 | m5-4619 | — | 택배물류 허브 | unresolved | held | 0 | — |
 | 2 | m5-4620 | — | 화물터미널 야적장 | unresolved | held | 0 | — |
-| 3 | m5-4621 | w4701 | 컨테이너 야드 | fixed-or-lexicalized-unit | included | 0 | w4701 |
+| 3 | m5-4621 | — | 컨테이너 야드 | unresolved | held | 0 | — |
 | 4 | m5-4622 | — | 철도 화물역 | unresolved | held | 0 | — |
 | 5 | m5-4623 | — | 철도 차량기지 | unresolved | held | 0 | — |
 | 6 | m5-4624 | — | 지하철 유치선 | unresolved | held | 0 | — |
@@ -48,13 +50,13 @@ Only candidates marked `included` or `corrected` enter the canonical import. Hel
 | 19 | m5-4637 | — | 임시 보행자통로 | unresolved | held | 0 | — |
 | 20 | m5-4638 | — | 차량 통제선 안쪽 | compositional-phrase | rejected | 0 | — |
 
-The frozen baseline dictionary produced no exact canonical or generated-surface result for any candidate. The current dictionary returns the admitted lemma as its own `ready` exact-lemma result; held and rejected proposals have no current search result.
+The frozen baseline dictionary produced no exact canonical or generated-surface result for any candidate. No candidate was admitted, so all 20 proposals have no current search result.
 
 ## Batch-size calibration
 
-Use 20 candidates as the initial M9 review batch size: this coherent slice completed a candidate-by-candidate fixedness review, shared admission, and exact-search validation after the generalized expression rule was added. Review duration was not measured, so 20 is a slice-size calibration, not a throughput estimate. Reassess the size from later defect and workload observations; the size is not an admission quota.
+Use 20 candidates as the initial M9 review-slice size: this coherent slice completed candidate-by-candidate fixedness review, shared admission validation, and exact-search validation after the generalized expression rule was added. Review duration was not measured, so 20 is a slice-size calibration, not a throughput estimate. Reassess the size from later defect and workload observations; the size is not an admission quota.
 
-The batch added 1 searchable start and brought the canonical start count from 5034 to 5035. This issue does not target 6,000 starts or corpus expansion.
+The batch added 0 searchable starts and brought the canonical start count from 5034 to 5034. This issue does not target 6,000 starts or corpus expansion.
 
 ## Reproduction and boundaries
 

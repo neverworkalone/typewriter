@@ -10,7 +10,6 @@ import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
-  getSenseRelations,
 } from '../scripts/build/query.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY } from '../scripts/validate/canonical-jsonl.mjs';
 
@@ -21,9 +20,9 @@ function parseJsonl(bytes) {
   return bytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
 }
 
-test('Issue #219 admitted expression resolves its exact writer query with zero relations', async () => {
+test('Issue #219 held expression stays out of exact search while source terms are pending', async () => {
   const records = parseJsonl(await readFile(IMPORT_PATH));
-  assert.deepEqual(records.map(({ id }) => id), ['w4701']);
+  assert.deepEqual(records, []);
   const outputDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-219-search-'));
   const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
   let database;
@@ -36,25 +35,10 @@ test('Issue #219 admitted expression resolves its exact writer query with zero r
       repositoryDirectory: ROOT,
     });
     database = new DatabaseSync(outputPath, { readOnly: true });
-    for (const record of records) {
-      assert.deepEqual(findRecordsByExactTerm(database, record.lemma).map(({ id }) => id), [record.id]);
-      const response = findRecordsBySearchTerm(database, record.lemma);
-      assert.equal(response.status, 'ready', `${record.lemma} search status`);
-      assert.deepEqual(response.matches.map(({ id, match }) => ({
-        id,
-        kind: match.kind,
-        field: match.field,
-        value: match.value,
-      })), [{
-        id: record.id,
-        kind: 'exact-lemma',
-        field: 'lemma',
-        value: record.lemma,
-      }], `${record.lemma} exact lemma precedence`);
-      for (const sense of record.senses) {
-        assert.deepEqual(getSenseRelations(database, sense.id), [], `${record.lemma}/${sense.id} no relation quota`);
-      }
-    }
+    assert.deepEqual(findRecordsByExactTerm(database, '컨테이너 야드'), []);
+    const response = findRecordsBySearchTerm(database, '컨테이너 야드');
+    assert.equal(response.status, 'no-match', 'held candidate exact search status');
+    assert.deepEqual(response.matches, []);
   } finally {
     database?.close();
     await rm(outputDirectory, { recursive: true, force: true });

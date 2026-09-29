@@ -32,18 +32,18 @@
       "zero-relation allowance without relation fabrication"
     ],
     "decision_counts": {
-      "included": 1,
+      "included": 0,
       "corrected": 0,
-      "held": 9,
+      "held": 10,
       "rejected": 10,
       "deferred": 0
     },
     "prior_generator_replaced": true,
     "prior_generator_verification_pass_id": "issue-219-historical-slice-selection-20260929-r1",
     "counts": {
-      "included": 1,
+      "included": 0,
       "corrected": 0,
-      "held": 9,
+      "held": 10,
       "rejected": 10,
       "deferred": 0
     },
@@ -58,13 +58,13 @@
   "selection": {
     "policy": "shared-authored-axis-coverage-selection-v6",
     "capacity": 20,
-    "imported": 1,
+    "imported": 0,
     "reserve": 0,
     "coverage_field": "selection_axis",
     "coverage_basis": [
       "source-bound Typewriter lexical axis after semantic eligibility"
     ],
-    "selection_rationale": "Admission count follows the independently authored fixedness and lexical-identity decisions: one evidenced fixed expression is selected, unresolved candidates remain held, and compositional scene phrases are rejected. The 20-row review scope is not an admission quota."
+    "selection_rationale": "Admission count follows separately authored dispositions: no candidate has currently usable candidate-specific fixedness evidence, unresolved candidates remain held, and compositional scene phrases are rejected. The 20-row review scope is not an admission quota."
   },
   "candidate_records": [
     {
@@ -506,11 +506,11 @@
       "candidate_record_id": "w4701",
       "inventory_id": "m5-4621",
       "candidate_record_sha256": "f2a4a872f6e03660da6626077d7e5ea3e30829ff24b52f97f79293072fd107cd",
-      "decision": "included",
+      "decision": "held",
       "rank": 3,
-      "decision_rationale": "m5-4621 w4701: the exact expression “컨테이너 야드” is a fixed logistics term with a candidate-specific Customs Service glossary entry; its authored Typewriter sense remains bounded to a container storage and handling area. Admission follows current #219 fixedness evidence, not the earlier M5-15 reserve decision.",
+      "decision_rationale": "m5-4621 w4701: keep the exact expression outside canonical admission while the only candidate-specific fixedness evidence remains pending its applicable source terms.",
       "review_pass_id": "issue-219-separate-semantic-verification-20260929-r2",
-      "gloss_judgment": "fit",
+      "gloss_judgment": "needs-context",
       "sense_reviews": [
         {
           "sense_id": "w4701-s1",
@@ -530,7 +530,7 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w4701",
         "candidate_record_sha256": "f2a4a872f6e03660da6626077d7e5ea3e30829ff24b52f97f79293072fd107cd",
-        "decision_evidence_sha256": "2427d6b8fcd992c1f5934fdea04d50cbe7781ade2cc1799c63ad823e25259236",
+        "decision_evidence_sha256": "822dca552565106b63565d404560ce0a6af3f9eb091fc6bbd888d98ed7bd3513",
         "sense_evidence": [
           {
             "sense_id": "w4701-s1",
@@ -542,15 +542,11 @@
       },
       "lexical_unit_review": {
         "contract_version": "m9-expression-lexical-unit-review-v1",
-        "judgment": "fixed-or-lexicalized-unit",
-        "rationale": "m5-4621 w4701 “컨테이너 야드”: the exact phrase is independently named as a container-yard term in an official customs glossary, supporting a fixed technical lexical unit rather than a freely assembled scene description.",
-        "evidence": [
-          {
-            "source": "https://www.customs.go.kr/kcs/ad/tr/trTermView.do?mi=2902&termId=973 — 관세청 관세용어 사전",
-            "observation": "용어 표제 “컨테이너 야적장,컨테이너 야드(Container Yard (CY))”; CY는 컨테이너의 인수·인도에 지정된 장소를 가리킨다."
-          }
-        ]
-      }
+        "judgment": "unresolved",
+        "rationale": "m5-4621 w4701 컨테이너 야드: fixedness remains unresolved while the only candidate-specific external evidence is pending its applicable reuse terms; hold until independently usable evidence is available.",
+        "evidence": []
+      },
+      "hold_basis": "unresolved-lexical-unit"
     },
     {
       "candidate_record_id": "w4702",
@@ -1335,5 +1331,5 @@
       }
     }
   ],
-  "artifact_sha256": "73e54efd37536c38af318aaebfc33ed6d37fa4e3e991789a44ffed6ca058a4db"
+  "artifact_sha256": "25af7917228eb6576f9c311153c2858825a1cafa68e406b718ef8fabe52a27f0"
 }

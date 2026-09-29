@@ -48,6 +48,7 @@ const SOURCE_PATHS = [
   'docs/issue-211-bounded-lexical-recovery.md',
   'docs/issue-219-m9-a-recovery.md',
   'docs/m9-bounded-lexical-batches.md',
+  'docs/external-material-review-customs-terminology.md',
   'docs/m6-1-searchable-lexical-baseline.md',
   'docs/m6-1-searchable-lexical-baseline.json',
   'docs/m6-1-quality-baseline.json',
@@ -230,7 +231,7 @@ function classifyTarget(target, issue204, semantic, priorRejections) {
       return {
         reviewState: 'hold',
         rationaleConflict: 'no',
-        followUp: 'Issue #219 left this exact expression on hold because its fixed or lexicalized status lacks candidate-specific evidence. Keep it out of canonical admission until that evidence is recorded.',
+        followUp: 'Issue #219 keeps this exact expression on hold because no candidate-specific fixedness evidence is currently usable under the unresolved source terms. Keep it out of canonical admission until usable evidence is recorded.',
       };
     }
     if (semantic.decision.decision === 'rejected'
@@ -770,7 +771,7 @@ async function buildInventory() {
     assert.equal(policyOpen.length, 0);
     assert.deepEqual(issue204MandatoryLemmas, EXPECTED_ISSUE_204_REJECTS);
     assert.equal(reviewStateCounts['admit-candidate'], 288);
-    assert.equal(reviewStateCounts.hold, 229);
+    assert.equal(reviewStateCounts.hold, 230);
     assert.equal(reviewStateCounts['needs-sense-split'], 27);
     assert.equal(reviewStateCounts.recovered, 24);
     assert.equal(reviewStateCounts.duplicate, 2);
@@ -792,7 +793,7 @@ async function buildInventory() {
       pos.some((value) => !['noun', 'adjective', 'verb', 'adverb', 'expression'].includes(value))
       || !['entry', 'expression'].includes(recordType)
     )).length;
-    assert.equal(explicitSensePosContextCases, 181);
+    assert.equal(explicitSensePosContextCases, 182);
     assert.equal(unsupportedLexicalCategoryCount, 0);
 
     const mandatoryIssue204Rejects = entries
@@ -915,7 +916,9 @@ async function buildInventory() {
           gate: 'Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes.',
         },
       ],
-      canonical_mutation: `Issue #219 admitted ${issue219Counts.included + issue219Counts.corrected} previously capacity-deferred M5-15 candidate${issue219Counts.included + issue219Counts.corrected === 1 ? '' : 's'} through ordinary shared lexical production and admission.`,
+      canonical_mutation: issue219Counts.included + issue219Counts.corrected > 0
+        ? `Issue #219 admitted ${issue219Counts.included + issue219Counts.corrected} previously capacity-deferred M5-15 candidate${issue219Counts.included + issue219Counts.corrected === 1 ? '' : 's'} through ordinary shared lexical production and admission.`
+        : 'Issue #219 admitted no previously capacity-deferred M5-15 candidate; the reviewed slice retained its holds and rejections without changing canonical data.',
     };
     const report = renderReport(inventory);
     return { inventory, report };
@@ -950,7 +953,7 @@ function renderReport(inventory) {
   return `# Issue #210 — Historical exclusion recovery inventory\n\n\
 Generated from the machine inventory at \`data/inventory/issue-210-recovery-inventory.json\`. The generator builds a temporary SQLite database and checks current canonical search coverage without changing canonical records.\n\n\
 ## Scope and policy\n\n\
-The current invariant from Issues #207–#209 is: every valid lexical entry within Typewriter's supported scope may serve as a searchable start. Historical roles and decisions remain recorded as history; they do not determine current search eligibility. This report inventories current unresolved candidates and records Issue #219's separately validated admission of a bounded reserve slice. Relation counts are not admission quotas.\n\n\
+The current invariant from Issues #207–#209 is: every valid lexical entry within Typewriter's supported scope may serve as a searchable start. Historical roles and decisions remain recorded as history; they do not determine current search eligibility. This report inventories current unresolved candidates and records Issue #219's separately validated dispositions for a bounded reserve slice. Relation counts are not admission quotas.\n\n\
 The audit screened all ${s.m5_target_rows_screened.toLocaleString('en-US')} M5 target rows, joined all ${s.issue_204_decisions_audited} Issue #204 decisions (${s.issue_204_decisions_overlaid_on_m5_targets} map to M5 rows; ${s.already_admitted_issue_204_count} admitted rows are tracked separately), audited ${s.m5_promotion_ledger_events_audited.toLocaleString('en-US')} promotion ledger events, traced ${s.resolved_historical_policy_case_count} corrected M5-3 policy cases, and checked all current reference-only records. The M1–M4 pilot tables and handoffs do not preserve a complete standalone rejected/deferred candidate ledger. No unavailable ephemeral drafts or external raw material were reconstructed.\n\n\
 ## Counts\n\n\
 Issue #219 result: ${s.issue_219_decisions_audited} reviewed; ${s.issue_219_admitted_count} admitted, ${s.issue_219_held_count} held, and ${s.issue_219_rejected_count} rejected as compositional phrases.\n\n\

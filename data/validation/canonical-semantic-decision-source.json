@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "3b63273a5b43d7e33c104cc41e8d20169512258c20bd62efa54ff1801b8c9ed1"
+    "canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e"
   },
-  "authored_review_sha256": "33083766a87568dc4fc168ad95b28ef44c9b8cfc5449d520ec672d9d2d33eeab",
+  "authored_review_sha256": "6c8ed4acbed0952b1f0d5398f7b60c70890c3503562b21f5fd6f7406b5a25a2b",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "3b63273a5b43d7e33c104cc41e8d20169512258c20bd62efa54ff1801b8c9ed1"
+      "canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e"
     },
     "records": [
       {
@@ -100729,22 +100729,6 @@
           "selection_rank": 25,
           "selection_axis": "Q",
           "reviewed_record_sha256": "f0aa18e6933a71fbf090018b24fdcb1fdf177a3a869432ef536ef37e82865f00"
-        }
-      },
-      {
-        "record_id": "w4701",
-        "record_sha256": "f2a4a872f6e03660da6626077d7e5ea3e30829ff24b52f97f79293072fd107cd",
-        "authored_batch_decision": {
-          "source_id": "issue-219-authored-semantic-decisions-20260929-r2",
-          "source_sha256": "3768d2a12398989d012d003c1c93f5f661d8be4ca00091542d74284d37e49d07",
-          "artifact_sha256": "73e54efd37536c38af318aaebfc33ed6d37fa4e3e991789a44ffed6ca058a4db",
-          "decision_row_sha256": "ec0d87670bc204fccedd4c5efc93495d71468b551695d6d5cd26b8af970106f0",
-          "candidate_record_id": "w4701",
-          "candidate_record_sha256": "f2a4a872f6e03660da6626077d7e5ea3e30829ff24b52f97f79293072fd107cd",
-          "decision": "included",
-          "selection_rank": 3,
-          "selection_axis": "C",
-          "reviewed_record_sha256": "f2a4a872f6e03660da6626077d7e5ea3e30829ff24b52f97f79293072fd107cd"
         }
       }
     ],
