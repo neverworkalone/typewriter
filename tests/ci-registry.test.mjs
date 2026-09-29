@@ -56,6 +56,20 @@ test('CI categories are ordered and every category has a descriptive label', () 
   }
 });
 
+test('normal batch CI owns the M9 corpus candidate-review gate and regressions', () => {
+  const batchChecks = CI_CATEGORIES.batch.checks;
+  const commands = batchChecks.map((check) => check.command({}));
+
+  assert.ok(CI_NORMAL_CATEGORY_ORDER.includes('batch'));
+  assert.ok(commands.some(({ executable, args }) => (
+    executable === 'npm' && args.includes('validate:corpus-candidate-review')
+  )));
+  assert.ok(commands.some(({ executable, args }) => (
+    executable === process.execPath
+    && args.includes('scripts/reference/corpus-candidate-review.test.mjs')
+  )));
+});
+
 test('toolchain builds SQLite only after the shared global audit', () => {
   const toolchainChecks = CI_CATEGORIES.toolchain.checks;
   assert.equal(toolchainChecks[0].inProcess, 'global-canonical-audit');

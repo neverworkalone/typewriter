@@ -46,13 +46,14 @@ The validation binds the tracked review ledger to the byte hashes of the ignored
 
 ## Validate and reuse
 
-Run the manual/synthetic reference tests locally; they are intentionally outside normal CI and product builds:
+Run the corpus/index extraction regressions locally; they require the reference workflow and remain outside normal CI and product builds:
 
 ```sh
 node --test scripts/reference/run-corpus-lemma-pilot.test.mjs
-node --test scripts/reference/corpus-candidate-review.test.mjs
 python3 scripts/reference/test-corpus-lemma-pilot.py
 ```
+
+The text-free corpus candidate-disposition contract and its synthetic regressions do not require corpus or index access. `ci:normal` runs the regression suite and discovers every `m9-corpus-candidate-review-v1` JSON artifact under `data/batches`, regardless of issue or batch ID.
 
 Run the issue batch validator, full relevant canonical/search validation, and normal CI after an admitted batch has been authored:
 
@@ -62,6 +63,6 @@ npm run validate:search
 npm run ci:normal
 ```
 
-The batch validator binds the reviewed candidate/evidence artifacts, authored semantic decisions, and canonical import; it then invokes `validateLexicalProduction` on the full selected candidate pool, checks direct exact-lemma search, validates complete canonical semantic coverage, and compares two deterministic SQLite builds by logical contents. Keep corpus/index access and the synthetic corpus fixture suite out of `ci:normal`.
+The batch validator binds the reviewed candidate/evidence artifacts, authored semantic decisions, and canonical import; it then invokes `validateLexicalProduction` on the full selected candidate pool, checks direct exact-lemma search, validates complete canonical semantic coverage, and compares two deterministic SQLite builds by logical contents. Keep corpus/index access and synthetic corpus-extraction fixtures out of `ci:normal`; the text-free candidate-disposition regressions and artifact gate run there.
 
 M9-D/E can reuse the same runner and validation contracts with a new batch ID, output directory, pinned source/index and tool metadata, bounded candidate limit, and exclusion sources for the current target seed and all prior corpus reviews. Run the generic candidate-disposition validator for each review file, then bind it to that batch's source evidence and semantic decisions. Do not increase the batch size to compensate for low editorial yield. No corpus-to-canonical automation or publication authorization is implied by this workflow.

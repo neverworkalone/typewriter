@@ -172,6 +172,11 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/issue-219-content-digest.test.mjs', 'Test Issue #219 portable logical-content digest'),
       npmCheck('Validate Issue #219 M9 bounded lexical recovery', 'batch:issue-219:check'),
       npmCheck('Validate Issue #220 M9 historical recovery checkpoint', 'batch:issue-220:check'),
+      npmCheck('Validate every tracked M9 corpus candidate review', 'validate:corpus-candidate-review'),
+      commandCheck(
+        'Test M9 corpus candidate-review disposition regressions',
+        ['--test', 'scripts/reference/corpus-candidate-review.test.mjs'],
+      ),
       inProcessCheck(
         'Validate M5-15 pre-admission boundary',
         'm5-15-pre-admission',

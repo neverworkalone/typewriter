@@ -265,7 +265,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `docs/m6-1-searchable-lexical-baseline.json` | `1bb15c9a6f65c5120c9bfdd651521f0c73ab8583e0c8a4a3fd76b75751f86d53` |
 | `docs/m6-1-searchable-lexical-baseline.md` | `bf0a12fc1473a95dbbb72a6df47bdd253254fa92ff12ba678fd373595201f8c3` |
 | `docs/m9-bounded-lexical-batches.md` | `3ca7c3b62e5beecb8dca7d073cecea65265ba00e72fa1026015cb37d090cc91a` |
-| `docs/m9-corpus-production.md` | `8a69bc9aa32ed90ccc3430000deb15aa6bcead9bdfede70f76e96b66c51dfe3b` |
+| `docs/m9-corpus-production.md` | `a64e27317fb67414b046f80487a21341224bcb12a4e5252366f21e91ed08164c` |
 | `docs/pilot-scope.md` | `9d1d23b63c828838e5b326ee69e080f57a68ffae6e0e31dfe05e99d0865e6881` |
 | `package.json` | `eb60187ab2ff9c26e5de2218303adbf3d6ea277a226fdec319e4d1bba242b8dc` |
 | `schema/issue-220-m9-b-checkpoint-report.schema.json` | `ca40281d0863a36e36b6a2d5f3d7886efc0cc136ffddff8117a4a306d27e1710` |
@@ -279,14 +279,14 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `scripts/batch/validate-issue-219.mjs` | `44e8366633a2f977f68ff4f8375e9ff886fabab9d9af91425998009acf420587` |
 | `scripts/batch/validate-issue-220.mjs` | `cb1991dca4e46fd978ea70154d319997280cf08be1193668fde371d41cafcb78` |
 | `scripts/batch/validate-issue-221.mjs` | `f4d45a6820de9050d714ea7f3711dffb2040fd4ec0f25434e9508b14fad3957a` |
-| `scripts/ci/registry.mjs` | `02fa81e3f3edc2175a502cf2782eece2402812ce590d8f5772ef5981c31eb946` |
+| `scripts/ci/registry.mjs` | `7099323d568ace599383b782f943c85d8c375583d89a5efd49985d16ff34e84e` |
 | `scripts/inventory/build-issue-210-recovery-inventory.mjs` | `b5ca2a44f685e9e854a1577473540f943fffc8472860bf56cf7238ec61b0ce86` |
-| `scripts/reference/corpus-candidate-review.test.mjs` | `c49ffbf2d2e108b01fa67b42e0161bd495ccc3bc24fcecf19bf46ae9832c39ad` |
+| `scripts/reference/corpus-candidate-review.test.mjs` | `ccf5cce15c327c83bb87dc2676c4b8eb871741c7aecfa28c5993d3140d6f125e` |
 | `scripts/reference/corpus_lemma_pilot.py` | `a65060846e1f5f0fb300823590965d569772bc952368be18d95f018ab297faeb` |
 | `scripts/reference/run-corpus-lemma-pilot.mjs` | `0a191127a90597c75361ead054c723119872b2c9ead2703361959e9f993b674c` |
 | `scripts/reference/run-corpus-lemma-pilot.test.mjs` | `929f7ca1da24f887e232370a5395a47701cb8f429121ad5158a3ef036a33e559` |
 | `scripts/reference/test-corpus-lemma-pilot.py` | `211438df85d59f9be80e71280620c27f38a4f6ba4c816813895f6f4a03a45940` |
-| `scripts/reference/validate-corpus-candidate-review.mjs` | `63da46188f3a115e8f7b9d08bc94aae6334f85756290a1273b56fe5f4a8a0299` |
+| `scripts/reference/validate-corpus-candidate-review.mjs` | `7f5cfe1d9b413873d7290eccc1b1ca339627aea51a3ab6fd89cd1033d2ff1f84` |
 | `scripts/validate/corpus-candidate-review.mjs` | `aaab99576807b8ce3b7730f10e0509a2739906591fd14f0cba5ce33ef891971a` |
 | `scripts/validate/semantic-audit.mjs` | `4a51bbfc905f4c26e0a22fcc28191a2077107258f1982cb903b86a05494505e0` |
 | `scripts/validate/semantic-decision-row.mjs` | `3019f5ce59c778a6e913f30c49c915508dfbb1792db891f410af86ff6a857d3e` |

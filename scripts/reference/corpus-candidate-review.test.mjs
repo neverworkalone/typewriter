@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
+import { validateCorpusCandidateReviewArtifacts } from './validate-corpus-candidate-review.mjs';
 import { validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
 
 function candidate({
@@ -53,6 +57,38 @@ test('broad, common, relation-free valid entries are admitted without writer-use
   row.relation_count = 0;
   row.writer_usefulness = 'NOT_MEASURED';
   assert.deepEqual(validateCorpusCandidateReviewDispositions([row]), { admit: 1, hold: 0, reject: 0 });
+});
+
+test('directory validation discovers future M9 artifacts by contract version', async () => {
+  const repositoryRoot = await mkdtemp(path.join(os.tmpdir(), 'typewriter-corpus-review-'));
+  const batchesDirectory = path.join(repositoryRoot, 'data/batches');
+  const futureArtifact = (batchId) => JSON.stringify({
+    contract_version: 'm9-corpus-candidate-review-v1',
+    batch_id: batchId,
+    decisions: [candidate({ lemma: batchId })],
+  });
+
+  try {
+    await mkdir(path.join(batchesDirectory, 'm9-e'), { recursive: true });
+    await writeFile(path.join(batchesDirectory, 'm9-d-review.json'), futureArtifact('m9-d-batch-01'));
+    await writeFile(path.join(batchesDirectory, 'm9-e', 'decisions.json'), futureArtifact('m9-e-batch-01'));
+    await writeFile(path.join(batchesDirectory, 'unrelated.json'), JSON.stringify({
+      contract_version: 'm9-corpus-candidate-selection-v1',
+      decisions: [{ editorial_judgment: { disposition_basis: 'writer-usefulness-unmeasured' } }],
+    }));
+
+    const result = await validateCorpusCandidateReviewArtifacts({ repositoryRoot });
+    assert.equal(result.artifact_count, 2);
+    assert.deepEqual(result.artifacts.map(({ batch_id }) => batch_id), [
+      'm9-d-batch-01',
+      'm9-e-batch-01',
+    ]);
+    assert.ok(result.artifacts.every(({ admit, hold, reject }) => (
+      admit === 1 && hold === 0 && reject === 0
+    )));
+  } finally {
+    await rm(repositoryRoot, { recursive: true, force: true });
+  }
 });
 
 test('writer usefulness alone cannot hold or reject a morphologically clear entry', () => {
