@@ -6,7 +6,13 @@
   "reviewer": "codex-agent",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f"
+    "canonical_records_sha256": "83d3316f276563f94468a7863aadad26a000daf932a2c61a6b3b661934f9a7cc",
+    "rebased_from": {
+      "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
+      "source_revision": "0857c554cf7331faf53cd50cc19b0bfaed234c36",
+      "verified_unchanged_boundary_record_count": 1320,
+      "reason": "All record values covered by the legacy boundary decisions remain byte-identical in the Issue #225 base canonical snapshot; the correction transaction rebinds this preserved evidence to its current complete snapshot."
+    }
   },
   "records": [
     {
@@ -7768,23 +7774,10 @@
     },
     {
       "record_id": "w321",
-      "decision": "split",
-      "classification": "separated",
-      "rationale": "w321 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w321-s1",
-          "right_sense_id": "w321-s2",
-          "relationship": "distinct",
-          "decision": "retain",
-          "left_gloss_sha256": "25fd6d9de268b591379594771a1531a9d8d5780b5f61676845041cdb1e9d22c9",
-          "right_gloss_sha256": "619dd85150f52e9da542ab63851084f8d92381e084e36c4edefcec7ad8c150b2",
-          "evidence_basis": "independent comparison found distinct lexical referents or usage conditions",
-          "distinguishing_feature": "referent, event, or grammatical use remains distinct for writers",
-          "rationale": "w321 w321-s1 w321-s2 pair was separately reviewed with glosses 25fd6d9de268 and 619dd85150f5.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w321-s1 remains one broader Typewriter sense because both previous senses led to the same near path r042-s1; the duplicate path is reconciled once.",
+      "pairwise": []
     },
     {
       "record_id": "w322",

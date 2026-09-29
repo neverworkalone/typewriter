@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e"
+    "canonical_records_sha256": "83d3316f276563f94468a7863aadad26a000daf932a2c61a6b3b661934f9a7cc"
   },
-  "authored_review_sha256": "6c8ed4acbed0952b1f0d5398f7b60c70890c3503562b21f5fd6f7406b5a25a2b",
+  "authored_review_sha256": "b5a2ad1ba397758534f09745d3da3292b88ae1cba98b8b67734a37ba38c57bf4",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -569,6 +569,14 @@
           "source_revision": "post-merge review of PR #123 for issue #121",
           "rationale": "w1266's writing and speech glosses only vary by communication context; the reviewed canonical meaning covers both contexts in one sense.",
           "boundary_decision": "merge"
+        },
+        {
+          "record_id": "w321",
+          "before_record_sha256": "12db3cff814dbb8265db3f7aac705b5fad1f6a0838c9c44835231a695aefb046",
+          "after_record_sha256": "920d3b792822bfbba52fb4759047083f51f76ffed7f88d02951e513399ce0f06",
+          "source_revision": "Issue #225 over-split sense audit at 3e07c1b224cc7f7324f044b807cef9e17d321c2c",
+          "rationale": "The current w321-s1 and w321-s2 relation paths are identical (near to r042-s1). Merge the physical temperature and figurative response frames into one gloss while keeping one existing route, record ID, and surviving sense ID.",
+          "boundary_decision": "merge"
         }
       ],
       "boundary_decision_history": [
@@ -1047,18 +1055,26 @@
           "before_record_sha256": "ec5c8d111bb871d647dd16981450e2a181e6512ab045e20dadd5e87f140a9d64",
           "after_record_sha256": "4873a01aef4ccd59ae82e3c83f736ae29e4d4dcf77da02457c02cd3152a63b3d",
           "rationale": "w1266 boundary merge was explicitly resolved: writing and speech contexts do not establish separate senses."
+        },
+        {
+          "record_id": "w321",
+          "decision": "merge",
+          "before_record_sha256": "12db3cff814dbb8265db3f7aac705b5fad1f6a0838c9c44835231a695aefb046",
+          "after_record_sha256": "920d3b792822bfbba52fb4759047083f51f76ffed7f88d02951e513399ce0f06",
+          "review_id": "issue-225-over-split-audit:w321:boundary",
+          "rationale": "w321-s1 remains one broader Typewriter sense because both previous senses led to the same near path r042-s1; the duplicate path is reconciled once."
         }
       ],
       "correction_source": {
         "kind": "separately-authored-correction-manifest",
-        "path": "data/validation/canonical-semantic-correction-manifest.json",
-        "sha256": "6fd45afc91b29f0eefe0ac558db512d36c7e84b67aa0425aac6a2863f62885ee",
-        "source_revision": "post-merge review of PR #123 for issue #121"
+        "path": "data/validation/issue-225-semantic-correction-manifest.json",
+        "sha256": "87961eafbd32c7be992c7e6e44d247875f96224988f3b7c9a99222215602f001",
+        "source_revision": "Issue #225 over-split sense audit at 3e07c1b224cc7f7324f044b807cef9e17d321c2c"
       }
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e"
+      "canonical_records_sha256": "83d3316f276563f94468a7863aadad26a000daf932a2c61a6b3b661934f9a7cc"
     },
     "records": [
       {
@@ -24906,46 +24922,26 @@
       },
       {
         "record_id": "w321",
-        "record_sha256": "12db3cff814dbb8265db3f7aac705b5fad1f6a0838c9c44835231a695aefb046",
+        "record_sha256": "920d3b792822bfbba52fb4759047083f51f76ffed7f88d02951e513399ce0f06",
         "boundary_review": {
-          "review_id": "canonical-semantic-review:w321:boundary",
-          "decision": "split",
-          "classification": "separated",
+          "review_id": "issue-225-over-split-audit:w321:boundary",
+          "decision": "retain",
+          "classification": "atomic",
           "evidence": [
             {
               "sense_id": "w321-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            },
-            {
-              "sense_id": "w321-s2",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
+              "evidence_basis": "merged Typewriter gloss preserves physical temperature and figurative response frames under one identical writer route",
+              "rationale": "w321 w321-s1 merged gloss 3bc11121583a retains the temperature and response uses with one near route."
             }
           ],
-          "pairwise": [
-            {
-              "left_sense_id": "w321-s1",
-              "right_sense_id": "w321-s2",
-              "relationship": "distinct",
-              "decision": "retain",
-              "evidence_basis_code": "reason-545878a3d3eb2fdd",
-              "distinguishing_feature_code": "reason-2f1877e087abf514",
-              "rationale_code": "reason-da8b8258221dede7"
-            }
-          ],
-          "rationale_code": "reason-f40834b546915e0f"
+          "pairwise": [],
+          "rationale": "w321-s1 remains one broader Typewriter sense because both previous senses led to the same near path r042-s1; the duplicate path is reconciled once."
         },
         "sense_reviews": [
           {
             "sense_id": "w321-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          },
-          {
-            "sense_id": "w321-s2",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
+            "relation_rationale": "w321 w321-s1 keeps one reviewed near route to r042-s1 after deduplicating the repeated route."
           }
         ]
       },
@@ -100860,8 +100856,8 @@
   },
   "correction_source": {
     "kind": "separately-authored-correction-manifest",
-    "path": "data/validation/canonical-semantic-correction-manifest.json",
-    "sha256": "6fd45afc91b29f0eefe0ac558db512d36c7e84b67aa0425aac6a2863f62885ee",
-    "source_revision": "post-merge review of PR #123 for issue #121"
+    "path": "data/validation/issue-225-semantic-correction-manifest.json",
+    "sha256": "87961eafbd32c7be992c7e6e44d247875f96224988f3b7c9a99222215602f001",
+    "source_revision": "Issue #225 over-split sense audit at 3e07c1b224cc7f7324f044b807cef9e17d321c2c"
   }
 }

@@ -1,0 +1,321 @@
+{
+  "schema_version": "1",
+  "contract_version": "issue-225-sense-boundary-decisions-v1",
+  "issue": 225,
+  "parent_issue": 218,
+  "source_revision": "3e07c1b224cc7f7324f044b807cef9e17d321c2c",
+  "default_hold_basis": "Keep the current split while the writer-facing boundary remains unresolved. A retained split needs both a concrete sentence/argument/scene frame difference and a distinct authored relation path. Missing paths are not evidence that two senses are equivalent, so do not merge from absence alone.",
+  "keep_split": [
+    {
+      "record_id": "w308",
+      "frames": {
+        "w308-s1": "One target receives love and dislike at the same time.",
+        "w308-s2": "A person wants to leave a loved relationship or target but cannot let go."
+      }
+    },
+    {
+      "record_id": "w315",
+      "frames": {
+        "w315-s1": "A physical object or fastening is loose rather than taut.",
+        "w315-s2": "A rule or a state of tension is lenient and leaves room."
+      }
+    },
+    {
+      "record_id": "w325",
+      "frames": {
+        "w325-s1": "A localized part of the body feels slightly numb and painful.",
+        "w325-s2": "An emotion is touched and the heart aches."
+      }
+    },
+    {
+      "record_id": "w326",
+      "frames": {
+        "w326-s1": "Teeth or joints ache with a cold or throbbing bodily sensation.",
+        "w326-s2": "The heart aches emotionally and rises into a sudden feeling."
+      }
+    },
+    {
+      "record_id": "w328",
+      "frames": {
+        "w328-s1": "Light grows in the darkness before sunrise.",
+        "w328-s2": "A sign appears that an event or era is about to begin."
+      }
+    },
+    {
+      "record_id": "w336",
+      "frames": {
+        "w336-s1": "Water or another liquid moves continuously in one direction.",
+        "w336-s2": "Time or a state passes without stopping."
+      }
+    },
+    {
+      "record_id": "w337",
+      "frames": {
+        "w337-s1": "Liquid or light passes through a gap into an interior.",
+        "w337-s2": "An emotion or thought gradually spreads into the mind."
+      }
+    },
+    {
+      "record_id": "w339",
+      "frames": {
+        "w339-s1": "Something visible or present can no longer be seen or found.",
+        "w339-s2": "A memory or emotion gradually ceases to remain."
+      }
+    },
+    {
+      "record_id": "w340",
+      "frames": {
+        "w340-s1": "Liquid or color spreads outward over a surface.",
+        "w340-s2": "An emotion or expression spreads outward and becomes visible to others."
+      }
+    },
+    {
+      "record_id": "w342",
+      "frames": {
+        "w342-s1": "A hand or sense searches by feeling along a physical space.",
+        "w342-s2": "A speaker struggles to retrieve a word or memory."
+      }
+    },
+    {
+      "record_id": "w349",
+      "frames": {
+        "w349-s1": "Water or dirt leaves a visible mark on a surface.",
+        "w349-s2": "A memory or reputation retains a lasting stain."
+      }
+    },
+    {
+      "record_id": "w048",
+      "frames": {
+        "w048-s1": "An object's physical weight is low.",
+        "w048-s2": "The burden of a task or feeling is small."
+      }
+    },
+    {
+      "record_id": "w049",
+      "frames": {
+        "w049-s1": "An object's physical weight is high.",
+        "w049-s2": "A task or feeling places a substantial burden on someone."
+      }
+    },
+    {
+      "record_id": "w066",
+      "frames": {
+        "w066-s1": "Light makes a dark scene or an object visible.",
+        "w066-s2": "A surface or color presents a particular brightness and hue."
+      }
+    },
+    {
+      "record_id": "w133",
+      "frames": {
+        "w133-s1": "A body organ receives light so a person can see objects.",
+        "w133-s2": "White ice grains fall from the sky into a weather scene."
+      }
+    },
+    {
+      "record_id": "w237",
+      "frames": {
+        "w237-s1": "A person makes and records written language.",
+        "w237-s2": "A person operates a tool or object for a purpose.",
+        "w237-s3": "A person puts on or wears clothing or an accessory.",
+        "w237-s4": "A taste is perceived by the tongue as unpleasant and sharp."
+      }
+    },
+    {
+      "record_id": "w271",
+      "frames": {
+        "w271-s1": "A person's inner life feels thoughts and emotions.",
+        "w271-s2": "A person forms an intention or willingness to act."
+      }
+    },
+    {
+      "record_id": "w044",
+      "frames": {
+        "w044-s1": "A touched surface feels uneven and coarse.",
+        "w044-s2": "A person's speech or manner is forceful and unpolished."
+      }
+    },
+    {
+      "record_id": "w045",
+      "frames": {
+        "w045-s1": "A touched surface feels smooth rather than coarse.",
+        "w045-s2": "A person's manner is gentle and puts another person at ease."
+      }
+    },
+    {
+      "record_id": "w046",
+      "frames": {
+        "w046-s1": "An edge or point is physically sharp and can cut.",
+        "w046-s2": "A sense or response is sensitive and quick."
+      }
+    },
+    {
+      "record_id": "w047",
+      "frames": {
+        "w047-s1": "An edge or point is physically blunt and does not cut well.",
+        "w047-s2": "A sense or response is slow and not very sensitive."
+      }
+    },
+    {
+      "record_id": "w068",
+      "frames": {
+        "w068-s1": "An object blocks light and casts a dark shape behind or below it.",
+        "w068-s2": "An influence or trace follows a person or event over time."
+      }
+    },
+    {
+      "record_id": "w070",
+      "frames": {
+        "w070-s1": "A color or light weakens as time passes.",
+        "w070-s2": "The clarity of a memory or emotion weakens over time."
+      }
+    },
+    {
+      "record_id": "w075",
+      "frames": {
+        "w075-s1": "A physical object or space has a measurable hot or cold state.",
+        "w075-s2": "A person or relationship gives off a warm or cold atmosphere."
+      }
+    },
+    {
+      "record_id": "w076",
+      "frames": {
+        "w076-s1": "Air or an object gives off physical heat.",
+        "w076-s2": "A group becomes absorbed and collectively excited."
+      }
+    },
+    {
+      "record_id": "w081",
+      "frames": {
+        "w081-s1": "Air or a physical scene feels slightly cold.",
+        "w081-s2": "A tone or atmosphere feels cold and eerie."
+      }
+    },
+    {
+      "record_id": "w134",
+      "frames": {
+        "w134-s1": "Moving air touches skin or moves objects in a scene.",
+        "w134-s2": "A person hopes for an outcome to come true."
+      }
+    },
+    {
+      "record_id": "w185",
+      "frames": {
+        "w185-s1": "A person turns the body or gaze toward a place behind or already passed.",
+        "w185-s2": "A person considers past events or other people."
+      }
+    },
+    {
+      "record_id": "w186",
+      "frames": {
+        "w186-s1": "A person leaves a place or another person's side and goes elsewhere.",
+        "w186-s2": "A person reaches the end of life."
+      }
+    },
+    {
+      "record_id": "w200",
+      "frames": {
+        "w200-s1": "A speaker expresses a thought or feeling as audible speech.",
+        "w200-s2": "A speaker informs another person of content or a fact."
+      }
+    },
+    {
+      "record_id": "w248",
+      "frames": {
+        "w248-s1": "A physical part at the front of the head contains the eyes, nose, and mouth.",
+        "w248-s2": "A person's expression or outward appearance is visible to others."
+      }
+    },
+    {
+      "record_id": "w250",
+      "frames": {
+        "w250-s1": "A body part at the end of an arm grasps or moves objects.",
+        "w250-s2": "A person or force contributes help or labor."
+      }
+    },
+    {
+      "record_id": "w251",
+      "frames": {
+        "w251-s1": "A body part at the end of a leg supports the body and enables walking.",
+        "w251-s2": "A step or trace marks movement from one place to another."
+      }
+    },
+    {
+      "record_id": "w252",
+      "frames": {
+        "w252-s1": "The physical part above the neck contains the brain and face.",
+        "w252-s2": "A person thinks and judges with a mental capacity."
+      }
+    },
+    {
+      "record_id": "w253",
+      "frames": {
+        "w253-s1": "A physical part joins the arm and torso.",
+        "w253-s2": "A person takes a position of responsibility or burden."
+      }
+    },
+    {
+      "record_id": "w272",
+      "frames": {
+        "w272-s1": "A person mentally considers or recalls a subject or event.",
+        "w272-s2": "A person settles on an opinion or judgment about a matter."
+      }
+    },
+    {
+      "record_id": "w273",
+      "frames": {
+        "w273-s1": "A word or sentence expresses a person's thought or intention.",
+        "w273-s2": "A person speaks a story or utterance aloud."
+      }
+    },
+    {
+      "record_id": "w280",
+      "frames": {
+        "w280-s1": "New information arrives about a person or event.",
+        "w280-s2": "A message communicates someone's well-being or recent circumstances."
+      }
+    },
+    {
+      "record_id": "w291",
+      "frames": {
+        "w291-s1": "A person's feet cannot move, so the person cannot leave a place.",
+        "w291-s2": "Circumstances prevent a person from acting or moving freely."
+      }
+    },
+    {
+      "record_id": "w052",
+      "frames": {
+        "w052-s1": "A physical space has a large distance to its bottom or end.",
+        "w052-s2": "Thought or emotion continues broadly and deeply over time."
+      }
+    },
+    {
+      "record_id": "w053",
+      "frames": {
+        "w053-s1": "A physical space has a small distance to its bottom or end.",
+        "w053-s2": "Thought or emotion stays superficial rather than examining a matter."
+      }
+    },
+    {
+      "record_id": "w085",
+      "frames": {
+        "w085-s1": "A physical surface or state has lost moisture or vitality and is dry.",
+        "w085-s2": "An emotion or relationship lacks warmth and liveliness."
+      }
+    }
+  ],
+  "merge_senses": [
+    {
+      "record_id": "w321",
+      "removed_sense_ids": ["w321-s2"],
+      "merged_gloss": "온도는 뜨겁지도 차갑지도 않고, 반응이나 태도는 적극적이지 않다.",
+      "rationale": "The two glosses describe physical temperature and a figurative response or attitude, but both current senses point through the same near relation to r042-s1. The split therefore does not change the writer's next relation route. Keep the record ID and surviving sense ID, and reconcile the duplicate relation tuple once.",
+      "relation_reconciliation": "Retain the existing near relation from w321-s1 to r042-s1 once; remove the duplicate route carried by w321-s2. Exact lemma and search-form ownership remain on w321."
+    }
+  ],
+  "hold_overrides": [
+    {
+      "record_id": "w5356",
+      "rationale": "The glosses separate the mental act of retaining past events from the remembered content that returns to mind, so merging would erase a useful process-versus-content distinction. Neither sense has an authored relation route, however, so the second Typewriter boundary condition is not demonstrated. Keep both senses pending concrete writer-facing relation direction or target-POS evidence."
+    }
+  ]
+}

@@ -2052,7 +2052,11 @@ test('shared semantic admission blocks a source POS that conflicts with independ
   }));
 });
 
-function multiSenseProductionReview(record, { relationship = 'distinct', pairDecision = 'retain' } = {}) {
+function multiSenseProductionReview(record, {
+  relationship = 'distinct',
+  pairDecision = 'retain',
+  writerBoundary,
+} = {}) {
   const decisionSourceId = `future-batch:${record.id}:decision-source`;
   const pair = inspectSenseBoundaryPairs(record)[0];
   const left = record.senses[0];
@@ -2112,22 +2116,25 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
         decision_source_id: decisionSourceId,
         decision_source_version: 'lexical-semantic-boundary-decisions-v1',
       },
-      findings: record.senses.map((sense) => ({
-        sense_id: sense.id,
-        action: 'split',
-        classification: 'separated',
-        rationale: `${record.id} ${sense.id} was reviewed from the authored pair decision`,
-        semantic_evidence: {
-          status: 'pass',
-          gloss_sha256: createHash('sha256').update(JSON.stringify(sense.gloss), 'utf8').digest('hex'),
-          observed_domain_axes: [],
-          domain_evidence: [],
-          connector_observations: [],
-          rationale: `${record.id} ${sense.id} semantic evidence was authored`,
-          boundary_decision: 'split',
-          decision_source_id: decisionSourceId,
-        },
-      })),
+      findings: record.senses.map((sense) => {
+        const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
+        return {
+          sense_id: sense.id,
+          action: 'split',
+          classification: 'separated',
+          rationale: `${record.id} ${sense.id} was reviewed from the authored pair decision`,
+          semantic_evidence: {
+            status: 'pass',
+            gloss_sha256: createHash('sha256').update(JSON.stringify(sense.gloss), 'utf8').digest('hex'),
+            observed_domain_axes: domainEvidence.axes,
+            domain_evidence: domainEvidence.matches,
+            connector_observations: inspectGlossConnectors(sense.gloss),
+            rationale: `${record.id} ${sense.id} semantic evidence was authored`,
+            boundary_decision: domainEvidence.axes.length > 1 ? 'coordinated' : 'split',
+            decision_source_id: decisionSourceId,
+          },
+        };
+      }),
       pairwise: [{
         left_sense_id: pair.left_sense_id,
         right_sense_id: pair.right_sense_id,
@@ -2139,6 +2146,7 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
         distinguishing_feature: 'the pair has an authored writer-facing distinction',
         decision_source_id: decisionSourceId,
         rationale: `${record.id} ${left.id} ${right.id} pair cites ${leftGlossSha256.slice(0, 12)} and ${rightGlossSha256.slice(0, 12)}.`,
+        ...(writerBoundary ? { writer_boundary: writerBoundary } : {}),
       }],
       rationale: `${record.id} pair boundary was authored independently of the current sense count`,
     },
@@ -2160,14 +2168,19 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
     relation: {
       status: 'pass',
       decision_source_id: decisionSourceId,
-      per_sense: record.senses.map((sense) => ({
-        sense_id: sense.id,
-        decision: 'no-relations',
-        decision_source_id: decisionSourceId,
-        relation_count: 0,
-        relation_ids: [],
-        no_relation_rationale: `${record.id} ${sense.id} has no relation tuple after authored review`,
-      })),
+      per_sense: record.senses.map((sense) => {
+        const relationCount = sense.relations?.length ?? 0;
+        return {
+          sense_id: sense.id,
+          decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+          decision_source_id: decisionSourceId,
+          relation_count: relationCount,
+          relation_ids: Array.from({ length: relationCount }, (_, index) => `${sense.id}:relation-${index + 1}`),
+          ...(relationCount === 0
+            ? { no_relation_rationale: `${record.id} ${sense.id} has no relation tuple after authored review` }
+            : {}),
+        };
+      }),
     },
     selection: {
       status: 'selected',
@@ -2177,6 +2190,139 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
     },
   };
 }
+
+function writerBoundary(leftGloss, leftFrame, rightGloss, rightFrame) {
+  return {
+    left_frame: { gloss_excerpt: leftGloss, sentence_frame: leftFrame },
+    right_frame: { gloss_excerpt: rightGloss, sentence_frame: rightFrame },
+    frame_contrast: 'The subject, argument, and scene frame differ in a way that changes the writer-facing reading.',
+    relation_path_rationale: 'Each sense leads to a different authored relation destination or direction.',
+  };
+}
+
+test('fresh splits reject dictionary-distinguishable senses with the same writer route', () => {
+  const record = {
+    id: 'w-same-writer-route',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-same-writer-route',
+    lemma: '미지근한 합성 예',
+    search_forms: ['미지근한 합성 예'],
+    senses: [
+      {
+        id: 'w-same-writer-route-s1',
+        pos: 'adjective',
+        gloss: '온도가 뜨겁지도 차갑지도 않다.',
+        relations: [{ type: 'near', target: 'r-temperature', target_sense: 'r-temperature-s1' }],
+      },
+      {
+        id: 'w-same-writer-route-s2',
+        pos: 'adjective',
+        gloss: '반응이 적극적이지 않고 시큰둥하다.',
+        relations: [{ type: 'near', target: 'r-temperature', target_sense: 'r-temperature-s1' }],
+      },
+    ],
+  };
+  const review = multiSenseProductionReview(record, {
+    writerBoundary: writerBoundary(
+      record.senses[0].gloss,
+      'temperature of a physical object or space',
+      record.senses[1].gloss,
+      'a restrained response',
+    ),
+  });
+  assert.throws(
+    () => validateLexicalSemanticReview(review, {
+      decision: 'included',
+      candidateRecord: record,
+      catalogCount: 1,
+      requireSemanticEvidence: true,
+      requireWriterBoundaryEvidence: true,
+    }),
+    (error) => error.code === 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER'
+      && error.message.includes('distinct writer-facing relation paths'),
+  );
+});
+
+test('fresh genuine polysemy passes when both its frame and relation destination differ', () => {
+  const record = {
+    id: 'w-genuine-polysemy',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-genuine-polysemy',
+    lemma: '눈',
+    search_forms: ['눈'],
+    senses: [
+      {
+        id: 'w-genuine-polysemy-s1',
+        pos: 'noun',
+        gloss: '빛을 받아 사물을 보는 몸의 기관.',
+        relations: [{ type: 'action', target: 'w-look', target_sense: 'w-look-s1' }],
+      },
+      {
+        id: 'w-genuine-polysemy-s2',
+        pos: 'noun',
+        gloss: '하늘에서 내리는 흰 얼음 알갱이.',
+        relations: [{ type: 'scene', target: 'w-snowfield', target_sense: 'w-snowfield-s1' }],
+      },
+    ],
+  };
+  const review = multiSenseProductionReview(record, {
+    writerBoundary: writerBoundary(
+      record.senses[0].gloss,
+      'a body organ that receives light and sees objects',
+      record.senses[1].gloss,
+      'ice grains falling from the sky into a weather scene',
+    ),
+  });
+  assert.doesNotThrow(() => validateLexicalSemanticReview(review, {
+    decision: 'included',
+    candidateRecord: record,
+    catalogCount: 1,
+    requireSemanticEvidence: true,
+    requireWriterBoundaryEvidence: true,
+  }));
+});
+
+test('fresh splits may be supported by a different relation direction', () => {
+  const record = {
+    id: 'w-different-writer-direction',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-different-writer-direction',
+    lemma: '손',
+    search_forms: ['손'],
+    senses: [
+      {
+        id: 'w-different-writer-direction-s1',
+        pos: 'noun',
+        gloss: '팔 끝에 붙어 물건을 잡거나 움직이는 몸의 부분.',
+        relations: [{ type: 'action', target: 'w-grasp', target_sense: 'w-grasp-s1' }],
+      },
+      {
+        id: 'w-different-writer-direction-s2',
+        pos: 'noun',
+        gloss: '도움이나 일손을 보태는 사람 또는 힘.',
+        relations: [{ type: 'association', target: 'w-help', target_sense: 'w-help-s1' }],
+      },
+    ],
+  };
+  const review = multiSenseProductionReview(record, {
+    writerBoundary: writerBoundary(
+      record.senses[0].gloss,
+      'a body part that grasps or moves objects',
+      record.senses[1].gloss,
+      'a person or force that helps with work',
+    ),
+  });
+  assert.doesNotThrow(() => validateLexicalSemanticReview(review, {
+    decision: 'included',
+    candidateRecord: record,
+    catalogCount: 1,
+    requireSemanticEvidence: true,
+    requireWriterBoundaryEvidence: true,
+  }));
+});
 
 test('shared admission regressions keep semantic bindings, search policy, and per-sense coverage merge-blocking', () => {
   const singleSenseRecord = {

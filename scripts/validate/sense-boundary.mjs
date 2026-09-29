@@ -150,3 +150,31 @@ export function inspectSenseBoundaryPairs(record) {
   }
   return pairs;
 }
+
+/**
+ * Return the writer-facing relation path for one sense. Relation notes are
+ * deliberately excluded: two editorial explanations for the same path do
+ * not create two different paths.
+ */
+export function inspectWriterRelationPath(record, senseId) {
+  const sense = record?.senses?.find(({ id }) => id === senseId);
+  if (!sense) return [];
+  return (sense.relations ?? [])
+    .map((relation) => ({
+      type: relation.type,
+      target: relation.target,
+      target_sense: relation.target_sense ?? null,
+    }))
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+}
+
+/**
+ * The writer-facing route must differ by relation direction or destination.
+ * Relation count and note wording alone never establish a distinct path.
+ */
+export function hasDistinctWriterRelationPaths(record, leftSenseId, rightSenseId) {
+  const left = inspectWriterRelationPath(record, leftSenseId);
+  const right = inspectWriterRelationPath(record, rightSenseId);
+  if (left.length === 0 || right.length === 0) return false;
+  return JSON.stringify(left) !== JSON.stringify(right);
+}
