@@ -270,11 +270,17 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             self.assertEqual(excluded["selection"]["excluded_candidate_lemma_count"], 1)
 
     def test_candidate_limit_is_bounded(self):
-        with self.assertRaisesRegex(ValueError, "candidate limit must be 1-200"):
+        self.assertEqual(pilot.TARGET_CANDIDATES, 200)
+        self.assertEqual(pilot.MAX_CANDIDATE_LIMIT, 500)
+        self.assertEqual(pilot.validate_candidate_limit(200), 200)
+        self.assertEqual(pilot.validate_candidate_limit(500), 500)
+        with self.assertRaisesRegex(ValueError, "Candidate limit must be 1-500"):
+            pilot.validate_candidate_limit(501)
+        with self.assertRaisesRegex(ValueError, "Candidate limit must be 1-500"):
             pilot.run_extraction(
                 dictionary_path=Path("missing.sqlite"),
                 analyzer=FakeAnalyzer(),
-                candidate_limit=201,
+                candidate_limit=501,
             )
 
 

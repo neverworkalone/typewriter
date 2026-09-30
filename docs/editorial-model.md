@@ -60,6 +60,45 @@ records use direct search when valid and in scope; relation navigation remains a
 separate path. The existing role/count fields preserve editorial provenance and
 historical inventory totals only.
 
+## Editorial precision tiers (Issue #229)
+
+Typewriter uses different quality thresholds for dictionary-like claims and
+writer-facing exploration. This distinction governs editorial review; it is
+not an automatic usefulness score.
+
+### Tier 1 — trust and precision first
+
+Apply dictionary-grade precision to glosses, `direct`, and `antonym`:
+
+- A gloss must accurately describe the reviewed lexical sense.
+- A `direct` relation must be substitutable in the relevant sense and frame.
+- An `antonym` must oppose the same meaningful axis and sense.
+- Hold ambiguous or unsupported claims until their identity and evidence are
+  resolved.
+
+### Tier 2 — exploration and richness first
+
+Apply richness-first review to `near`, `mood`, `scene`, `sensory`, `action`,
+and `association`:
+
+- The relation type must honestly describe the distance, and the source/target
+  sense binding must be materially correct.
+- The connection must be intelligible as a path a writer could explore; it
+  need not suit every writer or be universally useful.
+- Subjectivity, distance, or a reviewer preferring another word is not by
+  itself a reason to hold or reject a plausible relation.
+- Prefer an honest broader type over deleting a plausible route that cannot
+  qualify as `direct`.
+
+For example, `외롭다 → 옥상` is not a `direct` synonym. It may be a plausible
+`scene` or `association` when the authored connection gives a writer an
+intelligible route into a scene. Do not add a validator that mechanically
+scores every exploratory relation's usefulness.
+
+Lexical admission remains independent from relation enrichment. A valid
+in-scope lexical entry remains admissible and searchable with zero relations;
+neither relation richness nor writer usefulness is an admission requirement.
+
 ## 범위와 상태
 
 이 문서는 M1-2에서 처음 canonical에 넣은 대표 출발어 40개, M1-3에서

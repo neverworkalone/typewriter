@@ -22,13 +22,13 @@ const LOCAL_PILOT_DIRECTORY = path.join(
 );
 const REFERENCE_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/reference');
 const ROW_RESULT_LIMIT = 3;
-const EXPECTED_PILOT_SIZE = 100;
-const MAX_CANDIDATE_LIMIT = 200;
+export const DEFAULT_CANDIDATE_LIMIT = 200;
+export const MAX_CANDIDATE_LIMIT = 500;
 
-function parseArguments(argumentsList) {
+export function parseArguments(argumentsList) {
   const options = {
     python: process.env.TYPEWRITER_PYTHON || 'python3',
-    candidateLimit: EXPECTED_PILOT_SIZE,
+    candidateLimit: DEFAULT_CANDIDATE_LIMIT,
     outputDirectory: LOCAL_PILOT_DIRECTORY,
     exclusionLemmaSources: [],
     batchId: 'issue-201-pilot',
@@ -365,7 +365,7 @@ async function main() {
   if (options.help) {
     console.log(
       'Usage: node scripts/reference/run-corpus-lemma-pilot.mjs --python <venv-python>\n'
-        + 'Runs local/manual bounded candidate production. Options: --candidate-limit 1-200, '
+        + 'Runs local/manual bounded candidate production. Options: --candidate-limit 1-500 (default 200), '
         + '--batch-id <id>, --output-directory data/reference/<path>, repeated '
         + '--exclude-lemma-source <tracked-json>. Requires the ignored full-corpus index '
         + 'and kiwipiepy==0.24.0 installed in the selected Python environment.',

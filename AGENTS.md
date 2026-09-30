@@ -114,6 +114,23 @@ The planned progression is deliberately staged:
 4. validate writer search UX in actual use;
 5. only then expand to thousands of entries.
 
+### Post-5K production scale mode
+
+Once lexical admission, search, deterministic builds, and recurring-defect
+regressions are validated, production throughput should rise. Bounded batches
+are reviewable safety and transaction checkpoints, not a cap on issue-level
+progress. Start corpus production around 200 candidates per batch and allow
+growth toward 500 after consecutive clean batches. Continue through clean,
+low-yield batches until the issue checkpoint is reached; pause only for a new
+systemic defect, exhausted candidate sources, or an explicit product/model/
+licensing blocker. Fix systemic defects in shared rules and resume afterward.
+
+Use two editorial precision tiers: gloss, `direct`, and `antonym` require
+dictionary-grade precision; `near`, `mood`, `scene`, `sensory`, `action`, and
+`association` favor honest, writer-intelligible exploration. Relation
+enrichment remains independent of lexical admission. See
+[`docs/editorial-model.md`](docs/editorial-model.md) for the full contract.
+
 When working before the scale milestones:
 
 - do not optimize architecture for 100,000+ entries without demonstrated need;
