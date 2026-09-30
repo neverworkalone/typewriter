@@ -32,8 +32,8 @@ DEFAULT_STAGING_PATH = LOCAL_PILOT_DIRECTORY / "candidate-analysis.sqlite"
 DEFAULT_SELECTION_PATH = LOCAL_PILOT_DIRECTORY / "candidate-selection.json"
 EXTRACTOR_VERSION = "2"
 SAMPLE_EVERY_PARAGRAPHS = 20
-TARGET_CANDIDATES = 100
-MAX_CANDIDATE_LIMIT = 200
+TARGET_CANDIDATES = 200
+MAX_CANDIDATE_LIMIT = 500
 ROW_BATCH_SIZE = 32
 TOP_SURFACE_FORMS = 5
 ELIGIBLE_TAGS = {
@@ -673,6 +673,12 @@ def select_candidate_rows(
     return candidates
 
 
+def validate_candidate_limit(candidate_limit: int) -> int:
+    if candidate_limit < 1 or candidate_limit > MAX_CANDIDATE_LIMIT:
+        raise ValueError(f"Candidate limit must be 1-{MAX_CANDIDATE_LIMIT}.")
+    return candidate_limit
+
+
 def run_extraction(
     *,
     index_path: Path = DEFAULT_INDEX_PATH,
@@ -686,10 +692,9 @@ def run_extraction(
     candidate_limit: int = TARGET_CANDIDATES,
     batch_size: int = ROW_BATCH_SIZE,
 ) -> dict:
-    if sample_every < 1 or candidate_limit < 1 or candidate_limit > MAX_CANDIDATE_LIMIT or batch_size < 1:
-        raise ValueError(
-            f"Sample interval and row batch size must be positive; candidate limit must be 1-{MAX_CANDIDATE_LIMIT}."
-        )
+    validate_candidate_limit(candidate_limit)
+    if sample_every < 1 or batch_size < 1:
+        raise ValueError("Sample interval and row batch size must be positive.")
     permission_sha256 = read_permission_record(permission_record_path)
     exclusion_manifest = read_exclusion_manifest(exclusion_manifest_path)
     for path in (index_path, dictionary_path):

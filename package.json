@@ -101,6 +101,7 @@
     "batch:issue-220:check": "node scripts/batch/validate-issue-220.mjs",
     "batch:issue-220:report": "node scripts/batch/validate-issue-220.mjs --write-report",
     "batch:issue-221:check": "node scripts/batch/validate-issue-221.mjs",
+    "batch:m9:progress": "node scripts/batch/m9-production-progress.mjs",
     "validate:corpus-candidate-review": "node scripts/reference/validate-corpus-candidate-review.mjs",
     "batch:m5-12a:check": "node scripts/batch/m5-12a-pipeline.mjs",
     "batch:m5-12a:decision-scaffold:build": "node scripts/batch/build-m5-12a-decision-scaffold.mjs",

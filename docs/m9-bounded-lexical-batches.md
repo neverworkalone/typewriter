@@ -27,11 +27,41 @@ For `record_type: expression`, the shared authored semantic-decision validator r
 
 The machine report records reviewed and admitted counts, holds, rejections, corrections, duplicates, search collisions, senses, relations, expressions, observed defect classes, validation status, and any measured review duration. Preserve `NOT_MEASURED` when a duration was not recorded; do not infer throughput from candidate count.
 
-## Initial batch-size calibration
+## Historical pilot calibration
 
-Issue #219 reviewed the first 20 rows in a coherent M5-15 axis C capacity-reserve cohort. All 20 were reviewed through fresh lexical, POS, sense, baseline-search, and complete-audit checks; 10 were held, 10 were rejected, and none was admitted while the only candidate-specific fixedness evidence remained under pending source terms. This supports 20 as the initial M9 review-slice size for follow-up batches. Review duration was not measured, so 20 is a slice-size calibration rather than a throughput estimate. Reassess it using later defect rates and review workload.
+Issue #219 reviewed the first 20 rows in a coherent M5-15 axis C capacity-reserve cohort. All 20 were reviewed through fresh lexical, POS, sense, baseline-search, and complete-audit checks; 10 were held, 10 were rejected, and none was admitted while the only candidate-specific fixedness evidence remained under pending source terms. Review duration was not measured. This remains a historical pilot slice only; it does not establish a production batch size or a throughput estimate.
 
-Batch size controls review scope only. It does not define how many candidates must be admitted, and M9-A does not advance the separate 6,000-start milestone or authorize corpus expansion.
+The 20-row slice and its findings remain historical pilot evidence. They do not set the post-5K production batch size or issue completion criteria.
+
+## Post-5K production mode (Issue #229)
+
+Start sustained corpus production at approximately 200 candidates per batch.
+After consecutive clean batches introduce no new systemic defect and review
+and CI burden remains acceptable, batches may grow toward 500. Decrease the
+size temporarily when isolating a new defect. Candidate limits control the
+review transaction, not the required admission count.
+
+A bounded batch is a deterministic review unit, validation checkpoint, and
+rollback/debugging boundary. It is not an issue-level stopping condition or a
+reason to request renewed authorization after every clean slice. Continue with
+the next ranked unseen candidates through clean batches until the issue's net
+canonical-growth checkpoint is reached. Low yield preserves admission
+standards and causes more candidates to be reviewed; it does not complete the
+scale issue.
+
+Pause only when a systemic defect requires a shared fix, the candidate source
+is exhausted, or an explicit product/model/licensing blocker prevents safe
+continuation. For a systemic defect, stop expansion, add a generalized
+regression at the shared boundary, run the relevant validation, and then
+resume. Do not work around a defect with batch-specific exceptions.
+
+For each scale run, record the checkpoint target, canonical count at start and
+now, net admissions, remaining records, batches processed, candidate
+selection/admit/hold/reject counts, whether continuation is required, and the
+stop reason. `npm run batch:m9:progress` produces the normalized deterministic
+progress record from these inputs. A low-yield clean run below target reports
+`continuation_required: true`; systemic defects, source exhaustion, product or
+licensing blockers, and a reached checkpoint stop continuation.
 
 ## Validation boundary
 

@@ -14,7 +14,7 @@ Run the permission-gated, local/manual command from the repository root:
 npm run reference:corpus:candidates -- \
   --python /path/to/kiwipiepy-0.24.0-venv/bin/python \
   --batch-id m9-d-batch-01-YYYYMMDD \
-  --candidate-limit 20 \
+  --candidate-limit 200 \
   --output-directory data/reference/production/m9-d/batch-01 \
   --exclude-lemma-source data/inventory/m5-target-seed.json \
   --exclude-lemma-source data/batches/prior-corpus-candidate-review.json
@@ -24,7 +24,29 @@ Use an approved local index and a Python environment pinned to `kiwipiepy==0.24.
 
 The extractor reads only one sampled paragraph batch at a time; it does not load the multi-gigabyte source or index into memory. It samples every twentieth paragraph in stable source/document order, applies the pinned Kiwi one-best analysis, maps `NNG`/`VV`/`VA` to noun/verb/adjective, adds citation `다` to verb/adjective morphemes, and retains the observed surface and analyzed morpheme span separately. The current minimum proposal shape is two precomposed Hangul syllables. These are extraction rules, not proof of a correct lemma or POS.
 
-Candidate ordering uses distinct source count, distinct document count, analyzed-morpheme observations, then Unicode-binary lemma order. This is a bounded review-priority rule only. It does not rank writer usefulness or authorize admission. Selection is capped at 200; use small review batches until defects and editorial workload are measured.
+Candidate ordering uses distinct source count, distinct document count, analyzed-morpheme observations, then Unicode-binary lemma order. This is a bounded review-priority rule only. It does not rank writer usefulness or authorize admission. Production starts around 200 candidates per batch; the runner supports up to 500 so the batch may grow after consecutive clean reviews and acceptable review/CI burden. The 20-candidate Issue #221 slice is retained as historical pilot evidence.
+
+## Production loop and checkpoint progress
+
+Treat each batch as a complete transaction and safety checkpoint. After a
+clean batch, continue with the next ranked unseen candidates without requiring
+the user to re-authorize each small slice. Continue until the issue-level net
+canonical-growth target is reached. A clean low-yield batch keeps admission
+standards unchanged and advances to more candidates; it is not a reason to
+stop or lower the bar.
+
+Pause expansion when a new systemic defect appears, the source is exhausted,
+or an explicit product/model/licensing blocker prevents continuation. Fix a
+systemic defect in the shared producer, validator, admission, or search layer,
+add a generalized regression, run relevant validation, then resume.
+
+For a run, provide its checkpoint target, starting and current canonical
+counts, processed-batch count, cumulative selected/admit/hold/reject counts,
+defect classes, source-exhaustion state, and any product or licensing blocker
+as JSON on stdin to `npm run batch:m9:progress`. The command emits deterministic
+net growth, remaining records, `continuation_required`, and `stop_reason`
+fields. Keep the complete candidate-disposition and shared admission checks
+for every batch; continuation never skips review or validation.
 
 ## Coverage and review
 
@@ -40,7 +62,7 @@ The first repeatability run used the pinned 2025 Written Corpus snapshot: 3,410 
 
 The authored review included 11 of 20 candidates and held 9 for unresolved morphology or concrete sense-boundary evidence; it rejected none. The formerly held `상태` and `이번` entries were admitted after confirming their noun identity and bounded lexical meanings. Breadth, commonness, missing writer-use evidence, and missing distinctive routes are not lexical blockers. The 11 canonical entries have zero relations because this slice did not author candidate-specific relation evidence. Their Typewriter-authored diagnostic sentence frames and route labels are consistency/enrichment metadata, not corpus quotations or writer-outcome measurements. Only the reviewed candidate/evidence metadata, semantic source, promotion rows, and canonical JSONL are tracked. Local paragraph contexts, index, candidate inventory, selection, and text-free local evidence remain ignored under `data/reference/`.
 
-Candidate inventory IDs `m5-5426` through `m5-5445` were allocated after the existing promotion ledger's highest ID (`m5-5425`), including all held rows so later review cannot reuse their identities. The 11 admitted IDs have canonical promotion rows; the M5 target seed remains a historical snapshot and is not rewritten for this corpus batch.
+Candidate inventory IDs `m5-5426` through `m5-5445` were allocated after the existing promotion ledger's highest ID (`m5-5425`), including all held rows so later review cannot reuse their identities. The 11 admitted IDs have canonical promotion rows; the M5 target seed remains a historical snapshot and is not rewritten for this corpus batch. Its 20-candidate size, counts, and decisions remain historical and are not rewritten as production evidence.
 
 The validation binds the tracked review ledger to the byte hashes of the ignored selection and text-free evidence artifacts, checks their exact morphology/coverage/provenance fields, then runs shared source-bound semantic admission and complete canonical coverage. Reproducing the exact candidate set requires the same approved corpus snapshot, exclusion sources, canonical surface revision, candidate limit, and pinned Kiwi/Node/SQLite tools.
 
@@ -65,4 +87,4 @@ npm run ci:normal
 
 The batch validator binds the reviewed candidate/evidence artifacts, authored semantic decisions, and canonical import; it then invokes `validateLexicalProduction` on the full selected candidate pool, checks direct exact-lemma search, validates complete canonical semantic coverage, and compares two deterministic SQLite builds by logical contents. Keep corpus/index access and synthetic corpus-extraction fixtures out of `ci:normal`; the text-free candidate-disposition regressions and artifact gate run there.
 
-M9-D/E can reuse the same runner and validation contracts with a new batch ID, output directory, pinned source/index and tool metadata, bounded candidate limit, and exclusion sources for the current target seed and all prior corpus reviews. Run the generic candidate-disposition validator for each review file, then bind it to that batch's source evidence and semantic decisions. Do not increase the batch size to compensate for low editorial yield. No corpus-to-canonical automation or publication authorization is implied by this workflow.
+M9-D/E can reuse the same runner and validation contracts with a new batch ID, output directory, pinned source/index and tool metadata, a 200-candidate starting limit (scaling toward 500 after clean batches), and exclusion sources for the current target seed and all prior corpus reviews. Run the generic candidate-disposition validator for each review file, then bind it to that batch's source evidence and semantic decisions. Low editorial yield means continuing to later ranked candidates, not lowering standards. No corpus-to-canonical automation or publication authorization is implied by this workflow.
