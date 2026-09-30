@@ -498,6 +498,10 @@ function defectFindingsFor(candidates) {
 }
 
 function renderReport(report) {
+  const recoveryCeiling = report.historical_pool.recovery_ceiling;
+  const recoveryCeilingVsTarget = recoveryCeiling >= report.historical_pool.target_count
+    ? `${(recoveryCeiling - report.historical_pool.target_count).toLocaleString('en-US')} above 6,000`
+    : `${(report.historical_pool.target_count - recoveryCeiling).toLocaleString('en-US')} short of 6,000`;
   const candidateRows = report.candidates.map((candidate) => (
     `| ${candidate.selection_order} | ${candidate.batch_number} | ${candidate.inventory_id} | ${candidate.lemma} | ${candidate.decision} | ${candidate.lexical_unit_status} | ${candidate.canonical_id ?? '—'} |`
   )).join('\n');
@@ -536,7 +540,7 @@ function renderReport(report) {
     '',
     '## Historical checkpoint',
     '',
-    `The pinned Issue #210 candidate inventory contains ${report.historical_pool.candidate_count} classified rows. After the 18 M9-B admissions and 20 later M9-D historical recoveries, ${report.historical_pool.potentially_recoverable_after_count} historical rows remain potentially recoverable. Added to the current ${report.current.canonical_record_count.toLocaleString('en-US')} canonical records, they yield a bounded source-pool ceiling of ${report.historical_pool.recovery_ceiling.toLocaleString('en-US')}, ${report.historical_pool.shortfall_to_6000} short of 6,000. This is a source-pool limit, not a reason to admit held rows or reconstruct absent candidates.`,
+    `The pinned Issue #210 candidate inventory contains ${report.historical_pool.candidate_count} classified rows. After the 18 M9-B admissions and 20 later M9-D historical recoveries, ${report.historical_pool.potentially_recoverable_after_count} historical rows remain potentially recoverable. Added to the current ${report.current.canonical_record_count.toLocaleString('en-US')} canonical records, they yield a bounded source-pool ceiling of ${report.historical_pool.recovery_ceiling.toLocaleString('en-US')}, ${recoveryCeilingVsTarget}. This is a source-pool limit, not a reason to admit held rows or reconstruct absent candidates.`,
     '',
     '| Remaining Issue #210 disposition | Count |',
     '| --- | ---: |',
@@ -901,13 +905,14 @@ export async function validateIssue220({ writeReport = false } = {}) {
   const relationEmptySearchableRecordCount = currentRecords.filter(({ senses = [] }) => (
     senses.every((sense) => (sense.relations ?? []).length === 0)
   )).length;
+  const shortfallToTarget = Math.max(0, 6000 - recoveryCeiling);
   assert.equal(currentRecoverable, baselineRecoverable - admittedCount - laterIssue222HistoricalRecoveries, 'remaining disposition counts match Issue #220 and subsequent Issue #222 recovery outcomes');
   assert.equal(recoveredCount, 42 + laterIssue222HistoricalRecoveries, 'Issue #210 inventory includes prior, M9-B, and subsequent M9-D recoveries');
   assert.equal(baselineRecoverable, 545, 'pinned historical potential count');
   assert.equal(laterIssue222HistoricalRecoveries, 20, 'Issue #222 historical recovery count');
   assert.equal(currentRecoverable, 507, 'remaining potentially recoverable historical records');
-  assert.equal(recoveryCeiling, 5640, 'current canonical plus historical source-pool ceiling');
-  assert.equal(Math.max(0, 6000 - recoveryCeiling), 360);
+  assert.equal(recoveryCeiling, currentRecords.length + currentRecoverable, 'current canonical plus remaining historical source pool');
+  assert.equal(shortfallToTarget, Math.max(0, 6000 - currentRecords.length - currentRecoverable));
 
   const report = {
     schema_version: 1,
@@ -966,7 +971,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
       potentially_recoverable_after_count: currentRecoverable,
       recovery_ceiling: recoveryCeiling,
       target_count: 6000,
-      shortfall_to_6000: 6000 - recoveryCeiling,
+      shortfall_to_6000: shortfallToTarget,
       recovered_count: recoveredCount,
       remaining_counts_by_disposition: remainingRecoveryCounts,
     },
@@ -1020,7 +1025,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
     held_count: report.outcomes.held_count,
     rejected_count: report.outcomes.rejected_count,
     historical_recovery_ceiling: recoveryCeiling,
-    shortfall_to_6000: 6000 - recoveryCeiling,
+    shortfall_to_6000: shortfallToTarget,
     canonical_record_count: report.current.canonical_record_count,
     canonical_start_count: report.current.canonical_start_count,
     searchable_lemma_count: report.current.searchable_lemma_count,
