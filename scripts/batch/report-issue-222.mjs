@@ -24,10 +24,18 @@ const BASELINE_COMMIT = '77f52ae7ae8040146c25b75b2dcdf29f7b4f5e42';
 const BASELINE_CANONICAL_REVISION = '56772da538d68d17fb1e04146f451b3868c9d5520fffd000585d6755e4561a2a';
 const BASELINE_RECORD_COUNT = 5105;
 const TARGET_RECORD_COUNT = 7500;
-const NORMAL_CI_RESULTS = new Set(['pending', 'passed', 'failed']);
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const readJson = async (relativePath) => JSON.parse((await readFile(path.join(ROOT, relativePath))).toString('utf8'));
+
+export function buildIssue222NormalCiEvidence(canonicalSha256) {
+  return {
+    command: 'npm run ci:normal',
+    check_name: 'Validate and test Typewriter',
+    status_source: 'external-exact-head-pr-check',
+    canonical_sha256: canonicalSha256,
+  };
+}
 
 function parseJsonl(bytes, label) {
   return bytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map((line, index) => {
@@ -66,29 +74,6 @@ function mergeCounts(...sources) {
     }
   }
   return Object.fromEntries(Object.entries(merged).sort(([left], [right]) => left.localeCompare(right, 'en')));
-}
-
-async function normalCiResultFor(canonicalRevision) {
-  const requestedResult = process.argv
-    .find((argument) => argument.startsWith('--normal-ci-result='))
-    ?.slice('--normal-ci-result='.length);
-  if (requestedResult !== undefined) {
-    assert.ok(NORMAL_CI_RESULTS.has(requestedResult), `Unsupported normal CI result: ${requestedResult}`);
-    return requestedResult;
-  }
-
-  try {
-    const storedReport = await readJson('data/validation/issue-222-m9-d-scale-coverage-report.json');
-    if (storedReport.current?.canonical_revision === canonicalRevision
-      && NORMAL_CI_RESULTS.has(storedReport.normal_ci?.result)) {
-      return storedReport.normal_ci.result;
-    }
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      throw error;
-    }
-  }
-  return 'pending';
 }
 
 export function renderMarkdown(report) {
@@ -150,7 +135,7 @@ export function renderMarkdown(report) {
     '',
     '## Reproducibility',
     '',
-    `Run \`npm run batch:issue-222:check\` to validate the historical source binding and all ${corpusBatches.length} corpus batches through candidate disposition, shared admission, complete semantic coverage, exact direct search, and two identical logical SQLite builds. Run \`npm run batch:issue-222:report\` to regenerate this Markdown and the machine report, then \`npm run batch:issue-222:report:check\` to compare the regenerated output with the committed checkpoint.`,
+    `Run \`npm run batch:issue-222:report:check\` to validate the checkpoint from tracked candidate reviews, semantic decisions, imports, inventories, and current canonical data, including shared admission, semantic coverage, exact direct search, and two identical logical SQLite builds. Run \`npm run batch:issue-222:check\` locally for the additional permission-bound corpus evidence checks that read ignored \`data/reference/\` artifacts.`,
     '',
     `The checkpoint validates ${report.validation.directly_searchable_new_records} records added since the baseline under exact search with ${report.validation.shared_admission_blocking_findings} shared admission blockers. Logical database builds compared: ${report.validation.logical_builds_compared}; identical: ${report.validation.deterministic_logical_contents}.`,
     '',
@@ -193,7 +178,7 @@ export function renderMarkdown(report) {
     '',
     `Correction rate: **${report.production_audit.correction_rate_status}**. Writer review burden: **${report.production_audit.writer_review_burden_status}**. Systemic defect classes: ${report.production_audit.systemic_defect_classes.length}; shared system fixes recorded: ${report.production_audit.system_fixes.length}.`,
     '',
-    `Normal CI: \`${report.normal_ci.command}\` — **${report.normal_ci.result}** for canonical digest \`${report.normal_ci.canonical_sha256}\`.`,
+    `Normal CI status: read the exact-head GitHub PR check **${report.normal_ci.check_name}** (\`${report.normal_ci.command}\`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: \`${report.normal_ci.canonical_sha256}\`.`,
     `Runtime/package impact: **${report.runtime_package_impact.status}**. The packaged dictionary grew from ${report.runtime_package_impact.baseline_dictionary_record_count.toLocaleString('en-US')} to ${report.runtime_package_impact.current_dictionary_record_count.toLocaleString('en-US')} records (+${report.runtime_package_impact.dictionary_record_delta.toLocaleString('en-US')}; ${(report.runtime_package_impact.dictionary_record_growth_rate * 100).toFixed(2)}%). Runtime contract changed: ${report.runtime_package_impact.runtime_contract_changed}; package bytes measured: ${report.runtime_package_impact.dictionary_package_bytes_measured}. ${report.runtime_package_impact.rationale} Targeted validation: ${report.runtime_package_impact.targeted_validation}.`,
     '',
     '## Continuation',
@@ -210,7 +195,7 @@ export function renderMarkdown(report) {
 }
 
 async function buildReport() {
-  const validation = await validateIssue222();
+  const validation = await validateIssue222({ verifyLocalCorpusEvidence: false });
   const batchDirectory = path.join(ROOT, 'data/batches');
   const corpusReviewNames = (await readdir(batchDirectory))
     .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-candidate-review\.json$/u.test(name))
@@ -354,7 +339,6 @@ async function buildReport() {
   const historicalRemainingByDisposition = Object.entries(currentHistoricalDispositionCounts)
     .filter(([disposition]) => disposition !== 'recovered')
     .map(([disposition, dispositionCount]) => ({ disposition, count: dispositionCount }));
-  const normalCiResult = await normalCiResultFor(inventory.generated_from.current_canonical_revision);
   const issue222CorpusHoldReasons = Object.entries(corpusDecisionAudit.hold_reason_counts)
     .map(([findingClass, count]) => ({ source: 'issue-222-corpus-reviews', finding_class: findingClass, count }));
   const unresolvedReviewInventory = [
@@ -514,7 +498,8 @@ async function buildReport() {
       system_fixes: [],
     },
     validation: {
-      command: 'npm run batch:issue-222:check',
+      command: 'npm run batch:issue-222:report:check',
+      local_corpus_evidence_command: 'npm run batch:issue-222:check',
       directly_searchable_new_records: validation.admitted_lemmas_directly_searchable,
       shared_admission_blocking_findings: validation.shared_admission_blocking_findings,
       semantic_coverage_complete: validation.semantic_coverage_complete,
@@ -525,11 +510,7 @@ async function buildReport() {
       corpus_reviews_human_reviewed: false,
       historical_review_human_reviewed: historicalCandidate.human_reviewed,
     },
-    normal_ci: {
-      command: 'npm run ci:normal',
-      result: normalCiResult,
-      canonical_sha256: canonicalDigest,
-    },
+    normal_ci: buildIssue222NormalCiEvidence(canonicalDigest),
     runtime_package_impact: {
       status: 'dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured',
       baseline_dictionary_record_count: BASELINE_RECORD_COUNT,

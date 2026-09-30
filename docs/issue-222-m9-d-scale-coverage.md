@@ -41,7 +41,7 @@ Raw paragraph text remains in ignored local reference data. Tracked evidence inc
 
 ## Reproducibility
 
-Run `npm run batch:issue-222:check` to validate the historical source binding and all 8 corpus batches through candidate disposition, shared admission, complete semantic coverage, exact direct search, and two identical logical SQLite builds. Run `npm run batch:issue-222:report` to regenerate this Markdown and the machine report, then `npm run batch:issue-222:report:check` to compare the regenerated output with the committed checkpoint.
+Run `npm run batch:issue-222:report:check` to validate the checkpoint from tracked candidate reviews, semantic decisions, imports, inventories, and current canonical data, including shared admission, semantic coverage, exact direct search, and two identical logical SQLite builds. Run `npm run batch:issue-222:check` locally for the additional permission-bound corpus evidence checks that read ignored `data/reference/` artifacts.
 
 The checkpoint validates 2416 records added since the baseline under exact search with 0 shared admission blockers. Logical database builds compared: 2; identical: true.
 
@@ -110,7 +110,7 @@ Across reviewed batches, hold reasons were search-collision: 9; unresolved-ident
 
 Correction rate: **NOT_MEASURED_NO_HUMAN_REVIEW**. Writer review burden: **NOT_MEASURED_NO_WRITER_REVIEW**. Systemic defect classes: 0; shared system fixes recorded: 0.
 
-Normal CI: `npm run ci:normal` — **passed** for canonical digest `601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992`.
+Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992`.
 Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 7,521 records (+2,416; 47.33%). Runtime contract changed: false; package bytes measured: false. Issue #222 adds canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
 
 ## Continuation

@@ -422,7 +422,8 @@
     "system_fixes": []
   },
   "validation": {
-    "command": "npm run batch:issue-222:check",
+    "command": "npm run batch:issue-222:report:check",
+    "local_corpus_evidence_command": "npm run batch:issue-222:check",
     "directly_searchable_new_records": 2416,
     "shared_admission_blocking_findings": 0,
     "semantic_coverage_complete": true,
@@ -435,7 +436,8 @@
   },
   "normal_ci": {
     "command": "npm run ci:normal",
-    "result": "passed",
+    "check_name": "Validate and test Typewriter",
+    "status_source": "external-exact-head-pr-check",
     "canonical_sha256": "601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992"
   },
   "runtime_package_impact": {

@@ -187,7 +187,7 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
   );
 }
 
-async function validateAdditionalCorpusBatches(currentCanonical) {
+async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence = true } = {}) {
   const batchDirectory = path.join(ROOT, 'data/batches');
   const candidateReviewNames = (await readdir(batchDirectory))
     .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-candidate-review\.json$/u.test(name))
@@ -234,131 +234,136 @@ async function validateAdditionalCorpusBatches(currentCanonical) {
     const reviewWithoutDigest = structuredClone(candidateReview);
     delete reviewWithoutDigest.artifact_sha256;
     assert.equal(candidateReview.artifact_sha256, sha256Json(reviewWithoutDigest));
-
-    const candidateEvidencePath = referenceArtifactPath(candidateReview.source_artifacts.candidate_evidence_path, 'candidate evidence');
-    const candidateSelectionPath = referenceArtifactPath(candidateReview.source_artifacts.candidate_selection_path, 'candidate selection');
-    const [candidateEvidenceBytes, candidateSelectionBytes] = await Promise.all([
-      readFile(candidateEvidencePath),
-      readFile(candidateSelectionPath),
-    ]);
-    const candidateEvidence = JSON.parse(candidateEvidenceBytes.toString('utf8'));
-    const candidateSelection = JSON.parse(candidateSelectionBytes.toString('utf8'));
-    assert.equal(sha256Bytes(candidateEvidenceBytes), candidateReview.source_artifacts.candidate_evidence_sha256);
-    assert.equal(sha256Bytes(candidateSelectionBytes), candidateReview.source_artifacts.candidate_selection_sha256);
     assert.equal(candidateReview.source_artifacts.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
     assert.equal(candidateReview.source_artifacts.exclusion_manifest_sha256, candidateReview.selection.exclusion_sha256);
     assert.deepEqual(candidateReview.source_artifacts.exclusion_source_artifacts, candidateReview.selection.exclusion_source_artifacts);
-    for (const field of [
-      'contract_version',
-      'candidate_limit',
-      'selected_candidate_count',
-      'ordering',
-      'exclusion_sha256',
-      'exclusion_source_artifacts',
-    ]) {
-      assert.deepEqual(candidateReview.selection[field], candidateSelection.selection[field], `${candidateLabel} selection.${field} is source-bound`);
-    }
-    assert.equal(candidateReview.yield.excluded_candidate_lemma_count, candidateSelection.selection.excluded_candidate_lemma_count);
-    for (const field of Object.keys(candidateEvidence.yield)) {
-      assert.deepEqual(candidateReview.yield[field], candidateEvidence.yield[field], `${candidateLabel} yield.${field} is source-bound`);
-    }
-    assertTextFreeArtifact(candidateEvidence, `${candidateLabel} local corpus candidate evidence`);
-    assertTextFreeArtifact(candidateSelection, `${candidateLabel} local corpus candidate selection`);
-    assert.equal(candidateEvidence.publication_state, candidateReview.publication_state);
-    assert.equal(candidateEvidence.permission_record_sha256, candidateReview.source.permission_record_sha256);
-    assert.deepEqual(candidateEvidence.index, candidateReview.source.index);
-    assert.deepEqual(candidateEvidence.typewriter_surface, candidateReview.source.typewriter_surface);
-    const permissionBytes = await readFile(repositoryArtifactPath(candidateReview.source.permission_record_path, 'permission record'));
-    assert.equal(sha256Bytes(permissionBytes), candidateReview.source.permission_record_sha256);
-    for (const [label, relativePath, expectedDigest] of [
-      ['extractor', 'scripts/reference/corpus_lemma_pilot.py', candidateReview.source.tools.extractor_script_sha256],
-      ['orchestrator', 'scripts/reference/run-corpus-lemma-pilot.mjs', candidateReview.source.tools.orchestrator_script_sha256],
-    ]) {
-      await assertPinnedSourceDigest(relativePath, expectedDigest, `${candidateLabel} ${label}`);
-    }
-    assert.equal(candidateEvidence.extractor.extractor_version, candidateReview.source.tools.extractor_version);
-    assert.equal(candidateEvidence.extractor.python_version, candidateReview.source.tools.python_version);
-    assert.equal(candidateEvidence.extractor.kiwipiepy_version, candidateReview.source.tools.kiwipiepy_version);
-    assert.equal(candidateEvidence.extractor.kiwipiepy_model_version, candidateReview.source.tools.kiwipiepy_model_version);
-    assert.equal(candidateEvidence.extractor.script_sha256, candidateReview.source.tools.extractor_script_sha256);
-    assert.deepEqual(candidateEvidence.extractor.tag_to_typewriter_pos, { NNG: 'noun', VV: 'verb', VA: 'adjective' });
-    assert.equal(candidateEvidence.extractor.predicate_lemma_rule, 'VV and VA morpheme forms receive the citation ending 다; NNG forms remain unchanged');
-    assert.equal(candidateEvidence.orchestration.node_version, candidateReview.source.tools.node_version);
-    assert.equal(candidateEvidence.orchestration.node_sqlite_version, candidateReview.source.tools.node_sqlite_version);
-    assert.equal(candidateEvidence.orchestration.orchestrator_script_sha256, candidateReview.source.tools.orchestrator_script_sha256);
-    assert.equal(candidateEvidence.orchestration.batch_id, candidateReview.batch_id);
-    assert.equal(candidateEvidence.orchestration.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
-    assert.equal(candidateSelection.candidates.length, candidateReview.decisions.length);
-    assert.equal(candidateEvidence.candidates.length, candidateReview.decisions.length);
 
-    for (const [index, row] of candidateReview.decisions.entries()) {
-      const selected = candidateSelection.candidates[index];
-      const evidence = candidateEvidence.candidates.find(({ proposed_lemma: lemma, proposed_pos: pos }) => (
-        lemma === row.morphology_proposal.lemma && pos === selected?.proposed_pos
-      ));
-      assert.ok(selected && evidence, `${candidateLabel} ${row.inventory_id} must bind a local selected evidence row`);
-      const selectedWithoutState = structuredClone(selected);
-      delete selectedWithoutState.decision_state;
-      const evidenceWithoutHits = structuredClone(evidence);
-      delete evidenceWithoutHits.evidence;
-      assert.deepEqual(selectedWithoutState, evidenceWithoutHits, `${candidateLabel} ${row.inventory_id} selection matches text-free evidence`);
-      const morphologyHeld = row.morphology_proposal.ambiguity_status !== 'single_observed_analysis_unverified'
-        || row.morphology_proposal.pos_interpretation_count_in_sample > 1
-        || row.morphology_proposal.ambiguous_observed_surface_count_in_sample > 0
-        || row.morphology_proposal.oov_morpheme_occurrences_in_sample > 0;
-      const coverageHeld = [
-        'search_form_collision',
-        'generated_surface_collision',
-        'search_and_generated_surface_collision',
-      ].includes(row.coverage_status) && row.typewriter_surface_matches.length > 0;
-      const expectedExtractionState = morphologyHeld || coverageHeld ? 'held' : 'candidate';
-      assert.equal(selected.decision_state, expectedExtractionState, `${candidateLabel} ${row.inventory_id} extractor ambiguity disposition`);
-      assert.equal(row.morphology_proposal.lemma, selected.proposed_lemma);
-      const analyzerMappedPos = { NNG: 'noun', VV: 'verb', VA: 'adjective' }[selected.analyzer_pos];
-      if (row.morphology_proposal.pos === selected.proposed_pos) {
-        assert.equal(row.editorial_judgment.pos_correction, undefined, `${candidateLabel} ${row.inventory_id} has no unsupported POS correction`);
-        assert.equal(analyzerMappedPos, row.morphology_proposal.pos);
-      } else {
-        const correction = row.editorial_judgment.pos_correction;
-        assert.equal(row.editorial_judgment.disposition, 'admit');
-        assert.equal(correction.evidence_type, 'reviewed-bounded-contexts-support-corrected-pos');
-        assert.equal(correction.analyzer_pos, selected.analyzer_pos);
-        assert.equal(correction.analyzer_mapped_pos, selected.proposed_pos);
-        assert.equal(correction.corrected_pos, row.morphology_proposal.pos);
-        assert.ok(correction.paragraph_ids.length > 0);
-        const availableParagraphIds = new Set(row.bounded_provenance.representative_hits.map(({ paragraph_id }) => paragraph_id));
-        assert.ok(correction.paragraph_ids.every((id) => availableParagraphIds.has(id)));
+    if (verifyLocalCorpusEvidence) {
+      const candidateEvidencePath = referenceArtifactPath(candidateReview.source_artifacts.candidate_evidence_path, 'candidate evidence');
+      const candidateSelectionPath = referenceArtifactPath(candidateReview.source_artifacts.candidate_selection_path, 'candidate selection');
+      const [candidateEvidenceBytes, candidateSelectionBytes] = await Promise.all([
+        readFile(candidateEvidencePath),
+        readFile(candidateSelectionPath),
+      ]);
+      const candidateEvidence = JSON.parse(candidateEvidenceBytes.toString('utf8'));
+      const candidateSelection = JSON.parse(candidateSelectionBytes.toString('utf8'));
+      assert.equal(sha256Bytes(candidateEvidenceBytes), candidateReview.source_artifacts.candidate_evidence_sha256);
+      assert.equal(sha256Bytes(candidateSelectionBytes), candidateReview.source_artifacts.candidate_selection_sha256);
+      assert.equal(candidateReview.source_artifacts.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
+      assert.equal(candidateReview.source_artifacts.exclusion_manifest_sha256, candidateReview.selection.exclusion_sha256);
+      assert.deepEqual(candidateReview.source_artifacts.exclusion_source_artifacts, candidateReview.selection.exclusion_source_artifacts);
+      for (const field of [
+        'contract_version',
+        'candidate_limit',
+        'selected_candidate_count',
+        'ordering',
+        'exclusion_sha256',
+        'exclusion_source_artifacts',
+      ]) {
+        assert.deepEqual(candidateReview.selection[field], candidateSelection.selection[field], `${candidateLabel} selection.${field} is source-bound`);
       }
-      assert.equal(row.morphology_proposal.analyzer_pos, selected.analyzer_pos);
-      assert.equal(row.morphology_proposal.ambiguity_status, selected.ambiguity_status);
-      assert.equal(row.morphology_proposal.analyzer_confidence, selected.analyzer_confidence);
-      assert.equal(row.morphology_proposal.pos_interpretation_count_in_sample, selected.pos_interpretation_count_in_sample);
-      assert.equal(row.morphology_proposal.ambiguous_observed_surface_count_in_sample, selected.ambiguous_observed_surface_count_in_sample);
-      assert.equal(row.morphology_proposal.oov_morpheme_occurrences_in_sample, selected.oov_morpheme_occurrences_in_sample);
-      if (['VV', 'VA'].includes(row.morphology_proposal.analyzer_pos)) {
-        assert.equal(row.morphology_proposal.lemma.endsWith('다'), true, `${candidateLabel} ${row.inventory_id} predicate proposal uses its citation form`);
+      assert.equal(candidateReview.yield.excluded_candidate_lemma_count, candidateSelection.selection.excluded_candidate_lemma_count);
+      for (const field of Object.keys(candidateEvidence.yield)) {
+        assert.deepEqual(candidateReview.yield[field], candidateEvidence.yield[field], `${candidateLabel} yield.${field} is source-bound`);
       }
-      assert.equal(row.coverage_status, selected.coverage_status);
-      assert.deepEqual(row.typewriter_surface_matches, selected.typewriter_surface_matches);
-      assert.deepEqual(row.observed_surface_forms, selected.observed_surface_forms);
-      assert.deepEqual(row.observed_morpheme_spans, selected.observed_morpheme_spans);
-      assert.equal(row.corpus_evidence.kiwi_morpheme_occurrences_in_sample, selected.kiwi_morpheme_occurrences_in_sample);
-      assert.equal(row.corpus_evidence.paragraph_hits_in_sample, selected.paragraph_hits_in_sample);
-      assert.equal(row.corpus_evidence.distinct_documents_in_sample, selected.distinct_documents_in_sample);
-      assert.equal(row.corpus_evidence.distinct_sources_in_sample, selected.distinct_sources_in_sample);
-      assert.equal(row.bounded_provenance.representative_hit_count, evidence.evidence.representative_hit_count);
-      assert.equal(row.bounded_provenance.representative_hit_limit, evidence.evidence.representative_hits_limit);
-      assert.deepEqual(row.bounded_provenance.representative_hits, evidence.evidence.representative_hits);
-      if (row.editorial_judgment.disposition === 'admit') {
-        assert.equal(row.coverage_status, 'uncovered');
-        assert.equal(row.morphology_proposal.ambiguity_status, 'single_observed_analysis_unverified');
-        assert.ok(row.editorial_judgment.candidate_record_id);
-        assert.ok(row.editorial_judgment.writer_gloss);
-      } else {
-        assert.equal(row.editorial_judgment.candidate_record_id, null);
+      assertTextFreeArtifact(candidateEvidence, `${candidateLabel} local corpus candidate evidence`);
+      assertTextFreeArtifact(candidateSelection, `${candidateLabel} local corpus candidate selection`);
+      assert.equal(candidateEvidence.publication_state, candidateReview.publication_state);
+      assert.equal(candidateEvidence.permission_record_sha256, candidateReview.source.permission_record_sha256);
+      assert.deepEqual(candidateEvidence.index, candidateReview.source.index);
+      assert.deepEqual(candidateEvidence.typewriter_surface, candidateReview.source.typewriter_surface);
+      const permissionBytes = await readFile(repositoryArtifactPath(candidateReview.source.permission_record_path, 'permission record'));
+      assert.equal(sha256Bytes(permissionBytes), candidateReview.source.permission_record_sha256);
+      for (const [label, relativePath, expectedDigest] of [
+        ['extractor', 'scripts/reference/corpus_lemma_pilot.py', candidateReview.source.tools.extractor_script_sha256],
+        ['orchestrator', 'scripts/reference/run-corpus-lemma-pilot.mjs', candidateReview.source.tools.orchestrator_script_sha256],
+      ]) {
+        await assertPinnedSourceDigest(relativePath, expectedDigest, `${candidateLabel} ${label}`);
       }
-    }
+      assert.equal(candidateEvidence.extractor.extractor_version, candidateReview.source.tools.extractor_version);
+      assert.equal(candidateEvidence.extractor.python_version, candidateReview.source.tools.python_version);
+      assert.equal(candidateEvidence.extractor.kiwipiepy_version, candidateReview.source.tools.kiwipiepy_version);
+      assert.equal(candidateEvidence.extractor.kiwipiepy_model_version, candidateReview.source.tools.kiwipiepy_model_version);
+      assert.equal(candidateEvidence.extractor.script_sha256, candidateReview.source.tools.extractor_script_sha256);
+      assert.deepEqual(candidateEvidence.extractor.tag_to_typewriter_pos, { NNG: 'noun', VV: 'verb', VA: 'adjective' });
+      assert.equal(candidateEvidence.extractor.predicate_lemma_rule, 'VV and VA morpheme forms receive the citation ending 다; NNG forms remain unchanged');
+      assert.equal(candidateEvidence.orchestration.node_version, candidateReview.source.tools.node_version);
+      assert.equal(candidateEvidence.orchestration.node_sqlite_version, candidateReview.source.tools.node_sqlite_version);
+      assert.equal(candidateEvidence.orchestration.orchestrator_script_sha256, candidateReview.source.tools.orchestrator_script_sha256);
+      assert.equal(candidateEvidence.orchestration.batch_id, candidateReview.batch_id);
+      assert.equal(candidateEvidence.orchestration.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
+      assert.equal(candidateSelection.candidates.length, candidateReview.decisions.length);
+      assert.equal(candidateEvidence.candidates.length, candidateReview.decisions.length);
 
+      for (const [index, row] of candidateReview.decisions.entries()) {
+        const selected = candidateSelection.candidates[index];
+        const evidence = candidateEvidence.candidates.find(({ proposed_lemma: lemma, proposed_pos: pos }) => (
+          lemma === row.morphology_proposal.lemma && pos === selected?.proposed_pos
+        ));
+        assert.ok(selected && evidence, `${candidateLabel} ${row.inventory_id} must bind a local selected evidence row`);
+        const selectedWithoutState = structuredClone(selected);
+        delete selectedWithoutState.decision_state;
+        const evidenceWithoutHits = structuredClone(evidence);
+        delete evidenceWithoutHits.evidence;
+        assert.deepEqual(selectedWithoutState, evidenceWithoutHits, `${candidateLabel} ${row.inventory_id} selection matches text-free evidence`);
+        const morphologyHeld = row.morphology_proposal.ambiguity_status !== 'single_observed_analysis_unverified'
+          || row.morphology_proposal.pos_interpretation_count_in_sample > 1
+          || row.morphology_proposal.ambiguous_observed_surface_count_in_sample > 0
+          || row.morphology_proposal.oov_morpheme_occurrences_in_sample > 0;
+        const coverageHeld = [
+          'search_form_collision',
+          'generated_surface_collision',
+          'search_and_generated_surface_collision',
+        ].includes(row.coverage_status) && row.typewriter_surface_matches.length > 0;
+        const expectedExtractionState = morphologyHeld || coverageHeld ? 'held' : 'candidate';
+        assert.equal(selected.decision_state, expectedExtractionState, `${candidateLabel} ${row.inventory_id} extractor ambiguity disposition`);
+        assert.equal(row.morphology_proposal.lemma, selected.proposed_lemma);
+        const analyzerMappedPos = { NNG: 'noun', VV: 'verb', VA: 'adjective' }[selected.analyzer_pos];
+        if (row.morphology_proposal.pos === selected.proposed_pos) {
+          assert.equal(row.editorial_judgment.pos_correction, undefined, `${candidateLabel} ${row.inventory_id} has no unsupported POS correction`);
+          assert.equal(analyzerMappedPos, row.morphology_proposal.pos);
+        } else {
+          const correction = row.editorial_judgment.pos_correction;
+          assert.equal(row.editorial_judgment.disposition, 'admit');
+          assert.equal(correction.evidence_type, 'reviewed-bounded-contexts-support-corrected-pos');
+          assert.equal(correction.analyzer_pos, selected.analyzer_pos);
+          assert.equal(correction.analyzer_mapped_pos, selected.proposed_pos);
+          assert.equal(correction.corrected_pos, row.morphology_proposal.pos);
+          assert.ok(correction.paragraph_ids.length > 0);
+          const availableParagraphIds = new Set(row.bounded_provenance.representative_hits.map(({ paragraph_id }) => paragraph_id));
+          assert.ok(correction.paragraph_ids.every((id) => availableParagraphIds.has(id)));
+        }
+        assert.equal(row.morphology_proposal.analyzer_pos, selected.analyzer_pos);
+        assert.equal(row.morphology_proposal.ambiguity_status, selected.ambiguity_status);
+        assert.equal(row.morphology_proposal.analyzer_confidence, selected.analyzer_confidence);
+        assert.equal(row.morphology_proposal.pos_interpretation_count_in_sample, selected.pos_interpretation_count_in_sample);
+        assert.equal(row.morphology_proposal.ambiguous_observed_surface_count_in_sample, selected.ambiguous_observed_surface_count_in_sample);
+        assert.equal(row.morphology_proposal.oov_morpheme_occurrences_in_sample, selected.oov_morpheme_occurrences_in_sample);
+        if (['VV', 'VA'].includes(row.morphology_proposal.analyzer_pos)) {
+          assert.equal(row.morphology_proposal.lemma.endsWith('다'), true, `${candidateLabel} ${row.inventory_id} predicate proposal uses its citation form`);
+        }
+        assert.equal(row.coverage_status, selected.coverage_status);
+        assert.deepEqual(row.typewriter_surface_matches, selected.typewriter_surface_matches);
+        assert.deepEqual(row.observed_surface_forms, selected.observed_surface_forms);
+        assert.deepEqual(row.observed_morpheme_spans, selected.observed_morpheme_spans);
+        assert.equal(row.corpus_evidence.kiwi_morpheme_occurrences_in_sample, selected.kiwi_morpheme_occurrences_in_sample);
+        assert.equal(row.corpus_evidence.paragraph_hits_in_sample, selected.paragraph_hits_in_sample);
+        assert.equal(row.corpus_evidence.distinct_documents_in_sample, selected.distinct_documents_in_sample);
+        assert.equal(row.corpus_evidence.distinct_sources_in_sample, selected.distinct_sources_in_sample);
+        assert.equal(row.bounded_provenance.representative_hit_count, evidence.evidence.representative_hit_count);
+        assert.equal(row.bounded_provenance.representative_hit_limit, evidence.evidence.representative_hits_limit);
+        assert.deepEqual(row.bounded_provenance.representative_hits, evidence.evidence.representative_hits);
+        if (row.editorial_judgment.disposition === 'admit') {
+          assert.equal(row.coverage_status, 'uncovered');
+          assert.equal(row.morphology_proposal.ambiguity_status, 'single_observed_analysis_unverified');
+          assert.ok(row.editorial_judgment.candidate_record_id);
+          assert.ok(row.editorial_judgment.writer_gloss);
+        } else {
+          assert.equal(row.editorial_judgment.candidate_record_id, null);
+        }
+      }
+
+    }
     for (const artifact of candidateReview.selection.exclusion_source_artifacts) {
       const absolutePath = repositoryArtifactPath(artifact.path, `${candidateLabel} exclusion source`);
       assert.equal(sha256Bytes(await readFile(absolutePath)), artifact.sha256, `${candidateLabel} ${artifact.path} exclusion-source digest`);
@@ -464,7 +469,7 @@ async function validateDeterministicBuild(admittedRecords) {
   }
 }
 
-export async function validateIssue222() {
+export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}) {
   const [candidateReviewBytes, semanticSourceBytes, importBytes,
     historicalCandidateSourceBytes, historicalSemanticSourceBytes, historicalImportBytes,
     historicalBaseInventoryBytes, historicalBaseSeedBytes, seedBytes] = await Promise.all([
@@ -507,116 +512,121 @@ export async function validateIssue222() {
       && relativeToReference !== '..' && !path.isAbsolute(relativeToReference), `${label} must stay under ignored data/reference`);
     return absolutePath;
   };
-  const [candidateEvidenceBytes, candidateSelectionBytes] = await Promise.all([
-    readFile(referenceArtifactPath(candidateReview.source_artifacts.candidate_evidence_path, 'candidate evidence')),
-    readFile(referenceArtifactPath(candidateReview.source_artifacts.candidate_selection_path, 'candidate selection')),
-  ]);
-  const candidateEvidence = JSON.parse(candidateEvidenceBytes.toString('utf8'));
-  const candidateSelection = JSON.parse(candidateSelectionBytes.toString('utf8'));
-  assert.equal(sha256Bytes(candidateEvidenceBytes), candidateReview.source_artifacts.candidate_evidence_sha256);
-  assert.equal(sha256Bytes(candidateSelectionBytes), candidateReview.source_artifacts.candidate_selection_sha256);
   assert.equal(candidateReview.source_artifacts.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
   assert.equal(candidateReview.source_artifacts.exclusion_manifest_sha256, candidateReview.selection.exclusion_sha256);
   assert.deepEqual(candidateReview.source_artifacts.exclusion_source_artifacts, candidateReview.selection.exclusion_source_artifacts);
-  for (const field of [
-    'contract_version',
-    'candidate_limit',
-    'selected_candidate_count',
-    'ordering',
-    'exclusion_sha256',
-    'exclusion_source_artifacts',
-  ]) {
-    assert.deepEqual(candidateReview.selection[field], candidateSelection.selection[field], `selection.${field} is source-bound`);
-  }
-  assert.equal(candidateReview.yield.excluded_candidate_lemma_count, candidateSelection.selection.excluded_candidate_lemma_count);
-  for (const field of Object.keys(candidateEvidence.yield)) {
-    assert.deepEqual(candidateReview.yield[field], candidateEvidence.yield[field], `yield.${field} is source-bound`);
-  }
-  assertTextFreeArtifact(candidateEvidence, 'Issue #222 local corpus candidate evidence');
-  assert.equal(candidateEvidence.publication_state, 'local_reference_only_pending_owner_publication_confirmation');
-  assert.equal(candidateEvidence.permission_record_sha256, candidateReview.source.permission_record_sha256);
-  assert.deepEqual(candidateEvidence.index, candidateReview.source.index);
-  assert.deepEqual(candidateEvidence.typewriter_surface, candidateReview.source.typewriter_surface);
-  const permissionBytes = await readFile(repositoryArtifactPath(candidateReview.source.permission_record_path, 'permission record'));
-  assert.equal(sha256Bytes(permissionBytes), candidateReview.source.permission_record_sha256);
-  for (const [label, relativePath, expectedDigest] of [
-    ['extractor', 'scripts/reference/corpus_lemma_pilot.py', candidateReview.source.tools.extractor_script_sha256],
-    ['orchestrator', 'scripts/reference/run-corpus-lemma-pilot.mjs', candidateReview.source.tools.orchestrator_script_sha256],
-  ]) {
-    await assertPinnedSourceDigest(relativePath, expectedDigest, `Issue #222 batch 01 ${label}`);
-  }
-  assert.equal(candidateEvidence.extractor.extractor_version, candidateReview.source.tools.extractor_version);
-  assert.equal(candidateEvidence.extractor.python_version, candidateReview.source.tools.python_version);
-  assert.equal(candidateEvidence.extractor.kiwipiepy_version, candidateReview.source.tools.kiwipiepy_version);
-  assert.equal(candidateEvidence.extractor.kiwipiepy_model_version, candidateReview.source.tools.kiwipiepy_model_version);
-  assert.equal(candidateEvidence.extractor.script_sha256, candidateReview.source.tools.extractor_script_sha256);
-  assert.deepEqual(candidateEvidence.extractor.tag_to_typewriter_pos, { NNG: 'noun', VV: 'verb', VA: 'adjective' });
-  assert.equal(candidateEvidence.extractor.predicate_lemma_rule, 'VV and VA morpheme forms receive the citation ending 다; NNG forms remain unchanged');
-  assert.equal(candidateEvidence.orchestration.node_version, candidateReview.source.tools.node_version);
-  assert.equal(candidateEvidence.orchestration.node_sqlite_version, candidateReview.source.tools.node_sqlite_version);
-  assert.equal(candidateEvidence.orchestration.orchestrator_script_sha256, candidateReview.source.tools.orchestrator_script_sha256);
-  assert.equal(candidateEvidence.orchestration.batch_id, BATCH_ID);
-  assert.equal(candidateEvidence.orchestration.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
-  assert.equal(candidateSelection.candidates.length, candidateReview.decisions.length);
-  assert.equal(candidateEvidence.candidates.length, candidateReview.decisions.length);
-  for (const [index, row] of candidateReview.decisions.entries()) {
-    const selected = candidateSelection.candidates[index];
-    const evidence = candidateEvidence.candidates.find(({ proposed_lemma: lemma, proposed_pos: pos }) => (
-      lemma === row.morphology_proposal.lemma && pos === selected?.proposed_pos
-    ));
-    assert.ok(selected && evidence, `${row.inventory_id} must bind a local selected evidence row`);
-    const selectedWithoutState = structuredClone(selected);
-    delete selectedWithoutState.decision_state;
-    const evidenceWithoutHits = structuredClone(evidence);
-    delete evidenceWithoutHits.evidence;
-    assert.deepEqual(selectedWithoutState, evidenceWithoutHits, `${row.inventory_id} selection matches text-free evidence`);
-    const morphologyHeld = row.morphology_proposal.ambiguity_status !== 'single_observed_analysis_unverified'
-      || row.morphology_proposal.pos_interpretation_count_in_sample > 1
-      || row.morphology_proposal.ambiguous_observed_surface_count_in_sample > 0
-      || row.morphology_proposal.oov_morpheme_occurrences_in_sample > 0;
-    const coverageHeld = [
-      'search_form_collision',
-      'generated_surface_collision',
-      'search_and_generated_surface_collision',
-    ].includes(row.coverage_status) && row.typewriter_surface_matches.length > 0;
-    const expectedExtractionState = morphologyHeld || coverageHeld ? 'held' : 'candidate';
-    assert.equal(selected.decision_state, expectedExtractionState, `${row.inventory_id} extractor ambiguity disposition`);
-    assert.equal(row.morphology_proposal.lemma, selected.proposed_lemma);
-    const analyzerMappedPos = { NNG: 'noun', VV: 'verb', VA: 'adjective' }[selected.analyzer_pos];
-    if (row.morphology_proposal.pos === selected.proposed_pos) {
-      assert.equal(row.editorial_judgment.pos_correction, undefined, `${row.inventory_id} has no unsupported POS correction`);
-      assert.equal(analyzerMappedPos, row.morphology_proposal.pos);
-    } else {
-      const correction = row.editorial_judgment.pos_correction;
-      assert.equal(row.editorial_judgment.disposition, 'admit', `${row.inventory_id} POS correction is used only after a complete review`);
-      assert.equal(correction.evidence_type, 'reviewed-bounded-contexts-support-corrected-pos');
-      assert.equal(correction.analyzer_pos, selected.analyzer_pos);
-      assert.equal(correction.analyzer_mapped_pos, selected.proposed_pos);
-      assert.equal(correction.corrected_pos, row.morphology_proposal.pos);
-      assert.ok(correction.paragraph_ids.length > 0);
-      const availableParagraphIds = new Set(row.bounded_provenance.representative_hits.map(({ paragraph_id }) => paragraph_id));
-      assert.ok(correction.paragraph_ids.every((id) => availableParagraphIds.has(id)));
+  if (verifyLocalCorpusEvidence) {
+    const [candidateEvidenceBytes, candidateSelectionBytes] = await Promise.all([
+      readFile(referenceArtifactPath(candidateReview.source_artifacts.candidate_evidence_path, 'candidate evidence')),
+      readFile(referenceArtifactPath(candidateReview.source_artifacts.candidate_selection_path, 'candidate selection')),
+    ]);
+    const candidateEvidence = JSON.parse(candidateEvidenceBytes.toString('utf8'));
+    const candidateSelection = JSON.parse(candidateSelectionBytes.toString('utf8'));
+    assert.equal(sha256Bytes(candidateEvidenceBytes), candidateReview.source_artifacts.candidate_evidence_sha256);
+    assert.equal(sha256Bytes(candidateSelectionBytes), candidateReview.source_artifacts.candidate_selection_sha256);
+    assert.equal(candidateReview.source_artifacts.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
+    assert.equal(candidateReview.source_artifacts.exclusion_manifest_sha256, candidateReview.selection.exclusion_sha256);
+    assert.deepEqual(candidateReview.source_artifacts.exclusion_source_artifacts, candidateReview.selection.exclusion_source_artifacts);
+    for (const field of [
+      'contract_version',
+      'candidate_limit',
+      'selected_candidate_count',
+      'ordering',
+      'exclusion_sha256',
+      'exclusion_source_artifacts',
+    ]) {
+      assert.deepEqual(candidateReview.selection[field], candidateSelection.selection[field], `selection.${field} is source-bound`);
     }
-    assert.equal(row.morphology_proposal.analyzer_pos, selected.analyzer_pos);
-    assert.equal(row.morphology_proposal.ambiguity_status, selected.ambiguity_status);
-    assert.equal(row.morphology_proposal.analyzer_confidence, selected.analyzer_confidence);
-    assert.equal(row.morphology_proposal.pos_interpretation_count_in_sample, selected.pos_interpretation_count_in_sample);
-    assert.equal(row.morphology_proposal.ambiguous_observed_surface_count_in_sample, selected.ambiguous_observed_surface_count_in_sample);
-    assert.equal(row.morphology_proposal.oov_morpheme_occurrences_in_sample, selected.oov_morpheme_occurrences_in_sample);
-    if (['VV', 'VA'].includes(row.morphology_proposal.analyzer_pos)) {
-      assert.equal(row.morphology_proposal.lemma.endsWith('다'), true, `${row.inventory_id} predicate proposal uses the reviewed citation form`);
+    assert.equal(candidateReview.yield.excluded_candidate_lemma_count, candidateSelection.selection.excluded_candidate_lemma_count);
+    for (const field of Object.keys(candidateEvidence.yield)) {
+      assert.deepEqual(candidateReview.yield[field], candidateEvidence.yield[field], `yield.${field} is source-bound`);
     }
-    assert.equal(row.coverage_status, selected.coverage_status);
-    assert.deepEqual(row.typewriter_surface_matches, selected.typewriter_surface_matches);
-    assert.deepEqual(row.observed_surface_forms, selected.observed_surface_forms);
-    assert.deepEqual(row.observed_morpheme_spans, selected.observed_morpheme_spans);
-    assert.equal(row.corpus_evidence.kiwi_morpheme_occurrences_in_sample, selected.kiwi_morpheme_occurrences_in_sample);
-    assert.equal(row.corpus_evidence.paragraph_hits_in_sample, selected.paragraph_hits_in_sample);
-    assert.equal(row.corpus_evidence.distinct_documents_in_sample, selected.distinct_documents_in_sample);
-    assert.equal(row.corpus_evidence.distinct_sources_in_sample, selected.distinct_sources_in_sample);
-    assert.equal(row.bounded_provenance.representative_hit_count, evidence.evidence.representative_hit_count);
-    assert.equal(row.bounded_provenance.representative_hit_limit, evidence.evidence.representative_hits_limit);
-    assert.deepEqual(row.bounded_provenance.representative_hits, evidence.evidence.representative_hits);
+    assertTextFreeArtifact(candidateEvidence, 'Issue #222 local corpus candidate evidence');
+    assert.equal(candidateEvidence.publication_state, 'local_reference_only_pending_owner_publication_confirmation');
+    assert.equal(candidateEvidence.permission_record_sha256, candidateReview.source.permission_record_sha256);
+    assert.deepEqual(candidateEvidence.index, candidateReview.source.index);
+    assert.deepEqual(candidateEvidence.typewriter_surface, candidateReview.source.typewriter_surface);
+    const permissionBytes = await readFile(repositoryArtifactPath(candidateReview.source.permission_record_path, 'permission record'));
+    assert.equal(sha256Bytes(permissionBytes), candidateReview.source.permission_record_sha256);
+    for (const [label, relativePath, expectedDigest] of [
+      ['extractor', 'scripts/reference/corpus_lemma_pilot.py', candidateReview.source.tools.extractor_script_sha256],
+      ['orchestrator', 'scripts/reference/run-corpus-lemma-pilot.mjs', candidateReview.source.tools.orchestrator_script_sha256],
+    ]) {
+      await assertPinnedSourceDigest(relativePath, expectedDigest, `Issue #222 batch 01 ${label}`);
+    }
+    assert.equal(candidateEvidence.extractor.extractor_version, candidateReview.source.tools.extractor_version);
+    assert.equal(candidateEvidence.extractor.python_version, candidateReview.source.tools.python_version);
+    assert.equal(candidateEvidence.extractor.kiwipiepy_version, candidateReview.source.tools.kiwipiepy_version);
+    assert.equal(candidateEvidence.extractor.kiwipiepy_model_version, candidateReview.source.tools.kiwipiepy_model_version);
+    assert.equal(candidateEvidence.extractor.script_sha256, candidateReview.source.tools.extractor_script_sha256);
+    assert.deepEqual(candidateEvidence.extractor.tag_to_typewriter_pos, { NNG: 'noun', VV: 'verb', VA: 'adjective' });
+    assert.equal(candidateEvidence.extractor.predicate_lemma_rule, 'VV and VA morpheme forms receive the citation ending 다; NNG forms remain unchanged');
+    assert.equal(candidateEvidence.orchestration.node_version, candidateReview.source.tools.node_version);
+    assert.equal(candidateEvidence.orchestration.node_sqlite_version, candidateReview.source.tools.node_sqlite_version);
+    assert.equal(candidateEvidence.orchestration.orchestrator_script_sha256, candidateReview.source.tools.orchestrator_script_sha256);
+    assert.equal(candidateEvidence.orchestration.batch_id, BATCH_ID);
+    assert.equal(candidateEvidence.orchestration.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
+    assert.equal(candidateSelection.candidates.length, candidateReview.decisions.length);
+    assert.equal(candidateEvidence.candidates.length, candidateReview.decisions.length);
+    for (const [index, row] of candidateReview.decisions.entries()) {
+      const selected = candidateSelection.candidates[index];
+      const evidence = candidateEvidence.candidates.find(({ proposed_lemma: lemma, proposed_pos: pos }) => (
+        lemma === row.morphology_proposal.lemma && pos === selected?.proposed_pos
+      ));
+      assert.ok(selected && evidence, `${row.inventory_id} must bind a local selected evidence row`);
+      const selectedWithoutState = structuredClone(selected);
+      delete selectedWithoutState.decision_state;
+      const evidenceWithoutHits = structuredClone(evidence);
+      delete evidenceWithoutHits.evidence;
+      assert.deepEqual(selectedWithoutState, evidenceWithoutHits, `${row.inventory_id} selection matches text-free evidence`);
+      const morphologyHeld = row.morphology_proposal.ambiguity_status !== 'single_observed_analysis_unverified'
+        || row.morphology_proposal.pos_interpretation_count_in_sample > 1
+        || row.morphology_proposal.ambiguous_observed_surface_count_in_sample > 0
+        || row.morphology_proposal.oov_morpheme_occurrences_in_sample > 0;
+      const coverageHeld = [
+        'search_form_collision',
+        'generated_surface_collision',
+        'search_and_generated_surface_collision',
+      ].includes(row.coverage_status) && row.typewriter_surface_matches.length > 0;
+      const expectedExtractionState = morphologyHeld || coverageHeld ? 'held' : 'candidate';
+      assert.equal(selected.decision_state, expectedExtractionState, `${row.inventory_id} extractor ambiguity disposition`);
+      assert.equal(row.morphology_proposal.lemma, selected.proposed_lemma);
+      const analyzerMappedPos = { NNG: 'noun', VV: 'verb', VA: 'adjective' }[selected.analyzer_pos];
+      if (row.morphology_proposal.pos === selected.proposed_pos) {
+        assert.equal(row.editorial_judgment.pos_correction, undefined, `${row.inventory_id} has no unsupported POS correction`);
+        assert.equal(analyzerMappedPos, row.morphology_proposal.pos);
+      } else {
+        const correction = row.editorial_judgment.pos_correction;
+        assert.equal(row.editorial_judgment.disposition, 'admit', `${row.inventory_id} POS correction is used only after a complete review`);
+        assert.equal(correction.evidence_type, 'reviewed-bounded-contexts-support-corrected-pos');
+        assert.equal(correction.analyzer_pos, selected.analyzer_pos);
+        assert.equal(correction.analyzer_mapped_pos, selected.proposed_pos);
+        assert.equal(correction.corrected_pos, row.morphology_proposal.pos);
+        assert.ok(correction.paragraph_ids.length > 0);
+        const availableParagraphIds = new Set(row.bounded_provenance.representative_hits.map(({ paragraph_id }) => paragraph_id));
+        assert.ok(correction.paragraph_ids.every((id) => availableParagraphIds.has(id)));
+      }
+      assert.equal(row.morphology_proposal.analyzer_pos, selected.analyzer_pos);
+      assert.equal(row.morphology_proposal.ambiguity_status, selected.ambiguity_status);
+      assert.equal(row.morphology_proposal.analyzer_confidence, selected.analyzer_confidence);
+      assert.equal(row.morphology_proposal.pos_interpretation_count_in_sample, selected.pos_interpretation_count_in_sample);
+      assert.equal(row.morphology_proposal.ambiguous_observed_surface_count_in_sample, selected.ambiguous_observed_surface_count_in_sample);
+      assert.equal(row.morphology_proposal.oov_morpheme_occurrences_in_sample, selected.oov_morpheme_occurrences_in_sample);
+      if (['VV', 'VA'].includes(row.morphology_proposal.analyzer_pos)) {
+        assert.equal(row.morphology_proposal.lemma.endsWith('다'), true, `${row.inventory_id} predicate proposal uses the reviewed citation form`);
+      }
+      assert.equal(row.coverage_status, selected.coverage_status);
+      assert.deepEqual(row.typewriter_surface_matches, selected.typewriter_surface_matches);
+      assert.deepEqual(row.observed_surface_forms, selected.observed_surface_forms);
+      assert.deepEqual(row.observed_morpheme_spans, selected.observed_morpheme_spans);
+      assert.equal(row.corpus_evidence.kiwi_morpheme_occurrences_in_sample, selected.kiwi_morpheme_occurrences_in_sample);
+      assert.equal(row.corpus_evidence.paragraph_hits_in_sample, selected.paragraph_hits_in_sample);
+      assert.equal(row.corpus_evidence.distinct_documents_in_sample, selected.distinct_documents_in_sample);
+      assert.equal(row.corpus_evidence.distinct_sources_in_sample, selected.distinct_sources_in_sample);
+      assert.equal(row.bounded_provenance.representative_hit_count, evidence.evidence.representative_hit_count);
+      assert.equal(row.bounded_provenance.representative_hit_limit, evidence.evidence.representative_hits_limit);
+      assert.deepEqual(row.bounded_provenance.representative_hits, evidence.evidence.representative_hits);
+    }
   }
   assert.equal(candidateReview.source.index.input_manifest_sha256, '50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211');
   assert.equal(candidateReview.source.index.logical_rows_sha256, 'c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd');
@@ -626,7 +636,6 @@ export async function validateIssue222() {
     const absolutePath = repositoryArtifactPath(artifact.path, 'exclusion source');
     assert.equal(sha256Bytes(await readFile(absolutePath)), artifact.sha256, `${artifact.path} exclusion-source digest`);
   }
-  assert.equal(candidateReview.selection.candidate_selection_sha256, candidateEvidence.orchestration.candidate_selection_sha256);
   assert.equal(candidateReview.selection.exclusion_sha256, candidateReview.source_artifacts.exclusion_manifest_sha256);
 
   const ordinals = new Set();
@@ -780,7 +789,7 @@ export async function validateIssue222() {
   assert.equal(historicalImportRecords.length, 20);
 
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  const additionalCorpusBatches = await validateAdditionalCorpusBatches(currentCanonical);
+  const additionalCorpusBatches = await validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence });
   const allCorpusImportRecords = [
     ...importRecords,
     ...additionalCorpusBatches.flatMap(({ importRecords: records }) => records),

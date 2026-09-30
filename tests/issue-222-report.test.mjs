@@ -9,7 +9,10 @@ import {
   summarizeCandidateDecisions,
   summarizeCanonicalAudit,
 } from '../scripts/batch/issue-222-report-audit.mjs';
-import { renderMarkdown } from '../scripts/batch/report-issue-222.mjs';
+import {
+  buildIssue222NormalCiEvidence,
+  renderMarkdown,
+} from '../scripts/batch/report-issue-222.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const REPORT_PATH = path.join(ROOT, 'data/validation/issue-222-m9-d-scale-coverage-report.json');
@@ -69,6 +72,21 @@ test('a completed M9-D report hands continuation to M9-E', () => {
   assert.doesNotMatch(nextStep, /continue.*7,500/u);
 });
 
+test('normal CI evidence delegates to the exact-head PR check without caching a prior result', async () => {
+  const report = JSON.parse(await readFile(REPORT_PATH, 'utf8'));
+
+  assert.deepEqual(
+    buildIssue222NormalCiEvidence(report.current.canonical_records_sha256),
+    {
+      command: 'npm run ci:normal',
+      check_name: 'Validate and test Typewriter',
+      status_source: 'external-exact-head-pr-check',
+      canonical_sha256: report.current.canonical_records_sha256,
+    },
+  );
+  assert.equal(Object.hasOwn(report.normal_ci, 'result'), false);
+});
+
 test('checkpoint JSON conforms to schema and its Markdown is regenerated from that JSON', async () => {
   const [reportBytes, document, schemaBytes] = await Promise.all([
     readFile(REPORT_PATH, 'utf8'),
@@ -82,6 +100,8 @@ test('checkpoint JSON conforms to schema and its Markdown is regenerated from th
 
   assert.equal(validate(report), true, ajv.errorsText(validate.errors));
   assert.equal(document, renderMarkdown(report));
+  assert.equal(report.validation.command, 'npm run batch:issue-222:report:check');
+  assert.equal(report.validation.local_corpus_evidence_command, 'npm run batch:issue-222:check');
   assert.equal(report.current.non_searchable_record_count, 0);
   assert.equal(report.current.directly_searchable_record_count, report.current.canonical_record_count);
   assert.equal(report.current.relation_empty_searchable_record_count <= report.current.directly_searchable_record_count, true);

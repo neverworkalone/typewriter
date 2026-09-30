@@ -253,9 +253,10 @@
     "validation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["command", "directly_searchable_new_records", "shared_admission_blocking_findings", "semantic_coverage_complete", "additional_corpus_batch_semantic_coverage_complete", "logical_builds_compared", "deterministic_logical_contents", "historical_base_inventory_sha256", "corpus_reviews_human_reviewed", "historical_review_human_reviewed"],
+      "required": ["command", "local_corpus_evidence_command", "directly_searchable_new_records", "shared_admission_blocking_findings", "semantic_coverage_complete", "additional_corpus_batch_semantic_coverage_complete", "logical_builds_compared", "deterministic_logical_contents", "historical_base_inventory_sha256", "corpus_reviews_human_reviewed", "historical_review_human_reviewed"],
       "properties": {
-        "command": { "const": "npm run batch:issue-222:check" },
+        "command": { "const": "npm run batch:issue-222:report:check" },
+        "local_corpus_evidence_command": { "const": "npm run batch:issue-222:check" },
         "directly_searchable_new_records": { "type": "integer", "minimum": 0 },
         "shared_admission_blocking_findings": { "type": "integer", "minimum": 0 },
         "semantic_coverage_complete": { "const": true },
@@ -270,10 +271,11 @@
     "normal_ci": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["command", "result", "canonical_sha256"],
+      "required": ["command", "check_name", "status_source", "canonical_sha256"],
       "properties": {
         "command": { "const": "npm run ci:normal" },
-        "result": { "enum": ["pending", "passed", "failed"] },
+        "check_name": { "const": "Validate and test Typewriter" },
+        "status_source": { "const": "external-exact-head-pr-check" },
         "canonical_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
