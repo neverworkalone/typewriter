@@ -95,10 +95,21 @@ async function createM511PromotionTransactionFixture() {
   const importBytes = await readFile('data/canonical/m5-11-expansion.jsonl');
   const currentSeed = JSON.parse(await readFile('data/inventory/m5-target-seed.json', 'utf8'));
   currentSeed.revision = 'm5-11';
+  const m511BaseCanonical = await readCanonicalRecords('data/batches/m5-11-base-canonical');
+  const m511BaseCanonicalIds = new Set(m511BaseCanonical.records.map(({ record }) => record.id));
+  const m511ImportRecords = (await readFile('data/canonical/m5-11-expansion.jsonl', 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  for (const { id } of m511ImportRecords) {
+    m511BaseCanonicalIds.add(id);
+  }
   currentSeed.targets = currentSeed.targets.filter(({ inventory_id: inventoryId }) => {
     const number = Number(inventoryId.slice(3));
     return !(inventoryId.startsWith('m5-') && number >= 1085 && number <= 1886);
-  });
+  }).filter(({ canonical_id: canonicalId, status }) => (
+    status !== 'promoted' || m511BaseCanonicalIds.has(canonicalId)
+  ));
   const seedBytes = Buffer.from(`${JSON.stringify(currentSeed, null, 2)}\n`, 'utf8');
   await writeFile(path.join(prospectiveCanonicalDirectory, 'm5-11-expansion.jsonl'), importBytes);
   await writeFile(prospectiveSeedPath, seedBytes);
