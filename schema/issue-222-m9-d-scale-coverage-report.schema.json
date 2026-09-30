@@ -1,0 +1,346 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://typewriter.neverworkalone.net/schema/issue-222-m9-d-scale-coverage-report.schema.json",
+  "title": "Typewriter Issue #222 M9-D scale coverage checkpoint report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "issue",
+    "parent_issue",
+    "state",
+    "baseline",
+    "target",
+    "current",
+    "batches",
+    "aggregate",
+    "historical_pool",
+    "corpus_inventory",
+    "production_audit",
+    "validation",
+    "normal_ci",
+    "runtime_package_impact",
+    "continuation",
+    "remaining"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "report_id": { "const": "issue-222-m9-d-scale-coverage-report-v1" },
+    "issue": { "const": 222 },
+    "parent_issue": { "const": 218 },
+    "state": { "enum": ["in_progress", "complete", "blocked"] },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "canonical_revision", "canonical_record_count", "directly_searchable_record_count"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/gitObjectId" },
+        "canonical_revision": { "$ref": "#/$defs/sha256" },
+        "canonical_record_count": { "type": "integer", "minimum": 0 },
+        "directly_searchable_record_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["searchable_record_count"],
+      "properties": { "searchable_record_count": { "type": "integer", "minimum": 1 } }
+    },
+    "current": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_revision", "canonical_records_sha256", "canonical_record_count", "directly_searchable_record_count", "exact_search_key_count", "non_searchable_record_count", "record_type_counts", "role_counts", "sense_pos_counts", "sense_count", "relation_count", "canonical_search_form_count", "relation_empty_searchable_record_count", "exact_search_coverage"],
+      "properties": {
+        "canonical_revision": { "$ref": "#/$defs/sha256" },
+        "canonical_records_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_record_count": { "type": "integer", "minimum": 0 },
+        "directly_searchable_record_count": { "type": "integer", "minimum": 0 },
+        "exact_search_key_count": { "type": "integer", "minimum": 0 },
+        "non_searchable_record_count": { "type": "integer", "minimum": 0 },
+        "record_type_counts": { "$ref": "#/$defs/countsByString" },
+        "role_counts": { "$ref": "#/$defs/countsByString" },
+        "sense_pos_counts": { "$ref": "#/$defs/countsByString" },
+        "sense_count": { "type": "integer", "minimum": 0 },
+        "relation_count": { "type": "integer", "minimum": 0 },
+        "canonical_search_form_count": { "type": "integer", "minimum": 0 },
+        "relation_empty_searchable_record_count": { "type": "integer", "minimum": 0 },
+        "exact_search_coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expected_lemma_count", "covered_lemma_count", "non_searchable_record_count", "non_searchable_records", "distinct_search_form_count", "expected_form_owner_key_count", "covered_form_owner_key_count", "missing_form_owner_key_count", "unexpected_form_owner_key_count", "cross_record_collision_key_count"],
+          "properties": {
+            "expected_lemma_count": { "type": "integer", "minimum": 0 },
+            "covered_lemma_count": { "type": "integer", "minimum": 0 },
+            "non_searchable_record_count": { "type": "integer", "minimum": 0 },
+            "non_searchable_records": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+            "distinct_search_form_count": { "type": "integer", "minimum": 0 },
+            "expected_form_owner_key_count": { "type": "integer", "minimum": 0 },
+            "covered_form_owner_key_count": { "type": "integer", "minimum": 0 },
+            "missing_form_owner_key_count": { "type": "integer", "minimum": 0 },
+            "unexpected_form_owner_key_count": { "type": "integer", "minimum": 0 },
+            "cross_record_collision_key_count": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "batches": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["batch_id", "source_class", "candidate_count", "admitted_count", "held_count", "rejected_count", "hold_reason_counts", "reject_reason_counts", "candidate_pos_correction_count", "semantic_corrected_count", "correction_pass_count", "correction_rate_status", "writer_review_burden_status", "semantic_source_sha256", "canonical_import_record_count"],
+        "properties": {
+          "batch_id": { "type": "string", "minLength": 1 },
+          "source_class": { "enum": ["historical-recovery-inventory", "local-written-corpus"] },
+          "candidate_limit": { "type": "integer", "minimum": 1, "maximum": 500 },
+          "candidate_count": { "type": "integer", "minimum": 0, "maximum": 500 },
+          "admitted_count": { "type": "integer", "minimum": 0 },
+          "held_count": { "type": "integer", "minimum": 0 },
+          "rejected_count": { "type": "integer", "minimum": 0 },
+          "hold_reason_counts": { "$ref": "#/$defs/countsByString" },
+          "reject_reason_counts": { "$ref": "#/$defs/countsByString" },
+          "candidate_pos_correction_count": { "type": "integer", "minimum": 0 },
+          "semantic_corrected_count": { "type": "integer", "minimum": 0 },
+          "correction_pass_count": { "type": "integer", "minimum": 0 },
+          "correction_rate_status": { "type": "string", "minLength": 1 },
+          "writer_review_burden_status": { "type": "string", "minLength": 1 },
+          "candidate_source_sha256": { "$ref": "#/$defs/sha256" },
+          "candidate_review_sha256": { "$ref": "#/$defs/sha256" },
+          "candidate_evidence_sha256": { "$ref": "#/$defs/sha256" },
+          "candidate_selection_sha256": { "$ref": "#/$defs/sha256" },
+          "semantic_source_sha256": { "$ref": "#/$defs/sha256" },
+          "canonical_import_record_count": { "type": "integer", "minimum": 0 },
+          "prior_lemma_exclusion_count": { "type": "integer", "minimum": 0 },
+          "human_reviewed": { "const": false }
+        },
+        "if": { "properties": { "source_class": { "const": "historical-recovery-inventory" } } },
+        "then": {
+          "required": ["candidate_source_sha256"],
+          "not": { "anyOf": [{ "required": ["candidate_review_sha256"] }, { "required": ["candidate_limit"] }] }
+        },
+        "else": {
+          "required": ["candidate_limit", "candidate_review_sha256", "candidate_evidence_sha256", "candidate_selection_sha256", "prior_lemma_exclusion_count", "human_reviewed"]
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewed_count", "admitted_count", "held_count", "rejected_count", "canonical_records_added", "admission_quota_applied"],
+      "properties": {
+        "reviewed_count": { "type": "integer", "minimum": 0 },
+        "admitted_count": { "type": "integer", "minimum": 0 },
+        "held_count": { "type": "integer", "minimum": 0 },
+        "rejected_count": { "type": "integer", "minimum": 0 },
+        "canonical_records_added": { "type": "integer", "minimum": 0 },
+        "admission_quota_applied": { "const": false }
+      }
+    },
+    "historical_pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_count", "recovered_before_count", "recovered_count", "recovered_in_issue_222_count", "potentially_recoverable_before_count", "potentially_recoverable_after_count", "recovery_ceiling", "remaining_count", "remaining_counts_by_disposition", "unresolved_sense_pos_or_context_case_count", "search_collision_count", "true_duplicate_count"],
+      "properties": {
+        "candidate_count": { "type": "integer", "minimum": 0 },
+        "recovered_before_count": { "type": "integer", "minimum": 0 },
+        "recovered_count": { "type": "integer", "minimum": 0 },
+        "recovered_in_issue_222_count": { "type": "integer", "minimum": 0 },
+        "potentially_recoverable_before_count": { "type": "integer", "minimum": 0 },
+        "potentially_recoverable_after_count": { "type": "integer", "minimum": 0 },
+        "recovery_ceiling": { "type": "integer", "minimum": 0 },
+        "remaining_count": { "type": "integer", "minimum": 0 },
+        "remaining_counts_by_disposition": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["disposition", "count"],
+            "properties": {
+              "disposition": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "unresolved_sense_pos_or_context_case_count": { "type": "integer", "minimum": 0 },
+        "search_collision_count": { "type": "integer", "minimum": 0 },
+        "true_duplicate_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "corpus_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_count", "document_count", "paragraph_count", "sample_paragraph_count", "sample_fraction", "unique_lemma_candidate_count", "exact_canonical_lemma_candidate_count", "uncovered_candidate_count", "surface_collision_candidate_count", "ambiguous_candidate_count", "oov_candidate_count", "prior_lemma_exclusion_count_first_batch", "prior_lemma_exclusion_count_latest_batch", "reviewed_batch_count", "reviewed_candidate_count", "permission_record_sha256", "input_manifest_sha256", "logical_rows_sha256", "source_text_committed", "initial_covered_or_colliding_candidate_count", "initial_covered_or_colliding_candidate_rate"],
+      "properties": {
+        "source_count": { "type": "integer", "minimum": 0 },
+        "document_count": { "type": "integer", "minimum": 0 },
+        "paragraph_count": { "type": "integer", "minimum": 0 },
+        "sample_paragraph_count": { "type": "integer", "minimum": 0 },
+        "sample_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "unique_lemma_candidate_count": { "type": "integer", "minimum": 0 },
+        "exact_canonical_lemma_candidate_count": { "type": "integer", "minimum": 0 },
+        "uncovered_candidate_count": { "type": "integer", "minimum": 0 },
+        "surface_collision_candidate_count": { "type": "integer", "minimum": 0 },
+        "ambiguous_candidate_count": { "type": "integer", "minimum": 0 },
+        "oov_candidate_count": { "type": "integer", "minimum": 0 },
+        "prior_lemma_exclusion_count_first_batch": { "type": "integer", "minimum": 0 },
+        "prior_lemma_exclusion_count_latest_batch": { "type": "integer", "minimum": 0 },
+        "reviewed_batch_count": { "type": "integer", "minimum": 1 },
+        "reviewed_candidate_count": { "type": "integer", "minimum": 0 },
+        "permission_record_sha256": { "$ref": "#/$defs/sha256" },
+        "input_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "logical_rows_sha256": { "$ref": "#/$defs/sha256" },
+        "source_text_committed": { "const": false },
+        "initial_covered_or_colliding_candidate_count": { "type": "integer", "minimum": 0 },
+        "initial_covered_or_colliding_candidate_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "production_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hold_reason_counts", "reject_reason_counts", "initial_candidate_pool", "unresolved_review_inventory", "correction_rate_status", "writer_review_burden_status", "candidate_pos_correction_count", "semantic_corrected_count", "correction_pass_count", "systemic_defect_classes", "system_fixes"],
+      "properties": {
+        "hold_reason_counts": { "$ref": "#/$defs/countsByString" },
+        "reject_reason_counts": { "$ref": "#/$defs/countsByString" },
+        "initial_candidate_pool": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unique_lemma_candidate_count", "exact_canonical_lemma_count", "surface_collision_candidate_count", "covered_or_colliding_candidate_count", "uncovered_candidate_count", "covered_or_colliding_rate", "prior_lemma_exclusion_count_latest_batch"],
+          "properties": {
+            "unique_lemma_candidate_count": { "type": "integer", "minimum": 0 },
+            "exact_canonical_lemma_count": { "type": "integer", "minimum": 0 },
+            "surface_collision_candidate_count": { "type": "integer", "minimum": 0 },
+            "covered_or_colliding_candidate_count": { "type": "integer", "minimum": 0 },
+            "uncovered_candidate_count": { "type": "integer", "minimum": 0 },
+            "covered_or_colliding_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "prior_lemma_exclusion_count_latest_batch": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "unresolved_review_inventory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "finding_class", "count"],
+            "properties": {
+              "source": { "type": "string", "minLength": 1 },
+              "finding_class": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "correction_rate_status": { "type": "string", "minLength": 1 },
+        "writer_review_burden_status": { "type": "string", "minLength": 1 },
+        "candidate_pos_correction_count": { "type": "integer", "minimum": 0 },
+        "semantic_corrected_count": { "type": "integer", "minimum": 0 },
+        "correction_pass_count": { "type": "integer", "minimum": 0 },
+        "systemic_defect_classes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "system_fixes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["area", "summary"],
+            "properties": {
+              "area": { "type": "string", "minLength": 1 },
+              "summary": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "local_corpus_evidence_command", "directly_searchable_new_records", "shared_admission_blocking_findings", "semantic_coverage_complete", "additional_corpus_batch_semantic_coverage_complete", "logical_builds_compared", "deterministic_logical_contents", "historical_base_inventory_sha256", "corpus_reviews_human_reviewed", "historical_review_human_reviewed"],
+      "properties": {
+        "command": { "const": "npm run batch:issue-222:report:check" },
+        "local_corpus_evidence_command": { "const": "npm run batch:issue-222:check" },
+        "directly_searchable_new_records": { "type": "integer", "minimum": 0 },
+        "shared_admission_blocking_findings": { "type": "integer", "minimum": 0 },
+        "semantic_coverage_complete": { "const": true },
+        "additional_corpus_batch_semantic_coverage_complete": { "const": true },
+        "logical_builds_compared": { "const": 2 },
+        "deterministic_logical_contents": { "const": true },
+        "historical_base_inventory_sha256": { "$ref": "#/$defs/sha256" },
+        "corpus_reviews_human_reviewed": { "const": false },
+        "historical_review_human_reviewed": { "const": false }
+      }
+    },
+    "normal_ci": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "check_name", "status_source", "canonical_sha256"],
+      "properties": {
+        "command": { "const": "npm run ci:normal" },
+        "check_name": { "const": "Validate and test Typewriter" },
+        "status_source": { "const": "external-exact-head-pr-check" },
+        "canonical_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "runtime_package_impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "baseline_dictionary_record_count", "current_dictionary_record_count", "dictionary_record_delta", "dictionary_record_growth_rate", "dictionary_package_bytes_measured", "runtime_contract_changed", "rationale", "targeted_validation"],
+      "properties": {
+        "status": { "enum": ["dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured"] },
+        "baseline_dictionary_record_count": { "type": "integer", "minimum": 0 },
+        "current_dictionary_record_count": { "type": "integer", "minimum": 0 },
+        "dictionary_record_delta": { "type": "integer" },
+        "dictionary_record_growth_rate": { "type": "number", "minimum": 0 },
+        "dictionary_package_bytes_measured": { "const": false },
+        "runtime_contract_changed": { "const": false },
+        "rationale": { "type": "string", "minLength": 1 },
+        "targeted_validation": { "enum": ["normal-ci-product-build-and-output-contract"] }
+      }
+    },
+    "continuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "checkpoint_target", "canonical_count_at_start", "canonical_count_now", "net_admitted_this_run", "remaining_to_checkpoint", "batches_processed", "candidate_yield", "defect_classes", "blocker", "continuation_required", "stop_reason"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "checkpoint_target": { "type": "integer", "minimum": 1 },
+        "canonical_count_at_start": { "type": "integer", "minimum": 0 },
+        "canonical_count_now": { "type": "integer", "minimum": 0 },
+        "net_admitted_this_run": { "type": "integer", "minimum": 0 },
+        "remaining_to_checkpoint": { "type": "integer", "minimum": 0 },
+        "batches_processed": { "type": "integer", "minimum": 0 },
+        "candidate_yield": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["selected_count", "admitted_count", "held_count", "rejected_count"],
+          "properties": {
+            "selected_count": { "type": "integer", "minimum": 0 },
+            "admitted_count": { "type": "integer", "minimum": 0 },
+            "held_count": { "type": "integer", "minimum": 0 },
+            "rejected_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "defect_classes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "blocker": { "type": ["string", "null"], "enum": ["product-model", "licensing", null] },
+        "continuation_required": { "type": "boolean" },
+        "stop_reason": { "type": ["string", "null"], "enum": ["systemic-defect", "product-or-licensing-blocker", "checkpoint-reached", "source-exhaustion", null] }
+      }
+    },
+    "remaining": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["records_to_target", "documented_blocker", "next_step"],
+      "properties": {
+        "records_to_target": { "type": "integer", "minimum": 0 },
+        "documented_blocker": { "type": ["string", "null"] },
+        "next_step": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "gitObjectId": { "type": "string", "pattern": "^[a-f0-9]{40,64}$" },
+    "countsByString": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    }
+  }
+}

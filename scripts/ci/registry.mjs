@@ -177,6 +177,8 @@ export const CI_CATEGORIES = Object.freeze({
         'Test M9 corpus candidate-review disposition regressions',
         ['--test', 'scripts/reference/corpus-candidate-review.test.mjs'],
       ),
+      testCheck('tests/issue-222-report.test.mjs', 'Test Issue #222 checkpoint audit and M9-E handoff'),
+      npmCheck('Validate portable Issue #222 checkpoint regeneration', 'batch:issue-222:report:check'),
       testCheck('tests/m9-production-progress.test.mjs', 'Test M9 production checkpoint progress'),
       inProcessCheck(
         'Validate M5-15 pre-admission boundary',

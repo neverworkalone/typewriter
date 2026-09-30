@@ -4,17 +4,17 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "5b644b84e5c51ddc5d8fcb6c2a21c0a321a9ad32d52a2883ef4925edc5f4d570",
+    "current_canonical_revision": "56772da538d68d17fb1e04146f451b3868c9d5520fffd000585d6755e4561a2a",
     "source_manifest": [
       {
         "path": "AGENTS.md",
-        "sha256": "3cbd595f472dc6d54e4339cb6392f572a1f9eac21d31e4d7e904b24bbdd8f7b1",
-        "byte_count": 13787
+        "sha256": "80a51e7cd719ef617ce631ef734805f2b16ec931d591f13a6543814810d35290",
+        "byte_count": 12783
       },
       {
         "path": "config/artifact-policy.json",
-        "sha256": "d051121e38038895c195566a6ad3f42b47a1de53b3f18cd5b176e77825735e85",
-        "byte_count": 135628
+        "sha256": "b72b3c3eea08f479e0d9b33053ea98b887e0b6f5f61f0df6bf6752d1756ceab2",
+        "byte_count": 128808
       },
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -253,113 +253,13 @@
       },
       {
         "path": "data/batches/issue-221-corpus-candidate-review.json",
-        "sha256": "e3b5a98a5b097e8df1e0459756a7f6c018e46cc3d16c8f7a817a0e49aa524019",
-        "byte_count": 122740
+        "sha256": "87178d7fa5c3b656f82f8ef8e80464793b5094c3c99c0c6ed69bafaa58f75228",
+        "byte_count": 122682
       },
       {
         "path": "data/batches/issue-221-corpus-semantic-decisions.json",
-        "sha256": "a87fa0b4f72f6eb19fdc933ad0dd43e832ad48870ccb1cdb1a146485ddd3f474",
+        "sha256": "f247489a8fdabf63ff44d477dce9627fb2aa0a429c64af0036db1e76708d86fe",
         "byte_count": 51434
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-01-candidate-review.json",
-        "sha256": "a68e4c75b2d5ae06abcd94f381621641a934ff6a260b711715fcfadb37b5bf37",
-        "byte_count": 124684
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json",
-        "sha256": "f6c204ed6129a222b71f62d7b68d5b00ebfef9a1ffaf3e58040f8f1ebeeb0df7",
-        "byte_count": 37206
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-02-candidate-review.json",
-        "sha256": "07398de5ace5b47232ea80cec2bd931d8222be233f2e8409079134325742c308",
-        "byte_count": 1161156
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-02-semantic-decisions.json",
-        "sha256": "9c65156902d45236a6ae4756f9be609e93c95b7e1df2887d6c332595a5b5f8b2",
-        "byte_count": 683022
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-03-candidate-review.json",
-        "sha256": "fcfaa5a94b922b4f2da6e2de6d5df766f3c00c5d67af7ba285f4c264e9d6838d",
-        "byte_count": 2860832
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-03-semantic-decisions.json",
-        "sha256": "57d438bf60e95c93133bffe360ee80c922106c725c925137ec6fd86db38bec5d",
-        "byte_count": 1760536
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-04-candidate-review.json",
-        "sha256": "b9a573862194a993393be2dd503668abecda50e722902725074825b96e38f04e",
-        "byte_count": 2782499
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-04-semantic-decisions.json",
-        "sha256": "36152105f6690ce2b24a3c380dff3a8fcb7347edd333514556a575099493b2d5",
-        "byte_count": 1785059
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-05-candidate-review.json",
-        "sha256": "27e831674d0fdd21d45caf28af535bcd6139a8de55491b7e882abb2ad991eb17",
-        "byte_count": 2767178
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-05-semantic-decisions.json",
-        "sha256": "8ecb7187dd5504fb60241f544af10dc1112f39738f28f541274812b80f23ccf7",
-        "byte_count": 1973371
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-06-candidate-review.json",
-        "sha256": "1a313556433ef96e5670570e0471f884233ca2ca6c95c8c340a47efbfa29043a",
-        "byte_count": 2768555
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-06-semantic-decisions.json",
-        "sha256": "7db2fe1c1e0162df9b5888b70617332f066963aa44c941d6435309578f58ff73",
-        "byte_count": 2065000
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-07-candidate-review.json",
-        "sha256": "90575d5e5c7b0c8a869f2a2128e7ad55f0d96444650da080dd848bb32e180873",
-        "byte_count": 2742052
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-07-semantic-decisions.json",
-        "sha256": "79c6714e6a73fb9503eeca6c1bf800f8a1296aed170bf74852019ec35796f934",
-        "byte_count": 2074332
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-08-candidate-review.json",
-        "sha256": "b6e57696378e045068af3bd26728ce80f9abd5cd1800d676bbf351d136bddcf2",
-        "byte_count": 666056
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-corpus-batch-08-semantic-decisions.json",
-        "sha256": "4f1ac02e5bb6372bdd1e7b6df7c93db55e7525405fd895cb9baf5dd1bbb97c73",
-        "byte_count": 518647
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json",
-        "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd",
-        "byte_count": 856700
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json",
-        "sha256": "42525a3de9668f53092c3a7ed483e4a9b377aeb2f03f0de0500299e8b5f6917d",
-        "byte_count": 1634398
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-historical-candidate-source.json",
-        "sha256": "924f641d2bb1db718a64d24f06a366e0bcc1f931f345eebbf7cac863776bd6fb",
-        "byte_count": 34460
-      },
-      {
-        "path": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-        "sha256": "bae98303dc4c5326df4c79c6e650446cd27b50adfd99fe08120c725def30a6e0",
-        "byte_count": 84815
       },
       {
         "path": "data/batches/m5-10-wave-a.json",
@@ -542,51 +442,6 @@
         "byte_count": 2469
       },
       {
-        "path": "data/canonical/issue-222-m9-d-corpus-batch-01.jsonl",
-        "sha256": "fbff5bd26cc7eb0149375355f8ee7f31d57e0052c5b7764f6e58b998e547346b",
-        "byte_count": 1745
-      },
-      {
-        "path": "data/canonical/issue-222-m9-d-corpus-batch-02.jsonl",
-        "sha256": "f026689beea1ae49f21f04844cf44034f0fbc71754df469df4842cc4e7d2d807",
-        "byte_count": 33172
-      },
-      {
-        "path": "data/canonical/issue-222-m9-d-corpus-batch-03.jsonl",
-        "sha256": "90b69438a382326fee7394759818658f78b9c420d57b9bbc824ac61b3c0a8f0a",
-        "byte_count": 86042
-      },
-      {
-        "path": "data/canonical/issue-222-m9-d-corpus-batch-04.jsonl",
-        "sha256": "24a6f5e6c27976efafe1503c3cd652080b047e94db02d7fb6acc60133acaa7de",
-        "byte_count": 89466
-      },
-      {
-        "path": "data/canonical/issue-222-m9-d-corpus-batch-05.jsonl",
-        "sha256": "c1d59b24d91022f3b2640e9fde596f4f1698965468001cfcbb6c7f8e5ebc7a31",
-        "byte_count": 98992
-      },
-      {
-        "path": "data/canonical/issue-222-m9-d-corpus-batch-06.jsonl",
-        "sha256": "c4a97332fd51252abe211b84268248ff71b438527ad90f6f5cae378a36932751",
-        "byte_count": 104430
-      },
-      {
-        "path": "data/canonical/issue-222-m9-d-corpus-batch-07.jsonl",
-        "sha256": "715a72b9849aa45d68317e034bc38634419ef088947a37de2f0a436b9cb84086",
-        "byte_count": 105420
-      },
-      {
-        "path": "data/canonical/issue-222-m9-d-corpus-batch-08.jsonl",
-        "sha256": "edec6d2660f05407d0319a8d681c9a14d6a8aa1e1db0ec17b3df6f7e7a96bafb",
-        "byte_count": 26326
-      },
-      {
-        "path": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl",
-        "sha256": "d3daae97bf50708d88cc56e1c945d93b713f7acaa73caffa0f5561a3dd1bafd3",
-        "byte_count": 4611
-      },
-      {
         "path": "data/canonical/m5-10-wave-a.jsonl",
         "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
         "byte_count": 15089
@@ -653,43 +508,43 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "7d3e65703478d6597bfaba5ccc49afd4f116ebeffd9f590b32b76217e76d92a8",
-        "byte_count": 4426215
+        "sha256": "88af452381d2cc748046caea29da8d26843c5db090202e3a897d9595e9e2ede6",
+        "byte_count": 2521719
       },
       {
         "path": "data/inventory/m5-target-seed.json",
-        "sha256": "6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a",
-        "byte_count": 857328
+        "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd",
+        "byte_count": 856700
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "8e865aaf005bf01bc97bfc6b6c7a977d426540d01c1a917eb68fce67d144e607",
-        "byte_count": 7093276
+        "sha256": "172df9b7d0dca09f695212681338e6cd91b6951e6ed1cff5fe99a329d1c8ac0a",
+        "byte_count": 4876289
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "d21ff6760352fc2ec41184a8a45d29a6544565203e83cb30ff3119e9077d12aa",
+        "sha256": "9919a2dd2548881370ec5a05351674ee698476c11dcd0b934dc207cdef2c605d",
         "byte_count": 11354
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "40295f80838f2a13491ae7b5665da83b85fd267646834aa177130d5f5a80de85",
-        "byte_count": 29629
+        "sha256": "47d58c9e84742b14dabd243715820db0f85c00a70b50f0a3f3fb4dbb7c36e8c9",
+        "byte_count": 29626
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
-        "sha256": "96a6ee051686f318925da8d1d56fa0ef271693c06e06896af067c8b80dd3c447",
-        "byte_count": 10082
+        "sha256": "037661676b8ab5e106a4a9889f3e018d97c9b5d8c4c4b18367d4247cbc8916c6",
+        "byte_count": 6326
       },
       {
         "path": "data/validation/m6-3-surface-form-review.json",
-        "sha256": "84433bda4694d24dc296e19d15e60b48607819f873e3eb6d1536d3c4712b99f3",
-        "byte_count": 373229
+        "sha256": "06c8bc9612c99124dae0b3b4fc38ab9aa757ad5024f380150aa1f089165eaf65",
+        "byte_count": 311609
       },
       {
         "path": "docs/editorial-model.md",
-        "sha256": "2d6e52189d346bec905f715d0637b27f5738fa6d3396311de0873df0125beeff",
-        "byte_count": 102824
+        "sha256": "308d56389339f8aa82247ef6382f314637087351b911e4cf642bee055ae2bdaf",
+        "byte_count": 99794
       },
       {
         "path": "docs/external-material-review-customs-terminology.md",
@@ -708,13 +563,13 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "08192d819a0288faffd60ff9dec6cc2d841e3e56c823f745817ccfe8fa38e929",
+        "sha256": "e2fa71057efc2c7f4df5df57dce9932e0983964e71b55fcdbf4bafb35cd9e866",
         "byte_count": 5991
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "fd72a779d6e02907c5b06be8a9d0bde31d0d542c6edd4f52479cab84a46b0bb5",
-        "byte_count": 8765
+        "sha256": "93dd9c5ab3ac596ccb5bfab7ca17b260818ceb56c04fa3e849bcf86f5c35a299",
+        "byte_count": 8732
       },
       {
         "path": "docs/m3-handoff.md",
@@ -753,13 +608,13 @@
       },
       {
         "path": "docs/m9-bounded-lexical-batches.md",
-        "sha256": "06f1fd2ee398cba59f62a2b347e212d9e921cbdfa14e5cf9931bb22e4a78e70d",
-        "byte_count": 6249
+        "sha256": "3ca7c3b62e5beecb8dca7d073cecea65265ba00e72fa1026015cb37d090cc91a",
+        "byte_count": 4613
       },
       {
         "path": "docs/m9-corpus-production.md",
-        "sha256": "6a9462c696c70ea4600d7467c0f363cfccf1f387ee4fe49590b4ecbdec293d2a",
-        "byte_count": 11640
+        "sha256": "a64e27317fb67414b046f80487a21341224bcb12a4e5252366f21e91ed08164c",
+        "byte_count": 10048
       },
       {
         "path": "docs/pilot-scope.md",
@@ -768,8 +623,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "19a8a9c11cf032c7507b8baa7c544cda1cdc6a31764f51b186661331e9a2b3f6",
-        "byte_count": 10633
+        "sha256": "eb60187ab2ff9c26e5de2218303adbf3d6ea277a226fdec319e4d1bba242b8dc",
+        "byte_count": 10412
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -818,8 +673,8 @@
       },
       {
         "path": "scripts/batch/validate-issue-220.mjs",
-        "sha256": "ba37148e347c0413f3c057b56e4df45dcf175d4d4651e83d182ac7ec22363eb8",
-        "byte_count": 57651
+        "sha256": "cb1991dca4e46fd978ea70154d319997280cf08be1193668fde371d41cafcb78",
+        "byte_count": 56858
       },
       {
         "path": "scripts/batch/validate-issue-221.mjs",
@@ -827,44 +682,39 @@
         "byte_count": 25042
       },
       {
-        "path": "scripts/batch/validate-issue-222.mjs",
-        "sha256": "93a5ea7ed39a040b8accbe60a78a4c3cf573e430eb8f79963ce1c1455edf1e5d",
-        "byte_count": 60659
-      },
-      {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "0a09c92b2fe867e07aa128c8d1a8e78e687fcb26e1a58b82ff869dd9dbdf92ee",
-        "byte_count": 13026
+        "sha256": "7099323d568ace599383b782f943c85d8c375583d89a5efd49985d16ff34e84e",
+        "byte_count": 12926
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "636dbc860b61d7a918da616f12a43e2364447176bebb2d9cdb2b6ed8d92e1893",
-        "byte_count": 90380
+        "sha256": "b5ca2a44f685e9e854a1577473540f943fffc8472860bf56cf7238ec61b0ce86",
+        "byte_count": 76095
       },
       {
         "path": "scripts/reference/corpus-candidate-review.test.mjs",
-        "sha256": "c823091fa9beb8b140846280e05029a2f55aabd043b3864b7d0d7d9f56e0ecf0",
-        "byte_count": 9676
+        "sha256": "ccf5cce15c327c83bb87dc2676c4b8eb871741c7aecfa28c5993d3140d6f125e",
+        "byte_count": 7275
       },
       {
         "path": "scripts/reference/corpus_lemma_pilot.py",
-        "sha256": "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e",
-        "byte_count": 48737
+        "sha256": "a65060846e1f5f0fb300823590965d569772bc952368be18d95f018ab297faeb",
+        "byte_count": 48592
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.mjs",
-        "sha256": "08a85d5d4c7711a3c46bd0ab1ee03e18376758614acb830dd83382357a1f1917",
-        "byte_count": 20463
+        "sha256": "0a191127a90597c75361ead054c723119872b2c9ead2703361959e9f993b674c",
+        "byte_count": 20420
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.test.mjs",
-        "sha256": "d4b3c8d597d45e5027d7df1a697d4980ad76834a6758f4969edfe9446ce12634",
-        "byte_count": 4848
+        "sha256": "929f7ca1da24f887e232370a5395a47701cb8f429121ad5158a3ef036a33e559",
+        "byte_count": 4359
       },
       {
         "path": "scripts/reference/test-corpus-lemma-pilot.py",
-        "sha256": "e4afffc2aa377711e209c653245de7685c48176d78a3ef3346fc008690757d15",
-        "byte_count": 12526
+        "sha256": "211438df85d59f9be80e71280620c27f38a4f6ba4c816813895f6f4a03a45940",
+        "byte_count": 12150
       },
       {
         "path": "scripts/reference/validate-corpus-candidate-review.mjs",
@@ -873,13 +723,13 @@
       },
       {
         "path": "scripts/validate/corpus-candidate-review.mjs",
-        "sha256": "1025222edd680dfcb8f2bcd671ddd159f7ec1000ca5c616fd6e167ddbc5a6d7c",
-        "byte_count": 9685
+        "sha256": "aaab99576807b8ce3b7730f10e0509a2739906591fd14f0cba5ce33ef891971a",
+        "byte_count": 7291
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "4a880c75b67e56ad0d104727e64dc024bff1b8a456ab156e30b3bff28ee8dd7b",
-        "byte_count": 114088
+        "sha256": "4a51bbfc905f4c26e0a22fcc28191a2077107258f1982cb903b86a05494505e0",
+        "byte_count": 112658
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",
@@ -919,22 +769,21 @@
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
     "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; Issue #220 then reviewed 40 M5-13 reserve candidates and admitted 18 through current shared admission.",
     "issue_221": "Issue #221 separately reviewed 20 bounded corpus-derived proposals: 11 passed ordinary source-bound lexical admission and entered the promotion ledger, while 9 remain held. These corpus records are not added to the historical M5 recovery candidate pool; publication remains pending owner confirmation.",
-    "issue_222": "Issue #222 reviewed 2840 bounded corpus-derived proposals and 20 candidates from the frozen historical recovery inventory. Corpus review admitted 2396, held 444, and rejected 0; historical review admitted 20 through ordinary shared admission. The 28 admitted records increase directly searchable canonical coverage to 7,521; corpus source text remains local-reference-only pending owner publication confirmation. The separate M9-D scale checkpoint tracks the remaining gap to approximately 7,500 records.",
-    "source_material_boundary": "Uses tracked Typewriter decision artifacts and text-free Issue #221/#222 provenance only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
+    "source_material_boundary": "Uses tracked Typewriter decision artifacts and text-free Issue #221 provenance only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
     "m5_target_rows_screened": 1562,
     "m5_target_status_counts": {
-      "promoted": 998,
+      "promoted": 978,
       "held": 221,
       "duplicate": 3,
       "inflected-form": 2,
-      "candidate": 6,
-      "rejected": 62,
-      "deferred": 252
+      "candidate": 19,
+      "deferred": 259,
+      "rejected": 62
     },
-    "m5_promoted_seed_rows_present_in_canonical": 998,
-    "m5_promotion_ledger_events_audited": 6181,
+    "m5_promoted_seed_rows_present_in_canonical": 978,
+    "m5_promotion_ledger_events_audited": 3785,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
     "issue_219_admitted_count": 0,
@@ -951,19 +800,8 @@
     "issue_221_held_count": 9,
     "issue_221_rejected_count": 0,
     "issue_221_promotion_events_audited": 11,
-    "issue_222_candidates_reviewed": 2860,
-    "issue_222_admitted_count": 2416,
-    "issue_222_corpus_candidates_reviewed": 2840,
-    "issue_222_corpus_admitted_count": 2396,
-    "issue_222_held_count": 444,
-    "issue_222_rejected_count": 0,
-    "issue_222_historical_candidates_reviewed": 20,
-    "issue_222_historical_admitted_count": 20,
-    "issue_222_historical_held_count": 0,
-    "issue_222_historical_rejected_count": 0,
-    "issue_222_promotion_events_audited": 2396,
-    "historical_recovery_ceiling_count": 8028,
-    "historical_recovery_shortfall_to_6000": 0,
+    "historical_recovery_ceiling_count": 5632,
+    "historical_recovery_shortfall_to_6000": 368,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
     "recovery_candidate_count": 584,
@@ -975,8 +813,8 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 7521,
-    "exact_search_key_count": 7778,
+    "directly_searchable_canonical_record_count": 5105,
+    "exact_search_key_count": 5361,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
@@ -989,8 +827,8 @@
       "hold": 251,
       "duplicate": 2,
       "invalid-lemma": 2,
-      "recovered": 62,
-      "admit-candidate": 228,
+      "admit-candidate": 248,
+      "recovered": 42,
       "needs-sense-split": 28,
       "not-a-lexical-unit": 10,
       "search-surface-collision": 1
@@ -1009,20 +847,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 7521,
-    "directly_searchable_record_count": 7521,
+    "canonical_record_count": 5105,
+    "directly_searchable_record_count": 5105,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 7778,
+    "exact_search_key_count": 5361,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 7479,
+      "start": 5063,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 6326,
+      "start/entry": 3910,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
@@ -2254,31 +2092,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-244",
@@ -2303,49 +2116,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "기어오르다가 만드는 움직임의 방향과 속도를 살필 후보."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-244 w5443: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5443"
-        ],
-        "all_query_match_ids": [
-          "w5443"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "기어오르다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "기어오르다",
-            "matches": [
-              {
-                "record_id": "w5443",
-                "lemma": "기어오르다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "기어오르다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5443"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -2353,31 +2141,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-245",
@@ -2402,49 +2165,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "가로막다가 만드는 움직임의 방향과 속도를 살필 후보."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-245 w5444: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5444"
-        ],
-        "all_query_match_ids": [
-          "w5444"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "가로막다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "가로막다",
-            "matches": [
-              {
-                "record_id": "w5444",
-                "lemma": "가로막다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "가로막다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5444"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -2452,31 +2190,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-246",
@@ -2501,49 +2214,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "호미의 손에 잡히는 사물 이미지를 확장할 후보."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-246 w5445: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5445"
-        ],
-        "all_query_match_ids": [
-          "w5445"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "호미",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "호미",
-            "matches": [
-              {
-                "record_id": "w5445",
-                "lemma": "호미",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "호미",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5445"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -3492,31 +3180,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-364",
@@ -3541,49 +3204,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "말이 오가며 결론 없이 이어지는 상호 작용을 다음 검토에서 살필 후보."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-364 w5446: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5446"
-        ],
-        "all_query_match_ids": [
-          "w5446"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "설왕설래",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "설왕설래",
-            "matches": [
-              {
-                "record_id": "w5446",
-                "lemma": "설왕설래",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "설왕설래",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5446"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4081,31 +3719,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-525",
@@ -4130,49 +3743,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "산자락를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-525 w5447: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5447"
-        ],
-        "all_query_match_ids": [
-          "w5447"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "산자락",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "산자락",
-            "matches": [
-              {
-                "record_id": "w5447",
-                "lemma": "산자락",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "산자락",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5447"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4180,31 +3768,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-526",
@@ -4229,49 +3792,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "개울물를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-526 w5448: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5448"
-        ],
-        "all_query_match_ids": [
-          "w5448"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "개울물",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "개울물",
-            "matches": [
-              {
-                "record_id": "w5448",
-                "lemma": "개울물",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "개울물",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5448"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4279,31 +3817,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-527",
@@ -4328,49 +3841,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "뛰쳐나가다를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-527 w5449: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5449"
-        ],
-        "all_query_match_ids": [
-          "w5449"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "뛰쳐나가다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "뛰쳐나가다",
-            "matches": [
-              {
-                "record_id": "w5449",
-                "lemma": "뛰쳐나가다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "뛰쳐나가다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5449"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4378,31 +3866,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-528",
@@ -4427,49 +3890,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "기어들다를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-528 w5450: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5450"
-        ],
-        "all_query_match_ids": [
-          "w5450"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "기어들다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "기어들다",
-            "matches": [
-              {
-                "record_id": "w5450",
-                "lemma": "기어들다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "기어들다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5450"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4477,31 +3915,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-529",
@@ -4526,49 +3939,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "종종걸음치다를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-529 w5451: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5451"
-        ],
-        "all_query_match_ids": [
-          "w5451"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "종종걸음치다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "종종걸음치다",
-            "matches": [
-              {
-                "record_id": "w5451",
-                "lemma": "종종걸음치다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "종종걸음치다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5451"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4576,31 +3964,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-530",
@@ -4625,49 +3988,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "흘러넘치다를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-530 w5452: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5452"
-        ],
-        "all_query_match_ids": [
-          "w5452"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "흘러넘치다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "흘러넘치다",
-            "matches": [
-              {
-                "record_id": "w5452",
-                "lemma": "흘러넘치다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "흘러넘치다",
-                "current_pos": [
-                  "verb"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5452"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4675,31 +4013,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-531",
@@ -4724,49 +4037,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "도화지를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-531 w5453: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5453"
-        ],
-        "all_query_match_ids": [
-          "w5453"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "도화지",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "도화지",
-            "matches": [
-              {
-                "record_id": "w5453",
-                "lemma": "도화지",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "도화지",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5453"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4774,31 +4062,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-532",
@@ -4823,49 +4086,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "노끈를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-532 w5454: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5454"
-        ],
-        "all_query_match_ids": [
-          "w5454"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "노끈",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "노끈",
-            "matches": [
-              {
-                "record_id": "w5454",
-                "lemma": "노끈",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "노끈",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5454"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -4873,31 +4111,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-533",
@@ -4922,49 +4135,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "candidate",
           "historical_rationale": "나무토막를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-533 w5455: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5455"
-        ],
-        "all_query_match_ids": [
-          "w5455"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "나무토막",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "나무토막",
-            "matches": [
-              {
-                "record_id": "w5455",
-                "lemma": "나무토막",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "나무토막",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5455"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Complete the normal source-bound lemma, POS, sense, and identity review; the historical candidate marker does not authorize admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -5021,31 +4209,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-535",
@@ -5070,49 +4233,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "deferred",
           "historical_rationale": "m5-535 is deferred to a later batch after the bounded reserve was filled."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-535 w5456: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5456"
-        ],
-        "all_query_match_ids": [
-          "w5456"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "가책",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "가책",
-            "matches": [
-              {
-                "record_id": "w5456",
-                "lemma": "가책",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "가책",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5456"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Recover an authored candidate body and complete normal lexical review in a bounded batch; the old capacity note alone is not admission evidence."
     },
     {
       "source_issue_batch_artifacts": [
@@ -5120,31 +4258,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-546",
@@ -5169,49 +4282,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "deferred",
           "historical_rationale": "m5-546 is deferred to a later batch after the bounded reserve was filled."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-546 w5457: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5457"
-        ],
-        "all_query_match_ids": [
-          "w5457"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "망연자실",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "망연자실",
-            "matches": [
-              {
-                "record_id": "w5457",
-                "lemma": "망연자실",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "망연자실",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5457"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Recover an authored candidate body and complete normal lexical review in a bounded batch; the old capacity note alone is not admission evidence."
     },
     {
       "source_issue_batch_artifacts": [
@@ -5219,31 +4307,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-557",
@@ -5268,49 +4331,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "deferred",
           "historical_rationale": "m5-557 is deferred to a later batch after the bounded reserve was filled."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-557 w5458: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5458"
-        ],
-        "all_query_match_ids": [
-          "w5458"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "오해",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "오해",
-            "matches": [
-              {
-                "record_id": "w5458",
-                "lemma": "오해",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "오해",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5458"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Recover an authored candidate body and complete normal lexical review in a bounded batch; the old capacity note alone is not admission evidence."
     },
     {
       "source_issue_batch_artifacts": [
@@ -5379,31 +4417,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-576",
@@ -5428,49 +4441,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "deferred",
           "historical_rationale": "m5-576 is deferred to a later batch after the bounded reserve was filled."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-576 w5459: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5459"
-        ],
-        "all_query_match_ids": [
-          "w5459"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "만족",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "만족",
-            "matches": [
-              {
-                "record_id": "w5459",
-                "lemma": "만족",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "만족",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5459"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Recover an authored candidate body and complete normal lexical review in a bounded batch; the old capacity note alone is not admission evidence."
     },
     {
       "source_issue_batch_artifacts": [
@@ -5478,31 +4466,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-598",
@@ -5527,49 +4490,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "deferred",
           "historical_rationale": "m5-598 is deferred to a later batch after the bounded reserve was filled."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-598 w5460: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5460"
-        ],
-        "all_query_match_ids": [
-          "w5460"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "처연함",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "처연함",
-            "matches": [
-              {
-                "record_id": "w5460",
-                "lemma": "처연함",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "처연함",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5460"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Recover an authored candidate body and complete normal lexical review in a bounded batch; the old capacity note alone is not admission evidence."
     },
     {
       "source_issue_batch_artifacts": [
@@ -5577,31 +4515,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-606",
@@ -5626,49 +4539,24 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "deferred",
           "historical_rationale": "m5-606 is deferred to a later batch after the bounded reserve was filled."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-606 w5461: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5461"
-        ],
-        "all_query_match_ids": [
-          "w5461"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "비애",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "비애",
-            "matches": [
-              {
-                "record_id": "w5461",
-                "lemma": "비애",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "비애",
-                "current_pos": [
-                  "noun"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5461"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Recover an authored candidate body and complete normal lexical review in a bounded batch; the old capacity note alone is not admission evidence."
     },
     {
       "source_issue_batch_artifacts": [
@@ -5725,31 +4613,6 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-candidate-source.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json"
-        },
-        {
-          "issue": 222,
-          "batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "artifact": "data/canonical/issue-222-m9-d-historical-batch-01.jsonl"
         }
       ],
       "source_inventory_id": "m5-636",
@@ -5775,68 +4638,30 @@
           "source_artifact": "data/inventory/m5-target-seed.json",
           "historical_disposition": "deferred",
           "historical_rationale": "m5-636 is deferred to a later batch after the bounded reserve was filled."
-        },
-        {
-          "source_issue": 222,
-          "source_batch": "issue-222-m9-d-historical-batch-01-20260930",
-          "source_artifact": "data/batches/issue-222-m9-d-historical-semantic-decisions.json",
-          "historical_disposition": "included",
-          "historical_rationale": "m5-636 w5462: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "canonical-lemma-present",
-        "exact_lemma_match_ids": [
-          "w5462"
-        ],
-        "all_query_match_ids": [
-          "w5462"
-        ],
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
         "queries": [
           {
             "query": "따뜻하다",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "따뜻하다",
-            "matches": [
-              {
-                "record_id": "w5462",
-                "lemma": "따뜻하다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-lemma",
-                "match_field": "lemma",
-                "match_value": "따뜻하다",
-                "current_pos": [
-                  "adjective"
-                ]
-              }
-            ]
+            "matches": []
           },
           {
             "query": "따뜻하",
-            "status": "ready",
+            "status": "no-match",
             "normalized_query": "따뜻하",
-            "matches": [
-              {
-                "record_id": "w5462",
-                "lemma": "따뜻하다",
-                "record_type": "entry",
-                "historical_role": "start",
-                "match_kind": "exact-search-form",
-                "match_field": "search-form",
-                "match_value": "따뜻하",
-                "current_pos": [
-                  "adjective"
-                ]
-              }
-            ]
+            "matches": []
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "recovered",
-      "follow_up_reason_and_evidence": "Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.",
-      "current_canonical_id": "w5462"
+      "new_review_state": "admit-candidate",
+      "follow_up_reason_and_evidence": "Recover an authored candidate body and complete normal lexical review in a bounded batch; the old capacity note alone is not admission evidence."
     },
     {
       "source_issue_batch_artifacts": [
@@ -42383,7 +41208,7 @@
     {
       "sequence": 3,
       "group": "Legacy capacity-deferred and open M5 candidate rows",
-      "count": 34,
+      "count": 54,
       "batching": "Separate source recovery from 10–20 record review batches.",
       "gate": "Recover missing authored candidate content for 35 legacy deferred rows; route 19 open candidates through normal review."
     },
@@ -42402,5 +41227,5 @@
       "gate": "Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes."
     }
   ],
-  "canonical_mutation": "Issue #219 admitted 0 M5-15 reserves; Issue #220 admitted 18 M5-13 reserves; Issues #221 and #222 admitted 2407 corpus-derived records through ordinary shared lexical production and admission. Corpus source material remains local-reference-only pending owner publication confirmation."
+  "canonical_mutation": "Issue #219 admitted 0 M5-15 reserves; Issue #220 admitted 18 M5-13 reserves; Issue #221 admitted 11 corpus-derived records through ordinary shared lexical production and admission. The Issue #221 source remains local-reference-only pending owner publication confirmation."
 }

@@ -1,0 +1,756 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "kind": "separately-authored-semantic-decision-source",
+  "source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+  "issue": 222,
+  "parent_issue": 218,
+  "batch_id": "issue-222-m9-d-corpus-batch-01-20260930",
+  "authoring_mode": "agent-authored-decision",
+  "source_basis": {
+    "candidate_review_sha256": "a68e4c75b2d5ae06abcd94f381621641a934ff6a260b711715fcfadb37b5bf37",
+    "candidate_selection_sha256": "62c84ab7de6568415807aee06727300d9db033d8558ecdac26f5e071811d2bed",
+    "candidate_evidence_sha256": "8e64b791b1fca1ae91540e67de260d392f6e36af0f9ced5c55ae12e5fe40e57f",
+    "exclusion_manifest_sha256": "f20c266f1b6745e2641f85e831ce8d985cf0045d4de97f8a5b01f61113e7096b",
+    "source_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
+    "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
+    "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39"
+  },
+  "provenance": {
+    "generator": "codex",
+    "generator_version": "issue-222-authored-semantic-review-v1",
+    "generation_pass_id": "issue-222-m9-d-corpus-extraction-20260930-r1",
+    "verification_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+    "human_reviewed": false,
+    "authoring_note": "The approved local corpus and pinned analyzer establish bounded candidate evidence only. Each admitted lexical identity, POS correction, gloss, and single-sense decision is separately authored. Diagnostic sentence frames are Typewriter-authored and are not corpus excerpts or measured writer outcomes. Empty relation lists are valid; no admission quota is applied."
+  },
+  "review": {
+    "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+    "reviewer": "codex-agent",
+    "status": "complete",
+    "candidate_count": 8,
+    "reviewed_candidate_count": 8,
+    "method": "Separately verify source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and a fresh one-sense boundary review in two diagnostic frames; then apply the shared semantic admission contract. Writer-use notes and routes are enrichment metadata. Corpus counts set review order only.",
+    "criteria": [
+      "exact source-bound observed candidate and POS; corrected analyzer POS requires two bounded-context identifiers",
+      "no canonical lemma, curated search-form, or generated-surface collision",
+      "bounded in-scope lexical meaning and complete single-sense boundary review",
+      "Typewriter-authored gloss; diagnostic frames are not corpus evidence",
+      "zero relations when no candidate-specific relation is separately supported",
+      "no admission by corpus frequency, usefulness, generality, vividness, or relation count"
+    ],
+    "decision_counts": {
+      "included": 8,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "prior_generator_replaced": true,
+    "prior_generator_verification_pass_id": "issue-222-m9-d-corpus-extraction-20260930-r1",
+    "counts": {
+      "included": 8,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "correction_passes": [],
+    "expression_lexical_unit_review_contract_version": "m9-expression-lexical-unit-review-v1"
+  },
+  "candidate_source": {
+    "source_id": "issue-222-m9-d-corpus-candidate-review-20260930-r1",
+    "identity_sha256": "2aabd170ca9cd5e6ba2dc787d63f12840d862b5e87c86e0877e276940e948483",
+    "identity_count": 8
+  },
+  "selection": {
+    "policy": "shared-authored-axis-coverage-selection-v6",
+    "capacity": 8,
+    "imported": 8,
+    "reserve": 0,
+    "coverage_field": "selection_axis",
+    "coverage_basis": [
+      "source-bound Typewriter lexical identity after independent semantic eligibility"
+    ],
+    "selection_rationale": "All separately reviewed admitted lexical identities enter ordinary shared admission. The 20-row review limit and corpus order do not set an admission quota; unresolved rows remain held."
+  },
+  "candidate_records": [
+    {
+      "id": "w5435",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5435",
+      "lemma": "경우",
+      "search_forms": [
+        "경우"
+      ],
+      "senses": [
+        {
+          "id": "w5435-s1",
+          "pos": "noun",
+          "gloss": "일이 벌어지는 특정한 상황."
+        }
+      ]
+    },
+    {
+      "id": "w5436",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5436",
+      "lemma": "설명",
+      "search_forms": [
+        "설명"
+      ],
+      "senses": [
+        {
+          "id": "w5436-s1",
+          "pos": "noun",
+          "gloss": "어떤 대상의 뜻을 풀어 알려주는 말."
+        }
+      ]
+    },
+    {
+      "id": "w5437",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5437",
+      "lemma": "결국",
+      "search_forms": [
+        "결국"
+      ],
+      "senses": [
+        {
+          "id": "w5437-s1",
+          "pos": "adverb",
+          "gloss": "앞선 일이 이어진 뒤 마지막에 이르러."
+        }
+      ]
+    },
+    {
+      "id": "w5438",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5438",
+      "lemma": "가족",
+      "search_forms": [
+        "가족"
+      ],
+      "senses": [
+        {
+          "id": "w5438-s1",
+          "pos": "noun",
+          "gloss": "서로 가족 관계를 이루고 살아가는 사람들."
+        }
+      ]
+    },
+    {
+      "id": "w5439",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5439",
+      "lemma": "선생",
+      "search_forms": [
+        "선생"
+      ],
+      "senses": [
+        {
+          "id": "w5439-s1",
+          "pos": "noun",
+          "gloss": "학생을 가르치는 사람을 높여 부르는 말."
+        }
+      ]
+    },
+    {
+      "id": "w5440",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5440",
+      "lemma": "엄마",
+      "search_forms": [
+        "엄마"
+      ],
+      "senses": [
+        {
+          "id": "w5440-s1",
+          "pos": "noun",
+          "gloss": "자녀가 자기 어머니를 친근하게 이르는 말."
+        }
+      ]
+    },
+    {
+      "id": "w5441",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5441",
+      "lemma": "어머니",
+      "search_forms": [
+        "어머니"
+      ],
+      "senses": [
+        {
+          "id": "w5441-s1",
+          "pos": "noun",
+          "gloss": "자녀와 모자 관계를 맺은 여성."
+        }
+      ]
+    },
+    {
+      "id": "w5442",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5442",
+      "lemma": "아들",
+      "search_forms": [
+        "아들"
+      ],
+      "senses": [
+        {
+          "id": "w5442-s1",
+          "pos": "noun",
+          "gloss": "부모의 남자 자녀."
+        }
+      ]
+    }
+  ],
+  "candidate_records_sha256": "95bafb5ae5d18f06db1f29ade5457e179cbe8c52bb0a4d2026fb5fcc8bc96a5c",
+  "decisions": [
+    {
+      "candidate_record_id": "w5435",
+      "inventory_id": "m5-5447",
+      "candidate_record_sha256": "d6c6dd091b8622b56be31f689a4d5ff67369643bc3a44de4426fdc1cfba1d26b",
+      "decision": "included",
+      "rank": 1,
+      "decision_rationale": "m5-5447 w5435: source-bound lexical identity and POS were reviewed, with the Typewriter-authored gloss fitting one bounded sense. Corpus frequency and writer usefulness do not determine admission.",
+      "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5435-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5447 w5435 w5435-s1: this gloss expresses one bounded lexical meaning. Two separately authored Typewriter frames check its stability; they are diagnostic examples, not corpus quotations. Reviewed gloss SHA-256 19939cd42833ac54e07017a38be6b864e366161607f95158ef6070c65438e1b8.",
+          "semantic_rationale": "w5435 w5435-s1: 일이 벌어지는 특정한 상황. is a concise Typewriter-authored gloss for this reviewed in-scope entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5447 w5435-s1: no candidate-specific lexical relation is separately supported in this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5435-s1",
+            "gloss_sha256": "19939cd42833ac54e07017a38be6b864e366161607f95158ef6070c65438e1b8",
+            "decision_source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "일이 벌어지는 특정한 상황.",
+                "gloss_start": 0,
+                "sentence_frame": "그런 경우에는 먼저 원인을 살폈다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "경우 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "일이 벌어지는 특정한 상황.",
+                "gloss_start": 0,
+                "sentence_frame": "비가 오는 경우라면 일정을 바꿔야 했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "경우 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5435 w5435-s1 exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5435",
+        "candidate_record_sha256": "d6c6dd091b8622b56be31f689a4d5ff67369643bc3a44de4426fdc1cfba1d26b",
+        "decision_evidence_sha256": "2e9063ac8f40fd65bcfea8988209d860a8524845914d3f15dab25d086b6b3d6d",
+        "sense_evidence": [
+          {
+            "sense_id": "w5435-s1",
+            "sense_sha256": "40ae547def95d3f8d7301dbc89e67e3355c67c67999154d8668f8067b21e7ab7",
+            "gloss_sha256": "19939cd42833ac54e07017a38be6b864e366161607f95158ef6070c65438e1b8",
+            "evidence_sha256": "da3d76b8ee08e094e0b5ed1987d02b570a4d2ddc49dbead71fc99361e4ab10a6"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5436",
+      "inventory_id": "m5-5448",
+      "candidate_record_sha256": "0e656a082999d442f44fca17e8451394ef2420907724d83e6a344cf317590cd6",
+      "decision": "included",
+      "rank": 2,
+      "decision_rationale": "m5-5448 w5436: source-bound lexical identity and POS were reviewed, with the Typewriter-authored gloss fitting one bounded sense. Corpus frequency and writer usefulness do not determine admission.",
+      "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5436-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5448 w5436 w5436-s1: this gloss expresses one bounded lexical meaning. Two separately authored Typewriter frames check its stability; they are diagnostic examples, not corpus quotations. Reviewed gloss SHA-256 4252e96e9b28997048eed69f5108ab1a84931601340f9e940523e193f9d10a3b.",
+          "semantic_rationale": "w5436 w5436-s1: 어떤 대상의 뜻을 풀어 알려주는 말. is a concise Typewriter-authored gloss for this reviewed in-scope entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5448 w5436-s1: no candidate-specific lexical relation is separately supported in this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5436-s1",
+            "gloss_sha256": "4252e96e9b28997048eed69f5108ab1a84931601340f9e940523e193f9d10a3b",
+            "decision_source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "어떤 대상의 뜻을 풀어 알려주는 말.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 그림을 가리키며 간단한 설명을 덧붙였다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "설명 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "어떤 대상의 뜻을 풀어 알려주는 말.",
+                "gloss_start": 0,
+                "sentence_frame": "짧은 설명만으로도 문제의 구조가 드러났다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "설명 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5436 w5436-s1 exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5436",
+        "candidate_record_sha256": "0e656a082999d442f44fca17e8451394ef2420907724d83e6a344cf317590cd6",
+        "decision_evidence_sha256": "0e1ae90bceec51de98d2205bcc5ed6fd2ff7d653f8dc09607196685ded32d1f8",
+        "sense_evidence": [
+          {
+            "sense_id": "w5436-s1",
+            "sense_sha256": "e76456b9c1803118d82e94c88f67ce5c45a2a9c1dc0630236b9850603752fc10",
+            "gloss_sha256": "4252e96e9b28997048eed69f5108ab1a84931601340f9e940523e193f9d10a3b",
+            "evidence_sha256": "077e61d0b0aaf6e4f82bdc38e2ebfde93b25beed45f3d0ba3799e71ebd901be3"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5437",
+      "inventory_id": "m5-5449",
+      "candidate_record_sha256": "52a9c89ddf002d74c354b48ff2916bd6256c615b97322675bb21dbc273f0e86e",
+      "decision": "included",
+      "rank": 3,
+      "decision_rationale": "m5-5449 w5437: source-bound lexical identity and POS were reviewed, with the Typewriter-authored gloss fitting one bounded sense. Corpus frequency and writer usefulness do not determine admission.",
+      "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5437-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5449 w5437 w5437-s1: this gloss expresses one bounded lexical meaning. Two separately authored Typewriter frames check its stability; they are diagnostic examples, not corpus quotations. Reviewed gloss SHA-256 211ba1fd6fc84d790887e1cfb4a0d650502a6827e9a912aef1d4e0faf3744269.",
+          "semantic_rationale": "w5437 w5437-s1: 앞선 일이 이어진 뒤 마지막에 이르러. is a concise Typewriter-authored gloss for this reviewed in-scope entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5449 w5437-s1: no candidate-specific lexical relation is separately supported in this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5437-s1",
+            "gloss_sha256": "211ba1fd6fc84d790887e1cfb4a0d650502a6827e9a912aef1d4e0faf3744269",
+            "decision_source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "앞선 일이 이어진 뒤 마지막에 이르러.",
+                "gloss_start": 0,
+                "sentence_frame": "오래 망설인 끝에 그는 결국 문을 열었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "결국 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "앞선 일이 이어진 뒤 마지막에 이르러.",
+                "gloss_start": 0,
+                "sentence_frame": "논의는 길어졌지만 결국 한 가지 안으로 모였다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "결국 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5437 w5437-s1 exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5437",
+        "candidate_record_sha256": "52a9c89ddf002d74c354b48ff2916bd6256c615b97322675bb21dbc273f0e86e",
+        "decision_evidence_sha256": "945fc812bdeb13be1f9693b7c6743aef8bafe8ddfc3fc1743762b7b1ae6bf335",
+        "sense_evidence": [
+          {
+            "sense_id": "w5437-s1",
+            "sense_sha256": "00e923a07d658663c53ce3114972ecf90759499c4bed2f3df4f650cd29b5df64",
+            "gloss_sha256": "211ba1fd6fc84d790887e1cfb4a0d650502a6827e9a912aef1d4e0faf3744269",
+            "evidence_sha256": "22e81c9d9914addfe396739aefa658d1cca193a69ea262fe8e4c171539fdd6d7"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5438",
+      "inventory_id": "m5-5450",
+      "candidate_record_sha256": "7b8de72a99ce2910679eb592da70aab09c612c2183daa8478537597788058c04",
+      "decision": "included",
+      "rank": 4,
+      "decision_rationale": "m5-5450 w5438: source-bound lexical identity and POS were reviewed, with the Typewriter-authored gloss fitting one bounded sense. Corpus frequency and writer usefulness do not determine admission.",
+      "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5438-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5450 w5438 w5438-s1: this gloss expresses one bounded lexical meaning. Two separately authored Typewriter frames check its stability; they are diagnostic examples, not corpus quotations. Reviewed gloss SHA-256 61303e95b1f2bff88358aca6ddcd61d6b16ddb26592ccccd549e8eecbde58a3f.",
+          "semantic_rationale": "w5438 w5438-s1: 서로 가족 관계를 이루고 살아가는 사람들. is a concise Typewriter-authored gloss for this reviewed in-scope entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5450 w5438-s1: no candidate-specific lexical relation is separately supported in this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5438-s1",
+            "gloss_sha256": "61303e95b1f2bff88358aca6ddcd61d6b16ddb26592ccccd549e8eecbde58a3f",
+            "decision_source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "서로 가족 관계를 이루고 살아가는 사람들.",
+                "gloss_start": 0,
+                "sentence_frame": "그녀는 가족과 함께 저녁을 먹었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "가족 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "서로 가족 관계를 이루고 살아가는 사람들.",
+                "gloss_start": 0,
+                "sentence_frame": "그에게 가족은 멀리 있어도 마음을 나누는 사람들이었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "가족 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5438 w5438-s1 exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5438",
+        "candidate_record_sha256": "7b8de72a99ce2910679eb592da70aab09c612c2183daa8478537597788058c04",
+        "decision_evidence_sha256": "b5c82944881645dd64b76809634673f7b7e976bca460fe06b7ce0a38015d8f72",
+        "sense_evidence": [
+          {
+            "sense_id": "w5438-s1",
+            "sense_sha256": "14976054a83655478b885d03012aa21ef118411e9e084549e423f05bb109dcd8",
+            "gloss_sha256": "61303e95b1f2bff88358aca6ddcd61d6b16ddb26592ccccd549e8eecbde58a3f",
+            "evidence_sha256": "758c494c40a14dcf57613612174843f181585045dac3a1f66a81e47e83c80ca3"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5439",
+      "inventory_id": "m5-5451",
+      "candidate_record_sha256": "5f991b345a2532593b6f4bfb93d394ea61fb9df529c79ea99b20bcfd51ab385b",
+      "decision": "included",
+      "rank": 5,
+      "decision_rationale": "m5-5451 w5439: source-bound lexical identity and POS were reviewed, with the Typewriter-authored gloss fitting one bounded sense. Corpus frequency and writer usefulness do not determine admission.",
+      "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5439-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5451 w5439 w5439-s1: this gloss expresses one bounded lexical meaning. Two separately authored Typewriter frames check its stability; they are diagnostic examples, not corpus quotations. Reviewed gloss SHA-256 83e5a9400ee0f6b4fcfce6ee534b56919336313e5edcf39bac53949aa0c3833f.",
+          "semantic_rationale": "w5439 w5439-s1: 학생을 가르치는 사람을 높여 부르는 말. is a concise Typewriter-authored gloss for this reviewed in-scope entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5451 w5439-s1: no candidate-specific lexical relation is separately supported in this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5439-s1",
+            "gloss_sha256": "83e5a9400ee0f6b4fcfce6ee534b56919336313e5edcf39bac53949aa0c3833f",
+            "decision_source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "학생을 가르치는 사람을 높여 부르는 말.",
+                "gloss_start": 0,
+                "sentence_frame": "학생들은 선생의 말을 조용히 들었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "선생 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "학생을 가르치는 사람을 높여 부르는 말.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 오래전 선생에게 배운 방법을 다시 떠올렸다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "선생 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5439 w5439-s1 exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5439",
+        "candidate_record_sha256": "5f991b345a2532593b6f4bfb93d394ea61fb9df529c79ea99b20bcfd51ab385b",
+        "decision_evidence_sha256": "8c1200707e1e81acb0390a1903c412f56fb57dffb5cf9746a78b87c1339e60b5",
+        "sense_evidence": [
+          {
+            "sense_id": "w5439-s1",
+            "sense_sha256": "ceda56129ef9e6add830862fe0b6b6be5fc7d435e03ed2e48f2697dcf097acf6",
+            "gloss_sha256": "83e5a9400ee0f6b4fcfce6ee534b56919336313e5edcf39bac53949aa0c3833f",
+            "evidence_sha256": "b9ed21be78d710ce8ded1d8f97067165aa8940d789ca50b3df2662c72b81c45d"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5440",
+      "inventory_id": "m5-5452",
+      "candidate_record_sha256": "792b202c1c5311fabf7c09542a28c896e61a38707ff40e77c7dd22fb26b42b6e",
+      "decision": "included",
+      "rank": 6,
+      "decision_rationale": "m5-5452 w5440: source-bound lexical identity and POS were reviewed, with the Typewriter-authored gloss fitting one bounded sense. Corpus frequency and writer usefulness do not determine admission.",
+      "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5440-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5452 w5440 w5440-s1: this gloss expresses one bounded lexical meaning. Two separately authored Typewriter frames check its stability; they are diagnostic examples, not corpus quotations. Reviewed gloss SHA-256 8e7d988283e237a456f522250f325b6f4cf1d4f44dda62705ebb934e2b0ee2d5.",
+          "semantic_rationale": "w5440 w5440-s1: 자녀가 자기 어머니를 친근하게 이르는 말. is a concise Typewriter-authored gloss for this reviewed in-scope entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5452 w5440-s1: no candidate-specific lexical relation is separately supported in this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5440-s1",
+            "gloss_sha256": "8e7d988283e237a456f522250f325b6f4cf1d4f44dda62705ebb934e2b0ee2d5",
+            "decision_source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "자녀가 자기 어머니를 친근하게 이르는 말.",
+                "gloss_start": 0,
+                "sentence_frame": "아이는 엄마 손을 잡고 길을 건넜다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "엄마 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "자녀가 자기 어머니를 친근하게 이르는 말.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 엄마에게 오늘 있었던 일을 들려주었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "엄마 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5440 w5440-s1 exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5440",
+        "candidate_record_sha256": "792b202c1c5311fabf7c09542a28c896e61a38707ff40e77c7dd22fb26b42b6e",
+        "decision_evidence_sha256": "b214e2bd3c114735c835c780fb2bae156c550be5313e4f2a230417bef7a59b11",
+        "sense_evidence": [
+          {
+            "sense_id": "w5440-s1",
+            "sense_sha256": "3652e411d19ec81d56998a6cea5202b50d4cf1916c75dd1dbf8970ce47bb5968",
+            "gloss_sha256": "8e7d988283e237a456f522250f325b6f4cf1d4f44dda62705ebb934e2b0ee2d5",
+            "evidence_sha256": "53da8f4878ffc382a112470165fc519d437ffc4ba98857d1de23f5eb270f8368"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5441",
+      "inventory_id": "m5-5460",
+      "candidate_record_sha256": "4b86eae70538c7c46aa440bb463a3af6d8d79107ab19399067c2647926b6d9f7",
+      "decision": "included",
+      "rank": 7,
+      "decision_rationale": "m5-5460 w5441: source-bound lexical identity and POS were reviewed, with the Typewriter-authored gloss fitting one bounded sense. Corpus frequency and writer usefulness do not determine admission.",
+      "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5441-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5460 w5441 w5441-s1: this gloss expresses one bounded lexical meaning. Two separately authored Typewriter frames check its stability; they are diagnostic examples, not corpus quotations. Reviewed gloss SHA-256 80a08297ca953f79ce357dcf469d55cf8d09f6318f2b1829cf535ef714f7db50.",
+          "semantic_rationale": "w5441 w5441-s1: 자녀와 모자 관계를 맺은 여성. is a concise Typewriter-authored gloss for this reviewed in-scope entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5460 w5441-s1: no candidate-specific lexical relation is separately supported in this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5441-s1",
+            "gloss_sha256": "80a08297ca953f79ce357dcf469d55cf8d09f6318f2b1829cf535ef714f7db50",
+            "decision_source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "자녀와 모자 관계를 맺은 여성.",
+                "gloss_start": 0,
+                "sentence_frame": "어머니는 현관 앞에서 아이를 기다렸다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "어머니 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "자녀와 모자 관계를 맺은 여성.",
+                "gloss_start": 0,
+                "sentence_frame": "그녀는 어머니에게 편지를 썼다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "어머니 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5441 w5441-s1 exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5441",
+        "candidate_record_sha256": "4b86eae70538c7c46aa440bb463a3af6d8d79107ab19399067c2647926b6d9f7",
+        "decision_evidence_sha256": "35342c2eb7eebdeb5ed627a2c3aa4025eac235eb84d6bffc230d730370d150fc",
+        "sense_evidence": [
+          {
+            "sense_id": "w5441-s1",
+            "sense_sha256": "2a005a3c1aa0bab930d6b998873c43694d2a1715ece975610a045828647bf075",
+            "gloss_sha256": "80a08297ca953f79ce357dcf469d55cf8d09f6318f2b1829cf535ef714f7db50",
+            "evidence_sha256": "c0d32218dce96870d46370f88630044cb72df1db370f454db7bce2563c4c0263"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5442",
+      "inventory_id": "m5-5462",
+      "candidate_record_sha256": "44124dd2fda2a98b5fc54c5b2fc0e1406a3f34f4e7741193c3a1c2bd1f3199a7",
+      "decision": "included",
+      "rank": 8,
+      "decision_rationale": "m5-5462 w5442: source-bound lexical identity and POS were reviewed, with the Typewriter-authored gloss fitting one bounded sense. Corpus frequency and writer usefulness do not determine admission.",
+      "review_pass_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5442-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5462 w5442 w5442-s1: this gloss expresses one bounded lexical meaning. Two separately authored Typewriter frames check its stability; they are diagnostic examples, not corpus quotations. Reviewed gloss SHA-256 ebb99799da6da4b9aa683019dcd771450722533f2b9962f89f7186ab7bfec325.",
+          "semantic_rationale": "w5442 w5442-s1: 부모의 남자 자녀. is a concise Typewriter-authored gloss for this reviewed in-scope entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5462 w5442-s1: no candidate-specific lexical relation is separately supported in this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5442-s1",
+            "gloss_sha256": "ebb99799da6da4b9aa683019dcd771450722533f2b9962f89f7186ab7bfec325",
+            "decision_source_id": "issue-222-m9-d-corpus-authored-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "부모의 남자 자녀.",
+                "gloss_start": 0,
+                "sentence_frame": "그의 아들은 먼 도시에서 살고 있었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "아들 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "부모의 남자 자녀.",
+                "gloss_start": 0,
+                "sentence_frame": "어머니는 아들의 목소리를 듣자 안심했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "아들 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5442 w5442-s1 exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5442",
+        "candidate_record_sha256": "44124dd2fda2a98b5fc54c5b2fc0e1406a3f34f4e7741193c3a1c2bd1f3199a7",
+        "decision_evidence_sha256": "40a8a277e504da872841acdcdd724de8df75966ee09cbe8041befd3e534de2f7",
+        "sense_evidence": [
+          {
+            "sense_id": "w5442-s1",
+            "sense_sha256": "eb0cd2da23be284094156fb8d69c9abe460bd1064be126040a0c9a8fa6d01b49",
+            "gloss_sha256": "ebb99799da6da4b9aa683019dcd771450722533f2b9962f89f7186ab7bfec325",
+            "evidence_sha256": "bc38455c6d269eb06348d83bb55876c6f2ba70701fb7f844d6dbd3d19fd81fec"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_sha256": "ff8a10ba27b3a8bb4ff7ad1bde959c6945c25bbb6b004d2f31f76a7ca366af85"
+}

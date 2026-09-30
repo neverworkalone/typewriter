@@ -123,17 +123,17 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   const { artifact } = await buildCanonicalSemanticAudit();
   const inventory = await buildTargetInventory();
 
-  assert.equal(artifact.record_count, 5105);
-  assert.equal(artifact.source.canonical_records_sha256, '45a699e5822edfa0f8a459c2ae55b0a74ed4f99ceb8bcd6fe0b677a1b11995e9');
-  assert.equal(artifact.sense_count, 5367);
+  assert.equal(artifact.record_count, 7521);
+  assert.equal(artifact.source.canonical_records_sha256, '601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992');
+  assert.equal(artifact.sense_count, 7783);
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
-  assert.equal(semanticAuditBytes.length, 34333345);
-  assert.equal(sha256(semanticAuditBytes), 'd4344965b9199e9a485bff738e271ed4cb8f68e1465d7e20c7e1a33e18decb66');
-  assert.equal(inventoryBytes.length, 3586400);
-  assert.equal(sha256(inventoryBytes), '7cc12726bd17ec0ec6c5ee3a9fb47428ae0674cfcf3e9f5cf7b21f987a168566');
-  assert.equal(inventory.canonical_snapshot.record_count, 5105);
-  assert.equal(inventory.canonical_snapshot.start_count, 5063);
+  assert.equal(semanticAuditBytes.length, 51001984);
+  assert.equal(sha256(semanticAuditBytes), '785f704cd44b18d3fb96d36bf3e98d0a475580a1e04f8739dbd2dabdc6f9de5c');
+  assert.equal(inventoryBytes.length, 5305277);
+  assert.equal(sha256(inventoryBytes), '259ab792aa2f0d425b60c2f09683d65aa82dc360960b394d470c1edcfa979cbd');
+  assert.equal(inventory.canonical_snapshot.record_count, 7521);
+  assert.equal(inventory.canonical_snapshot.start_count, 7479);
   assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
 });
 
@@ -181,6 +181,20 @@ test('artifact policy classifies projections before they can become tracked data
   );
   assert.deepEqual(issue210RecoveryInventory.generated, []);
   assert.deepEqual(issue210RecoveryInventory.unclassified, []);
+
+  const issue222ScaleCoverageReport = classifyTrackedArtifacts(
+    ['data/validation/issue-222-m9-d-scale-coverage-report.json'],
+    options,
+  );
+  assert.deepEqual(issue222ScaleCoverageReport.generated, []);
+  assert.deepEqual(issue222ScaleCoverageReport.unclassified, []);
+
+  const issue222CorpusCandidateReview = classifyTrackedArtifacts(
+    ['data/batches/issue-222-m9-d-corpus-batch-03-candidate-review.json'],
+    options,
+  );
+  assert.deepEqual(issue222CorpusCandidateReview.generated, []);
+  assert.deepEqual(issue222CorpusCandidateReview.unclassified, []);
 
   const futureInventory = classifyTrackedArtifacts(
     ['data/inventory/future-recovery-inventory.json'],
