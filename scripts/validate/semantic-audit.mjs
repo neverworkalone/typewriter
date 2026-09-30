@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -100,6 +100,7 @@ export const DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS = Object.freeze([
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-220-m9-b-batch-02-semantic-decisions.json'),
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-221-corpus-semantic-decisions.json'),
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json'),
+  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-222-m9-d-corpus-batch-02-semantic-decisions.json'),
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-222-m9-d-historical-semantic-decisions.json'),
 ]);
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -570,11 +571,26 @@ function sha256Bytes(bytes) {
  * the semantic validator can verify a reference without owning the batch's
  * candidate/admission policy.
  */
-export async function readAuthoredBatchDecisionSources(
-  sourcePaths = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS,
-) {
+async function resolveAuthoredBatchDecisionSourcePaths() {
+  const batchDirectory = path.resolve(REPOSITORY_DIRECTORY, 'data/batches');
+  const names = (await readdir(batchDirectory))
+    .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-semantic-decisions\.json$/u.test(name))
+    .sort((left, right) => left.localeCompare(right, 'en'));
+  const corpusPaths = names.map((name) => path.join(batchDirectory, name));
+  const fixed = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS.filter((sourcePath) => (
+    !/^issue-222-m9-d-corpus-batch-\d+-semantic-decisions\.json$/u.test(path.basename(sourcePath))
+      && !/^issue-222-m9-d-historical-semantic-decisions\.json$/u.test(path.basename(sourcePath))
+  ));
+  const historical = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS.filter((sourcePath) => (
+    /^issue-222-m9-d-historical-semantic-decisions\.json$/u.test(path.basename(sourcePath))
+  ));
+  return [...fixed, ...corpusPaths, ...historical];
+}
+
+export async function readAuthoredBatchDecisionSources(sourcePaths) {
+  const resolvedSourcePaths = sourcePaths ?? await resolveAuthoredBatchDecisionSourcePaths();
   const sources = [];
-  for (const sourcePath of sourcePaths) {
+  for (const sourcePath of resolvedSourcePaths) {
     const sourceBytes = await readFile(sourcePath);
     let source;
     try {
@@ -1259,7 +1275,7 @@ export async function buildCanonicalSemanticAudit({
   decisionSource: suppliedDecisionSource,
   hashCache: suppliedHashCache,
   artifactId = 'canonical-semantic-audit',
-  batchDecisionSourcePaths = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS,
+  batchDecisionSourcePaths,
 } = {}) {
   const context = canonicalContext ?? await loadCanonicalContext({
     directory: canonicalDirectory,
@@ -1268,12 +1284,14 @@ export async function buildCanonicalSemanticAudit({
     fileCount: context.fileCount,
     records: context.records,
   };
+  const resolvedBatchDecisionSourcePaths = batchDecisionSourcePaths
+    ?? await resolveAuthoredBatchDecisionSourcePaths();
   const canReuseMaterializedArtifact = Boolean(
     suppliedDecisionSource === undefined
       && context.semanticAudit
       && artifactId === 'canonical-semantic-audit'
       && path.resolve(decisionSourcePath) === path.resolve(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH)
-      && JSON.stringify(batchDecisionSourcePaths) === JSON.stringify(DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS),
+      && JSON.stringify(resolvedBatchDecisionSourcePaths) === JSON.stringify(DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS),
   );
   if (canReuseMaterializedArtifact) {
     return {
@@ -1287,7 +1305,7 @@ export async function buildCanonicalSemanticAudit({
     ?? await readSemanticDecisionSourceArtifact(decisionSourcePath);
   const batchDecisionSources = suppliedDecisionSource
     ? []
-    : await readAuthoredBatchDecisionSources(batchDecisionSourcePaths);
+    : await readAuthoredBatchDecisionSources(resolvedBatchDecisionSourcePaths);
   const hashCache = isCanonicalAuditCache(suppliedHashCache, canonical.records)
     ? suppliedHashCache
     : createCanonicalAuditCache(canonical.records);

@@ -168,6 +168,10 @@ const countBy = (rows, key) => rows.reduce((counts, row) => {
 const stableUnique = (values) => [...new Set(values)];
 
 async function buildSourceManifest() {
+  const batchNames = (await readdir(path.join(ROOT, 'data/batches')))
+    .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-(candidate-review|semantic-decisions)\.json$/u.test(name))
+    .sort();
+  const issue222CorpusSourcePaths = batchNames.map((name) => `data/batches/${name}`);
   const canonicalNames = (await readdir(path.join(ROOT, 'data/canonical')))
     .filter((name) => name.endsWith('.jsonl'))
     .sort();
@@ -184,6 +188,7 @@ async function buildSourceManifest() {
   }
   const paths = stableUnique([
     ...SOURCE_PATHS,
+    ...issue222CorpusSourcePaths,
     ...canonicalNames.map((name) => `data/canonical/${name}`),
     ...historicalCanonicalPaths,
   ]).sort();
@@ -563,8 +568,24 @@ async function buildInventory() {
   const issue220BaseInventory = await readJson('data/batches/issue-220-m9-b-base-issue-210-recovery-inventory.json');
   const issue221CandidateReview = await readJson('data/batches/issue-221-corpus-candidate-review.json');
   const issue221SemanticSource = await readJson('data/batches/issue-221-corpus-semantic-decisions.json');
-  const issue222CandidateReview = await readJson('data/batches/issue-222-m9-d-corpus-batch-01-candidate-review.json');
-  const issue222SemanticSource = await readJson('data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json');
+  const issue222CorpusReviewNames = (await readdir(path.join(ROOT, 'data/batches')))
+    .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-candidate-review\.json$/u.test(name))
+    .sort();
+  const issue222CorpusCandidateReviews = await Promise.all(issue222CorpusReviewNames.map((name) => readJson(`data/batches/${name}`)));
+  const issue222CorpusSemanticSources = await Promise.all(issue222CorpusReviewNames.map((name) => {
+    const semanticName = name.replace(/-candidate-review\.json$/u, '-semantic-decisions.json');
+    return readJson(`data/batches/${semanticName}`);
+  }));
+  const issue222CandidateReview = {
+    issue: 222,
+    parent_issue: 218,
+    contract_version: 'm9-corpus-candidate-review-v1',
+    decisions: issue222CorpusCandidateReviews.flatMap(({ decisions }) => decisions),
+    decision_counts: issue222CorpusCandidateReviews.reduce((counts, review) => {
+      for (const key of ['admit', 'hold', 'reject']) counts[key] += review.decision_counts[key];
+      return counts;
+    }, { admit: 0, hold: 0, reject: 0 }),
+  };
   const issue222HistoricalCandidateSource = await readJson('data/batches/issue-222-m9-d-historical-candidate-source.json');
   const issue222HistoricalSemanticSource = await readJson('data/batches/issue-222-m9-d-historical-semantic-decisions.json');
   const issue222HistoricalBaseInventory = await readJson('data/batches/issue-222-m9-d-historical-base-recovery-inventory.json');
@@ -693,10 +714,11 @@ async function buildInventory() {
   const issue221AdmittedReviewRows = issue221CandidateReview.decisions
     .filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
   const issue221PromotionRows = promotions.filter(({ batch_id: id }) => id === issue221SemanticSource.batch_id);
-  const issue222Decisions = issue222SemanticSource.decisions;
-  const issue222AdmittedReviewRows = issue222CandidateReview.decisions
-    .filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
-  const issue222CorpusPromotionRows = promotions.filter(({ batch_id: id }) => id === issue222SemanticSource.batch_id);
+  const issue222Decisions = issue222CorpusSemanticSources.flatMap(({ decisions }) => decisions);
+  const issue222AdmittedReviewRows = issue222CorpusCandidateReviews.flatMap(({ decisions }) => decisions
+    .filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit'));
+  const issue222CorpusBatchIds = new Set(issue222CorpusSemanticSources.map(({ batch_id: id }) => id));
+  const issue222CorpusPromotionRows = promotions.filter(({ batch_id: id }) => issue222CorpusBatchIds.has(id));
   const issue222HistoricalDecisions = issue222HistoricalSemanticSource.decisions;
   const issue222HistoricalPromotionDecisionCounts = issue222HistoricalDecisions.reduce((counts, { decision }) => {
     counts[decision] = (counts[decision] ?? 0) + 1;
@@ -733,26 +755,36 @@ async function buildInventory() {
   assert.ok(issue221PromotionRows.every(({ decision_source_id: sourceId, decision_source_sha256: sourceDigest }) => (
     sourceId === issue221SemanticSource.source_id && sourceDigest === issue221SemanticSource.artifact_sha256
   )), 'Issue #221 promotion rows must bind the current authored semantic source');
-  assert.equal(issue222CandidateReview.issue, 222);
-  assert.equal(issue222CandidateReview.parent_issue, 218);
-  assert.equal(issue222CandidateReview.contract_version, 'm9-corpus-candidate-review-v1');
-  assert.equal(issue222CandidateReview.decisions.length, issue222CandidateReview.selection.selected_candidate_count);
+  assert.ok(issue222CorpusCandidateReviews.length > 0, 'Issue #222 corpus review batches must remain discoverable');
+  assert.equal(issue222CorpusCandidateReviews.length, issue222CorpusSemanticSources.length);
+  for (const [index, candidateReview] of issue222CorpusCandidateReviews.entries()) {
+    const semanticSource = issue222CorpusSemanticSources[index];
+    const admittedRows = candidateReview.decisions.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
+    const decisions = semanticSource.decisions;
+    const batchPromotionRows = promotions.filter(({ batch_id: id }) => id === semanticSource.batch_id);
+    assert.equal(candidateReview.issue, 222);
+    assert.equal(candidateReview.parent_issue, 218);
+    assert.equal(candidateReview.contract_version, 'm9-corpus-candidate-review-v1');
+    assert.equal(candidateReview.decisions.length, candidateReview.selection.selected_candidate_count);
+    assert.equal(semanticSource.batch_id, candidateReview.batch_id);
+    assert.equal(decisions.length, admittedRows.length, `Issue #222 ${candidateReview.batch_id} semantic decisions must cover every admitted corpus candidate`);
+    assert.ok(decisions.every(({ decision }) => decision === 'included'), 'Issue #222 corpus admissions must remain source-bound inclusions');
+    assert.deepEqual(
+      decisions.map(({ inventory_id: id, candidate_record_id: canonicalId }) => `${id}:${canonicalId}`).sort(),
+      admittedRows.map(({ inventory_id: id, editorial_judgment: judgment }) => `${id}:${judgment.candidate_record_id}`).sort(),
+      `Issue #222 ${candidateReview.batch_id} semantic decisions must match admitted review rows`,
+    );
+    assert.equal(batchPromotionRows.length, decisions.length, `Issue #222 ${candidateReview.batch_id} admissions must match the promotion ledger`);
+    assert.deepEqual(
+      batchPromotionRows.map(({ inventory_id: id, canonical_id: canonicalId, decision }) => `${id}:${canonicalId}:${decision}`).sort(),
+      decisions.map(({ inventory_id: id, candidate_record_id: canonicalId, decision }) => `${id}:${canonicalId}:${decision}`).sort(),
+      `Issue #222 ${candidateReview.batch_id} promotion rows must preserve semantic decision identities`,
+    );
+    assert.ok(batchPromotionRows.every(({ decision_source_id: sourceId, decision_source_sha256: sourceDigest }) => (
+      sourceId === semanticSource.source_id && sourceDigest === semanticSource.artifact_sha256
+    )), `Issue #222 ${candidateReview.batch_id} promotions must bind its current semantic source`);
+  }
   assert.equal(issue222Decisions.length, issue222AdmittedReviewRows.length, 'Issue #222 semantic decisions must cover every admitted corpus candidate');
-  assert.ok(issue222Decisions.every(({ decision }) => decision === 'included'), 'Issue #222 corpus admissions must remain source-bound inclusions');
-  assert.deepEqual(
-    issue222Decisions.map(({ inventory_id: id, candidate_record_id: canonicalId }) => `${id}:${canonicalId}`).sort(),
-    issue222AdmittedReviewRows.map(({ inventory_id: id, editorial_judgment: judgment }) => `${id}:${judgment.candidate_record_id}`).sort(),
-    'Issue #222 semantic decisions must match the admitted rows in the corpus review',
-  );
-  assert.equal(issue222CorpusPromotionRows.length, issue222Decisions.length, 'Issue #222 corpus admissions must match the promotion ledger');
-  assert.deepEqual(
-    issue222CorpusPromotionRows.map(({ inventory_id: id, canonical_id: canonicalId, decision }) => `${id}:${canonicalId}:${decision}`).sort(),
-    issue222Decisions.map(({ inventory_id: id, candidate_record_id: canonicalId, decision }) => `${id}:${canonicalId}:${decision}`).sort(),
-    'Issue #222 corpus promotion rows must preserve the exact semantic decision identities',
-  );
-  assert.ok(issue222CorpusPromotionRows.every(({ decision_source_id: sourceId, decision_source_sha256: sourceDigest }) => (
-    sourceId === issue222SemanticSource.source_id && sourceDigest === issue222SemanticSource.artifact_sha256
-  )), 'Issue #222 corpus promotion rows must bind the current authored semantic source');
   assert.equal(issue222HistoricalCandidateSource.issue, 222);
   assert.equal(issue222HistoricalCandidateSource.source_class, 'historical-recovery-inventory');
   assert.equal(issue222HistoricalCandidateSource.candidates.length, 20);
@@ -1123,7 +1155,7 @@ async function buildInventory() {
       + (reviewStateCounts.hold ?? 0)
       + (reviewStateCounts['needs-sense-split'] ?? 0);
     const historicalRecoveryCeiling = searchMetrics.canonical_record_count + potentiallyRecoverableHistoricalRows;
-    assert.equal(historicalRecoveryCeiling, 5640, 'Current canonical plus historical Issue #210 source-pool ceiling changed');
+    assert.equal(potentiallyRecoverableHistoricalRows, 507, 'Remaining historical Issue #210 recovery pool changed');
 
     const mandatoryIssue204Rejects = entries
       .filter(({ source_inventory_id: id }) => (

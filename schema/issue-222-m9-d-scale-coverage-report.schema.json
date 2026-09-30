@@ -17,6 +17,7 @@
     "aggregate",
     "corpus_inventory",
     "validation",
+    "continuation",
     "remaining"
   ],
   "properties": {
@@ -58,7 +59,6 @@
     "batches": {
       "type": "array",
       "minItems": 2,
-      "maxItems": 2,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -66,19 +66,28 @@
         "properties": {
           "batch_id": { "type": "string", "minLength": 1 },
           "source_class": { "enum": ["historical-recovery-inventory", "local-written-corpus"] },
-          "candidate_count": { "type": "integer", "minimum": 0, "maximum": 20 },
+          "candidate_limit": { "type": "integer", "minimum": 1, "maximum": 500 },
+          "candidate_count": { "type": "integer", "minimum": 0, "maximum": 500 },
           "admitted_count": { "type": "integer", "minimum": 0 },
           "held_count": { "type": "integer", "minimum": 0 },
           "rejected_count": { "type": "integer", "minimum": 0 },
           "candidate_source_sha256": { "$ref": "#/$defs/sha256" },
           "candidate_review_sha256": { "$ref": "#/$defs/sha256" },
+          "candidate_evidence_sha256": { "$ref": "#/$defs/sha256" },
+          "candidate_selection_sha256": { "$ref": "#/$defs/sha256" },
           "semantic_source_sha256": { "$ref": "#/$defs/sha256" },
-          "canonical_import_record_count": { "type": "integer", "minimum": 0 }
+          "canonical_import_record_count": { "type": "integer", "minimum": 0 },
+          "prior_lemma_exclusion_count": { "type": "integer", "minimum": 0 },
+          "human_reviewed": { "const": false }
         },
-        "oneOf": [
-          { "required": ["candidate_source_sha256"], "not": { "required": ["candidate_review_sha256"] } },
-          { "required": ["candidate_review_sha256"], "not": { "required": ["candidate_source_sha256"] } }
-        ]
+        "if": { "properties": { "source_class": { "const": "historical-recovery-inventory" } } },
+        "then": {
+          "required": ["candidate_source_sha256"],
+          "not": { "anyOf": [{ "required": ["candidate_review_sha256"] }, { "required": ["candidate_limit"] }] }
+        },
+        "else": {
+          "required": ["candidate_limit", "candidate_review_sha256", "candidate_evidence_sha256", "candidate_selection_sha256", "prior_lemma_exclusion_count", "human_reviewed"]
+        }
       }
     },
     "aggregate": {
@@ -97,7 +106,7 @@
     "corpus_inventory": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source_count", "document_count", "paragraph_count", "sample_paragraph_count", "sample_fraction", "unique_lemma_candidate_count", "exact_canonical_lemma_candidate_count", "uncovered_candidate_count", "surface_collision_candidate_count", "ambiguous_candidate_count", "oov_candidate_count", "excluded_prior_lemma_count", "permission_record_sha256", "input_manifest_sha256", "logical_rows_sha256", "source_text_committed", "candidate_evidence_sha256", "candidate_selection_sha256"],
+      "required": ["source_count", "document_count", "paragraph_count", "sample_paragraph_count", "sample_fraction", "unique_lemma_candidate_count", "exact_canonical_lemma_candidate_count", "uncovered_candidate_count", "surface_collision_candidate_count", "ambiguous_candidate_count", "oov_candidate_count", "prior_lemma_exclusion_count_first_batch", "prior_lemma_exclusion_count_latest_batch", "reviewed_batch_count", "reviewed_candidate_count", "permission_record_sha256", "input_manifest_sha256", "logical_rows_sha256", "source_text_committed"],
       "properties": {
         "source_count": { "type": "integer", "minimum": 0 },
         "document_count": { "type": "integer", "minimum": 0 },
@@ -110,29 +119,60 @@
         "surface_collision_candidate_count": { "type": "integer", "minimum": 0 },
         "ambiguous_candidate_count": { "type": "integer", "minimum": 0 },
         "oov_candidate_count": { "type": "integer", "minimum": 0 },
-        "excluded_prior_lemma_count": { "type": "integer", "minimum": 0 },
+        "prior_lemma_exclusion_count_first_batch": { "type": "integer", "minimum": 0 },
+        "prior_lemma_exclusion_count_latest_batch": { "type": "integer", "minimum": 0 },
+        "reviewed_batch_count": { "type": "integer", "minimum": 1 },
+        "reviewed_candidate_count": { "type": "integer", "minimum": 0 },
         "permission_record_sha256": { "$ref": "#/$defs/sha256" },
         "input_manifest_sha256": { "$ref": "#/$defs/sha256" },
         "logical_rows_sha256": { "$ref": "#/$defs/sha256" },
-        "source_text_committed": { "const": false },
-        "candidate_evidence_sha256": { "$ref": "#/$defs/sha256" },
-        "candidate_selection_sha256": { "$ref": "#/$defs/sha256" }
+        "source_text_committed": { "const": false }
       }
     },
     "validation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["command", "directly_searchable_new_records", "shared_admission_blocking_findings", "semantic_coverage_complete", "logical_builds_compared", "deterministic_logical_contents", "historical_base_inventory_sha256", "corpus_review_human_reviewed", "historical_review_human_reviewed"],
+      "required": ["command", "directly_searchable_new_records", "shared_admission_blocking_findings", "semantic_coverage_complete", "additional_corpus_batch_semantic_coverage_complete", "logical_builds_compared", "deterministic_logical_contents", "historical_base_inventory_sha256", "corpus_reviews_human_reviewed", "historical_review_human_reviewed"],
       "properties": {
         "command": { "const": "npm run batch:issue-222:check" },
         "directly_searchable_new_records": { "type": "integer", "minimum": 0 },
         "shared_admission_blocking_findings": { "type": "integer", "minimum": 0 },
         "semantic_coverage_complete": { "const": true },
+        "additional_corpus_batch_semantic_coverage_complete": { "const": true },
         "logical_builds_compared": { "const": 2 },
         "deterministic_logical_contents": { "const": true },
         "historical_base_inventory_sha256": { "$ref": "#/$defs/sha256" },
-        "corpus_review_human_reviewed": { "const": false },
+        "corpus_reviews_human_reviewed": { "const": false },
         "historical_review_human_reviewed": { "const": false }
+      }
+    },
+    "continuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "checkpoint_target", "canonical_count_at_start", "canonical_count_now", "net_admitted_this_run", "remaining_to_checkpoint", "batches_processed", "candidate_yield", "defect_classes", "blocker", "continuation_required", "stop_reason"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "checkpoint_target": { "type": "integer", "minimum": 1 },
+        "canonical_count_at_start": { "type": "integer", "minimum": 0 },
+        "canonical_count_now": { "type": "integer", "minimum": 0 },
+        "net_admitted_this_run": { "type": "integer", "minimum": 0 },
+        "remaining_to_checkpoint": { "type": "integer", "minimum": 0 },
+        "batches_processed": { "type": "integer", "minimum": 0 },
+        "candidate_yield": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["selected_count", "admitted_count", "held_count", "rejected_count"],
+          "properties": {
+            "selected_count": { "type": "integer", "minimum": 0 },
+            "admitted_count": { "type": "integer", "minimum": 0 },
+            "held_count": { "type": "integer", "minimum": 0 },
+            "rejected_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "defect_classes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "blocker": { "type": ["string", "null"], "enum": ["product-model", "licensing", null] },
+        "continuation_required": { "type": "boolean" },
+        "stop_reason": { "type": ["string", "null"], "enum": ["systemic-defect", "product-or-licensing-blocker", "checkpoint-reached", "source-exhaustion", null] }
       }
     },
     "remaining": {
