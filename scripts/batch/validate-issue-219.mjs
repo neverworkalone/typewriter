@@ -241,7 +241,7 @@ function renderReport(report) {
     '',
     'Use 20 candidates as the initial M9 review-slice size: this coherent slice completed candidate-by-candidate fixedness review, shared admission validation, and exact-search validation after the generalized expression rule was added. Review duration was not measured, so 20 is a slice-size calibration, not a throughput estimate. Reassess the size from later defect and workload observations; the size is not an admission quota.',
     '',
-    `The batch added ${report.outcomes.admitted_count} searchable start${report.outcomes.admitted_count === 1 ? '' : 's'} and brought the canonical start count from ${report.baseline.canonical_start_count} to ${report.current.canonical_start_count}. This issue does not target 6,000 starts or corpus expansion.`,
+    `The reviewed batch added ${report.outcomes.admitted_count} searchable start${report.outcomes.admitted_count === 1 ? '' : 's'}. The current canonical dataset contains ${report.current.canonical_start_count} searchable starts. Issue #219 did not target 6,000 starts or corpus expansion.`,
     '',
     '## Reproduction and boundaries',
     '',
