@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://typewriter.neverworkalone.net/schema/m9-production-progress.schema.json",
+  "title": "Typewriter M9 production checkpoint progress",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "checkpoint_target",
+    "canonical_count_at_start",
+    "canonical_count_now",
+    "net_admitted_this_run",
+    "remaining_to_checkpoint",
+    "batches_processed",
+    "candidate_yield",
+    "defect_classes",
+    "blocker",
+    "continuation_required",
+    "stop_reason"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "checkpoint_target": { "type": "integer", "minimum": 0 },
+    "canonical_count_at_start": { "type": "integer", "minimum": 0 },
+    "canonical_count_now": { "type": "integer", "minimum": 0 },
+    "net_admitted_this_run": { "type": "integer", "minimum": 0 },
+    "remaining_to_checkpoint": { "type": "integer", "minimum": 0 },
+    "batches_processed": { "type": "integer", "minimum": 0 },
+    "candidate_yield": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected_count", "admitted_count", "held_count", "rejected_count"],
+      "properties": {
+        "selected_count": { "type": "integer", "minimum": 0 },
+        "admitted_count": { "type": "integer", "minimum": 0 },
+        "held_count": { "type": "integer", "minimum": 0 },
+        "rejected_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "defect_classes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "blocker": {
+      "anyOf": [
+        { "type": "null" },
+        { "enum": ["product-model", "licensing"] }
+      ]
+    },
+    "continuation_required": { "type": "boolean" },
+    "stop_reason": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "enum": [
+            "checkpoint-reached",
+            "systemic-defect",
+            "source-exhaustion",
+            "product-or-licensing-blocker"
+          ]
+        }
+      ]
+    }
+  }
+}

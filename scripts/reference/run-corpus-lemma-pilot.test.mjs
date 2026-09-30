@@ -2,9 +2,19 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  DEFAULT_CANDIDATE_LIMIT,
   buildTextFreeCandidateEvidence,
   excludedLemmasForArtifact,
+  parseArguments,
 } from './run-corpus-lemma-pilot.mjs';
+
+test('corpus production defaults to 200 and supports bounded batches through 500', () => {
+  assert.equal(DEFAULT_CANDIDATE_LIMIT, 200);
+  assert.equal(parseArguments([]).candidateLimit, 200);
+  assert.equal(parseArguments(['--candidate-limit', '200']).candidateLimit, 200);
+  assert.equal(parseArguments(['--candidate-limit', '500']).candidateLimit, 500);
+  assert.throws(() => parseArguments(['--candidate-limit', '501']), /1 to 500/u);
+});
 
 test('text-free candidate evidence keeps morphology and bounded provenance without paragraph text', () => {
   const inventory = {
