@@ -85,7 +85,7 @@ const BATCHES = Object.freeze([
 ]);
 const BASELINE_INVENTORY_SHA256 = '5dbe54ee92b5f8548e41208a46e73f5b68c3fb1d1562afefd5a39f85d9670dde';
 const BASELINE_CANONICAL_SHA256 = '93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e';
-const NORMAL_CI_RESULT = 'pass';
+const NORMAL_CI_RESULT = 'pending';
 const REMAINING_RECOVERY_DISPOSITIONS = Object.freeze([
   'admit-candidate',
   'duplicate',
@@ -536,7 +536,7 @@ function renderReport(report) {
     '',
     '## Historical checkpoint',
     '',
-    `The pinned Issue #210 candidate inventory contains ${report.historical_pool.candidate_count} classified rows. Its remaining potentially recoverable rows plus the current ${report.current.canonical_record_count.toLocaleString('en-US')} canonical records yield a historical-only ceiling of ${report.historical_pool.recovery_ceiling.toLocaleString('en-US')}, ${report.historical_pool.shortfall_to_6000} short of 6,000. This is a source-pool limit, not a reason to admit held rows or reconstruct absent candidates. Further expansion requires a separately approved source workflow.`,
+    `The pinned Issue #210 candidate inventory contains ${report.historical_pool.candidate_count} classified rows. After the 18 M9-B admissions and 20 later M9-D historical recoveries, ${report.historical_pool.potentially_recoverable_after_count} historical rows remain potentially recoverable. Added to the current ${report.current.canonical_record_count.toLocaleString('en-US')} canonical records, they yield a bounded source-pool ceiling of ${report.historical_pool.recovery_ceiling.toLocaleString('en-US')}, ${report.historical_pool.shortfall_to_6000} short of 6,000. This is a source-pool limit, not a reason to admit held rows or reconstruct absent candidates.`,
     '',
     '| Remaining Issue #210 disposition | Count |',
     '| --- | ---: |',
@@ -868,6 +868,14 @@ export async function validateIssue220({ writeReport = false } = {}) {
   )).length;
   const admittedCount = counts.included + (counts.corrected ?? 0);
   const recoveryDispositionCounts = countBy(currentInventory.recovery_candidates, ({ new_review_state: state }) => state);
+  const laterIssue222HistoricalRecoveries = currentInventory.recovery_candidates.filter(({ historical_decision_events: events, new_review_state: state }) => (
+    state === 'recovered'
+    && events.some(({ source_issue: issue, source_artifact: artifact, historical_disposition: disposition }) => (
+      issue === 222
+      && artifact === 'data/batches/issue-222-m9-d-historical-semantic-decisions.json'
+      && ['included', 'corrected'].includes(disposition)
+    ))
+  )).length;
   const remainingRecoveryCounts = REMAINING_RECOVERY_DISPOSITIONS.map((disposition) => ({
     disposition,
     count: recoveryDispositionCounts[disposition] ?? 0,
@@ -893,12 +901,13 @@ export async function validateIssue220({ writeReport = false } = {}) {
   const relationEmptySearchableRecordCount = currentRecords.filter(({ senses = [] }) => (
     senses.every((sense) => (sense.relations ?? []).length === 0)
   )).length;
-  assert.equal(currentRecoverable, baselineRecoverable - admittedCount, 'remaining disposition counts match recovery outcomes');
-  assert.equal(recoveredCount, 42, 'Issue #210 inventory includes prior and M9-B recoveries');
+  assert.equal(currentRecoverable, baselineRecoverable - admittedCount - laterIssue222HistoricalRecoveries, 'remaining disposition counts match Issue #220 and subsequent Issue #222 recovery outcomes');
+  assert.equal(recoveredCount, 42 + laterIssue222HistoricalRecoveries, 'Issue #210 inventory includes prior, M9-B, and subsequent M9-D recoveries');
   assert.equal(baselineRecoverable, 545, 'pinned historical potential count');
-  assert.equal(currentRecoverable, 527, 'remaining potentially recoverable historical records');
-  assert.equal(recoveryCeiling, 5632, 'current canonical plus historical source-pool ceiling');
-  assert.equal(Math.max(0, 6000 - recoveryCeiling), 368);
+  assert.equal(laterIssue222HistoricalRecoveries, 20, 'Issue #222 historical recovery count');
+  assert.equal(currentRecoverable, 507, 'remaining potentially recoverable historical records');
+  assert.equal(recoveryCeiling, 5640, 'current canonical plus historical source-pool ceiling');
+  assert.equal(Math.max(0, 6000 - recoveryCeiling), 360);
 
   const report = {
     schema_version: 1,

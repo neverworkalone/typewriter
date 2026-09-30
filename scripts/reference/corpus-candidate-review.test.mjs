@@ -12,6 +12,7 @@ function candidate({
   basis = 'valid-in-scope-lexical-entry',
   lemma = '상태',
   pos = 'noun',
+  analyzerPos = 'NNG',
   ambiguity = 'single_observed_analysis_unverified',
   coverage = 'uncovered',
   matches = [],
@@ -19,13 +20,15 @@ function candidate({
   rationale = '넓은 범주어지만 품사와 표제어 정체가 확인된 어휘 항목이다. 작가 효용은 측정하지 않았다.',
   senseBoundaryEvidence,
   lexicalUnitEvidence,
+  posCorrection,
+  identityEvidence,
 } = {}) {
   return {
     inventory_id: 'm5-9001',
     morphology_proposal: {
       lemma,
       pos,
-      analyzer_pos: 'NNG',
+      analyzer_pos: analyzerPos,
       ambiguity_status: ambiguity,
       pos_interpretation_count_in_sample: 1,
       ambiguous_observed_surface_count_in_sample: ambiguity === 'single_observed_analysis_unverified' ? 0 : 1,
@@ -46,6 +49,8 @@ function candidate({
       candidate_record_id: disposition === 'admit' ? candidateRecordId : null,
       ...(senseBoundaryEvidence ? { sense_boundary_evidence: senseBoundaryEvidence } : {}),
       ...(lexicalUnitEvidence ? { lexical_unit_evidence: lexicalUnitEvidence } : {}),
+      ...(posCorrection ? { pos_correction: posCorrection } : {}),
+      ...(identityEvidence ? { identity_evidence: identityEvidence } : {}),
     },
   };
 }
@@ -57,6 +62,33 @@ test('broad, common, relation-free valid entries are admitted without writer-use
   row.relation_count = 0;
   row.writer_usefulness = 'NOT_MEASURED';
   assert.deepEqual(validateCorpusCandidateReviewDispositions([row]), { admit: 1, hold: 0, reject: 0 });
+});
+
+test('analyzer POS corrections are admitted only with source-bound editorial evidence', () => {
+  const correction = {
+    evidence_type: 'reviewed-bounded-contexts-support-corrected-pos',
+    analyzer_pos: 'VV',
+    analyzer_mapped_pos: 'verb',
+    corrected_pos: 'adverb',
+    paragraph_ids: ['CORPUS.1.10', 'CORPUS.1.20'],
+    rationale: '두 bounded context에서 어쩌다의 용법은 동사가 아니라 부사로 기능한다.',
+  };
+  const row = candidate({ lemma: '어쩌다', pos: 'adverb', analyzerPos: 'VV', posCorrection: correction });
+  assert.deepEqual(validateCorpusCandidateReviewDispositions([row]), { admit: 1, hold: 0, reject: 0 });
+
+  const unbound = candidate({ lemma: '어쩌다', pos: 'adverb', analyzerPos: 'VV' });
+  assert.throws(() => validateCorpusCandidateReviewDispositions([unbound]), {
+    code: 'CORPUS_CANDIDATE_REVIEW_POS_CORRECTION_EVIDENCE',
+  });
+  const wrongParagraph = candidate({
+    lemma: '어쩌다',
+    pos: 'adverb',
+    analyzerPos: 'VV',
+    posCorrection: { ...correction, paragraph_ids: ['CORPUS.OTHER.1'] },
+  });
+  assert.throws(() => validateCorpusCandidateReviewDispositions([wrongParagraph]), {
+    code: 'CORPUS_CANDIDATE_REVIEW_POS_CORRECTION_EVIDENCE',
+  });
 });
 
 test('directory validation discovers future M9 artifacts by contract version', async () => {
@@ -165,6 +197,31 @@ test('missing or unknown morphology metadata cannot be presented as a real ident
   });
   row.morphology_proposal.ambiguous_observed_surface_count_in_sample = 0;
   assert.throws(() => validateCorpusCandidateReviewDispositions([row]), { code: 'CORPUS_CANDIDATE_REVIEW_IDENTITY_EVIDENCE' });
+});
+
+test('clear analyzer proposals can be held when bounded contexts undermine the standalone lemma boundary', () => {
+  const evidence = {
+    evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
+    paragraph_ids: ['CORPUS.1.10', 'CORPUS.1.20'],
+    rationale: 'The selected surface occurs as part of a larger verb in both reviewed contexts.',
+  };
+  const row = candidate({
+    disposition: 'hold',
+    basis: 'unresolved-identity',
+    candidateRecordId: null,
+    identityEvidence: evidence,
+  });
+  assert.deepEqual(validateCorpusCandidateReviewDispositions([row]), { admit: 0, hold: 1, reject: 0 });
+
+  const unbound = candidate({
+    disposition: 'hold',
+    basis: 'unresolved-identity',
+    candidateRecordId: null,
+    identityEvidence: { ...evidence, paragraph_ids: ['CORPUS.OTHER.1'] },
+  });
+  assert.throws(() => validateCorpusCandidateReviewDispositions([unbound]), {
+    code: 'CORPUS_CANDIDATE_REVIEW_IDENTITY_EVIDENCE',
+  });
 });
 
 test('rejections need a demonstrated duplicate, nonlexical unit, or out-of-scope identity', () => {

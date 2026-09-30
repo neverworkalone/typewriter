@@ -1,0 +1,875 @@
+{
+  "schema_version": "1",
+  "contract_version": "m9-d-historical-candidate-source-v1",
+  "kind": "bounded-historical-candidate-source",
+  "authoring_mode": "agent-authored-decision",
+  "issue": 222,
+  "parent_issue": 218,
+  "batch_id": "issue-222-m9-d-historical-batch-01-20260930",
+  "source_id": "issue-222-m9-d-historical-candidates-20260930-r1",
+  "source_class": "historical-recovery-inventory",
+  "human_reviewed": false,
+  "base_sources": [
+    {
+      "path": "data/batches/issue-222-m9-d-historical-base-recovery-inventory.json",
+      "sha256": "42525a3de9668f53092c3a7ed483e4a9b377aeb2f03f0de0500299e8b5f6917d"
+    },
+    {
+      "path": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json",
+      "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd"
+    }
+  ],
+  "selection": {
+    "policy": "recommended-bounded-recovery-order-v1",
+    "group": "bounded M5 candidates retained in the Issue #210 recovery inventory",
+    "candidate_limit": 20,
+    "selected_candidate_count": 20,
+    "selection_rationale": "The frozen historical inventory defines a bounded review order only; current source-bound semantic admission determines each disposition."
+  },
+  "candidate_source_identities": [
+    {
+      "catalog_index": 0,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0001",
+      "inventory_id": "m5-244",
+      "candidate_record_id": "w5443",
+      "lemma": "기어오르다",
+      "axis": "A",
+      "record_type": "entry",
+      "pos": "verb"
+    },
+    {
+      "catalog_index": 1,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0002",
+      "inventory_id": "m5-245",
+      "candidate_record_id": "w5444",
+      "lemma": "가로막다",
+      "axis": "A",
+      "record_type": "entry",
+      "pos": "verb"
+    },
+    {
+      "catalog_index": 2,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0003",
+      "inventory_id": "m5-246",
+      "candidate_record_id": "w5445",
+      "lemma": "호미",
+      "axis": "S",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 3,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0004",
+      "inventory_id": "m5-364",
+      "candidate_record_id": "w5446",
+      "lemma": "설왕설래",
+      "axis": "A",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 4,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0005",
+      "inventory_id": "m5-525",
+      "candidate_record_id": "w5447",
+      "lemma": "산자락",
+      "axis": "S",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 5,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0006",
+      "inventory_id": "m5-526",
+      "candidate_record_id": "w5448",
+      "lemma": "개울물",
+      "axis": "S",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 6,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0007",
+      "inventory_id": "m5-527",
+      "candidate_record_id": "w5449",
+      "lemma": "뛰쳐나가다",
+      "axis": "A",
+      "record_type": "entry",
+      "pos": "verb"
+    },
+    {
+      "catalog_index": 7,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0008",
+      "inventory_id": "m5-528",
+      "candidate_record_id": "w5450",
+      "lemma": "기어들다",
+      "axis": "A",
+      "record_type": "entry",
+      "pos": "verb"
+    },
+    {
+      "catalog_index": 8,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0009",
+      "inventory_id": "m5-529",
+      "candidate_record_id": "w5451",
+      "lemma": "종종걸음치다",
+      "axis": "A",
+      "record_type": "entry",
+      "pos": "verb"
+    },
+    {
+      "catalog_index": 9,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0010",
+      "inventory_id": "m5-530",
+      "candidate_record_id": "w5452",
+      "lemma": "흘러넘치다",
+      "axis": "A",
+      "record_type": "entry",
+      "pos": "verb"
+    },
+    {
+      "catalog_index": 10,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0011",
+      "inventory_id": "m5-531",
+      "candidate_record_id": "w5453",
+      "lemma": "도화지",
+      "axis": "S",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 11,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0012",
+      "inventory_id": "m5-532",
+      "candidate_record_id": "w5454",
+      "lemma": "노끈",
+      "axis": "S",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 12,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0013",
+      "inventory_id": "m5-533",
+      "candidate_record_id": "w5455",
+      "lemma": "나무토막",
+      "axis": "S",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 13,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0014",
+      "inventory_id": "m5-535",
+      "candidate_record_id": "w5456",
+      "lemma": "가책",
+      "axis": "E",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 14,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0015",
+      "inventory_id": "m5-546",
+      "candidate_record_id": "w5457",
+      "lemma": "망연자실",
+      "axis": "E",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 15,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0016",
+      "inventory_id": "m5-557",
+      "candidate_record_id": "w5458",
+      "lemma": "오해",
+      "axis": "E",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 16,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0017",
+      "inventory_id": "m5-576",
+      "candidate_record_id": "w5459",
+      "lemma": "만족",
+      "axis": "E",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 17,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0018",
+      "inventory_id": "m5-598",
+      "candidate_record_id": "w5460",
+      "lemma": "처연함",
+      "axis": "E",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 18,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0019",
+      "inventory_id": "m5-606",
+      "candidate_record_id": "w5461",
+      "lemma": "비애",
+      "axis": "E",
+      "record_type": "entry",
+      "pos": "noun"
+    },
+    {
+      "catalog_index": 19,
+      "slot_id": "issue-222-m9-d-historical-batch-01-20260930-slot-0020",
+      "inventory_id": "m5-636",
+      "candidate_record_id": "w5462",
+      "lemma": "따뜻하다",
+      "axis": "S",
+      "record_type": "entry",
+      "pos": "adjective"
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_ordinal": 1,
+      "inventory_id": "m5-244",
+      "source_inventory_row_sha256": "6724fc9a4d30c454d6501f1adc1e72a51f73b210500b409d31448b695f65fd06",
+      "seed_row_sha256": "c8fe3d09a5bb85fcf44c1af34832747d65ffdffc629c0a6be9f854079e35598e",
+      "lemma": "기어오르다",
+      "pos": "verb",
+      "record_type": "entry",
+      "search_forms": [
+        "기어오르다"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "기어오르다가 만드는 움직임의 방향과 속도를 살필 후보.",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "candidate_record_id": "w5443",
+      "writer_gloss": "손발을 써 몸을 낮춘 채 위쪽으로 올라가다.",
+      "diagnostic_frames": [
+        "아이는 낮은 담장을 천천히 기어올랐다.",
+        "고양이가 나무줄기를 타고 기어올랐다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-244 w5443: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 2,
+      "inventory_id": "m5-245",
+      "source_inventory_row_sha256": "07b8e2bc60a8cd3927a14e9b346210689ad7fe532f6948fbedc7b40b3774867a",
+      "seed_row_sha256": "36b9149bcaf8311ed8f7dfda7cceab95d7a14e10668a9b0a69b2446667d05604",
+      "lemma": "가로막다",
+      "pos": "verb",
+      "record_type": "entry",
+      "search_forms": [
+        "가로막다"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "가로막다가 만드는 움직임의 방향과 속도를 살필 후보.",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "candidate_record_id": "w5444",
+      "writer_gloss": "앞을 가로지르며 진행을 막다.",
+      "diagnostic_frames": [
+        "차 한 대가 좁은 길을 가로막았다.",
+        "갑작스러운 연락 두절이 계획을 가로막았다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-245 w5444: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 3,
+      "inventory_id": "m5-246",
+      "source_inventory_row_sha256": "c497753c9ac3205bd8cced2a9d0a9dcdde5ff78aca0f9736915490195ac14637",
+      "seed_row_sha256": "21349477ff41c2b6804d496c60c5dc63a85387b62e77d86a5d9320ce62aefdb3",
+      "lemma": "호미",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "호미"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "호미의 손에 잡히는 사물 이미지를 확장할 후보.",
+      "axis": "S",
+      "flags": [
+        "scene-expansion"
+      ],
+      "candidate_record_id": "w5445",
+      "writer_gloss": "손으로 쥐고 밭의 흙을 긁어 다듬는 농기구.",
+      "diagnostic_frames": [
+        "그는 호미로 밭고랑을 정리했다.",
+        "작은 호미를 들고 화분의 흙을 고쳤다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-246 w5445: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 4,
+      "inventory_id": "m5-364",
+      "source_inventory_row_sha256": "77696611b686c9286ed05b9867595f5ef0bc2883337325183438502550c3d211",
+      "seed_row_sha256": "e071e81ce08e272b056ad9c9d9c1b6e7489a780b5159766188401a4efbfe6886",
+      "lemma": "설왕설래",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "설왕설래"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "말이 오가며 결론 없이 이어지는 상호 작용을 다음 검토에서 살필 후보.",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "candidate_record_id": "w5446",
+      "writer_gloss": "한 주제를 두고 여러 사람이 말을 주고받으며 논함.",
+      "diagnostic_frames": [
+        "그 소식을 두고 온종일 설왕설래가 이어졌다.",
+        "회의는 설왕설래 끝에야 마무리되었다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-364 w5446: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 5,
+      "inventory_id": "m5-525",
+      "source_inventory_row_sha256": "4ea4354a86a004e0f250fee77eda786b74b6693dc5b67cc9f0c6b6e74d2958c4",
+      "seed_row_sha256": "5faf1ba7e165991d7f95e7dd7172ba9431de9c6a8ba9abab7e64471b1a71b112",
+      "lemma": "산자락",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "산자락"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "산자락를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "S",
+      "flags": [
+        "scene-expansion"
+      ],
+      "candidate_record_id": "w5447",
+      "writer_gloss": "산의 아랫부분에 이어진 비탈.",
+      "diagnostic_frames": [
+        "산자락에 작은 집들이 드문드문 놓였다.",
+        "마을은 낮은 산자락을 따라 길게 이어졌다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-525 w5447: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 6,
+      "inventory_id": "m5-526",
+      "source_inventory_row_sha256": "e9a5fb1c1d1d1ba218666e9361dbb35bfe797e5afe7d5facec02a635e47687cd",
+      "seed_row_sha256": "031ba39bb703ec92a6c810c9c1644f71ced42962a2243290a980ec725f5b456d",
+      "lemma": "개울물",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "개울물"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "개울물를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "S",
+      "flags": [
+        "scene-expansion"
+      ],
+      "candidate_record_id": "w5448",
+      "writer_gloss": "작은 개울을 따라 흐르는 물.",
+      "diagnostic_frames": [
+        "개울물이 돌 틈을 지나 맑게 흘렀다.",
+        "아이들은 얕은 개울물에 발을 담갔다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-526 w5448: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 7,
+      "inventory_id": "m5-527",
+      "source_inventory_row_sha256": "74e9cc0dd7d8a18cb5a57806620232344f615f8714d8fd888f4842fccf9a4ada",
+      "seed_row_sha256": "19c5fad56a84250ff04cd611283120dd797c8c8d7618a5ea49698d1e0d65270e",
+      "lemma": "뛰쳐나가다",
+      "pos": "verb",
+      "record_type": "entry",
+      "search_forms": [
+        "뛰쳐나가다"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "뛰쳐나가다를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "candidate_record_id": "w5449",
+      "writer_gloss": "안에 있던 곳을 급히 벗어나 밖으로 나가다.",
+      "diagnostic_frames": [
+        "그는 대답도 하지 않고 방에서 뛰쳐나갔다.",
+        "강아지가 열린 문으로 뛰쳐나갔다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-527 w5449: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 8,
+      "inventory_id": "m5-528",
+      "source_inventory_row_sha256": "7d89389e786f1f49d9cda13a3983df8052b77a010dc8b2a9f0d7c6af7753276c",
+      "seed_row_sha256": "164afd62ccca0ea50a97bd5eb68b7fdae92e59898e45bad9359f057f0176a4cb",
+      "lemma": "기어들다",
+      "pos": "verb",
+      "record_type": "entry",
+      "search_forms": [
+        "기어들다"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "기어들다를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "candidate_record_id": "w5450",
+      "writer_gloss": "몸을 낮추고 기어서 어떤 공간 안으로 들어가다.",
+      "diagnostic_frames": [
+        "고양이가 탁자 밑으로 기어들었다.",
+        "아이는 담요 속으로 기어들어 숨었다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-528 w5450: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 9,
+      "inventory_id": "m5-529",
+      "source_inventory_row_sha256": "fdd1e71d12c1c9004a3fd9d36636aceb3261061d0ea53fd03f0056aa89f3a6af",
+      "seed_row_sha256": "e4368a1f6d92da40ffe14dfaaac4e9bc39d4daa6dd34ef59d72e63e1f42c8714",
+      "lemma": "종종걸음치다",
+      "pos": "verb",
+      "record_type": "entry",
+      "search_forms": [
+        "종종걸음치다"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "종종걸음치다를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "candidate_record_id": "w5451",
+      "writer_gloss": "짧은 보폭을 유지하며 급히 걷다.",
+      "diagnostic_frames": [
+        "아이는 어머니 뒤를 따라 종종걸음쳤다.",
+        "그는 비를 피하려 처마 밑까지 종종걸음쳤다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-529 w5451: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 10,
+      "inventory_id": "m5-530",
+      "source_inventory_row_sha256": "0b28ed5b58423854ba12436cb1dbcc92ed902a02d2bda69fbe81a731b7cf5b3a",
+      "seed_row_sha256": "cb495b6c915a0cb2e5b2c1e12c343083e6f665ed060f96bd929720a0ae9b73c5",
+      "lemma": "흘러넘치다",
+      "pos": "verb",
+      "record_type": "entry",
+      "search_forms": [
+        "흘러넘치다"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "흘러넘치다를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "A",
+      "flags": [
+        "action-direction"
+      ],
+      "candidate_record_id": "w5452",
+      "writer_gloss": "담긴 곳의 가장자리를 넘어 밖으로 흐르다.",
+      "diagnostic_frames": [
+        "물을 너무 부어 컵에서 흘러넘쳤다.",
+        "개울물이 둑을 넘어 길로 흘러넘쳤다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-530 w5452: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 11,
+      "inventory_id": "m5-531",
+      "source_inventory_row_sha256": "8572f1915942f2cd640d632dd0ac02e673b1c3abe61769c1a1f6874ef0762ddc",
+      "seed_row_sha256": "644398545218ae3c45b319d7aee170b2d4b16b6647835b9c3072f522ba6bbf68",
+      "lemma": "도화지",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "도화지"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "도화지를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "S",
+      "flags": [
+        "direct-boundary"
+      ],
+      "candidate_record_id": "w5453",
+      "writer_gloss": "그림을 그리기 위해 쓰는 종이.",
+      "diagnostic_frames": [
+        "아이들은 도화지에 커다란 나무를 그렸다.",
+        "하얀 도화지가 책상 위에 펼쳐져 있었다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-531 w5453: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 12,
+      "inventory_id": "m5-532",
+      "source_inventory_row_sha256": "91464242c6a240843ba2ef9978b96aa4f8c2cb75b50da42d82eaa690a90e6951",
+      "seed_row_sha256": "85cbf7c1c2fce584082b49b59f351285e016882f4b93d2cf2310fead85b4f145",
+      "lemma": "노끈",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "노끈"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "노끈를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "S",
+      "flags": [
+        "direct-boundary"
+      ],
+      "candidate_record_id": "w5454",
+      "writer_gloss": "물건을 묶어 두는 데 쓰는 가는 줄.",
+      "diagnostic_frames": [
+        "상자를 노끈으로 단단히 묶었다.",
+        "낡은 노끈이 마대 입구에 매여 있었다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-532 w5454: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 13,
+      "inventory_id": "m5-533",
+      "source_inventory_row_sha256": "e36f194a03f9f9e80f9566485131254a3bfb46074bb5f008e8b5056224f8464f",
+      "seed_row_sha256": "67350825995f10d21a37bb8c5a8e9c562877248069038a214a5602f2d516889f",
+      "lemma": "나무토막",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "나무토막"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "candidate",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "나무토막를 다음 단계에서 검토할 후보로 남겨 이번 buffer에서 deferred 처리한다.",
+      "axis": "S",
+      "flags": [
+        "direct-boundary"
+      ],
+      "candidate_record_id": "w5455",
+      "writer_gloss": "잘라 놓은 나무의 짧고 굵은 조각.",
+      "diagnostic_frames": [
+        "그는 나무토막을 난롯가에 쌓았다.",
+        "작은 나무토막이 강물에 떠내려갔다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-533 w5455: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 14,
+      "inventory_id": "m5-535",
+      "source_inventory_row_sha256": "697b5fe156bb099741a959aac6bc89513eb64aa538a7a874e98d92f086e65301",
+      "seed_row_sha256": "a75db3b966c1fa1a43a9d0ee6a0f72eeb0a9d4c2bb65c687ee71c2ac5132218d",
+      "lemma": "가책",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "가책"
+      ],
+      "historical_role_disposition": {
+        "planned_role": null,
+        "disposition": "deferred",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "m5-535 is deferred to a later batch after the bounded reserve was filled.",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "candidate_record_id": "w5456",
+      "writer_gloss": "잘못을 저질렀다고 느껴 마음이 괴로운 상태.",
+      "diagnostic_frames": [
+        "그는 친구를 외면한 일에 가책을 느꼈다.",
+        "그녀는 작은 실수에도 가책을 오래 품었다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-535 w5456: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 15,
+      "inventory_id": "m5-546",
+      "source_inventory_row_sha256": "2d7d76d4cc1d541c237143e01123c79611702896602f2b29061e3e04e3403b47",
+      "seed_row_sha256": "f44707fd0b89e8ab28ad1641790feed5074bf9175f2201f495bcdfb005ed5e0a",
+      "lemma": "망연자실",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "망연자실"
+      ],
+      "historical_role_disposition": {
+        "planned_role": null,
+        "disposition": "deferred",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "m5-546 is deferred to a later batch after the bounded reserve was filled.",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "candidate_record_id": "w5457",
+      "writer_gloss": "뜻밖의 일로 멍해져 어찌할 바를 모르는 상태.",
+      "diagnostic_frames": [
+        "예상하지 못한 결과에 그는 망연자실했다.",
+        "갑작스러운 소식 앞에서 모두 망연자실했다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-546 w5457: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 16,
+      "inventory_id": "m5-557",
+      "source_inventory_row_sha256": "9fe6772b8595c0856d84d00b1db7d124d749c3d8877f3205f28ac6e1e4edc7f9",
+      "seed_row_sha256": "1ed98491c88cddbce7e24abb22bb625b4c850653bb443ef0cdd8f2d83646aed5",
+      "lemma": "오해",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "오해"
+      ],
+      "historical_role_disposition": {
+        "planned_role": null,
+        "disposition": "deferred",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "m5-557 is deferred to a later batch after the bounded reserve was filled.",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "candidate_record_id": "w5458",
+      "writer_gloss": "어떤 내용의 참된 뜻을 잘못 받아들임.",
+      "diagnostic_frames": [
+        "짧은 말 한마디가 오해를 불렀다.",
+        "그들은 대화를 나눈 뒤 오래된 오해를 풀었다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-557 w5458: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 17,
+      "inventory_id": "m5-576",
+      "source_inventory_row_sha256": "72942d98deeaf433683cbee6fb67cdbb852b1226645bf2086a429b725bb7918c",
+      "seed_row_sha256": "b90d64d79ce62ccd7a17dcec06fdc50203c47c45821a960b3092795faf7857a8",
+      "lemma": "만족",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "만족"
+      ],
+      "historical_role_disposition": {
+        "planned_role": null,
+        "disposition": "deferred",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "m5-576 is deferred to a later batch after the bounded reserve was filled.",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "candidate_record_id": "w5459",
+      "writer_gloss": "바라는 대로 되어 마음이 흡족함.",
+      "diagnostic_frames": [
+        "그는 결과에 만족을 표했다.",
+        "작은 성취에도 만족을 느낄 수 있었다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-576 w5459: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 18,
+      "inventory_id": "m5-598",
+      "source_inventory_row_sha256": "3fbc2b4e9b5fc493c6fa143b64af4ad23e15b5277739a6b968697f58196c5536",
+      "seed_row_sha256": "4c4e7bb67479584c117d470e45e65dd9e6f8fe25b3baf398184c5371b5b98fda",
+      "lemma": "처연함",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "처연함"
+      ],
+      "historical_role_disposition": {
+        "planned_role": null,
+        "disposition": "deferred",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "m5-598 is deferred to a later batch after the bounded reserve was filled.",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "candidate_record_id": "w5460",
+      "writer_gloss": "쓸쓸하고 처량하게 느껴지는 기분.",
+      "diagnostic_frames": [
+        "빈 교실에는 설명하기 어려운 처연함이 감돌았다.",
+        "그의 뒷모습에서 처연함이 묻어났다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-598 w5460: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 19,
+      "inventory_id": "m5-606",
+      "source_inventory_row_sha256": "8a159e9cc7a99a992aff727d2494eae764710d41b8b8cbf4d8c663e24e3baa20",
+      "seed_row_sha256": "19c03b41ed6b0b020bed9e5c9cc303e6f68e1047feed9a2a21c6443ecf362f2c",
+      "lemma": "비애",
+      "pos": "noun",
+      "record_type": "entry",
+      "search_forms": [
+        "비애"
+      ],
+      "historical_role_disposition": {
+        "planned_role": null,
+        "disposition": "deferred",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "m5-606 is deferred to a later batch after the bounded reserve was filled.",
+      "axis": "E",
+      "flags": [
+        "mood-range"
+      ],
+      "candidate_record_id": "w5461",
+      "writer_gloss": "마음이 몹시 슬픈 감정.",
+      "diagnostic_frames": [
+        "오래된 편지를 읽자 깊은 비애가 밀려왔다.",
+        "작품에는 이별의 비애가 짙게 배어 있었다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-606 w5461: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    },
+    {
+      "candidate_ordinal": 20,
+      "inventory_id": "m5-636",
+      "source_inventory_row_sha256": "7f8a326a942b4b3d7ffba50fb83c27a8bcd00a2f445079314efa1b3252932094",
+      "seed_row_sha256": "7a38e643de1f74cdc2baf17cd827d11ff7d367810bf2630c685246f01cf7cded",
+      "lemma": "따뜻하다",
+      "pos": "adjective",
+      "record_type": "entry",
+      "search_forms": [
+        "따뜻하다",
+        "따뜻하"
+      ],
+      "historical_role_disposition": {
+        "planned_role": null,
+        "disposition": "deferred",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "m5-636 is deferred to a later batch after the bounded reserve was filled.",
+      "axis": "S",
+      "flags": [
+        "direct-boundary"
+      ],
+      "candidate_record_id": "w5462",
+      "writer_gloss": "온도가 높아 몸에 포근하게 느껴지다.",
+      "diagnostic_frames": [
+        "따뜻한 물에 손을 담갔다.",
+        "해가 비치자 방 안 공기가 따뜻해졌다."
+      ],
+      "editorial_judgment": {
+        "decision": "included",
+        "rationale": "m5-636 w5462: current source-bound lemma, POS, and Typewriter-authored gloss review cleared the historical recovery candidate for ordinary admission. Historical fit determines review order only; usefulness and frequency do not determine admission."
+      }
+    }
+  ],
+  "artifact_sha256": "11d1d93dd32eab6211fc6a82dce8eaf9eed0d2589e2c5a01feb36524a087626b"
+}

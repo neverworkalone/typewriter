@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://typewriter.neverworkalone.net/schema/issue-222-m9-d-scale-coverage-report.schema.json",
+  "title": "Typewriter Issue #222 M9-D scale coverage checkpoint report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "issue",
+    "parent_issue",
+    "state",
+    "baseline",
+    "target",
+    "current",
+    "batches",
+    "aggregate",
+    "corpus_inventory",
+    "validation",
+    "remaining"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "report_id": { "const": "issue-222-m9-d-scale-coverage-report-v1" },
+    "issue": { "const": 222 },
+    "parent_issue": { "const": 218 },
+    "state": { "enum": ["in_progress", "complete", "blocked"] },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "canonical_revision", "canonical_record_count", "directly_searchable_record_count"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/gitObjectId" },
+        "canonical_revision": { "$ref": "#/$defs/sha256" },
+        "canonical_record_count": { "type": "integer", "minimum": 0 },
+        "directly_searchable_record_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["searchable_record_count"],
+      "properties": { "searchable_record_count": { "type": "integer", "minimum": 1 } }
+    },
+    "current": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_revision", "canonical_records_sha256", "canonical_record_count", "directly_searchable_record_count", "exact_search_key_count", "non_searchable_record_count"],
+      "properties": {
+        "canonical_revision": { "$ref": "#/$defs/sha256" },
+        "canonical_records_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_record_count": { "type": "integer", "minimum": 0 },
+        "directly_searchable_record_count": { "type": "integer", "minimum": 0 },
+        "exact_search_key_count": { "type": "integer", "minimum": 0 },
+        "non_searchable_record_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "batches": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["batch_id", "source_class", "candidate_count", "admitted_count", "held_count", "rejected_count", "semantic_source_sha256", "canonical_import_record_count"],
+        "properties": {
+          "batch_id": { "type": "string", "minLength": 1 },
+          "source_class": { "enum": ["historical-recovery-inventory", "local-written-corpus"] },
+          "candidate_count": { "type": "integer", "minimum": 0, "maximum": 20 },
+          "admitted_count": { "type": "integer", "minimum": 0 },
+          "held_count": { "type": "integer", "minimum": 0 },
+          "rejected_count": { "type": "integer", "minimum": 0 },
+          "candidate_source_sha256": { "$ref": "#/$defs/sha256" },
+          "candidate_review_sha256": { "$ref": "#/$defs/sha256" },
+          "semantic_source_sha256": { "$ref": "#/$defs/sha256" },
+          "canonical_import_record_count": { "type": "integer", "minimum": 0 }
+        },
+        "oneOf": [
+          { "required": ["candidate_source_sha256"], "not": { "required": ["candidate_review_sha256"] } },
+          { "required": ["candidate_review_sha256"], "not": { "required": ["candidate_source_sha256"] } }
+        ]
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewed_count", "admitted_count", "held_count", "rejected_count", "canonical_records_added", "admission_quota_applied"],
+      "properties": {
+        "reviewed_count": { "type": "integer", "minimum": 0 },
+        "admitted_count": { "type": "integer", "minimum": 0 },
+        "held_count": { "type": "integer", "minimum": 0 },
+        "rejected_count": { "type": "integer", "minimum": 0 },
+        "canonical_records_added": { "type": "integer", "minimum": 0 },
+        "admission_quota_applied": { "const": false }
+      }
+    },
+    "corpus_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_count", "document_count", "paragraph_count", "sample_paragraph_count", "sample_fraction", "unique_lemma_candidate_count", "exact_canonical_lemma_candidate_count", "uncovered_candidate_count", "surface_collision_candidate_count", "ambiguous_candidate_count", "oov_candidate_count", "excluded_prior_lemma_count", "permission_record_sha256", "input_manifest_sha256", "logical_rows_sha256", "source_text_committed", "candidate_evidence_sha256", "candidate_selection_sha256"],
+      "properties": {
+        "source_count": { "type": "integer", "minimum": 0 },
+        "document_count": { "type": "integer", "minimum": 0 },
+        "paragraph_count": { "type": "integer", "minimum": 0 },
+        "sample_paragraph_count": { "type": "integer", "minimum": 0 },
+        "sample_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "unique_lemma_candidate_count": { "type": "integer", "minimum": 0 },
+        "exact_canonical_lemma_candidate_count": { "type": "integer", "minimum": 0 },
+        "uncovered_candidate_count": { "type": "integer", "minimum": 0 },
+        "surface_collision_candidate_count": { "type": "integer", "minimum": 0 },
+        "ambiguous_candidate_count": { "type": "integer", "minimum": 0 },
+        "oov_candidate_count": { "type": "integer", "minimum": 0 },
+        "excluded_prior_lemma_count": { "type": "integer", "minimum": 0 },
+        "permission_record_sha256": { "$ref": "#/$defs/sha256" },
+        "input_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "logical_rows_sha256": { "$ref": "#/$defs/sha256" },
+        "source_text_committed": { "const": false },
+        "candidate_evidence_sha256": { "$ref": "#/$defs/sha256" },
+        "candidate_selection_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "directly_searchable_new_records", "shared_admission_blocking_findings", "semantic_coverage_complete", "logical_builds_compared", "deterministic_logical_contents", "historical_base_inventory_sha256", "corpus_review_human_reviewed", "historical_review_human_reviewed"],
+      "properties": {
+        "command": { "const": "npm run batch:issue-222:check" },
+        "directly_searchable_new_records": { "type": "integer", "minimum": 0 },
+        "shared_admission_blocking_findings": { "type": "integer", "minimum": 0 },
+        "semantic_coverage_complete": { "const": true },
+        "logical_builds_compared": { "const": 2 },
+        "deterministic_logical_contents": { "const": true },
+        "historical_base_inventory_sha256": { "$ref": "#/$defs/sha256" },
+        "corpus_review_human_reviewed": { "const": false },
+        "historical_review_human_reviewed": { "const": false }
+      }
+    },
+    "remaining": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["records_to_target", "documented_blocker", "next_step"],
+      "properties": {
+        "records_to_target": { "type": "integer", "minimum": 0 },
+        "documented_blocker": { "type": ["string", "null"] },
+        "next_step": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "gitObjectId": { "type": "string", "pattern": "^[a-f0-9]{40,64}$" }
+  }
+}

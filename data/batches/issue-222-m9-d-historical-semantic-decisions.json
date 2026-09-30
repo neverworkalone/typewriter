@@ -1,0 +1,1763 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "kind": "separately-authored-semantic-decision-source",
+  "authoring_mode": "agent-authored-decision",
+  "issue": 222,
+  "parent_issue": 218,
+  "batch_id": "issue-222-m9-d-historical-batch-01-20260930",
+  "source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+  "candidate_source": {
+    "source_id": "issue-222-m9-d-historical-candidates-20260930-r1",
+    "identity_sha256": "413a6958c9b3dd12d75fa96f24d3feb4b6419f0497c7455cd973a3d69091cd2c",
+    "identity_count": 20
+  },
+  "source_basis": {
+    "candidate_source_sha256": "924f641d2bb1db718a64d24f06a366e0bcc1f931f345eebbf7cac863776bd6fb",
+    "candidate_source_artifact_sha256": "11d1d93dd32eab6211fc6a82dce8eaf9eed0d2589e2c5a01feb36524a087626b",
+    "base_inventory_sha256": "42525a3de9668f53092c3a7ed483e4a9b377aeb2f03f0de0500299e8b5f6917d",
+    "base_seed_sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd",
+    "candidate_records_sha256": "cd278f9d88c942009bc6dfd3c20ba8f4586a0907f2aec76cb0d25dabe7c73f13"
+  },
+  "provenance": {
+    "generator": "codex",
+    "generator_version": "issue-222-historical-semantic-review-v1",
+    "generation_pass_id": "issue-222-m9-d-historical-recovery-20260930-r1",
+    "verification_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+    "human_reviewed": false,
+    "authoring_note": "M5 historical reserve metadata establishes candidate provenance and review order only. Each current lexical identity, POS, gloss, and single-sense boundary was separately authored and checked. Empty relation lists are valid; no admission quota is applied."
+  },
+  "candidate_records": [
+    {
+      "id": "w5443",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5443",
+      "lemma": "기어오르다",
+      "search_forms": [
+        "기어오르다"
+      ],
+      "senses": [
+        {
+          "id": "w5443-s1",
+          "pos": "verb",
+          "gloss": "손발을 써 몸을 낮춘 채 위쪽으로 올라가다."
+        }
+      ]
+    },
+    {
+      "id": "w5444",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5444",
+      "lemma": "가로막다",
+      "search_forms": [
+        "가로막다"
+      ],
+      "senses": [
+        {
+          "id": "w5444-s1",
+          "pos": "verb",
+          "gloss": "앞을 가로지르며 진행을 막다."
+        }
+      ]
+    },
+    {
+      "id": "w5445",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5445",
+      "lemma": "호미",
+      "search_forms": [
+        "호미"
+      ],
+      "senses": [
+        {
+          "id": "w5445-s1",
+          "pos": "noun",
+          "gloss": "손으로 쥐고 밭의 흙을 긁어 다듬는 농기구."
+        }
+      ]
+    },
+    {
+      "id": "w5446",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5446",
+      "lemma": "설왕설래",
+      "search_forms": [
+        "설왕설래"
+      ],
+      "senses": [
+        {
+          "id": "w5446-s1",
+          "pos": "noun",
+          "gloss": "한 주제를 두고 여러 사람이 말을 주고받으며 논함."
+        }
+      ]
+    },
+    {
+      "id": "w5447",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5447",
+      "lemma": "산자락",
+      "search_forms": [
+        "산자락"
+      ],
+      "senses": [
+        {
+          "id": "w5447-s1",
+          "pos": "noun",
+          "gloss": "산의 아랫부분에 이어진 비탈."
+        }
+      ]
+    },
+    {
+      "id": "w5448",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5448",
+      "lemma": "개울물",
+      "search_forms": [
+        "개울물"
+      ],
+      "senses": [
+        {
+          "id": "w5448-s1",
+          "pos": "noun",
+          "gloss": "작은 개울을 따라 흐르는 물."
+        }
+      ]
+    },
+    {
+      "id": "w5449",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5449",
+      "lemma": "뛰쳐나가다",
+      "search_forms": [
+        "뛰쳐나가다"
+      ],
+      "senses": [
+        {
+          "id": "w5449-s1",
+          "pos": "verb",
+          "gloss": "안에 있던 곳을 급히 벗어나 밖으로 나가다."
+        }
+      ]
+    },
+    {
+      "id": "w5450",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5450",
+      "lemma": "기어들다",
+      "search_forms": [
+        "기어들다"
+      ],
+      "senses": [
+        {
+          "id": "w5450-s1",
+          "pos": "verb",
+          "gloss": "몸을 낮추고 기어서 어떤 공간 안으로 들어가다."
+        }
+      ]
+    },
+    {
+      "id": "w5451",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5451",
+      "lemma": "종종걸음치다",
+      "search_forms": [
+        "종종걸음치다"
+      ],
+      "senses": [
+        {
+          "id": "w5451-s1",
+          "pos": "verb",
+          "gloss": "짧은 보폭을 유지하며 급히 걷다."
+        }
+      ]
+    },
+    {
+      "id": "w5452",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5452",
+      "lemma": "흘러넘치다",
+      "search_forms": [
+        "흘러넘치다"
+      ],
+      "senses": [
+        {
+          "id": "w5452-s1",
+          "pos": "verb",
+          "gloss": "담긴 곳의 가장자리를 넘어 밖으로 흐르다."
+        }
+      ]
+    },
+    {
+      "id": "w5453",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5453",
+      "lemma": "도화지",
+      "search_forms": [
+        "도화지"
+      ],
+      "senses": [
+        {
+          "id": "w5453-s1",
+          "pos": "noun",
+          "gloss": "그림을 그리기 위해 쓰는 종이."
+        }
+      ]
+    },
+    {
+      "id": "w5454",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5454",
+      "lemma": "노끈",
+      "search_forms": [
+        "노끈"
+      ],
+      "senses": [
+        {
+          "id": "w5454-s1",
+          "pos": "noun",
+          "gloss": "물건을 묶어 두는 데 쓰는 가는 줄."
+        }
+      ]
+    },
+    {
+      "id": "w5455",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5455",
+      "lemma": "나무토막",
+      "search_forms": [
+        "나무토막"
+      ],
+      "senses": [
+        {
+          "id": "w5455-s1",
+          "pos": "noun",
+          "gloss": "잘라 놓은 나무의 짧고 굵은 조각."
+        }
+      ]
+    },
+    {
+      "id": "w5456",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5456",
+      "lemma": "가책",
+      "search_forms": [
+        "가책"
+      ],
+      "senses": [
+        {
+          "id": "w5456-s1",
+          "pos": "noun",
+          "gloss": "잘못을 저질렀다고 느껴 마음이 괴로운 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5457",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5457",
+      "lemma": "망연자실",
+      "search_forms": [
+        "망연자실"
+      ],
+      "senses": [
+        {
+          "id": "w5457-s1",
+          "pos": "noun",
+          "gloss": "뜻밖의 일로 멍해져 어찌할 바를 모르는 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5458",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5458",
+      "lemma": "오해",
+      "search_forms": [
+        "오해"
+      ],
+      "senses": [
+        {
+          "id": "w5458-s1",
+          "pos": "noun",
+          "gloss": "어떤 내용의 참된 뜻을 잘못 받아들임."
+        }
+      ]
+    },
+    {
+      "id": "w5459",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5459",
+      "lemma": "만족",
+      "search_forms": [
+        "만족"
+      ],
+      "senses": [
+        {
+          "id": "w5459-s1",
+          "pos": "noun",
+          "gloss": "바라는 대로 되어 마음이 흡족함."
+        }
+      ]
+    },
+    {
+      "id": "w5460",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5460",
+      "lemma": "처연함",
+      "search_forms": [
+        "처연함"
+      ],
+      "senses": [
+        {
+          "id": "w5460-s1",
+          "pos": "noun",
+          "gloss": "쓸쓸하고 처량하게 느껴지는 기분."
+        }
+      ]
+    },
+    {
+      "id": "w5461",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5461",
+      "lemma": "비애",
+      "search_forms": [
+        "비애"
+      ],
+      "senses": [
+        {
+          "id": "w5461-s1",
+          "pos": "noun",
+          "gloss": "마음이 몹시 슬픈 감정."
+        }
+      ]
+    },
+    {
+      "id": "w5462",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5462",
+      "lemma": "따뜻하다",
+      "search_forms": [
+        "따뜻하다",
+        "따뜻하"
+      ],
+      "senses": [
+        {
+          "id": "w5462-s1",
+          "pos": "adjective",
+          "gloss": "온도가 높아 몸에 포근하게 느껴지다."
+        }
+      ]
+    }
+  ],
+  "candidate_records_sha256": "cd278f9d88c942009bc6dfd3c20ba8f4586a0907f2aec76cb0d25dabe7c73f13",
+  "selection": {
+    "policy": "shared-authored-axis-coverage-selection-v6",
+    "capacity": 20,
+    "imported": 20,
+    "reserve": 0,
+    "coverage_field": "selection_axis",
+    "coverage_basis": [
+      "current source-bound lexical eligibility after historical candidate recovery"
+    ],
+    "selection_rationale": "Every reviewed in-scope entry entered ordinary shared admission. The historical reserve order and batch size do not set an admission quota."
+  },
+  "review": {
+    "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+    "reviewer": "codex-agent",
+    "status": "complete",
+    "candidate_count": 20,
+    "reviewed_candidate_count": 20,
+    "method": "Recover the historical candidate identity and POS from the exact frozen inventory and M5 seed rows; author a concise Typewriter gloss; review a single-sense boundary in two diagnostic frames; then apply the common source-bound semantic admission contract.",
+    "criteria": [
+      "exact historical inventory and seed identity binding",
+      "current canonical lemma, search-form, and generated-surface collision checks",
+      "in-scope POS and a bounded Typewriter-authored lexical meaning",
+      "single-sense boundary review with exact gloss binding",
+      "zero relations when no candidate-specific relation is separately supported",
+      "historical fit, writer usefulness, commonness, and frequency never authorize admission"
+    ],
+    "decision_counts": {
+      "included": 20,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "counts": {
+      "included": 20,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "prior_generator_replaced": true,
+    "prior_generator_verification_pass_id": "issue-222-m9-d-historical-recovery-20260930-r1",
+    "correction_passes": [],
+    "expression_lexical_unit_review_contract_version": "m9-expression-lexical-unit-review-v1"
+  },
+  "decisions": [
+    {
+      "candidate_record_id": "w5443",
+      "inventory_id": "m5-244",
+      "candidate_record_sha256": "63949ba2632010cf98893210f1074cf5ff3b76a880ac40aa683fc7961bff1000",
+      "decision": "included",
+      "rank": 1,
+      "decision_rationale": "m5-244 w5443: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5443-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-244 w5443 w5443-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 0901fc462b9a89687fcc3d3ea18b58f65f030c6114b999da4e5ce85b5646b214.",
+          "semantic_rationale": "w5443 w5443-s1: 손발을 써 몸을 낮춘 채 위쪽으로 올라가다. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-244 w5443-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5443-s1",
+            "gloss_sha256": "0901fc462b9a89687fcc3d3ea18b58f65f030c6114b999da4e5ce85b5646b214",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "손발을 써 몸을 낮춘 채 위쪽으로 올라가다.",
+                "gloss_start": 0,
+                "sentence_frame": "아이는 낮은 담장을 천천히 기어올랐다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "기어오르다 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "손발을 써 몸을 낮춘 채 위쪽으로 올라가다.",
+                "gloss_start": 0,
+                "sentence_frame": "고양이가 나무줄기를 타고 기어올랐다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "기어오르다 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5443 w5443-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5443",
+        "candidate_record_sha256": "63949ba2632010cf98893210f1074cf5ff3b76a880ac40aa683fc7961bff1000",
+        "decision_evidence_sha256": "57bd603802da8eb555abfc270633f39e86ab360805bfbecd2cd30fec6e23a6c4",
+        "sense_evidence": [
+          {
+            "sense_id": "w5443-s1",
+            "sense_sha256": "f2401f86019a57d500f6c18da8d62a794f10ceebe443a16308d838a922129903",
+            "gloss_sha256": "0901fc462b9a89687fcc3d3ea18b58f65f030c6114b999da4e5ce85b5646b214",
+            "evidence_sha256": "4c4f7e3f184acc3c3910cf96773d1b61a874f8de3acd67e0709f785ab41de8a1"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5444",
+      "inventory_id": "m5-245",
+      "candidate_record_sha256": "3c9974659793bc7856b86f37c8f7135346b0f245e3e3bf525cfeaacd27512abf",
+      "decision": "included",
+      "rank": 2,
+      "decision_rationale": "m5-245 w5444: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5444-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-245 w5444 w5444-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 c39514fdf9c5a8878a9e9df9ba115731f5db950e8bfa703ef15cf5319da1b6a2.",
+          "semantic_rationale": "w5444 w5444-s1: 앞을 가로지르며 진행을 막다. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-245 w5444-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5444-s1",
+            "gloss_sha256": "c39514fdf9c5a8878a9e9df9ba115731f5db950e8bfa703ef15cf5319da1b6a2",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "앞을 가로지르며 진행을 막다.",
+                "gloss_start": 0,
+                "sentence_frame": "차 한 대가 좁은 길을 가로막았다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "가로막다 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "앞을 가로지르며 진행을 막다.",
+                "gloss_start": 0,
+                "sentence_frame": "갑작스러운 연락 두절이 계획을 가로막았다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "가로막다 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5444 w5444-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5444",
+        "candidate_record_sha256": "3c9974659793bc7856b86f37c8f7135346b0f245e3e3bf525cfeaacd27512abf",
+        "decision_evidence_sha256": "3f2c11457ffdc834a522cf3bfb77461d59eedc9a3577d4aa98e5e20f8b173d5a",
+        "sense_evidence": [
+          {
+            "sense_id": "w5444-s1",
+            "sense_sha256": "cb5aad2d32d6320108de1a251a79dd9c36bd71cdb969840c1aa177b97cd22615",
+            "gloss_sha256": "c39514fdf9c5a8878a9e9df9ba115731f5db950e8bfa703ef15cf5319da1b6a2",
+            "evidence_sha256": "b0bef67930fa15964df630feddbcf338e52a4affd46a891ca8a6fe45abd3e690"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5445",
+      "inventory_id": "m5-246",
+      "candidate_record_sha256": "3380183745f9cf5547a451bb962ce148c9e79402be2c8009cf0dfd4d45707a58",
+      "decision": "included",
+      "rank": 3,
+      "decision_rationale": "m5-246 w5445: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5445-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-246 w5445 w5445-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 1cf800926a4cfe175694afd78d4797bcb1ef8e940e461aa7a0acdb2e24c5fea5.",
+          "semantic_rationale": "w5445 w5445-s1: 손으로 쥐고 밭의 흙을 긁어 다듬는 농기구. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-246 w5445-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5445-s1",
+            "gloss_sha256": "1cf800926a4cfe175694afd78d4797bcb1ef8e940e461aa7a0acdb2e24c5fea5",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "손으로 쥐고 밭의 흙을 긁어 다듬는 농기구.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 호미로 밭고랑을 정리했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "호미 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "손으로 쥐고 밭의 흙을 긁어 다듬는 농기구.",
+                "gloss_start": 0,
+                "sentence_frame": "작은 호미를 들고 화분의 흙을 고쳤다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "호미 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5445 w5445-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "S",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5445",
+        "candidate_record_sha256": "3380183745f9cf5547a451bb962ce148c9e79402be2c8009cf0dfd4d45707a58",
+        "decision_evidence_sha256": "1cb5faa4d078f4d04f65f439d395b519fa4e3936534bef008a65e36f0d260a4c",
+        "sense_evidence": [
+          {
+            "sense_id": "w5445-s1",
+            "sense_sha256": "f3ac69018d1d7e7e10ee6ca3543258428cb65bbe74ad4c297d49b2600426bc98",
+            "gloss_sha256": "1cf800926a4cfe175694afd78d4797bcb1ef8e940e461aa7a0acdb2e24c5fea5",
+            "evidence_sha256": "de22aa65bbcc2bde2405de164e79a4c0597337380d60a7fe6378536bfb469b28"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5446",
+      "inventory_id": "m5-364",
+      "candidate_record_sha256": "7d79c33eeb39a86662fb04b4bb36f3a032c51c4e34f6d90173aaa5f7cf316a1e",
+      "decision": "included",
+      "rank": 4,
+      "decision_rationale": "m5-364 w5446: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5446-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-364 w5446 w5446-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 b3a85ce9307d1990db561151afd4f3a2a291210009048f54c816f872c28712d6.",
+          "semantic_rationale": "w5446 w5446-s1: 한 주제를 두고 여러 사람이 말을 주고받으며 논함. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-364 w5446-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5446-s1",
+            "gloss_sha256": "b3a85ce9307d1990db561151afd4f3a2a291210009048f54c816f872c28712d6",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "한 주제를 두고 여러 사람이 말을 주고받으며 논함.",
+                "gloss_start": 0,
+                "sentence_frame": "그 소식을 두고 온종일 설왕설래가 이어졌다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "설왕설래 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "한 주제를 두고 여러 사람이 말을 주고받으며 논함.",
+                "gloss_start": 0,
+                "sentence_frame": "회의는 설왕설래 끝에야 마무리되었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "설왕설래 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5446 w5446-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5446",
+        "candidate_record_sha256": "7d79c33eeb39a86662fb04b4bb36f3a032c51c4e34f6d90173aaa5f7cf316a1e",
+        "decision_evidence_sha256": "d04eefab51c0f8b90139fe4e5e1edc6ca2bb4cad1cc4c5908293148ef664840f",
+        "sense_evidence": [
+          {
+            "sense_id": "w5446-s1",
+            "sense_sha256": "4d369f621dd5bf5e64d29f6ba5149aa904038f11226104e90e27c05b2dae48a3",
+            "gloss_sha256": "b3a85ce9307d1990db561151afd4f3a2a291210009048f54c816f872c28712d6",
+            "evidence_sha256": "52a6cb41f47c3674209db6eec8a627006cba1ea1c225347f24d9dc4c2c4caed5"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5447",
+      "inventory_id": "m5-525",
+      "candidate_record_sha256": "ccd125b6d8e03941e01ea9bb4debd9468a29e174443230fd3fc4237491509cfb",
+      "decision": "included",
+      "rank": 5,
+      "decision_rationale": "m5-525 w5447: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5447-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-525 w5447 w5447-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 90f698edf776820ff4b1b628d3d4d90969adce8bd263c2b6bad3b5e0ae219fee.",
+          "semantic_rationale": "w5447 w5447-s1: 산의 아랫부분에 이어진 비탈. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-525 w5447-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5447-s1",
+            "gloss_sha256": "90f698edf776820ff4b1b628d3d4d90969adce8bd263c2b6bad3b5e0ae219fee",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "산의 아랫부분에 이어진 비탈.",
+                "gloss_start": 0,
+                "sentence_frame": "산자락에 작은 집들이 드문드문 놓였다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "산자락 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "산의 아랫부분에 이어진 비탈.",
+                "gloss_start": 0,
+                "sentence_frame": "마을은 낮은 산자락을 따라 길게 이어졌다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "산자락 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5447 w5447-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "S",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5447",
+        "candidate_record_sha256": "ccd125b6d8e03941e01ea9bb4debd9468a29e174443230fd3fc4237491509cfb",
+        "decision_evidence_sha256": "9b9a327438fe78e13c61a11b1ce4789f07eaad70d36a24eab6c11230920796f7",
+        "sense_evidence": [
+          {
+            "sense_id": "w5447-s1",
+            "sense_sha256": "e8cfa3c49f51e8a21591e0ad8e19e8f89b74bd464044d3990fc45d06c697543f",
+            "gloss_sha256": "90f698edf776820ff4b1b628d3d4d90969adce8bd263c2b6bad3b5e0ae219fee",
+            "evidence_sha256": "9a83e748a81d9b57ed7bf135bd643be6e4b79c67a802a0328c3c65360c5520a3"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5448",
+      "inventory_id": "m5-526",
+      "candidate_record_sha256": "35cbfb42ec2541aa0b94924c231b6ff2f676d41ab224a752d61e9ed30c594eaa",
+      "decision": "included",
+      "rank": 6,
+      "decision_rationale": "m5-526 w5448: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5448-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-526 w5448 w5448-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 291fc32ce1d2b74aa54fae51d849d430bb6a9118245ed7eedc03cba1e86a08ec.",
+          "semantic_rationale": "w5448 w5448-s1: 작은 개울을 따라 흐르는 물. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-526 w5448-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5448-s1",
+            "gloss_sha256": "291fc32ce1d2b74aa54fae51d849d430bb6a9118245ed7eedc03cba1e86a08ec",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "작은 개울을 따라 흐르는 물.",
+                "gloss_start": 0,
+                "sentence_frame": "개울물이 돌 틈을 지나 맑게 흘렀다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "개울물 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "작은 개울을 따라 흐르는 물.",
+                "gloss_start": 0,
+                "sentence_frame": "아이들은 얕은 개울물에 발을 담갔다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "개울물 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5448 w5448-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "S",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5448",
+        "candidate_record_sha256": "35cbfb42ec2541aa0b94924c231b6ff2f676d41ab224a752d61e9ed30c594eaa",
+        "decision_evidence_sha256": "b3e22c3e8df36332576361b7b2bc01c3f6d758c73071c73ab43b2128d41815fd",
+        "sense_evidence": [
+          {
+            "sense_id": "w5448-s1",
+            "sense_sha256": "cc0f35f2245ca669f467bf6eb09b83a2486bd0952349c939952aaefadbfad147",
+            "gloss_sha256": "291fc32ce1d2b74aa54fae51d849d430bb6a9118245ed7eedc03cba1e86a08ec",
+            "evidence_sha256": "4346c85d455a4a783c5d77cd42b49bdafae4948e87cb82c18e4ee0d9e5eb6e1d"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5449",
+      "inventory_id": "m5-527",
+      "candidate_record_sha256": "a2d9bdd69c7344127ad538700a47080ea6ee62f9d0074f49702f8c002d025c6e",
+      "decision": "included",
+      "rank": 7,
+      "decision_rationale": "m5-527 w5449: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5449-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-527 w5449 w5449-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 dbf01e4c22f8a75312a6c4323cf909996b1ecfdcaab2200a8c9e215819ec6569.",
+          "semantic_rationale": "w5449 w5449-s1: 안에 있던 곳을 급히 벗어나 밖으로 나가다. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-527 w5449-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5449-s1",
+            "gloss_sha256": "dbf01e4c22f8a75312a6c4323cf909996b1ecfdcaab2200a8c9e215819ec6569",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "안에 있던 곳을 급히 벗어나 밖으로 나가다.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 대답도 하지 않고 방에서 뛰쳐나갔다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "뛰쳐나가다 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "안에 있던 곳을 급히 벗어나 밖으로 나가다.",
+                "gloss_start": 0,
+                "sentence_frame": "강아지가 열린 문으로 뛰쳐나갔다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "뛰쳐나가다 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5449 w5449-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5449",
+        "candidate_record_sha256": "a2d9bdd69c7344127ad538700a47080ea6ee62f9d0074f49702f8c002d025c6e",
+        "decision_evidence_sha256": "0ca463e4ca991c453bf8dc500c013eeff67cb84b1d65c6e1d4f4fa3c1647473a",
+        "sense_evidence": [
+          {
+            "sense_id": "w5449-s1",
+            "sense_sha256": "f791147f31ac0629804140f8375da9e48673167825f28cf7a5edfaa833d5b992",
+            "gloss_sha256": "dbf01e4c22f8a75312a6c4323cf909996b1ecfdcaab2200a8c9e215819ec6569",
+            "evidence_sha256": "dca463da1ceee15c3435a91638156904d93077619b203dba2209f5d17faa029a"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5450",
+      "inventory_id": "m5-528",
+      "candidate_record_sha256": "c8835cb556a70fb91ff4a1029fafe06a9fb63d8b835e6e7e85f18d4a3d8f36c8",
+      "decision": "included",
+      "rank": 8,
+      "decision_rationale": "m5-528 w5450: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5450-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-528 w5450 w5450-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 23e9a29fff9142691c2ed25571473d827b1727fcdafc5ba19b4b6e1a29741d99.",
+          "semantic_rationale": "w5450 w5450-s1: 몸을 낮추고 기어서 어떤 공간 안으로 들어가다. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-528 w5450-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5450-s1",
+            "gloss_sha256": "23e9a29fff9142691c2ed25571473d827b1727fcdafc5ba19b4b6e1a29741d99",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "몸을 낮추고 기어서 어떤 공간 안으로 들어가다.",
+                "gloss_start": 0,
+                "sentence_frame": "고양이가 탁자 밑으로 기어들었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "기어들다 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "몸을 낮추고 기어서 어떤 공간 안으로 들어가다.",
+                "gloss_start": 0,
+                "sentence_frame": "아이는 담요 속으로 기어들어 숨었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "기어들다 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5450 w5450-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5450",
+        "candidate_record_sha256": "c8835cb556a70fb91ff4a1029fafe06a9fb63d8b835e6e7e85f18d4a3d8f36c8",
+        "decision_evidence_sha256": "4e40fba6d037647014305bca96ed43e4c5491f7b1e9f22a4813568efd8113dbd",
+        "sense_evidence": [
+          {
+            "sense_id": "w5450-s1",
+            "sense_sha256": "f803de21f7406168543fed95eaa8c66fb2ac455f6282c331525f8466b90e1dbc",
+            "gloss_sha256": "23e9a29fff9142691c2ed25571473d827b1727fcdafc5ba19b4b6e1a29741d99",
+            "evidence_sha256": "3b107826e1c34504571fdf59cdaf747589bbac5f3b2b91a8cd0d227fe9d8b692"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5451",
+      "inventory_id": "m5-529",
+      "candidate_record_sha256": "8f21208732e8b032fe1b21fc502c642fc0b627125c8620de143b22adb03dfa39",
+      "decision": "included",
+      "rank": 9,
+      "decision_rationale": "m5-529 w5451: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5451-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-529 w5451 w5451-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 b9720faca519d137b76d8f0525a345e6f67e84ddf83965136916ca53d31d14ef.",
+          "semantic_rationale": "w5451 w5451-s1: 짧은 보폭을 유지하며 급히 걷다. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-529 w5451-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5451-s1",
+            "gloss_sha256": "b9720faca519d137b76d8f0525a345e6f67e84ddf83965136916ca53d31d14ef",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "짧은 보폭을 유지하며 급히 걷다.",
+                "gloss_start": 0,
+                "sentence_frame": "아이는 어머니 뒤를 따라 종종걸음쳤다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "종종걸음치다 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "짧은 보폭을 유지하며 급히 걷다.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 비를 피하려 처마 밑까지 종종걸음쳤다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "종종걸음치다 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5451 w5451-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5451",
+        "candidate_record_sha256": "8f21208732e8b032fe1b21fc502c642fc0b627125c8620de143b22adb03dfa39",
+        "decision_evidence_sha256": "f28564a65db8b74d8d51685071cc7e098bb0e2ad18edfebe5cec30e12cc26195",
+        "sense_evidence": [
+          {
+            "sense_id": "w5451-s1",
+            "sense_sha256": "11c8a1d688052e494130eb0008b7e4f7503992dd5d728c1a76e706581a849f4b",
+            "gloss_sha256": "b9720faca519d137b76d8f0525a345e6f67e84ddf83965136916ca53d31d14ef",
+            "evidence_sha256": "63782363c8d2d260352ffa374e0f166e6b588dcc63fc6b176cceafc8edd3966d"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5452",
+      "inventory_id": "m5-530",
+      "candidate_record_sha256": "7ca4e5960c3738e05133377048b199e5d7bfdfb89078299f0d3043b2d92ef838",
+      "decision": "included",
+      "rank": 10,
+      "decision_rationale": "m5-530 w5452: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5452-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-530 w5452 w5452-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 25008621e68b2f932f4b9fe7594dbb3e4156865bcbc944f906e6de36fb9d7fb1.",
+          "semantic_rationale": "w5452 w5452-s1: 담긴 곳의 가장자리를 넘어 밖으로 흐르다. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-530 w5452-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5452-s1",
+            "gloss_sha256": "25008621e68b2f932f4b9fe7594dbb3e4156865bcbc944f906e6de36fb9d7fb1",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "담긴 곳의 가장자리를 넘어 밖으로 흐르다.",
+                "gloss_start": 0,
+                "sentence_frame": "물을 너무 부어 컵에서 흘러넘쳤다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "흘러넘치다 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "담긴 곳의 가장자리를 넘어 밖으로 흐르다.",
+                "gloss_start": 0,
+                "sentence_frame": "개울물이 둑을 넘어 길로 흘러넘쳤다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "흘러넘치다 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5452 w5452-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "A",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5452",
+        "candidate_record_sha256": "7ca4e5960c3738e05133377048b199e5d7bfdfb89078299f0d3043b2d92ef838",
+        "decision_evidence_sha256": "987cad4d134e5c1e364feadbfdbfbdf094908e1d6c7c4bf3d77ce873c622e192",
+        "sense_evidence": [
+          {
+            "sense_id": "w5452-s1",
+            "sense_sha256": "43a0e8b2b63083bb51bfa432b0a5099cb0ea2c4c90fb5c1da1ea95262edcfa8b",
+            "gloss_sha256": "25008621e68b2f932f4b9fe7594dbb3e4156865bcbc944f906e6de36fb9d7fb1",
+            "evidence_sha256": "7b6ab119ee8a1df60ff132586e0e3ad8bc37a56aea600792cdf4e0b2604df2c9"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5453",
+      "inventory_id": "m5-531",
+      "candidate_record_sha256": "a7e7328a79b26e0218c1b04fac4c370ac149d041ac1020ee6b9675e62ea52bad",
+      "decision": "included",
+      "rank": 11,
+      "decision_rationale": "m5-531 w5453: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5453-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-531 w5453 w5453-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 2753d64b2099ecb359cce8353733b8903e1b11cfe813762b61077fe850b974e4.",
+          "semantic_rationale": "w5453 w5453-s1: 그림을 그리기 위해 쓰는 종이. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-531 w5453-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5453-s1",
+            "gloss_sha256": "2753d64b2099ecb359cce8353733b8903e1b11cfe813762b61077fe850b974e4",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "그림을 그리기 위해 쓰는 종이.",
+                "gloss_start": 0,
+                "sentence_frame": "아이들은 도화지에 커다란 나무를 그렸다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "도화지 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "그림을 그리기 위해 쓰는 종이.",
+                "gloss_start": 0,
+                "sentence_frame": "하얀 도화지가 책상 위에 펼쳐져 있었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "도화지 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5453 w5453-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "S",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5453",
+        "candidate_record_sha256": "a7e7328a79b26e0218c1b04fac4c370ac149d041ac1020ee6b9675e62ea52bad",
+        "decision_evidence_sha256": "1d1ab574f4219f1e55884a981b09a7ab41c691cbabde230059a572f8407a2164",
+        "sense_evidence": [
+          {
+            "sense_id": "w5453-s1",
+            "sense_sha256": "dc1aa2c951a0e9b01c785671bbb8f4012fc2dc5987ceaeebe74b3145f7d28332",
+            "gloss_sha256": "2753d64b2099ecb359cce8353733b8903e1b11cfe813762b61077fe850b974e4",
+            "evidence_sha256": "07f4c4888c759c5f3b93f6ad3b64fbb7dad96f4910167aae4441e448c343f8ea"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5454",
+      "inventory_id": "m5-532",
+      "candidate_record_sha256": "61a284da2e1a4fc35128f984c7c3af71f16e73a5ad764ae17b36777cbcc1dbc3",
+      "decision": "included",
+      "rank": 12,
+      "decision_rationale": "m5-532 w5454: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5454-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-532 w5454 w5454-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 7f55b796efc615c142d1bc1759e234e534e1481f937d3b833e7681338d1428ca.",
+          "semantic_rationale": "w5454 w5454-s1: 물건을 묶어 두는 데 쓰는 가는 줄. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-532 w5454-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5454-s1",
+            "gloss_sha256": "7f55b796efc615c142d1bc1759e234e534e1481f937d3b833e7681338d1428ca",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "물건을 묶어 두는 데 쓰는 가는 줄.",
+                "gloss_start": 0,
+                "sentence_frame": "상자를 노끈으로 단단히 묶었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "노끈 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "물건을 묶어 두는 데 쓰는 가는 줄.",
+                "gloss_start": 0,
+                "sentence_frame": "낡은 노끈이 마대 입구에 매여 있었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "노끈 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5454 w5454-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "S",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5454",
+        "candidate_record_sha256": "61a284da2e1a4fc35128f984c7c3af71f16e73a5ad764ae17b36777cbcc1dbc3",
+        "decision_evidence_sha256": "501e283e081ca2ec3d5e70efaa0a3b25c41b91a301a4b59664238d56446348aa",
+        "sense_evidence": [
+          {
+            "sense_id": "w5454-s1",
+            "sense_sha256": "f7544f782e290440f761fe85a7be9a180678de8d96e293b0211ebbc92af236f6",
+            "gloss_sha256": "7f55b796efc615c142d1bc1759e234e534e1481f937d3b833e7681338d1428ca",
+            "evidence_sha256": "38ada3b18651eaacd2bba193645aac18866ce8e06f3a66e16652130ea1416292"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5455",
+      "inventory_id": "m5-533",
+      "candidate_record_sha256": "3561dba8b8e7f30b3f959e5b4514ceddead568bf3eff01e2109c60dd3f956a76",
+      "decision": "included",
+      "rank": 13,
+      "decision_rationale": "m5-533 w5455: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5455-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-533 w5455 w5455-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 51ba586a0e72d3dcb1f16e292f1d8fdc6152c47f9eaab497a7d413d58fd5aa1d.",
+          "semantic_rationale": "w5455 w5455-s1: 잘라 놓은 나무의 짧고 굵은 조각. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-533 w5455-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5455-s1",
+            "gloss_sha256": "51ba586a0e72d3dcb1f16e292f1d8fdc6152c47f9eaab497a7d413d58fd5aa1d",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "잘라 놓은 나무의 짧고 굵은 조각.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 나무토막을 난롯가에 쌓았다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "나무토막 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "잘라 놓은 나무의 짧고 굵은 조각.",
+                "gloss_start": 0,
+                "sentence_frame": "작은 나무토막이 강물에 떠내려갔다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "나무토막 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5455 w5455-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "S",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5455",
+        "candidate_record_sha256": "3561dba8b8e7f30b3f959e5b4514ceddead568bf3eff01e2109c60dd3f956a76",
+        "decision_evidence_sha256": "fed5310a7d409a68ecce58b5fc3a6b75c6e5bf505872163ed78302b917e00a6a",
+        "sense_evidence": [
+          {
+            "sense_id": "w5455-s1",
+            "sense_sha256": "0b6f4c964e0d3f439bc49b2bedef6a43f9cab499bf75d96b355c76f7b3c0ed29",
+            "gloss_sha256": "51ba586a0e72d3dcb1f16e292f1d8fdc6152c47f9eaab497a7d413d58fd5aa1d",
+            "evidence_sha256": "b84567d6357ef3025510c95734bec7ba40439ea83992cfa8d7597b6f7703efdd"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5456",
+      "inventory_id": "m5-535",
+      "candidate_record_sha256": "44f049306fd2005eb3af964a08be6b8a8691712f03ed621a07d814ae30858a3d",
+      "decision": "included",
+      "rank": 14,
+      "decision_rationale": "m5-535 w5456: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5456-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-535 w5456 w5456-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 9b43e4c27bacad9da9f6d4db489300c2e8d0dfc7e7fd9e19021ea87b38c87818.",
+          "semantic_rationale": "w5456 w5456-s1: 잘못을 저질렀다고 느껴 마음이 괴로운 상태. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-535 w5456-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5456-s1",
+            "gloss_sha256": "9b43e4c27bacad9da9f6d4db489300c2e8d0dfc7e7fd9e19021ea87b38c87818",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "잘못을 저질렀다고 느껴 마음이 괴로운 상태.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 친구를 외면한 일에 가책을 느꼈다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "가책 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "잘못을 저질렀다고 느껴 마음이 괴로운 상태.",
+                "gloss_start": 0,
+                "sentence_frame": "그녀는 작은 실수에도 가책을 오래 품었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "가책 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5456 w5456-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5456",
+        "candidate_record_sha256": "44f049306fd2005eb3af964a08be6b8a8691712f03ed621a07d814ae30858a3d",
+        "decision_evidence_sha256": "4d48030b929550df752fe63f8a2434244d6b9f25e635eb6725166cd4aa77e4a6",
+        "sense_evidence": [
+          {
+            "sense_id": "w5456-s1",
+            "sense_sha256": "c0b705a92d6222ab6643e1f1c66929e716dcd896f757b773c8cb6ddf755081be",
+            "gloss_sha256": "9b43e4c27bacad9da9f6d4db489300c2e8d0dfc7e7fd9e19021ea87b38c87818",
+            "evidence_sha256": "caeb0532a5c1e3ccb90e0f03fe5a0d54672b4f9fe8baa9f3583e98ed3ced48d2"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5457",
+      "inventory_id": "m5-546",
+      "candidate_record_sha256": "dbe095def2ad9907952ca6c36ae4cd89f434b17a5682b9e9bec2a30e6e3da904",
+      "decision": "included",
+      "rank": 15,
+      "decision_rationale": "m5-546 w5457: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5457-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-546 w5457 w5457-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 14e9f815f1b08a48a44a732b8ffd3cbbc21b5e9f9444c4a6fd7b5203ae00378c.",
+          "semantic_rationale": "w5457 w5457-s1: 뜻밖의 일로 멍해져 어찌할 바를 모르는 상태. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-546 w5457-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5457-s1",
+            "gloss_sha256": "14e9f815f1b08a48a44a732b8ffd3cbbc21b5e9f9444c4a6fd7b5203ae00378c",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "뜻밖의 일로 멍해져 어찌할 바를 모르는 상태.",
+                "gloss_start": 0,
+                "sentence_frame": "예상하지 못한 결과에 그는 망연자실했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "망연자실 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "뜻밖의 일로 멍해져 어찌할 바를 모르는 상태.",
+                "gloss_start": 0,
+                "sentence_frame": "갑작스러운 소식 앞에서 모두 망연자실했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "망연자실 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5457 w5457-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5457",
+        "candidate_record_sha256": "dbe095def2ad9907952ca6c36ae4cd89f434b17a5682b9e9bec2a30e6e3da904",
+        "decision_evidence_sha256": "783424e437fce8f0c4ca4d943a170cb2be0c05c6205f3e78694a88ce5f2936ce",
+        "sense_evidence": [
+          {
+            "sense_id": "w5457-s1",
+            "sense_sha256": "5c9595a11e097f5cdc1809eb4feef2418705a8c1e64c243f2808a4957141fa95",
+            "gloss_sha256": "14e9f815f1b08a48a44a732b8ffd3cbbc21b5e9f9444c4a6fd7b5203ae00378c",
+            "evidence_sha256": "865a7cb2a606ecebbd8d84f1e0e7bdd460f833b0f98b88a7cfe5bbb769af361a"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5458",
+      "inventory_id": "m5-557",
+      "candidate_record_sha256": "14f88894c3674d134d12e872b9957f434d7f77f866af1896c23d80b3e6c827c5",
+      "decision": "included",
+      "rank": 16,
+      "decision_rationale": "m5-557 w5458: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5458-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-557 w5458 w5458-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 85eacd22f7549df007db8eb3954b38eb00018af90e21f4dc24f66d6b51039f1c.",
+          "semantic_rationale": "w5458 w5458-s1: 어떤 내용의 참된 뜻을 잘못 받아들임. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-557 w5458-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5458-s1",
+            "gloss_sha256": "85eacd22f7549df007db8eb3954b38eb00018af90e21f4dc24f66d6b51039f1c",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "어떤 내용의 참된 뜻을 잘못 받아들임.",
+                "gloss_start": 0,
+                "sentence_frame": "짧은 말 한마디가 오해를 불렀다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "오해 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "어떤 내용의 참된 뜻을 잘못 받아들임.",
+                "gloss_start": 0,
+                "sentence_frame": "그들은 대화를 나눈 뒤 오래된 오해를 풀었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "오해 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5458 w5458-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5458",
+        "candidate_record_sha256": "14f88894c3674d134d12e872b9957f434d7f77f866af1896c23d80b3e6c827c5",
+        "decision_evidence_sha256": "0f71c8e12a6d07d8b994721c938271136c0acb052f2cdd76bfff081ec874e155",
+        "sense_evidence": [
+          {
+            "sense_id": "w5458-s1",
+            "sense_sha256": "379219bc96885978daabd40b5703363f7f51944f7b8e5c23b78484725df552fa",
+            "gloss_sha256": "85eacd22f7549df007db8eb3954b38eb00018af90e21f4dc24f66d6b51039f1c",
+            "evidence_sha256": "5f2b0cfe388d33e6838a80f1f2f35b5a52eaeef56ac707f33b8a03c4f8788450"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5459",
+      "inventory_id": "m5-576",
+      "candidate_record_sha256": "e9d750927625ad40aeaa9ccde5c2cbf044ba868116850ec3b74106677190d464",
+      "decision": "included",
+      "rank": 17,
+      "decision_rationale": "m5-576 w5459: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5459-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-576 w5459 w5459-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 2707e6c5bf3812b0a1783890d041b4753e20f0c89519591de3ed947e7e6a45fe.",
+          "semantic_rationale": "w5459 w5459-s1: 바라는 대로 되어 마음이 흡족함. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-576 w5459-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5459-s1",
+            "gloss_sha256": "2707e6c5bf3812b0a1783890d041b4753e20f0c89519591de3ed947e7e6a45fe",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "바라는 대로 되어 마음이 흡족함.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 결과에 만족을 표했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "만족 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "바라는 대로 되어 마음이 흡족함.",
+                "gloss_start": 0,
+                "sentence_frame": "작은 성취에도 만족을 느낄 수 있었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "만족 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5459 w5459-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5459",
+        "candidate_record_sha256": "e9d750927625ad40aeaa9ccde5c2cbf044ba868116850ec3b74106677190d464",
+        "decision_evidence_sha256": "79ccce46cb9f82af05dece8fde9a713f0a9ac0442321b0144251a76b7645ae55",
+        "sense_evidence": [
+          {
+            "sense_id": "w5459-s1",
+            "sense_sha256": "2ce3cfc0c871ead920635ae76f8b092b7ab5c86fe85e597f0bde645b78155f44",
+            "gloss_sha256": "2707e6c5bf3812b0a1783890d041b4753e20f0c89519591de3ed947e7e6a45fe",
+            "evidence_sha256": "6294f049c76fa8c420c54bc7c77919bb319160dbef283126f9b46dbd822afa07"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5460",
+      "inventory_id": "m5-598",
+      "candidate_record_sha256": "dd72c2abef077a7b87e31f05877333d00ea81220314c4ec745e5d3582c6013cd",
+      "decision": "included",
+      "rank": 18,
+      "decision_rationale": "m5-598 w5460: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5460-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-598 w5460 w5460-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 f353545147210c9b3ce4879bfaac89ffa59c690f2e47eae15fc815cfb8bb16fb.",
+          "semantic_rationale": "w5460 w5460-s1: 쓸쓸하고 처량하게 느껴지는 기분. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-598 w5460-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5460-s1",
+            "gloss_sha256": "f353545147210c9b3ce4879bfaac89ffa59c690f2e47eae15fc815cfb8bb16fb",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "쓸쓸하고 처량하게 느껴지는 기분.",
+                "gloss_start": 0,
+                "sentence_frame": "빈 교실에는 설명하기 어려운 처연함이 감돌았다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "처연함 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "쓸쓸하고 처량하게 느껴지는 기분.",
+                "gloss_start": 0,
+                "sentence_frame": "그의 뒷모습에서 처연함이 묻어났다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "처연함 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5460 w5460-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5460",
+        "candidate_record_sha256": "dd72c2abef077a7b87e31f05877333d00ea81220314c4ec745e5d3582c6013cd",
+        "decision_evidence_sha256": "585e0e3674befc178c2a084ad0a625abc25c8cfbaf46aa52bb80a48996b958d8",
+        "sense_evidence": [
+          {
+            "sense_id": "w5460-s1",
+            "sense_sha256": "6ea88f29e03db35b7dbf238f31259105add55748df778e480e142319a5c1e70e",
+            "gloss_sha256": "f353545147210c9b3ce4879bfaac89ffa59c690f2e47eae15fc815cfb8bb16fb",
+            "evidence_sha256": "74402bfc3fd14c58646244617e93e0f6730336c885bc2746bbc4cb8d06c7eff4"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5461",
+      "inventory_id": "m5-606",
+      "candidate_record_sha256": "0b2aa8594251c4d32b55f4ccf56274b9bddd9e85001abfdaf4d92978e622bd68",
+      "decision": "included",
+      "rank": 19,
+      "decision_rationale": "m5-606 w5461: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5461-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-606 w5461 w5461-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 7f5fb3fead32ad234bf9c8aec7568030d75b0c72ad9d57ac7b2ce48a0b46db5d.",
+          "semantic_rationale": "w5461 w5461-s1: 마음이 몹시 슬픈 감정. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-606 w5461-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5461-s1",
+            "gloss_sha256": "7f5fb3fead32ad234bf9c8aec7568030d75b0c72ad9d57ac7b2ce48a0b46db5d",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "마음이 몹시 슬픈 감정.",
+                "gloss_start": 0,
+                "sentence_frame": "오래된 편지를 읽자 깊은 비애가 밀려왔다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "비애 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "마음이 몹시 슬픈 감정.",
+                "gloss_start": 0,
+                "sentence_frame": "작품에는 이별의 비애가 짙게 배어 있었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "비애 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5461 w5461-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "E",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5461",
+        "candidate_record_sha256": "0b2aa8594251c4d32b55f4ccf56274b9bddd9e85001abfdaf4d92978e622bd68",
+        "decision_evidence_sha256": "982363ee1b0bc8ed664bc5784d22a2729c25e71d53a43bf860a57bd8d6275343",
+        "sense_evidence": [
+          {
+            "sense_id": "w5461-s1",
+            "sense_sha256": "1d38b31c720db3d2ca47287a0a34f0716a6c3c96bf6643aff2e461deee67f7e3",
+            "gloss_sha256": "7f5fb3fead32ad234bf9c8aec7568030d75b0c72ad9d57ac7b2ce48a0b46db5d",
+            "evidence_sha256": "f43b8423333ce3bbba2ceb883ff06ae3845f6f682be5e61f034c78f9533f597e"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5462",
+      "inventory_id": "m5-636",
+      "candidate_record_sha256": "b2aa368a507dd98ceb4405173ebc0b6aeb49efc051116d03ff638e6aea851c3c",
+      "decision": "included",
+      "rank": 20,
+      "decision_rationale": "m5-636 w5462: historical inventory status set review order only. The current Typewriter identity, POS, and authored gloss were independently verified for ordinary lexical admission.",
+      "review_pass_id": "issue-222-m9-d-historical-separate-semantic-verification-20260930-r1",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "w5462-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-636 w5462 w5462-s1: the source-bound Typewriter gloss expresses one bounded lexical meaning. Two separately authored frames check its stability. Reviewed gloss SHA-256 0dec0ee07c63e670dae93ad57585f0dc0866a94ba9fa8edc46abe7dc9ac47d5a.",
+          "semantic_rationale": "w5462 w5462-s1: 온도가 높아 몸에 포근하게 느껴지다. is a concise Typewriter-authored gloss for the in-scope historical candidate.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-636 w5462-s1: no candidate-specific lexical relation is separately supported; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5462-s1",
+            "gloss_sha256": "0dec0ee07c63e670dae93ad57585f0dc0866a94ba9fa8edc46abe7dc9ac47d5a",
+            "decision_source_id": "issue-222-m9-d-historical-semantic-decisions-20260930-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "온도가 높아 몸에 포근하게 느껴지다.",
+                "gloss_start": 0,
+                "sentence_frame": "따뜻한 물에 손을 담갔다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "따뜻하다 in its reviewed core lexical meaning"
+                }
+              },
+              {
+                "gloss_excerpt": "온도가 높아 몸에 포근하게 느껴지다.",
+                "gloss_start": 0,
+                "sentence_frame": "해가 비치자 방 안 공기가 따뜻해졌다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "따뜻하다 in its reviewed core lexical meaning"
+                }
+              }
+            ],
+            "rationale": "w5462 w5462-s1: exact-gloss diagnostic frames preserve the same proposed lexical meaning. Routes are enrichment metadata, not admission evidence."
+          }
+        }
+      ],
+      "selection_axis": "S",
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5462",
+        "candidate_record_sha256": "b2aa368a507dd98ceb4405173ebc0b6aeb49efc051116d03ff638e6aea851c3c",
+        "decision_evidence_sha256": "5bde0bf658c56b3e876bf3d690703741cc3e8bf81fd3f5ce4ab6b10ea6b04ef6",
+        "sense_evidence": [
+          {
+            "sense_id": "w5462-s1",
+            "sense_sha256": "3fadad6491517859d80a1d6dd7fa4f5572d48d21da597dbce579598b56a7e308",
+            "gloss_sha256": "0dec0ee07c63e670dae93ad57585f0dc0866a94ba9fa8edc46abe7dc9ac47d5a",
+            "evidence_sha256": "1cc829eddb3c5a71e072c0606eeaf26fe661e43344ea915a518b80b2995cf326"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_sha256": "6cb93bbaa9da63763a54071eda7f1569f18433b8f63ae33a8ffd0b7089c0b5f1"
+}

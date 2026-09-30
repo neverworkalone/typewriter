@@ -81,7 +81,15 @@ const SOURCE_PATHS = [
   'data/batches/issue-220-m9-b-batch-02-semantic-decisions.json',
   'data/batches/issue-221-corpus-candidate-review.json',
   'data/batches/issue-221-corpus-semantic-decisions.json',
+  'data/batches/issue-222-m9-d-corpus-batch-01-candidate-review.json',
+  'data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json',
+  'data/batches/issue-222-m9-d-historical-base-recovery-inventory.json',
+  'data/batches/issue-222-m9-d-historical-base-m5-target-seed.json',
+  'data/batches/issue-222-m9-d-historical-candidate-source.json',
+  'data/batches/issue-222-m9-d-historical-semantic-decisions.json',
   'data/canonical/issue-221-corpus-production.jsonl',
+  'data/canonical/issue-222-m9-d-corpus-batch-01.jsonl',
+  'data/canonical/issue-222-m9-d-historical-batch-01.jsonl',
   'data/canonical/issue-220-m9-b-batch-01.jsonl',
   'data/canonical/issue-220-m9-b-batch-02.jsonl',
   'data/validation/issue-220-m9-b-checkpoint-report.json',
@@ -121,6 +129,7 @@ const SOURCE_PATHS = [
   'scripts/batch/validate-issue-219.mjs',
   'scripts/batch/validate-issue-220.mjs',
   'scripts/batch/validate-issue-221.mjs',
+  'scripts/batch/validate-issue-222.mjs',
   'scripts/batch/lexical-production.mjs',
   'scripts/batch/lexical-selection.mjs',
   'scripts/batch/m5-13-candidate-source.mjs',
@@ -258,6 +267,31 @@ function issue204DispositionState(decision) {
 }
 
 function classifyTarget(target, issue204, semantic, priorRejections) {
+  if (semantic?.source.issueNumber === 222 && semantic.source.sourceClass === 'historical-recovery-inventory') {
+    if (semantic.decision.decision === 'included' || semantic.decision.decision === 'corrected') {
+      return {
+        reviewState: 'recovered',
+        rationaleConflict: 'no',
+        followUp: 'Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.',
+      };
+    }
+    if (semantic.decision.decision === 'held') {
+      return {
+        reviewState: semantic.decision.hold_basis === 'unresolved-sense' ? 'needs-sense-split' : 'hold',
+        rationaleConflict: 'no',
+        followUp: 'Issue #222 retained this historical candidate on hold after current source-bound review; reopen only when the candidate-specific identity or sense evidence is complete.',
+      };
+    }
+    if (semantic.decision.decision === 'rejected') {
+      return {
+        reviewState: 'not-a-lexical-unit',
+        rationaleConflict: 'no',
+        followUp: 'Issue #222 rejected this candidate through current source-bound lexical review. Historical fit remains provenance only.',
+      };
+    }
+    throw new Error(`Unexpected Issue #222 historical disposition for ${target.inventory_id}`);
+  }
+
   if (semantic?.source.issueNumber === 220) {
     if (semantic.decision.decision === 'included' || semantic.decision.decision === 'corrected') {
       return {
@@ -529,6 +563,11 @@ async function buildInventory() {
   const issue220BaseInventory = await readJson('data/batches/issue-220-m9-b-base-issue-210-recovery-inventory.json');
   const issue221CandidateReview = await readJson('data/batches/issue-221-corpus-candidate-review.json');
   const issue221SemanticSource = await readJson('data/batches/issue-221-corpus-semantic-decisions.json');
+  const issue222CandidateReview = await readJson('data/batches/issue-222-m9-d-corpus-batch-01-candidate-review.json');
+  const issue222SemanticSource = await readJson('data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json');
+  const issue222HistoricalCandidateSource = await readJson('data/batches/issue-222-m9-d-historical-candidate-source.json');
+  const issue222HistoricalSemanticSource = await readJson('data/batches/issue-222-m9-d-historical-semantic-decisions.json');
+  const issue222HistoricalBaseInventory = await readJson('data/batches/issue-222-m9-d-historical-base-recovery-inventory.json');
   const m5Three = await readJson('data/batches/m5-3-calibration.json');
   const m5Seven = await readJson('data/batches/m5-7-recalibration.json');
   const m5SevenPreimport = await readJson('data/batches/m5-7-preimport-inventory.json');
@@ -581,6 +620,13 @@ async function buildInventory() {
     issueNumber: 219,
     batchId: issue219SemanticSource.batch_id,
     decisions: new Map(issue219SemanticSource.decisions.map((decision) => [decision.inventory_id, decision])),
+  });
+  semanticMaps.push({
+    artifactPath: 'data/batches/issue-222-m9-d-historical-semantic-decisions.json',
+    issueNumber: 222,
+    sourceClass: 'historical-recovery-inventory',
+    batchId: issue222HistoricalSemanticSource.batch_id,
+    decisions: new Map(issue222HistoricalSemanticSource.decisions.map((decision) => [decision.inventory_id, decision])),
   });
   for (const [index, artifact] of issue220SemanticSources.entries()) {
     semanticMaps.push({
@@ -647,6 +693,16 @@ async function buildInventory() {
   const issue221AdmittedReviewRows = issue221CandidateReview.decisions
     .filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
   const issue221PromotionRows = promotions.filter(({ batch_id: id }) => id === issue221SemanticSource.batch_id);
+  const issue222Decisions = issue222SemanticSource.decisions;
+  const issue222AdmittedReviewRows = issue222CandidateReview.decisions
+    .filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
+  const issue222CorpusPromotionRows = promotions.filter(({ batch_id: id }) => id === issue222SemanticSource.batch_id);
+  const issue222HistoricalDecisions = issue222HistoricalSemanticSource.decisions;
+  const issue222HistoricalPromotionDecisionCounts = issue222HistoricalDecisions.reduce((counts, { decision }) => {
+    counts[decision] = (counts[decision] ?? 0) + 1;
+    return counts;
+  }, {});
+  const issue222PromotionRows = issue222CorpusPromotionRows;
   const issue204RejectLemmas = issue204Rejected.map(({ morphology_proposal: proposal }) => proposal.lemma);
 
   assert.deepEqual(issue204RejectLemmas, EXPECTED_ISSUE_204_REJECTS, 'Issue #204 mandatory reject list changed');
@@ -677,8 +733,38 @@ async function buildInventory() {
   assert.ok(issue221PromotionRows.every(({ decision_source_id: sourceId, decision_source_sha256: sourceDigest }) => (
     sourceId === issue221SemanticSource.source_id && sourceDigest === issue221SemanticSource.artifact_sha256
   )), 'Issue #221 promotion rows must bind the current authored semantic source');
-  assert.equal(seedStatuses.promoted, 978, 'M5 promoted seed row count changed');
-  assert.equal(promotions.length, 3756 + issue219PromotionRows.length + issue220PromotionRows.length + issue221PromotionRows.length, 'Issue #219/#220/#221 promotion ledger row count changed');
+  assert.equal(issue222CandidateReview.issue, 222);
+  assert.equal(issue222CandidateReview.parent_issue, 218);
+  assert.equal(issue222CandidateReview.contract_version, 'm9-corpus-candidate-review-v1');
+  assert.equal(issue222CandidateReview.decisions.length, issue222CandidateReview.selection.selected_candidate_count);
+  assert.equal(issue222Decisions.length, issue222AdmittedReviewRows.length, 'Issue #222 semantic decisions must cover every admitted corpus candidate');
+  assert.ok(issue222Decisions.every(({ decision }) => decision === 'included'), 'Issue #222 corpus admissions must remain source-bound inclusions');
+  assert.deepEqual(
+    issue222Decisions.map(({ inventory_id: id, candidate_record_id: canonicalId }) => `${id}:${canonicalId}`).sort(),
+    issue222AdmittedReviewRows.map(({ inventory_id: id, editorial_judgment: judgment }) => `${id}:${judgment.candidate_record_id}`).sort(),
+    'Issue #222 semantic decisions must match the admitted rows in the corpus review',
+  );
+  assert.equal(issue222CorpusPromotionRows.length, issue222Decisions.length, 'Issue #222 corpus admissions must match the promotion ledger');
+  assert.deepEqual(
+    issue222CorpusPromotionRows.map(({ inventory_id: id, canonical_id: canonicalId, decision }) => `${id}:${canonicalId}:${decision}`).sort(),
+    issue222Decisions.map(({ inventory_id: id, candidate_record_id: canonicalId, decision }) => `${id}:${canonicalId}:${decision}`).sort(),
+    'Issue #222 corpus promotion rows must preserve the exact semantic decision identities',
+  );
+  assert.ok(issue222CorpusPromotionRows.every(({ decision_source_id: sourceId, decision_source_sha256: sourceDigest }) => (
+    sourceId === issue222SemanticSource.source_id && sourceDigest === issue222SemanticSource.artifact_sha256
+  )), 'Issue #222 corpus promotion rows must bind the current authored semantic source');
+  assert.equal(issue222HistoricalCandidateSource.issue, 222);
+  assert.equal(issue222HistoricalCandidateSource.source_class, 'historical-recovery-inventory');
+  assert.equal(issue222HistoricalCandidateSource.candidates.length, 20);
+  assert.equal(issue222HistoricalDecisions.length, issue222HistoricalCandidateSource.candidates.length);
+  assert.ok(issue222HistoricalDecisions
+    .filter(({ decision }) => decision === 'included' || decision === 'corrected')
+    .every(({ candidate_record_id: canonicalId, inventory_id: inventoryId }) => {
+      const seedRow = seedByInventoryId.get(inventoryId);
+      return seedRow?.status === 'promoted' && seedRow.canonical_id === canonicalId;
+    }), 'Issue #222 historical admissions must be embedded in the current M5 seed without duplicate ledger rows');
+  assert.equal(seedStatuses.promoted, 998, 'M5 promoted seed row count changed');
+  assert.equal(promotions.length, 3756 + issue219PromotionRows.length + issue220PromotionRows.length + issue221PromotionRows.length + issue222PromotionRows.length, 'Issue #219/#220/#221/#222 promotion ledger row count changed');
   assert.equal(issue204.decisions.length, 100, 'Issue #204 decision overlay row count changed');
   assert.equal(issue204Admitted.length, 10, 'Issue #204 admitted row count changed');
   assert.equal(issue204.decisions.filter(({ inventory_id: id }) => seedByInventoryId.has(id)).length, 90, 'Issue #204/M5 target overlay row count changed');
@@ -854,6 +940,54 @@ async function buildInventory() {
       id && coverage.exact_lemma_match_ids.includes(id)
     )), 'Every Issue #220 recovered record must resolve under its exact canonical lemma');
     entries.push(...issue220RecoveredRows);
+    const issue222HistoricalRecoveredRows = issue222HistoricalSemanticSource.decisions
+      .filter(({ decision }) => decision === 'included' || decision === 'corrected')
+      .map((decision) => {
+        const prior = issue222HistoricalBaseInventory.recovery_candidates.find(({ source_inventory_id: id }) => id === decision.inventory_id);
+        const candidate = issue222HistoricalCandidateSource.candidates.find(({ inventory_id: id }) => id === decision.inventory_id);
+        const currentSeedRow = seedByInventoryId.get(decision.inventory_id);
+        const record = currentSeedRow ? canonicalById.get(currentSeedRow.canonical_id) : null;
+        assert.ok(prior && candidate && currentSeedRow?.status === 'promoted' && record, `Issue #222 historical recovery is incomplete for ${decision.inventory_id}`);
+        assert.equal(record.id, decision.candidate_record_id, `Issue #222 historical canonical ID changed for ${decision.inventory_id}`);
+        const history = [
+          ...prior.historical_decision_events,
+          makeHistoryEvent({
+            issueNumber: 222,
+            batchId: issue222HistoricalSemanticSource.batch_id,
+            artifactPath: 'data/batches/issue-222-m9-d-historical-semantic-decisions.json',
+            disposition: decision.decision,
+            rationale: decision.decision_rationale,
+          }),
+        ];
+        const sourceArtifacts = [
+          ...prior.source_issue_batch_artifacts,
+          { issue: 222, batch: issue222HistoricalSemanticSource.batch_id, artifact: 'data/batches/issue-222-m9-d-historical-base-recovery-inventory.json' },
+          { issue: 222, batch: issue222HistoricalSemanticSource.batch_id, artifact: 'data/batches/issue-222-m9-d-historical-base-m5-target-seed.json' },
+          { issue: 222, batch: issue222HistoricalSemanticSource.batch_id, artifact: 'data/batches/issue-222-m9-d-historical-candidate-source.json' },
+          { issue: 222, batch: issue222HistoricalSemanticSource.batch_id, artifact: 'data/batches/issue-222-m9-d-historical-semantic-decisions.json' },
+          { issue: 222, batch: issue222HistoricalSemanticSource.batch_id, artifact: 'data/canonical/issue-222-m9-d-historical-batch-01.jsonl' },
+        ];
+        const seenArtifacts = new Set();
+        return {
+          ...prior,
+          source_issue_batch_artifacts: sourceArtifacts.filter(({ artifact }) => {
+            if (seenArtifacts.has(artifact)) return false;
+            seenArtifacts.add(artifact);
+            return true;
+          }),
+          historical_decision_events: history,
+          current_canonical_id: record.id,
+          current_canonical_search_coverage: candidateSearchCoverage(database, recordsById, record),
+          historical_rationale_conflicts_with_new_invariant: 'no',
+          new_review_state: 'recovered',
+          follow_up_reason_and_evidence: 'Issue #222 re-reviewed this bounded historical candidate against the frozen Issue #210 inventory and exact M5 seed row, then admitted its current identity and authored meaning through ordinary shared production. Keep the earlier inventory disposition as history only.',
+        };
+      });
+    assert.equal(issue222HistoricalRecoveredRows.length, issue222HistoricalPromotionDecisionCounts.included + (issue222HistoricalPromotionDecisionCounts.corrected ?? 0));
+    assert.ok(issue222HistoricalRecoveredRows.every(({ current_canonical_id: id, current_canonical_search_coverage: coverage }) => (
+      id && coverage.exact_lemma_match_ids.includes(id)
+    )), 'Every Issue #222 historical record must resolve under its exact canonical lemma');
+    entries.push(...issue222HistoricalRecoveredRows);
     entries.sort((left, right) => Number(left.source_inventory_id.slice(3)) - Number(right.source_inventory_id.slice(3)));
 
     const resolvedIds = ['m5-019', 'm5-034', 'm5-053', 'm5-060'];
@@ -949,13 +1083,13 @@ async function buildInventory() {
       issue204ByInventoryId.get(id)?.editorial_judgment.disposition === 'reject'
     ));
     const issue204MandatoryLemmas = issue204MandatoryEntries.map(({ lemma }) => lemma);
-    assert.equal(entries.length, seed.targets.length - promotedSeedRows.length + issue220RecoveredRows.length);
+    assert.equal(entries.length, seed.targets.length - promotedSeedRows.length + issue220RecoveredRows.length + issue222HistoricalRecoveredRows.length);
     assert.equal(policyOpen.length, 0);
     assert.deepEqual(issue204MandatoryLemmas, EXPECTED_ISSUE_204_REJECTS);
-    assert.equal(reviewStateCounts['admit-candidate'], 248);
+    assert.equal(reviewStateCounts['admit-candidate'], 228);
     assert.equal(reviewStateCounts.hold, 251);
     assert.equal(reviewStateCounts['needs-sense-split'], 28);
-    assert.equal(reviewStateCounts.recovered, 42);
+    assert.equal(reviewStateCounts.recovered, 62);
     assert.equal(reviewStateCounts.duplicate, 2);
     assert.equal(reviewStateCounts['search-surface-collision'], 1);
     assert.equal(reviewStateCounts['invalid-lemma'], 2);
@@ -989,7 +1123,7 @@ async function buildInventory() {
       + (reviewStateCounts.hold ?? 0)
       + (reviewStateCounts['needs-sense-split'] ?? 0);
     const historicalRecoveryCeiling = searchMetrics.canonical_record_count + potentiallyRecoverableHistoricalRows;
-    assert.equal(historicalRecoveryCeiling, 5632, 'Current canonical plus historical Issue #210 source-pool ceiling changed');
+    assert.equal(historicalRecoveryCeiling, 5640, 'Current canonical plus historical Issue #210 source-pool ceiling changed');
 
     const mandatoryIssue204Rejects = entries
       .filter(({ source_inventory_id: id }) => (
@@ -1027,7 +1161,8 @@ async function buildInventory() {
         m6: 'Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.',
         issue_204: `Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed ${issue219SemanticSource.review.reviewed_candidate_count} previously capacity-deferred M5-15 expressions; Issue #220 then reviewed ${issue220Decisions.length} M5-13 reserve candidates and admitted ${issue220DecisionCounts.included + (issue220DecisionCounts.corrected ?? 0)} through current shared admission.`,
         issue_221: `Issue #221 separately reviewed ${issue221CandidateReview.decisions.length} bounded corpus-derived proposals: ${issue221AdmittedReviewRows.length} passed ordinary source-bound lexical admission and entered the promotion ledger, while ${issue221CandidateReview.decision_counts.hold} remain held. These corpus records are not added to the historical M5 recovery candidate pool; publication remains pending owner confirmation.`,
-        source_material_boundary: 'Uses tracked Typewriter decision artifacts and text-free Issue #221 provenance only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material.',
+        issue_222: `Issue #222 reviewed ${issue222CandidateReview.decisions.length} bounded corpus-derived proposals and ${issue222HistoricalCandidateSource.candidates.length} candidates from the frozen historical recovery inventory. Corpus review admitted ${issue222AdmittedReviewRows.length}, held ${issue222CandidateReview.decision_counts.hold}, and rejected ${issue222CandidateReview.decision_counts.reject}; historical review admitted ${issue222HistoricalPromotionDecisionCounts.included + (issue222HistoricalPromotionDecisionCounts.corrected ?? 0)} through ordinary shared admission. The 28 admitted records increase directly searchable canonical coverage to ${searchMetrics.directly_searchable_record_count.toLocaleString('en-US')}; corpus source text remains local-reference-only pending owner publication confirmation. The separate M9-D scale checkpoint tracks the remaining gap to approximately 7,500 records.`,
+        source_material_boundary: 'Uses tracked Typewriter decision artifacts and text-free Issue #221/#222 provenance only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material.',
       },
       summary: {
         m5_target_rows_screened: seed.targets.length + issue220RecoveredRows.length,
@@ -1050,6 +1185,17 @@ async function buildInventory() {
         issue_221_held_count: issue221CandidateReview.decision_counts.hold,
         issue_221_rejected_count: issue221CandidateReview.decision_counts.reject,
         issue_221_promotion_events_audited: issue221PromotionRows.length,
+        issue_222_candidates_reviewed: issue222CandidateReview.decisions.length + issue222HistoricalCandidateSource.candidates.length,
+        issue_222_admitted_count: issue222AdmittedReviewRows.length + issue222HistoricalPromotionDecisionCounts.included + (issue222HistoricalPromotionDecisionCounts.corrected ?? 0),
+        issue_222_corpus_candidates_reviewed: issue222CandidateReview.decisions.length,
+        issue_222_corpus_admitted_count: issue222AdmittedReviewRows.length,
+        issue_222_held_count: issue222CandidateReview.decision_counts.hold,
+        issue_222_rejected_count: issue222CandidateReview.decision_counts.reject,
+        issue_222_historical_candidates_reviewed: issue222HistoricalCandidateSource.candidates.length,
+        issue_222_historical_admitted_count: issue222HistoricalPromotionDecisionCounts.included + (issue222HistoricalPromotionDecisionCounts.corrected ?? 0),
+        issue_222_historical_held_count: issue222HistoricalPromotionDecisionCounts.held ?? 0,
+        issue_222_historical_rejected_count: issue222HistoricalPromotionDecisionCounts.rejected ?? 0,
+        issue_222_promotion_events_audited: issue222PromotionRows.length,
         historical_recovery_ceiling_count: historicalRecoveryCeiling,
         historical_recovery_shortfall_to_6000: Math.max(0, 6000 - historicalRecoveryCeiling),
         issue_204_decisions_overlaid_on_m5_targets: issue204.decisions.filter(({ inventory_id: id }) => seedByInventoryId.has(id)).length,
@@ -1125,7 +1271,7 @@ async function buildInventory() {
           gate: 'Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes.',
         },
       ],
-      canonical_mutation: `Issue #219 admitted ${issue219Counts.included + issue219Counts.corrected} M5-15 reserves; Issue #220 admitted ${issue220DecisionCounts.included + (issue220DecisionCounts.corrected ?? 0)} M5-13 reserves; Issue #221 admitted ${issue221AdmittedReviewRows.length} corpus-derived records through ordinary shared lexical production and admission. The Issue #221 source remains local-reference-only pending owner publication confirmation.`,
+      canonical_mutation: `Issue #219 admitted ${issue219Counts.included + issue219Counts.corrected} M5-15 reserves; Issue #220 admitted ${issue220DecisionCounts.included + (issue220DecisionCounts.corrected ?? 0)} M5-13 reserves; Issues #221 and #222 admitted ${issue221AdmittedReviewRows.length + issue222AdmittedReviewRows.length} corpus-derived records through ordinary shared lexical production and admission. Corpus source material remains local-reference-only pending owner publication confirmation.`,
     };
     const report = renderReport(inventory);
     return { inventory, report };

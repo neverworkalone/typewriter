@@ -71,15 +71,15 @@
     ],
     "sample_policy": "one paragraph when paragraph ordinal modulo 20 is zero, within each source-ordered document",
     "sample_every_paragraphs": 20,
-    "candidate_selection_sha256": "ecdae67504cf3efda994ba69a062426e6b61bf2516a5c2834b3c7a9659317dd0",
-    "exclusion_sha256": "b0225e52b474275cef3efb982e198e9681eeccaf19de95c8ef2241d11f782b3f",
+    "candidate_selection_sha256": "502c65daa4372a7fcba3c76d4af3bec8f3c232c0412fc23153b08e27acbdc54c",
+    "exclusion_sha256": "c9e0cda553b0576f0371e1aa033b774691a5eba1b0fb276a7c929a2364f37d8d",
     "exclusion_source_artifacts": [
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
         "sha256": "f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b"
       },
       {
-        "path": "data/inventory/m5-target-seed.json",
+        "path": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json",
         "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd"
       }
     ],
@@ -87,17 +87,17 @@
   },
   "source_artifacts": {
     "candidate_evidence_path": "data/reference/production/issue-221/batch-01/candidate-evidence.json",
-    "candidate_evidence_sha256": "3af9f450ff5086188608cc0fe0bf2870d19474dbbb71d64104f48eada29666bc",
+    "candidate_evidence_sha256": "5ce54de941ff644ee865dad368e4be6897c2762579d6891ed26d85ecfd4e9aec",
     "candidate_selection_path": "data/reference/production/issue-221/batch-01/candidate-selection.json",
-    "candidate_selection_sha256": "ecdae67504cf3efda994ba69a062426e6b61bf2516a5c2834b3c7a9659317dd0",
-    "exclusion_manifest_sha256": "b0225e52b474275cef3efb982e198e9681eeccaf19de95c8ef2241d11f782b3f",
+    "candidate_selection_sha256": "502c65daa4372a7fcba3c76d4af3bec8f3c232c0412fc23153b08e27acbdc54c",
+    "exclusion_manifest_sha256": "c9e0cda553b0576f0371e1aa033b774691a5eba1b0fb276a7c929a2364f37d8d",
     "exclusion_source_artifacts": [
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
         "sha256": "f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b"
       },
       {
-        "path": "data/inventory/m5-target-seed.json",
+        "path": "data/batches/issue-222-m9-d-historical-base-m5-target-seed.json",
         "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd"
       }
     ]
@@ -3095,5 +3095,5 @@
       }
     }
   ],
-  "artifact_sha256": "b9110fdcfc0559b795ab925e1f6f0164c94305cf03c76cad918ad701d714f1e9"
+  "artifact_sha256": "4167ec85bbf1b9a96d6366a6e58f72f35674d1b762404ea7245e8fc92871755b"
 }

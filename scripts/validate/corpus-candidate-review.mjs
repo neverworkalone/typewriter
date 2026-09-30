@@ -1,4 +1,5 @@
-const SUPPORTED_POS = new Set(['noun', 'verb', 'adjective']);
+const SUPPORTED_POS = new Set(['noun', 'verb', 'adjective', 'adverb']);
+const ANALYZER_POS = Object.freeze({ NNG: 'noun', VV: 'verb', VA: 'adjective' });
 const TYPEWRITER_SCOPE_POS = new Set(['noun', 'verb', 'adjective', 'adverb', 'expression']);
 const COLLISION_STATUSES = new Set([
   'search_form_collision',
@@ -81,6 +82,44 @@ function validateLexicalUnitRejectionEvidence(row, label) {
   }
 }
 
+function validatePosCorrectionEvidence(row, label) {
+  const proposal = row.morphology_proposal;
+  const correction = row.editorial_judgment.pos_correction;
+  const analyzerPos = ANALYZER_POS[proposal.analyzer_pos];
+  const hits = row.bounded_provenance?.representative_hits;
+  const availableParagraphIds = new Set((Array.isArray(hits) ? hits : [])
+    .map(({ paragraph_id: id }) => id).filter((id) => typeof id === 'string'));
+  if (!analyzerPos || proposal.pos === analyzerPos
+    || correction?.evidence_type !== 'reviewed-bounded-contexts-support-corrected-pos'
+    || correction.analyzer_pos !== proposal.analyzer_pos
+    || correction.analyzer_mapped_pos !== analyzerPos
+    || correction.corrected_pos !== proposal.pos
+    || typeof correction.rationale !== 'string'
+    || correction.rationale.trim() === ''
+    || !Array.isArray(correction.paragraph_ids)
+    || correction.paragraph_ids.length === 0
+    || new Set(correction.paragraph_ids).size !== correction.paragraph_ids.length
+    || correction.paragraph_ids.some((id) => !availableParagraphIds.has(id))) {
+    fail(label, 'a corrected analyzer POS must bind the original analysis and reviewed bounded paragraph IDs', 'POS_CORRECTION_EVIDENCE');
+  }
+}
+
+function validateIdentityEvidence(row, label) {
+  const evidence = row.editorial_judgment.identity_evidence;
+  const hits = row.bounded_provenance?.representative_hits;
+  const availableParagraphIds = new Set((Array.isArray(hits) ? hits : [])
+    .map(({ paragraph_id: id }) => id).filter((id) => typeof id === 'string'));
+  if (evidence?.evidence_type !== 'reviewed-bounded-contexts-undermine-standalone-lemma'
+    || typeof evidence.rationale !== 'string'
+    || evidence.rationale.trim() === ''
+    || !Array.isArray(evidence.paragraph_ids)
+    || evidence.paragraph_ids.length === 0
+    || new Set(evidence.paragraph_ids).size !== evidence.paragraph_ids.length
+    || evidence.paragraph_ids.some((id) => !availableParagraphIds.has(id))) {
+    fail(label, 'a clear analyzer proposal may be held for identity only when reviewed bounded contexts support the boundary concern', 'IDENTITY_EVIDENCE');
+  }
+}
+
 /**
  * Validate the lexical basis for every M9 corpus candidate disposition.
  * Writer-use metadata and relation counts are deliberately not consulted:
@@ -111,6 +150,7 @@ export function validateCorpusCandidateReviewDispositions(decisions, { label = '
         || judgment.candidate_record_id.length === 0) {
         fail(rowLabel, 'admission requires an in-scope lexical identity, clear morphology and coverage, and a canonical candidate ID', 'ADMISSION_BASIS');
       }
+      if (proposal.pos !== ANALYZER_POS[proposal.analyzer_pos]) validatePosCorrectionEvidence(row, rowLabel);
       continue;
     }
 
@@ -122,8 +162,12 @@ export function validateCorpusCandidateReviewDispositions(decisions, { label = '
       if (!HOLD_BASES.has(judgment.disposition_basis)) {
         fail(rowLabel, 'hold needs a lexical identity, sense-boundary, or search-collision basis', 'HOLD_BASIS');
       }
-      if (judgment.disposition_basis === 'unresolved-identity' && !hasMorphologyBlocker(proposal)) {
-        fail(rowLabel, 'cannot hold a clear lexical identity without morphology or POS evidence', 'IDENTITY_EVIDENCE');
+      if (judgment.disposition_basis === 'unresolved-identity') {
+        if (hasMorphologyBlocker(proposal)) {
+          if (judgment.identity_evidence !== undefined) validateIdentityEvidence(row, rowLabel);
+        } else {
+          validateIdentityEvidence(row, rowLabel);
+        }
       }
       if (judgment.disposition_basis === 'unresolved-sense') validateSenseBoundaryEvidence(row, rowLabel);
       if (judgment.disposition_basis === 'search-collision' && !hasCoverageCollision(row)) {

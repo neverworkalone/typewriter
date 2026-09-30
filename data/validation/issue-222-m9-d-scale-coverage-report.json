@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "report_id": "issue-222-m9-d-scale-coverage-report-v1",
+  "issue": 222,
+  "parent_issue": 218,
+  "state": "in_progress",
+  "baseline": {
+    "commit": "77f52ae7ae8040146c25b75b2dcdf29f7b4f5e42",
+    "canonical_revision": "56772da538d68d17fb1e04146f451b3868c9d5520fffd000585d6755e4561a2a",
+    "canonical_record_count": 5105,
+    "directly_searchable_record_count": 5105
+  },
+  "target": {
+    "searchable_record_count": 7500
+  },
+  "current": {
+    "canonical_revision": "e128ea92a42a035683d38616e5e2efdebc0ed4d8374988ee233b0f5b02271c13",
+    "canonical_records_sha256": "3f684d5b15d9c87a0c1e6fbcfdbad330147293bf2ba789c8285d4f665c5287b3",
+    "canonical_record_count": 5133,
+    "directly_searchable_record_count": 5133,
+    "exact_search_key_count": 5390,
+    "non_searchable_record_count": 0
+  },
+  "batches": [
+    {
+      "batch_id": "issue-222-m9-d-historical-batch-01-20260930",
+      "source_class": "historical-recovery-inventory",
+      "candidate_count": 20,
+      "admitted_count": 20,
+      "held_count": 0,
+      "rejected_count": 0,
+      "candidate_source_sha256": "924f641d2bb1db718a64d24f06a366e0bcc1f931f345eebbf7cac863776bd6fb",
+      "semantic_source_sha256": "bae98303dc4c5326df4c79c6e650446cd27b50adfd99fe08120c725def30a6e0",
+      "canonical_import_record_count": 20
+    },
+    {
+      "batch_id": "issue-222-m9-d-corpus-batch-01-20260930",
+      "source_class": "local-written-corpus",
+      "candidate_count": 20,
+      "admitted_count": 8,
+      "held_count": 12,
+      "rejected_count": 0,
+      "candidate_review_sha256": "a68e4c75b2d5ae06abcd94f381621641a934ff6a260b711715fcfadb37b5bf37",
+      "semantic_source_sha256": "f6c204ed6129a222b71f62d7b68d5b00ebfef9a1ffaf3e58040f8f1ebeeb0df7",
+      "canonical_import_record_count": 8
+    }
+  ],
+  "aggregate": {
+    "reviewed_count": 40,
+    "admitted_count": 28,
+    "held_count": 12,
+    "rejected_count": 0,
+    "canonical_records_added": 28,
+    "admission_quota_applied": false
+  },
+  "corpus_inventory": {
+    "source_count": 3410,
+    "document_count": 3410,
+    "paragraph_count": 4988970,
+    "sample_paragraph_count": 251086,
+    "sample_fraction": 0.050328,
+    "unique_lemma_candidate_count": 55580,
+    "exact_canonical_lemma_candidate_count": 2033,
+    "uncovered_candidate_count": 53506,
+    "surface_collision_candidate_count": 41,
+    "ambiguous_candidate_count": 930,
+    "oov_candidate_count": 22845,
+    "excluded_prior_lemma_count": 1571,
+    "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
+    "input_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
+    "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
+    "source_text_committed": false,
+    "candidate_evidence_sha256": "edbf81eeb59726d5db90e8df2e968bf1020eca775c2372b065979b080c33dbe5",
+    "candidate_selection_sha256": "62c84ab7de6568415807aee06727300d9db033d8558ecdac26f5e071811d2bed"
+  },
+  "validation": {
+    "command": "npm run batch:issue-222:check",
+    "directly_searchable_new_records": 28,
+    "shared_admission_blocking_findings": 0,
+    "semantic_coverage_complete": true,
+    "logical_builds_compared": 2,
+    "deterministic_logical_contents": true,
+    "historical_base_inventory_sha256": "42525a3de9668f53092c3a7ed483e4a9b377aeb2f03f0de0500299e8b5f6917d",
+    "corpus_review_human_reviewed": false,
+    "historical_review_human_reviewed": false
+  },
+  "remaining": {
+    "records_to_target": 2367,
+    "documented_blocker": null,
+    "next_step": "Continue bounded historical and corpus review batches, each limited to 20 candidates, until the target is reached or a source/quality blocker is documented."
+  }
+}
