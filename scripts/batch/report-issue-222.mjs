@@ -6,6 +6,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildM9ProductionProgress } from './m9-production-progress.mjs';
+import {
+  buildIssue222NextStep,
+  summarizeCandidateDecisions,
+  summarizeCanonicalAudit,
+} from './issue-222-report-audit.mjs';
 import { readCanonicalRecords, DEFAULT_CANONICAL_DIRECTORY } from '../validate/canonical-jsonl.mjs';
 import { canonicalRecordsSha256 } from '../validate/semantic-audit.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
@@ -19,6 +24,7 @@ const BASELINE_COMMIT = '77f52ae7ae8040146c25b75b2dcdf29f7b4f5e42';
 const BASELINE_CANONICAL_REVISION = '56772da538d68d17fb1e04146f451b3868c9d5520fffd000585d6755e4561a2a';
 const BASELINE_RECORD_COUNT = 5105;
 const TARGET_RECORD_COUNT = 7500;
+const NORMAL_CI_RESULTS = new Set(['pending', 'passed', 'failed']);
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const readJson = async (relativePath) => JSON.parse((await readFile(path.join(ROOT, relativePath))).toString('utf8'));
@@ -44,7 +50,48 @@ function compareBatchNames(left, right) {
   return leftNumber - rightNumber || left.localeCompare(right, 'en');
 }
 
-function renderMarkdown(report) {
+function countBy(rows, keyOf) {
+  return rows.reduce((counts, row) => {
+    const key = keyOf(row);
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function mergeCounts(...sources) {
+  const merged = {};
+  for (const counts of sources) {
+    for (const [key, value] of Object.entries(counts ?? {})) {
+      merged[key] = (merged[key] ?? 0) + value;
+    }
+  }
+  return Object.fromEntries(Object.entries(merged).sort(([left], [right]) => left.localeCompare(right, 'en')));
+}
+
+async function normalCiResultFor(canonicalRevision) {
+  const requestedResult = process.argv
+    .find((argument) => argument.startsWith('--normal-ci-result='))
+    ?.slice('--normal-ci-result='.length);
+  if (requestedResult !== undefined) {
+    assert.ok(NORMAL_CI_RESULTS.has(requestedResult), `Unsupported normal CI result: ${requestedResult}`);
+    return requestedResult;
+  }
+
+  try {
+    const storedReport = await readJson('data/validation/issue-222-m9-d-scale-coverage-report.json');
+    if (storedReport.current?.canonical_revision === canonicalRevision
+      && NORMAL_CI_RESULTS.has(storedReport.normal_ci?.result)) {
+      return storedReport.normal_ci.result;
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+  return 'pending';
+}
+
+export function renderMarkdown(report) {
   const historical = report.batches.find(({ source_class: sourceClass }) => sourceClass === 'historical-recovery-inventory');
   const corpusBatches = report.batches.filter(({ source_class: sourceClass }) => sourceClass === 'local-written-corpus');
   const rows = [
@@ -63,6 +110,18 @@ function renderMarkdown(report) {
   const batchReviewRows = corpusBatches.map((batch) => (
     `| ${batch.batch_id} | ${batch.candidate_limit} | ${batch.candidate_count} | ${batch.admitted_count} | ${batch.held_count} | ${batch.rejected_count} |`
   ));
+  const holdReasons = Object.entries(report.production_audit.hold_reason_counts)
+    .map(([reason, count]) => `${reason}: ${count}`).join('; ') || 'none';
+  const rejectReasons = Object.entries(report.production_audit.reject_reason_counts)
+    .map(([reason, count]) => `${reason}: ${count}`).join('; ') || 'none';
+  const historicalRemainingRows = report.historical_pool.remaining_counts_by_disposition
+    .map(({ disposition, count }) => `| ${disposition} | ${count} |`);
+  const unresolvedReviewRows = report.production_audit.unresolved_review_inventory
+    .map(({ source, finding_class: findingClass, count }) => `| ${source} | ${findingClass} | ${count} |`);
+  const recordTypeRows = Object.entries(report.current.record_type_counts)
+    .map(([recordType, count]) => `| ${recordType} | ${count} |`);
+  const posRows = Object.entries(report.current.sense_pos_counts)
+    .map(([pos, count]) => `| ${pos} | ${count} |`);
   return [
     '# Issue #222 — M9-D scale coverage checkpoint',
     '',
@@ -91,13 +150,55 @@ function renderMarkdown(report) {
     '',
     '## Reproducibility',
     '',
-    `Run \`npm run batch:issue-222:check\` to validate the historical source binding and all ${corpusBatches.length} corpus batches through candidate disposition, shared admission, complete semantic coverage, exact direct search, and two identical logical SQLite builds. Run \`npm run batch:issue-222:report\` to regenerate this Markdown and the machine report.`,
+    `Run \`npm run batch:issue-222:check\` to validate the historical source binding and all ${corpusBatches.length} corpus batches through candidate disposition, shared admission, complete semantic coverage, exact direct search, and two identical logical SQLite builds. Run \`npm run batch:issue-222:report\` to regenerate this Markdown and the machine report, then \`npm run batch:issue-222:report:check\` to compare the regenerated output with the committed checkpoint.`,
     '',
     `The checkpoint validates ${report.validation.directly_searchable_new_records} records added since the baseline under exact search with ${report.validation.shared_admission_blocking_findings} shared admission blockers. Logical database builds compared: ${report.validation.logical_builds_compared}; identical: ${report.validation.deterministic_logical_contents}.`,
     '',
+    '## Checkpoint audit',
+    '',
+    `Current canonical inventory: ${report.current.canonical_record_count} records, ${report.current.directly_searchable_record_count} directly searchable, ${report.current.non_searchable_record_count} non-searchable, ${report.current.sense_count} senses, and ${report.current.relation_count} relations. Relation-empty searchable records: ${report.current.relation_empty_searchable_record_count}.`,
+    '',
+    '| Record type | Records |',
+    '| --- | ---: |',
+    ...recordTypeRows,
+    '',
+    '| Sense POS | Senses |',
+    '| --- | ---: |',
+    ...posRows,
+    '',
+    `Exact lemma coverage: ${report.current.exact_search_coverage.covered_lemma_count}/${report.current.exact_search_coverage.expected_lemma_count}; exact search-form owner keys: ${report.current.exact_search_coverage.covered_form_owner_key_count}/${report.current.exact_search_coverage.expected_form_owner_key_count}; missing owners: ${report.current.exact_search_coverage.missing_form_owner_key_count}; unexpected owners: ${report.current.exact_search_coverage.unexpected_form_owner_key_count}; cross-record collisions: ${report.current.exact_search_coverage.cross_record_collision_key_count}.`,
+    '',
+    '### Candidate yield and disposition',
+    '',
+    `The initial corpus candidate pool had ${report.production_audit.initial_candidate_pool.unique_lemma_candidate_count} distinct lemma proposals. ${report.production_audit.initial_candidate_pool.exact_canonical_lemma_count} were already exact-lemma covered and ${report.production_audit.initial_candidate_pool.surface_collision_candidate_count} had search-surface collisions; covered or colliding proposals were ${(report.production_audit.initial_candidate_pool.covered_or_colliding_rate * 100).toFixed(2)}% of that pool.`,
+    `Across reviewed batches, hold reasons were ${holdReasons}; rejection reasons were ${rejectReasons}.`,
+    '',
+    '| Historical recovery remaining disposition | Count |',
+    '| --- | ---: |',
+    ...historicalRemainingRows,
+    `| Historical rows recovered | ${report.historical_pool.recovered_count} |`,
+    `| Potentially recoverable rows remaining | ${report.historical_pool.potentially_recoverable_after_count} |`,
+    '',
+    '### Unresolved review inventory',
+    '',
+    '| Source | Finding class | Count |',
+    '| --- | --- | ---: |',
+    ...unresolvedReviewRows,
+    '',
+    '### Batch and system correction history',
+    '',
+    '| Batch | POS corrections | Semantic corrections | Correction passes |',
+    '| --- | ---: | ---: | ---: |',
+    ...report.batches.map((batch) => `| ${batch.batch_id} | ${batch.candidate_pos_correction_count} | ${batch.semantic_corrected_count} | ${batch.correction_pass_count} |`),
+    '',
+    `Correction rate: **${report.production_audit.correction_rate_status}**. Writer review burden: **${report.production_audit.writer_review_burden_status}**. Systemic defect classes: ${report.production_audit.systemic_defect_classes.length}; shared system fixes recorded: ${report.production_audit.system_fixes.length}.`,
+    '',
+    `Normal CI: \`${report.normal_ci.command}\` — **${report.normal_ci.result}** for canonical digest \`${report.normal_ci.canonical_sha256}\`.`,
+    `Runtime/package impact: **${report.runtime_package_impact.status}**. The packaged dictionary grew from ${report.runtime_package_impact.baseline_dictionary_record_count.toLocaleString('en-US')} to ${report.runtime_package_impact.current_dictionary_record_count.toLocaleString('en-US')} records (+${report.runtime_package_impact.dictionary_record_delta.toLocaleString('en-US')}; ${(report.runtime_package_impact.dictionary_record_growth_rate * 100).toFixed(2)}%). Runtime contract changed: ${report.runtime_package_impact.runtime_contract_changed}; package bytes measured: ${report.runtime_package_impact.dictionary_package_bytes_measured}. ${report.runtime_package_impact.rationale} Targeted validation: ${report.runtime_package_impact.targeted_validation}.`,
+    '',
     '## Continuation',
     '',
-    `The M9 production ledger has processed ${report.continuation.batches_processed} review batches from ${report.continuation.canonical_count_at_start.toLocaleString('en-US')} to ${report.continuation.canonical_count_now.toLocaleString('en-US')} directly searchable records. ${report.continuation.remaining_to_checkpoint.toLocaleString('en-US')} remain to the checkpoint; continuation required: **${report.continuation.continuation_required}**. A clean batch is a review and validation checkpoint, not a reason to stop while unseen in-scope candidates remain.`,
+    `The M9 production ledger processed ${report.continuation.batches_processed} review batches from ${report.continuation.canonical_count_at_start.toLocaleString('en-US')} to ${report.continuation.canonical_count_now.toLocaleString('en-US')} directly searchable records. ${report.continuation.remaining_to_checkpoint.toLocaleString('en-US')} remain to the checkpoint; continuation required: **${report.continuation.continuation_required}**. ${report.state === 'complete' ? 'The completed M9-D checkpoint hands continued expansion to M9-E (#223).' : 'Clean batches continue while unseen in-scope candidates remain.'}`,
     '',
     '## Remaining work',
     '',
@@ -108,7 +209,7 @@ function renderMarkdown(report) {
   ].join('\n');
 }
 
-async function main() {
+async function buildReport() {
   const validation = await validateIssue222();
   const batchDirectory = path.join(ROOT, 'data/batches');
   const corpusReviewNames = (await readdir(batchDirectory))
@@ -126,6 +227,8 @@ async function main() {
     const semanticSource = JSON.parse(semanticSourceBytes.toString('utf8'));
     const importedRecords = parseJsonl(importBytes, `${stem} canonical import`);
     const decisions = candidateReview.decisions;
+    const candidateSummary = summarizeCandidateDecisions(decisions);
+    const semanticCounts = semanticSource.review?.counts ?? {};
     return {
       batch_id: candidateReview.batch_id,
       source_class: 'local-written-corpus',
@@ -134,6 +237,13 @@ async function main() {
       admitted_count: count(decisions, 'admit'),
       held_count: count(decisions, 'hold'),
       rejected_count: count(decisions, 'reject'),
+      hold_reason_counts: candidateSummary.hold_reason_counts,
+      reject_reason_counts: candidateSummary.reject_reason_counts,
+      candidate_pos_correction_count: candidateSummary.pos_correction_count,
+      semantic_corrected_count: semanticCounts.corrected ?? 0,
+      correction_pass_count: semanticSource.review?.correction_passes?.length ?? 0,
+      correction_rate_status: candidateReview.yield.correction_rate,
+      writer_review_burden_status: candidateReview.yield.editorial_workload,
       candidate_review_sha256: sha256(candidateReviewBytes),
       candidate_evidence_sha256: candidateReview.source_artifacts.candidate_evidence_sha256,
       candidate_selection_sha256: candidateReview.source_artifacts.candidate_selection_sha256,
@@ -171,6 +281,13 @@ async function main() {
     admitted_count: historicalAdmitted,
     held_count: count(historicalDecisions, 'held'),
     rejected_count: count(historicalDecisions, 'rejected'),
+    hold_reason_counts: {},
+    reject_reason_counts: {},
+    candidate_pos_correction_count: 0,
+    semantic_corrected_count: historicalSemantic.review?.counts?.corrected ?? 0,
+    correction_pass_count: historicalSemantic.review?.correction_passes?.length ?? 0,
+    correction_rate_status: 'NOT_MEASURED_NO_HUMAN_REVIEW',
+    writer_review_burden_status: 'NOT_MEASURED_NO_WRITER_REVIEW',
     candidate_source_sha256: sha256(historicalCandidateBytes),
     semantic_source_sha256: sha256(historicalSemanticBytes),
     canonical_import_record_count: 20,
@@ -195,6 +312,10 @@ async function main() {
   assert.equal(validation.rejected_count, historicalBatch.rejected_count + corpusBatchTotals.rejected);
   assert.equal(corpusBatches.every(({ human_reviewed: humanReviewed }) => humanReviewed === false), true);
   assert.equal(historicalBaseInventory.search_coverage.canonical_record_count, BASELINE_RECORD_COUNT);
+  const canonicalAudit = summarizeCanonicalAudit(canonical.records, inventory.search_coverage);
+  const corpusDecisionAudit = summarizeCandidateDecisions(
+    corpusBatches.flatMap(({ candidate_review: candidateReview }) => candidateReview.decisions),
+  );
   const firstCorpusReview = corpusBatches[0].candidate_review;
   const corpusSnapshot = firstCorpusReview.source.index;
   for (const batch of corpusBatches) {
@@ -217,6 +338,63 @@ async function main() {
     source_exhausted: false,
     blocker: null,
   });
+  const initialCandidatePool = firstCorpusReview.yield;
+  const coveredOrCollidingCandidateCount = initialCandidatePool.exact_canonical_lemma_candidates
+    + initialCandidatePool.total_surface_collision_lemma_candidates;
+  const currentHistoricalDispositionCounts = countBy(
+    inventory.recovery_candidates,
+    ({ new_review_state: state }) => state,
+  );
+  const currentHistoricalRecoverableCount = inventory.recovery_candidates.filter(({ new_review_state: state }) => (
+    ['admit-candidate', 'hold', 'needs-sense-split'].includes(state)
+  )).length;
+  const baselineHistoricalRecoverableCount = historicalBaseInventory.recovery_candidates.filter(({ new_review_state: state }) => (
+    ['admit-candidate', 'hold', 'needs-sense-split'].includes(state)
+  )).length;
+  const historicalRemainingByDisposition = Object.entries(currentHistoricalDispositionCounts)
+    .filter(([disposition]) => disposition !== 'recovered')
+    .map(([disposition, dispositionCount]) => ({ disposition, count: dispositionCount }));
+  const normalCiResult = await normalCiResultFor(inventory.generated_from.current_canonical_revision);
+  const issue222CorpusHoldReasons = Object.entries(corpusDecisionAudit.hold_reason_counts)
+    .map(([findingClass, count]) => ({ source: 'issue-222-corpus-reviews', finding_class: findingClass, count }));
+  const unresolvedReviewInventory = [
+    {
+      source: 'current-canonical-exact-search-audit',
+      finding_class: 'non-searchable-canonical-records',
+      count: canonicalAudit.exact_search_coverage.non_searchable_record_count,
+    },
+    {
+      source: 'current-canonical-exact-search-audit',
+      finding_class: 'cross-record-search-collisions',
+      count: canonicalAudit.exact_search_coverage.cross_record_collision_key_count,
+    },
+    {
+      source: 'issue-210-historical-recovery-pool',
+      finding_class: 'unresolved-sense-pos-or-context-cases',
+      count: inventory.summary.unresolved_sense_pos_or_context_case_count,
+    },
+    {
+      source: 'issue-210-historical-recovery-pool',
+      finding_class: 'search-surface-collisions',
+      count: inventory.summary.search_collision_count,
+    },
+    {
+      source: 'issue-210-historical-recovery-pool',
+      finding_class: 'true-duplicates',
+      count: inventory.summary.true_duplicate_count,
+    },
+    ...issue222CorpusHoldReasons,
+  ];
+  const correctionRateStatuses = new Set(corpusBatches.map(({ correction_rate_status: status }) => status));
+  const writerReviewBurdenStatuses = new Set(corpusBatches.map(({ writer_review_burden_status: status }) => status));
+  assert.equal(
+    Object.values(currentHistoricalDispositionCounts).reduce((total, count) => total + count, 0),
+    inventory.recovery_candidates.length,
+    'historical disposition counts must account for every recovery candidate',
+  );
+  assert.deepEqual(currentHistoricalDispositionCounts, inventory.summary.review_state_counts,
+    'historical recovery disposition counts must match the inventory summary');
+  assert.equal(canonicalAudit.exact_search_coverage.expected_form_owner_key_count, inventory.search_coverage.exact_search_key_count);
   const report = {
     schema_version: 1,
     report_id: 'issue-222-m9-d-scale-coverage-report-v1',
@@ -237,6 +415,14 @@ async function main() {
       directly_searchable_record_count: directSearchCount,
       exact_search_key_count: inventory.search_coverage.exact_search_key_count,
       non_searchable_record_count: inventory.search_coverage.current_non_searchable_lexical_record_count,
+      record_type_counts: canonicalAudit.record_type_counts,
+      role_counts: canonicalAudit.role_counts,
+      sense_pos_counts: canonicalAudit.sense_pos_counts,
+      sense_count: canonicalAudit.sense_count,
+      relation_count: canonicalAudit.relation_count,
+      canonical_search_form_count: canonicalAudit.canonical_search_form_count,
+      relation_empty_searchable_record_count: canonicalAudit.relation_empty_searchable_record_count,
+      exact_search_coverage: canonicalAudit.exact_search_coverage,
     },
     batches: allBatches.map(({ candidate_review: ignoredReview, semantic_source: ignoredSource,
       corpus_snapshot_binding: ignoredBinding, candidate_limit: ignoredLimit,
@@ -261,6 +447,20 @@ async function main() {
       canonical_records_added: currentRecordCount - BASELINE_RECORD_COUNT,
       admission_quota_applied: false,
     },
+    historical_pool: {
+      candidate_count: inventory.recovery_candidates.length,
+      recovered_before_count: historicalBaseInventory.summary.review_state_counts.recovered ?? 0,
+      recovered_count: currentHistoricalDispositionCounts.recovered ?? 0,
+      recovered_in_issue_222_count: inventory.summary.issue_222_historical_admitted_count,
+      potentially_recoverable_before_count: baselineHistoricalRecoverableCount,
+      potentially_recoverable_after_count: currentHistoricalRecoverableCount,
+      recovery_ceiling: directSearchCount + currentHistoricalRecoverableCount,
+      remaining_count: inventory.recovery_candidates.length - (currentHistoricalDispositionCounts.recovered ?? 0),
+      remaining_counts_by_disposition: historicalRemainingByDisposition,
+      unresolved_sense_pos_or_context_case_count: inventory.summary.unresolved_sense_pos_or_context_case_count,
+      search_collision_count: inventory.summary.search_collision_count,
+      true_duplicate_count: inventory.summary.true_duplicate_count,
+    },
     corpus_inventory: {
       source_count: firstCorpusReview.source.index.source_count,
       document_count: firstCorpusReview.source.index.document_count,
@@ -281,6 +481,37 @@ async function main() {
       input_manifest_sha256: corpusSnapshot.input_manifest_sha256,
       logical_rows_sha256: corpusSnapshot.logical_rows_sha256,
       source_text_committed: firstCorpusReview.source.source_text_committed,
+      initial_covered_or_colliding_candidate_count: coveredOrCollidingCandidateCount,
+      initial_covered_or_colliding_candidate_rate: initialCandidatePool.unique_lemma_candidates_before_coverage === 0
+        ? 0
+        : coveredOrCollidingCandidateCount / initialCandidatePool.unique_lemma_candidates_before_coverage,
+    },
+    production_audit: {
+      hold_reason_counts: corpusDecisionAudit.hold_reason_counts,
+      reject_reason_counts: corpusDecisionAudit.reject_reason_counts,
+      initial_candidate_pool: {
+        unique_lemma_candidate_count: initialCandidatePool.unique_lemma_candidates_before_coverage,
+        exact_canonical_lemma_count: initialCandidatePool.exact_canonical_lemma_candidates,
+        surface_collision_candidate_count: initialCandidatePool.total_surface_collision_lemma_candidates,
+        covered_or_colliding_candidate_count: coveredOrCollidingCandidateCount,
+        uncovered_candidate_count: initialCandidatePool.coverage_status_counts_by_distinct_lemma.uncovered,
+        covered_or_colliding_rate: initialCandidatePool.unique_lemma_candidates_before_coverage === 0
+          ? 0
+          : coveredOrCollidingCandidateCount / initialCandidatePool.unique_lemma_candidates_before_coverage,
+        prior_lemma_exclusion_count_latest_batch: corpusBatches.at(-1).prior_lemma_exclusion_count,
+      },
+      unresolved_review_inventory: unresolvedReviewInventory,
+      correction_rate_status: correctionRateStatuses.size === 1
+        ? [...correctionRateStatuses][0]
+        : 'MIXED_REVIEW_STATUS',
+      writer_review_burden_status: writerReviewBurdenStatuses.size === 1
+        ? [...writerReviewBurdenStatuses][0]
+        : 'MIXED_REVIEW_STATUS',
+      candidate_pos_correction_count: allBatches.reduce((total, batch) => total + batch.candidate_pos_correction_count, 0),
+      semantic_corrected_count: allBatches.reduce((total, batch) => total + batch.semantic_corrected_count, 0),
+      correction_pass_count: allBatches.reduce((total, batch) => total + batch.correction_pass_count, 0),
+      systemic_defect_classes: progress.defect_classes,
+      system_fixes: [],
     },
     validation: {
       command: 'npm run batch:issue-222:check',
@@ -294,21 +525,59 @@ async function main() {
       corpus_reviews_human_reviewed: false,
       historical_review_human_reviewed: historicalCandidate.human_reviewed,
     },
+    normal_ci: {
+      command: 'npm run ci:normal',
+      result: normalCiResult,
+      canonical_sha256: canonicalDigest,
+    },
+    runtime_package_impact: {
+      status: 'dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured',
+      baseline_dictionary_record_count: BASELINE_RECORD_COUNT,
+      current_dictionary_record_count: currentRecordCount,
+      dictionary_record_delta: currentRecordCount - BASELINE_RECORD_COUNT,
+      dictionary_record_growth_rate: (currentRecordCount - BASELINE_RECORD_COUNT) / BASELINE_RECORD_COUNT,
+      dictionary_package_bytes_measured: false,
+      runtime_contract_changed: false,
+      rationale: 'Issue #222 adds canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately.',
+      targeted_validation: 'normal-ci-product-build-and-output-contract',
+    },
     continuation: progress,
     remaining: {
       records_to_target: Math.max(0, TARGET_RECORD_COUNT - directSearchCount),
       documented_blocker: null,
-      next_step: 'Continue unseen source-bound historical or corpus review batches. Batch size may grow toward 500 after consecutive clean checkpoints with manageable review and validation; continue until the 7,500-record checkpoint or a documented source, product-model, or licensing blocker.',
+      next_step: buildIssue222NextStep({
+        state: directSearchCount >= TARGET_RECORD_COUNT ? 'complete' : 'in_progress',
+        targetRecordCount: TARGET_RECORD_COUNT,
+        currentRecordCount: directSearchCount,
+      }),
     },
   };
   const schema = await readJson('schema/issue-222-m9-d-scale-coverage-report.schema.json');
   const ajv = new Ajv({ allErrors: true, strict: false });
   const validate = ajv.compile(schema);
   assert.equal(validate(report), true, `Issue #222 checkpoint report schema: ${ajv.errorsText(validate.errors)}`);
-  await Promise.all([
-    writeFile(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`),
-    writeFile(REPORT_DOC_PATH, renderMarkdown(report)),
-  ]);
+  return { report, markdown: renderMarkdown(report) };
+}
+
+export async function main() {
+  const checkMode = process.argv.includes('--check');
+  const { report, markdown } = await buildReport();
+  const machineReport = `${JSON.stringify(report, null, 2)}\n`;
+  if (checkMode) {
+    const [storedMachineReport, storedMarkdown] = await Promise.all([
+      readFile(REPORT_PATH, 'utf8'),
+      readFile(REPORT_DOC_PATH, 'utf8'),
+    ]);
+    assert.equal(storedMachineReport, machineReport,
+      'Issue #222 machine checkpoint report is stale; run npm run batch:issue-222:report');
+    assert.equal(storedMarkdown, markdown,
+      'Issue #222 Markdown checkpoint report is stale; run npm run batch:issue-222:report');
+  } else {
+    await Promise.all([
+      writeFile(REPORT_PATH, machineReport),
+      writeFile(REPORT_DOC_PATH, markdown),
+    ]);
+  }
   console.log(JSON.stringify({
     report_id: report.report_id,
     state: report.state,
@@ -317,12 +586,17 @@ async function main() {
     remaining_records: report.remaining.records_to_target,
     reviewed_count: report.aggregate.reviewed_count,
     admitted_count: report.aggregate.admitted_count,
-    corpus_batch_count: corpusBatches.length,
+    corpus_batch_count: report.corpus_inventory.reviewed_batch_count,
     continuation_required: report.continuation.continuation_required,
   }, null, 2));
 }
 
-main().catch((error) => {
-  console.error(error.code ? `${error.code}: ${error.message}` : error.message);
-  process.exitCode = 1;
-});
+const isMainModule = process.argv[1]
+  && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+if (isMainModule) {
+  main().catch((error) => {
+    console.error(error.code ? `${error.code}: ${error.message}` : error.message);
+    process.exitCode = 1;
+  });
+}

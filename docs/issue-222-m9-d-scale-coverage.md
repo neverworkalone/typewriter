@@ -41,16 +41,84 @@ Raw paragraph text remains in ignored local reference data. Tracked evidence inc
 
 ## Reproducibility
 
-Run `npm run batch:issue-222:check` to validate the historical source binding and all 8 corpus batches through candidate disposition, shared admission, complete semantic coverage, exact direct search, and two identical logical SQLite builds. Run `npm run batch:issue-222:report` to regenerate this Markdown and the machine report.
+Run `npm run batch:issue-222:check` to validate the historical source binding and all 8 corpus batches through candidate disposition, shared admission, complete semantic coverage, exact direct search, and two identical logical SQLite builds. Run `npm run batch:issue-222:report` to regenerate this Markdown and the machine report, then `npm run batch:issue-222:report:check` to compare the regenerated output with the committed checkpoint.
 
 The checkpoint validates 2416 records added since the baseline under exact search with 0 shared admission blockers. Logical database builds compared: 2; identical: true.
 
+## Checkpoint audit
+
+Current canonical inventory: 7521 records, 7521 directly searchable, 0 non-searchable, 7783 senses, and 487 relations. Relation-empty searchable records: 7185.
+
+| Record type | Records |
+| --- | ---: |
+| entry | 6367 |
+| expression | 1154 |
+
+| Sense POS | Senses |
+| --- | ---: |
+| adjective | 397 |
+| adverb | 7 |
+| expression | 1176 |
+| noun | 5117 |
+| verb | 1086 |
+
+Exact lemma coverage: 7521/7521; exact search-form owner keys: 7778/7778; missing owners: 0; unexpected owners: 0; cross-record collisions: 0.
+
+### Candidate yield and disposition
+
+The initial corpus candidate pool had 55580 distinct lemma proposals. 2033 were already exact-lemma covered and 41 had search-surface collisions; covered or colliding proposals were 3.73% of that pool.
+Across reviewed batches, hold reasons were search-collision: 9; unresolved-identity: 317; unresolved-sense: 118; rejection reasons were none.
+
+| Historical recovery remaining disposition | Count |
+| --- | ---: |
+| hold | 251 |
+| duplicate | 2 |
+| invalid-lemma | 2 |
+| admit-candidate | 228 |
+| needs-sense-split | 28 |
+| not-a-lexical-unit | 10 |
+| search-surface-collision | 1 |
+| Historical rows recovered | 62 |
+| Potentially recoverable rows remaining | 507 |
+
+### Unresolved review inventory
+
+| Source | Finding class | Count |
+| --- | --- | ---: |
+| current-canonical-exact-search-audit | non-searchable-canonical-records | 0 |
+| current-canonical-exact-search-audit | cross-record-search-collisions | 0 |
+| issue-210-historical-recovery-pool | unresolved-sense-pos-or-context-cases | 204 |
+| issue-210-historical-recovery-pool | search-surface-collisions | 1 |
+| issue-210-historical-recovery-pool | true-duplicates | 2 |
+| issue-222-corpus-reviews | search-collision | 9 |
+| issue-222-corpus-reviews | unresolved-identity | 317 |
+| issue-222-corpus-reviews | unresolved-sense | 118 |
+
+### Batch and system correction history
+
+| Batch | POS corrections | Semantic corrections | Correction passes |
+| --- | ---: | ---: | ---: |
+| issue-222-m9-d-historical-batch-01-20260930 | 0 | 0 | 0 |
+| issue-222-m9-d-corpus-batch-01-20260930 | 1 | 0 | 0 |
+| issue-222-m9-d-corpus-batch-02-20260930 | 2 | 0 | 0 |
+| issue-222-m9-d-corpus-batch-03-20260930 | 0 | 0 | 0 |
+| issue-222-m9-d-corpus-batch-04-20260930 | 0 | 0 | 0 |
+| issue-222-m9-d-corpus-batch-05-20260930 | 0 | 0 | 0 |
+| issue-222-m9-d-corpus-batch-06-20260930 | 0 | 0 | 0 |
+| issue-222-m9-d-corpus-batch-07-20260930 | 0 | 0 | 0 |
+| issue-222-m9-d-corpus-batch-08-20260930 | 0 | 0 | 0 |
+
+Correction rate: **NOT_MEASURED_NO_HUMAN_REVIEW**. Writer review burden: **NOT_MEASURED_NO_WRITER_REVIEW**. Systemic defect classes: 0; shared system fixes recorded: 0.
+
+Normal CI: `npm run ci:normal` — **pending** for canonical digest `601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992`.
+Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 7,521 records (+2,416; 47.33%). Runtime contract changed: false; package bytes measured: false. Issue #222 adds canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
+
 ## Continuation
 
-The M9 production ledger has processed 9 review batches from 5,105 to 7,521 directly searchable records. 0 remain to the checkpoint; continuation required: **false**. A clean batch is a review and validation checkpoint, not a reason to stop while unseen in-scope candidates remain.
+The M9 production ledger processed 9 review batches from 5,105 to 7,521 directly searchable records. 0 remain to the checkpoint; continuation required: **false**. The completed M9-D checkpoint hands continued expansion to M9-E (#223).
 
 ## Remaining work
 
-Continue unseen source-bound historical or corpus review batches. Batch size may grow toward 500 after consecutive clean checkpoints with manageable review and validation; continue until the 7,500-record checkpoint or a documented source, product-model, or licensing blocker.
+Issue #222 has reached the 7,500 directly searchable record checkpoint. Continue the next expansion stage under M9-E (#223) toward 10,000 reviewed canonical records, preserving source-bound admission and the shared search invariants.
 
 No product-model, licensing, or source-exhaustion blocker is currently documented.

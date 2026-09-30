@@ -19,7 +19,38 @@
     "canonical_record_count": 7521,
     "directly_searchable_record_count": 7521,
     "exact_search_key_count": 7778,
-    "non_searchable_record_count": 0
+    "non_searchable_record_count": 0,
+    "record_type_counts": {
+      "entry": 6367,
+      "expression": 1154
+    },
+    "role_counts": {
+      "reference-only": 42,
+      "start": 7479
+    },
+    "sense_pos_counts": {
+      "adjective": 397,
+      "adverb": 7,
+      "expression": 1176,
+      "noun": 5117,
+      "verb": 1086
+    },
+    "sense_count": 7783,
+    "relation_count": 487,
+    "canonical_search_form_count": 7778,
+    "relation_empty_searchable_record_count": 7185,
+    "exact_search_coverage": {
+      "expected_lemma_count": 7521,
+      "covered_lemma_count": 7521,
+      "non_searchable_record_count": 0,
+      "non_searchable_records": [],
+      "distinct_search_form_count": 7778,
+      "expected_form_owner_key_count": 7778,
+      "covered_form_owner_key_count": 7778,
+      "missing_form_owner_key_count": 0,
+      "unexpected_form_owner_key_count": 0,
+      "cross_record_collision_key_count": 0
+    }
   },
   "batches": [
     {
@@ -29,6 +60,13 @@
       "admitted_count": 20,
       "held_count": 0,
       "rejected_count": 0,
+      "hold_reason_counts": {},
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 0,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_source_sha256": "924f641d2bb1db718a64d24f06a366e0bcc1f931f345eebbf7cac863776bd6fb",
       "semantic_source_sha256": "bae98303dc4c5326df4c79c6e650446cd27b50adfd99fe08120c725def30a6e0",
       "canonical_import_record_count": 20
@@ -40,6 +78,16 @@
       "admitted_count": 8,
       "held_count": 12,
       "rejected_count": 0,
+      "hold_reason_counts": {
+        "unresolved-identity": 9,
+        "unresolved-sense": 3
+      },
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 1,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_review_sha256": "a68e4c75b2d5ae06abcd94f381621641a934ff6a260b711715fcfadb37b5bf37",
       "semantic_source_sha256": "f6c204ed6129a222b71f62d7b68d5b00ebfef9a1ffaf3e58040f8f1ebeeb0df7",
       "canonical_import_record_count": 8,
@@ -56,6 +104,16 @@
       "admitted_count": 145,
       "held_count": 55,
       "rejected_count": 0,
+      "hold_reason_counts": {
+        "unresolved-identity": 48,
+        "unresolved-sense": 7
+      },
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 2,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_review_sha256": "07398de5ace5b47232ea80cec2bd931d8222be233f2e8409079134325742c308",
       "semantic_source_sha256": "9c65156902d45236a6ae4756f9be609e93c95b7e1df2887d6c332595a5b5f8b2",
       "canonical_import_record_count": 145,
@@ -72,6 +130,17 @@
       "admitted_count": 376,
       "held_count": 124,
       "rejected_count": 0,
+      "hold_reason_counts": {
+        "search-collision": 3,
+        "unresolved-identity": 86,
+        "unresolved-sense": 35
+      },
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 0,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_review_sha256": "fcfaa5a94b922b4f2da6e2de6d5df766f3c00c5d67af7ba285f4c264e9d6838d",
       "semantic_source_sha256": "57d438bf60e95c93133bffe360ee80c922106c725c925137ec6fd86db38bec5d",
       "canonical_import_record_count": 376,
@@ -88,6 +157,17 @@
       "admitted_count": 396,
       "held_count": 104,
       "rejected_count": 0,
+      "hold_reason_counts": {
+        "search-collision": 1,
+        "unresolved-identity": 56,
+        "unresolved-sense": 47
+      },
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 0,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_review_sha256": "b9a573862194a993393be2dd503668abecda50e722902725074825b96e38f04e",
       "semantic_source_sha256": "36152105f6690ce2b24a3c380dff3a8fcb7347edd333514556a575099493b2d5",
       "canonical_import_record_count": 396,
@@ -104,6 +184,17 @@
       "admitted_count": 436,
       "held_count": 64,
       "rejected_count": 0,
+      "hold_reason_counts": {
+        "search-collision": 2,
+        "unresolved-identity": 36,
+        "unresolved-sense": 26
+      },
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 0,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_review_sha256": "27e831674d0fdd21d45caf28af535bcd6139a8de55491b7e882abb2ad991eb17",
       "semantic_source_sha256": "8ecb7187dd5504fb60241f544af10dc1112f39738f28f541274812b80f23ccf7",
       "canonical_import_record_count": 436,
@@ -120,6 +211,15 @@
       "admitted_count": 459,
       "held_count": 41,
       "rejected_count": 0,
+      "hold_reason_counts": {
+        "unresolved-identity": 41
+      },
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 0,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_review_sha256": "1a313556433ef96e5670570e0471f884233ca2ca6c95c8c340a47efbfa29043a",
       "semantic_source_sha256": "7db2fe1c1e0162df9b5888b70617332f066963aa44c941d6435309578f58ff73",
       "canonical_import_record_count": 459,
@@ -136,6 +236,16 @@
       "admitted_count": 462,
       "held_count": 38,
       "rejected_count": 0,
+      "hold_reason_counts": {
+        "search-collision": 3,
+        "unresolved-identity": 35
+      },
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 0,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_review_sha256": "90575d5e5c7b0c8a869f2a2128e7ad55f0d96444650da080dd848bb32e180873",
       "semantic_source_sha256": "79c6714e6a73fb9503eeca6c1bf800f8a1296aed170bf74852019ec35796f934",
       "canonical_import_record_count": 462,
@@ -152,6 +262,15 @@
       "admitted_count": 114,
       "held_count": 6,
       "rejected_count": 0,
+      "hold_reason_counts": {
+        "unresolved-identity": 6
+      },
+      "reject_reason_counts": {},
+      "candidate_pos_correction_count": 0,
+      "semantic_corrected_count": 0,
+      "correction_pass_count": 0,
+      "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+      "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
       "candidate_review_sha256": "b6e57696378e045068af3bd26728ce80f9abd5cd1800d676bbf351d136bddcf2",
       "semantic_source_sha256": "4f1ac02e5bb6372bdd1e7b6df7c93db55e7525405fd895cb9baf5dd1bbb97c73",
       "canonical_import_record_count": 114,
@@ -169,6 +288,49 @@
     "rejected_count": 0,
     "canonical_records_added": 2416,
     "admission_quota_applied": false
+  },
+  "historical_pool": {
+    "candidate_count": 584,
+    "recovered_before_count": 42,
+    "recovered_count": 62,
+    "recovered_in_issue_222_count": 20,
+    "potentially_recoverable_before_count": 527,
+    "potentially_recoverable_after_count": 507,
+    "recovery_ceiling": 8028,
+    "remaining_count": 522,
+    "remaining_counts_by_disposition": [
+      {
+        "disposition": "hold",
+        "count": 251
+      },
+      {
+        "disposition": "duplicate",
+        "count": 2
+      },
+      {
+        "disposition": "invalid-lemma",
+        "count": 2
+      },
+      {
+        "disposition": "admit-candidate",
+        "count": 228
+      },
+      {
+        "disposition": "needs-sense-split",
+        "count": 28
+      },
+      {
+        "disposition": "not-a-lexical-unit",
+        "count": 10
+      },
+      {
+        "disposition": "search-surface-collision",
+        "count": 1
+      }
+    ],
+    "unresolved_sense_pos_or_context_case_count": 204,
+    "search_collision_count": 1,
+    "true_duplicate_count": 2
   },
   "corpus_inventory": {
     "source_count": 3410,
@@ -189,7 +351,75 @@
     "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
     "input_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
     "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
-    "source_text_committed": false
+    "source_text_committed": false,
+    "initial_covered_or_colliding_candidate_count": 2074,
+    "initial_covered_or_colliding_candidate_rate": 0.03731558114429651
+  },
+  "production_audit": {
+    "hold_reason_counts": {
+      "search-collision": 9,
+      "unresolved-identity": 317,
+      "unresolved-sense": 118
+    },
+    "reject_reason_counts": {},
+    "initial_candidate_pool": {
+      "unique_lemma_candidate_count": 55580,
+      "exact_canonical_lemma_count": 2033,
+      "surface_collision_candidate_count": 41,
+      "covered_or_colliding_candidate_count": 2074,
+      "uncovered_candidate_count": 53506,
+      "covered_or_colliding_rate": 0.03731558114429651,
+      "prior_lemma_exclusion_count_latest_batch": 4281
+    },
+    "unresolved_review_inventory": [
+      {
+        "source": "current-canonical-exact-search-audit",
+        "finding_class": "non-searchable-canonical-records",
+        "count": 0
+      },
+      {
+        "source": "current-canonical-exact-search-audit",
+        "finding_class": "cross-record-search-collisions",
+        "count": 0
+      },
+      {
+        "source": "issue-210-historical-recovery-pool",
+        "finding_class": "unresolved-sense-pos-or-context-cases",
+        "count": 204
+      },
+      {
+        "source": "issue-210-historical-recovery-pool",
+        "finding_class": "search-surface-collisions",
+        "count": 1
+      },
+      {
+        "source": "issue-210-historical-recovery-pool",
+        "finding_class": "true-duplicates",
+        "count": 2
+      },
+      {
+        "source": "issue-222-corpus-reviews",
+        "finding_class": "search-collision",
+        "count": 9
+      },
+      {
+        "source": "issue-222-corpus-reviews",
+        "finding_class": "unresolved-identity",
+        "count": 317
+      },
+      {
+        "source": "issue-222-corpus-reviews",
+        "finding_class": "unresolved-sense",
+        "count": 118
+      }
+    ],
+    "correction_rate_status": "NOT_MEASURED_NO_HUMAN_REVIEW",
+    "writer_review_burden_status": "NOT_MEASURED_NO_WRITER_REVIEW",
+    "candidate_pos_correction_count": 3,
+    "semantic_corrected_count": 0,
+    "correction_pass_count": 0,
+    "systemic_defect_classes": [],
+    "system_fixes": []
   },
   "validation": {
     "command": "npm run batch:issue-222:check",
@@ -202,6 +432,22 @@
     "historical_base_inventory_sha256": "42525a3de9668f53092c3a7ed483e4a9b377aeb2f03f0de0500299e8b5f6917d",
     "corpus_reviews_human_reviewed": false,
     "historical_review_human_reviewed": false
+  },
+  "normal_ci": {
+    "command": "npm run ci:normal",
+    "result": "pending",
+    "canonical_sha256": "601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992"
+  },
+  "runtime_package_impact": {
+    "status": "dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured",
+    "baseline_dictionary_record_count": 5105,
+    "current_dictionary_record_count": 7521,
+    "dictionary_record_delta": 2416,
+    "dictionary_record_growth_rate": 0.4732615083251714,
+    "dictionary_package_bytes_measured": false,
+    "runtime_contract_changed": false,
+    "rationale": "Issue #222 adds canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately.",
+    "targeted_validation": "normal-ci-product-build-and-output-contract"
   },
   "continuation": {
     "schema_version": 1,
@@ -225,6 +471,6 @@
   "remaining": {
     "records_to_target": 0,
     "documented_blocker": null,
-    "next_step": "Continue unseen source-bound historical or corpus review batches. Batch size may grow toward 500 after consecutive clean checkpoints with manageable review and validation; continue until the 7,500-record checkpoint or a documented source, product-model, or licensing blocker."
+    "next_step": "Issue #222 has reached the 7,500 directly searchable record checkpoint. Continue the next expansion stage under M9-E (#223) toward 10,000 reviewed canonical records, preserving source-bound admission and the shared search invariants."
   }
 }
