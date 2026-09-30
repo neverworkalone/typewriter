@@ -110,7 +110,7 @@ Across reviewed batches, hold reasons were search-collision: 9; unresolved-ident
 
 Correction rate: **NOT_MEASURED_NO_HUMAN_REVIEW**. Writer review burden: **NOT_MEASURED_NO_WRITER_REVIEW**. Systemic defect classes: 0; shared system fixes recorded: 0.
 
-Normal CI: `npm run ci:normal` — **pending** for canonical digest `601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992`.
+Normal CI: `npm run ci:normal` — **passed** for canonical digest `601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992`.
 Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 7,521 records (+2,416; 47.33%). Runtime contract changed: false; package bytes measured: false. Issue #222 adds canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
 
 ## Continuation
