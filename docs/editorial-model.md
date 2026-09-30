@@ -66,6 +66,11 @@ Typewriter uses different quality thresholds for dictionary-like claims and
 writer-facing exploration. This distinction governs editorial review; it is
 not an automatic usefulness score.
 
+For current Tier 2 review, these rules take precedence over contrary M1 pilot
+relation dispositions recorded later in this document. Those ledgers preserve
+what the pilot decided at the time; they do not automatically exclude a
+plausible exploratory route under the current policy.
+
 ### Tier 1 — trust and precision first
 
 Apply dictionary-grade precision to glosses, `direct`, and `antonym`:
@@ -89,11 +94,16 @@ and `association`:
   itself a reason to hold or reject a plausible relation.
 - Prefer an honest broader type over deleting a plausible route that cannot
   qualify as `direct`.
+- Exclude a relation when it is materially incoherent, bound to the wrong
+  sense, or presented as a stronger type than its support allows.
 
 For example, `외롭다 → 옥상` is not a `direct` synonym. It may be a plausible
 `scene` or `association` when the authored connection gives a writer an
-intelligible route into a scene. Do not add a validator that mechanically
-scores every exploratory relation's usefulness.
+intelligible route into a scene. If no such route can be explained, omit the
+connection; lack of universal or immediate usefulness alone is not that
+reason. `빛 → 바람` as `action` remains invalid because the target is not an
+action. Do not add a validator that mechanically scores every exploratory
+relation's usefulness.
 
 Lexical admission remains independent from relation enrichment. A valid
 in-scope lexical entry remains admissible and searchable with zero relations;
@@ -955,12 +965,17 @@ projection 규칙은 다음과 같다.
 다음 후보는 현재 canonical에 넣지 않았다. 이 목록은 “관계가 있을 수
 있다”는 메모이지, 미검수 데이터를 우회해 수록한 것이 아니다.
 
+이 표는 M1 파일럿 당시의 역사적 처분을 보존한다. Issue #229 이후 현재의
+Tier 2 검수에서는 특정한 writer 탐색 경로, 올바른 sense 결속, 정직한
+관계 type을 기준으로 다시 판단한다. 과거의 “즉시 유용성이 확인되지 않음”만으로는
+현재 HOLD/REJECT 근거가 되지 않는다.
+
 | 보류 후보 | 보류 이유 |
 | --- | --- |
 | `그리움 → 애틋함`의 `direct` | 정서 색은 가까울 수 있지만 일반 문장 대체를 확인하지 못해 mood 이상으로 확정하지 않음 |
 | `길을 잃다 → 찾다`의 `antonym` | 결과 방향이 반대일 수 있어도 같은 어휘 축의 반의어라고 볼 근거가 부족함 |
 | `빛 → 바람`의 `action` | 바람은 이 배치에서 action target이 아니므로 해당 관계를 canonical에 만들지 않음 |
-| `카페 → 부엌`, `시계 → 계절` 같은 넓은 장면 연결 | writer에게 즉시 유용한 장면인지 확인되지 않아 quota처럼 채우지 않음 |
+| `카페 → 부엌`, `시계 → 계절` 같은 넓은 장면 연결 | M1 당시의 역사적 미수록 결정은 관계 수량 quota를 채우지 않으려는 pilot 경계를 보존한다. 현재는 이 기록만으로 HOLD/REJECT하지 않는다. Tier 2 기준으로 특정한 writer 경로가 있는지, sense와 type이 맞는지 다시 판단하고, 단순한 generic co-occurrence로 intelligible route가 없을 때만 제외한다. |
 
 ## #19 경계 기준과 relation 방향
 
