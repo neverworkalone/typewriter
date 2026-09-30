@@ -194,7 +194,8 @@ test('existing exact/search-form hits keep precedence over generated collisions'
   }
 });
 
-test('required examples absent from the contract snapshot stay marked contract-only', () => {
+test('pinned M6-2 examples stay contract-only after canonical expansion', () => {
+  assert.equal(contract.source.canonical_revision, baseline.source.canonical_revision);
   const syntheticCases = contract.cases.filter(
     ({ classification }) => classification === 'synthetic-positive',
   );
@@ -211,7 +212,6 @@ test('required examples absent from the contract snapshot stay marked contract-o
       searchCase.corpus_binding,
       'example-target-absent-at-contract-snapshot',
     );
-    assert.equal(records.some((record) => record.lemma === candidate.lemma), false);
   }
   assert.deepEqual(
     syntheticCases.map(({ query, rule_ids: ruleIds, expected_candidates: [candidate] }) => (
