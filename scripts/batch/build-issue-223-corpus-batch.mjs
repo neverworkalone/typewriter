@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { access, readFile, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -49,7 +49,23 @@ function textFreeHits(hits) {
     paragraph_ordinal: hit.paragraph_ordinal,
     source_category: hit.source_category,
     source_year: hit.source_year,
+    ...(typeof hit.matched_surface_form === 'string'
+      ? { matched_surface_form: hit.matched_surface_form }
+      : {}),
+    ...(typeof hit.matched_morpheme_span_surface === 'string'
+      ? { matched_morpheme_span_surface: hit.matched_morpheme_span_surface }
+      : {}),
   }));
+}
+
+export function bindAuthoredParagraphReferences(hitRefs, references) {
+  if (references === undefined) return hitRefs.map(({ paragraph_id: paragraphId }) => paragraphId);
+  assert.ok(Array.isArray(references), 'authored paragraph references must be an array');
+  return references.map((reference) => {
+    if (!Number.isInteger(reference)) return reference;
+    assert.ok(reference >= 0 && reference < hitRefs.length, `authored paragraph hit index ${reference} is outside the bounded evidence`);
+    return hitRefs[reference].paragraph_id;
+  });
 }
 
 function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, inventoryId, canonicalId, batchId, sampleParagraphCount) {
@@ -87,11 +103,11 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
       disposition_basis: editorial.basis,
       ...(editorial.basis === 'unresolved-identity'
         ? {
-          identity_evidence: {
-            evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
-            rationale: editorial.rationale,
-            paragraph_ids: editorial.paragraph_ids ?? hitRefs.map(({ paragraph_id: id }) => id),
-          },
+          identity_evidence: editorial.identity_evidence ?? {
+          evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
+          rationale: editorial.rationale,
+          paragraph_ids: bindAuthoredParagraphReferences(hitRefs, editorial.paragraph_ids),
+        },
         }
         : {}),
       ...(editorial.basis === 'unresolved-sense'
@@ -141,6 +157,12 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
     observed_morpheme_spans: candidate.observed_morpheme_spans,
     bounded_provenance: {
       evidence_type: textFreeCandidate.evidence.evidence_type,
+      ...(textFreeCandidate.evidence.representative_context_match_method
+        ? { representative_context_match_method: textFreeCandidate.evidence.representative_context_match_method }
+        : {}),
+      ...(textFreeCandidate.evidence.representative_surface_search_limit !== undefined
+        ? { representative_surface_search_limit: textFreeCandidate.evidence.representative_surface_search_limit }
+        : {}),
       representative_hit_limit: textFreeCandidate.evidence.representative_hit_limit,
       representative_hit_count: hitRefs.length,
       representative_hits: hitRefs,
@@ -275,14 +297,15 @@ function requireArgs(args) {
   for (const key of ['batch-id', 'analysis-directory', 'authored-decisions']) {
     if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=data/reference/... --authored-decisions=data/batches/...json`);
   }
-  return values;
+  return { ...values, 'review-only': values['review-only'] === 'true' };
 }
 
-export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, authoredDecisionsPath }) {
+export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, authoredDecisionsPath, reviewOnly = false }) {
   const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
   const batchStem = batchId.replace(/-2026[0-9]{4}$/u, '');
   assert.match(batchId, /^issue-223-m9-e-corpus-batch-[0-9]{2}-20261001$/u);
+  if (reviewOnly) assert.match(batchId, /corpus-batch-05-20261001$/u);
   assert.equal(path.resolve(ROOT, analysisDirectory), absoluteAnalysis);
   const inventoryPath = path.join(absoluteAnalysis, 'candidate-inventory.json');
   const evidencePath = path.join(absoluteAnalysis, 'candidate-evidence.json');
@@ -425,9 +448,41 @@ export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, aut
     },
     decisions: rows,
   };
+  if (reviewOnly) {
+    review.canonical_import_status = 'owner-deferred-review-only';
+    review.canonical_import_count = 0;
+    review.canonical_import_deferred_count = admittedRows.length;
+    review.canonical_import_deferred_reason = 'Owner requested this checkpoint PR include B05 candidate dispositions only and keep canonical imports at B04.';
+  }
   review.artifact_sha256 = sha256Json(review);
   const reviewBytes = prettyBytes(review);
   const reviewSha = sha256Bytes(reviewBytes);
+
+  const batchDirectory = path.join(ROOT, 'data/batches');
+  const canonicalDirectory = path.join(ROOT, 'data/canonical');
+  const reviewPath = path.join(batchDirectory, `${batchStem}-candidate-review.json`);
+  const semanticPath = path.join(batchDirectory, `${batchStem}-semantic-decisions.json`);
+  const importPath = path.join(canonicalDirectory, `${batchStem}.jsonl`);
+  if (reviewOnly) {
+    for (const sidecarPath of [semanticPath, importPath]) {
+      try {
+        await access(sidecarPath);
+        throw new Error(`review-only batch must not leave a semantic source or canonical import: ${relative(sidecarPath)}`);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
+    await writeFile(reviewPath, reviewBytes);
+    return {
+      batch_id: batchId,
+      candidate_review_path: relative(reviewPath),
+      candidate_count: rows.length,
+      candidate_admit_count: admittedRows.length,
+      held_count: rows.length - admittedRows.length,
+      canonical_import_count: 0,
+      canonical_import_status: review.canonical_import_status,
+    };
+  }
 
   const records = admittedRows.map(makeCanonicalRecord);
   const identities = admittedRows.map((row, index) => ({
@@ -548,11 +603,6 @@ export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, aut
     },
   });
 
-  const batchDirectory = path.join(ROOT, 'data/batches');
-  const canonicalDirectory = path.join(ROOT, 'data/canonical');
-  const reviewPath = path.join(batchDirectory, `${batchStem}-candidate-review.json`);
-  const semanticPath = path.join(batchDirectory, `${batchStem}-semantic-decisions.json`);
-  const importPath = path.join(canonicalDirectory, `${batchStem}.jsonl`);
   await Promise.all([
     writeFile(reviewPath, reviewBytes),
     writeFile(semanticPath, semanticBytes),
@@ -641,6 +691,7 @@ if (isMain) {
     batchId: args['batch-id'],
     analysisDirectory: args['analysis-directory'],
     authoredDecisionsPath: args['authored-decisions'],
+    reviewOnly: args['review-only'],
   }).then((summary) => {
     console.log(JSON.stringify(summary, null, 2));
   }).catch((error) => {

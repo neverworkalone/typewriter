@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,6 +66,10 @@ function assertTextFree(value, label) {
   visit(value, label);
 }
 
+function hasExactObservedEojeol(context, surface) {
+  return context.split(/\s+/u).some((token) => token.replace(/^\p{P}+|\p{P}+$/gu, '') === surface);
+}
+
 function sourceDigestExistsInGitHistory(relativePath, expectedDigest) {
   let commits;
   try {
@@ -123,6 +127,44 @@ function semanticDecisionConfig(candidateReview, semanticSource, sourcePath) {
   };
 }
 
+export function validateReviewOnlyCanonicalImportBoundary({
+  candidateReview,
+  semanticSourceExists,
+  canonicalImportExists,
+  currentCanonicalRecords,
+}) {
+  const admitted = candidateReview.decisions.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
+  assert.equal(candidateReview.canonical_import_status, 'owner-deferred-review-only');
+  assert.equal(candidateReview.canonical_import_count, 0);
+  assert.equal(candidateReview.canonical_import_deferred_count, admitted.length);
+  assert.ok(typeof candidateReview.canonical_import_deferred_reason === 'string'
+    && candidateReview.canonical_import_deferred_reason.trim());
+  assert.equal(candidateReview.decision_counts.admit, admitted.length);
+  assert.equal(semanticSourceExists, false, `${candidateReview.batch_id} review-only checkpoint must not have semantic decisions`);
+  assert.equal(canonicalImportExists, false, `${candidateReview.batch_id} review-only checkpoint must not have a canonical import`);
+
+  const currentRecords = currentCanonicalRecords.map(recordOf);
+  const currentIds = new Set(currentRecords.map(({ id }) => id));
+  const currentLemmas = new Set(currentRecords.map(({ lemma }) => lemma));
+  for (const row of admitted) {
+    assert.equal(currentIds.has(row.editorial_judgment.candidate_record_id), false,
+      `${row.editorial_judgment.candidate_record_id} is deferred and must not already be canonical`);
+    assert.equal(currentLemmas.has(row.morphology_proposal.lemma), false,
+      `${row.morphology_proposal.lemma} is deferred and must not already be canonical`);
+  }
+  return admitted.length;
+}
+
+async function fileExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
 function stripVolatileDatabaseMetadata(snapshot) {
   return {
     ...snapshot,
@@ -151,11 +193,15 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     const candidatePath = path.join(BATCH_DIRECTORY, candidateName);
     const semanticPath = path.join(BATCH_DIRECTORY, `${stem}-semantic-decisions.json`);
     const importPath = path.join(ROOT, 'data/canonical', `${stem}.jsonl`);
-    const [candidateBytes, semanticBytes, importBytes] = await Promise.all([
-      readFile(candidatePath), readFile(semanticPath), readFile(importPath),
-    ]);
+    const candidateBytes = await readFile(candidatePath);
     const candidateReview = JSON.parse(candidateBytes.toString('utf8'));
-    const semanticSource = JSON.parse(semanticBytes.toString('utf8'));
+    const reviewOnly = candidateReview.canonical_import_status === 'owner-deferred-review-only';
+    assert.ok(candidateReview.canonical_import_status === undefined || reviewOnly,
+      `${candidateReview.batch_id} has an unsupported canonical import status`);
+    const [semanticBytes, importBytes] = reviewOnly
+      ? [null, null]
+      : await Promise.all([readFile(semanticPath), readFile(importPath)]);
+    const semanticSource = semanticBytes ? JSON.parse(semanticBytes.toString('utf8')) : null;
     const candidateLabel = `Issue #223 ${candidateReview.batch_id}`;
     assert.equal(candidateReview.schema_version, '1');
     assert.equal(candidateReview.contract_version, 'm9-corpus-candidate-review-v1');
@@ -207,6 +253,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       ]);
       const evidence = JSON.parse(evidenceBytes.toString('utf8'));
       const selection = JSON.parse(selectionBytes.toString('utf8'));
+      const inventory = JSON.parse(inventoryBytes.toString('utf8'));
       assert.equal(sha256Bytes(evidenceBytes), candidateReview.source_artifacts.candidate_evidence_sha256);
       assert.equal(sha256Bytes(selectionBytes), candidateReview.source_artifacts.candidate_selection_sha256);
       assert.equal(sha256Bytes(inventoryBytes), candidateReview.source_artifacts.candidate_inventory_sha256);
@@ -223,6 +270,13 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       assert.equal(evidence.permission_record_sha256, candidateReview.source.permission_record_sha256);
       assert.deepEqual(evidence.index, candidateReview.source.index);
       assert.deepEqual(evidence.typewriter_surface, candidateReview.source.typewriter_surface);
+      assert.equal(inventory.candidates.length, evidence.candidates.length, `${candidateLabel} local inventory size matches its text-free evidence`);
+      assert.equal(inventory.orchestration.orchestrator_script_sha256, evidence.orchestration.orchestrator_script_sha256);
+      await assertPinnedSourceDigest(
+        'scripts/reference/run-corpus-lemma-pilot.mjs',
+        evidence.orchestration.orchestrator_script_sha256,
+        `${candidateLabel} evidence orchestrator`,
+      );
       const permissionBytes = await readFile(path.join(ROOT, candidateReview.source.permission_record_path));
       assert.equal(sha256Bytes(permissionBytes), candidateReview.source.permission_record_sha256);
       for (const artifact of candidateReview.selection.exclusion_source_artifacts) {
@@ -231,6 +285,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       assert.equal(evidence.candidates.length, candidateReview.decisions.length);
       for (const [index, reviewRow] of candidateReview.decisions.entries()) {
         const selected = evidence.candidates[index];
+        const localCandidate = inventory.candidates[index];
         assert.equal(reviewRow.candidate_ordinal, index + 1);
         assert.equal(reviewRow.morphology_proposal.lemma, selected.proposed_lemma);
         assert.equal(reviewRow.morphology_proposal.analyzer_pos, selected.analyzer_pos);
@@ -256,11 +311,73 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
         assert.deepEqual(reviewRow.typewriter_surface_matches, selected.typewriter_surface_matches);
         assert.deepEqual(reviewRow.observed_surface_forms, selected.observed_surface_forms);
         assert.deepEqual(reviewRow.observed_morpheme_spans, selected.observed_morpheme_spans);
+        if (selected.evidence.evidence_type === 'observed_surface_form_contexts_and_literal_text_match_count'
+          || selected.evidence.evidence_type === 'candidate_morpheme_rooted_eojeol_contexts_and_literal_text_match_count') {
+          assert.equal(selected.proposed_lemma, localCandidate.proposed_lemma);
+          const componentOnlyBoundaryHold = reviewRow.editorial_judgment.disposition === 'hold'
+            && reviewRow.editorial_judgment.disposition_basis === 'unresolved-identity'
+            && reviewRow.editorial_judgment.identity_evidence?.evidence_type
+              === 'reviewed-analyzed-forms-show-component-only-usage';
+          if (!componentOnlyBoundaryHold) {
+            assert.ok(selected.evidence.representative_hits.length > 0, `${candidateLabel} ${reviewRow.inventory_id} needs at least one morphology-bound paragraph context`);
+          } else {
+            assert.equal(selected.evidence.representative_hits.length, 0);
+          }
+          const localHitsById = new Map(localCandidate.evidence.representative_hits.map((hit) => [hit.paragraph_id, hit]));
+          const observedForms = new Set(selected.observed_surface_forms.map(({ surface }) => surface));
+          for (const hit of selected.evidence.representative_hits) {
+            assert.ok(observedForms.has(hit.matched_surface_form), `${candidateLabel} ${reviewRow.inventory_id} evidence names an observed surface form`);
+            const localHit = localHitsById.get(hit.paragraph_id);
+            assert.ok(localHit, `${candidateLabel} ${reviewRow.inventory_id} text-free evidence matches its local inventory`);
+            assert.equal(localHit.matched_surface_form, hit.matched_surface_form);
+            if (selected.evidence.evidence_type === 'candidate_morpheme_rooted_eojeol_contexts_and_literal_text_match_count') {
+              const observedMorphemeSpans = new Set(selected.observed_morpheme_spans.map(({ surface }) => surface));
+              assert.ok(observedMorphemeSpans.has(hit.matched_morpheme_span_surface), `${candidateLabel} ${reviewRow.inventory_id} hit binds an analyzed morpheme span`);
+              assert.ok(hit.matched_surface_form.startsWith(hit.matched_morpheme_span_surface), `${candidateLabel} ${reviewRow.inventory_id} eojeol begins with its candidate morpheme span`);
+              assert.equal(localHit.matched_morpheme_span_surface, hit.matched_morpheme_span_surface);
+            }
+            assert.ok(hasExactObservedEojeol(localHit.context, hit.matched_surface_form), `${candidateLabel} ${reviewRow.inventory_id} context contains an exact observed eojeol`);
+          }
+        }
         assert.deepEqual(reviewRow.bounded_provenance.representative_hits.map(({ paragraph_id }) => paragraph_id), selected.evidence.representative_hits.map(({ paragraph_id }) => paragraph_id));
+        assert.deepEqual(reviewRow.bounded_provenance.representative_hits, selected.evidence.representative_hits);
+        for (const field of ['representative_context_match_method', 'representative_surface_search_limit']) {
+          if (selected.evidence[field] !== undefined) {
+            assert.equal(reviewRow.bounded_provenance[field], selected.evidence[field], `${candidateLabel} ${field} is source-bound`);
+          }
+        }
         assert.equal(reviewRow.inventory_id, `m5-${nextInventoryNumber + index}`, `${candidateLabel} inventory allocation is sequential`);
       }
     }
     nextInventoryNumber += candidateReview.decisions.length;
+
+    if (reviewOnly) {
+      const deferredAdmitCount = validateReviewOnlyCanonicalImportBoundary({
+        candidateReview,
+        semanticSourceExists: await fileExists(semanticPath),
+        canonicalImportExists: await fileExists(importPath),
+        currentCanonicalRecords: currentCanonical.records,
+      });
+      batches.push({
+        batch_id: candidateReview.batch_id,
+        candidateReview,
+        candidateReviewBytes: candidateBytes,
+        semanticSource: null,
+        semanticSourceBytes: null,
+        validatedSource: null,
+        identities: [],
+        importRecords: [],
+        candidateCount: candidateReview.decisions.length,
+        admittedCount: 0,
+        deferredAdmitCount,
+        heldCount: dispositionCounts.hold,
+        rejectedCount: dispositionCounts.reject,
+        reviewOnly: true,
+        sourcePath: `data/batches/${candidateName}`,
+        semanticPath: `data/batches/${path.basename(semanticPath)}`,
+      });
+      continue;
+    }
 
     const admittedRows = candidateReview.decisions.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
     const identities = admittedRows.map((row, index) => ({
@@ -312,8 +429,10 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       importRecords,
       candidateCount: candidateReview.decisions.length,
       admittedCount: importRecords.length,
+      deferredAdmitCount: 0,
       heldCount: dispositionCounts.hold,
       rejectedCount: dispositionCounts.reject,
+      reviewOnly: false,
       sourcePath: `data/batches/${candidateName}`,
       semanticPath: `data/batches/${path.basename(semanticPath)}`,
     });
@@ -376,7 +495,7 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
   assert.equal(semanticAudit.coverage.record_count, semanticAudit.record_count, 'Issue #223 semantic coverage record count is complete');
   assert.equal(semanticAudit.coverage.sense_count, semanticAudit.sense_count, 'Issue #223 semantic coverage sense count is complete');
 
-  const productionResults = batches.map((batch) => {
+  const productionResults = batches.filter((batch) => !batch.reviewOnly).map((batch) => {
     const batchImportIds = new Set(batch.importRecords.map(({ id }) => id));
     const baseRecords = currentCanonical.records.filter((recordInfo) => !batchImportIds.has(recordOf(recordInfo).id));
     const production = validateLexicalProduction({
@@ -427,10 +546,19 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
     current_canonical_sha256: currentDigest,
     issue_223_corpus_candidates: batches.reduce((sum, batch) => sum + batch.candidateCount, 0),
     issue_223_corpus_admitted: issue223Imports.length,
+    issue_223_corpus_admit_decisions: batches.reduce((sum, batch) => sum + batch.candidateReview.decision_counts.admit, 0),
+    issue_223_corpus_admit_deferred: batches.reduce((sum, batch) => sum + batch.deferredAdmitCount, 0),
     issue_223_corpus_held: batches.reduce((sum, batch) => sum + batch.heldCount, 0),
     issue_223_corpus_rejected: batches.reduce((sum, batch) => sum + batch.rejectedCount, 0),
-    corpus_batches: batches.map(({ batch_id, candidateCount, admittedCount, heldCount, rejectedCount }) => ({
-      batch_id, candidate_count: candidateCount, admitted_count: admittedCount, held_count: heldCount, rejected_count: rejectedCount,
+    corpus_batches: batches.map(({ batch_id, candidateCount, candidateReview, admittedCount, deferredAdmitCount, heldCount, rejectedCount, reviewOnly }) => ({
+      batch_id,
+      candidate_count: candidateCount,
+      candidate_admit_count: candidateReview.decision_counts.admit,
+      admitted_count: admittedCount,
+      deferred_admit_count: deferredAdmitCount,
+      held_count: heldCount,
+      rejected_count: rejectedCount,
+      review_only: reviewOnly,
     })),
     semantic_coverage_complete: true,
     shared_admission: productionResults,

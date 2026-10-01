@@ -224,6 +224,45 @@ test('clear analyzer proposals can be held when bounded contexts undermine the s
   });
 });
 
+test('component-only identity holds bind every analyzed form when no exact-start context exists', () => {
+  const surfaces = ['사냥터지기', '산지기가', '마구간지기들이'];
+  const row = candidate({
+    disposition: 'hold',
+    basis: 'unresolved-identity',
+    lemma: '지기',
+    candidateRecordId: null,
+    identityEvidence: {
+      evidence_type: 'reviewed-analyzed-forms-show-component-only-usage',
+      candidate_morpheme_span_surface: '지기',
+      observed_surface_forms: surfaces,
+      rationale: '표본의 분석 표면형은 모두 다른 어휘 뒤에 결합하며 독립 표제어 경계를 보이지 않는다.',
+    },
+  });
+  row.observed_surface_forms = surfaces.map((surface) => ({ surface }));
+  row.observed_morpheme_spans = [{ surface: '지기' }];
+  row.bounded_provenance.representative_hits = [];
+  assert.deepEqual(validateCorpusCandidateReviewDispositions([row]), { admit: 0, hold: 1, reject: 0 });
+
+  const unbound = candidate({
+    disposition: 'hold',
+    basis: 'unresolved-identity',
+    lemma: '지기',
+    candidateRecordId: null,
+    identityEvidence: {
+      evidence_type: 'reviewed-analyzed-forms-show-component-only-usage',
+      candidate_morpheme_span_surface: '지기',
+      observed_surface_forms: ['사냥터지기', 'unreviewed'],
+      rationale: '표본의 형태소 분석이 독립 표제어 경계를 보이지 않는다.',
+    },
+  });
+  unbound.observed_surface_forms = surfaces.map((surface) => ({ surface }));
+  unbound.observed_morpheme_spans = [{ surface: '지기' }];
+  unbound.bounded_provenance.representative_hits = [];
+  assert.throws(() => validateCorpusCandidateReviewDispositions([unbound]), {
+    code: 'CORPUS_CANDIDATE_REVIEW_IDENTITY_EVIDENCE',
+  });
+});
+
 test('rejections need a demonstrated duplicate, nonlexical unit, or out-of-scope identity', () => {
   const duplicate = candidate({
     disposition: 'reject',

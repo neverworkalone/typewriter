@@ -22,6 +22,8 @@ const LOCAL_PILOT_DIRECTORY = path.join(
 );
 const REFERENCE_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/reference');
 const ROW_RESULT_LIMIT = 3;
+const OBSERVED_SURFACE_SEARCH_LIMIT = 100;
+const MAX_OBSERVED_SURFACE_QUERIES = 5;
 export const DEFAULT_CANDIDATE_LIMIT = 200;
 export const MAX_CANDIDATE_LIMIT = 500;
 
@@ -322,7 +324,7 @@ function searchModeFor(query) {
   return [...query].length >= 3 ? 'fts5-trigram-literal-confirmed' : 'literal-scan';
 }
 
-function evidenceHit(hit) {
+function evidenceHit(hit, matchedSurfaceForm) {
   return {
     source_path: hit.source_path,
     corpus_id: hit.corpus_id,
@@ -332,6 +334,8 @@ function evidenceHit(hit) {
     paragraph_ordinal: hit.paragraph_ordinal,
     source_category: hit.category,
     source_year: hit.year,
+    matched_surface_form: matchedSurfaceForm,
+    matched_morpheme_span_surface: hit.matched_morpheme_span_surface,
     context: hit.form,
   };
 }
@@ -346,7 +350,64 @@ function safeEvidenceHit(hit) {
     paragraph_ordinal: hit.paragraph_ordinal,
     source_category: hit.source_category,
     source_year: hit.source_year,
+    ...(typeof hit.matched_surface_form === 'string'
+      ? { matched_surface_form: hit.matched_surface_form }
+      : {}),
+    ...(typeof hit.matched_morpheme_span_surface === 'string'
+      ? { matched_morpheme_span_surface: hit.matched_morpheme_span_surface }
+      : {}),
   };
+}
+
+function stripEdgePunctuation(token) {
+  return token.replace(/^\p{P}+|\p{P}+$/gu, '');
+}
+
+function contextHasExactObservedSurface(context, surface) {
+  return context.split(/\s+/u).some((token) => stripEdgePunctuation(token) === surface);
+}
+
+export function collectRepresentativeSurfaceHits(candidate, search) {
+  if (typeof search !== 'function') {
+    throw new Error('A bounded corpus search function is required for observed-surface evidence.');
+  }
+  const roots = [...new Set((candidate.observed_morpheme_spans ?? [])
+    .map(({ surface }) => surface)
+    .filter((surface) => typeof surface === 'string' && surface.trim() !== ''))];
+  const surfaceRoot = (surface) => roots
+    .filter((root) => surface.startsWith(root))
+    .sort((left, right) => [...right].length - [...left].length
+      || (left < right ? -1 : left > right ? 1 : 0))[0];
+  const surfaces = [...(candidate.observed_surface_forms ?? [])]
+    .filter(({ surface }) => typeof surface === 'string' && surface.trim() !== '')
+    .map((form) => ({ ...form, matched_morpheme_span_surface: surfaceRoot(form.surface) }))
+    .filter(({ matched_morpheme_span_surface }) => matched_morpheme_span_surface !== undefined)
+    .sort((left, right) => (
+      ([...left.surface].length - [...left.matched_morpheme_span_surface].length)
+        - ([...right.surface].length - [...right.matched_morpheme_span_surface].length)
+      || [...right.matched_morpheme_span_surface].length - [...left.matched_morpheme_span_surface].length
+      || (right.kiwi_morpheme_occurrences_in_sample ?? 0)
+        - (left.kiwi_morpheme_occurrences_in_sample ?? 0)
+      || (left.surface < right.surface ? -1 : left.surface > right.surface ? 1 : 0)
+    ))
+    .slice(0, MAX_OBSERVED_SURFACE_QUERIES);
+  const hits = [];
+  const seenParagraphIds = new Set();
+
+  for (const { surface, matched_morpheme_span_surface } of surfaces) {
+    for (const hit of search(surface, OBSERVED_SURFACE_SEARCH_LIMIT)) {
+      if (!contextHasExactObservedSurface(hit.form, surface)
+        || !surface.startsWith(matched_morpheme_span_surface)
+        || seenParagraphIds.has(hit.paragraph_id)) {
+        continue;
+      }
+      seenParagraphIds.add(hit.paragraph_id);
+      hits.push(evidenceHit({ ...hit, matched_morpheme_span_surface }, surface));
+      break;
+    }
+    if (hits.length === ROW_RESULT_LIMIT) return hits;
+  }
+  return hits;
 }
 
 export function buildTextFreeCandidateEvidence(inventory) {
@@ -398,6 +459,12 @@ export function buildTextFreeCandidateEvidence(inventory) {
         literal_match_count: candidate.evidence.literal_match_count,
         count_method: candidate.evidence.count_method,
         search_mode: candidate.evidence.search_mode,
+        ...(candidate.evidence.representative_context_match_method
+          ? { representative_context_match_method: candidate.evidence.representative_context_match_method }
+          : {}),
+        ...(candidate.evidence.representative_surface_search_limit !== undefined
+          ? { representative_surface_search_limit: candidate.evidence.representative_surface_search_limit }
+          : {}),
         representative_hits_limit: candidate.evidence.representative_hits_limit,
         representative_hit_count: candidate.evidence.representative_hits.length,
         representative_hits: candidate.evidence.representative_hits.map(safeEvidenceHit),
@@ -415,6 +482,9 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
   const candidatesWithEvidence = [];
   let totalLiteralParagraphMatches = 0;
   let literalFallbackQueryCount = 0;
+  let observedSurfaceLiteralFallbackQueryCount = 0;
+  let observedSurfaceQueryCount = 0;
+  let observedSurfaceParagraphRowsSearched = 0;
   const corpusReader = createCorpusIndexReader({ databasePath: DEFAULT_INDEX_PATH });
   try {
     for (const [index, candidate] of candidates.entries()) {
@@ -423,20 +493,32 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
         throw new Error('Candidate evidence query is missing for one extracted lemma.');
       }
 
-      const { matchCount, matches } = corpusReader.evidence(literalMatchQuery, ROW_RESULT_LIMIT);
+      const matchCount = corpusReader.count(literalMatchQuery);
+      const representativeHits = collectRepresentativeSurfaceHits(
+        candidate,
+        (surface, limit) => {
+          observedSurfaceQueryCount += 1;
+          if (searchModeFor(surface) === 'literal-scan') observedSurfaceLiteralFallbackQueryCount += 1;
+          const matches = corpusReader.search(surface, limit);
+          observedSurfaceParagraphRowsSearched += matches.length;
+          return matches;
+        },
+      );
       const searchMode = searchModeFor(literalMatchQuery);
       if (searchMode === 'literal-scan') literalFallbackQueryCount += 1;
       totalLiteralParagraphMatches += matchCount;
       candidatesWithEvidence.push({
         ...candidate,
         evidence: {
-          evidence_type: 'literal_text_match_count_and_bounded_paragraph_hits',
+          evidence_type: 'candidate_morpheme_rooted_eojeol_contexts_and_literal_text_match_count',
           literal_match_query: literalMatchQuery,
           literal_match_count: matchCount,
           count_method: 'countCorpusMatches SQL COUNT(*) aggregate',
           search_mode: searchMode,
+          representative_context_match_method: 'exact observed eojeol beginning with its analyzed candidate morpheme span',
+          representative_surface_search_limit: OBSERVED_SURFACE_SEARCH_LIMIT,
           representative_hits_limit: ROW_RESULT_LIMIT,
-          representative_hits: matches.map(evidenceHit),
+          representative_hits: representativeHits,
         },
       });
 
@@ -457,13 +539,20 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
     ...selection,
     evidence_collection: {
       count_path: 'countCorpusMatches SQL aggregate; never fetches matching paragraph rows',
-      paragraph_path: 'searchCorpusIndex bounded in SQL before rows reach JavaScript',
+      paragraph_path: 'searchCorpusIndex SQL-bounds observed-surface lookups; only exact whole-eojeol forms are retained',
       per_candidate_paragraph_limit: ROW_RESULT_LIMIT,
-      maximum_total_paragraph_rows_materialized: candidates.length * ROW_RESULT_LIMIT,
       candidate_count_with_evidence: candidatesWithEvidence.length,
       literal_fallback_query_count: literalFallbackQueryCount,
+      observed_surface_literal_fallback_query_count: observedSurfaceLiteralFallbackQueryCount,
       sum_of_per_candidate_literal_paragraph_counts: totalLiteralParagraphMatches,
       sum_note: 'Queries overlap; this is not a distinct corpus paragraph count.',
+      representative_context_match_method: 'exact whitespace-delimited observed eojeol surface form from the morphology sample',
+      representative_surface_search_limit: OBSERVED_SURFACE_SEARCH_LIMIT,
+      maximum_observed_surface_queries_per_candidate: MAX_OBSERVED_SURFACE_QUERIES,
+      observed_surface_query_count: observedSurfaceQueryCount,
+      observed_surface_paragraph_rows_searched: observedSurfaceParagraphRowsSearched,
+      maximum_total_paragraph_rows_materialized:
+        candidates.length * MAX_OBSERVED_SURFACE_QUERIES * OBSERVED_SURFACE_SEARCH_LIMIT,
     },
     candidates: candidatesWithEvidence,
   };
