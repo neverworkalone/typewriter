@@ -125,6 +125,10 @@
         "contract": "authored_semantic_review_input"
       },
       {
+        "pattern": "data/batches/issue-223-m9-e-corpus-batch-*-reviewer-raw-outputs.json",
+        "contract": "reviewer_raw_outputs"
+      },
+      {
       "pattern": "data/batches/*-semantic-decisions.json",
       "contract": "decision_source"
     },
@@ -2608,6 +2612,105 @@
           }
         }
       },
+      "reviewer_raw_outputs": {
+        "contract_versions": [
+          "reviewer-raw-outputs-v1"
+        ],
+        "required_fields": [
+          "batch_id",
+          "contract_version",
+          "kind",
+          "reviewer",
+          "runs",
+          "schema_version"
+        ],
+        "allowed_fields": [
+          "batch_id",
+          "contract_version",
+          "kind",
+          "reviewer",
+          "runs",
+          "schema_version"
+        ],
+        "field_types": {
+          "batch_id": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "reviewer": "string",
+          "runs": "array<object>",
+          "schema_version": "string"
+        },
+        "nested_allowed_fields": {
+          "$.runs.*": [
+            "candidate_count",
+            "context",
+            "first_ordinal",
+            "last_ordinal",
+            "model",
+            "outputs",
+            "packet_sha256",
+            "raw_output_sha256",
+            "run"
+          ],
+          "$.runs.*.outputs.*": [
+            "directions",
+            "frames",
+            "generator_agreement",
+            "gloss",
+            "hold_basis",
+            "hold_rationale",
+            "identity",
+            "lemma",
+            "note_hit_checked",
+            "ordinal",
+            "pos",
+            "sense_boundary",
+            "sense_note",
+            "topic_rationale",
+            "use_note",
+            "verdict"
+          ],
+          "$.runs.*.outputs.*.directions.*": [
+            "hit_indices",
+            "label"
+          ]
+        },
+        "nested_field_types": {
+          "$.runs.*": {
+            "candidate_count": "integer",
+            "context": "string",
+            "first_ordinal": "integer",
+            "last_ordinal": "integer",
+            "model": "string",
+            "outputs": "array<object>",
+            "packet_sha256": "string",
+            "raw_output_sha256": "string",
+            "run": "integer"
+          },
+          "$.runs.*.outputs.*": {
+            "directions": "array<object>",
+            "frames": "array<string>",
+            "generator_agreement": "string",
+            "gloss": "string",
+            "hold_basis": "string",
+            "hold_rationale": "string",
+            "identity": "string",
+            "lemma": "string",
+            "note_hit_checked": "array<integer>",
+            "ordinal": "integer",
+            "pos": "string",
+            "sense_boundary": "string",
+            "sense_note": "string",
+            "topic_rationale": "string",
+            "use_note": "string",
+            "verdict": "string"
+          },
+          "$.runs.*.outputs.*.directions.*": {
+            "hit_indices": "array<integer>",
+            "label": "string"
+          }
+        }
+      },
       "authored_semantic_review_input": {
         "contract_versions": [
           "authored-semantic-review-input-v1"
@@ -2625,7 +2728,10 @@
           "batch_id",
           "candidate_outcomes",
           "contract_version",
+          "generator_proposal_sha256",
           "kind",
+          "raw_outputs_sha256",
+          "review_runs",
           "review_status",
           "reviewer",
           "reviews",
@@ -2635,13 +2741,26 @@
           "batch_id": "string",
           "candidate_outcomes": "array<object>",
           "contract_version": "string",
+          "generator_proposal_sha256": "string",
           "kind": "string",
+          "raw_outputs_sha256": "string",
+          "review_runs": "array<object>",
           "review_status": "string",
           "reviewer": "string",
           "reviews": "array<object>",
           "schema_version": "string"
         },
         "nested_allowed_fields": {
+          "$.review_runs.*": [
+            "candidate_count",
+            "context",
+            "first_ordinal",
+            "last_ordinal",
+            "model",
+            "packet_sha256",
+            "raw_output_sha256",
+            "run"
+          ],
           "$.candidate_outcomes.*": [
             "checked_hit_indices",
             "directions",
@@ -2693,6 +2812,16 @@
           ]
         },
         "nested_field_types": {
+          "$.review_runs.*": {
+            "candidate_count": "integer",
+            "context": "string",
+            "first_ordinal": "integer",
+            "last_ordinal": "integer",
+            "model": "string",
+            "packet_sha256": "string",
+            "raw_output_sha256": "string",
+            "run": "integer"
+          },
           "$.candidate_outcomes.*": {
             "checked_hit_indices": "array<integer>",
             "directions": "array<object>",

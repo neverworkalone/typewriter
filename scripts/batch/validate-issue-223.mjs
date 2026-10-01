@@ -22,6 +22,7 @@ import {
   makeSemanticDecision,
   parseIssue223BatchId,
 } from './build-issue-223-corpus-batch.mjs';
+import { assertInputDerivedFromRaw } from './reviewer-raw-outputs.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
 import { validateAuthoredSemanticDecisionSource, M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION } from './authored-semantic-decision-source.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
@@ -131,7 +132,7 @@ export function candidateRequiresBoundedContext(reviewRow) {
 const LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS = Object.freeze([1, 2, 3, 4]);
 
 export function validateSemanticReviewInputBinding({
-  semanticSource, inputBytes, batchId, admittedRows, candidateRows, candidateAuthor, registry,
+  semanticSource, inputBytes, rawBytes, batchId, admittedRows, candidateRows, candidateAuthor, registry,
 }) {
   const { ordinal } = parseIssue223BatchId(batchId);
   const digest = semanticSource.source_basis.semantic_review_input_sha256;
@@ -150,7 +151,20 @@ export function validateSemanticReviewInputBinding({
     required: ordinal >= REVIEWER_CHECK_FIRST_BATCH,
     hitCountByLemma: bindHitCounts(candidateRows ?? admittedRows),
   });
-  if (ordinal >= REVIEWER_CHECK_FIRST_BATCH) assertReviewerOutcomes(input.candidate_outcomes, candidateRows);
+  if (ordinal >= REVIEWER_CHECK_FIRST_BATCH) {
+    assertReviewerOutcomes(input.candidate_outcomes, candidateRows);
+    // The reviewers' original outputs and run information are preserved next to
+    // the input, and the input must be a mechanical function of them.
+    assert.ok(rawBytes, `${batchId} reviewer raw outputs artifact is missing`);
+    assertInputDerivedFromRaw({
+      input,
+      rawArtifact: JSON.parse(rawBytes.toString('utf8')),
+      rawBytes,
+      candidateRows,
+      glossByLemma: new Map(semanticSource.candidate_records.map((record) => [record.lemma, record.senses[0].gloss])),
+      sha256Bytes,
+    });
+  }
   const admittedLemmas = admittedRows.map((row) => row.morphology_proposal.lemma);
   assert.deepEqual(
     input.reviews.map(({ lemma }) => lemma).sort(),
@@ -479,9 +493,11 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     assert.equal(semanticSource.source_basis.exclusion_manifest_sha256, candidateReview.source_artifacts.exclusion_manifest_sha256);
     assert.equal(semanticSource.candidate_records_sha256, sha256Json(semanticSource.candidate_records));
     const semanticInputPath = path.join(BATCH_DIRECTORY, `${stem}-semantic-review-input.json`);
+    const reviewerRawPath = path.join(BATCH_DIRECTORY, `${stem}-reviewer-raw-outputs.json`);
     const boundInput = validateSemanticReviewInputBinding({
       semanticSource,
       inputBytes: await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null,
+      rawBytes: await fileExists(reviewerRawPath) ? await readFile(reviewerRawPath) : null,
       batchId: candidateReview.batch_id,
       admittedRows,
       candidateRows: candidateReview.decisions,

@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { makeSemanticDecision } from './build-issue-223-corpus-batch.mjs';
+import { outcomeFromRaw, reviewFromRaw, runSummaries } from './reviewer-raw-outputs.mjs';
 import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
 import { candidateRequiresBoundedContext, semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
@@ -94,30 +95,40 @@ const ROW = {
   editorial_judgment: { disposition: 'admit', writer_use_axis: 'S' },
 };
 
-function authoredReview() {
+const GLOSS = RECORD.senses[0].gloss;
+const RAW_OUTPUT = {
+  ordinal: 1,
+  lemma: '가락',
+  identity: 'ok',
+  pos: 'ok',
+  gloss: 'fit',
+  sense_boundary: 'single',
+  verdict: 'pass',
+  generator_agreement: 'agree',
+  sense_note: '하나의 의미로 읽힌다.',
+  use_note: '흐름의 결을 짚는다.',
+  frames: ['“가락”이라는 말이 문장에 번졌다.'],
+  note_hit_checked: [0],
+};
+
+function rawArtifactFor(outputs = [RAW_OUTPUT]) {
   return {
-    lemma: RECORD.lemma,
-    gloss_sha256: sha256Json(RECORD.senses[0].gloss),
-    gloss_judgment: 'fit',
-    boundary_action: 'retain',
-    boundary_classification: 'atomic',
-    boundary_rationale: '하나의 의미로 읽힌다.',
-    semantic_rationale: '풀이가 표제어와 맞는다.',
-    no_relation_rationale: '관계 근거 없음.',
-    decision_rationale: '독립 검토 결과 포함.',
-    frame_rationale: '프레임이 같은 의미를 유지한다.',
-    single_sense_boundary_status: 'pass',
-    identity_check: 'ok',
-    pos_check: 'ok',
-    gloss_check: 'fit',
-    sense_boundary_check: 'single',
-    checked_hit_indices: [0],
-    frames: [{ sentence_frame: '“가락”이라는 말이 문장에 번졌다.', relation_type: 'near', target_class: '흐름' }],
+    schema_version: '1',
+    contract_version: 'reviewer-raw-outputs-v1',
+    kind: 'reviewer-raw-outputs',
+    batch_id: BOUND_BATCH,
+    reviewer: 'reviewer-a',
+    runs: [{
+      run: 1, context: 'isolated-subagent', model: 'm', first_ordinal: 1, last_ordinal: outputs.length,
+      candidate_count: outputs.length, packet_sha256: 'p', raw_output_sha256: sha256Json(outputs), outputs,
+    }],
   };
 }
 
 function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
-  const review = authoredReview();
+  const rawArtifact = rawArtifactFor();
+  const rawBytes = Buffer.from(JSON.stringify(rawArtifact));
+  const review = reviewFromRaw({ lemma: '가락', gloss: GLOSS, raw: RAW_OUTPUT });
   const input = {
     schema_version: '1',
     contract_version: 'authored-semantic-review-input-v1',
@@ -125,11 +136,11 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
     batch_id: BOUND_BATCH,
     reviewer: 'reviewer-a',
     review_status: 'complete',
+    generator_proposal_sha256: 'g',
+    raw_outputs_sha256: sha(rawBytes),
+    review_runs: runSummaries(rawArtifact),
     reviews: [review],
-    candidate_outcomes: [{
-      ordinal: 1, lemma: '가락', generator_disposition: 'admit', generator_agreement: 'agree', verdict: 'pass',
-      identity_check: 'ok', pos_check: 'ok', gloss_check: 'fit', sense_boundary_check: 'single', checked_hit_indices: [0],
-    }],
+    candidate_outcomes: [outcomeFromRaw('admit', RAW_OUTPUT)],
     ...inputOverrides,
   };
   const inputBytes = Buffer.from(JSON.stringify(input));
@@ -144,6 +155,7 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
       decisions: [decision],
     },
     inputBytes,
+    rawBytes,
     batchId: BOUND_BATCH,
     admittedRows: [ROW],
     candidateRows: [ROW],

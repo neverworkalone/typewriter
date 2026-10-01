@@ -16,7 +16,7 @@
     "source_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
     "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
     "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
-    "semantic_review_input_sha256": "080d4d62317a1d332accff2e42a4bcbe150cea86c5bac54fce04035e40d17f85"
+    "semantic_review_input_sha256": "fc4f160be7f6fa7771d52ce37d617dac86d2d0e8ab47da6def83156bd95f2994"
   },
   "provenance": {
     "generator": "claude-sonnet-5-5",
@@ -4615,7 +4615,7 @@
       "candidate_record_sha256": "c2b68e5f325192776c40ccf142285d470fcd2ded38d1b7188a22f9482b1100b0",
       "decision": "included",
       "rank": 8,
-      "decision_rationale": "m5-13891 w9236: 선지자: 맥락 0의 시인·신비주의자와 나란한 선지자, 1의 사람들을 고취시키는 선지자, 2의 선지자 호칭은 앞일을 알고 신의 뜻을 전하는 사람이라는 한 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-13891 w9236: 선지자: 맥락 0·1·2 모두 앞날을 내다보며 신의 뜻을 전하는 인물이라는 하나의 뜻으로 읽힌다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-06-semantic-verification-20261001-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -4624,7 +4624,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-13891 w9236 w9236-s1: 선지자: 맥락 0의 시인·신비주의자와 나란한 선지자, 1의 사람들을 고취시키는 선지자, 2의 선지자 호칭은 앞일을 알고 신의 뜻을 전하는 사람이라는 한 뜻이다. Reviewed gloss SHA-256 1d3ee6851e31878d34b20e66fc4ba5ab6d7c5f8c47412862cb8ce67c7a1cd7e0.",
+          "boundary_rationale": "m5-13891 w9236 w9236-s1: 선지자: 맥락 0·1·2 모두 앞날을 내다보며 신의 뜻을 전하는 인물이라는 하나의 뜻으로 읽힌다. Reviewed gloss SHA-256 1d3ee6851e31878d34b20e66fc4ba5ab6d7c5f8c47412862cb8ce67c7a1cd7e0.",
           "semantic_rationale": "w9236 w9236-s1: 선지자: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 앞날을 내다보며 신의 뜻을 전한다고 여겨지는 인물을 세울 때 쓴다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -4665,13 +4665,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w9236",
         "candidate_record_sha256": "c2b68e5f325192776c40ccf142285d470fcd2ded38d1b7188a22f9482b1100b0",
-        "decision_evidence_sha256": "2bca1f129c40cb5c00a691895b14f6fdf9b4039bcd966956935bd9974047ca0f",
+        "decision_evidence_sha256": "3e0ed509e031b8efa0c5e9d421ca6bc96e261eb818486b4c6f42ca3d97bd84fe",
         "sense_evidence": [
           {
             "sense_id": "w9236-s1",
             "sense_sha256": "5700fcbd0e2d559801396321c36a8f742d6fd8d276da859ea9364cb752d4b88b",
             "gloss_sha256": "1d3ee6851e31878d34b20e66fc4ba5ab6d7c5f8c47412862cb8ce67c7a1cd7e0",
-            "evidence_sha256": "fba0d9100ea30dc58aba795d3f864e8e4b0d03b77682c21e6bf036fe5db80d23"
+            "evidence_sha256": "932ba08418bc1b7fc622a415ab93a616704cb9fcdcaee30b97eda41a72e72766"
           }
         ]
       }
@@ -5387,7 +5387,7 @@
       "candidate_record_sha256": "501af530073be43158f77cc876ca720fc800844ac4194b9dc86920c0a81a1382",
       "decision": "included",
       "rank": 21,
-      "decision_rationale": "m5-13907 w9249: 담보: 맥락 1의 배를 담보로, 2의 건물에 담보가 잡혔는지, 0의 미래를 담보 삼아 모두 빚 등을 보증하려 맡겨 두는 것이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-13907 w9249: 담보: 맥락 0·1·2 모두 빚이나 약속의 보증으로 맡겨 두는 것이라는 하나의 뜻으로 읽힌다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-06-semantic-verification-20261001-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -5396,7 +5396,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-13907 w9249 w9249-s1: 담보: 맥락 1의 배를 담보로, 2의 건물에 담보가 잡혔는지, 0의 미래를 담보 삼아 모두 빚 등을 보증하려 맡겨 두는 것이다. Reviewed gloss SHA-256 29772319904ef94d7ee2fb3d057650a62d8dc80c47f3c86ddc242a6d5ac9628d.",
+          "boundary_rationale": "m5-13907 w9249 w9249-s1: 담보: 맥락 0·1·2 모두 빚이나 약속의 보증으로 맡겨 두는 것이라는 하나의 뜻으로 읽힌다. Reviewed gloss SHA-256 29772319904ef94d7ee2fb3d057650a62d8dc80c47f3c86ddc242a6d5ac9628d.",
           "semantic_rationale": "w9249 w9249-s1: 담보: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 빚이나 약속의 보증으로 무엇을 걸었는지 밝힐 때 쓴다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -5437,13 +5437,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w9249",
         "candidate_record_sha256": "501af530073be43158f77cc876ca720fc800844ac4194b9dc86920c0a81a1382",
-        "decision_evidence_sha256": "f917e0898581f89429f5a76740bc5c1a70b317c12f59328dd32b97cd78d02606",
+        "decision_evidence_sha256": "a5df1089ae3729f2e15c2aa3a94ea1afe3f57a048cbf900465696834facd4284",
         "sense_evidence": [
           {
             "sense_id": "w9249-s1",
             "sense_sha256": "56ed78526f1e13ce32c8817dc786d46a6cd1229ac3293d711577f9991dcae9e6",
             "gloss_sha256": "29772319904ef94d7ee2fb3d057650a62d8dc80c47f3c86ddc242a6d5ac9628d",
-            "evidence_sha256": "59cb14c4d64f5c39c8048167166fe4063f77b9d481a810aa4dc1c165f9529c54"
+            "evidence_sha256": "0c1110d9ea290d7a51c866a4faad72cf5c1a286b93455535856a5460a9b1efa2"
           }
         ]
       }
@@ -6864,7 +6864,7 @@
       "candidate_record_sha256": "652012700b103bdddd85faec66ba169d2fb460e6e8a5efdc911740d4c05bb448",
       "decision": "included",
       "rank": 45,
-      "decision_rationale": "m5-13938 w9273: 겉보기: 맥락 0의 겉보기 규율, 1의 겉보기에 생명이라고는, 2의 겉보기엔 그렇지 않더라도 모두 겉으로 보이는 모양이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-13938 w9273: 겉보기: 맥락 0·1·2 모두 겉으로 드러난 모습을 가리키는 하나의 뜻으로 읽힌다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-06-semantic-verification-20261001-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -6873,7 +6873,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-13938 w9273 w9273-s1: 겉보기: 맥락 0의 겉보기 규율, 1의 겉보기에 생명이라고는, 2의 겉보기엔 그렇지 않더라도 모두 겉으로 보이는 모양이다. Reviewed gloss SHA-256 dc2f10953a669c788400396eb5c46c2ef6617a6f8597fbb9b72d621444842fbc.",
+          "boundary_rationale": "m5-13938 w9273 w9273-s1: 겉보기: 맥락 0·1·2 모두 겉으로 드러난 모습을 가리키는 하나의 뜻으로 읽힌다. Reviewed gloss SHA-256 dc2f10953a669c788400396eb5c46c2ef6617a6f8597fbb9b72d621444842fbc.",
           "semantic_rationale": "w9273 w9273-s1: 겉보기: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 드러난 모습과 실제가 다름을 대비시킬 때 쓴다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -6905,13 +6905,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w9273",
         "candidate_record_sha256": "652012700b103bdddd85faec66ba169d2fb460e6e8a5efdc911740d4c05bb448",
-        "decision_evidence_sha256": "0ad3296726080213ad6c02d2f604de351d2cb1520529a8e0bf882c609bd07cab",
+        "decision_evidence_sha256": "f4aacfcd55793b80d2da30413fedc898783c99f0593b69b00d2a27385855b090",
         "sense_evidence": [
           {
             "sense_id": "w9273-s1",
             "sense_sha256": "c761f2a16ea3624b29c170657976c3ec12f0eaef505bd8ad171a14f48d298b61",
             "gloss_sha256": "dc2f10953a669c788400396eb5c46c2ef6617a6f8597fbb9b72d621444842fbc",
-            "evidence_sha256": "7e3b790a9816361139a9847fd4e7a4ab990307218e675a679f221361d1b5422a"
+            "evidence_sha256": "0f8bd1bf741710bd8568ff0f9002ca12f1b7f3ec4d1db1211bc5ec616c9efdb7"
           }
         ]
       }
@@ -7038,7 +7038,7 @@
       "candidate_record_sha256": "8cf97a8a5f5428edccc96e781cbe255cfdd843a45758e065d47ff6d76ed668be",
       "decision": "included",
       "rank": 48,
-      "decision_rationale": "m5-13942 w9276: 지어내다: 맥락 0의 노래를 지어낸, 1의 모습을 지어낼, 2의 이상한 소리를 지어내는 모두 없던 것을 생각해 만들어 내는 일이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-13942 w9276: 지어내다: 맥락 0·1·2 모두 없던 것을 생각해 내어 만들어 낸다는 하나의 뜻으로 읽힌다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-06-semantic-verification-20261001-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -7047,7 +7047,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-13942 w9276 w9276-s1: 지어내다: 맥락 0의 노래를 지어낸, 1의 모습을 지어낼, 2의 이상한 소리를 지어내는 모두 없던 것을 생각해 만들어 내는 일이다. Reviewed gloss SHA-256 81499c1273729ce135a84cb10e9bdf309654de30b057e978c5660f1fdb9cc68b.",
+          "boundary_rationale": "m5-13942 w9276 w9276-s1: 지어내다: 맥락 0·1·2 모두 없던 것을 생각해 내어 만들어 낸다는 하나의 뜻으로 읽힌다. Reviewed gloss SHA-256 81499c1273729ce135a84cb10e9bdf309654de30b057e978c5660f1fdb9cc68b.",
           "semantic_rationale": "w9276 w9276-s1: 지어내다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 없던 이야기나 모습을 꾸며 만들어 낼 때 쓴다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -7079,13 +7079,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w9276",
         "candidate_record_sha256": "8cf97a8a5f5428edccc96e781cbe255cfdd843a45758e065d47ff6d76ed668be",
-        "decision_evidence_sha256": "54ef457873de39915352c50bcc118db2f4f33807910f0c647a4c5a2764d568fe",
+        "decision_evidence_sha256": "b49c89cb39677b0563767497b1acf8595badb00bd33f176870c7bd1debe8a6be",
         "sense_evidence": [
           {
             "sense_id": "w9276-s1",
             "sense_sha256": "1e6e5e73466abb7674092ae37fde29bb74ec0502158952fa42778ef2748ea946",
             "gloss_sha256": "81499c1273729ce135a84cb10e9bdf309654de30b057e978c5660f1fdb9cc68b",
-            "evidence_sha256": "9fadf51d3dae355677ee80664fed7c9f6fee3cbb082fef70c5c66d54c76864d9"
+            "evidence_sha256": "35112abf9be477db06442007d123db56497451e4a60712ffe1293da72342eaa5"
           }
         ]
       }
@@ -8368,7 +8368,7 @@
       "candidate_record_sha256": "843d6f725cf1c5a84f23da3175926b201dee282c8d61cdfe3b893f5a54092e75",
       "decision": "included",
       "rank": 70,
-      "decision_rationale": "m5-13974 w9298: 사고방식: 맥락 0의 동서양 사고방식, 1의 구닥다리 사고방식, 2의 부끄럽게 생각하는 사고방식 모두 생각하고 판단하는 방식이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-13974 w9298: 사고방식: 맥락 0·1·2 모두 사물을 생각하고 판단하는 방식이라는 하나의 뜻으로 읽힌다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-06-semantic-verification-20261001-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -8377,7 +8377,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-13974 w9298 w9298-s1: 사고방식: 맥락 0의 동서양 사고방식, 1의 구닥다리 사고방식, 2의 부끄럽게 생각하는 사고방식 모두 생각하고 판단하는 방식이다. Reviewed gloss SHA-256 398d23b4b2c5b3b28ebd5203384c1dff01b0daa517467ec22b4bfd61640e2641.",
+          "boundary_rationale": "m5-13974 w9298 w9298-s1: 사고방식: 맥락 0·1·2 모두 사물을 생각하고 판단하는 방식이라는 하나의 뜻으로 읽힌다. Reviewed gloss SHA-256 398d23b4b2c5b3b28ebd5203384c1dff01b0daa517467ec22b4bfd61640e2641.",
           "semantic_rationale": "w9298 w9298-s1: 사고방식: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 인물이나 집단이 사물을 보고 판단하는 틀을 짚을 때 쓴다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -8409,13 +8409,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w9298",
         "candidate_record_sha256": "843d6f725cf1c5a84f23da3175926b201dee282c8d61cdfe3b893f5a54092e75",
-        "decision_evidence_sha256": "0a7be0f33b906932e02b7652b909053faad79bf8174d398328b842e9e4e4c19c",
+        "decision_evidence_sha256": "f177cba0657cf09b43fb5da8f5920c1962c7a9ee32c0a17fb2ff093042b9eebb",
         "sense_evidence": [
           {
             "sense_id": "w9298-s1",
             "sense_sha256": "805abcdf53356f0cf2851d0c16109314943d79627bc057e7028ab749836e85d0",
             "gloss_sha256": "398d23b4b2c5b3b28ebd5203384c1dff01b0daa517467ec22b4bfd61640e2641",
-            "evidence_sha256": "ce96fe10d9a90c73c6f23b3016e0026bb223cfaff1a3b232c6e63a8e0f5ccc4a"
+            "evidence_sha256": "10fc88df996761fd8e4b075c416e9db0af9cd6fd849df91b7ebe5af3de0f9aae"
           }
         ]
       }
@@ -12063,7 +12063,7 @@
       "candidate_record_sha256": "698d5df33e642d5e280e00564d693f237f58a73686096485a632ef8c0cee462a",
       "decision": "included",
       "rank": 132,
-      "decision_rationale": "m5-14051 w9360: 이면: 맥락 0의 이면에 뭔가 더, 1의 작품의 이면, 2의 이면이 묻어나지 않는 눈빛 모두 겉 뒤에 숨은 속이나 뒷면이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-14051 w9360: 이면: 맥락 0·1·2 모두 겉으로 드러난 것 뒤에 숨은 속이나 뒷면이라는 하나의 뜻으로 읽힌다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-06-semantic-verification-20261001-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -12072,7 +12072,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-14051 w9360 w9360-s1: 이면: 맥락 0의 이면에 뭔가 더, 1의 작품의 이면, 2의 이면이 묻어나지 않는 눈빛 모두 겉 뒤에 숨은 속이나 뒷면이다. Reviewed gloss SHA-256 daa759eaa3c97b9b6dbfd06ff93e25966390b9a2ab237480bbbdf012489bbf4c.",
+          "boundary_rationale": "m5-14051 w9360 w9360-s1: 이면: 맥락 0·1·2 모두 겉으로 드러난 것 뒤에 숨은 속이나 뒷면이라는 하나의 뜻으로 읽힌다. Reviewed gloss SHA-256 daa759eaa3c97b9b6dbfd06ff93e25966390b9a2ab237480bbbdf012489bbf4c.",
           "semantic_rationale": "w9360 w9360-s1: 이면: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 겉모습 뒤에 감춰진 사정이나 속을 짚어 말할 때 쓴다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -12113,13 +12113,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w9360",
         "candidate_record_sha256": "698d5df33e642d5e280e00564d693f237f58a73686096485a632ef8c0cee462a",
-        "decision_evidence_sha256": "b3b5c912d23b81277ade7fe931e7f8854cd96005254f927b149440084991fdfb",
+        "decision_evidence_sha256": "48f9e4f7fc1f160abf72a85d6acd6c7314e7c91840f1a0a374a0a699eadf2e5b",
         "sense_evidence": [
           {
             "sense_id": "w9360-s1",
             "sense_sha256": "9965b2896e53524e005a42de5fc2f4f75bbe53469358a64d080fdbca00970cbd",
             "gloss_sha256": "daa759eaa3c97b9b6dbfd06ff93e25966390b9a2ab237480bbbdf012489bbf4c",
-            "evidence_sha256": "4f63e5ae3e8b0dfe1d4322702e709690486fe3ec8ae961e2d7fce64a8f7db942"
+            "evidence_sha256": "4924ce3d2b55eab086a7f96ff2130d068f83c833c505fffd1b0cf931e21e28de"
           }
         ]
       }
@@ -12197,7 +12197,7 @@
       "candidate_record_sha256": "23148d3fead267b773d619eadde5db7c98227d78c47c772a860425f63900970d",
       "decision": "included",
       "rank": 134,
-      "decision_rationale": "m5-14055 w9362: 어처구니없다: 맥락 0의 어처구니없는 일들, 1의 어처구니없게 사랑에 빠졌다, 2의 어처구니없을 정도로 어리석은 모두 기가 막히는 어이없음이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-14055 w9362: 어처구니없다: 맥락 0·1·2 모두 어이가 없어 기가 막힌다는 하나의 뜻으로 읽힌다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-06-semantic-verification-20261001-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -12206,7 +12206,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-14055 w9362 w9362-s1: 어처구니없다: 맥락 0의 어처구니없는 일들, 1의 어처구니없게 사랑에 빠졌다, 2의 어처구니없을 정도로 어리석은 모두 기가 막히는 어이없음이다. Reviewed gloss SHA-256 99d32ab9f86d871a884082644afb7e2918be8f36648bd6a8a422c43be2dde639.",
+          "boundary_rationale": "m5-14055 w9362 w9362-s1: 어처구니없다: 맥락 0·1·2 모두 어이가 없어 기가 막힌다는 하나의 뜻으로 읽힌다. Reviewed gloss SHA-256 99d32ab9f86d871a884082644afb7e2918be8f36648bd6a8a422c43be2dde639.",
           "semantic_rationale": "w9362 w9362-s1: 어처구니없다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 어이없고 황당한 일이나 태도를 평가해 말할 때 쓴다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -12238,13 +12238,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w9362",
         "candidate_record_sha256": "23148d3fead267b773d619eadde5db7c98227d78c47c772a860425f63900970d",
-        "decision_evidence_sha256": "26c974dd2afb5222b7ba052b77382b88024d32cce9d99e52fcbf3ef1c623f10c",
+        "decision_evidence_sha256": "992e309803c795f5aed7a765040657edc118e9671ab4b50834171b4c531a3b45",
         "sense_evidence": [
           {
             "sense_id": "w9362-s1",
             "sense_sha256": "7138f143aa84130a16701662e9b619acce8a18f578963a57af51e16b3eb68373",
             "gloss_sha256": "99d32ab9f86d871a884082644afb7e2918be8f36648bd6a8a422c43be2dde639",
-            "evidence_sha256": "8a71c61fec3f01c1b90249799464f8e917b1462148bd38d78f6a194486a41f23"
+            "evidence_sha256": "3ff60c68d425a3a78a54adb150db6ea6e3f7214f101ba87cc770c9422362c007"
           }
         ]
       }
@@ -12255,7 +12255,7 @@
       "candidate_record_sha256": "9ed07237c51951d20176b9d250ba5691b5e7ce9bd8ad475a93ec0e2cd64b4b3d",
       "decision": "included",
       "rank": 135,
-      "decision_rationale": "m5-14056 w9363: 윙윙거리다: 맥락 0의 전기톱 소리, 1의 비행기, 2의 정맥 속에서 윙윙거렸다 모두 윙윙 하는 소리를 계속 내는 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-14056 w9363: 윙윙거리다: 맥락 0·1·2 모두 윙윙 하는 소리를 계속 낸다는 하나의 뜻으로 읽힌다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-06-semantic-verification-20261001-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -12264,7 +12264,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-14056 w9363 w9363-s1: 윙윙거리다: 맥락 0의 전기톱 소리, 1의 비행기, 2의 정맥 속에서 윙윙거렸다 모두 윙윙 하는 소리를 계속 내는 뜻이다. Reviewed gloss SHA-256 cac17f46899396d3bd2c9542b3d477f1938343c5df8b482ad3efafef35a265a3.",
+          "boundary_rationale": "m5-14056 w9363 w9363-s1: 윙윙거리다: 맥락 0·1·2 모두 윙윙 하는 소리를 계속 낸다는 하나의 뜻으로 읽힌다. Reviewed gloss SHA-256 cac17f46899396d3bd2c9542b3d477f1938343c5df8b482ad3efafef35a265a3.",
           "semantic_rationale": "w9363 w9363-s1: 윙윙거리다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 기계나 벌레, 비행기의 낮고 이어지는 소리를 그릴 때 쓴다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -12296,13 +12296,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w9363",
         "candidate_record_sha256": "9ed07237c51951d20176b9d250ba5691b5e7ce9bd8ad475a93ec0e2cd64b4b3d",
-        "decision_evidence_sha256": "b8ad18fa5259ccf132eeb96ffbe8ea20eaa9587be63a56406d36a44268c8bee7",
+        "decision_evidence_sha256": "cb9d0350a0bb5a1c74a6dff901fb29600034734b0e1db6719867008faa0d3f0c",
         "sense_evidence": [
           {
             "sense_id": "w9363-s1",
             "sense_sha256": "1f852632901bc32942153b9244545e4579a32aa1d625ca188b27f6035313ca6d",
             "gloss_sha256": "cac17f46899396d3bd2c9542b3d477f1938343c5df8b482ad3efafef35a265a3",
-            "evidence_sha256": "f1552eeb8a67fabd607b0a083c52e829ba759211c1fc1cf5d74ad3f73a0f243d"
+            "evidence_sha256": "9dcbddce934305a9b3711eac0da24f8c80791ad8535905cb61b4aedc2ca6e85b"
           }
         ]
       }
@@ -14690,7 +14690,7 @@
               {
                 "gloss_excerpt": "편안하고 아늑하게 지낼 수 있는 곳.",
                 "gloss_start": 0,
-                "sentence_frame": "작은 방이지만 내 보금자리가 생겼다는 것이 든든했다.",
+                "sentence_frame": "철새들도 겨울이면 따뜻한 갈대숲을 제 보금자리로 삼았다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "보금자리의 검토된 핵심 뜻"
@@ -14712,7 +14712,7 @@
             "sense_id": "w9403-s1",
             "sense_sha256": "747025e464facb480e8dd12aef43eec4afda37ef99590dbb87c79bdd5f2ee6e6",
             "gloss_sha256": "a02440809576f0460de37b2da54106962186a4f99da6a3e25ce3b3b0107d7f95",
-            "evidence_sha256": "55577cfabeee54024280ad8ad99e956c0423f1e59e419f2d2cadb71605929a96"
+            "evidence_sha256": "7f5039bd161a1fb3daed8c06074b26b44e503046d7a2378fedb84a5ae43fc6eb"
           }
         ]
       }
@@ -15190,7 +15190,7 @@
               {
                 "gloss_excerpt": "표정.",
                 "gloss_start": 14,
-                "sentence_frame": "그는 낯빛 하나 바꾸지 않고 태연히 대꾸했다.",
+                "sentence_frame": "그녀는 속이 상했지만 낯빛을 감추고 담담히 인사를 건넸다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "낯빛의 검토된 핵심 뜻"
@@ -15212,7 +15212,7 @@
             "sense_id": "w9411-s1",
             "sense_sha256": "975c561b9ff3c96a9f5d2592cfb01b3b3af6af267eb89f263b20a1426ed31b2e",
             "gloss_sha256": "9788723040ad6e81f3dab415e5a566a7943e15e9623dc081dd32ab638b20ae5c",
-            "evidence_sha256": "0f6252e0ff9f9011a5cf2264cd63024db58ad6f2ae2fb03f8d39c96e55ab78eb"
+            "evidence_sha256": "c5f9b1c0e6ba89b683bd912e78ebb223ae30e89a7f3ad5ed6de0afc1ea769911"
           }
         ]
       }
@@ -18793,5 +18793,5 @@
       }
     }
   ],
-  "artifact_sha256": "cfc907b678c823791c15c6a66456d7be10a2aa622839b7c45ac20f7e9f84981c"
+  "artifact_sha256": "01bb68f4016348993864060e99dc2805b9f79dd3a039887fc0e1861613ea751b"
 }

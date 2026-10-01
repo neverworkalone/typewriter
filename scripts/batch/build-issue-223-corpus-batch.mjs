@@ -15,6 +15,7 @@ import {
   inspectWriterDomainEvidence,
 } from '../validate/lexical-quality.mjs';
 import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
+import { assertInputDerivedFromRaw } from './reviewer-raw-outputs.mjs';
 import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
@@ -531,13 +532,13 @@ function requireArgs(args) {
     return [match[1], match[2]];
   }));
   for (const key of ['batch-id', 'analysis-directory', 'authored-decisions']) {
-    if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=data/reference/... --authored-decisions=data/batches/...json [--semantic-reviews=...json]`);
+    if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=data/reference/... --authored-decisions=data/batches/...json [--semantic-reviews=...json] [--reviewer-raw-outputs=...json]`);
   }
   return { ...values, 'review-only': values['review-only'] === 'true' };
 }
 
 export async function buildIssue223CorpusBatch({
-  batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewOnly = false,
+  batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewerRawOutputsPath, reviewOnly = false,
 }) {
   const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
@@ -699,6 +700,7 @@ export async function buildIssue223CorpusBatch({
   const reviewPath = path.join(batchDirectory, `${batchStem}-candidate-review.json`);
   const semanticPath = path.join(batchDirectory, `${batchStem}-semantic-decisions.json`);
   const semanticInputPath = path.join(batchDirectory, `${batchStem}-semantic-review-input.json`);
+  const reviewerRawPath = path.join(batchDirectory, `${batchStem}-reviewer-raw-outputs.json`);
   const importPath = path.join(canonicalDirectory, `${batchStem}.jsonl`);
   if (reviewOnly) {
     for (const sidecarPath of [semanticPath, importPath]) {
@@ -746,7 +748,20 @@ export async function buildIssue223CorpusBatch({
     required: batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH,
     hitCountByLemma: bindHitCounts(rows),
   });
-  if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
+  let reviewerRawBytes = null;
+  if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) {
+    assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
+    assert.ok(reviewerRawOutputsPath, 'this batch requires --reviewer-raw-outputs: the reviewers\' original outputs must be preserved');
+    reviewerRawBytes = await readFile(path.resolve(ROOT, reviewerRawOutputsPath));
+    assertInputDerivedFromRaw({
+      input: semanticInput,
+      rawArtifact: JSON.parse(reviewerRawBytes.toString('utf8')),
+      rawBytes: reviewerRawBytes,
+      candidateRows: rows,
+      glossByLemma: new Map(admittedRows.map((row) => [row.morphology_proposal.lemma, row.editorial_judgment.writer_gloss])),
+      sha256Bytes,
+    });
+  }
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
   assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
   assert.equal(semanticReviewByLemma.size, admittedRows.length, 'semantic review input must cover exactly the admitted records');
@@ -864,6 +879,7 @@ export async function buildIssue223CorpusBatch({
     writeFile(reviewPath, reviewBytes),
     writeFile(semanticPath, semanticBytes),
     writeFile(semanticInputPath, semanticInputBytes),
+    ...(reviewerRawBytes ? [writeFile(reviewerRawPath, reviewerRawBytes)] : []),
     writeFile(importPath, importBytes),
   ]);
 
@@ -951,6 +967,7 @@ if (isMain) {
     analysisDirectory: args['analysis-directory'],
     authoredDecisionsPath: args['authored-decisions'],
     semanticReviewsPath: args['semantic-reviews'],
+    reviewerRawOutputsPath: args['reviewer-raw-outputs'],
     reviewOnly: args['review-only'],
   }).then((summary) => {
     console.log(JSON.stringify(summary, null, 2));

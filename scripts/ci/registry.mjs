@@ -182,6 +182,10 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
       ),
       commandCheck(
+        'Test Issue #223 reviewer raw-output preservation and derivation',
+        ['--test', 'scripts/batch/reviewer-raw-outputs.test.mjs'],
+      ),
+      commandCheck(
         'Test Issue #223 source-bound paragraph references',
         ['--test', 'scripts/batch/build-issue-223-corpus-batch.test.mjs'],
       ),
