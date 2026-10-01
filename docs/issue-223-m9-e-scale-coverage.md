@@ -29,6 +29,10 @@ Six preliminary B05 admissions with source-bound analyzer ambiguity were held, p
 
 `scripts/batch/build-issue-223-corpus-batch.mjs` takes a batch ID of the form `issue-223-m9-e-corpus-batch-NN-YYYYMMDD`; the date is validated and source/pass IDs derive from it. Inventory and canonical IDs continue only from lower-numbered batches, so rebuilding an earlier batch is unaffected by later artifacts. The builder never mints semantic judgments: admitted records require a separately authored `--semantic-reviews` input (one review per admitted lemma, bound to the reviewed gloss digest, with explicit gloss/sense-boundary judgments and diagnostic frames). Missing or mismatched reviews fail closed. Review-only batches need no semantic input.
 
+## Known provenance limitation (owner override)
+
+The semantic-decision sources for B01–B04 (1,206 records) were produced by the earlier builder, which generated the judgment fields (`gloss_judgment`, single-sense boundary review) itself rather than consuming independently authored reviews. They satisfy the shared validators but do not establish independent editorial review. By owner decision for this checkpoint, they remain as imported; the builder now fails closed for any later batch. Replacing them with independently authored reviews is deferred to separate follow-up work, and expansion beyond this checkpoint (including B05 imports) proceeds in a later PR under the new contract.
+
 ## Validation
 
 The Issue #223 validator checks source-bound candidate evidence, canonical imports for B01–B04, semantic coverage, direct search, and deterministic SQLite builds. For B05 it verifies the review-only marker, the absence of semantic and canonical sidecars, and that deferred IDs and lemmas are not already canonical. Normal CI separately discovers and checks every tracked M9 corpus candidate-review artifact.
