@@ -42,6 +42,13 @@ The gate is only binding if GitHub enforces it. The owner should:
 
 Until both are set, the gate reports failures but does not block a merge.
 
+**Owner override (2026-10-02):** the repository owner decided to keep the current
+state. As of this change `master` has no branch protection or rulesets, so the
+required check and code-owner review are **not enforced**, and the gate reports
+but does not block. A merge of anything that depends on this gate therefore rests
+on the owner's own review, not on GitHub enforcement. This override can be
+withdrawn by enabling the two settings above.
+
 ## What this gate does NOT prove
 
 The gate separates the *trust root* from the producer; it does not authenticate
