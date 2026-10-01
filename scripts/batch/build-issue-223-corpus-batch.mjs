@@ -142,7 +142,7 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
       candidate_record_id: null,
       disposition_basis: editorial.basis,
       ...(editorial.basis === 'unresolved-identity'
-        ? defaultIdentityEvidence(editorial, hitRefs)
+        ? defaultIdentityEvidence(editorial, hitRefs, candidate)
         : {}),
       ...(editorial.basis === 'unresolved-sense'
         ? {
@@ -208,9 +208,33 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
 // A bounded-context identity hold needs cited paragraphs. When no representative
 // context exists, the hold rests on the analyzer's morphology blocker alone and
 // carries no context evidence unless the author supplies explicit evidence.
-export function defaultIdentityEvidence(editorial, hitRefs) {
+// With no contexts, a candidate whose every observed form merely contains the
+// lemma inside a longer word (never starting with it) is a component-only
+// identity hold, which the shared validator accepts with the analyzed forms as
+// evidence.
+export function componentOnlyIdentityEvidence(candidate, rationale) {
+  const lemma = candidate.proposed_lemma;
+  const forms = (candidate.observed_surface_forms ?? []).map(({ surface }) => surface);
+  const spans = candidate.observed_morpheme_spans ?? [];
+  const componentOnly = forms.length > 0
+    && new Set(forms).size === forms.length
+    && forms.every((surface) => typeof surface === 'string' && surface.includes(lemma) && !surface.startsWith(lemma))
+    && spans.some(({ surface }) => surface === lemma);
+  if (!componentOnly) return null;
+  return {
+    evidence_type: 'reviewed-analyzed-forms-show-component-only-usage',
+    rationale,
+    candidate_morpheme_span_surface: lemma,
+    observed_surface_forms: forms,
+  };
+}
+
+export function defaultIdentityEvidence(editorial, hitRefs, candidate) {
   if (editorial.identity_evidence !== undefined) return { identity_evidence: editorial.identity_evidence };
-  if (hitRefs.length === 0 && editorial.paragraph_ids === undefined) return {};
+  if (hitRefs.length === 0 && editorial.paragraph_ids === undefined) {
+    const componentOnly = candidate ? componentOnlyIdentityEvidence(candidate, editorial.rationale) : null;
+    return componentOnly ? { identity_evidence: componentOnly } : {};
+  }
   return {
     identity_evidence: {
       evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',

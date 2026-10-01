@@ -5,6 +5,7 @@ import {
   bindAuthoredParagraphReferences,
   assertIndependentSemanticReviewer,
   assertReviewerChecks,
+  componentOnlyIdentityEvidence,
   assertReviewerOutcomes,
   bindHitCounts,
   assertSemanticReviewEnvelope,
@@ -247,4 +248,26 @@ test('Issue #223 reviewer outcomes reject missing, contradicted, and unbound evi
   rejects('checked context repeated', mutate((o) => { o[0].checked_hit_indices = [0, 0]; }), /twice/u);
   rejects('direction context out of range', mutate((o) => { o[1].directions[0].hit_indices = [7]; }), /outside/u);
   rejects('one direction only', mutate((o) => { o[1].directions = [o[1].directions[0]]; }), /two directions/u);
+});
+
+test('Issue #223 component-only identity holds are derived from the analyzed forms when no context exists', () => {
+  const candidate = (forms, spans = [{ surface: '식이' }]) => ({
+    proposed_lemma: '식이',
+    observed_surface_forms: forms.map((surface) => ({ surface })),
+    observed_morpheme_spans: spans,
+  });
+  const evidence = componentOnlyIdentityEvidence(candidate(['봉식이가', '창식이는']), '이름 조각이다.');
+  assert.deepEqual(evidence, {
+    evidence_type: 'reviewed-analyzed-forms-show-component-only-usage',
+    rationale: '이름 조각이다.',
+    candidate_morpheme_span_surface: '식이',
+    observed_surface_forms: ['봉식이가', '창식이는'],
+  });
+  assert.deepEqual(defaultIdentityEvidence({ rationale: 'r' }, [], candidate(['봉식이가'])).identity_evidence.observed_surface_forms, ['봉식이가']);
+  // A form that starts with the lemma, no form, a repeated form, or no matching span is not component-only.
+  assert.equal(componentOnlyIdentityEvidence(candidate(['식이가', '봉식이가']), 'r'), null);
+  assert.equal(componentOnlyIdentityEvidence(candidate([]), 'r'), null);
+  assert.equal(componentOnlyIdentityEvidence(candidate(['봉식이가', '봉식이가']), 'r'), null);
+  assert.equal(componentOnlyIdentityEvidence(candidate(['봉식이가'], [{ surface: '다른' }]), 'r'), null);
+  assert.deepEqual(defaultIdentityEvidence({ rationale: 'r' }, [], candidate(['식이가'])), {});
 });
