@@ -20,7 +20,7 @@ import { validateIssue222 } from './validate-issue-222.mjs';
 import { validateAuthoredSemanticDecisionSource, M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION } from './authored-semantic-decision-source.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import { productionReviewRows, productionStageEvidence } from './validate-issue-211.mjs';
-import { hasMorphologyBlocker, validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
+import { validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import {
   buildSemanticAuditFromDecisionSource,
@@ -107,17 +107,6 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
     currentDigest === expectedDigest || sourceDigestExistsInGitHistory(relativePath, expectedDigest),
     `${label} source digest must match the current source or a version retained in Git history`,
   );
-}
-
-// Admissions (and sense holds) need at least one morphology-bound paragraph
-// context. An identity hold claims no lexical entry, so it may rest on a
-// component-only analysis or on the analyzer's own morphology blocker.
-export function candidateRequiresBoundedContext(reviewRow) {
-  const judgment = reviewRow.editorial_judgment;
-  if (judgment.disposition !== 'hold' || judgment.disposition_basis !== 'unresolved-identity') return true;
-  const componentOnly = judgment.identity_evidence?.evidence_type
-    === 'reviewed-analyzed-forms-show-component-only-usage';
-  return !(componentOnly || hasMorphologyBlocker(reviewRow.morphology_proposal));
 }
 
 // B01-B04 predate the bound semantic-review input contract (owner override,
@@ -379,10 +368,13 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
         if (selected.evidence.evidence_type === 'observed_surface_form_contexts_and_literal_text_match_count'
           || selected.evidence.evidence_type === 'candidate_morpheme_rooted_eojeol_contexts_and_literal_text_match_count') {
           assert.equal(selected.proposed_lemma, localCandidate.proposed_lemma);
-          if (candidateRequiresBoundedContext(reviewRow)) {
+          const componentOnlyBoundaryHold = reviewRow.editorial_judgment.disposition === 'hold'
+            && reviewRow.editorial_judgment.disposition_basis === 'unresolved-identity'
+            && reviewRow.editorial_judgment.identity_evidence?.evidence_type
+              === 'reviewed-analyzed-forms-show-component-only-usage';
+          if (!componentOnlyBoundaryHold) {
             assert.ok(selected.evidence.representative_hits.length > 0, `${candidateLabel} ${reviewRow.inventory_id} needs at least one morphology-bound paragraph context`);
-          } else if (reviewRow.editorial_judgment.identity_evidence?.evidence_type
-            === 'reviewed-analyzed-forms-show-component-only-usage') {
+          } else {
             assert.equal(selected.evidence.representative_hits.length, 0);
           }
           const localHitsById = new Map(localCandidate.evidence.representative_hits.map((hit) => [hit.paragraph_id, hit]));

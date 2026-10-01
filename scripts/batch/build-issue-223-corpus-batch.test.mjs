@@ -4,7 +4,6 @@ import test from 'node:test';
 import {
   bindAuthoredParagraphReferences,
   assertSemanticReviewEnvelope,
-  defaultIdentityEvidence,
   issue223CorrectionPassId,
   makeSemanticDecision,
   parseIssue223BatchId,
@@ -134,14 +133,4 @@ test('Issue #223 authored frames must match derived gloss spans exactly', () => 
   const review = (frames) => authoredReview({ gloss_sha256: sha256Json(multi.senses[0].gloss), frames });
   assert.throws(() => makeSemanticDecision(ROW, multi, 1, 'pass', 'source', review([frame])), /one frame per gloss span/u);
   assert.throws(() => makeSemanticDecision(ROW, multi, 1, 'pass', 'source', review([frame, frame, frame])), /one frame per gloss span/u);
-});
-
-test('Issue #223 identity holds cite bounded contexts only when contexts exist', () => {
-  const editorial = { rationale: '분석기 모호성.' };
-  assert.deepEqual(defaultIdentityEvidence(editorial, []), {});
-  const hits = [{ paragraph_id: 'document.1' }, { paragraph_id: 'document.2' }];
-  assert.deepEqual(defaultIdentityEvidence(editorial, hits).identity_evidence.paragraph_ids, ['document.1', 'document.2']);
-  assert.deepEqual(defaultIdentityEvidence({ ...editorial, paragraph_ids: [1] }, hits).identity_evidence.paragraph_ids, ['document.2']);
-  const explicit = { evidence_type: 'reviewed-analyzed-forms-show-component-only-usage' };
-  assert.equal(defaultIdentityEvidence({ ...editorial, identity_evidence: explicit }, []).identity_evidence, explicit);
 });

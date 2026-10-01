@@ -21,7 +21,7 @@ function fail(label, message, suffix = 'DISPOSITION') {
   throw error;
 }
 
-export function hasMorphologyBlocker(proposal) {
+function hasMorphologyBlocker(proposal) {
   return MORPHOLOGY_BLOCKING_STATUSES.has(proposal?.ambiguity_status)
     || proposal?.ambiguous_observed_surface_count_in_sample > 0
     || proposal?.pos_interpretation_count_in_sample > 1
