@@ -6,6 +6,7 @@ import { sha256Json } from '../validate/semantic-audit.mjs';
 import {
   assertInputBoundToRunRecord,
   assertInputDerivedFromRaw,
+  assertReviewNotesAreCandidateSpecific,
   outcomeFromRaw,
   proposalDigests,
   reviewFromRaw,
@@ -173,6 +174,22 @@ test('review rows exist exactly for reviewer passes', () => {
   rejects((i) => { i.reviews.push(structuredClone(i.reviews[0])); }, /exactly for the reviewer passes/u);
 });
 
+test('the outcome and the review row must cite the same verdicts and contexts, even with recomputed digests', () => {
+  const base = fixture();
+  const rejects = (name, change, pattern) => {
+    const input = structuredClone(base.input);
+    change(input);
+    assert.throws(() => bound({ ...base, input }), pattern, name);
+  };
+  // The outcome says contexts [0,1] were checked; the review row (and so the
+  // semantic decision) must not quietly cite different ones.
+  rejects('review cites other contexts', (i) => { i.reviews[0].checked_hit_indices = [0]; }, /disagree on checked_hit_indices/u);
+  rejects('outcome cites other contexts', (i) => { i.candidate_outcomes[0].checked_hit_indices = [1]; }, /disagree on checked_hit_indices/u);
+  rejects('verdict axis differs', (i) => { i.reviews[0].identity_check = 'unresolved'; }, /disagree on identity_check/u);
+  rejects('gloss verdict differs', (i) => { i.candidate_outcomes[0].gloss_check = 'misfit'; }, /disagree on gloss_check/u);
+  rejects('boundary verdict differs', (i) => { i.reviews[0].sense_boundary_check = 'multiple'; }, /disagree on sense_boundary_check/u);
+});
+
 test('locally staged raw outputs re-derive the run record and the input', () => {
   const base = fixture();
   derived(base);
@@ -190,4 +207,16 @@ test('locally staged raw outputs re-derive the run record and the input', () => 
   rejects('wrong kind', (a) => { a.rawArtifact.kind = 'other'; }, /wrong kind/u);
   // The staged proposal's gloss must be the admitted gloss.
   assert.throws(() => derived({ ...base, glossByLemma: new Map([['가락', '바뀐 풀이']]) }), /admitted gloss differs/u);
+});
+
+test('templated review notes are rejected, specific ones pass', () => {
+  const row = (lemma, boundary, semantic) => ({ lemma, boundary_rationale: `${lemma}: ${boundary}`, semantic_rationale: `${lemma}: ${semantic}` });
+  const specific = Array.from({ length: 20 }, (_, i) => row(`어${i}`, `맥락 0·1은 ${i}번 쓰임만 보여 한 뜻이다.`.replace(/[0-9]+번/u, `${'가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허'[i]}번`), `${i}에 맞는 고유한 설명이다 ${'가나다라마바사아자차카타파하'[i % 14]}.`));
+  assertReviewNotesAreCandidateSpecific(specific);
+  // One identical sentence for every pass (the rejected B07 shard 2 shape).
+  const templated = Array.from({ length: 20 }, (_, i) => row(`어${i}`, '컨텍스트 0~2가 같은 하나의 풀이로 읽힌다.', '표제어의 쓰임을 짚는다.'));
+  assert.throws(() => assertReviewNotesAreCandidateSpecific(templated), /reuse the same boundary_rationale text/u);
+  // A couple of coincidental repeats are tolerated.
+  const mostly = specific.map((r, i) => (i < 2 ? { ...r, boundary_rationale: `${r.lemma}: 같은 문장이다.` } : r));
+  assertReviewNotesAreCandidateSpecific(mostly);
 });

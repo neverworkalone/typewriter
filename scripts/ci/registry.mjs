@@ -293,6 +293,7 @@ export const CI_CATEGORIES = Object.freeze({
       globalCanonicalAuditCheck(),
       testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
       inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
+      npmCheck('Validate Issue #223 committed artifacts with two-build reproducibility', 'batch:issue-223:check:deep'),
       testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
       npmCheck(
         'Run 100K/500K/1M release-shaped performance and scale benchmark',

@@ -80,6 +80,16 @@ test('tampering with any committed B06 artifact is rejected', async () => {
     a.inputBytes = Buffer.from(`${JSON.stringify(input, null, 2)}\n`);
     a.semanticSource.source_basis.semantic_review_input_sha256 = sha(a.inputBytes);
   }, /different lemma|digest of the reviewed proposals/u);
+  // The outcome and the review row are two tracked records of one reviewer pass:
+  // changing the contexts one cites (to still-valid indices) while the other and
+  // the semantic source digest are consistently rebound must still be rejected.
+  rejects('outcome and review row cite different contexts', (a) => {
+    const input = JSON.parse(inputBytes.toString('utf8'));
+    const outcome = input.candidate_outcomes.find((entry) => entry.verdict === 'pass' && entry.checked_hit_indices.length > 1);
+    outcome.checked_hit_indices = [outcome.checked_hit_indices[1]];
+    a.inputBytes = Buffer.from(`${JSON.stringify(input, null, 2)}\n`);
+    a.semanticSource.source_basis.semantic_review_input_sha256 = sha(a.inputBytes);
+  }, /disagree on checked_hit_indices/u);
   // The reviewer may not be the candidate-review author, and must be registered.
   rejects('self-review', (a) => { a.candidateAuthor = JSON.parse(inputBytes.toString('utf8')).reviewer; }, /self-review/u);
   rejects('unregistered reviewer', (a) => { a.registry = new Set(['someone-else']); }, /trusted reviewer registry/u);

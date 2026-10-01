@@ -108,6 +108,29 @@ export function runRecordFromRaw(rawArtifact) {
   };
 }
 
+// A review that reuses one sentence for many candidates was templated, not
+// reviewed candidate by candidate. Reasoning text (with the lemma, context
+// indices, and digits removed) may repeat for at most a small share of rows.
+const MAX_REPEATED_NOTE_SHARE = 0.1;
+export function assertReviewNotesAreCandidateSpecific(reviews) {
+  for (const field of ['boundary_rationale', 'semantic_rationale']) {
+    const groups = new Map();
+    for (const review of reviews) {
+      const key = String(review[field])
+        .split(review.lemma).join('§')
+        .replace(/^§: /u, '')
+        .replace(/(?:맥락|컨텍스트) *[0-9~·,\s]+/gu, '')
+        .replace(/[0-9]/gu, '#')
+        .replace(/\s+/gu, ' ')
+        .trim();
+      groups.set(key, (groups.get(key) ?? 0) + 1);
+    }
+    const repeated = [...groups.values()].filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
+    assert.ok(repeated <= Math.floor(reviews.length * MAX_REPEATED_NOTE_SHARE),
+      `${repeated} of ${reviews.length} review rows reuse the same ${field} text; notes must be specific to each candidate`);
+  }
+}
+
 function assertRunCoverage(runs, candidateCount, outputsPerRun) {
   assert.ok(Array.isArray(runs) && runs.length > 0, 'reviewer run record lists no runs');
   let next = 1;
@@ -182,8 +205,14 @@ export function assertInputBoundToRunRecord({
       `${lemma}: the admitted gloss differs from the gloss the reviewer assessed`);
     assert.equal(review.gloss_sha256, proposals[index].gloss_sha256,
       `${lemma}: the review row is not bound to the gloss the reviewer assessed`);
+    // The outcome and the review row are two tracked records of one reviewer
+    // pass; they must cite the same four verdicts and the same checked contexts.
+    for (const field of ['identity_check', 'pos_check', 'gloss_check', 'sense_boundary_check', 'checked_hit_indices']) {
+      assert.deepEqual(review[field], outcome[field], `${lemma}: the outcome and the review row disagree on ${field}`);
+    }
   });
   assert.equal(input.reviews.length, passes, 'review rows must exist exactly for the reviewer passes');
+  assertReviewNotesAreCandidateSpecific(input.reviews);
 }
 
 // Local check, where the raw outputs are staged outside the repository: the

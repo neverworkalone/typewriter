@@ -541,12 +541,12 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
   return batches;
 }
 
-async function validateDeterministicBuild(admittedRecords) {
+async function validateDeterministicBuild(admittedRecords, { compareSecondBuild = true } = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-223-determinism-'));
   try {
     const snapshots = [];
     let directlySearchable = 0;
-    for (const name of ['first', 'second']) {
+    for (const name of compareSecondBuild ? ['first', 'second'] : ['first']) {
       const outputPath = path.join(temporaryDirectory, `${name}.sqlite`);
       await buildDictionary({
         inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
@@ -569,8 +569,14 @@ async function validateDeterministicBuild(admittedRecords) {
         database.close();
       }
     }
-    assert.deepEqual(snapshots[0], snapshots[1], 'two SQLite builds must have identical logical contents');
-    return { logical_builds_compared: 2, deterministic_logical_contents: true, issue_223_records_directly_searchable: directlySearchable };
+    // Independent two-build reproducibility is a deep/manual validation path
+    // (REVIEW.md); normal CI builds once and checks direct search.
+    if (compareSecondBuild) assert.deepEqual(snapshots[0], snapshots[1], 'two SQLite builds must have identical logical contents');
+    return {
+      logical_builds_compared: snapshots.length,
+      ...(compareSecondBuild ? { deterministic_logical_contents: true } : {}),
+      issue_223_records_directly_searchable: directlySearchable,
+    };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
@@ -589,7 +595,7 @@ async function stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence) {
   return JSON.parse(await readFile(stagedPath, 'utf8'));
 }
 
-export async function validateIssue223({ verifyLocalCorpusEvidence = true, validatePreviousIssue = true } = {}) {
+export async function validateIssue223({ verifyLocalCorpusEvidence = true, validatePreviousIssue = true, compareSecondBuild = true } = {}) {
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const batches = await validateCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence });
   const issue223Imports = batches.flatMap(({ importRecords }) => importRecords);
@@ -652,7 +658,7 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
     assert.equal(existing, undefined, `Canonical lemma ${record.lemma} must not have duplicate records (${existing ?? ''}, ${record.id})`);
     duplicateLemmas.set(record.lemma, record.id);
   }
-  const deterministicBuild = await validateDeterministicBuild(issue223Imports);
+  const deterministicBuild = await validateDeterministicBuild(issue223Imports, { compareSecondBuild });
   const previousIssue = validatePreviousIssue ? await validateIssue222({ verifyLocalCorpusEvidence }) : undefined;
   return {
     issue: 223,
@@ -690,7 +696,8 @@ const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === path.r
 if (isMainModule) {
   const verifyLocalCorpusEvidence = !process.argv.includes('--no-local-corpus-evidence');
   const validatePreviousIssue = !process.argv.includes('--skip-issue-222');
-  validateIssue223({ verifyLocalCorpusEvidence, validatePreviousIssue })
+  const compareSecondBuild = !process.argv.includes('--single-build');
+  validateIssue223({ verifyLocalCorpusEvidence, validatePreviousIssue, compareSecondBuild })
     .then((summary) => console.log(JSON.stringify(summary, null, 2)))
     .catch((error) => {
       console.error(error.code ? `${error.code}: ${error.message}` : error.message);
