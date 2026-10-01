@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateReviewOnlyCanonicalImportBoundary } from './validate-issue-223.mjs';
+import { semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary } from './validate-issue-223.mjs';
 
 function reviewOnlyBatch() {
   return {
@@ -62,4 +62,18 @@ test('Issue #223 review-only boundary binds its deferred count to the admit deci
     canonicalImportExists: false,
     currentCanonicalRecords: [],
   }));
+});
+
+test('Issue #223 validator derives the correction pass from a later batch date', () => {
+  const review = {
+    batch_id: 'issue-223-m9-e-corpus-batch-06-20261002',
+    source_id: 'candidate-source',
+    provenance: { generation_pass_id: 'generation' },
+    decision_counts: { admit: 1 },
+  };
+  const semantic = { source_id: 'semantic-source', provenance: { verification_pass_id: 'verify', generator_version: 'v' } };
+  assert.equal(
+    semanticDecisionConfig(review, semantic, 'data/batches/x.json').correctionPassId,
+    'issue-223-m9-e-corpus-batch-06-correction-20261002-r1',
+  );
 });

@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import {
   bindAuthoredParagraphReferences,
+  assertSemanticReviewEnvelope,
+  issue223CorrectionPassId,
   makeSemanticDecision,
   parseIssue223BatchId,
   selectPredecessorReviewFiles,
@@ -70,6 +72,7 @@ function authoredReview(overrides = {}) {
     no_relation_rationale: '관계 근거 없음.',
     decision_rationale: '독립 검토 결과 포함.',
     frame_rationale: '프레임이 같은 의미를 유지한다.',
+    single_sense_boundary_status: 'pass',
     frames: [{ sentence_frame: '“가락”이라는 말이 문장에 번졌다.', relation_type: 'near', target_class: '흐름' }],
     ...overrides,
   };
@@ -91,4 +94,41 @@ test('Issue #223 builder binds authored review judgments without replacing them'
     decision.sense_reviews[0].single_sense_boundary_review.frame_observations[0].sentence_frame,
     '“가락”이라는 말이 문장에 번졌다.',
   );
+});
+
+test('Issue #223 correction pass id derives from the batch date', () => {
+  assert.equal(issue223CorrectionPassId('issue-223-m9-e-corpus-batch-06-20261002'),
+    'issue-223-m9-e-corpus-batch-06-correction-20261002-r1');
+});
+
+test('Issue #223 semantic review input needs a bound, completed envelope', () => {
+  const batchId = 'issue-223-m9-e-corpus-batch-06-20261002';
+  const envelope = { kind: 'authored-semantic-review-input', batch_id: batchId, reviewer: 'r', review_status: 'complete', reviews: [] };
+  assertSemanticReviewEnvelope(envelope, batchId);
+  assert.throws(() => assertSemanticReviewEnvelope([], batchId));
+  assert.throws(() => assertSemanticReviewEnvelope({ ...envelope, batch_id: 'issue-223-m9-e-corpus-batch-05-20261001' }, batchId));
+  assert.throws(() => assertSemanticReviewEnvelope({ ...envelope, review_status: 'draft' }, batchId));
+  assert.throws(() => assertSemanticReviewEnvelope({ ...envelope, reviewer: '' }, batchId));
+});
+
+test('Issue #223 builder requires explicit authored boundary and topic outcomes', () => {
+  assert.throws(() => makeSemanticDecision(ROW, CANDIDATE, 1, 'pass', 'source', authoredReview({ single_sense_boundary_status: undefined })));
+  assert.throws(() => makeSemanticDecision(ROW, CANDIDATE, 1, 'pass', 'source', authoredReview({ single_sense_boundary_status: 'fail' })));
+  const topicCandidate = { ...CANDIDATE, senses: [{ ...CANDIDATE.senses[0], gloss: '주문과 마술을 부리는 여성으로 그려지는 존재' }] };
+  const topicReview = authoredReview({
+    gloss_sha256: sha256Json(topicCandidate.senses[0].gloss),
+    frames: [authoredReview().frames[0]],
+  });
+  assert.throws(() => makeSemanticDecision(ROW, topicCandidate, 1, 'pass', 'source', topicReview), /topic outcome/u);
+  const reviewed = { ...topicReview, topic_analysis: { status: 'pass', state: 'adnominal', rationale: '관형 용법이다.' } };
+  assert.equal(makeSemanticDecision(ROW, topicCandidate, 1, 'pass', 'source', reviewed)
+    .sense_reviews[0].review_basis.topic_analysis.rationale, '관형 용법이다.');
+});
+
+test('Issue #223 authored frames must match derived gloss spans exactly', () => {
+  const multi = { ...CANDIDATE, senses: [{ ...CANDIDATE.senses[0], gloss: '집이나 길의 옆에 붙어 있는 집.' }] };
+  const frame = authoredReview().frames[0];
+  const review = (frames) => authoredReview({ gloss_sha256: sha256Json(multi.senses[0].gloss), frames });
+  assert.throws(() => makeSemanticDecision(ROW, multi, 1, 'pass', 'source', review([frame])), /one frame per gloss span/u);
+  assert.throws(() => makeSemanticDecision(ROW, multi, 1, 'pass', 'source', review([frame, frame, frame])), /one frame per gloss span/u);
 });

@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { buildDictionary } from '../build/dictionary.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
+import { issue223CorrectionPassId } from './build-issue-223-corpus-batch.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
 import { validateAuthoredSemanticDecisionSource, M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION } from './authored-semantic-decision-source.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
@@ -103,7 +104,7 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
   );
 }
 
-function semanticDecisionConfig(candidateReview, semanticSource, sourcePath) {
+export function semanticDecisionConfig(candidateReview, semanticSource, sourcePath) {
   return {
     label: `Issue #223 ${candidateReview.batch_id}`,
     errorPrefix: 'ISSUE_223',
@@ -115,7 +116,7 @@ function semanticDecisionConfig(candidateReview, semanticSource, sourcePath) {
     parentIssue: 218,
     generationPassId: candidateReview.provenance.generation_pass_id,
     verificationPassId: semanticSource.provenance.verification_pass_id,
-    correctionPassId: `issue-223-m9-e-${candidateReview.batch_id.match(/corpus-batch-\d+/u)?.[0]}-correction-20261001-r1`,
+    correctionPassId: issue223CorrectionPassId(candidateReview.batch_id),
     semanticReviewVersion: semanticSource.provenance.generator_version,
     selectionPolicy: 'shared-authored-axis-coverage-selection-v6',
     selectionCount: candidateReview.decision_counts.admit,

@@ -61,6 +61,11 @@ export function parseIssue223BatchId(batchId) {
   };
 }
 
+export function issue223CorrectionPassId(batchId) {
+  const { ordinalText, date } = parseIssue223BatchId(batchId);
+  return `issue-223-m9-e-corpus-batch-${ordinalText}-correction-${date}-r1`;
+}
+
 // Inventory and canonical IDs continue only from earlier batches, so rebuilding
 // an earlier batch never shifts into identities reserved by later ones.
 export function selectPredecessorReviewFiles(names, batchId) {
@@ -222,6 +227,41 @@ function makeCanonicalRecord(row) {
   };
 }
 
+function glossFrameSpans(gloss) {
+  const connectorObservations = inspectGlossConnectors(gloss).sort((left, right) => left.index - right.index);
+  let frameStart = 0;
+  const frameSpans = [];
+  for (const observation of connectorObservations) {
+    const excerpt = gloss.slice(frameStart, observation.index);
+    const trimmedExcerpt = excerpt.trim();
+    if (trimmedExcerpt) {
+      frameSpans.push({
+        gloss_excerpt: trimmedExcerpt,
+        gloss_start: frameStart + excerpt.indexOf(trimmedExcerpt),
+      });
+    }
+    frameStart = observation.index + observation.connector.length;
+  }
+  const trailingExcerpt = gloss.slice(frameStart);
+  const trimmedTrailingExcerpt = trailingExcerpt.trim();
+  if (trimmedTrailingExcerpt) {
+    frameSpans.push({
+      gloss_excerpt: trimmedTrailingExcerpt,
+      gloss_start: frameStart + trailingExcerpt.indexOf(trimmedTrailingExcerpt),
+    });
+  }
+  if (frameSpans.length === 0) frameSpans.push({ gloss_excerpt: gloss, gloss_start: 0 });
+  return frameSpans;
+}
+
+export function assertSemanticReviewEnvelope(input, batchId) {
+  assert.equal(input.kind, 'authored-semantic-review-input', 'semantic review input has the wrong kind');
+  assert.equal(input.batch_id, batchId, 'semantic review input is bound to a different batch');
+  assert.ok(nonEmpty(input.reviewer), 'semantic review input needs a named reviewer');
+  assert.equal(input.review_status, 'complete', 'semantic review input must be a completed review');
+  assert.ok(Array.isArray(input.reviews), 'semantic review input needs a reviews array');
+}
+
 const RELATION_TYPES = ['direct', 'near', 'mood', 'scene', 'sensory', 'action', 'association'];
 const nonEmpty = (value) => typeof value === 'string' && value.trim().length > 0;
 
@@ -243,9 +283,15 @@ function assertAuthoredSemanticReview(review, candidate, glossDigest) {
     assert.ok(RELATION_TYPES.includes(frame.relation_type), `${label} frame needs a supported relation type`);
     assert.ok(nonEmpty(frame.target_class), `${label} frame needs a route target class`);
   }
+  assert.equal(review.single_sense_boundary_status, 'pass', `${label} requires an explicit authored single-sense boundary outcome`);
   if (findAmbiguousParticleFragments(candidate.senses[0].gloss).length > 0) {
-    assert.ok(nonEmpty(review.topic_rationale), `${label} requires an authored topic rationale`);
+    const topic = review.topic_analysis;
+    assert.ok(topic && topic.status === 'pass' && ['noun-topic', 'adnominal'].includes(topic.state) && nonEmpty(topic.rationale),
+      `${label} requires an explicit authored topic outcome (status, state, rationale)`);
   }
+  const spans = glossFrameSpans(candidate.senses[0].gloss);
+  assert.equal(review.frames.length, spans.length,
+    `${label} must author exactly one frame per gloss span (${spans.length}), got ${review.frames.length}`);
 }
 
 // The builder only binds an independently authored semantic review to the
@@ -260,39 +306,17 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
   const boundaryDecision = domainAxes.length > 1 ? 'coordinated' : 'atomic';
   const topicFragments = findAmbiguousParticleFragments(sense.gloss);
   const topicAnalysisFor = (fragment) => ({
-    status: 'pass',
-    state: 'adnominal',
+    status: authoredReview.topic_analysis.status,
+    state: authoredReview.topic_analysis.state,
     topic: fragment.topic,
     particle: fragment.particle,
     predicate: fragment.predicate,
     token_index: fragment.token_index,
     gloss_sha256: glossDigest,
     decision_source_id: sourceId,
-    rationale: authoredReview.topic_rationale,
+    rationale: authoredReview.topic_analysis.rationale,
   });
-  const connectorObservations = inspectGlossConnectors(sense.gloss).sort((left, right) => left.index - right.index);
-  let frameStart = 0;
-  const frameSpans = [];
-  for (const observation of connectorObservations) {
-    const excerpt = sense.gloss.slice(frameStart, observation.index);
-    const trimmedExcerpt = excerpt.trim();
-    if (trimmedExcerpt) {
-      frameSpans.push({
-        gloss_excerpt: trimmedExcerpt,
-        gloss_start: frameStart + excerpt.indexOf(trimmedExcerpt),
-      });
-    }
-    frameStart = observation.index + observation.connector.length;
-  }
-  const trailingExcerpt = sense.gloss.slice(frameStart);
-  const trimmedTrailingExcerpt = trailingExcerpt.trim();
-  if (trimmedTrailingExcerpt) {
-    frameSpans.push({
-      gloss_excerpt: trimmedTrailingExcerpt,
-      gloss_start: frameStart + trailingExcerpt.indexOf(trimmedTrailingExcerpt),
-    });
-  }
-  if (frameSpans.length === 0) frameSpans.push({ gloss_excerpt: sense.gloss, gloss_start: 0 });
+  const frameSpans = glossFrameSpans(sense.gloss);
   const senseReview = {
     sense_id: sense.id,
     boundary_action: authoredReview.boundary_action,
@@ -312,7 +336,7 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
       },
     } : {}),
     single_sense_boundary_review: {
-      status: 'pass',
+      status: authoredReview.single_sense_boundary_status,
       sense_id: sense.id,
       gloss_sha256: glossDigest,
       decision_source_id: sourceId,
@@ -558,8 +582,9 @@ export async function buildIssue223CorpusBatch({
   }));
   const semanticSourceId = `${batchId}-semantic-decisions-${batchDate}-r1`;
   assert.ok(semanticReviewsPath, 'admitted records require --semantic-reviews: the builder cannot mint semantic pass evidence');
-  const semanticInput = JSON.parse(await readFile(path.resolve(ROOT, semanticReviewsPath), 'utf8'));
-  assert.ok(Array.isArray(semanticInput.reviews), 'semantic review input needs a reviews array');
+  const semanticInputBytes = await readFile(path.resolve(ROOT, semanticReviewsPath));
+  const semanticInput = JSON.parse(semanticInputBytes.toString('utf8'));
+  assertSemanticReviewEnvelope(semanticInput, batchId);
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
   assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
   assert.equal(semanticReviewByLemma.size, admittedRows.length, 'semantic review input must cover exactly the admitted records');
@@ -589,6 +614,7 @@ export async function buildIssue223CorpusBatch({
       source_manifest_sha256: inventory.index.input_manifest_sha256,
       logical_rows_sha256: inventory.index.logical_rows_sha256,
       permission_record_sha256: source.permission_record_sha256,
+      semantic_review_input_sha256: sha256Bytes(semanticInputBytes),
     },
     provenance: {
       generator: 'codex',
@@ -600,8 +626,8 @@ export async function buildIssue223CorpusBatch({
     },
     review: {
       review_pass_id: semanticPassId,
-      reviewer: 'codex-agent',
-      status: 'complete',
+      reviewer: semanticInput.reviewer,
+      status: semanticInput.review_status,
       candidate_count: admittedRows.length,
       reviewed_candidate_count: admittedRows.length,
       method: 'Separately verify each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using two authored diagnostic frames; apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.',
@@ -659,7 +685,7 @@ export async function buildIssue223CorpusBatch({
       parentIssue: 218,
       generationPassId,
       verificationPassId: semanticPassId,
-      correctionPassId: `issue-223-m9-e-corpus-batch-${batchNumber}-correction-${batchDate}-r1`,
+      correctionPassId: issue223CorrectionPassId(batchId),
       semanticReviewVersion: 'issue-223-authored-semantic-review-v1',
       selectionPolicy: 'shared-authored-axis-coverage-selection-v6',
       selectionCount: admittedRows.length,
