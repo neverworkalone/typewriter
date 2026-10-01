@@ -574,11 +574,11 @@ function sha256Bytes(bytes) {
 async function resolveAuthoredBatchDecisionSourcePaths() {
   const batchDirectory = path.resolve(REPOSITORY_DIRECTORY, 'data/batches');
   const names = (await readdir(batchDirectory))
-    .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-semantic-decisions\.json$/u.test(name))
+    .filter((name) => /^issue-(?:222-m9-d-corpus|223-m9-e-(?:corpus|historical))-batch-\d+-semantic-decisions\.json$/u.test(name))
     .sort((left, right) => left.localeCompare(right, 'en'));
   const corpusPaths = names.map((name) => path.join(batchDirectory, name));
   const fixed = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS.filter((sourcePath) => (
-    !/^issue-222-m9-d-corpus-batch-\d+-semantic-decisions\.json$/u.test(path.basename(sourcePath))
+    !/^issue-(?:222-m9-d-corpus|223-m9-e-(?:corpus|historical))-batch-\d+-semantic-decisions\.json$/u.test(path.basename(sourcePath))
       && !/^issue-222-m9-d-historical-semantic-decisions\.json$/u.test(path.basename(sourcePath))
   ));
   const historical = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS.filter((sourcePath) => (

@@ -16,6 +16,22 @@ test('corpus production defaults to 200 and supports bounded batches through 500
   assert.throws(() => parseArguments(['--candidate-limit', '501']), /1 to 500/u);
 });
 
+test('cached morphology reuse stays in ignored reference data and uses a separate output', () => {
+  const options = parseArguments([
+    '--reuse-analysis-from', 'data/reference/production/issue-223/source',
+    '--output-directory', 'data/reference/production/issue-223/next',
+  ]);
+  assert.match(options.reuseAnalysisFrom, /data\/reference\/production\/issue-223\/source$/u);
+  assert.match(options.outputDirectory, /data\/reference\/production\/issue-223\/next$/u);
+  assert.throws(() => parseArguments([
+    '--reuse-analysis-from', 'data/reference/production/issue-223/source',
+    '--output-directory', 'data/reference/production/issue-223/source',
+  ]), /must differ/u);
+  assert.throws(() => parseArguments([
+    '--reuse-analysis-from', '../../outside-cache',
+  ]), /under ignored data\/reference/u);
+});
+
 test('text-free candidate evidence keeps morphology and bounded provenance without paragraph text', () => {
   const inventory = {
     publication_state: 'local_reference_only_pending_owner_publication_confirmation',
@@ -24,6 +40,10 @@ test('text-free candidate evidence keeps morphology and bounded provenance witho
     typewriter_surface: { canonical_revision: 'revision' },
     extractor: { name: 'Kiwi', kiwipiepy_version: '0.24.0' },
     selection: { candidate_limit: 1, exclusion_source_artifacts: [] },
+    analysis_cache: {
+      mode: 'reused-candidate-analysis',
+      database_sha256: 'a'.repeat(64),
+    },
     yield: { selected_count: 0 },
     evidence_collection: { per_candidate_paragraph_limit: 3 },
     orchestration: {
@@ -84,6 +104,7 @@ test('text-free candidate evidence keeps morphology and bounded provenance witho
   const serialized = JSON.stringify(safe);
   assert.equal(safe.candidates[0].observed_morpheme_spans[0].surface, '바라');
   assert.equal(safe.candidates[0].evidence.representative_hit_count, 1);
+  assert.equal(safe.analysis_cache.mode, 'reused-candidate-analysis');
   assert.deepEqual(safe.candidates[0].evidence.representative_hits[0], {
     source_path: 'source.json',
     corpus_id: 'corpus-1',

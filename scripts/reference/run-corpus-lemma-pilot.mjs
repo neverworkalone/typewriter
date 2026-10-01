@@ -8,14 +8,14 @@ import { fileURLToPath } from 'node:url';
 import { buildDictionary } from '../build/dictionary.mjs';
 import {
   assertCorpusPermission,
-  countCorpusMatches,
+  createCorpusIndexReader,
   DEFAULT_INDEX_PATH,
   REPOSITORY_DIRECTORY,
-  searchCorpusIndex,
 } from './corpus-index.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PYTHON_EXTRACTOR_PATH = path.join(SCRIPT_DIRECTORY, 'corpus_lemma_pilot.py');
+const PYTHON_CACHED_SELECTOR_PATH = path.join(SCRIPT_DIRECTORY, 'select-corpus-candidates-from-analysis.py');
 const LOCAL_PILOT_DIRECTORY = path.join(
   REPOSITORY_DIRECTORY,
   'data/reference/pilots/issue-201',
@@ -30,6 +30,7 @@ export function parseArguments(argumentsList) {
     python: process.env.TYPEWRITER_PYTHON || 'python3',
     candidateLimit: DEFAULT_CANDIDATE_LIMIT,
     outputDirectory: LOCAL_PILOT_DIRECTORY,
+    reuseAnalysisFrom: null,
     exclusionLemmaSources: [],
     batchId: 'issue-201-pilot',
   };
@@ -57,6 +58,15 @@ export function parseArguments(argumentsList) {
       const value = argumentsList[index + 1];
       if (!value || value.startsWith('--')) throw new Error('--output-directory requires a path.');
       options.outputDirectory = path.resolve(REPOSITORY_DIRECTORY, value);
+      index += 1;
+      continue;
+    }
+    if (argument === '--reuse-analysis-from') {
+      const value = argumentsList[index + 1];
+      if (!value || value.startsWith('--')) {
+        throw new Error('--reuse-analysis-from requires a prior data/reference output directory.');
+      }
+      options.reuseAnalysisFrom = path.resolve(REPOSITORY_DIRECTORY, value);
       index += 1;
       continue;
     }
@@ -89,6 +99,17 @@ export function parseArguments(argumentsList) {
     || relativeOutputDirectory.startsWith('..')
     || path.isAbsolute(relativeOutputDirectory)) {
     throw new Error('Corpus candidate outputs must remain under ignored data/reference/.');
+  }
+  if (options.reuseAnalysisFrom) {
+    const relativeSourceDirectory = path.relative(REFERENCE_DIRECTORY, options.reuseAnalysisFrom);
+    if (!relativeSourceDirectory
+      || relativeSourceDirectory.startsWith('..')
+      || path.isAbsolute(relativeSourceDirectory)) {
+      throw new Error('Cached candidate analysis must remain under ignored data/reference/.');
+    }
+    if (options.reuseAnalysisFrom === options.outputDirectory) {
+      throw new Error('Cached candidate analysis source and output directories must differ.');
+    }
   }
   return options;
 }
@@ -207,6 +228,96 @@ function runPythonExtractor({
   });
 }
 
+function runPythonCachedSelector({
+  python,
+  analysisDirectory,
+  dictionaryPath,
+  stagingDatabasePath,
+  candidateSelectionPath,
+  candidateLimit,
+  exclusionManifestPath,
+}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      python,
+      [
+        PYTHON_CACHED_SELECTOR_PATH,
+        '--analysis-db', path.join(analysisDirectory, 'candidate-analysis.sqlite'),
+        '--analysis-selection', path.join(analysisDirectory, 'candidate-selection.json'),
+        '--dictionary', dictionaryPath,
+        '--index', DEFAULT_INDEX_PATH,
+        '--staging-db', stagingDatabasePath,
+        '--candidate-json', candidateSelectionPath,
+        '--candidate-limit', String(candidateLimit),
+        '--exclusion-manifest', exclusionManifestPath,
+      ],
+      {
+        cwd: REPOSITORY_DIRECTORY,
+        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
+    let stdout = '';
+    let outputTooLarge = false;
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString('utf8');
+      if (stdout.length > 100_000) outputTooLarge = true;
+    });
+    child.stderr.on('data', (chunk) => process.stderr.write(chunk));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error('Cached local lemma candidate selection failed with exit code ' + code + '.'));
+        return;
+      }
+      if (outputTooLarge) {
+        reject(new Error('Cached candidate selector wrote unexpected large standard output.'));
+        return;
+      }
+      try {
+        const finalLine = stdout.trim().split(/\r?\n/u).at(-1);
+        resolve(JSON.parse(finalLine));
+      } catch (error) {
+        reject(new Error('Could not read the cached candidate selection summary: ' + error.message));
+      }
+    });
+  });
+}
+
+async function sha256Path(filePath) {
+  return hashFileContents(await readFile(filePath));
+}
+
+async function recordAnalysisCache({ selection, stagingDatabasePath, mode }) {
+  const extractorScriptSha256 = await sha256Path(PYTHON_EXTRACTOR_PATH);
+  if (mode === 'full-corpus-scan') {
+    selection.analysis_cache = {
+      mode,
+      database_path: path.relative(REPOSITORY_DIRECTORY, stagingDatabasePath).split(path.sep).join('/'),
+      database_sha256: await sha256Path(stagingDatabasePath),
+      analysis_elapsed_seconds: selection.elapsed_seconds,
+      extractor_script_sha256: extractorScriptSha256,
+    };
+  } else {
+    const cache = selection.analysis_cache;
+    if (!cache || cache.mode !== 'reused-candidate-analysis') {
+      throw new Error('Cached candidate selector did not return reuse provenance.');
+    }
+    selection.analysis_cache = {
+      ...cache,
+      database_path: path.relative(REPOSITORY_DIRECTORY, stagingDatabasePath).split(path.sep).join('/'),
+      database_sha256: await sha256Path(stagingDatabasePath),
+      extractor_script_sha256: extractorScriptSha256,
+    };
+  }
+  await writeFile(
+    path.join(path.dirname(stagingDatabasePath), 'candidate-selection.json'),
+    JSON.stringify(selection, null, 2) + '\n',
+    'utf8',
+  );
+  return selection.analysis_cache;
+}
+
 function searchModeFor(query) {
   return [...query].length >= 3 ? 'fts5-trigram-literal-confirmed' : 'literal-scan';
 }
@@ -249,6 +360,7 @@ export function buildTextFreeCandidateEvidence(inventory) {
     extractor: structuredClone(inventory.extractor),
     selection: structuredClone(inventory.selection),
     yield: structuredClone(inventory.yield),
+    analysis_cache: structuredClone(inventory.analysis_cache),
     evidence_collection: structuredClone(inventory.evidence_collection),
     orchestration: {
       batch_id: inventory.orchestration.batch_id,
@@ -303,45 +415,42 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
   const candidatesWithEvidence = [];
   let totalLiteralParagraphMatches = 0;
   let literalFallbackQueryCount = 0;
-  for (const [index, candidate] of candidates.entries()) {
-    const literalMatchQuery = candidate.observed_surface_forms?.[0]?.surface;
-    if (typeof literalMatchQuery !== 'string' || literalMatchQuery.length === 0) {
-      throw new Error('Candidate evidence query is missing for one extracted lemma.');
-    }
+  const corpusReader = createCorpusIndexReader({ databasePath: DEFAULT_INDEX_PATH });
+  try {
+    for (const [index, candidate] of candidates.entries()) {
+      const literalMatchQuery = candidate.observed_surface_forms?.[0]?.surface;
+      if (typeof literalMatchQuery !== 'string' || literalMatchQuery.length === 0) {
+        throw new Error('Candidate evidence query is missing for one extracted lemma.');
+      }
 
-    const matchCount = countCorpusMatches({
-      databasePath: DEFAULT_INDEX_PATH,
-      query: literalMatchQuery,
-    });
-    const matches = searchCorpusIndex({
-      databasePath: DEFAULT_INDEX_PATH,
-      query: literalMatchQuery,
-      limit: ROW_RESULT_LIMIT,
-    });
-    const searchMode = searchModeFor(literalMatchQuery);
-    if (searchMode === 'literal-scan') literalFallbackQueryCount += 1;
-    totalLiteralParagraphMatches += matchCount;
-    candidatesWithEvidence.push({
-      ...candidate,
-      evidence: {
-        evidence_type: 'literal_text_match_count_and_bounded_paragraph_hits',
-        literal_match_query: literalMatchQuery,
-        literal_match_count: matchCount,
-        count_method: 'countCorpusMatches SQL COUNT(*) aggregate',
-        search_mode: searchMode,
-        representative_hits_limit: ROW_RESULT_LIMIT,
-        representative_hits: matches.map(evidenceHit),
-      },
-    });
+      const { matchCount, matches } = corpusReader.evidence(literalMatchQuery, ROW_RESULT_LIMIT);
+      const searchMode = searchModeFor(literalMatchQuery);
+      if (searchMode === 'literal-scan') literalFallbackQueryCount += 1;
+      totalLiteralParagraphMatches += matchCount;
+      candidatesWithEvidence.push({
+        ...candidate,
+        evidence: {
+          evidence_type: 'literal_text_match_count_and_bounded_paragraph_hits',
+          literal_match_query: literalMatchQuery,
+          literal_match_count: matchCount,
+          count_method: 'countCorpusMatches SQL COUNT(*) aggregate',
+          search_mode: searchMode,
+          representative_hits_limit: ROW_RESULT_LIMIT,
+          representative_hits: matches.map(evidenceHit),
+        },
+      });
 
-    if ((index + 1) % 10 === 0) {
-      process.stdout.write(
-        JSON.stringify({
-          evidence_candidates_completed: index + 1,
-          evidence_candidates_total: candidates.length,
-        }) + '\n',
-      );
+      if ((index + 1) % 10 === 0) {
+        process.stdout.write(
+          JSON.stringify({
+            evidence_candidates_completed: index + 1,
+            evidence_candidates_total: candidates.length,
+          }) + '\n',
+        );
+      }
     }
+  } finally {
+    corpusReader.close();
   }
 
   return {
@@ -367,7 +476,8 @@ async function main() {
       'Usage: node scripts/reference/run-corpus-lemma-pilot.mjs --python <venv-python>\n'
         + 'Runs local/manual bounded candidate production. Options: --candidate-limit 1-500 (default 200), '
         + '--batch-id <id>, --output-directory data/reference/<path>, repeated '
-        + '--exclude-lemma-source <tracked-json>. Requires the ignored full-corpus index '
+        + '--exclude-lemma-source <tracked-json>, --reuse-analysis-from <prior data/reference output directory>. '
+        + 'Requires the ignored full-corpus index '
         + 'and kiwipiepy==0.24.0 installed in the selected Python environment.',
     );
     return;
@@ -407,19 +517,34 @@ async function main() {
       }) + '\n',
     );
 
-    const extractorSummary = await runPythonExtractor({
-      python: options.python,
-      dictionaryPath,
-      stagingDatabasePath,
-      candidateSelectionPath,
-      candidateLimit: options.candidateLimit,
-      exclusionManifestPath,
-    });
+    const extractorSummary = options.reuseAnalysisFrom
+      ? await runPythonCachedSelector({
+        python: options.python,
+        analysisDirectory: options.reuseAnalysisFrom,
+        dictionaryPath,
+        stagingDatabasePath,
+        candidateSelectionPath,
+        candidateLimit: options.candidateLimit,
+        exclusionManifestPath,
+      })
+      : await runPythonExtractor({
+        python: options.python,
+        dictionaryPath,
+        stagingDatabasePath,
+        candidateSelectionPath,
+        candidateLimit: options.candidateLimit,
+        exclusionManifestPath,
+      });
     const selection = JSON.parse(await readFile(candidateSelectionPath, 'utf8'));
     if (selection.candidates.length > options.candidateLimit
       || selection.selection?.selected_candidate_count !== selection.candidates.length) {
       throw new Error('Candidate extraction exceeded or misreported the requested batch bound.');
     }
+    const analysisCache = await recordAnalysisCache({
+      selection,
+      stagingDatabasePath,
+      mode: options.reuseAnalysisFrom ? 'reused-candidate-analysis' : 'full-corpus-scan',
+    });
     const selectionBytes = await readFile(candidateSelectionPath);
     const evidenceInventory = await addBoundedCorpusEvidence(selection, options.candidateLimit);
     evidenceInventory.orchestration = {
@@ -430,6 +555,7 @@ async function main() {
       node_sqlite_version: process.versions.sqlite,
       orchestrator_script_sha256: hashFileContents(await readFile(fileURLToPath(import.meta.url))),
       python_extractor_summary: extractorSummary,
+      analysis_cache: analysisCache,
       canonical_build: {
         dictionary_version: dictionary.metadata.dictionary_version,
         canonical_revision: dictionary.metadata.canonical_revision,
