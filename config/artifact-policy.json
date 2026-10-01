@@ -2623,6 +2623,7 @@
         ],
         "allowed_fields": [
           "batch_id",
+          "candidate_outcomes",
           "contract_version",
           "kind",
           "review_status",
@@ -2632,6 +2633,7 @@
         ],
         "field_types": {
           "batch_id": "string",
+          "candidate_outcomes": "array<object>",
           "contract_version": "string",
           "kind": "string",
           "review_status": "string",
@@ -2640,6 +2642,25 @@
           "schema_version": "string"
         },
         "nested_allowed_fields": {
+          "$.candidate_outcomes.*": [
+            "checked_hit_indices",
+            "directions",
+            "generator_agreement",
+            "generator_disposition",
+            "gloss_check",
+            "hold_basis",
+            "hold_rationale",
+            "identity_check",
+            "lemma",
+            "ordinal",
+            "pos_check",
+            "sense_boundary_check",
+            "verdict"
+          ],
+          "$.candidate_outcomes.*.directions.*": [
+            "hit_indices",
+            "label"
+          ],
           "$.reviews.*": [
             "boundary_action",
             "boundary_classification",
@@ -2672,6 +2693,25 @@
           ]
         },
         "nested_field_types": {
+          "$.candidate_outcomes.*": {
+            "checked_hit_indices": "array<integer>",
+            "directions": "array<object>",
+            "generator_agreement": "string",
+            "generator_disposition": "string",
+            "gloss_check": "string",
+            "hold_basis": "string",
+            "hold_rationale": "string",
+            "identity_check": "string",
+            "lemma": "string",
+            "ordinal": "integer",
+            "pos_check": "string",
+            "sense_boundary_check": "string",
+            "verdict": "string"
+          },
+          "$.candidate_outcomes.*.directions.*": {
+            "hit_indices": "array<integer>",
+            "label": "string"
+          },
           "$.reviews.*": {
             "boundary_action": "string",
             "boundary_classification": "string",

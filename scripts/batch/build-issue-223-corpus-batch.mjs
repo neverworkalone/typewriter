@@ -277,7 +277,21 @@ export function assertSemanticReviewEnvelope(input, batchId) {
 // verdicts and the contexts it checked, not only the approval, so the
 // independent evidence survives with the input.
 export const REVIEWER_CHECK_FIRST_BATCH = 6;
-export function assertReviewerChecks(reviews, { required }) {
+const assertHitIndices = (indices, hitCount, label) => {
+  assert.ok(Array.isArray(indices) && indices.length > 0, `${label}: must cite the contexts it checked`);
+  assert.ok(indices.every((index) => Number.isInteger(index) && index >= 0 && index < hitCount),
+    `${label}: cites a context outside the candidate's ${hitCount} bounded contexts`);
+  assert.equal(new Set(indices).size, indices.length, `${label}: cites a context twice`);
+};
+
+export function bindHitCounts(candidateRows) {
+  return new Map(candidateRows.map((row) => [
+    row.morphology_proposal.lemma,
+    row.bounded_provenance.representative_hits.length,
+  ]));
+}
+
+export function assertReviewerChecks(reviews, { required, hitCountByLemma }) {
   for (const review of reviews) {
     const label = `${review.lemma} reviewer checks`;
     const present = ['identity_check', 'pos_check', 'gloss_check', 'sense_boundary_check', 'checked_hit_indices']
@@ -291,10 +305,87 @@ export function assertReviewerChecks(reviews, { required }) {
     assert.equal(review.pos_check, 'ok', `${label}: POS must be ok`);
     assert.equal(review.gloss_check, 'fit', `${label}: gloss must fit`);
     assert.equal(review.sense_boundary_check, 'single', `${label}: sense boundary must be single`);
-    assert.ok(Array.isArray(review.checked_hit_indices) && review.checked_hit_indices.length > 0
-      && review.checked_hit_indices.every((index) => Number.isInteger(index) && index >= 0),
-    `${label}: must cite the contexts it checked`);
+    const hitCount = hitCountByLemma?.get(review.lemma);
+    assert.ok(Number.isInteger(hitCount), `${label}: no bounded contexts to bind the checked indices to`);
+    assertHitIndices(review.checked_hit_indices, hitCount, label);
   }
+}
+
+// A review input must preserve the reviewer's outcome for EVERY candidate in
+// the batch, holds included, and the final dispositions must follow from those
+// outcomes: a reviewer pass is the only route to an admission, a reviewer hold
+// is reproduced exactly in the candidate review, and a candidate the generator
+// held can never be admitted by the review.
+const OUTCOME_AXES = Object.freeze({
+  identity_check: ['ok', 'unresolved'],
+  pos_check: ['ok', 'mismatch'],
+  gloss_check: ['fit', 'misfit', 'n/a'],
+  sense_boundary_check: ['single', 'multiple'],
+});
+const OUTCOME_HOLD_BASES = ['unresolved-identity', 'unresolved-sense'];
+
+export function assertReviewerOutcomes(outcomes, candidateRows) {
+  assert.ok(Array.isArray(outcomes), 'review input must preserve candidate_outcomes for every candidate');
+  assert.equal(outcomes.length, candidateRows.length, 'candidate_outcomes must cover every candidate in the batch');
+  candidateRows.forEach((row, index) => {
+    const outcome = outcomes[index];
+    const lemma = row.morphology_proposal.lemma;
+    const label = `${lemma} reviewer outcome`;
+    const hits = row.bounded_provenance.representative_hits;
+    const judgment = row.editorial_judgment;
+    assert.equal(outcome?.ordinal, index + 1, `${label}: ordinal must follow batch order`);
+    assert.equal(outcome.lemma, lemma, `${label}: bound to a different lemma`);
+    assert.ok(['admit', 'hold'].includes(outcome.generator_disposition), `${label}: names no generator disposition`);
+    assert.ok(['agree', 'disagree'].includes(outcome.generator_agreement), `${label}: names no generator agreement`);
+    for (const [axis, allowed] of Object.entries(OUTCOME_AXES)) {
+      assert.ok(allowed.includes(outcome[axis]), `${label}: ${axis} is not a valid verdict`);
+    }
+    assert.ok(['pass', 'hold'].includes(outcome.verdict), `${label}: names no verdict`);
+
+    if (outcome.verdict === 'pass') {
+      assert.equal(outcome.generator_disposition, 'admit', `${label}: a reviewer cannot pass a generator hold`);
+      assert.equal(outcome.generator_agreement, 'agree', `${label}: a pass must agree with the admit proposal`);
+      assert.deepEqual(
+        [outcome.identity_check, outcome.pos_check, outcome.gloss_check, outcome.sense_boundary_check],
+        ['ok', 'ok', 'fit', 'single'],
+        `${label}: a pass needs every axis to pass`,
+      );
+      assertHitIndices(outcome.checked_hit_indices, hits.length, label);
+      assert.equal(judgment.disposition, 'admit', `${label}: a reviewer pass must be admitted`);
+      for (const field of ['hold_basis', 'hold_rationale', 'directions']) {
+        assert.equal(outcome[field], undefined, `${label}: a pass cannot carry ${field}`);
+      }
+      return;
+    }
+
+    assert.equal(judgment.disposition, 'hold', `${label}: a reviewer hold cannot be admitted`);
+    assert.ok(OUTCOME_HOLD_BASES.includes(outcome.hold_basis), `${label}: hold needs a closed basis`);
+    assert.ok(nonEmpty(outcome.hold_rationale), `${label}: hold needs an evidence-specific rationale`);
+    assert.equal(outcome.checked_hit_indices, undefined, `${label}: a hold cannot carry checked_hit_indices`);
+    if (outcome.hold_basis === 'unresolved-sense') {
+      assert.ok(Array.isArray(outcome.directions) && outcome.directions.length >= 2, `${label}: a sense hold needs two directions`);
+      for (const direction of outcome.directions) {
+        assert.ok(nonEmpty(direction.label), `${label}: a direction needs a label`);
+        assertHitIndices(direction.hit_indices, hits.length, `${label} direction`);
+      }
+    } else {
+      assert.equal(outcome.directions, undefined, `${label}: only a sense hold carries directions`);
+    }
+    if (outcome.generator_disposition === 'admit') {
+      // A reviewer-originated hold is reproduced exactly in the candidate review.
+      assert.equal(outcome.generator_agreement, 'disagree', `${label}: changing an admit to a hold is a disagreement`);
+      assert.equal(judgment.disposition_basis, outcome.hold_basis, `${label}: candidate review basis differs from the reviewer's`);
+      assert.equal(judgment.rationale, outcome.hold_rationale, `${label}: candidate review rationale differs from the reviewer's`);
+      if (outcome.hold_basis === 'unresolved-sense') {
+        const reproduced = judgment.sense_boundary_evidence?.directions;
+        const expected = outcome.directions.map((direction) => ({
+          label: direction.label,
+          paragraph_ids: direction.hit_indices.map((hitIndex) => hits[hitIndex].paragraph_id),
+        }));
+        assert.deepEqual(reproduced, expected, `${label}: candidate review directions differ from the reviewer's`);
+      }
+    }
+  });
 }
 
 export const SEMANTIC_REVIEWER_REGISTRY_PATH = path.join(ROOT, 'config/semantic-reviewers.json');
@@ -651,7 +742,11 @@ export async function buildIssue223CorpusBatch({
     candidateAuthor,
     registry: await loadSemanticReviewerRegistry(),
   });
-  assertReviewerChecks(semanticInput.reviews, { required: batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH });
+  assertReviewerChecks(semanticInput.reviews, {
+    required: batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH,
+    hitCountByLemma: bindHitCounts(rows),
+  });
+  if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
   assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
   assert.equal(semanticReviewByLemma.size, admittedRows.length, 'semantic review input must cover exactly the admitted records');

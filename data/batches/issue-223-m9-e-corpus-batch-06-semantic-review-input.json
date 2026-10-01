@@ -7321,5 +7321,5313 @@
         }
       ]
     }
+  ],
+  "candidate_outcomes": [
+    {
+      "ordinal": 1,
+      "lemma": "한몫",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0,1은 크게 얻는 한 덩이 몫(기부·챙겨준 몫)이지만 맥락 2의 '한몫한'은 어떤 일에서 한 역할을 했다는 관용 용법이라 단일 풀이로는 두 갈래가 섞인다.",
+      "directions": [
+        {
+          "label": "한 덩이의 큰 몫(금액)",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "일에서 한몫하다(역할을 맡음)",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 2,
+      "lemma": "심경",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 3,
+      "lemma": "작아지다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 4,
+      "lemma": "짓밟히다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 5,
+      "lemma": "호사",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0의 '호사를 받다'는 호강·대접의 뜻이고 맥락 1,2는 파생형 '호사스럽다'의 사치스러움이라 '분수에 넘치게'라는 풀이가 맥락 0에는 맞지 않고 명사 용법이 거의 보이지 않는다.",
+      "directions": [
+        {
+          "label": "호강하며 대접받는 일",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "호사스럽다(사치스럽고 화려함)의 파생 쓰임",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 6,
+      "lemma": "망가뜨리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 7,
+      "lemma": "주최",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 8,
+      "lemma": "낌새",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 9,
+      "lemma": "외계인",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 10,
+      "lemma": "잡이",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락이 없고 관측형이 대부분 '고래잡이'라는 합성어 안의 접미 요소여서 독립 어휘 단위로 확인되지 않는다."
+    },
+    {
+      "ordinal": 11,
+      "lemma": "선지자",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 12,
+      "lemma": "영생",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 13,
+      "lemma": "의장",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 14,
+      "lemma": "골프",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 15,
+      "lemma": "국수",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 16,
+      "lemma": "매미",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 17,
+      "lemma": "성서",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 18,
+      "lemma": "가해자",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 19,
+      "lemma": "교구",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0은 가톨릭 행정 구역(교구), 맥락 1,2는 교과서와 함께 쓰는 학습 도구(교구)로 동음이의어가 갈린다.",
+      "directions": [
+        {
+          "label": "종교 행정 구역 교구(教區)",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "수업용 학습 도구 교구(教具)",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 20,
+      "lemma": "임대",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 2는 빌려주는 쪽이지만 맥락 0의 임대 아파트와 맥락 1의 '임대로 들어왔을 때'는 빌려 쓰는 쪽·임대 형태를 가리켜 '빌려줌' 풀이가 이를 담지 못한다.",
+      "directions": [
+        {
+          "label": "돈을 받고 빌려주는 일",
+          "hit_indices": [
+            2
+          ]
+        },
+        {
+          "label": "임대로 빌려 쓰는 형태(임대 아파트·임대로 입주)",
+          "hit_indices": [
+            0,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 21,
+      "lemma": "이파리",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 22,
+      "lemma": "임원",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 23,
+      "lemma": "이벤트",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 24,
+      "lemma": "진압",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 25,
+      "lemma": "음악가",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 26,
+      "lemma": "후일",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0의 '지난 후일 테니'는 명사 '후' 뒤에 '이다' 활용이 붙은 표면이라 후일(뒷날)이 아니며, 관측 표면이 다른 단어에서 섞여 들어와 있다."
+    },
+    {
+      "ordinal": 27,
+      "lemma": "담보",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 28,
+      "lemma": "민간",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 29,
+      "lemma": "석유",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 30,
+      "lemma": "네트워크",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 31,
+      "lemma": "머리털",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 32,
+      "lemma": "온실",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 33,
+      "lemma": "재배",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 34,
+      "lemma": "반죽",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 35,
+      "lemma": "양배추",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 36,
+      "lemma": "욕조",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 37,
+      "lemma": "줄무늬",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 38,
+      "lemma": "강의실",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 39,
+      "lemma": "건전",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "mismatch",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "관측형이 모두 '건전하다' 활용이고 맥락 0,1은 태도·문화의 바람직함, 맥락 2는 운영의 탄탄함이라 '몸이나 생각이 병들거나'라는 풀이가 하나로 묶기엔 갈래가 다르다.",
+      "directions": [
+        {
+          "label": "생각·태도·문화가 바람직하고 올바름",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "조직·운영이 탈 없이 제대로 됨",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 40,
+      "lemma": "행적",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 41,
+      "lemma": "의사소통",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 42,
+      "lemma": "일손",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0,2의 일손은 부족하거나 필요한 일할 사람(노동력)이고 맥락 1의 '일손을 멈추고'는 일하는 손놀림 자체라 뜻이 갈린다.",
+      "directions": [
+        {
+          "label": "일할 사람, 노동력",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "일하는 손놀림, 하던 일",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 43,
+      "lemma": "쳐들어오다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 44,
+      "lemma": "도주",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0의 도주 위험, 1의 제압 뒤 도주한 사람, 2의 도주 성공은 '몰래'라는 한정이 맞지 않는 쓰임이 섞여 있어 풀이가 뜻을 정확히 담지 못한다.",
+      "directions": [
+        {
+          "label": "법적 절차 속에서 달아날 위험",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "충돌·추적 중에 달아남",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 45,
+      "lemma": "자빠지다",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0,2는 널브러져 눕거나 쓰러져 있는 상태(속된 말)이고 맥락 1은 놀라서 자빠질 걸이라는 넘어짐의 관용 쓰임이라 갈래가 다르다.",
+      "directions": [
+        {
+          "label": "널브러져 눕다·쓰러져 있다(속된 말)",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "뒤로 넘어지다·놀라 자빠지다",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 46,
+      "lemma": "원동력",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 47,
+      "lemma": "죄다",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 1의 '죄는'은 명사 '죄' 뒤의 조사 '는'이라 동사 죄다가 아니며 관측 표면이 다른 단어와 섞여 있다."
+    },
+    {
+      "ordinal": 48,
+      "lemma": "방비",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "관측형 대부분이 '무방비' 합성어이고 독립 '방비'는 방비가 2회뿐이며 맥락도 하나(0)만 보여 독립 표제어로서의 쓰임을 확인하기 어렵다."
+    },
+    {
+      "ordinal": 49,
+      "lemma": "엉터리",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0,1은 허술하고 가짜 같은 것이지만 맥락 2의 '엉터리도 없는 거짓말'은 터무니·근거의 뜻이라 '허술한 것'이라는 풀이와 갈린다.",
+      "directions": [
+        {
+          "label": "허술하고 제대로 못한 것, 가짜",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "엉터리없다의 터무니·근거",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 50,
+      "lemma": "취지",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 51,
+      "lemma": "빈정거리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 52,
+      "lemma": "여건",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 53,
+      "lemma": "용품",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 54,
+      "lemma": "몰골",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 55,
+      "lemma": "위축",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 56,
+      "lemma": "족하다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 57,
+      "lemma": "축소",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 58,
+      "lemma": "겉보기",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 59,
+      "lemma": "비꼬다",
+      "generator_disposition": "hold",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0,1,2 모두 비꼬는 투로 말한다는 한 뜻으로 확인되어 보류 근거가 맥락에는 없지만, 풀이가 제안되지 않아 통과시킬 수 없다."
+    },
+    {
+      "ordinal": 60,
+      "lemma": "부잣집",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 61,
+      "lemma": "산속",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 62,
+      "lemma": "지어내다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 63,
+      "lemma": "소홀",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 64,
+      "lemma": "인민",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 65,
+      "lemma": "문단",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0,2의 문단은 문인들의 사회(文壇)이고 맥락 1의 '한 문단을 읽는 것'은 글의 단락이라 동음이의어가 갈린다.",
+      "directions": [
+        {
+          "label": "문인들의 사회 문단(文壇)",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "글의 단락 문단(文段)",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 66,
+      "lemma": "아군",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 67,
+      "lemma": "주임",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 68,
+      "lemma": "돌아다보다",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0,1은 특정 사람 쪽으로 고개를 돌려 바라보는 쓰임이고 맥락 2는 뒤를 되돌아보는 쓰임이라 '뒤쪽이나 지나온 곳'이라는 풀이가 앞의 두 용례를 담지 못한다.",
+      "directions": [
+        {
+          "label": "사람 쪽으로 고개를 돌려 봄",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "뒤쪽을 되돌아봄",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 69,
+      "lemma": "성모",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 70,
+      "lemma": "병동",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 71,
+      "lemma": "사관",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0은 역사를 보는 관점(史觀), 맥락 1은 장교(士官), 맥락 2는 기록을 맡은 관리(史官)로 동음이의어가 셋 이상 갈린다.",
+      "directions": [
+        {
+          "label": "역사를 보는 관점 사관(史觀)",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "군의 장교 사관(士官)",
+          "hit_indices": [
+            1
+          ]
+        },
+        {
+          "label": "역사를 기록하는 관리 사관(史官)",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 72,
+      "lemma": "호르몬",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 73,
+      "lemma": "지출",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 74,
+      "lemma": "해골",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 75,
+      "lemma": "치아",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 76,
+      "lemma": "발굴",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 77,
+      "lemma": "구급차",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 78,
+      "lemma": "연봉",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 79,
+      "lemma": "전술",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0,1,2는 싸움의 방법(戰術)이지만 관측형에 '전술한(5)'이 있어 '앞에서 말한'의 前述이 섞였을 수 있고 이를 맥락으로 가를 수 없다."
+    },
+    {
+      "ordinal": 80,
+      "lemma": "텃밭",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 81,
+      "lemma": "소명",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 1은 타고난 사명이라는 뜻이고 맥락 0,2는 신의 부름이 아닌 개인적 구원의 사명감이라 '신이 맡긴 일'로 좁히면 맥락과 어긋난다.",
+      "directions": [
+        {
+          "label": "타고나 받은 사명, 부름",
+          "hit_indices": [
+            1
+          ]
+        },
+        {
+          "label": "사람을 구원하려는 개인적 사명 의식",
+          "hit_indices": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 82,
+      "lemma": "지형",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 83,
+      "lemma": "내장",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0은 기기에 들어 있는 내장(內藏) 장치이고 맥락 2는 뱃속 장기(內臟)로 동음이의어가 갈린다.",
+      "directions": [
+        {
+          "label": "안에 갖춰진 내장(內藏) 장치",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "몸속 장기 내장(內臟)",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 84,
+      "lemma": "수장",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 85,
+      "lemma": "전학",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 86,
+      "lemma": "정사",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0의 정사를 돌보다는 나랏일(政事)이고 맥락 1,2의 정사는 남녀의 사사로운 관계(情事)라 동음이의어가 갈린다.",
+      "directions": [
+        {
+          "label": "나라를 다스리는 일 정사(政事)",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "남녀 간의 관계 정사(情事)",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 87,
+      "lemma": "배열",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 88,
+      "lemma": "세간",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0의 가정용 세간은 살림살이 도구이고 맥락 1,2의 세간의 평가·세간을 시끄럽게는 세상 사람들을 뜻해 뜻이 갈린다.",
+      "directions": [
+        {
+          "label": "살림살이 세간",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "세상 사람들, 세상",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 89,
+      "lemma": "몽상",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 90,
+      "lemma": "소요",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0의 작전 소요 부대는 필요함(所要), 맥락 1,2의 소요는 시끄럽게 술렁임(騷擾)이라 동음이의어가 갈린다.",
+      "directions": [
+        {
+          "label": "필요하거나 걸림 소요(所要)",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "시끄럽고 술렁임 소요(騷擾)",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 91,
+      "lemma": "불화",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 92,
+      "lemma": "사료",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0,2의 사료는 가축 먹이(飼料)이고 맥락 1의 1차 사료는 역사 연구 자료(史料)라 동음이의어가 갈린다.",
+      "directions": [
+        {
+          "label": "가축의 먹이 사료(飼料)",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "역사 연구의 자료 사료(史料)",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 93,
+      "lemma": "호응",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 94,
+      "lemma": "사고방식",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 95,
+      "lemma": "수군거리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 96,
+      "lemma": "굴욕",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 97,
+      "lemma": "발상",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 98,
+      "lemma": "통찰력",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 99,
+      "lemma": "다리다",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "관측형 '다린, 다려, 다리고'는 명사 '다리'에 조사·이다가 붙은 표면과 겹치고 맥락도 '다림질' 두 건뿐이라 동사 다리다의 활용형으로 확정하기 어렵다."
+    },
+    {
+      "ordinal": 100,
+      "lemma": "명문",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0,1은 이름난 학교·집안(名門)이지만 맥락 2의 '명문을 골랐다'는 뛰어난 글(名文)이라 풀이가 한 갈래만 담는다.",
+      "directions": [
+        {
+          "label": "이름난 집안이나 학교 명문(名門)",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "뛰어난 글 명문(名文)",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 101,
+      "lemma": "독신",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 102,
+      "lemma": "본보기",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 103,
+      "lemma": "오른편",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 104,
+      "lemma": "은색",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 105,
+      "lemma": "들락거리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 106,
+      "lemma": "시간대",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 107,
+      "lemma": "어림",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0·1은 '어림 반 푼어치도 없다', '어림도 없다'는 관용적 불가능 표현이고 맥락 2는 '어림해 보았다'는 짐작 동작이라 단일 풀이가 두 쓰임을 흐린다.",
+      "directions": [
+        {
+          "label": "어림없다 꼴의 불가능·턱없음 표현",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "대강 짐작하여 헤아리는 동작",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 108,
+      "lemma": "처박다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 109,
+      "lemma": "허구",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 110,
+      "lemma": "거행",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 111,
+      "lemma": "따돌리다",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0·1은 경찰이나 담당자를 피해 떼어 내는 뜻이고 맥락 2는 사람을 소외시키는 뜻이라 서로 다른 풀이가 필요하다.",
+      "directions": [
+        {
+          "label": "추적하거나 감시하는 상대를 피해 떼어 냄",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "사람을 무리에서 소외시킴",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 112,
+      "lemma": "목마르다",
+      "generator_disposition": "hold",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0·1·2에서 목마르다는 하나의 독립된 형용사로 확인되어 독립 검토로는 입적 가능으로 보나, 생성기 제안이 hold라 gloss가 없어 통과시킬 수 없다."
+    },
+    {
+      "ordinal": 113,
+      "lemma": "사회생활",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 114,
+      "lemma": "왕복",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 115,
+      "lemma": "기리다",
+      "generator_disposition": "hold",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0·1·2의 후손이 기릴, 아버지를 기리는, 선원들을 기리기 위해는 모두 업적을 칭송하고 기억하는 한 뜻이라 독립 검토로는 입적 가능하나, 생성기 제안이 hold라 gloss가 없다."
+    },
+    {
+      "ordinal": 116,
+      "lemma": "병행",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 117,
+      "lemma": "저울",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 118,
+      "lemma": "정처",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0·1 모두 '정처 없이', '정처없는' 꼴로만 나타나 단독 명사로 쓰인 용례가 없어 독립 어휘 단위로 확인되지 않는다."
+    },
+    {
+      "ordinal": 119,
+      "lemma": "지목",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 120,
+      "lemma": "추호",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 121,
+      "lemma": "컨디션",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 122,
+      "lemma": "엿보이다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 123,
+      "lemma": "흩뿌리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 124,
+      "lemma": "함대",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 125,
+      "lemma": "그림책",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 126,
+      "lemma": "동포",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 127,
+      "lemma": "치킨",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0의 '치킨 헛'과 맥락 2의 '리틀 치킨의 나무'는 상호나 인물 이름의 일부로 보여 음식 어휘와 고유명 조각이 섞였고 음식 용례는 맥락 1뿐이다."
+    },
+    {
+      "ordinal": 128,
+      "lemma": "고시",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1
+      ]
+    },
+    {
+      "ordinal": 129,
+      "lemma": "재혼",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 130,
+      "lemma": "부츠",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 131,
+      "lemma": "오픈",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0은 지붕 없는 오픈 스포츠카, 맥락 1은 사정을 숨김없이 밝힘, 맥락 2는 센터를 새로 열었다는 개업 뜻으로 갈린다.",
+      "directions": [
+        {
+          "label": "지붕이 열린 형태를 가리키는 오픈",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "사정을 숨김없이 드러냄",
+          "hit_indices": [
+            1
+          ]
+        },
+        {
+          "label": "가게나 센터를 새로 엶",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 132,
+      "lemma": "버섯",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 133,
+      "lemma": "고구마",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 134,
+      "lemma": "공학",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 135,
+      "lemma": "석방",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 136,
+      "lemma": "농업",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 137,
+      "lemma": "아드님",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 138,
+      "lemma": "수저",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0·2는 숟가락과 젓가락을 뜻하는 식기이고 맥락 1은 설탕 두 수저처럼 숟가락 분량을 세는 쓰임이라 풀이가 갈린다.",
+      "directions": [
+        {
+          "label": "식사 도구로서의 수저",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "숟가락 하나 분량",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 139,
+      "lemma": "요금",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 140,
+      "lemma": "충전",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 141,
+      "lemma": "세탁",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 1은 이불을 빠는 본뜻이지만 맥락 0 신분 세탁과 맥락 2 자금 세탁은 출처를 감추는 비유 쓰임이라 옷을 빠는 gloss와 맞지 않는다.",
+      "directions": [
+        {
+          "label": "옷이나 이불을 빨아 깨끗이 함",
+          "hit_indices": [
+            1
+          ]
+        },
+        {
+          "label": "신분이나 자금의 출처를 감추어 깨끗해 보이게 함",
+          "hit_indices": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 142,
+      "lemma": "출전",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0은 글의 출처를 뜻하는 출전 제목이고 맥락 1·2는 대회나 프로그램에 나서는 출전이라 동형이의어로 갈린다.",
+      "directions": [
+        {
+          "label": "인용이나 글의 출처",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "대회나 경연에 나감",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 143,
+      "lemma": "승용차",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 144,
+      "lemma": "개개인",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 145,
+      "lemma": "박해",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 146,
+      "lemma": "송아지",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 147,
+      "lemma": "앞발",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 148,
+      "lemma": "전속력",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0
+      ]
+    },
+    {
+      "ordinal": 149,
+      "lemma": "에어컨",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 150,
+      "lemma": "줄거리",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 151,
+      "lemma": "피난",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 152,
+      "lemma": "뒷좌석",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 153,
+      "lemma": "베끼다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 154,
+      "lemma": "사죄",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 155,
+      "lemma": "시즌",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0·2의 여름 시즌, 국정감사 시즌은 한 철을 뜻하지만 맥락 1의 예능 시즌 3은 연속물의 회차 묶음이라 한 철이라는 gloss와 맞지 않는다.",
+      "directions": [
+        {
+          "label": "어떤 일이 한창인 한 철",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "방송 시리즈의 회차 묶음",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 156,
+      "lemma": "검붉다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 157,
+      "lemma": "무상",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 0은 대가 없는 무상 치료, 맥락 1은 덧없는 이승이라는 무상한이며 맥락 2의 무상의 미소는 또 다른 뜻이라 동형이의어가 섞인다.",
+      "directions": [
+        {
+          "label": "대가를 받지 않는 무상",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "모든 것이 덧없음",
+          "hit_indices": [
+            1
+          ]
+        },
+        {
+          "label": "더없이 높음을 뜻하는 무상의",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 158,
+      "lemma": "번쩍거리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 159,
+      "lemma": "범주",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 160,
+      "lemma": "습성",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 161,
+      "lemma": "파산",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 162,
+      "lemma": "관용",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 163,
+      "lemma": "비방",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 164,
+      "lemma": "안정감",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 165,
+      "lemma": "이력",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 1·2는 학업이나 직업 경력이지만 맥락 0의 범죄 이력 조사는 지난 행적 기록이라 학업과 직업의 경력이라는 gloss가 범위를 좁힌다.",
+      "directions": [
+        {
+          "label": "지금까지 거친 학업이나 직업의 경력",
+          "hit_indices": [
+            1,
+            2
+          ]
+        },
+        {
+          "label": "범죄 등 지난 행적의 기록",
+          "hit_indices": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 166,
+      "lemma": "난관",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 167,
+      "lemma": "부각",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 168,
+      "lemma": "가속",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 169,
+      "lemma": "곤혹",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 170,
+      "lemma": "내포",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 171,
+      "lemma": "이면",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 172,
+      "lemma": "흉측",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "mismatch",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "관찰 형태 흉측한·흉측하게·흉측했다가 모두 흉측하다 꼴이고 맥락 0·1·2에서 단독 명사로 쓰인 예가 없어 명사 흉측은 어근에 가깝다."
+    },
+    {
+      "ordinal": 173,
+      "lemma": "기품",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 174,
+      "lemma": "야속",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "mismatch",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "관찰 형태 야속한·야속하게·야속하고가 모두 야속하다 꼴이고 맥락 0·1·2에 단독 명사 용례가 없어 명사 야속은 어근이며 형용사 야속하다로 봐야 한다."
+    },
+    {
+      "ordinal": 175,
+      "lemma": "어처구니없다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 176,
+      "lemma": "윙윙거리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 177,
+      "lemma": "강력",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "mismatch",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0·1·2가 모두 강력한·강력하게·강력하고처럼 형용사 강력하다로 쓰여 명사 강력과 품사가 맞지 않고 단독 명사 용례가 없다."
+    },
+    {
+      "ordinal": 178,
+      "lemma": "최적",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1
+      ]
+    },
+    {
+      "ordinal": 179,
+      "lemma": "각별",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "mismatch",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0·1·2가 모두 각별한·각별하게·각별했다 꼴이고 단독 명사 용례가 없어 명사 각별은 어근이며 형용사 각별하다로 봐야 한다."
+    },
+    {
+      "ordinal": 180,
+      "lemma": "놀림",
+      "generator_disposition": "hold",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0의 놀림, 1의 놀림을 받다, 2의 놀림만 당하던 모두 놀려 대는 일이라는 하나의 명사로 읽혀 독립 검토로는 입적 가능하나, 생성기 제안이 hold라 gloss가 없다."
+    },
+    {
+      "ordinal": 181,
+      "lemma": "만무",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "mismatch",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0·1·2가 모두 '리 만무했다/만무하다'처럼 만무하다 꼴의 고정 표현이라 명사 만무의 독립 용례가 없다."
+    },
+    {
+      "ordinal": 182,
+      "lemma": "몰아붙이다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 183,
+      "lemma": "싹트다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 184,
+      "lemma": "투덜대다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 185,
+      "lemma": "기병",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 186,
+      "lemma": "마법사",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 187,
+      "lemma": "소비자",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 188,
+      "lemma": "문법",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 189,
+      "lemma": "당나귀",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 190,
+      "lemma": "가이드",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "맥락 1은 여행지를 설명하는 안내인이고 맥락 2는 철도 안내서이며 맥락 0은 출판 가이드 시스템이라 사람과 책과 방법으로 쓰임이 갈린다.",
+      "directions": [
+        {
+          "label": "안내하는 사람",
+          "hit_indices": [
+            1
+          ]
+        },
+        {
+          "label": "안내서나 지침",
+          "hit_indices": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 191,
+      "lemma": "거듭나다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 192,
+      "lemma": "미끼",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 193,
+      "lemma": "약국",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 194,
+      "lemma": "순례자",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 195,
+      "lemma": "건초",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 196,
+      "lemma": "트리",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "독립 단위로 보이는 용례는 맥락 0의 '트리를 만들기' 하나뿐이고 관찰 형태에 크리스마스트리 복합어와 랜트리 같은 고유명 조각이 섞여 있다."
+    },
+    {
+      "ordinal": 197,
+      "lemma": "운전사",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 198,
+      "lemma": "떡볶이",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 199,
+      "lemma": "보급",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 200,
+      "lemma": "계란",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 201,
+      "lemma": "유죄",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 202,
+      "lemma": "잔해",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 203,
+      "lemma": "주지",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "맥락 0·1의 '주지 않으려', '바꿔 주지는'은 동사 주다의 활용 조각이고 맥락 2의 주지는 경전의 요지를 뜻하는 별개 단어로 주지 표면이 여러 단어에서 온다."
+    },
+    {
+      "ordinal": 204,
+      "lemma": "퇴사",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 205,
+      "lemma": "결제",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 206,
+      "lemma": "왕관",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 207,
+      "lemma": "고속",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 208,
+      "lemma": "이슈",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 209,
+      "lemma": "저승",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 210,
+      "lemma": "콘서트",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 211,
+      "lemma": "타령",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 212,
+      "lemma": "샐러드",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 213,
+      "lemma": "싱크대",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 214,
+      "lemma": "익살",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 215,
+      "lemma": "양념",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 216,
+      "lemma": "불량",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 217,
+      "lemma": "빛내다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 218,
+      "lemma": "후하다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 219,
+      "lemma": "허풍",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 220,
+      "lemma": "깜박이다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 221,
+      "lemma": "반격",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 222,
+      "lemma": "변수",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 223,
+      "lemma": "보금자리",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 224,
+      "lemma": "말기",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 225,
+      "lemma": "병상",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 226,
+      "lemma": "관목",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 227,
+      "lemma": "내리쬐다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 228,
+      "lemma": "앞길",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0은 눈앞의 길이고 1,2는 장래라는 비유 뜻이어서 하나의 풀이로 묶기 어렵다.",
+      "directions": [
+        {
+          "label": "눈앞에 놓인 길",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "장래, 앞으로의 삶",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 229,
+      "lemma": "우러르다",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 1은 고개 들어 하늘을 쳐다봄이고 2의 산은 우러러볼 존재는 존경의 뜻이라 쳐다봄 풀이만으로는 부족하며, 문맥 0은 다른 말의 오기로 보인다.",
+      "directions": [
+        {
+          "label": "고개를 들어 위를 바라봄",
+          "hit_indices": [
+            1
+          ]
+        },
+        {
+          "label": "높이 받들어 존경함",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 230,
+      "lemma": "혈색",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 231,
+      "lemma": "힘없다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1
+      ]
+    },
+    {
+      "ordinal": 232,
+      "lemma": "고달프다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 233,
+      "lemma": "낯빛",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 234,
+      "lemma": "들먹이다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 235,
+      "lemma": "별나다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 236,
+      "lemma": "엉기다",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0,1은 뒤섞여 붙음이지만 2의 크림이 엉기다는 액체가 굳는 뜻이라 한 풀이로 묶기 어렵다.",
+      "directions": [
+        {
+          "label": "뒤섞여 달라붙음",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "액체가 굳어 덩어리짐",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 237,
+      "lemma": "열병",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 238,
+      "lemma": "이쯤",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 239,
+      "lemma": "일말",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0
+      ]
+    },
+    {
+      "ordinal": 240,
+      "lemma": "도사리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 241,
+      "lemma": "재잘거리다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 242,
+      "lemma": "콧물",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 243,
+      "lemma": "뛰어놀다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 244,
+      "lemma": "일자",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 2의 일자는 날짜(日字)이고 0의 일자 무식, 1의 일자로 펼쳐진 사다리는 한 일(一) 자 뜻이라 서로 다른 말이다.",
+      "directions": [
+        {
+          "label": "날짜(日字)",
+          "hit_indices": [
+            2
+          ]
+        },
+        {
+          "label": "한 일(一) 자, 곧은 모양",
+          "hit_indices": [
+            0,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 245,
+      "lemma": "허리춤",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 246,
+      "lemma": "힘내다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 247,
+      "lemma": "숨어들다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 248,
+      "lemma": "재회",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 249,
+      "lemma": "겉모습",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 250,
+      "lemma": "할멈",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 251,
+      "lemma": "치매",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 252,
+      "lemma": "고을",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 253,
+      "lemma": "본문",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 254,
+      "lemma": "거위",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 255,
+      "lemma": "표준",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 256,
+      "lemma": "미술관",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 257,
+      "lemma": "택배",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 258,
+      "lemma": "당선",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 259,
+      "lemma": "미학",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0의 산정의 미학, 2의 미학의 대상은 아름다움의 관점이나 멋을 뜻하고 학문 풀이가 분명히 드러나는 것은 1의 미학적 경험 정도라 학문 하나로만 풀이하면 어긋난다.",
+      "directions": [
+        {
+          "label": "아름다움에 대한 관점, 특유의 멋",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "아름다움을 다루는 학문 영역",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 260,
+      "lemma": "생수",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0,2는 병에 담긴 마시는 물이라 가공하지 않았다는 풀이와 어긋나고 1은 사막에서 찾는 자연의 맑은 물이다.",
+      "directions": [
+        {
+          "label": "병에 담아 파는 마시는 물",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "자연에서 얻는 맑은 물",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 261,
+      "lemma": "관중",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 262,
+      "lemma": "비즈니스",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 263,
+      "lemma": "스케치",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 264,
+      "lemma": "사직",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0의 사직 편지는 직무를 그만둠(辭職)이고 1,2의 종묘 사직은 나라를 뜻하는 다른 한자어(社稷)이다.",
+      "directions": [
+        {
+          "label": "맡은 직무를 그만둠(辭職)",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "종묘와 함께 일컫는 나라(社稷)",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 265,
+      "lemma": "노선",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0,2는 지하철 노선이고 1은 개혁 개방의 노선처럼 행동 방침을 뜻해 하나의 풀이로 묶기 어렵다.",
+      "directions": [
+        {
+          "label": "교통 수단이 다니는 길",
+          "hit_indices": [
+            0,
+            2
+          ]
+        },
+        {
+          "label": "일이나 활동의 방침",
+          "hit_indices": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 266,
+      "lemma": "은인",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 267,
+      "lemma": "목욕탕",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 268,
+      "lemma": "연료",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 269,
+      "lemma": "토마토",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 270,
+      "lemma": "나물",
+      "generator_disposition": "hold",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "문맥 0,1,2의 나물 반찬, 나물을 캐러, 나물과 열매는 모두 먹는 풀 하나의 뜻이라 입수 가능해 보이지만 제안이 보류라 풀이 없이는 통과시킬 수 없다."
+    },
+    {
+      "ordinal": 271,
+      "lemma": "검진",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1
+      ]
+    },
+    {
+      "ordinal": 272,
+      "lemma": "저축",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 273,
+      "lemma": "휘하",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 274,
+      "lemma": "전생",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 275,
+      "lemma": "타임",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "문맥 0의 타임 광장은 고유명 조각이고 1의 입장 타임과 2의 컴퓨팅 타임은 서로 다른 외래어 쓰임이라 단독 표제어로 고정하기 어렵다."
+    },
+    {
+      "ordinal": 276,
+      "lemma": "동부",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 277,
+      "lemma": "렌즈",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 278,
+      "lemma": "벽지",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0의 벽지 학교는 외진 곳(僻地)이고 1,2의 벽지는 벽에 바르는 도배지(壁紙)라 서로 다른 한자어이다.",
+      "directions": [
+        {
+          "label": "외진 곳(僻地)",
+          "hit_indices": [
+            0
+          ]
+        },
+        {
+          "label": "벽에 바르는 종이(壁紙)",
+          "hit_indices": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 279,
+      "lemma": "풍습",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 280,
+      "lemma": "고의",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 281,
+      "lemma": "절단",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 282,
+      "lemma": "돌파",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 283,
+      "lemma": "성화",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0,1은 남을 몹시 조르는 성화이고 2는 성당을 장식하는 성스러운 그림(聖畫)이라 다른 한자어이다.",
+      "directions": [
+        {
+          "label": "몹시 귀찮게 조르는 일",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "성스러운 그림(聖畫)",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 284,
+      "lemma": "금년",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 285,
+      "lemma": "물자",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 286,
+      "lemma": "성취감",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 287,
+      "lemma": "회수",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0,1의 회수는 거두어들임이지만 2의 회수권은 횟수에 따라 쓰는 표(回數券)로 다른 한자어이다.",
+      "directions": [
+        {
+          "label": "내보냈거나 쓴 것을 도로 거두어들임",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "횟수를 나타내는 회수(回數)",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 288,
+      "lemma": "굉음",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 289,
+      "lemma": "호되다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 290,
+      "lemma": "건축물",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 291,
+      "lemma": "비관",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 292,
+      "lemma": "세로",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 293,
+      "lemma": "전시회",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 294,
+      "lemma": "갈구",
+      "generator_disposition": "hold",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "문맥 0,1,2의 갈구가, 갈구할, 갈구하는은 모두 간절히 바람이라는 한 뜻으로 읽히지만 제안이 보류라 풀이 없이는 통과시킬 수 없다."
+    },
+    {
+      "ordinal": 295,
+      "lemma": "골몰",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 296,
+      "lemma": "금기",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 297,
+      "lemma": "돈벌이",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 298,
+      "lemma": "밟히다",
+      "generator_disposition": "admit",
+      "generator_agreement": "disagree",
+      "verdict": "hold",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "misfit",
+      "sense_boundary_check": "multiple",
+      "hold_basis": "unresolved-sense",
+      "hold_rationale": "문맥 0,1은 발에 눌림이지만 2의 눈에 자꾸 밟히는은 잊히지 않고 아른거린다는 관용 뜻이라 눌림 풀이만으로는 부족하다.",
+      "directions": [
+        {
+          "label": "발에 눌리거나 디뎌짐",
+          "hit_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "label": "눈에 밟히다, 잊히지 않고 아른거림",
+          "hit_indices": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "ordinal": 299,
+      "lemma": "해제",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 300,
+      "lemma": "머나멀다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0
+      ]
+    },
+    {
+      "ordinal": 301,
+      "lemma": "찌꺼기",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 302,
+      "lemma": "건너뛰다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 303,
+      "lemma": "뜯어내다",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 304,
+      "lemma": "자진",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 305,
+      "lemma": "눈망울",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    }
   ]
 }

@@ -13,6 +13,8 @@ import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
   assertIndependentSemanticReviewer,
   assertReviewerChecks,
+  assertReviewerOutcomes,
+  bindHitCounts,
   assertSemanticReviewEnvelope,
   REVIEWER_CHECK_FIRST_BATCH,
   issue223CorrectionPassId,
@@ -129,7 +131,7 @@ export function candidateRequiresBoundedContext(reviewRow) {
 const LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS = Object.freeze([1, 2, 3, 4]);
 
 export function validateSemanticReviewInputBinding({
-  semanticSource, inputBytes, batchId, admittedRows, candidateAuthor, registry,
+  semanticSource, inputBytes, batchId, admittedRows, candidateRows, candidateAuthor, registry,
 }) {
   const { ordinal } = parseIssue223BatchId(batchId);
   const digest = semanticSource.source_basis.semantic_review_input_sha256;
@@ -144,7 +146,11 @@ export function validateSemanticReviewInputBinding({
   const input = JSON.parse(inputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(input, batchId);
   assertIndependentSemanticReviewer({ reviewer: input.reviewer, candidateAuthor, registry });
-  assertReviewerChecks(input.reviews, { required: ordinal >= REVIEWER_CHECK_FIRST_BATCH });
+  assertReviewerChecks(input.reviews, {
+    required: ordinal >= REVIEWER_CHECK_FIRST_BATCH,
+    hitCountByLemma: bindHitCounts(candidateRows ?? admittedRows),
+  });
+  if (ordinal >= REVIEWER_CHECK_FIRST_BATCH) assertReviewerOutcomes(input.candidate_outcomes, candidateRows);
   const admittedLemmas = admittedRows.map((row) => row.morphology_proposal.lemma);
   assert.deepEqual(
     input.reviews.map(({ lemma }) => lemma).sort(),
@@ -478,6 +484,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       inputBytes: await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null,
       batchId: candidateReview.batch_id,
       admittedRows,
+      candidateRows: candidateReview.decisions,
       candidateAuthor: candidateReview.reviewer,
       registry: reviewerRegistry,
     });

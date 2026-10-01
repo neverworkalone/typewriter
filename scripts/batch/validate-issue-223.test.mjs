@@ -90,7 +90,8 @@ const RECORD = { id: 'w9001', lemma: '가락', senses: [{ id: 'w9001-s1', pos: '
 const ROW = {
   inventory_id: 'm5-1',
   morphology_proposal: { lemma: '가락' },
-  editorial_judgment: { writer_use_axis: 'S' },
+  bounded_provenance: { representative_hits: [{ paragraph_id: 'p0' }, { paragraph_id: 'p1' }] },
+  editorial_judgment: { disposition: 'admit', writer_use_axis: 'S' },
 };
 
 function authoredReview() {
@@ -125,6 +126,10 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
     reviewer: 'reviewer-a',
     review_status: 'complete',
     reviews: [review],
+    candidate_outcomes: [{
+      ordinal: 1, lemma: '가락', generator_disposition: 'admit', generator_agreement: 'agree', verdict: 'pass',
+      identity_check: 'ok', pos_check: 'ok', gloss_check: 'fit', sense_boundary_check: 'single', checked_hit_indices: [0],
+    }],
     ...inputOverrides,
   };
   const inputBytes = Buffer.from(JSON.stringify(input));
@@ -141,6 +146,7 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
     inputBytes,
     batchId: BOUND_BATCH,
     admittedRows: [ROW],
+    candidateRows: [ROW],
     candidateAuthor: 'author-x',
     registry: new Set(['reviewer-a']),
   };
@@ -258,4 +264,18 @@ test('Issue #223 bound review input from B06 on must preserve the reviewer check
   const inputBytes = Buffer.from(JSON.stringify(input));
   const semanticSource = { ...fixture.semanticSource, source_basis: { semantic_review_input_sha256: sha(inputBytes) } };
   assert.throws(() => validateSemanticReviewInputBinding({ ...fixture, inputBytes, semanticSource }), /all five/u);
+});
+
+test('Issue #223 bound review input from B06 on must preserve an outcome for every candidate', () => {
+  const fixture = boundFixture();
+  const rebind = (mutateInput) => {
+    const input = JSON.parse(fixture.inputBytes.toString('utf8'));
+    mutateInput(input);
+    const inputBytes = Buffer.from(JSON.stringify(input));
+    return { ...fixture, inputBytes, semanticSource: { ...fixture.semanticSource, source_basis: { semantic_review_input_sha256: sha(inputBytes) } } };
+  };
+  assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { delete i.candidate_outcomes; })), /candidate_outcomes/u);
+  assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.candidate_outcomes = []; })), /every candidate/u);
+  assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.candidate_outcomes[0].checked_hit_indices = [999]; })), /outside the candidate's 2/u);
+  assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.reviews[0].checked_hit_indices = [999]; })), /outside the candidate's 2/u);
 });
