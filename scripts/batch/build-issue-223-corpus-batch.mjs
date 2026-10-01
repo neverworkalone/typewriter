@@ -141,13 +141,7 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
       candidate_record_id: null,
       disposition_basis: editorial.basis,
       ...(editorial.basis === 'unresolved-identity'
-        ? {
-          identity_evidence: editorial.identity_evidence ?? {
-          evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
-          rationale: editorial.rationale,
-          paragraph_ids: bindAuthoredParagraphReferences(hitRefs, editorial.paragraph_ids),
-        },
-        }
+        ? defaultIdentityEvidence(editorial, hitRefs)
         : {}),
       ...(editorial.basis === 'unresolved-sense'
         ? {
@@ -207,6 +201,21 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
       representative_hits: hitRefs,
     },
     editorial_judgment: judgment,
+  };
+}
+
+// A bounded-context identity hold needs cited paragraphs. When no representative
+// context exists, the hold rests on the analyzer's morphology blocker alone and
+// carries no context evidence unless the author supplies explicit evidence.
+export function defaultIdentityEvidence(editorial, hitRefs) {
+  if (editorial.identity_evidence !== undefined) return { identity_evidence: editorial.identity_evidence };
+  if (hitRefs.length === 0 && editorial.paragraph_ids === undefined) return {};
+  return {
+    identity_evidence: {
+      evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
+      rationale: editorial.rationale,
+      paragraph_ids: bindAuthoredParagraphReferences(hitRefs, editorial.paragraph_ids),
+    },
   };
 }
 

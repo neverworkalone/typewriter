@@ -7,7 +7,7 @@ import { validateAuthoredSemanticDecisionSource } from './authored-semantic-deci
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { makeSemanticDecision } from './build-issue-223-corpus-batch.mjs';
 import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
-import { semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
+import { candidateRequiresBoundedContext, semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
 function reviewOnlyBatch() {
   return {
@@ -220,4 +220,16 @@ test('Issue #223 shared semantic validator enforces the bound reviewer, not a fi
   assert.doesNotThrow(() => run(changed, 'independent-agent'));
   assert.throws(() => run(changed), /review is incomplete/u);
   assert.throws(() => run(changed, 'someone-else'), /review is incomplete/u);
+});
+
+test('Issue #223 bounded context is required unless an identity hold rests on a morphology blocker', () => {
+  const hold = (extra = {}, proposal = {}) => ({
+    editorial_judgment: { disposition: 'hold', disposition_basis: 'unresolved-identity', ...extra },
+    morphology_proposal: proposal,
+  });
+  assert.equal(candidateRequiresBoundedContext({ editorial_judgment: { disposition: 'admit' }, morphology_proposal: {} }), true);
+  assert.equal(candidateRequiresBoundedContext(hold()), true);
+  assert.equal(candidateRequiresBoundedContext({ editorial_judgment: { disposition: 'hold', disposition_basis: 'unresolved-sense' }, morphology_proposal: { ambiguity_status: 'held_surface_has_multiple_analyzer_interpretations' } }), true);
+  assert.equal(candidateRequiresBoundedContext(hold({}, { ambiguity_status: 'held_surface_has_multiple_analyzer_interpretations' })), false);
+  assert.equal(candidateRequiresBoundedContext(hold({ identity_evidence: { evidence_type: 'reviewed-analyzed-forms-show-component-only-usage' } })), false);
 });
