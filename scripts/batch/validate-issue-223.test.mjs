@@ -113,6 +113,8 @@ function authoredReview() {
 function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
   const review = authoredReview();
   const input = {
+    schema_version: '1',
+    contract_version: 'authored-semantic-review-input-v1',
     kind: 'authored-semantic-review-input',
     batch_id: BOUND_BATCH,
     reviewer: 'independent-agent',

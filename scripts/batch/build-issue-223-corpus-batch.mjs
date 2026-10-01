@@ -255,6 +255,8 @@ function glossFrameSpans(gloss) {
 }
 
 export function assertSemanticReviewEnvelope(input, batchId) {
+  assert.equal(input.schema_version, '1', 'semantic review input has an unsupported schema version');
+  assert.equal(input.contract_version, 'authored-semantic-review-input-v1', 'semantic review input has an unregistered contract version');
   assert.equal(input.kind, 'authored-semantic-review-input', 'semantic review input has the wrong kind');
   assert.equal(input.batch_id, batchId, 'semantic review input is bound to a different batch');
   assert.ok(nonEmpty(input.reviewer), 'semantic review input needs a named reviewer');
@@ -314,7 +316,7 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
     token_index: fragment.token_index,
     gloss_sha256: glossDigest,
     decision_source_id: sourceId,
-    rationale: authoredReview.topic_analysis.rationale,
+    rationale: `${candidate.id} ${sense.id}: ${authoredReview.topic_analysis.rationale}`,
   });
   const frameSpans = glossFrameSpans(sense.gloss);
   const senseReview = {
@@ -322,12 +324,12 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
     boundary_action: authoredReview.boundary_action,
     boundary_classification: authoredReview.boundary_classification,
     boundary_decision: boundaryDecision,
-    boundary_rationale: `${authoredReview.boundary_rationale} Reviewed gloss SHA-256 ${glossDigest}.`,
-    semantic_rationale: authoredReview.semantic_rationale,
+    boundary_rationale: `${row.inventory_id} ${candidate.id} ${sense.id}: ${authoredReview.boundary_rationale} Reviewed gloss SHA-256 ${glossDigest}.`,
+    semantic_rationale: `${candidate.id} ${sense.id}: ${authoredReview.semantic_rationale}`,
     relation_decision: 'no-relations',
     relation_count: 0,
     relation_ids: [],
-    no_relation_rationale: authoredReview.no_relation_rationale,
+    no_relation_rationale: `${row.inventory_id} ${candidate.id}-${sense.id}: ${authoredReview.no_relation_rationale}`,
     ...(topicFragments.length > 0 ? {
       review_basis: {
         ...(topicFragments.length === 1
@@ -349,7 +351,7 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
           target_class: authoredReview.frames[index].target_class,
         },
       })),
-      rationale: authoredReview.frame_rationale,
+      rationale: `${candidate.id} ${sense.id}: ${authoredReview.frame_rationale}`,
     },
   };
   const decision = {
@@ -358,7 +360,7 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
     candidate_record_sha256: sha256Json(candidate),
     decision: 'included',
     rank,
-    decision_rationale: authoredReview.decision_rationale,
+    decision_rationale: `${row.inventory_id} ${candidate.id}: ${authoredReview.decision_rationale}`,
     review_pass_id: passId,
     gloss_judgment: authoredReview.gloss_judgment,
     sense_reviews: [senseReview],

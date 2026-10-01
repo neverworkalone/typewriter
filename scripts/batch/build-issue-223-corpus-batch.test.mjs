@@ -88,8 +88,8 @@ test('Issue #223 builder cannot mint semantic pass evidence without an authored 
 
 test('Issue #223 builder binds authored review judgments without replacing them', () => {
   const decision = makeSemanticDecision(ROW, CANDIDATE, 1, 'pass', 'source', authoredReview());
-  assert.equal(decision.decision_rationale, '독립 검토 결과 포함.');
-  assert.equal(decision.sense_reviews[0].semantic_rationale, '풀이가 표제어와 맞는다.');
+  assert.equal(decision.decision_rationale, 'm5-1 w9001: 독립 검토 결과 포함.');
+  assert.equal(decision.sense_reviews[0].semantic_rationale, 'w9001 w9001-s1: 풀이가 표제어와 맞는다.');
   assert.equal(
     decision.sense_reviews[0].single_sense_boundary_review.frame_observations[0].sentence_frame,
     '“가락”이라는 말이 문장에 번졌다.',
@@ -103,7 +103,9 @@ test('Issue #223 correction pass id derives from the batch date', () => {
 
 test('Issue #223 semantic review input needs a bound, completed envelope', () => {
   const batchId = 'issue-223-m9-e-corpus-batch-06-20261002';
-  const envelope = { kind: 'authored-semantic-review-input', batch_id: batchId, reviewer: 'r', review_status: 'complete', reviews: [] };
+  const envelope = { schema_version: '1',
+    contract_version: 'authored-semantic-review-input-v1',
+    kind: 'authored-semantic-review-input', batch_id: batchId, reviewer: 'r', review_status: 'complete', reviews: [] };
   assertSemanticReviewEnvelope(envelope, batchId);
   assert.throws(() => assertSemanticReviewEnvelope([], batchId));
   assert.throws(() => assertSemanticReviewEnvelope({ ...envelope, batch_id: 'issue-223-m9-e-corpus-batch-05-20261001' }, batchId));
@@ -122,7 +124,7 @@ test('Issue #223 builder requires explicit authored boundary and topic outcomes'
   assert.throws(() => makeSemanticDecision(ROW, topicCandidate, 1, 'pass', 'source', topicReview), /topic outcome/u);
   const reviewed = { ...topicReview, topic_analysis: { status: 'pass', state: 'adnominal', rationale: '관형 용법이다.' } };
   assert.equal(makeSemanticDecision(ROW, topicCandidate, 1, 'pass', 'source', reviewed)
-    .sense_reviews[0].review_basis.topic_analysis.rationale, '관형 용법이다.');
+    .sense_reviews[0].review_basis.topic_analysis.rationale, 'w9001 w9001-s1: 관형 용법이다.');
 });
 
 test('Issue #223 authored frames must match derived gloss spans exactly', () => {

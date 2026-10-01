@@ -121,6 +121,10 @@
         "contract": "m9_corpus_candidate_review"
       },
       {
+        "pattern": "data/batches/issue-223-m9-e-corpus-batch-*-semantic-review-input.json",
+        "contract": "authored_semantic_review_input"
+      },
+      {
       "pattern": "data/batches/*-semantic-decisions.json",
       "contract": "decision_source"
     },
@@ -764,7 +768,8 @@
           "exclusion_manifest_sha256": "string",
             "source_manifest_sha256": "string",
             "logical_rows_sha256": "string",
-            "permission_record_sha256": "string"
+            "permission_record_sha256": "string",
+            "semantic_review_input_sha256": "string"
           },
           "$.provenance": {
             "generator": "string",
@@ -1097,7 +1102,7 @@
           "decision_source_id"
         ],
         "nested_allowed_fields": {
-          "$.source_basis": ["pilot_decision_ledger_sha256", "candidate_selection_sha256", "candidate_count", "admitted_candidate_ordinals", "candidate_review_sha256", "candidate_evidence_sha256", "candidate_source_sha256", "candidate_source_artifact_sha256", "base_inventory_sha256", "base_seed_sha256", "candidate_records_sha256", "exclusion_manifest_sha256", "source_manifest_sha256", "logical_rows_sha256", "permission_record_sha256"],
+          "$.source_basis": ["pilot_decision_ledger_sha256", "candidate_selection_sha256", "candidate_count", "admitted_candidate_ordinals", "candidate_review_sha256", "candidate_evidence_sha256", "candidate_source_sha256", "candidate_source_artifact_sha256", "base_inventory_sha256", "base_seed_sha256", "candidate_records_sha256", "exclusion_manifest_sha256", "source_manifest_sha256", "logical_rows_sha256", "permission_record_sha256", "semantic_review_input_sha256"],
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
           "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "coverage_field", "coverage_basis", "selection_rationale"],
@@ -2600,6 +2605,92 @@
           "$.decisions.*.editorial_judgment.competing_canonical_matches.*": {
             "record_id": "string",
             "match_kind": "string"
+          }
+        }
+      },
+      "authored_semantic_review_input": {
+        "contract_versions": [
+          "authored-semantic-review-input-v1"
+        ],
+        "required_fields": [
+          "batch_id",
+          "contract_version",
+          "kind",
+          "review_status",
+          "reviewer",
+          "reviews",
+          "schema_version"
+        ],
+        "allowed_fields": [
+          "batch_id",
+          "contract_version",
+          "kind",
+          "review_status",
+          "reviewer",
+          "reviews",
+          "schema_version"
+        ],
+        "field_types": {
+          "batch_id": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "review_status": "string",
+          "reviewer": "string",
+          "reviews": "array<object>",
+          "schema_version": "string"
+        },
+        "nested_allowed_fields": {
+          "$.reviews.*": [
+            "boundary_action",
+            "boundary_classification",
+            "boundary_rationale",
+            "decision_rationale",
+            "frame_rationale",
+            "frames",
+            "gloss_judgment",
+            "gloss_sha256",
+            "lemma",
+            "no_relation_rationale",
+            "semantic_rationale",
+            "single_sense_boundary_status",
+            "topic_analysis"
+          ],
+          "$.reviews.*.frames.*": [
+            "relation_type",
+            "sentence_frame",
+            "target_class"
+          ],
+          "$.reviews.*.topic_analysis": [
+            "rationale",
+            "state",
+            "status"
+          ]
+        },
+        "nested_field_types": {
+          "$.reviews.*": {
+            "boundary_action": "string",
+            "boundary_classification": "string",
+            "boundary_rationale": "string",
+            "decision_rationale": "string",
+            "frame_rationale": "string",
+            "frames": "array<object>",
+            "gloss_judgment": "string",
+            "gloss_sha256": "string",
+            "lemma": "string",
+            "no_relation_rationale": "string",
+            "semantic_rationale": "string",
+            "single_sense_boundary_status": "string",
+            "topic_analysis": "object"
+          },
+          "$.reviews.*.frames.*": {
+            "relation_type": "string",
+            "sentence_frame": "string",
+            "target_class": "string"
+          },
+          "$.reviews.*.topic_analysis": {
+            "rationale": "string",
+            "state": "string",
+            "status": "string"
           }
         }
       },
