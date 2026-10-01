@@ -77,15 +77,34 @@ export function runSummaries(rawArtifact) {
   return rawArtifact.runs.map(({ outputs, ...summary }) => summary);
 }
 
+// The reviewed proposals are what the reviewers were actually shown: for each
+// candidate, the generator's disposition and, for an admit proposal, the exact
+// gloss. A reviewer's `fit` is bound to that gloss, and the gloss admitted into
+// canonical data must be the same one.
+//
 // `candidateRows` are the candidate-review decision rows, `glossByLemma` maps
-// each admitted lemma to its gloss, and `rawBytes` are the preserved artifact's
-// exact bytes.
+// each admitted lemma to the gloss currently in the candidate record, and
+// `rawBytes` are the preserved artifact's exact bytes.
 export function assertInputDerivedFromRaw({ input, rawArtifact, rawBytes, candidateRows, glossByLemma, sha256Bytes }) {
   assert.equal(rawArtifact?.kind, RAW_OUTPUTS_KIND, 'reviewer raw outputs have the wrong kind');
   assert.equal(rawArtifact.contract_version, RAW_OUTPUTS_CONTRACT_VERSION, 'reviewer raw outputs have an unregistered contract version');
   assert.equal(rawArtifact.batch_id, input.batch_id, 'reviewer raw outputs are bound to a different batch');
   assert.equal(rawArtifact.reviewer, input.reviewer, 'reviewer raw outputs name a different reviewer than the input');
   assert.equal(sha256Bytes(rawBytes), input.raw_outputs_sha256, 'reviewer raw outputs do not match the digest bound in the input');
+
+  const proposals = rawArtifact.reviewed_proposals;
+  assert.ok(Array.isArray(proposals) && proposals.length === candidateRows.length,
+    'reviewer raw outputs must preserve the reviewed proposal for every candidate');
+  proposals.forEach((proposal, index) => {
+    const lemma = candidateRows[index].morphology_proposal.lemma;
+    assert.equal(proposal.ordinal, index + 1, `${lemma}: reviewed proposal ordinal`);
+    assert.equal(proposal.lemma, lemma, `${lemma}: reviewed proposal is bound to a different lemma`);
+    assert.ok(['admit', 'hold'].includes(proposal.disposition), `${lemma}: reviewed proposal names no disposition`);
+    if (proposal.disposition === 'admit') assert.ok(nonEmpty(proposal.gloss), `${lemma}: an admit proposal must preserve its gloss`);
+    else assert.equal(proposal.gloss, undefined, `${lemma}: a hold proposal carries no gloss`);
+  });
+  assert.equal(input.generator_proposal_sha256, sha256Json(proposals),
+    'review input does not match the digest of the reviewed proposals');
 
   // Runs must cover every candidate exactly once, in order.
   assert.ok(Array.isArray(rawArtifact.runs) && rawArtifact.runs.length > 0, 'reviewer raw outputs list no runs');
@@ -97,7 +116,10 @@ export function assertInputDerivedFromRaw({ input, rawArtifact, rawBytes, candid
       && run.last_ordinal === run.first_ordinal + run.candidate_count - 1,
     `run ${run.run} must report exactly the candidates it covers`);
     assert.equal(run.raw_output_sha256, sha256Json(run.outputs), `run ${run.run} outputs do not match their recorded digest`);
-    assert.ok(nonEmpty(run.context) && nonEmpty(run.packet_sha256), `run ${run.run} must record its context and packet digest`);
+    assert.equal(run.proposals_sha256, sha256Json(proposals.slice(run.first_ordinal - 1, run.last_ordinal)),
+      `run ${run.run} did not review the recorded proposals`);
+    assert.ok(nonEmpty(run.context), `run ${run.run} must record its context`);
+    assert.match(String(run.packet_sha256), /^[0-9a-f]{64}$/u, `run ${run.run} must record the reviewed packet's SHA-256`);
     flat.push(...run.outputs);
     next = run.last_ordinal + 1;
   }
@@ -113,6 +135,8 @@ export function assertInputDerivedFromRaw({ input, rawArtifact, rawBytes, candid
     assert.equal(raw.ordinal, index + 1, `${lemma}: raw output ordinal`);
     assert.equal(raw.lemma, lemma, `${lemma}: raw output is bound to a different lemma`);
     const stated = input.candidate_outcomes[index];
+    assert.equal(stated.generator_disposition, proposals[index].disposition,
+      `${lemma}: outcome names a different proposal than the reviewer was shown`);
     assert.deepEqual(stated, outcomeFromRaw(stated.generator_disposition, raw),
       `${lemma}: candidate outcome is not what the reviewer's raw output yields`);
     if (raw.verdict !== 'pass') {
@@ -120,9 +144,11 @@ export function assertInputDerivedFromRaw({ input, rawArtifact, rawBytes, candid
       return;
     }
     passes += 1;
-    const gloss = glossByLemma.get(lemma);
-    assert.ok(nonEmpty(gloss), `${lemma}: no gloss to bind the reviewer pass to`);
-    assert.deepEqual(reviewByLemma.get(lemma), reviewFromRaw({ lemma, gloss, raw }),
+    assert.equal(proposals[index].disposition, 'admit', `${lemma}: a reviewer pass needs an admit proposal`);
+    const reviewedGloss = proposals[index].gloss;
+    assert.equal(glossByLemma.get(lemma), reviewedGloss,
+      `${lemma}: the admitted gloss differs from the gloss the reviewer assessed`);
+    assert.deepEqual(reviewByLemma.get(lemma), reviewFromRaw({ lemma, gloss: reviewedGloss, raw }),
       `${lemma}: review row is not what the reviewer's raw output yields`);
   });
   assert.equal(input.reviews.length, passes, 'review rows must exist exactly for the reviewer passes');

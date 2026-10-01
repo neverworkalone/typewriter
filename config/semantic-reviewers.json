@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Reviewer identities allowed to author Issue #223 semantic review inputs. The registry is tracked outside the review input so a producer cannot grant itself a reviewer identity; a semantic reviewer must also differ from the candidate-review author of the same batch.",
+  "description": "Operating-policy list of reviewer identities named by Issue #223 semantic review inputs. The names are labels recorded by the batch changes themselves and this registry is part of the same change, so it neither authenticates nor protects reviewer identities (see docs/issue-223-m9-e-scale-coverage.md, \"Reviewer independence\").",
   "reviewers": [
     {
       "id": "claude-sonnet-5-5",

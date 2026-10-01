@@ -2620,6 +2620,7 @@
           "batch_id",
           "contract_version",
           "kind",
+          "reviewed_proposals",
           "reviewer",
           "runs",
           "schema_version"
@@ -2628,6 +2629,7 @@
           "batch_id",
           "contract_version",
           "kind",
+          "reviewed_proposals",
           "reviewer",
           "runs",
           "schema_version"
@@ -2636,11 +2638,18 @@
           "batch_id": "string",
           "contract_version": "string",
           "kind": "string",
+          "reviewed_proposals": "array<object>",
           "reviewer": "string",
           "runs": "array<object>",
           "schema_version": "string"
         },
         "nested_allowed_fields": {
+          "$.reviewed_proposals.*": [
+            "disposition",
+            "gloss",
+            "lemma",
+            "ordinal"
+          ],
           "$.runs.*": [
             "candidate_count",
             "context",
@@ -2649,6 +2658,7 @@
             "model",
             "outputs",
             "packet_sha256",
+            "proposals_sha256",
             "raw_output_sha256",
             "run"
           ],
@@ -2676,6 +2686,12 @@
           ]
         },
         "nested_field_types": {
+          "$.reviewed_proposals.*": {
+            "disposition": "string",
+            "gloss": "string",
+            "lemma": "string",
+            "ordinal": "integer"
+          },
           "$.runs.*": {
             "candidate_count": "integer",
             "context": "string",
@@ -2684,6 +2700,7 @@
             "model": "string",
             "outputs": "array<object>",
             "packet_sha256": "string",
+            "proposals_sha256": "string",
             "raw_output_sha256": "string",
             "run": "integer"
           },
@@ -2758,6 +2775,7 @@
             "last_ordinal",
             "model",
             "packet_sha256",
+            "proposals_sha256",
             "raw_output_sha256",
             "run"
           ],
@@ -2819,6 +2837,7 @@
             "last_ordinal": "integer",
             "model": "string",
             "packet_sha256": "string",
+            "proposals_sha256": "string",
             "raw_output_sha256": "string",
             "run": "integer"
           },

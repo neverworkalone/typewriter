@@ -145,7 +145,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | Artifact | SHA-256 |
 | --- | --- |
 | `AGENTS.md` | `3cbd595f472dc6d54e4339cb6392f572a1f9eac21d31e4d7e904b24bbdd8f7b1` |
-| `config/artifact-policy.json` | `df9c9fa1ef43a9681ac5097a0f88641231a1e6b8b08c8efe40af970de7e8e878` |
+| `config/artifact-policy.json` | `b09dd642b6dc2644d9f02bfb5b771c9eb2bc9afde0280215bb9465310ae2f926` |
 | `data/batches/issue-204-pilot-decisions.json` | `f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b` |
 | `data/batches/issue-204-semantic-decisions.json` | `66d96ed2b0c104dab185625ebd5f09ef06b21092c9b84e1f3d1ad0d8b76fd60e` |
 | `data/batches/issue-211-lexical-unit-source.json` | `683ac43752125bdc23de25cf5c3f5c64c406055706609d719bee8f847eb22185` |
@@ -279,9 +279,9 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-7-recalibration.jsonl` | `a37677f7569e016e5e8f9525b978ec4911ff0c9afb5ba7f65d3c40dae5fc71c1` |
 | `data/canonical/m5-9-expansion.jsonl` | `a47e9322813780efd2eae29b2b5784bcd2948d7c3f7de621174ebee4a35ce4c4` |
 | `data/canonical/pilot.jsonl` | `d45c15164ef6f146ee51d40e265746515120a556b1e2fb65e057ed36781dff1d` |
-| `data/inventory/m5-target-promotions.jsonl` | `4512acd7b530f309d313c3213ae55c757b9ad504bdae9387b23102b761d37c4e` |
+| `data/inventory/m5-target-promotions.jsonl` | `f70e97c83bdc14a0e4c72bb87bd3063af01644b6d45f38b1467289cb6a038deb` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `bb3799632bd3fad37cefd44e1251a780e8e00997d785d7686759abaf8ce9d3fd` |
+| `data/validation/canonical-semantic-decision-source.json` | `6de2fc4b1049526c9f8f9987087d92a3e5226d7057d44d98e6fb81e6646ef5e1` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `d42f4ebb96953905a5f5b820853f8c995e9e9707273a561af9ee212a0b1d44d2` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `5a2760af71d24c54ba09c05e1a780216c4081326f747b5b8604decc9cc72036a` |
 | `data/validation/m6-2-inflection-exceptions.json` | `511997ce9c0b56d89aeaa567dd484f5443fccd27194de88c209f16213ab0844f` |

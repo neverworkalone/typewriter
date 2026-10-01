@@ -111,6 +111,8 @@ const RAW_OUTPUT = {
   note_hit_checked: [0],
 };
 
+const PROPOSALS = [{ ordinal: 1, lemma: '가락', disposition: 'admit', gloss: GLOSS }];
+
 function rawArtifactFor(outputs = [RAW_OUTPUT]) {
   return {
     schema_version: '1',
@@ -118,9 +120,11 @@ function rawArtifactFor(outputs = [RAW_OUTPUT]) {
     kind: 'reviewer-raw-outputs',
     batch_id: BOUND_BATCH,
     reviewer: 'reviewer-a',
+    reviewed_proposals: PROPOSALS,
     runs: [{
       run: 1, context: 'isolated-subagent', model: 'm', first_ordinal: 1, last_ordinal: outputs.length,
-      candidate_count: outputs.length, packet_sha256: 'p', raw_output_sha256: sha256Json(outputs), outputs,
+      candidate_count: outputs.length, packet_sha256: 'a'.repeat(64), proposals_sha256: sha256Json(PROPOSALS),
+      raw_output_sha256: sha256Json(outputs), outputs,
     }],
   };
 }
@@ -136,7 +140,7 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
     batch_id: BOUND_BATCH,
     reviewer: 'reviewer-a',
     review_status: 'complete',
-    generator_proposal_sha256: 'g',
+    generator_proposal_sha256: sha256Json(PROPOSALS),
     raw_outputs_sha256: sha(rawBytes),
     review_runs: runSummaries(rawArtifact),
     reviews: [review],
@@ -290,4 +294,13 @@ test('Issue #223 bound review input from B06 on must preserve an outcome for eve
   assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.candidate_outcomes = []; })), /every candidate/u);
   assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.candidate_outcomes[0].checked_hit_indices = [999]; })), /outside the candidate's 2/u);
   assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.reviews[0].checked_hit_indices = [999]; })), /outside the candidate's 2/u);
+});
+
+test('Issue #223 bound review input rejects a gloss changed after the reviewers assessed it', () => {
+  const fixture = boundFixture();
+  const record = { ...RECORD, senses: [{ ...RECORD.senses[0], gloss: '검수 뒤에 바뀐 풀이' }] };
+  assert.throws(
+    () => validateSemanticReviewInputBinding({ ...fixture, semanticSource: { ...fixture.semanticSource, candidate_records: [record] } }),
+    /admitted gloss differs from the gloss the reviewer assessed/u,
+  );
 });

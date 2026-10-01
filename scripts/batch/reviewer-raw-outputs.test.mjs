@@ -26,28 +26,58 @@ const holdRaw = {
   verdict: 'hold', generator_agreement: 'disagree', hold_basis: 'unresolved-identity', hold_rationale: '근거가 모호하다.',
 };
 
-function fixture(outputs = [passRaw, holdRaw]) {
+const PROPOSALS = [
+  { ordinal: 1, lemma: '가락', disposition: 'admit', gloss: GLOSS },
+  { ordinal: 2, lemma: '나락', disposition: 'hold' },
+];
+const HEX_A = 'a'.repeat(64);
+const HEX_B = 'b'.repeat(64);
+
+function fixture(outputs = [passRaw, holdRaw], proposals = PROPOSALS) {
   const rawArtifact = {
     schema_version: '1',
     contract_version: 'reviewer-raw-outputs-v1',
     kind: 'reviewer-raw-outputs',
     batch_id: BATCH,
     reviewer: 'reviewer-a',
+    reviewed_proposals: proposals,
     runs: [
-      { run: 1, context: 'isolated-subagent', model: 'm', first_ordinal: 1, last_ordinal: 1, candidate_count: 1, packet_sha256: 'p1', raw_output_sha256: sha256Json(outputs.slice(0, 1)), outputs: outputs.slice(0, 1) },
-      { run: 2, context: 'isolated-subagent', model: 'm', first_ordinal: 2, last_ordinal: 2, candidate_count: 1, packet_sha256: 'p2', raw_output_sha256: sha256Json(outputs.slice(1)), outputs: outputs.slice(1) },
+      { run: 1, context: 'isolated-subagent', model: 'm', first_ordinal: 1, last_ordinal: 1, candidate_count: 1, packet_sha256: HEX_A, proposals_sha256: sha256Json(proposals.slice(0, 1)), raw_output_sha256: sha256Json(outputs.slice(0, 1)), outputs: outputs.slice(0, 1) },
+      { run: 2, context: 'isolated-subagent', model: 'm', first_ordinal: 2, last_ordinal: 2, candidate_count: 1, packet_sha256: HEX_B, proposals_sha256: sha256Json(proposals.slice(1)), raw_output_sha256: sha256Json(outputs.slice(1)), outputs: outputs.slice(1) },
     ],
   };
   const rawBytes = Buffer.from(JSON.stringify(rawArtifact));
   const input = {
     batch_id: BATCH,
     reviewer: 'reviewer-a',
+    generator_proposal_sha256: sha256Json(proposals),
     raw_outputs_sha256: sha256Bytes(rawBytes),
     review_runs: runSummaries(rawArtifact),
     reviews: [reviewFromRaw({ lemma: '가락', gloss: GLOSS, raw: passRaw })],
-    candidate_outcomes: [outcomeFromRaw('admit', passRaw), outcomeFromRaw('admit', holdRaw)],
+    candidate_outcomes: [outcomeFromRaw('admit', passRaw), outcomeFromRaw('hold', holdRaw)],
   };
   return { input, rawArtifact, rawBytes, candidateRows: rows, glossByLemma, sha256Bytes };
+}
+
+// Rebuild a consistent artifact/input pair from a mutated artifact, so a test
+// can change one thing and still pass every digest check except the one under test.
+function rebind(base, mutate) {
+  const rawArtifact = structuredClone(base.rawArtifact);
+  mutate(rawArtifact);
+  const rawBytes = Buffer.from(JSON.stringify(rawArtifact));
+  return {
+    ...base,
+    rawArtifact,
+    rawBytes,
+    input: {
+      ...base.input,
+      raw_outputs_sha256: sha256Bytes(rawBytes),
+      generator_proposal_sha256: Array.isArray(rawArtifact.reviewed_proposals)
+        ? sha256Json(rawArtifact.reviewed_proposals)
+        : base.input.generator_proposal_sha256,
+      review_runs: runSummaries(rawArtifact),
+    },
+  };
 }
 
 const check = (args) => assertInputDerivedFromRaw(args);
@@ -102,4 +132,47 @@ test('an input that departs from what the raw outputs yield fails', () => {
   rejects('hold carries a review row', (i) => { i.reviews.push({ ...i.reviews[0], lemma: '나락' }); }, /cannot carry a review row/u);
   rejects('pass lacks its review row', (i) => { i.reviews = []; }, /review row is not what|exactly for the reviewer passes/u);
   rejects('extra review row count', (i) => { i.reviews.push(structuredClone(i.reviews[0])); }, /exactly for the reviewer passes/u);
+});
+
+test('the raw reviewer result is bound to the exact gloss it assessed', () => {
+  const base = fixture();
+  // The reviewer saw GLOSS and said fit. Changing the admitted gloss while the
+  // reviewer outputs stay unchanged must be rejected, even if the review row is
+  // regenerated for the new gloss.
+  assert.throws(
+    () => check({ ...base, glossByLemma: new Map([['가락', '전혀 다른 풀이']]) }),
+    /admitted gloss differs from the gloss the reviewer assessed/u,
+  );
+  const regenerated = { ...base, glossByLemma: new Map([['가락', '바뀐 풀이']]) };
+  regenerated.input = { ...base.input, reviews: [reviewFromRaw({ lemma: '가락', gloss: '바뀐 풀이', raw: passRaw })] };
+  assert.throws(() => check(regenerated), /admitted gloss differs/u);
+  // Rewriting the preserved proposal to match a changed gloss breaks its digests.
+  const forgedProposals = structuredClone(PROPOSALS);
+  forgedProposals[0].gloss = '바뀐 풀이';
+  const forged = fixture([passRaw, holdRaw], PROPOSALS);
+  const withForgedProposal = { ...forged, rawArtifact: { ...forged.rawArtifact, reviewed_proposals: forgedProposals } };
+  const forgedBytes = Buffer.from(JSON.stringify(withForgedProposal.rawArtifact));
+  assert.throws(
+    () => check({ ...withForgedProposal, rawBytes: forgedBytes, glossByLemma: new Map([['가락', '바뀐 풀이']]), input: { ...forged.input, raw_outputs_sha256: sha256Bytes(forgedBytes) } }),
+    /review input does not match the digest of the reviewed proposals|did not review the recorded proposals/u,
+  );
+});
+
+test('reviewed proposals must be preserved, hashed, and consistent with the outcomes', () => {
+  const base = fixture();
+  assert.throws(() => check(rebind(base, (a) => { delete a.reviewed_proposals; })), /reviewed proposal for every candidate/u);
+  assert.throws(() => check(rebind(base, (a) => { a.reviewed_proposals.pop(); })), /every candidate/u);
+  assert.throws(() => check(rebind(base, (a) => { a.reviewed_proposals[1].lemma = '다락'; })), /different lemma/u);
+  assert.throws(() => check(rebind(base, (a) => { delete a.reviewed_proposals[0].gloss; })), /must preserve its gloss/u);
+  assert.throws(() => check(rebind(base, (a) => { a.reviewed_proposals[1].gloss = '풀이'; })), /carries no gloss/u);
+  assert.throws(() => check({ ...base, input: { ...base.input, generator_proposal_sha256: HEX_A } }), /digest of the reviewed proposals/u);
+  // A run must have reviewed the proposals recorded for its range.
+  assert.throws(() => check(rebind(base, (a) => { a.runs[0].proposals_sha256 = HEX_A; })), /did not review the recorded proposals/u);
+  // The outcome must name the proposal the reviewer was shown.
+  const swapped = structuredClone(base.input);
+  swapped.candidate_outcomes[0] = outcomeFromRaw('hold', passRaw);
+  assert.throws(() => check({ ...base, input: swapped }), /different proposal than the reviewer was shown|not what the reviewer's raw output yields/u);
+  // The recorded packet digest must be a SHA-256, not a placeholder.
+  assert.throws(() => check(rebind(base, (a) => { a.runs[0].packet_sha256 = 'p1'; })), /packet's SHA-256/u);
+  assert.throws(() => check(rebind(base, (a) => { a.runs[0].packet_sha256 = ''; })), /packet's SHA-256/u);
 });

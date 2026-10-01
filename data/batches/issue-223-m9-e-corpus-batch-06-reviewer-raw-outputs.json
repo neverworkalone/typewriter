@@ -4,6 +4,1805 @@
   "kind": "reviewer-raw-outputs",
   "batch_id": "issue-223-m9-e-corpus-batch-06-20261001",
   "reviewer": "claude-sonnet-5-5-independent-reviewer",
+  "reviewed_proposals": [
+    {
+      "ordinal": 1,
+      "lemma": "한몫",
+      "disposition": "admit",
+      "gloss": "한 사람이 차지하는 몫이나 크게 얻는 몫."
+    },
+    {
+      "ordinal": 2,
+      "lemma": "심경",
+      "disposition": "admit",
+      "gloss": "어떤 일을 겪으며 드러나는 마음의 상태."
+    },
+    {
+      "ordinal": 3,
+      "lemma": "작아지다",
+      "disposition": "admit",
+      "gloss": "크기나 기세가 줄어 작게 되다."
+    },
+    {
+      "ordinal": 4,
+      "lemma": "짓밟히다",
+      "disposition": "admit",
+      "gloss": "마구 밟히거나 억눌려 크게 해를 입다."
+    },
+    {
+      "ordinal": 5,
+      "lemma": "호사",
+      "disposition": "admit",
+      "gloss": "분수에 넘치게 화려하고 사치스럽게 누리는 일."
+    },
+    {
+      "ordinal": 6,
+      "lemma": "망가뜨리다",
+      "disposition": "admit",
+      "gloss": "제대로 쓸 수 없게 부수어 못 쓰게 만들다."
+    },
+    {
+      "ordinal": 7,
+      "lemma": "주최",
+      "disposition": "admit",
+      "gloss": "행사나 모임을 열어 이끎."
+    },
+    {
+      "ordinal": 8,
+      "lemma": "낌새",
+      "disposition": "admit",
+      "gloss": "어떤 일이 벌어질 것을 알아차리게 하는 눈치나 기미."
+    },
+    {
+      "ordinal": 9,
+      "lemma": "외계인",
+      "disposition": "admit",
+      "gloss": "지구 밖의 다른 세계에서 온 존재."
+    },
+    {
+      "ordinal": 10,
+      "lemma": "잡이",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 11,
+      "lemma": "선지자",
+      "disposition": "admit",
+      "gloss": "앞일을 미리 알거나 신의 뜻을 전하는 사람."
+    },
+    {
+      "ordinal": 12,
+      "lemma": "영생",
+      "disposition": "admit",
+      "gloss": "죽지 않고 영원히 삶."
+    },
+    {
+      "ordinal": 13,
+      "lemma": "의장",
+      "disposition": "admit",
+      "gloss": "회의를 이끌고 단체를 대표하는 사람."
+    },
+    {
+      "ordinal": 14,
+      "lemma": "골프",
+      "disposition": "admit",
+      "gloss": "클럽으로 공을 쳐서 정해진 홀에 넣는 운동."
+    },
+    {
+      "ordinal": 15,
+      "lemma": "국수",
+      "disposition": "admit",
+      "gloss": "밀가루 따위로 가늘고 길게 뽑아 삶아 먹는 음식."
+    },
+    {
+      "ordinal": 16,
+      "lemma": "매미",
+      "disposition": "admit",
+      "gloss": "여름에 나무에서 크게 우는 곤충."
+    },
+    {
+      "ordinal": 17,
+      "lemma": "성서",
+      "disposition": "admit",
+      "gloss": "기독교의 근본이 되는 경전."
+    },
+    {
+      "ordinal": 18,
+      "lemma": "가해자",
+      "disposition": "admit",
+      "gloss": "다른 사람에게 해를 끼친 사람."
+    },
+    {
+      "ordinal": 19,
+      "lemma": "교구",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 20,
+      "lemma": "임대",
+      "disposition": "admit",
+      "gloss": "돈을 받고 물건이나 건물을 빌려줌."
+    },
+    {
+      "ordinal": 21,
+      "lemma": "이파리",
+      "disposition": "admit",
+      "gloss": "나무나 풀의 잎."
+    },
+    {
+      "ordinal": 22,
+      "lemma": "임원",
+      "disposition": "admit",
+      "gloss": "단체나 회사에서 중요한 직책을 맡은 사람."
+    },
+    {
+      "ordinal": 23,
+      "lemma": "이벤트",
+      "disposition": "admit",
+      "gloss": "사람들을 모으려고 특별히 마련한 행사."
+    },
+    {
+      "ordinal": 24,
+      "lemma": "진압",
+      "disposition": "admit",
+      "gloss": "힘으로 눌러 가라앉힘."
+    },
+    {
+      "ordinal": 25,
+      "lemma": "음악가",
+      "disposition": "admit",
+      "gloss": "음악을 만들거나 연주하는 사람."
+    },
+    {
+      "ordinal": 26,
+      "lemma": "후일",
+      "disposition": "admit",
+      "gloss": "앞으로 올 뒷날."
+    },
+    {
+      "ordinal": 27,
+      "lemma": "담보",
+      "disposition": "admit",
+      "gloss": "빚이나 약속을 지킬 보증으로 맡겨 두는 것."
+    },
+    {
+      "ordinal": 28,
+      "lemma": "민간",
+      "disposition": "admit",
+      "gloss": "정부나 군에 속하지 않은 일반 사람들의 영역."
+    },
+    {
+      "ordinal": 29,
+      "lemma": "석유",
+      "disposition": "admit",
+      "gloss": "땅속에서 나는 기름으로 연료로 쓰는 액체."
+    },
+    {
+      "ordinal": 30,
+      "lemma": "네트워크",
+      "disposition": "admit",
+      "gloss": "여러 지점이나 사람이 서로 이어져 이루는 망."
+    },
+    {
+      "ordinal": 31,
+      "lemma": "머리털",
+      "disposition": "admit",
+      "gloss": "머리에 난 털."
+    },
+    {
+      "ordinal": 32,
+      "lemma": "온실",
+      "disposition": "admit",
+      "gloss": "식물을 따뜻하게 기르려고 유리 따위로 지은 집."
+    },
+    {
+      "ordinal": 33,
+      "lemma": "재배",
+      "disposition": "admit",
+      "gloss": "식물을 심어 기름."
+    },
+    {
+      "ordinal": 34,
+      "lemma": "반죽",
+      "disposition": "admit",
+      "gloss": "가루에 물을 섞어 이겨 놓은 덩이."
+    },
+    {
+      "ordinal": 35,
+      "lemma": "양배추",
+      "disposition": "admit",
+      "gloss": "잎이 겹겹이 둥글게 말려 자라는 채소."
+    },
+    {
+      "ordinal": 36,
+      "lemma": "욕조",
+      "disposition": "admit",
+      "gloss": "몸을 담그고 씻도록 만든 큰 그릇."
+    },
+    {
+      "ordinal": 37,
+      "lemma": "줄무늬",
+      "disposition": "admit",
+      "gloss": "줄 모양으로 나타나는 무늬."
+    },
+    {
+      "ordinal": 38,
+      "lemma": "강의실",
+      "disposition": "admit",
+      "gloss": "강의를 하는 방."
+    },
+    {
+      "ordinal": 39,
+      "lemma": "건전",
+      "disposition": "admit",
+      "gloss": "몸이나 생각이 병들거나 어긋나지 않고 온전함."
+    },
+    {
+      "ordinal": 40,
+      "lemma": "행적",
+      "disposition": "admit",
+      "gloss": "사람이 한 일이나 행동의 자취."
+    },
+    {
+      "ordinal": 41,
+      "lemma": "의사소통",
+      "disposition": "admit",
+      "gloss": "서로 뜻이나 생각을 주고받아 통함."
+    },
+    {
+      "ordinal": 42,
+      "lemma": "일손",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 43,
+      "lemma": "쳐들어오다",
+      "disposition": "admit",
+      "gloss": "무리를 지어 힘차게 밀고 들어오다."
+    },
+    {
+      "ordinal": 44,
+      "lemma": "도주",
+      "disposition": "admit",
+      "gloss": "몰래 달아남."
+    },
+    {
+      "ordinal": 45,
+      "lemma": "자빠지다",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 46,
+      "lemma": "원동력",
+      "disposition": "admit",
+      "gloss": "어떤 일을 해 나가는 힘의 근원."
+    },
+    {
+      "ordinal": 47,
+      "lemma": "죄다",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 48,
+      "lemma": "방비",
+      "disposition": "admit",
+      "gloss": "적의 공격이나 재난에 대비하여 지키고 갖추어 둠."
+    },
+    {
+      "ordinal": 49,
+      "lemma": "엉터리",
+      "disposition": "admit",
+      "gloss": "내용이나 솜씨가 제대로 갖추어지지 않고 허술한 것."
+    },
+    {
+      "ordinal": 50,
+      "lemma": "취지",
+      "disposition": "admit",
+      "gloss": "어떤 일을 하려는 목적이나 뜻."
+    },
+    {
+      "ordinal": 51,
+      "lemma": "빈정거리다",
+      "disposition": "admit",
+      "gloss": "남을 비웃거나 깎아내리듯 이죽거리며 말하다."
+    },
+    {
+      "ordinal": 52,
+      "lemma": "여건",
+      "disposition": "admit",
+      "gloss": "어떤 일의 바탕이 되는 조건."
+    },
+    {
+      "ordinal": 53,
+      "lemma": "용품",
+      "disposition": "admit",
+      "gloss": "어떤 일에 쓰는 물건."
+    },
+    {
+      "ordinal": 54,
+      "lemma": "몰골",
+      "disposition": "admit",
+      "gloss": "볼품없는 얼굴이나 모양."
+    },
+    {
+      "ordinal": 55,
+      "lemma": "위축",
+      "disposition": "admit",
+      "gloss": "어떤 힘에 눌려 움츠러듦."
+    },
+    {
+      "ordinal": 56,
+      "lemma": "족하다",
+      "disposition": "admit",
+      "gloss": "모자람 없이 넉넉하다."
+    },
+    {
+      "ordinal": 57,
+      "lemma": "축소",
+      "disposition": "admit",
+      "gloss": "모양이나 규모를 줄여서 작게 함."
+    },
+    {
+      "ordinal": 58,
+      "lemma": "겉보기",
+      "disposition": "admit",
+      "gloss": "겉으로 보이는 모양."
+    },
+    {
+      "ordinal": 59,
+      "lemma": "비꼬다",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 60,
+      "lemma": "부잣집",
+      "disposition": "admit",
+      "gloss": "재산이 많은 사람의 집안."
+    },
+    {
+      "ordinal": 61,
+      "lemma": "산속",
+      "disposition": "admit",
+      "gloss": "산의 안쪽."
+    },
+    {
+      "ordinal": 62,
+      "lemma": "지어내다",
+      "disposition": "admit",
+      "gloss": "없던 것을 새로 생각해 내어 만들다."
+    },
+    {
+      "ordinal": 63,
+      "lemma": "소홀",
+      "disposition": "admit",
+      "gloss": "대수롭지 않게 여겨 정성이나 조심이 부족함."
+    },
+    {
+      "ordinal": 64,
+      "lemma": "인민",
+      "disposition": "admit",
+      "gloss": "국가나 사회를 이루는 보통 사람들."
+    },
+    {
+      "ordinal": 65,
+      "lemma": "문단",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 66,
+      "lemma": "아군",
+      "disposition": "admit",
+      "gloss": "우리 편의 군대."
+    },
+    {
+      "ordinal": 67,
+      "lemma": "주임",
+      "disposition": "admit",
+      "gloss": "어떤 일을 주로 맡아 책임지는 사람."
+    },
+    {
+      "ordinal": 68,
+      "lemma": "돌아다보다",
+      "disposition": "admit",
+      "gloss": "고개를 돌려 뒤쪽이나 지나온 곳을 보다."
+    },
+    {
+      "ordinal": 69,
+      "lemma": "성모",
+      "disposition": "admit",
+      "gloss": "가톨릭에서 예수의 어머니 마리아를 높여 이르는 말."
+    },
+    {
+      "ordinal": 70,
+      "lemma": "병동",
+      "disposition": "admit",
+      "gloss": "병원에서 환자를 나누어 수용하는 건물이나 구역."
+    },
+    {
+      "ordinal": 71,
+      "lemma": "사관",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 72,
+      "lemma": "호르몬",
+      "disposition": "admit",
+      "gloss": "몸의 작용을 조절하려고 몸속에서 만들어지는 물질."
+    },
+    {
+      "ordinal": 73,
+      "lemma": "지출",
+      "disposition": "admit",
+      "gloss": "어떤 목적으로 돈을 써서 내보냄."
+    },
+    {
+      "ordinal": 74,
+      "lemma": "해골",
+      "disposition": "admit",
+      "gloss": "살이 없어지고 남은 머리뼈나 몸의 뼈."
+    },
+    {
+      "ordinal": 75,
+      "lemma": "치아",
+      "disposition": "admit",
+      "gloss": "입속에서 음식을 씹는 이."
+    },
+    {
+      "ordinal": 76,
+      "lemma": "발굴",
+      "disposition": "admit",
+      "gloss": "땅속에 묻힌 것을 파내거나 묻혀 있던 것을 찾아냄."
+    },
+    {
+      "ordinal": 77,
+      "lemma": "구급차",
+      "disposition": "admit",
+      "gloss": "급한 환자를 병원으로 실어 나르는 차."
+    },
+    {
+      "ordinal": 78,
+      "lemma": "연봉",
+      "disposition": "admit",
+      "gloss": "일 년 단위로 정해 받는 급여."
+    },
+    {
+      "ordinal": 79,
+      "lemma": "전술",
+      "disposition": "admit",
+      "gloss": "싸움이나 경쟁에서 이기기 위한 구체적인 방법이나 계획."
+    },
+    {
+      "ordinal": 80,
+      "lemma": "텃밭",
+      "disposition": "admit",
+      "gloss": "집 가까이에 있는 작은 밭."
+    },
+    {
+      "ordinal": 81,
+      "lemma": "소명",
+      "disposition": "admit",
+      "gloss": "신이 맡긴 일이라고 여기는 사명."
+    },
+    {
+      "ordinal": 82,
+      "lemma": "지형",
+      "disposition": "admit",
+      "gloss": "땅의 생긴 모양."
+    },
+    {
+      "ordinal": 83,
+      "lemma": "내장",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 84,
+      "lemma": "수장",
+      "disposition": "admit",
+      "gloss": "한 조직이나 집단의 우두머리."
+    },
+    {
+      "ordinal": 85,
+      "lemma": "전학",
+      "disposition": "admit",
+      "gloss": "다니던 학교에서 다른 학교로 옮겨 감."
+    },
+    {
+      "ordinal": 86,
+      "lemma": "정사",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 87,
+      "lemma": "배열",
+      "disposition": "admit",
+      "gloss": "일정한 차례나 간격에 따라 벌여 놓음."
+    },
+    {
+      "ordinal": 88,
+      "lemma": "세간",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 89,
+      "lemma": "몽상",
+      "disposition": "admit",
+      "gloss": "현실과 동떨어진 헛된 생각."
+    },
+    {
+      "ordinal": 90,
+      "lemma": "소요",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 91,
+      "lemma": "불화",
+      "disposition": "admit",
+      "gloss": "서로 사이가 좋지 못함."
+    },
+    {
+      "ordinal": 92,
+      "lemma": "사료",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 93,
+      "lemma": "호응",
+      "disposition": "admit",
+      "gloss": "부름이나 주장에 응하여 답하거나 따름."
+    },
+    {
+      "ordinal": 94,
+      "lemma": "사고방식",
+      "disposition": "admit",
+      "gloss": "어떤 일을 생각하고 판단하는 방식."
+    },
+    {
+      "ordinal": 95,
+      "lemma": "수군거리다",
+      "disposition": "admit",
+      "gloss": "여럿이 낮은 목소리로 자꾸 이야기하다."
+    },
+    {
+      "ordinal": 96,
+      "lemma": "굴욕",
+      "disposition": "admit",
+      "gloss": "남에게 억눌려 자존심이 상하는 일."
+    },
+    {
+      "ordinal": 97,
+      "lemma": "발상",
+      "disposition": "admit",
+      "gloss": "어떤 생각을 해 내는 일."
+    },
+    {
+      "ordinal": 98,
+      "lemma": "통찰력",
+      "disposition": "admit",
+      "gloss": "사물의 본질을 꿰뚫어 보는 힘."
+    },
+    {
+      "ordinal": 99,
+      "lemma": "다리다",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 100,
+      "lemma": "명문",
+      "disposition": "admit",
+      "gloss": "이름난 집안이나 학교."
+    },
+    {
+      "ordinal": 101,
+      "lemma": "독신",
+      "disposition": "admit",
+      "gloss": "결혼하지 않고 혼자 사는 상태."
+    },
+    {
+      "ordinal": 102,
+      "lemma": "본보기",
+      "disposition": "admit",
+      "gloss": "따라 배울 만한 모범이 되는 것."
+    },
+    {
+      "ordinal": 103,
+      "lemma": "오른편",
+      "disposition": "admit",
+      "gloss": "오른쪽 편."
+    },
+    {
+      "ordinal": 104,
+      "lemma": "은색",
+      "disposition": "admit",
+      "gloss": "은과 같은 밝은 회백색."
+    },
+    {
+      "ordinal": 105,
+      "lemma": "들락거리다",
+      "disposition": "admit",
+      "gloss": "자꾸 들어갔다 나갔다 하다."
+    },
+    {
+      "ordinal": 106,
+      "lemma": "시간대",
+      "disposition": "admit",
+      "gloss": "시간의 일정한 범위."
+    },
+    {
+      "ordinal": 107,
+      "lemma": "어림",
+      "disposition": "admit",
+      "gloss": "대강 짐작하여 헤아림."
+    },
+    {
+      "ordinal": 108,
+      "lemma": "처박다",
+      "disposition": "admit",
+      "gloss": "마구 쑤셔 넣거나 깊이 박아 두다."
+    },
+    {
+      "ordinal": 109,
+      "lemma": "허구",
+      "disposition": "admit",
+      "gloss": "사실이 아닌 것을 지어 낸 일."
+    },
+    {
+      "ordinal": 110,
+      "lemma": "거행",
+      "disposition": "admit",
+      "gloss": "의식이나 행사를 치름."
+    },
+    {
+      "ordinal": 111,
+      "lemma": "따돌리다",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 112,
+      "lemma": "목마르다",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 113,
+      "lemma": "사회생활",
+      "disposition": "admit",
+      "gloss": "사람들 속에서 사회의 일원으로 지내는 생활."
+    },
+    {
+      "ordinal": 114,
+      "lemma": "왕복",
+      "disposition": "admit",
+      "gloss": "갔다가 다시 돌아옴."
+    },
+    {
+      "ordinal": 115,
+      "lemma": "기리다",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 116,
+      "lemma": "병행",
+      "disposition": "admit",
+      "gloss": "두 가지 이상을 한꺼번에 함께 진행함."
+    },
+    {
+      "ordinal": 117,
+      "lemma": "저울",
+      "disposition": "admit",
+      "gloss": "물건의 무게를 다는 기구."
+    },
+    {
+      "ordinal": 118,
+      "lemma": "정처",
+      "disposition": "admit",
+      "gloss": "정해 놓은 곳."
+    },
+    {
+      "ordinal": 119,
+      "lemma": "지목",
+      "disposition": "admit",
+      "gloss": "여럿 가운데 어떤 사람이나 대상을 가리켜 정함."
+    },
+    {
+      "ordinal": 120,
+      "lemma": "추호",
+      "disposition": "admit",
+      "gloss": "가을 짐승의 털처럼 아주 적은 정도."
+    },
+    {
+      "ordinal": 121,
+      "lemma": "컨디션",
+      "disposition": "admit",
+      "gloss": "몸이나 기분의 상태."
+    },
+    {
+      "ordinal": 122,
+      "lemma": "엿보이다",
+      "disposition": "admit",
+      "gloss": "어떤 모습이나 기미가 슬며시 드러나 보이다."
+    },
+    {
+      "ordinal": 123,
+      "lemma": "흩뿌리다",
+      "disposition": "admit",
+      "gloss": "흩어지게 뿌리다."
+    },
+    {
+      "ordinal": 124,
+      "lemma": "함대",
+      "disposition": "admit",
+      "gloss": "군함 여러 척으로 이룬 부대."
+    },
+    {
+      "ordinal": 125,
+      "lemma": "그림책",
+      "disposition": "admit",
+      "gloss": "그림을 위주로 만든 책."
+    },
+    {
+      "ordinal": 126,
+      "lemma": "동포",
+      "disposition": "admit",
+      "gloss": "같은 나라나 겨레의 사람."
+    },
+    {
+      "ordinal": 127,
+      "lemma": "치킨",
+      "disposition": "admit",
+      "gloss": "튀기거나 구워 먹는 닭고기 요리."
+    },
+    {
+      "ordinal": 128,
+      "lemma": "고시",
+      "disposition": "admit",
+      "gloss": "일정한 자격을 얻기 위해 치르는 시험."
+    },
+    {
+      "ordinal": 129,
+      "lemma": "재혼",
+      "disposition": "admit",
+      "gloss": "혼인했던 사람이 다시 혼인함."
+    },
+    {
+      "ordinal": 130,
+      "lemma": "부츠",
+      "disposition": "admit",
+      "gloss": "목이 길어 발목 위까지 덮는 신발."
+    },
+    {
+      "ordinal": 131,
+      "lemma": "오픈",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 132,
+      "lemma": "버섯",
+      "disposition": "admit",
+      "gloss": "숲이나 습한 곳에서 자라는 갓 모양의 균류."
+    },
+    {
+      "ordinal": 133,
+      "lemma": "고구마",
+      "disposition": "admit",
+      "gloss": "땅속에서 자라는 달고 굵은 뿌리를 먹는 식물."
+    },
+    {
+      "ordinal": 134,
+      "lemma": "공학",
+      "disposition": "admit",
+      "gloss": "공업의 원리와 기술을 연구하는 학문."
+    },
+    {
+      "ordinal": 135,
+      "lemma": "석방",
+      "disposition": "admit",
+      "gloss": "갇혀 있던 사람을 풀어 자유롭게 해 줌."
+    },
+    {
+      "ordinal": 136,
+      "lemma": "농업",
+      "disposition": "admit",
+      "gloss": "땅을 이용해 곡식이나 채소를 길러 내는 산업."
+    },
+    {
+      "ordinal": 137,
+      "lemma": "아드님",
+      "disposition": "admit",
+      "gloss": "남의 아들을 높여 이르는 말."
+    },
+    {
+      "ordinal": 138,
+      "lemma": "수저",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 139,
+      "lemma": "요금",
+      "disposition": "admit",
+      "gloss": "어떤 것을 이용하거나 쓴 대가로 내는 돈."
+    },
+    {
+      "ordinal": 140,
+      "lemma": "충전",
+      "disposition": "admit",
+      "gloss": "전기나 기운을 채워 넣음."
+    },
+    {
+      "ordinal": 141,
+      "lemma": "세탁",
+      "disposition": "admit",
+      "gloss": "더러운 옷 따위를 빨아 깨끗하게 함."
+    },
+    {
+      "ordinal": 142,
+      "lemma": "출전",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 143,
+      "lemma": "승용차",
+      "disposition": "admit",
+      "gloss": "사람이 타고 다니는 자동차."
+    },
+    {
+      "ordinal": 144,
+      "lemma": "개개인",
+      "disposition": "admit",
+      "gloss": "한 사람 한 사람."
+    },
+    {
+      "ordinal": 145,
+      "lemma": "박해",
+      "disposition": "admit",
+      "gloss": "못살게 굴어 해롭게 함."
+    },
+    {
+      "ordinal": 146,
+      "lemma": "송아지",
+      "disposition": "admit",
+      "gloss": "어린 소."
+    },
+    {
+      "ordinal": 147,
+      "lemma": "앞발",
+      "disposition": "admit",
+      "gloss": "네발짐승의 앞쪽 두 발."
+    },
+    {
+      "ordinal": 148,
+      "lemma": "전속력",
+      "disposition": "admit",
+      "gloss": "낼 수 있는 가장 빠른 속도."
+    },
+    {
+      "ordinal": 149,
+      "lemma": "에어컨",
+      "disposition": "admit",
+      "gloss": "방 안의 공기를 시원하게 만드는 기계."
+    },
+    {
+      "ordinal": 150,
+      "lemma": "줄거리",
+      "disposition": "admit",
+      "gloss": "이야기의 중요한 내용을 간추린 것."
+    },
+    {
+      "ordinal": 151,
+      "lemma": "피난",
+      "disposition": "admit",
+      "gloss": "재난을 피해 안전한 곳으로 옮겨 감."
+    },
+    {
+      "ordinal": 152,
+      "lemma": "뒷좌석",
+      "disposition": "admit",
+      "gloss": "자동차 따위의 뒤쪽에 있는 자리."
+    },
+    {
+      "ordinal": 153,
+      "lemma": "베끼다",
+      "disposition": "admit",
+      "gloss": "남의 글이나 그림을 그대로 옮겨 쓰거나 그리다."
+    },
+    {
+      "ordinal": 154,
+      "lemma": "사죄",
+      "disposition": "admit",
+      "gloss": "잘못을 인정하고 용서를 빎."
+    },
+    {
+      "ordinal": 155,
+      "lemma": "시즌",
+      "disposition": "admit",
+      "gloss": "어떤 일이 한창 이루어지는 한 철."
+    },
+    {
+      "ordinal": 156,
+      "lemma": "검붉다",
+      "disposition": "admit",
+      "gloss": "검은빛을 띠며 붉다."
+    },
+    {
+      "ordinal": 157,
+      "lemma": "무상",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 158,
+      "lemma": "번쩍거리다",
+      "disposition": "admit",
+      "gloss": "큰 빛이 자꾸 잠깐씩 나타났다 사라지다."
+    },
+    {
+      "ordinal": 159,
+      "lemma": "범주",
+      "disposition": "admit",
+      "gloss": "같은 성질을 지닌 것들이 속하는 갈래."
+    },
+    {
+      "ordinal": 160,
+      "lemma": "습성",
+      "disposition": "admit",
+      "gloss": "오랫동안 되풀이하여 몸에 밴 성질."
+    },
+    {
+      "ordinal": 161,
+      "lemma": "파산",
+      "disposition": "admit",
+      "gloss": "재산을 모두 잃고 망함."
+    },
+    {
+      "ordinal": 162,
+      "lemma": "관용",
+      "disposition": "admit",
+      "gloss": "남의 잘못을 너그럽게 받아들이고 용서함."
+    },
+    {
+      "ordinal": 163,
+      "lemma": "비방",
+      "disposition": "admit",
+      "gloss": "남을 헐뜯어 말함."
+    },
+    {
+      "ordinal": 164,
+      "lemma": "안정감",
+      "disposition": "admit",
+      "gloss": "흔들리지 않고 편안하다고 느끼는 느낌."
+    },
+    {
+      "ordinal": 165,
+      "lemma": "이력",
+      "disposition": "admit",
+      "gloss": "지금까지 거쳐 온 학업이나 직업의 경력."
+    },
+    {
+      "ordinal": 166,
+      "lemma": "난관",
+      "disposition": "admit",
+      "gloss": "일을 해 나가다 부딪히는 어려운 고비."
+    },
+    {
+      "ordinal": 167,
+      "lemma": "부각",
+      "disposition": "admit",
+      "gloss": "어떤 것이 두드러지게 드러남."
+    },
+    {
+      "ordinal": 168,
+      "lemma": "가속",
+      "disposition": "admit",
+      "gloss": "속도를 더 빠르게 함."
+    },
+    {
+      "ordinal": 169,
+      "lemma": "곤혹",
+      "disposition": "admit",
+      "gloss": "어찌할 바를 몰라 당황함."
+    },
+    {
+      "ordinal": 170,
+      "lemma": "내포",
+      "disposition": "admit",
+      "gloss": "어떤 뜻이나 성질을 속에 품음."
+    },
+    {
+      "ordinal": 171,
+      "lemma": "이면",
+      "disposition": "admit",
+      "gloss": "겉으로 드러나지 않은 속이나 뒷면."
+    },
+    {
+      "ordinal": 172,
+      "lemma": "흉측",
+      "disposition": "admit",
+      "gloss": "몹시 흉하고 징그러움."
+    },
+    {
+      "ordinal": 173,
+      "lemma": "기품",
+      "disposition": "admit",
+      "gloss": "고상하고 품위 있는 성품이나 태도."
+    },
+    {
+      "ordinal": 174,
+      "lemma": "야속",
+      "disposition": "admit",
+      "gloss": "무정하게 느껴져 섭섭함."
+    },
+    {
+      "ordinal": 175,
+      "lemma": "어처구니없다",
+      "disposition": "admit",
+      "gloss": "너무 뜻밖이어서 기가 막히다."
+    },
+    {
+      "ordinal": 176,
+      "lemma": "윙윙거리다",
+      "disposition": "admit",
+      "gloss": "윙윙 하는 소리를 자꾸 내다."
+    },
+    {
+      "ordinal": 177,
+      "lemma": "강력",
+      "disposition": "admit",
+      "gloss": "힘이나 영향이 매우 강함."
+    },
+    {
+      "ordinal": 178,
+      "lemma": "최적",
+      "disposition": "admit",
+      "gloss": "가장 알맞음."
+    },
+    {
+      "ordinal": 179,
+      "lemma": "각별",
+      "disposition": "admit",
+      "gloss": "보통과 달리 특별함."
+    },
+    {
+      "ordinal": 180,
+      "lemma": "놀림",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 181,
+      "lemma": "만무",
+      "disposition": "admit",
+      "gloss": "절대로 그럴 리가 없음."
+    },
+    {
+      "ordinal": 182,
+      "lemma": "몰아붙이다",
+      "disposition": "admit",
+      "gloss": "한쪽으로 몰아 거세게 다그치다."
+    },
+    {
+      "ordinal": 183,
+      "lemma": "싹트다",
+      "disposition": "admit",
+      "gloss": "싹이 돋아나듯 어떤 일이 처음 생겨나기 시작하다."
+    },
+    {
+      "ordinal": 184,
+      "lemma": "투덜대다",
+      "disposition": "admit",
+      "gloss": "못마땅하여 불평하는 말을 낮게 자꾸 하다."
+    },
+    {
+      "ordinal": 185,
+      "lemma": "기병",
+      "disposition": "admit",
+      "gloss": "말을 타고 싸우는 군인."
+    },
+    {
+      "ordinal": 186,
+      "lemma": "마법사",
+      "disposition": "admit",
+      "gloss": "마법을 부리는 사람."
+    },
+    {
+      "ordinal": 187,
+      "lemma": "소비자",
+      "disposition": "admit",
+      "gloss": "물건이나 서비스를 사서 쓰는 사람."
+    },
+    {
+      "ordinal": 188,
+      "lemma": "문법",
+      "disposition": "admit",
+      "gloss": "말을 이루는 규칙의 체계."
+    },
+    {
+      "ordinal": 189,
+      "lemma": "당나귀",
+      "disposition": "admit",
+      "gloss": "말보다 작고 귀가 긴 짐 싣는 짐승."
+    },
+    {
+      "ordinal": 190,
+      "lemma": "가이드",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 191,
+      "lemma": "거듭나다",
+      "disposition": "admit",
+      "gloss": "이전과 아주 다른 새로운 모습으로 바뀌다."
+    },
+    {
+      "ordinal": 192,
+      "lemma": "미끼",
+      "disposition": "admit",
+      "gloss": "물고기를 꾀려고 낚시에 꿰는 먹이처럼 남을 끌어들이려고 내놓는 것."
+    },
+    {
+      "ordinal": 193,
+      "lemma": "약국",
+      "disposition": "admit",
+      "gloss": "약사가 약을 지어 파는 곳."
+    },
+    {
+      "ordinal": 194,
+      "lemma": "순례자",
+      "disposition": "admit",
+      "gloss": "성스러운 장소를 찾아다니는 사람."
+    },
+    {
+      "ordinal": 195,
+      "lemma": "건초",
+      "disposition": "admit",
+      "gloss": "베어서 말린 풀."
+    },
+    {
+      "ordinal": 196,
+      "lemma": "트리",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 197,
+      "lemma": "운전사",
+      "disposition": "admit",
+      "gloss": "자동차를 운전하는 일을 직업으로 하는 사람."
+    },
+    {
+      "ordinal": 198,
+      "lemma": "떡볶이",
+      "disposition": "admit",
+      "gloss": "떡을 양념과 함께 볶거나 끓여 만든 음식."
+    },
+    {
+      "ordinal": 199,
+      "lemma": "보급",
+      "disposition": "admit",
+      "gloss": "필요한 물자를 계속 대어 줌."
+    },
+    {
+      "ordinal": 200,
+      "lemma": "계란",
+      "disposition": "admit",
+      "gloss": "닭이 낳은 알."
+    },
+    {
+      "ordinal": 201,
+      "lemma": "유죄",
+      "disposition": "admit",
+      "gloss": "법에 따라 죄가 있다고 판단됨."
+    },
+    {
+      "ordinal": 202,
+      "lemma": "잔해",
+      "disposition": "admit",
+      "gloss": "부서지거나 못 쓰게 되고 남은 것."
+    },
+    {
+      "ordinal": 203,
+      "lemma": "주지",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 204,
+      "lemma": "퇴사",
+      "disposition": "admit",
+      "gloss": "다니던 회사를 그만두고 나옴."
+    },
+    {
+      "ordinal": 205,
+      "lemma": "결제",
+      "disposition": "admit",
+      "gloss": "물건값이나 대금을 치러 거래를 끝냄."
+    },
+    {
+      "ordinal": 206,
+      "lemma": "왕관",
+      "disposition": "admit",
+      "gloss": "임금이 머리에 쓰는 관."
+    },
+    {
+      "ordinal": 207,
+      "lemma": "고속",
+      "disposition": "admit",
+      "gloss": "매우 빠른 속도."
+    },
+    {
+      "ordinal": 208,
+      "lemma": "이슈",
+      "disposition": "admit",
+      "gloss": "사회적으로 논의의 대상이 되는 문제."
+    },
+    {
+      "ordinal": 209,
+      "lemma": "저승",
+      "disposition": "admit",
+      "gloss": "죽은 뒤에 간다고 믿는 세상."
+    },
+    {
+      "ordinal": 210,
+      "lemma": "콘서트",
+      "disposition": "admit",
+      "gloss": "많은 관객 앞에서 하는 음악 공연."
+    },
+    {
+      "ordinal": 211,
+      "lemma": "타령",
+      "disposition": "admit",
+      "gloss": "같은 말을 싫증 나도록 되풀이하여 늘어놓는 일."
+    },
+    {
+      "ordinal": 212,
+      "lemma": "샐러드",
+      "disposition": "admit",
+      "gloss": "채소나 과일 따위를 드레싱과 함께 버무린 음식."
+    },
+    {
+      "ordinal": 213,
+      "lemma": "싱크대",
+      "disposition": "admit",
+      "gloss": "부엌에서 설거지를 하는 대."
+    },
+    {
+      "ordinal": 214,
+      "lemma": "익살",
+      "disposition": "admit",
+      "gloss": "남을 웃기려고 하는 우스운 말이나 짓."
+    },
+    {
+      "ordinal": 215,
+      "lemma": "양념",
+      "disposition": "admit",
+      "gloss": "음식의 맛을 돋우려고 넣는 재료."
+    },
+    {
+      "ordinal": 216,
+      "lemma": "불량",
+      "disposition": "admit",
+      "gloss": "품질이나 행실이 좋지 못함."
+    },
+    {
+      "ordinal": 217,
+      "lemma": "빛내다",
+      "disposition": "admit",
+      "gloss": "환하게 빛이 나게 하거나 더욱 값지게 드러나게 하다."
+    },
+    {
+      "ordinal": 218,
+      "lemma": "후하다",
+      "disposition": "admit",
+      "gloss": "인심이나 대접이 너그럽고 넉넉하다."
+    },
+    {
+      "ordinal": 219,
+      "lemma": "허풍",
+      "disposition": "admit",
+      "gloss": "사실보다 부풀려 하는 말이나 행동."
+    },
+    {
+      "ordinal": 220,
+      "lemma": "깜박이다",
+      "disposition": "admit",
+      "gloss": "눈이나 불빛이 잠깐 꺼졌다 켜지듯 감겼다 떠지다."
+    },
+    {
+      "ordinal": 221,
+      "lemma": "반격",
+      "disposition": "admit",
+      "gloss": "공격을 받던 쪽에서 되받아 공격함."
+    },
+    {
+      "ordinal": 222,
+      "lemma": "변수",
+      "disposition": "admit",
+      "gloss": "어떤 결과에 영향을 주어 상황을 달라지게 할 수 있는 요인."
+    },
+    {
+      "ordinal": 223,
+      "lemma": "보금자리",
+      "disposition": "admit",
+      "gloss": "편안하고 아늑하게 지낼 수 있는 곳."
+    },
+    {
+      "ordinal": 224,
+      "lemma": "말기",
+      "disposition": "admit",
+      "gloss": "어떤 일이나 시기의 끝 무렵."
+    },
+    {
+      "ordinal": 225,
+      "lemma": "병상",
+      "disposition": "admit",
+      "gloss": "병든 사람이 누워 있는 침상."
+    },
+    {
+      "ordinal": 226,
+      "lemma": "관목",
+      "disposition": "admit",
+      "gloss": "키가 작고 줄기가 여러 갈래로 나는 나무."
+    },
+    {
+      "ordinal": 227,
+      "lemma": "내리쬐다",
+      "disposition": "admit",
+      "gloss": "햇볕 따위가 아래로 세게 비치다."
+    },
+    {
+      "ordinal": 228,
+      "lemma": "앞길",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 229,
+      "lemma": "우러르다",
+      "disposition": "admit",
+      "gloss": "고개를 들어 위쪽을 쳐다보다."
+    },
+    {
+      "ordinal": 230,
+      "lemma": "혈색",
+      "disposition": "admit",
+      "gloss": "얼굴에 드러나는 핏기의 빛깔."
+    },
+    {
+      "ordinal": 231,
+      "lemma": "힘없다",
+      "disposition": "admit",
+      "gloss": "기운이나 힘이 없다."
+    },
+    {
+      "ordinal": 232,
+      "lemma": "고달프다",
+      "disposition": "admit",
+      "gloss": "몸이나 처지가 지치고 힘들다."
+    },
+    {
+      "ordinal": 233,
+      "lemma": "낯빛",
+      "disposition": "admit",
+      "gloss": "얼굴에 드러나는 빛깔이나 표정."
+    },
+    {
+      "ordinal": 234,
+      "lemma": "들먹이다",
+      "disposition": "admit",
+      "gloss": "어떤 이야기나 사람을 자꾸 입에 올려 말하다."
+    },
+    {
+      "ordinal": 235,
+      "lemma": "별나다",
+      "disposition": "admit",
+      "gloss": "보통과 달리 유별나다."
+    },
+    {
+      "ordinal": 236,
+      "lemma": "엉기다",
+      "disposition": "admit",
+      "gloss": "한데 뒤섞여 달라붙다."
+    },
+    {
+      "ordinal": 237,
+      "lemma": "열병",
+      "disposition": "admit",
+      "gloss": "몸에 열이 몹시 나는 병이나 그와 같은 뜨거운 앓음."
+    },
+    {
+      "ordinal": 238,
+      "lemma": "이쯤",
+      "disposition": "admit",
+      "gloss": "이 정도에 이른 때나 곳."
+    },
+    {
+      "ordinal": 239,
+      "lemma": "일말",
+      "disposition": "admit",
+      "gloss": "아주 적은 정도."
+    },
+    {
+      "ordinal": 240,
+      "lemma": "도사리다",
+      "disposition": "admit",
+      "gloss": "어떤 기운이나 위험이 속에 숨은 채 때를 기다리다."
+    },
+    {
+      "ordinal": 241,
+      "lemma": "재잘거리다",
+      "disposition": "admit",
+      "gloss": "낮고 빠르게 자꾸 지껄이다."
+    },
+    {
+      "ordinal": 242,
+      "lemma": "콧물",
+      "disposition": "admit",
+      "gloss": "코에서 나오는 끈끈한 물."
+    },
+    {
+      "ordinal": 243,
+      "lemma": "뛰어놀다",
+      "disposition": "admit",
+      "gloss": "이리저리 뛰며 놀다."
+    },
+    {
+      "ordinal": 244,
+      "lemma": "일자",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 245,
+      "lemma": "허리춤",
+      "disposition": "admit",
+      "gloss": "바지나 치마의 허리 부분."
+    },
+    {
+      "ordinal": 246,
+      "lemma": "힘내다",
+      "disposition": "admit",
+      "gloss": "기운을 내어 힘쓰다."
+    },
+    {
+      "ordinal": 247,
+      "lemma": "숨어들다",
+      "disposition": "admit",
+      "gloss": "몰래 들어가 숨다."
+    },
+    {
+      "ordinal": 248,
+      "lemma": "재회",
+      "disposition": "admit",
+      "gloss": "헤어졌던 사람을 다시 만남."
+    },
+    {
+      "ordinal": 249,
+      "lemma": "겉모습",
+      "disposition": "admit",
+      "gloss": "겉으로 드러난 모습."
+    },
+    {
+      "ordinal": 250,
+      "lemma": "할멈",
+      "disposition": "admit",
+      "gloss": "할머니를 낮추어 이르는 말."
+    },
+    {
+      "ordinal": 251,
+      "lemma": "치매",
+      "disposition": "admit",
+      "gloss": "기억과 판단 능력이 점점 떨어지는 병."
+    },
+    {
+      "ordinal": 252,
+      "lemma": "고을",
+      "disposition": "admit",
+      "gloss": "행정 구역의 단위가 되는 마을."
+    },
+    {
+      "ordinal": 253,
+      "lemma": "본문",
+      "disposition": "admit",
+      "gloss": "문서나 책의 중심이 되는 글."
+    },
+    {
+      "ordinal": 254,
+      "lemma": "거위",
+      "disposition": "admit",
+      "gloss": "목이 길고 몸집이 큰 물새."
+    },
+    {
+      "ordinal": 255,
+      "lemma": "표준",
+      "disposition": "admit",
+      "gloss": "기준이 되는 것."
+    },
+    {
+      "ordinal": 256,
+      "lemma": "미술관",
+      "disposition": "admit",
+      "gloss": "미술품을 모아 전시하는 건물."
+    },
+    {
+      "ordinal": 257,
+      "lemma": "택배",
+      "disposition": "admit",
+      "gloss": "물건을 집까지 가져다주는 배달."
+    },
+    {
+      "ordinal": 258,
+      "lemma": "당선",
+      "disposition": "admit",
+      "gloss": "선거에서 뽑힘."
+    },
+    {
+      "ordinal": 259,
+      "lemma": "미학",
+      "disposition": "admit",
+      "gloss": "아름다움의 본질을 연구하는 학문."
+    },
+    {
+      "ordinal": 260,
+      "lemma": "생수",
+      "disposition": "admit",
+      "gloss": "끓이거나 가공하지 않은 깨끗한 물."
+    },
+    {
+      "ordinal": 261,
+      "lemma": "관중",
+      "disposition": "admit",
+      "gloss": "경기나 공연을 구경하는 사람들."
+    },
+    {
+      "ordinal": 262,
+      "lemma": "비즈니스",
+      "disposition": "admit",
+      "gloss": "이익을 얻으려고 하는 사업이나 거래."
+    },
+    {
+      "ordinal": 263,
+      "lemma": "스케치",
+      "disposition": "admit",
+      "gloss": "대강의 모습이나 짜임을 간단히 그리거나 잡아 둔 것."
+    },
+    {
+      "ordinal": 264,
+      "lemma": "사직",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 265,
+      "lemma": "노선",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 266,
+      "lemma": "은인",
+      "disposition": "admit",
+      "gloss": "은혜를 베푼 사람."
+    },
+    {
+      "ordinal": 267,
+      "lemma": "목욕탕",
+      "disposition": "admit",
+      "gloss": "목욕을 할 수 있게 만든 곳."
+    },
+    {
+      "ordinal": 268,
+      "lemma": "연료",
+      "disposition": "admit",
+      "gloss": "태워서 열이나 힘을 얻는 재료."
+    },
+    {
+      "ordinal": 269,
+      "lemma": "토마토",
+      "disposition": "admit",
+      "gloss": "둥글고 붉게 익는 열매채소."
+    },
+    {
+      "ordinal": 270,
+      "lemma": "나물",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 271,
+      "lemma": "검진",
+      "disposition": "admit",
+      "gloss": "건강 상태를 검사하고 진찰함."
+    },
+    {
+      "ordinal": 272,
+      "lemma": "저축",
+      "disposition": "admit",
+      "gloss": "소득의 일부를 쓰지 않고 모아 둠."
+    },
+    {
+      "ordinal": 273,
+      "lemma": "휘하",
+      "disposition": "admit",
+      "gloss": "장수나 우두머리의 지휘 아래."
+    },
+    {
+      "ordinal": 274,
+      "lemma": "전생",
+      "disposition": "admit",
+      "gloss": "이 세상에 태어나기 전의 삶."
+    },
+    {
+      "ordinal": 275,
+      "lemma": "타임",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 276,
+      "lemma": "동부",
+      "disposition": "admit",
+      "gloss": "어떤 지역의 동쪽 부분."
+    },
+    {
+      "ordinal": 277,
+      "lemma": "렌즈",
+      "disposition": "admit",
+      "gloss": "빛을 모으거나 퍼뜨리는 투명한 광학 부품."
+    },
+    {
+      "ordinal": 278,
+      "lemma": "벽지",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 279,
+      "lemma": "풍습",
+      "disposition": "admit",
+      "gloss": "한 사회에서 오래전부터 전해 내려오는 생활 습관."
+    },
+    {
+      "ordinal": 280,
+      "lemma": "고의",
+      "disposition": "admit",
+      "gloss": "일부러 하는 마음이나 생각."
+    },
+    {
+      "ordinal": 281,
+      "lemma": "절단",
+      "disposition": "admit",
+      "gloss": "자르거나 끊어 냄."
+    },
+    {
+      "ordinal": 282,
+      "lemma": "돌파",
+      "disposition": "admit",
+      "gloss": "장애를 뚫고 나아가거나 어떤 수준을 넘어섬."
+    },
+    {
+      "ordinal": 283,
+      "lemma": "성화",
+      "disposition": "admit",
+      "gloss": "남을 몹시 귀찮게 조르는 일."
+    },
+    {
+      "ordinal": 284,
+      "lemma": "금년",
+      "disposition": "admit",
+      "gloss": "지금 지나고 있는 이 해."
+    },
+    {
+      "ordinal": 285,
+      "lemma": "물자",
+      "disposition": "admit",
+      "gloss": "어떤 일에 필요한 물건이나 재료."
+    },
+    {
+      "ordinal": 286,
+      "lemma": "성취감",
+      "disposition": "admit",
+      "gloss": "목표한 일을 이루었을 때 느끼는 뿌듯함."
+    },
+    {
+      "ordinal": 287,
+      "lemma": "회수",
+      "disposition": "admit",
+      "gloss": "내보냈던 것을 도로 거두어들임."
+    },
+    {
+      "ordinal": 288,
+      "lemma": "굉음",
+      "disposition": "admit",
+      "gloss": "몹시 크고 요란한 소리."
+    },
+    {
+      "ordinal": 289,
+      "lemma": "호되다",
+      "disposition": "admit",
+      "gloss": "매우 심하고 혹독하다."
+    },
+    {
+      "ordinal": 290,
+      "lemma": "건축물",
+      "disposition": "admit",
+      "gloss": "건물이나 다리처럼 지어서 세운 구조물."
+    },
+    {
+      "ordinal": 291,
+      "lemma": "비관",
+      "disposition": "admit",
+      "gloss": "앞날을 어둡게 보아 실망함."
+    },
+    {
+      "ordinal": 292,
+      "lemma": "세로",
+      "disposition": "admit",
+      "gloss": "위에서 아래로 향한 방향."
+    },
+    {
+      "ordinal": 293,
+      "lemma": "전시회",
+      "disposition": "admit",
+      "gloss": "작품이나 물건을 늘어놓고 보여 주는 모임."
+    },
+    {
+      "ordinal": 294,
+      "lemma": "갈구",
+      "disposition": "hold"
+    },
+    {
+      "ordinal": 295,
+      "lemma": "골몰",
+      "disposition": "admit",
+      "gloss": "한 가지 일에만 파묻혀 정신을 쏟음."
+    },
+    {
+      "ordinal": 296,
+      "lemma": "금기",
+      "disposition": "admit",
+      "gloss": "어떤 말이나 행동을 꺼려 하거나 못 하게 하는 일."
+    },
+    {
+      "ordinal": 297,
+      "lemma": "돈벌이",
+      "disposition": "admit",
+      "gloss": "돈을 벌어들이는 일."
+    },
+    {
+      "ordinal": 298,
+      "lemma": "밟히다",
+      "disposition": "admit",
+      "gloss": "발에 눌려 짓눌리다."
+    },
+    {
+      "ordinal": 299,
+      "lemma": "해제",
+      "disposition": "admit",
+      "gloss": "묶이거나 막힌 것을 풀어 없앰."
+    },
+    {
+      "ordinal": 300,
+      "lemma": "머나멀다",
+      "disposition": "admit",
+      "gloss": "아주 멀다."
+    },
+    {
+      "ordinal": 301,
+      "lemma": "찌꺼기",
+      "disposition": "admit",
+      "gloss": "액체 속에 가라앉거나 쓰고 남은 쓸모없는 것."
+    },
+    {
+      "ordinal": 302,
+      "lemma": "건너뛰다",
+      "disposition": "admit",
+      "gloss": "중간의 것을 거르고 다음으로 넘어가다."
+    },
+    {
+      "ordinal": 303,
+      "lemma": "뜯어내다",
+      "disposition": "admit",
+      "gloss": "붙어 있는 것을 떼어 내다."
+    },
+    {
+      "ordinal": 304,
+      "lemma": "자진",
+      "disposition": "admit",
+      "gloss": "남이 시키지 않았는데 스스로 나섬."
+    },
+    {
+      "ordinal": 305,
+      "lemma": "눈망울",
+      "disposition": "admit",
+      "gloss": "눈알의 앞쪽 동그란 부분."
+    }
+  ],
   "runs": [
     {
       "run": 1,
@@ -13,6 +1812,7 @@
       "last_ordinal": 102,
       "candidate_count": 102,
       "packet_sha256": "d104502719462412776a7fab197b20a81c654631b6dd79a869c67cea907ccf30",
+      "proposals_sha256": "cb73ecd6a946e7f561f8683142d0c686eda0f3b8b7e07c277b40d09f89fb0cea",
       "raw_output_sha256": "4d519425e168df1afbdcee95875416002dda6affa19b2455bb732ccdf96d24e8",
       "outputs": [
         {
@@ -2164,6 +3964,7 @@
       "last_ordinal": 204,
       "candidate_count": 102,
       "packet_sha256": "d21436c99dbeddc8a26285749cbe3b4462e59ba7997fab701aacbfe8345398c6",
+      "proposals_sha256": "9aef1e5fabc4b7886d99d84bd475521980571d836a1045fff78b12efd1608929",
       "raw_output_sha256": "79e20e8018efe717a9572201ccc3915d3b9a2acc774a814e61fa52550c781e04",
       "outputs": [
         {
@@ -4210,6 +6011,7 @@
       "last_ordinal": 305,
       "candidate_count": 101,
       "packet_sha256": "26cbbd98463ea2a721577cd9d11a75c01bfb20efd0a7a984bb130774607ea007",
+      "proposals_sha256": "33b16f089f7d8ea0395804a843646f5dc62d9ef9f26bc1cddb251f1fb37a6091",
       "raw_output_sha256": "611b9375d3643766d696ae175b7661bd098b2836dfc22f96eafd242e225aee02",
       "outputs": [
         {
