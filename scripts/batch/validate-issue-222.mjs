@@ -365,8 +365,11 @@ async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCo
 
     }
     for (const artifact of candidateReview.selection.exclusion_source_artifacts) {
-      const absolutePath = repositoryArtifactPath(artifact.path, `${candidateLabel} exclusion source`);
-      assert.equal(sha256Bytes(await readFile(absolutePath)), artifact.sha256, `${candidateLabel} ${artifact.path} exclusion-source digest`);
+      await assertPinnedSourceDigest(
+        artifact.path,
+        artifact.sha256,
+        `${candidateLabel} ${artifact.path} exclusion-source digest`,
+      );
     }
     const admittedRows = candidateReview.decisions.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
     const identities = admittedRows.map((row, index) => ({

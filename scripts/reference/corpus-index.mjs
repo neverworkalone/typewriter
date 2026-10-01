@@ -765,21 +765,16 @@ function validateSearchLimit(limit) {
   return effectiveLimit;
 }
 
-function corpusMatchFromAndWhere(useFts) {
-  const whereClause = useFts
-    ? 'paragraph_fts MATCH ? AND instr(p.form, ?) > 0'
-    : 'instr(p.form, ?) > 0';
-  return `
-    FROM paragraphs AS p
-    JOIN documents AS d ON d.document_rowid = p.document_rowid
-    JOIN source_files AS sf ON sf.source_path = d.source_path
-    ${useFts ? 'JOIN paragraph_fts ON paragraph_fts.rowid = p.paragraph_rowid' : ''}
-    WHERE ${whereClause}
-  `;
-}
-
 function corpusMatchParameters(query, useFts) {
   return useFts ? [exactFtsPhrase(query), query] : [query];
+}
+
+function corpusCountFromAndWhere(useFts) {
+  return `
+    FROM paragraphs AS p
+    ${useFts ? 'JOIN paragraph_fts ON paragraph_fts.rowid = p.paragraph_rowid' : ''}
+    WHERE ${useFts ? 'paragraph_fts MATCH ? AND instr(p.form, ?) > 0' : 'instr(p.form, ?) > 0'}
+  `;
 }
 
 export function searchCorpusIndex({
@@ -792,43 +787,11 @@ export function searchCorpusIndex({
   if (query.length === 0) {
     return [];
   }
-
-  const matchFromAndWhere = corpusMatchFromAndWhere(useFts);
-  const sql = `
-    SELECT
-      p.paragraph_rowid,
-      d.document_rowid,
-      sf.source_path,
-      sf.corpus_id,
-      sf.title AS source_title,
-      sf.creator,
-      sf.distributor,
-      sf.year,
-      sf.category,
-      sf.annotation_level_json,
-      sf.sampling,
-      d.document_id,
-      d.document_ordinal,
-      d.title AS document_title,
-      d.author,
-      d.publisher,
-      d.document_date,
-      p.paragraph_id,
-      p.ordinal AS paragraph_ordinal,
-      p.form
-    ${matchFromAndWhere}
-    ORDER BY sf.source_path COLLATE BINARY,
-             d.document_ordinal,
-             p.ordinal
-    LIMIT ?
-  `;
-  const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
+  const reader = createCorpusIndexReader({ databasePath });
   try {
-    const parameters = corpusMatchParameters(query, useFts);
-    parameters.push(effectiveLimit);
-    return database.prepare(sql).all(...parameters);
+    return reader.search(query, effectiveLimit);
   } finally {
-    database.close();
+    reader.close();
   }
 }
 
@@ -840,18 +803,100 @@ export function countCorpusMatches({
   if (query.length === 0) {
     return 0;
   }
-
-  const sql = `
-    SELECT COUNT(*) AS match_count
-    ${corpusMatchFromAndWhere(useFts)}
-  `;
-  const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
+  const reader = createCorpusIndexReader({ databasePath });
   try {
-    const parameters = corpusMatchParameters(query, useFts);
-    return database.prepare(sql).get(...parameters).match_count;
+    return reader.count(query);
   } finally {
-    database.close();
+    reader.close();
   }
+}
+
+/** Keep one read-only SQLite connection open while collecting evidence for a bounded candidate batch. */
+export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH } = {}) {
+  const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
+  const statements = new Map();
+  let closed = false;
+
+  const statement = (key, sql) => {
+    if (!statements.has(key)) statements.set(key, database.prepare(sql));
+    return statements.get(key);
+  };
+  const ensureOpen = () => {
+    if (closed) throw new Error('Corpus index reader is closed.');
+  };
+
+  return {
+    search(query, limit) {
+      ensureOpen();
+      const useFts = validateCorpusQuery(query);
+      const effectiveLimit = validateSearchLimit(limit);
+      if (query.length === 0) return [];
+      const sql = `
+        WITH bounded_paragraphs AS (
+          SELECT p.paragraph_rowid
+          FROM paragraphs AS p
+          ${useFts ? 'JOIN paragraph_fts ON paragraph_fts.rowid = p.paragraph_rowid' : ''}
+          WHERE ${useFts ? 'paragraph_fts MATCH ? AND instr(p.form, ?) > 0' : 'instr(p.form, ?) > 0'}
+          ORDER BY p.paragraph_rowid
+          LIMIT ?
+        )
+        SELECT
+          p.paragraph_rowid,
+          d.document_rowid,
+          sf.source_path,
+          sf.corpus_id,
+          sf.title AS source_title,
+          sf.creator,
+          sf.distributor,
+          sf.year,
+          sf.category,
+          sf.annotation_level_json,
+          sf.sampling,
+          d.document_id,
+          d.document_ordinal,
+          d.title AS document_title,
+          d.author,
+          d.publisher,
+          d.document_date,
+          p.paragraph_id,
+          p.ordinal AS paragraph_ordinal,
+          p.form
+        FROM bounded_paragraphs AS bounded
+        JOIN paragraphs AS p ON p.paragraph_rowid = bounded.paragraph_rowid
+        JOIN documents AS d ON d.document_rowid = p.document_rowid
+        JOIN source_files AS sf ON sf.source_path = d.source_path
+        ORDER BY bounded.paragraph_rowid
+      `;
+      const parameters = corpusMatchParameters(query, useFts);
+      parameters.push(effectiveLimit);
+      return statement(`search:${Number(useFts)}`, sql).all(...parameters);
+    },
+
+    count(query) {
+      ensureOpen();
+      const useFts = validateCorpusQuery(query);
+      if (query.length === 0) return 0;
+      const sql = `
+        SELECT COUNT(*) AS match_count
+        ${corpusCountFromAndWhere(useFts)}
+      `;
+      return statement(`count:${Number(useFts)}`, sql)
+        .get(...corpusMatchParameters(query, useFts)).match_count;
+    },
+
+    evidence(query, limit) {
+      return {
+        matchCount: this.count(query),
+        matches: this.search(query, limit),
+      };
+    },
+
+    close() {
+      if (closed) return;
+      closed = true;
+      database.close();
+    },
+  };
 }
 
 export async function assertCorpusPermission({

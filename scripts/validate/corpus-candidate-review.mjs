@@ -107,6 +107,34 @@ function validatePosCorrectionEvidence(row, label) {
 function validateIdentityEvidence(row, label) {
   const evidence = row.editorial_judgment.identity_evidence;
   const hits = row.bounded_provenance?.representative_hits;
+  if (evidence?.evidence_type === 'reviewed-analyzed-forms-show-component-only-usage') {
+    const lemma = row.morphology_proposal?.lemma;
+    const observedForms = row.observed_surface_forms;
+    const observedSpans = row.observed_morpheme_spans;
+    const forms = Array.isArray(observedForms)
+      ? observedForms.map(({ surface }) => surface)
+      : [];
+    const citedForms = evidence.observed_surface_forms;
+    if (typeof evidence.rationale !== 'string'
+      || evidence.rationale.trim() === ''
+      || typeof evidence.candidate_morpheme_span_surface !== 'string'
+      || evidence.candidate_morpheme_span_surface !== lemma
+      || !Array.isArray(observedSpans)
+      || !observedSpans.some(({ surface }) => surface === lemma)
+      || !Array.isArray(citedForms)
+      || citedForms.length === 0
+      || JSON.stringify(citedForms) !== JSON.stringify(forms)
+      || new Set(forms).size !== forms.length
+      || !Array.isArray(hits)
+      || hits.length !== 0
+      || forms.some((surface) => typeof surface !== 'string'
+        || !surface.includes(lemma)
+        || surface.startsWith(lemma))) {
+      fail(label, 'component-only identity holds must bind every analyzed full form and have no exact-start representative context', 'IDENTITY_EVIDENCE');
+    }
+    return;
+  }
+
   const availableParagraphIds = new Set((Array.isArray(hits) ? hits : [])
     .map(({ paragraph_id: id }) => id).filter((id) => typeof id === 'string'));
   if (evidence?.evidence_type !== 'reviewed-bounded-contexts-undermine-standalone-lemma'

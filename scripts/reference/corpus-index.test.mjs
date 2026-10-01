@@ -13,6 +13,7 @@ import {
   auditCorpus,
   buildCorpusIndex,
   countCorpusMatches,
+  createCorpusIndexReader,
   REPOSITORY_DIRECTORY,
   searchCorpusIndex,
 } from './corpus-index.mjs';
@@ -322,6 +323,34 @@ test('three-character FTS and one/two-character fallbacks return literal matches
     searchCorpusIndex({ databasePath: outputPath, query: '없는표현' }),
     [],
   );
+});
+
+test('persistent corpus index reader returns bounded evidence over one open index', {
+  skip: hasFts5Trigram ? false : fts5TrigramError.message,
+}, async () => {
+  const directory = await makeTemporaryDirectory();
+  const corpusDirectory = await makeCorpus(directory);
+  const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);
+  const reader = createCorpusIndexReader({ databasePath: outputPath });
+  try {
+    const evidence = reader.evidence('바람빛', 3);
+    assert.equal(evidence.matchCount, 2);
+    assert.deepEqual(
+      evidence.matches.map(({ source_path, document_ordinal, paragraph_ordinal }) => (
+        [source_path, document_ordinal, paragraph_ordinal]
+      )),
+      [
+        ['nested/a-source.json', 0, 0],
+        ['z-source.json', 0, 0],
+      ],
+    );
+    assert.equal(reader.count('빛'), 4);
+    assert.equal(reader.search('강물', 1).length, 1);
+  } finally {
+    reader.close();
+    reader.close();
+  }
+  assert.throws(() => reader.count('바람빛'), /reader is closed/u);
 });
 
 test('corpus search defaults to 50 and caps FTS and one/two-character fallback at 200', {

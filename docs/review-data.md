@@ -21,8 +21,5 @@ Check:
 Leave schema, references, duplicates, self-reference, missing targets, and
 other mechanical integrity checks to validators/CI.
 
-For large data changes, review changed editorial decisions and representative
-samples rather than the full dataset.
-
 Fix generation/model defects at the source instead of hand-patching generated
 records.

@@ -4,7 +4,7 @@ State: **complete**. The 7,500 record target remains reached.
 
 ## Progress
 
-The issue started from 5,105 directly searchable canonical records at 77f52ae7ae8040146c25b75b2dcdf29f7b4f5e42. The current canonical set has 7,521 directly searchable records, leaving 0 to the target. The historical recovery batch and 8 bounded corpus batches reviewed 2860 candidates and admitted 2416 records.
+The issue started from 5,105 directly searchable canonical records at 77f52ae7ae8040146c25b75b2dcdf29f7b4f5e42. The current canonical set has 8,727 directly searchable records, leaving 0 to the target. The historical recovery batch and 8 bounded corpus batches reviewed 2860 candidates and admitted 2416 records for Issue #222. The current set includes 1,206 records added after that checkpoint.
 
 | Source class | Reviewed | Admitted | Held | Rejected |
 | --- | ---: | ---: | ---: | ---: |
@@ -47,22 +47,22 @@ The checkpoint validates 2416 records added since the baseline under exact searc
 
 ## Checkpoint audit
 
-Current canonical inventory: 7521 records, 7521 directly searchable, 0 non-searchable, 7783 senses, and 487 relations. Relation-empty searchable records: 7185.
+Current canonical inventory: 8727 records, 8727 directly searchable, 0 non-searchable, 8989 senses, and 487 relations. Relation-empty searchable records: 8391.
 
 | Record type | Records |
 | --- | ---: |
-| entry | 6367 |
+| entry | 7573 |
 | expression | 1154 |
 
 | Sense POS | Senses |
 | --- | ---: |
-| adjective | 397 |
-| adverb | 7 |
+| adjective | 437 |
+| adverb | 9 |
 | expression | 1176 |
-| noun | 5117 |
-| verb | 1086 |
+| noun | 6138 |
+| verb | 1229 |
 
-Exact lemma coverage: 7521/7521; exact search-form owner keys: 7778/7778; missing owners: 0; unexpected owners: 0; cross-record collisions: 0.
+Exact lemma coverage: 8727/8727; exact search-form owner keys: 8984/8984; missing owners: 0; unexpected owners: 0; cross-record collisions: 0.
 
 ### Candidate yield and disposition
 
@@ -110,8 +110,8 @@ Across reviewed batches, hold reasons were search-collision: 9; unresolved-ident
 
 Correction rate: **NOT_MEASURED_NO_HUMAN_REVIEW**. Writer review burden: **NOT_MEASURED_NO_WRITER_REVIEW**. Systemic defect classes: 0; shared system fixes recorded: 0.
 
-Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `601640b93c227a3b94a1719a0e86362200c8957f9a0377deaaec754273407992`.
-Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 7,521 records (+2,416; 47.33%). Runtime contract changed: false; package bytes measured: false. Issue #222 adds canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
+Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `be6daee53587837aa68b2c57cec5fe7916481378ef8d5df30b5aca4262754ae0`.
+Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 8,727 records (+3,622; 70.95%). Runtime contract changed: false; package bytes measured: false. Issue #222 and later checkpointed work add canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
 
 ## Continuation
 

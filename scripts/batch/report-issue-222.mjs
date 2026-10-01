@@ -114,7 +114,7 @@ export function renderMarkdown(report) {
     '',
     '## Progress',
     '',
-    `The issue started from ${report.baseline.directly_searchable_record_count.toLocaleString('en-US')} directly searchable canonical records at ${report.baseline.commit}. The current canonical set has ${report.current.directly_searchable_record_count.toLocaleString('en-US')} directly searchable records, leaving ${report.remaining.records_to_target.toLocaleString('en-US')} to the target. The historical recovery batch and ${corpusBatches.length} bounded corpus batches reviewed ${report.aggregate.reviewed_count} candidates and admitted ${report.aggregate.canonical_records_added} records.`,
+    `The issue started from ${report.baseline.directly_searchable_record_count.toLocaleString('en-US')} directly searchable canonical records at ${report.baseline.commit}. The current canonical set has ${report.current.directly_searchable_record_count.toLocaleString('en-US')} directly searchable records, leaving ${report.remaining.records_to_target.toLocaleString('en-US')} to the target. The historical recovery batch and ${corpusBatches.length} bounded corpus batches reviewed ${report.aggregate.reviewed_count} candidates and admitted ${report.aggregate.canonical_records_added} records for Issue #222. The current set includes ${report.current.records_added_after_issue_222_checkpoint.toLocaleString('en-US')} records added after that checkpoint.`,
     '',
     '| Source class | Reviewed | Admitted | Held | Rejected |',
     '| --- | ---: | ---: | ---: | ---: |',
@@ -289,8 +289,9 @@ async function buildReport() {
   const directSearchCount = inventory.search_coverage.directly_searchable_record_count;
   assert.equal(currentRecordCount, canonical.records.length);
   assert.equal(directSearchCount, currentRecordCount);
-  assert.equal(currentRecordCount, validation.admitted_lemmas_directly_searchable + BASELINE_RECORD_COUNT,
-    'Issue #222 canonical total is the baseline plus directly searchable additions');
+  const issue222CanonicalCheckpointCount = BASELINE_RECORD_COUNT + validation.admitted_lemmas_directly_searchable;
+  assert.ok(currentRecordCount >= issue222CanonicalCheckpointCount,
+    'Current canonical data cannot predate the completed Issue #222 checkpoint');
   assert.equal(validation.candidate_count, historicalBatch.candidate_count + corpusBatchTotals.candidates);
   assert.equal(validation.admitted_count, historicalAdmitted + corpusBatchTotals.admitted);
   assert.equal(validation.held_count, historicalBatch.held_count + corpusBatchTotals.held);
@@ -311,7 +312,7 @@ async function buildReport() {
   const progress = buildM9ProductionProgress({
     checkpoint_target: TARGET_RECORD_COUNT,
     canonical_count_at_start: BASELINE_RECORD_COUNT,
-    canonical_count_now: directSearchCount,
+    canonical_count_now: issue222CanonicalCheckpointCount,
     batches_processed: allBatches.length,
     candidate_yield: {
       selected_count: validation.candidate_count,
@@ -396,6 +397,7 @@ async function buildReport() {
       canonical_revision: inventory.generated_from.current_canonical_revision,
       canonical_records_sha256: canonicalDigest,
       canonical_record_count: currentRecordCount,
+      records_added_after_issue_222_checkpoint: currentRecordCount - issue222CanonicalCheckpointCount,
       directly_searchable_record_count: directSearchCount,
       exact_search_key_count: inventory.search_coverage.exact_search_key_count,
       non_searchable_record_count: inventory.search_coverage.current_non_searchable_lexical_record_count,
@@ -428,7 +430,7 @@ async function buildReport() {
       admitted_count: validation.admitted_count,
       held_count: validation.held_count,
       rejected_count: validation.rejected_count,
-      canonical_records_added: currentRecordCount - BASELINE_RECORD_COUNT,
+      canonical_records_added: validation.admitted_lemmas_directly_searchable,
       admission_quota_applied: false,
     },
     historical_pool: {
@@ -519,7 +521,7 @@ async function buildReport() {
       dictionary_record_growth_rate: (currentRecordCount - BASELINE_RECORD_COUNT) / BASELINE_RECORD_COUNT,
       dictionary_package_bytes_measured: false,
       runtime_contract_changed: false,
-      rationale: 'Issue #222 adds canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately.',
+      rationale: 'Issue #222 and later checkpointed work add canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately.',
       targeted_validation: 'normal-ci-product-build-and-output-contract',
     },
     continuation: progress,

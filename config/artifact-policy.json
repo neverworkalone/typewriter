@@ -110,11 +110,15 @@
       },
       {
         "pattern": "data/batches/issue-221-corpus-candidate-review.json",
-        "contract": "issue_221_corpus_candidate_review"
+        "contract": "m9_corpus_candidate_review"
       },
       {
         "pattern": "data/batches/issue-222-m9-d-corpus-batch-*-candidate-review.json",
-        "contract": "issue_221_corpus_candidate_review"
+        "contract": "m9_corpus_candidate_review"
+      },
+      {
+        "pattern": "data/batches/issue-223-m9-e-corpus-batch-*-candidate-review.json",
+        "contract": "m9_corpus_candidate_review"
       },
       {
       "pattern": "data/batches/*-semantic-decisions.json",
@@ -2599,7 +2603,7 @@
           }
         }
       },
-      "issue_221_corpus_candidate_review": {
+      "m9_corpus_candidate_review": {
         "contract_versions": [
           "m9-corpus-candidate-review-v1"
         ],
@@ -2628,6 +2632,10 @@
           "artifact_sha256",
           "authoring_mode",
           "batch_id",
+          "canonical_import_count",
+          "canonical_import_deferred_count",
+          "canonical_import_deferred_reason",
+          "canonical_import_status",
           "contract_version",
           "decision_counts",
           "decisions",
@@ -2649,6 +2657,10 @@
           "artifact_sha256": "string",
           "authoring_mode": "string",
           "batch_id": "string",
+          "canonical_import_count": "integer",
+          "canonical_import_deferred_count": "integer",
+          "canonical_import_deferred_reason": "string",
+          "canonical_import_status": "string",
           "contract_version": "string",
           "decision_counts": "object",
           "decisions": "array<object>",
@@ -2676,6 +2688,8 @@
             "corpus_id",
             "document_id",
             "document_ordinal",
+            "matched_morpheme_span_surface",
+            "matched_surface_form",
             "paragraph_id",
             "paragraph_ordinal",
             "source_category",
@@ -2684,9 +2698,11 @@
           ],
           "$.decisions.*.bounded_provenance": [
             "evidence_type",
+            "representative_context_match_method",
             "representative_hit_count",
             "representative_hit_limit",
-            "representative_hits"
+            "representative_hits",
+            "representative_surface_search_limit"
           ],
           "$.decisions.*.corpus_evidence": [
             "coverage_status",
@@ -2731,7 +2747,9 @@
             "rationale"
           ],
           "$.decisions.*.editorial_judgment.identity_evidence": [
+            "candidate_morpheme_span_surface",
             "evidence_type",
+            "observed_surface_forms",
             "paragraph_ids",
             "rationale"
           ],
@@ -2859,6 +2877,8 @@
           "$.source_artifacts": [
             "candidate_evidence_path",
             "candidate_evidence_sha256",
+            "candidate_inventory_path",
+            "candidate_inventory_sha256",
             "candidate_selection_path",
             "candidate_selection_sha256",
             "exclusion_manifest_sha256",
@@ -2920,6 +2940,8 @@
             "corpus_id": "string",
             "document_id": "string",
             "document_ordinal": "integer",
+            "matched_morpheme_span_surface": "string",
+            "matched_surface_form": "string",
             "paragraph_id": "string",
             "paragraph_ordinal": "integer",
             "source_category": "string",
@@ -2928,9 +2950,11 @@
           },
           "$.decisions.*.bounded_provenance": {
             "evidence_type": "string",
+            "representative_context_match_method": "string",
             "representative_hit_count": "integer",
             "representative_hit_limit": "integer",
-            "representative_hits": "array<object>"
+            "representative_hits": "array<object>",
+            "representative_surface_search_limit": "integer"
           },
           "$.decisions.*.corpus_evidence": {
             "coverage_status": "string",
@@ -2971,7 +2995,9 @@
             "rationale": "string"
           },
           "$.decisions.*.editorial_judgment.identity_evidence": {
+            "candidate_morpheme_span_surface": "string",
             "evidence_type": "string",
+            "observed_surface_forms": "array<string>",
             "paragraph_ids": "array<string>",
             "rationale": "string"
           },

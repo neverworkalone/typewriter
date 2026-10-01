@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   DEFAULT_CANDIDATE_LIMIT,
   buildTextFreeCandidateEvidence,
+  collectRepresentativeSurfaceHits,
   excludedLemmasForArtifact,
   parseArguments,
 } from './run-corpus-lemma-pilot.mjs';
@@ -16,6 +17,22 @@ test('corpus production defaults to 200 and supports bounded batches through 500
   assert.throws(() => parseArguments(['--candidate-limit', '501']), /1 to 500/u);
 });
 
+test('cached morphology reuse stays in ignored reference data and uses a separate output', () => {
+  const options = parseArguments([
+    '--reuse-analysis-from', 'data/reference/production/issue-223/source',
+    '--output-directory', 'data/reference/production/issue-223/next',
+  ]);
+  assert.match(options.reuseAnalysisFrom, /data\/reference\/production\/issue-223\/source$/u);
+  assert.match(options.outputDirectory, /data\/reference\/production\/issue-223\/next$/u);
+  assert.throws(() => parseArguments([
+    '--reuse-analysis-from', 'data/reference/production/issue-223/source',
+    '--output-directory', 'data/reference/production/issue-223/source',
+  ]), /must differ/u);
+  assert.throws(() => parseArguments([
+    '--reuse-analysis-from', '../../outside-cache',
+  ]), /under ignored data\/reference/u);
+});
+
 test('text-free candidate evidence keeps morphology and bounded provenance without paragraph text', () => {
   const inventory = {
     publication_state: 'local_reference_only_pending_owner_publication_confirmation',
@@ -24,6 +41,10 @@ test('text-free candidate evidence keeps morphology and bounded provenance witho
     typewriter_surface: { canonical_revision: 'revision' },
     extractor: { name: 'Kiwi', kiwipiepy_version: '0.24.0' },
     selection: { candidate_limit: 1, exclusion_source_artifacts: [] },
+    analysis_cache: {
+      mode: 'reused-candidate-analysis',
+      database_sha256: 'a'.repeat(64),
+    },
     yield: { selected_count: 0 },
     evidence_collection: { per_candidate_paragraph_limit: 3 },
     orchestration: {
@@ -84,6 +105,7 @@ test('text-free candidate evidence keeps morphology and bounded provenance witho
   const serialized = JSON.stringify(safe);
   assert.equal(safe.candidates[0].observed_morpheme_spans[0].surface, '바라');
   assert.equal(safe.candidates[0].evidence.representative_hit_count, 1);
+  assert.equal(safe.analysis_cache.mode, 'reused-candidate-analysis');
   assert.deepEqual(safe.candidates[0].evidence.representative_hits[0], {
     source_path: 'source.json',
     corpus_id: 'corpus-1',
@@ -97,6 +119,101 @@ test('text-free candidate evidence keeps morphology and bounded provenance witho
   assert.equal(serialized.includes('RAW CORPUS CONTENT'), false);
   assert.equal(serialized.includes('candidate_selection_path'), false);
   assert.equal(serialized.includes('created_at_utc'), false);
+});
+
+test('representative evidence uses exact analyzed eojeol forms and rejects substring contexts', () => {
+  const candidate = {
+    observed_morpheme_spans: [{ surface: '간부' }],
+    observed_surface_forms: [
+      { surface: '간부', kiwi_morpheme_occurrences_in_sample: 100 },
+      { surface: '간부들이', kiwi_morpheme_occurrences_in_sample: 80 },
+      { surface: '간부가', kiwi_morpheme_occurrences_in_sample: 50 },
+    ],
+  };
+  const calls = [];
+  const hits = collectRepresentativeSurfaceHits(candidate, (query, limit) => {
+    calls.push({ query, limit });
+    const forms = {
+      '간부들이': [
+        { paragraph_id: 'substring', form: '뜻밖의 순간부터 이야기가 달라졌다.' },
+        { paragraph_id: 'partial-token', form: '새 간부들이란 표현을 썼다.' },
+        { paragraph_id: 'hit-1', form: '학생회 간부들이 협의했다.' },
+      ],
+      '간부가': [{ paragraph_id: 'hit-2', form: '회의 간부가 준비를 마쳤다.' }],
+      간부: [
+        { paragraph_id: 'substring-2', form: '뜻밖의 순간부터 이야기가 달라졌다.' },
+        { paragraph_id: 'partial-token-2', form: '새 간부들이란 표현을 썼다.' },
+        { paragraph_id: 'hit-3', form: '회의 간부 역시 답했다.' },
+      ],
+    };
+    return (forms[query] ?? []).map((hit) => ({
+      source_path: 'source.json',
+      corpus_id: 'corpus-1',
+      document_id: 'document-1',
+      document_ordinal: 0,
+      paragraph_id: hit.paragraph_id,
+      paragraph_ordinal: 0,
+      category: 'literature',
+      year: '2025',
+      ...hit,
+    }));
+  });
+
+  assert.deepEqual(calls, [
+    { query: '간부', limit: 100 },
+    { query: '간부가', limit: 100 },
+    { query: '간부들이', limit: 100 },
+  ]);
+  assert.deepEqual(hits.map(({ paragraph_id }) => paragraph_id), ['hit-3', 'hit-2', 'hit-1']);
+  assert.deepEqual(hits.map(({ matched_surface_form }) => matched_surface_form), [
+    '간부',
+    '간부가',
+    '간부들이',
+  ]);
+  assert.deepEqual(hits.map(({ matched_morpheme_span_surface }) => matched_morpheme_span_surface), [
+    '간부',
+    '간부',
+    '간부',
+  ]);
+});
+
+test('representative evidence rejects analyzed morphemes at the end of a larger eojeol', () => {
+  const candidate = {
+    observed_morpheme_spans: [{ surface: '스키' }],
+    observed_surface_forms: [
+      { surface: '브론스키는', kiwi_morpheme_occurrences_in_sample: 100 },
+      { surface: '스키를', kiwi_morpheme_occurrences_in_sample: 30 },
+      { surface: '스키', kiwi_morpheme_occurrences_in_sample: 10 },
+    ],
+  };
+  const calls = [];
+  const hits = collectRepresentativeSurfaceHits(candidate, (query, limit) => {
+    calls.push({ query, limit });
+    const forms = {
+      스키: [
+        { paragraph_id: 'surname', form: '브론스키는 귀족이었다.' },
+        { paragraph_id: 'ski', form: '스키 종목을 좋아한다.' },
+      ],
+      스키를: [{ paragraph_id: 'ski-particle', form: '스키를 배우기 시작했다.' }],
+    };
+    return (forms[query] ?? []).map((hit) => ({
+      source_path: 'source.json',
+      corpus_id: 'corpus-1',
+      document_id: hit.paragraph_id,
+      document_ordinal: 0,
+      paragraph_ordinal: 0,
+      category: 'literature',
+      year: '2025',
+      ...hit,
+    }));
+  });
+
+  assert.deepEqual(calls, [
+    { query: '스키', limit: 100 },
+    { query: '스키를', limit: 100 },
+  ]);
+  assert.deepEqual(hits.map(({ paragraph_id }) => paragraph_id), ['ski', 'ski-particle']);
+  assert.ok(hits.every(({ matched_morpheme_span_surface }) => matched_morpheme_span_surface === '스키'));
 });
 
 test('reviewed corpus decisions and target seed rows can exclude earlier lemma ownership', () => {

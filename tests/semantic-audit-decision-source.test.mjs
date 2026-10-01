@@ -424,6 +424,10 @@ test('the shared canonical audit resolves M5-15 batch authority and rejects miss
     ({ source }) => source.source_id === 'm5-15-authored-semantic-decisions-20260923-r1',
   );
   assert.ok(m515Source, 'the shared source loader includes M5-15');
+  const issue223Source = batchDecisionSources.find(
+    ({ source }) => source.source_id === 'issue-223-m9-e-corpus-batch-01-semantic-decisions-20261001-r1',
+  );
+  assert.ok(issue223Source, 'the shared source loader discovers tracked Issue #223 batch decision sources');
 
   const row = m515Source.byCandidateId.get(recordInfo.record.id);
   assert.ok(row, 'M5-15 source contains the canonical record decision');

@@ -423,7 +423,7 @@ export function validateAuthoredSemanticDecisionSource({
   }
   const review = requireObject(source.review, `${config.label} semantic decision source.review`, config);
   if (review.review_pass_id !== config.verificationPassId
-    || review.reviewer !== 'codex-agent'
+    || review.reviewer !== (config.reviewer ?? 'codex-agent')
     || review.status !== 'complete'
     || review.candidate_count !== identities.length
     || review.reviewed_candidate_count !== identities.length
@@ -446,7 +446,7 @@ export function validateAuthoredSemanticDecisionSource({
     const correctionPass = requireObject(correctionPassValue, `${config.label} review.correction_passes[${index}]`, config);
     if (correctionPass.review_pass_id !== config.correctionPassId
       || correctionPass.prior_review_pass_id !== review.review_pass_id
-      || correctionPass.reviewer !== 'codex-agent'
+      || correctionPass.reviewer !== (config.reviewer ?? 'codex-agent')
       || correctionPass.status !== 'complete'
       || !Array.isArray(correctionPass.candidate_record_ids)
       || correctionPass.candidate_record_ids.length === 0

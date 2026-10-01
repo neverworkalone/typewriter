@@ -1,333 +1,173 @@
 # Typewriter PR Review
 
-Review with the minimum context needed to reach a reliable decision.
-
-Do not reconstruct the entire implementation process. Review the resulting
-change and inspect the minimal upstream producer/validation path when needed
-to determine whether the defect can recur.
-
-## Context-efficient review flow
-
-This flow is the default for the first and second full-review stages. The third
-reviewer uses the dedicated review-of-reviews flow below and descends into
-patches or source only when the prior reviews leave a material question.
-
-Use this order:
-
-1. Read PR metadata, current head SHA, and the active issue.
-2. Inspect the complete changed-file list.
-3. Classify the changed surface and read only the applicable review guide(s).
-4. Inspect per-file patches, starting with behavior- or architecture-relevant files.
-5. Load surrounding source only when a patch cannot be understood safely by itself.
-6. Check CI status for the exact reviewed head.
-7. Open detailed CI output, additional files, or broader repository context only when needed.
-
-Do not begin by fetching:
-
-- the full PR diff when per-file patches are sufficient;
-- complete source files when a patch plus a small surrounding region is sufficient;
-- successful CI logs;
-- generated artifacts already validated by CI;
-- unrelated repository documents;
-- complete historical PR discussion.
-
-Expand context only when the current evidence is insufficient.
-
-## Review guide routing
-
-- canonical/editorial/schema → `docs/review-data.md`
-- search/normalization/ranking → `docs/review-search.md`
-- validators/build/SQLite/CI → `docs/review-toolchain.md`
-- Chrome/runtime/UI/storage → `docs/review-extension.md`
-- external sources/licensing → `docs/review-licensing.md`
-
-Read multiple guides only when the actual behavioral impact requires them.
-
-If a change affects behavior outside its apparent file category, load the
-additional guide or source of truth needed for that impact.
-
-For canonical validation and CI architecture changes, verify that the shared
-context is built from the complete canonical revision, that the global audit
-still runs before SQLite build, and that downstream checks consume the same
-artifact. Verify that current-canonical production gates share the same
-in-process context and that isolated fixture tests do not repeatedly transport
-the full context. Treat reported parse/full-scan/index/build and context
-transport counts as evidence to check against the runner wiring, not as a
-substitute for correctness checks. Independent two-build reproducibility is a
-deep/manual validation path, not a duplicate normal gate. The public CI levels
-must remain nested: `ci:fast` for early feedback, `ci:normal` for the full
-merge-coverage continuation, and `ci:all` for scheduled/manual deep checks
-including the scale benchmark. A pull-request workflow may expose the fast
-checkpoint and continue normal validation in the same process/session; it must
-not run fast and normal as separate fresh processes that duplicate canonical
-parse/index/build work. Changed-only validation may accelerate failure
-feedback but must not become the final correctness gate.
-
-Changes to Deep CI or a Deep validation regression require a successful
-`Deep CI Gate` for the exact PR head. Applying the `deep-ci` label runs the
-shared `ci:all` validation for that head; ordinary PRs pass this gate without
-running the expensive Deep validation.
-
-## Depth by risk
-
-Do not review every changed file at equal depth.
-
-Review deeply when a change affects:
-
-- architecture or shared behavior;
-- canonical data semantics;
-- search semantics or ranking;
-- validators or CI correctness;
-- persistence, permissions, packaging, or runtime boundaries;
-- licensing or external data provenance.
-
-Use lighter inspection for mechanical edits, generated output, fixtures,
-documentation, or repetitive data when automated validation covers their
-relevant properties.
-
-## Automated validation
-
-Trust deterministic CI for the property it validates on the exact reviewed
-head.
-
-Do not manually repeat passed mechanical checks.
-
-For large data changes, review:
-
-- the rule or generation logic;
-- changed editorial decisions;
-- representative samples where semantic judgment is needed.
-
-Do not manually inspect the complete dataset when validators cover mechanical
-integrity.
-
-Inspect successful CI details only when:
-
-- the validator, fixture, expected result, or CI workflow changed;
-- the result conflicts with the implementation;
-- the check may not cover the claimed property.
-
-When a repeated manual finding is scriptable, move it into a validator or
-regression test so future reviews do not repeat that work.
-
-## Findings
-
-When several failures appear to share one cause, identify and review the root
-cause instead of exhaustively collecting every equivalent symptom.
-
-Batch related findings in one review pass.
-
-Prefer a generalized regression or validator for the defect class over many
-redundant case-specific checks.
-
-## System-first resolution
-
-A review finding is not resolved merely because the current output was patched.
-
-When a defect can recur, identify the upstream system that produced or
-allowed it: producer, builder, validator, fixture, prompt, workflow, or CI
-integration. Inspect only the upstream path needed to determine recurrence;
-do not reconstruct the entire implementation history.
-
-A recurring or deterministic defect is a blocker if the PR changes only the
-current output without changing the responsible system or adding a regression
-guard.
-
-Every resolved blocker of this kind must include:
-
-- the smallest fixture that reproduces the defect;
-- a generalized invariant or validator rule;
-- an automated regression test that fails for the old behavior and passes for
-  the fixed behavior;
-- execution through the repository preflight or CI path before PR submission.
-
-For generated or staged data, verify the producer and admission boundary, not
-only the generated result. A builder that silently converts every proposal
-into `admitted/clean`, for example, is a system defect; correcting the affected
-records alone is insufficient.
-
-Do not declare the work complete while the new regression is absent,
-unexecuted, or disconnected from the preflight/CI gate.
-
-For lexical rules, verify that a generalized invariant applies to all relevant
-existing canonical data and automatically to future additions.
-
-Do not accept batch-, record-, or word-specific regression logic when the
-defect represents a dictionary-wide or admission-wide rule.
-
-## Follow-up review
-
-Use the previously reviewed head as the baseline.
-
-Inspect:
-
-1. previous blockers;
-2. changes from the previously reviewed head to the current head;
-3. regressions caused by those changes;
-4. newly added changed-file areas.
-
-Do not reread unchanged hunks.
-
-Do not reload the complete historical discussion. Read only previous blocker
-threads and review activity needed to understand the current state.
-
-If the current head has not materially changed outside the fixes, do not
-restart a full first-pass review.
-
-## Three-stage review gate
-
-Every PR passes through two independent full reviews followed by a final
-review-of-reviews merge gate.
-
-The valid progression is:
-
-`0 -> +1 -> +2 -> Squash merge`
-
-`+1` and `+2` are sequential gate records, not different review depths and
-not GitHub approval states. Both full-review stages use the same review scope
-and standards.
-
-### Review independence
-
-Independence is a review-process property, not a GitHub-account property.
-
-- The first and second reviews must run as separate reviewer stages, runs, or
-  contexts.
-- The same GitHub account may record both stages, but one review pass must not
-  produce both `+1` and `+2`.
-- The second reviewer may confirm that a valid `+1` exists for the current
-  HEAD before starting, but must not use the first review's conclusions to
-  reduce scope or substitute for its own analysis.
-- The second reviewer should complete its independent analysis before using the
-  first review record for comparison or follow-up context.
-
-### Required review record
-
-A clean first or second review must leave a structured GitHub review
-`COMMENT` anchored to the exact reviewed HEAD.
-
-The record is evidence for the third reviewer, not merely a pass marker. Keep
-it concise, but include enough information to show what was actually reviewed:
-
-- gate marker: `+1` or `+2`;
-- exact HEAD SHA;
-- active issue or requirement reviewed;
-- review coverage: the behavioral areas, data paths, system boundaries, or
-  invariants actually checked;
-- approach assessment: whether the implementation addresses the real problem
-  with an appropriate design rather than only patching symptoms;
-- key risks or possible blind spots explicitly checked;
-- blockers found during the review and how their fixes were verified, or an
-  explicit statement that none were found;
-- exact-head tests, CI, or other required validation relied on;
-- review boundaries or remaining uncertainty, including properties trusted to
-  deterministic validation rather than manually repeated;
-- final statement that no blocker remains for that exact HEAD.
-
-Prefer review coverage such as
-`producer -> semantic review -> selection -> admission -> regression wiring`
-over a long list of filenames. The record should explain which risks and
-reasoning were checked, not merely which files were opened.
-
-A marker-only comment such as `+1 — No blockers remain` is not a valid gate
-record because it does not provide enough evidence for review-of-reviews.
-
-Do not use, request, require, or wait for GitHub `APPROVE`. Do not treat the
-inability to self-approve as a reason to stop the review flow.
-
-### First reviewer — independent full review
-
-- Perform a complete review under this `REVIEW.md`.
-- Review the reported problem, the validity of the overall approach, the full
-  relevant change, regression risk, tests, validation, and systemic causes of
-  defects.
-- If blockers remain, report them and do not record `+1`.
-- When no blocker remains and required validation passes for the current exact
-  PR HEAD, leave the structured exact-head review `COMMENT` described above
-  with gate marker `+1`.
-- Do not merge.
-
-### Second reviewer — independent full review
-
-- Begin only when the current exact PR HEAD has a valid `+1` record.
-- Perform another complete independent review under this `REVIEW.md`.
-- Do not reduce review scope because the first reviewer recorded `+1`.
-  Independently review the problem, approach, implementation, regression risk,
-  tests, validation, and systemic causes of defects.
-- If blockers remain, report them and do not record `+2`.
-- When no blocker remains and required validation passes for the same exact PR
-  HEAD, leave the structured exact-head review `COMMENT` described above
-  with gate marker `+2`.
-- Do not merge.
-
-### Third reviewer — review-of-reviews merge gate
-
-The third reviewer is not a third full reviewer. This section takes precedence
-over the full-review flow above.
-
-Start with:
-
-1. the active issue and acceptance criteria;
-2. the current exact HEAD and complete changed-file list;
-3. the same-HEAD structured `+1` and `+2` records;
-4. blocker/fix history relevant to those reviews;
-5. required exact-head CI or validation.
-
-Review the reviews before reviewing the code.
-
-Verify that the two reviews, together and independently:
-
-- evaluated the real problem and overall approach;
-- covered the material behavioral and architectural risks of the changed surface;
-- required systemic fixes and regression guards for recurring defects;
-- verified blocker resolution and required exact-head validation.
-
-Then perform **one targeted adversarial probe** for a material assumption that
-both reviews rely on but do not explicitly verify.
-
-For evidence, validator, benchmark, or CI changes, prefer tracing:
-
-`requirement -> evidence -> enforcement -> known-invalid regression`
-
-Ask whether a required result, invariant, or failure signal could disappear or
-become invalid while the gate still passes.
-
-Do not repeat the full diff review. Inspect only the minimum patch, source,
-test, artifact, or CI detail needed to resolve a review gap or complete the
-adversarial probe.
-
-If the `+1`/`+2` records are stale, insufficient, inconsistent, or the probe
-reveals a material gap, report the blocker and do not merge.
-
-Otherwise, once the reviewed direction matches the final implementation,
-all blockers are resolved, and exact-head validation is confirmed,
-squash-merge the PR directly. Do not create `+3` or a GitHub approval record.
-
-### Exact-head gate semantics
-
-Both `+1` and `+2` must refer to the same exact PR HEAD and must be recorded
-in that order.
-
-Any new commit makes previous `+1` and `+2` records stale and returns the
-gate state to `0`.
-
-Resetting the gate does not require rereading unchanged hunks. For a follow-up
-review after fixes, each reviewer may use its own previously reviewed HEAD as
-the baseline and apply the `Follow-up review` rules above, while still
-producing a new structured gate record bound to the new exact HEAD.
-
-## Stop condition
-
-Stop expanding review context once:
-
-- the active issue is understood;
-- the complete changed surface has been accounted for;
-- the applicable approach has been evaluated;
-- no unresolved blocker remains;
-- required validation is confirmed.
-
-Do not continue searching unchanged or unrelated areas merely to find
-additional minor issues.
-
-When uncertain whether the current context is sufficient to judge correctness
-or cross-file impact, expand the context rather than optimizing for token use.
+Review the PR's actual problem, approach, implementation, and regression risk.
+Inspect the smallest sufficient evidence, not the largest available diff.
+Correctness takes precedence over token savings. This file is the review policy;
+read it from the **current PR HEAD** before reviewing. Do not use `AGENTS.md`
+for PR reviews.
+
+## 1. Determine the review gate first
+
+Read the active issue, PR metadata/current HEAD, complete changed-file **names**,
+required exact-HEAD check status, and prior reviews' **markers/SHAs only**.
+Stage 2 must not read Stage 1 conclusions before its independent analysis.
+Then select one gate:
+
+- **Stage 1:** no valid `+1` for this HEAD -> independent full review; record
+  `+1` only if clean. Never merge.
+- **Stage 2:** valid `+1`, no valid `+2` for this HEAD -> a **separate** independent
+  full review; record `+2` only if clean. Never merge.
+- **Stage 3:** valid, sequential, structured `+1` and `+2` for this HEAD ->
+  review the reviews, perform one targeted adversarial probe, and squash-merge
+  if all gates pass. Do **not** perform a third full review.
+
+A new commit resets both gates to `0`. A review on another SHA, a bare marker,
+or a review without adequate evidence is not a valid gate record. Never record
+`+1` and `+2` in the same review run/context. The same GitHub account may
+record them in separate runs; independence is about the reviewer process.
+Do not request or wait for GitHub `APPROVE`.
+
+## 2. Full-review procedure (stages 1 and 2)
+
+1. Establish the issue's requirements, boundaries, and whether the **approach**
+   solves the real problem; do not limit review to whether the patch runs.
+2. Classify all changed paths; load only applicable guides below. Inspect
+   per-file patches for producer, validator, test, behavior, and architecture
+   changes. Load neighboring source or upstream contracts only when necessary.
+3. Trace material invariants across affected boundaries, especially how a bad
+   input would be rejected. Inspect tests and verify their execution by the
+   required exact-HEAD checks.
+4. Review high-risk findings at their producing/enforcing layer. If a problem
+   recurs, require a system-wide fix and regression, not a data-only patch.
+5. Report blockers as exact-HEAD GitHub review `COMMENT`s (inline when useful),
+   or submit the structured pass review for this stage only after required
+   validation is confirmed and no blocker remains.
+
+**Do not initially fetch** the complete PR diff, whole source files, successful
+CI logs, all generated artifacts, unrelated docs, or historical discussion.
+Do not read every line just because every changed file must be accounted for.
+Expand context if evidence is missing; do not optimize away necessary review.
+
+**Stage 2 independence:** check that `+1` exists, but independently assess the
+whole relevant change before relying on the first review's reasoning. A clean
+first review does not narrow second-review scope.
+
+### Risk and data-volume routing
+
+Inspect deeply: shared logic/architecture; canonical semantics; producer and
+editorial approval paths; normalization/search/ranking; validators/CI;
+persistence/permissions/packaging; external source terms or provenance.
+
+For large lexical/data PRs, examine **producer -> authored semantic decision ->
+admission -> shared validation -> output/search**. Inspect changed editorial
+judgments and risk-directed samples (e.g., ambiguous senses, POS corrections,
+HOLD decisions). Expand samples if they reveal a systematic failure. Use CI or
+validators for all applicable mechanical invariants, **not** a manual reading
+of every generated line. Mechanical validation is not proof of semantic truth.
+
+A producer must not mint its own editorial approval (`gloss_judgment=fit`,
+`status=pass`, etc.) and call that independent review. Verify that acceptance
+is tied to genuinely separately authored, source-bound decisions; hashes and
+internally consistent output alone do not establish that. For reusable batch
+producers, check stable IDs/order and metadata when rebuilding older batches
+with newer batches present and when proceeding to later dates/batches.
+
+### Guide routing (load only when applicable)
+
+- Canonical/editorial/schema: `docs/review-data.md`
+- Search/normalization/ranking: `docs/review-search.md`
+- Validators/build/SQLite/CI: `docs/review-toolchain.md`
+- Chrome/runtime/UI/storage: `docs/review-extension.md`
+- External sources/licensing: `docs/review-licensing.md`
+
+Follow impacts across categories when relevant. These guides supply detailed
+checks; do not duplicate their checklists here.
+
+## 3. Validation and system-first blockers
+
+Trust a **passing exact-HEAD deterministic check only for the property it
+actually tests**; never claim an unrun local/manual check passed. Do not rerun
+passed mechanical checks without reason. Inspect success logs/details when a
+validator, fixture, CI workflow, or expected outcome changed; the result
+conflicts with code; or claimed coverage may be missing.
+
+For validator changes, establish both valid-input success and known-invalid
+failure. For recurring defects require:
+
+1. the smallest reproducing fixture;
+2. an invariant in the **shared** producer, validator, admission, or search
+   system (not a batch/word-specific exception);
+3. an automated regression that fails on old behavior and passes on the fix;
+4. enforcement through preflight/CI for existing applicable canonical data
+   **and future additions**.
+
+An unresolved systemic defect, self-issued editorial approval, missing required
+validation, or a data-only correction for a recurring defect is a **BLOCKER**.
+Identify cause, impact, safer correction, and how to prove the correction.
+Batch related findings; do not exhaustively enumerate equivalent symptoms.
+
+### Canonical and CI architecture changes
+
+When these paths change, verify the complete canonical revision feeds a shared
+in-process context; global semantic audit precedes SQLite build; downstream
+checks consume the same artifact; current-canonical gates and isolated tests
+do not repeatedly parse, scan, build, or transport the entire context.
+Check reported parse/full-scan/index/build counts against actual runner wiring.
+Changed-only validation may give early feedback, not final coverage.
+
+CI levels must remain nested: `ci:fast` (early), `ci:normal` (merge coverage),
+`ci:all` (deep/manual or scheduled, including scale). A PR may expose fast
+then continue normal **within one process/session**, not duplicate fresh
+full-canonical work. Independent two-build reproducibility is deep/manual,
+not a redundant normal gate. If Deep CI or a Deep regression changes, require
+a successful **`Deep CI Gate` on this exact HEAD** (`deep-ci` runs `ci:all`);
+ordinary PRs can use the passing skip gate.
+
+## 4. Follow-up after a blocker
+
+Compare the latest HEAD against the stage's previously reviewed HEAD. Read
+previous blocker threads, the fixing commits, regressions, and any newly
+changed areas. Do not reload unchanged hunks, complete history, or the entire
+first-pass review. Recheck affected invariants and exact-HEAD validation.
+Even after fixes, issue a **new** structured `+1` or `+2` for the new HEAD.
+
+## 5. Required review record (stages 1 and 2)
+
+Submit a GitHub review **`COMMENT` anchored to the exact commit**, containing:
+
+- `+1` or `+2`, HEAD SHA, issue/acceptance scope;
+- what behavior, approach, system boundaries, and material risks were checked;
+- blockers and evidence of fixes, or explicitly none;
+- exact-HEAD CI/tests and any checks not run or remaining uncertainty;
+- explicit conclusion that no blocker remains **for that HEAD**.
+
+Prefer evidence paths (`producer -> semantic review -> admission -> regression`)
+to filename inventories. A marker-only pass is invalid. If blocked, report
+findings and **do not** mark the stage as passed.
+
+## 6. Stage 3: review-of-reviews and merge
+
+This section overrides the full-review procedure. Check the issue/acceptance
+criteria, current HEAD and changed-file list, two **independent, sequential,
+structured, same-HEAD** review records, relevant blocker/fix history, and
+required exact-HEAD validation. Determine whether the two reviews actually
+covered the approach, risks, system fixes, and tests; do not merely count
+markers.
+
+Perform **one targeted adversarial probe** of an important unverified shared
+assumption, inspecting only the necessary source/test/evidence. For validators,
+CI, or evidence, prefer:
+`requirement -> evidence -> enforcement -> known-invalid regression`.
+Ask whether required enforcement could fail while all reported checks stay
+passing. Do not repeat full patches or the whole independent review.
+
+If any gate is stale, incomplete, unsupported, or disproved, report a blocker;
+**do not merge**. Otherwise **squash-merge this exact PR** using an expected
+HEAD SHA and report the result. Do not create `+3` or `APPROVE`.
+
+## 7. Stop condition
+
+Stop gathering context once the issue and approach are understood, the changed
+surface and relevant risks are accounted for, required checks are confirmed,
+and remaining blockers are decided. If a material uncertainty remains, obtain
+just enough additional evidence to resolve it; do not search unrelated areas.
