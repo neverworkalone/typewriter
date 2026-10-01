@@ -424,19 +424,19 @@ test('M5-10A relation contracts classify type independently from actual gloss co
   );
 
   const unseenBroadRecord = {
-    id: 'w9000',
+    id: 'w99999',
     lemma: '즐거움',
     role: 'start',
     record_type: 'entry',
     senses: [{
-      id: 'w9000-s1',
+      id: 'w99999-s1',
       pos: 'noun',
       gloss: '기분이나 감정을 포괄하는 일반적인 즐거운 마음',
     }],
   };
   assert.equal(
     classifyRelationRequest(
-      request('w003-s1', { target: 'w9000', target_sense: 'w9000-s1', type: 'mood' }),
+      request('w003-s1', { target: 'w99999', target_sense: 'w99999-s1', type: 'mood' }),
       [...canonical.records, unseenBroadRecord],
     ),
     'broad-common-category',
