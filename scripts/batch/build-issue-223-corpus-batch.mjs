@@ -141,13 +141,7 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
       candidate_record_id: null,
       disposition_basis: editorial.basis,
       ...(editorial.basis === 'unresolved-identity'
-        ? {
-          identity_evidence: editorial.identity_evidence ?? {
-          evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
-          rationale: editorial.rationale,
-          paragraph_ids: bindAuthoredParagraphReferences(hitRefs, editorial.paragraph_ids),
-        },
-        }
+        ? defaultIdentityEvidence(editorial, hitRefs)
         : {}),
       ...(editorial.basis === 'unresolved-sense'
         ? {
@@ -210,6 +204,21 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
   };
 }
 
+// A bounded-context identity hold needs cited paragraphs. When no representative
+// context exists, the hold rests on the analyzer's morphology blocker alone and
+// carries no context evidence unless the author supplies explicit evidence.
+export function defaultIdentityEvidence(editorial, hitRefs) {
+  if (editorial.identity_evidence !== undefined) return { identity_evidence: editorial.identity_evidence };
+  if (hitRefs.length === 0 && editorial.paragraph_ids === undefined) return {};
+  return {
+    identity_evidence: {
+      evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
+      rationale: editorial.rationale,
+      paragraph_ids: bindAuthoredParagraphReferences(hitRefs, editorial.paragraph_ids),
+    },
+  };
+}
+
 function makeCanonicalRecord(row) {
   const judgment = row.editorial_judgment;
   return {
@@ -262,6 +271,30 @@ export function assertSemanticReviewEnvelope(input, batchId) {
   assert.ok(nonEmpty(input.reviewer), 'semantic review input needs a named reviewer');
   assert.equal(input.review_status, 'complete', 'semantic review input must be a completed review');
   assert.ok(Array.isArray(input.reviews), 'semantic review input needs a reviews array');
+}
+
+// From B06 on, a review input must preserve the reviewer's own four-axis
+// verdicts and the contexts it checked, not only the approval, so the
+// independent evidence survives with the input.
+export const REVIEWER_CHECK_FIRST_BATCH = 6;
+export function assertReviewerChecks(reviews, { required }) {
+  for (const review of reviews) {
+    const label = `${review.lemma} reviewer checks`;
+    const present = ['identity_check', 'pos_check', 'gloss_check', 'sense_boundary_check', 'checked_hit_indices']
+      .filter((field) => review[field] !== undefined);
+    if (present.length === 0) {
+      assert.ok(!required, `${label} are required for this batch`);
+      continue;
+    }
+    assert.equal(present.length, 5, `${label} must carry all five fields`);
+    assert.equal(review.identity_check, 'ok', `${label}: identity must be ok`);
+    assert.equal(review.pos_check, 'ok', `${label}: POS must be ok`);
+    assert.equal(review.gloss_check, 'fit', `${label}: gloss must fit`);
+    assert.equal(review.sense_boundary_check, 'single', `${label}: sense boundary must be single`);
+    assert.ok(Array.isArray(review.checked_hit_indices) && review.checked_hit_indices.length > 0
+      && review.checked_hit_indices.every((index) => Number.isInteger(index) && index >= 0),
+    `${label}: must cite the contexts it checked`);
+  }
 }
 
 export const SEMANTIC_REVIEWER_REGISTRY_PATH = path.join(ROOT, 'config/semantic-reviewers.json');
@@ -618,6 +651,7 @@ export async function buildIssue223CorpusBatch({
     candidateAuthor,
     registry: await loadSemanticReviewerRegistry(),
   });
+  assertReviewerChecks(semanticInput.reviews, { required: batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH });
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
   assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
   assert.equal(semanticReviewByLemma.size, admittedRows.length, 'semantic review input must cover exactly the admitted records');
@@ -650,7 +684,7 @@ export async function buildIssue223CorpusBatch({
       semantic_review_input_sha256: sha256Bytes(semanticInputBytes),
     },
     provenance: {
-      generator: 'codex',
+      generator: authored.generator ?? 'codex',
       generator_version: 'issue-223-authored-semantic-review-v1',
       generation_pass_id: generationPassId,
       verification_pass_id: semanticPassId,

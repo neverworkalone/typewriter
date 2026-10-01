@@ -4,8 +4,10 @@ import test from 'node:test';
 import {
   bindAuthoredParagraphReferences,
   assertIndependentSemanticReviewer,
+  assertReviewerChecks,
   assertSemanticReviewEnvelope,
   parseSemanticReviewerRegistry,
+  defaultIdentityEvidence,
   issue223CorrectionPassId,
   makeSemanticDecision,
   parseIssue223BatchId,
@@ -145,4 +147,27 @@ test('Issue #223 independent reviewer must be registered and differ from the can
   assert.throws(() => assertIndependentSemanticReviewer({ reviewer: '', candidateAuthor: 'reviewer-a', registry }));
   assert.throws(() => parseSemanticReviewerRegistry({ schema_version: 1, reviewers: [{ id: 'a' }, { id: 'a' }] }));
   assert.throws(() => parseSemanticReviewerRegistry({ schema_version: 1, reviewers: [] }));
+});
+
+test('Issue #223 identity holds cite bounded contexts only when contexts exist', () => {
+  const editorial = { rationale: '분석기 모호성.' };
+  assert.deepEqual(defaultIdentityEvidence(editorial, []), {});
+  const hits = [{ paragraph_id: 'document.1' }, { paragraph_id: 'document.2' }];
+  assert.deepEqual(defaultIdentityEvidence(editorial, hits).identity_evidence.paragraph_ids, ['document.1', 'document.2']);
+  assert.deepEqual(defaultIdentityEvidence({ ...editorial, paragraph_ids: [1] }, hits).identity_evidence.paragraph_ids, ['document.2']);
+  const explicit = { evidence_type: 'reviewed-analyzed-forms-show-component-only-usage' };
+  assert.equal(defaultIdentityEvidence({ ...editorial, identity_evidence: explicit }, []).identity_evidence, explicit);
+});
+
+test('Issue #223 reviewer checks are required from B06 and must all pass', () => {
+  const base = { lemma: '가락' };
+  const checked = { identity_check: 'ok', pos_check: 'ok', gloss_check: 'fit', sense_boundary_check: 'single', checked_hit_indices: [0, 1] };
+  assertReviewerChecks([base], { required: false });
+  assertReviewerChecks([{ ...base, ...checked }], { required: true });
+  assert.throws(() => assertReviewerChecks([base], { required: true }), /required/u);
+  assert.throws(() => assertReviewerChecks([{ ...base, identity_check: 'ok' }], { required: false }), /all five/u);
+  for (const bad of [{ identity_check: 'unresolved' }, { pos_check: 'mismatch' }, { gloss_check: 'misfit' },
+    { sense_boundary_check: 'multiple' }, { checked_hit_indices: [] }, { checked_hit_indices: [-1] }]) {
+    assert.throws(() => assertReviewerChecks([{ ...base, ...checked, ...bad }], { required: true }));
+  }
 });

@@ -7,7 +7,7 @@ import { validateAuthoredSemanticDecisionSource } from './authored-semantic-deci
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { makeSemanticDecision } from './build-issue-223-corpus-batch.mjs';
 import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
-import { semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
+import { candidateRequiresBoundedContext, semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
 function reviewOnlyBatch() {
   return {
@@ -106,6 +106,11 @@ function authoredReview() {
     decision_rationale: '독립 검토 결과 포함.',
     frame_rationale: '프레임이 같은 의미를 유지한다.',
     single_sense_boundary_status: 'pass',
+    identity_check: 'ok',
+    pos_check: 'ok',
+    gloss_check: 'fit',
+    sense_boundary_check: 'single',
+    checked_hit_indices: [0],
     frames: [{ sentence_frame: '“가락”이라는 말이 문장에 번졌다.', relation_type: 'near', target_class: '흐름' }],
   };
 }
@@ -232,4 +237,25 @@ test('Issue #223 semantic review binding rejects self-review and unregistered re
   // A reviewer name the input merely declares is not a trusted identity.
   assert.throws(() => validateSemanticReviewInputBinding({ ...ok, registry: new Set(['someone-else']) }), /trusted reviewer registry/u);
   assert.throws(() => validateSemanticReviewInputBinding({ ...ok, registry: undefined }));
+});
+
+test('Issue #223 bounded context is required unless an identity hold rests on a morphology blocker', () => {
+  const hold = (extra = {}, proposal = {}) => ({
+    editorial_judgment: { disposition: 'hold', disposition_basis: 'unresolved-identity', ...extra },
+    morphology_proposal: proposal,
+  });
+  assert.equal(candidateRequiresBoundedContext({ editorial_judgment: { disposition: 'admit' }, morphology_proposal: {} }), true);
+  assert.equal(candidateRequiresBoundedContext(hold()), true);
+  assert.equal(candidateRequiresBoundedContext({ editorial_judgment: { disposition: 'hold', disposition_basis: 'unresolved-sense' }, morphology_proposal: { ambiguity_status: 'held_surface_has_multiple_analyzer_interpretations' } }), true);
+  assert.equal(candidateRequiresBoundedContext(hold({}, { ambiguity_status: 'held_surface_has_multiple_analyzer_interpretations' })), false);
+  assert.equal(candidateRequiresBoundedContext(hold({ identity_evidence: { evidence_type: 'reviewed-analyzed-forms-show-component-only-usage' } })), false);
+});
+
+test('Issue #223 bound review input from B06 on must preserve the reviewer checks', () => {
+  const fixture = boundFixture();
+  const input = JSON.parse(fixture.inputBytes.toString('utf8'));
+  delete input.reviews[0].identity_check;
+  const inputBytes = Buffer.from(JSON.stringify(input));
+  const semanticSource = { ...fixture.semanticSource, source_basis: { semantic_review_input_sha256: sha(inputBytes) } };
+  assert.throws(() => validateSemanticReviewInputBinding({ ...fixture, inputBytes, semanticSource }), /all five/u);
 });
