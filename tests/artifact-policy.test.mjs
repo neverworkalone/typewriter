@@ -129,7 +129,7 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
   assert.equal(semanticAuditBytes.length, 60243096);
-  assert.equal(sha256(semanticAuditBytes), 'cf02e4671a3e7031663efa90a6c52f029b7ac29ec7a9c5791af671504c6951a0');
+  assert.equal(sha256(semanticAuditBytes), '29ff0528c88684b08a1387689022c27af3e7da4ec83760da82186ddf99162a3f');
   assert.equal(inventoryBytes.length, 6291200);
   assert.equal(sha256(inventoryBytes), '1d520f24a3c60289bb20b46aa89d308d089e8849551efb45f5a117722b03fc7f');
   assert.equal(inventory.canonical_snapshot.record_count, 8892);

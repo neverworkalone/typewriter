@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   bindAuthoredParagraphReferences,
+  assertIndependentSemanticReviewer,
   assertSemanticReviewEnvelope,
+  parseSemanticReviewerRegistry,
   issue223CorrectionPassId,
   makeSemanticDecision,
   parseIssue223BatchId,
@@ -133,4 +135,14 @@ test('Issue #223 authored frames must match derived gloss spans exactly', () => 
   const review = (frames) => authoredReview({ gloss_sha256: sha256Json(multi.senses[0].gloss), frames });
   assert.throws(() => makeSemanticDecision(ROW, multi, 1, 'pass', 'source', review([frame])), /one frame per gloss span/u);
   assert.throws(() => makeSemanticDecision(ROW, multi, 1, 'pass', 'source', review([frame, frame, frame])), /one frame per gloss span/u);
+});
+
+test('Issue #223 independent reviewer must be registered and differ from the candidate author', () => {
+  const registry = parseSemanticReviewerRegistry({ schema_version: 1, reviewers: [{ id: 'reviewer-a' }, { id: 'reviewer-b' }] });
+  assertIndependentSemanticReviewer({ reviewer: 'reviewer-a', candidateAuthor: 'codex-agent', registry });
+  assert.throws(() => assertIndependentSemanticReviewer({ reviewer: 'reviewer-a', candidateAuthor: 'reviewer-a', registry }), /self-review/u);
+  assert.throws(() => assertIndependentSemanticReviewer({ reviewer: 'codex-agent', candidateAuthor: 'reviewer-a', registry }), /registry/u);
+  assert.throws(() => assertIndependentSemanticReviewer({ reviewer: '', candidateAuthor: 'reviewer-a', registry }));
+  assert.throws(() => parseSemanticReviewerRegistry({ schema_version: 1, reviewers: [{ id: 'a' }, { id: 'a' }] }));
+  assert.throws(() => parseSemanticReviewerRegistry({ schema_version: 1, reviewers: [] }));
 });

@@ -11,8 +11,10 @@ import { buildDictionary } from '../build/dictionary.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
+  assertIndependentSemanticReviewer,
   assertSemanticReviewEnvelope,
   issue223CorrectionPassId,
+  loadSemanticReviewerRegistry,
   makeSemanticDecision,
   parseIssue223BatchId,
 } from './build-issue-223-corpus-batch.mjs';
@@ -113,7 +115,9 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
 // see docs/issue-223-m9-e-scale-coverage.md). Every later batch must carry one.
 const LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS = Object.freeze([1, 2, 3, 4]);
 
-export function validateSemanticReviewInputBinding({ semanticSource, inputBytes, batchId, admittedRows }) {
+export function validateSemanticReviewInputBinding({
+  semanticSource, inputBytes, batchId, admittedRows, candidateAuthor, registry,
+}) {
   const { ordinal } = parseIssue223BatchId(batchId);
   const digest = semanticSource.source_basis.semantic_review_input_sha256;
   if (digest === undefined) {
@@ -126,6 +130,7 @@ export function validateSemanticReviewInputBinding({ semanticSource, inputBytes,
   assert.equal(sha256Bytes(inputBytes), digest, `${batchId} semantic review input does not match its bound digest`);
   const input = JSON.parse(inputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(input, batchId);
+  assertIndependentSemanticReviewer({ reviewer: input.reviewer, candidateAuthor, registry });
   const admittedLemmas = admittedRows.map((row) => row.morphology_proposal.lemma);
   assert.deepEqual(
     input.reviews.map(({ lemma }) => lemma).sort(),
@@ -230,6 +235,7 @@ function stripVolatileDatabaseMetadata(snapshot) {
 }
 
 async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence }) {
+  const reviewerRegistry = await loadSemanticReviewerRegistry();
   const names = (await readdir(BATCH_DIRECTORY))
     .filter((name) => /^issue-223-m9-e-corpus-batch-\d+-candidate-review\.json$/u.test(name))
     .sort((left, right) => Number(/batch-(\d+)/u.exec(left)?.[1]) - Number(/batch-(\d+)/u.exec(right)?.[1]));
@@ -461,6 +467,8 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       inputBytes: await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null,
       batchId: candidateReview.batch_id,
       admittedRows,
+      candidateAuthor: candidateReview.reviewer,
+      registry: reviewerRegistry,
     });
     const validatedSource = validateAuthoredSemanticDecisionSource({
       source: semanticSource,

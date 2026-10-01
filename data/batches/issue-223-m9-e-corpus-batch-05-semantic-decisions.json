@@ -16,7 +16,7 @@
     "source_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
     "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
     "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
-    "semantic_review_input_sha256": "aaaf799a1846d900a81c0af90f8d27657161bd9e3fe2c4718d841296e970b08c"
+    "semantic_review_input_sha256": "e3ce2258294a2e8a7226938abf65ac156645de9bae0926fa6e1c11aca3092552"
   },
   "provenance": {
     "generator": "codex",
@@ -28,7 +28,7 @@
   },
   "review": {
     "review_pass_id": "issue-223-m9-e-corpus-batch-05-semantic-verification-20261001-r1",
-    "reviewer": "codex-agent",
+    "reviewer": "claude-sonnet-5-5",
     "status": "complete",
     "candidate_count": 165,
     "reviewed_candidate_count": 165,
@@ -13203,5 +13203,5 @@
       }
     }
   ],
-  "artifact_sha256": "fe78c95d1149d4c4cf153a3ab3a8951a4cc020de4bfb6d432ad021f2d86be23a"
+  "artifact_sha256": "3dfe5f28446eef9a071203b85c5814d63a546bab37afdefa0c0424950ea57703"
 }

@@ -107,14 +107,14 @@ export function bindAuthoredParagraphReferences(hitRefs, references) {
   });
 }
 
-function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, inventoryId, canonicalId, batchId, sampleParagraphCount) {
+function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, inventoryId, canonicalId, batchId, sampleParagraphCount, candidateAuthor) {
   const hitRefs = textFreeHits(textFreeCandidate.evidence.representative_hits);
   const proposalPos = editorial.corrected_pos ?? candidate.proposed_pos;
   const judgment = editorial.disposition === 'admit'
     ? {
       disposition: 'admit',
       rationale: `${candidate.proposed_lemma}: reviewed bounded contexts support this in-scope lexical identity and ${proposalPos} part of speech. The gloss is limited to one resolved meaning; analyzer counts, commonness, writer usefulness, and relation availability do not determine admission.`,
-      reviewer: 'codex-agent',
+      reviewer: candidateAuthor,
       human_reviewed: false,
       candidate_record_id: canonicalId,
       disposition_basis: 'valid-in-scope-lexical-entry',
@@ -136,7 +136,7 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
     : {
       disposition: 'hold',
       rationale: editorial.rationale,
-      reviewer: 'codex-agent',
+      reviewer: candidateAuthor,
       human_reviewed: false,
       candidate_record_id: null,
       disposition_basis: editorial.basis,
@@ -262,6 +262,29 @@ export function assertSemanticReviewEnvelope(input, batchId) {
   assert.ok(nonEmpty(input.reviewer), 'semantic review input needs a named reviewer');
   assert.equal(input.review_status, 'complete', 'semantic review input must be a completed review');
   assert.ok(Array.isArray(input.reviews), 'semantic review input needs a reviews array');
+}
+
+export const SEMANTIC_REVIEWER_REGISTRY_PATH = path.join(ROOT, 'config/semantic-reviewers.json');
+
+export function parseSemanticReviewerRegistry(value) {
+  assert.equal(value?.schema_version, 1, 'semantic reviewer registry has an unsupported schema version');
+  assert.ok(Array.isArray(value.reviewers) && value.reviewers.length > 0, 'semantic reviewer registry lists no reviewers');
+  const ids = value.reviewers.map((entry) => entry?.id);
+  assert.ok(ids.every(nonEmpty) && new Set(ids).size === ids.length, 'semantic reviewer registry ids must be unique, non-empty strings');
+  return new Set(ids);
+}
+
+export async function loadSemanticReviewerRegistry(filePath = SEMANTIC_REVIEWER_REGISTRY_PATH) {
+  return parseSemanticReviewerRegistry(JSON.parse(await readFile(filePath, 'utf8')));
+}
+
+// The reviewer identity comes from a tracked registry outside the review input,
+// and a review authored by the candidate-review author is self-review.
+export function assertIndependentSemanticReviewer({ reviewer, candidateAuthor, registry }) {
+  assert.ok(nonEmpty(reviewer) && nonEmpty(candidateAuthor), 'semantic review needs a named reviewer and candidate author');
+  assert.ok(registry.has(reviewer), `semantic reviewer ${reviewer} is not in the trusted reviewer registry`);
+  assert.notEqual(reviewer.trim().toLowerCase(), candidateAuthor.trim().toLowerCase(),
+    `semantic reviewer ${reviewer} is the candidate-review author; self-review is not independent`);
 }
 
 const RELATION_TYPES = ['direct', 'near', 'mood', 'scene', 'sensory', 'action', 'association'];
@@ -407,6 +430,7 @@ export async function buildIssue223CorpusBatch({
   const evidence = JSON.parse(evidenceBytes.toString('utf8'));
   const selectionArtifact = JSON.parse(selectionBytes.toString('utf8'));
   const authored = JSON.parse(inputBytes.toString('utf8'));
+  const candidateAuthor = authored.reviewer ?? 'codex-agent';
   const authoredDecisionRows = authored.decisions ?? [
     ...(authored.admissions ?? []).map(([lemma, axis, gloss]) => ({ lemma, disposition: 'admit', axis, gloss })),
     ...(authored.holds ?? []).map((row) => ({ ...row, disposition: 'hold' })),
@@ -473,6 +497,7 @@ export async function buildIssue223CorpusBatch({
       canonicalId,
       batchId,
       inventory.index.sample_paragraph_count,
+      candidateAuthor,
     );
   });
 
@@ -512,7 +537,7 @@ export async function buildIssue223CorpusBatch({
     parent_issue: 218,
     batch_id: batchId,
     authoring_mode: 'agent-authored-decision',
-    reviewer: 'codex-agent',
+    reviewer: candidateAuthor,
     human_reviewed: false,
     publication_state: PUBLICATION_STATE,
     provenance: {
@@ -588,6 +613,11 @@ export async function buildIssue223CorpusBatch({
   const semanticInputBytes = await readFile(path.resolve(ROOT, semanticReviewsPath));
   const semanticInput = JSON.parse(semanticInputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(semanticInput, batchId);
+  assertIndependentSemanticReviewer({
+    reviewer: semanticInput.reviewer,
+    candidateAuthor,
+    registry: await loadSemanticReviewerRegistry(),
+  });
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
   assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
   assert.equal(semanticReviewByLemma.size, admittedRows.length, 'semantic review input must cover exactly the admitted records');

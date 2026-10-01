@@ -117,7 +117,7 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
     contract_version: 'authored-semantic-review-input-v1',
     kind: 'authored-semantic-review-input',
     batch_id: BOUND_BATCH,
-    reviewer: 'independent-agent',
+    reviewer: 'reviewer-a',
     review_status: 'complete',
     reviews: [review],
     ...inputOverrides,
@@ -136,16 +136,18 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
     inputBytes,
     batchId: BOUND_BATCH,
     admittedRows: [ROW],
+    candidateAuthor: 'author-x',
+    registry: new Set(['reviewer-a']),
   };
 }
 
 test('Issue #223 bound semantic review input passes and any non-reviewer reviewer is carried to the shared contract', () => {
   const fixture = boundFixture();
   const input = validateSemanticReviewInputBinding(fixture);
-  assert.equal(input.reviewer, 'independent-agent');
+  assert.equal(input.reviewer, 'reviewer-a');
   const review = { batch_id: BOUND_BATCH, source_id: 'c', provenance: { generation_pass_id: 'g' }, decision_counts: { admit: 1 } };
   const semantic = { source_id: 's', provenance: { verification_pass_id: 'v', generator_version: 'x' } };
-  assert.equal(semanticDecisionConfig(review, semantic, 'p', input.reviewer).reviewer, 'independent-agent');
+  assert.equal(semanticDecisionConfig(review, semantic, 'p', input.reviewer).reviewer, 'reviewer-a');
   assert.equal(semanticDecisionConfig(review, semantic, 'p').reviewer, undefined);
 });
 
@@ -220,4 +222,14 @@ test('Issue #223 shared semantic validator enforces the bound reviewer, not a fi
   assert.doesNotThrow(() => run(changed, 'independent-agent'));
   assert.throws(() => run(changed), /review is incomplete/u);
   assert.throws(() => run(changed, 'someone-else'), /review is incomplete/u);
+});
+
+test('Issue #223 semantic review binding rejects self-review and unregistered reviewers', () => {
+  const ok = boundFixture();
+  // The candidate-review author reviewing its own batch is not independent, however the name is cased.
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, candidateAuthor: 'reviewer-a' }), /self-review/u);
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, candidateAuthor: ' Reviewer-A ' }), /self-review/u);
+  // A reviewer name the input merely declares is not a trusted identity.
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, registry: new Set(['someone-else']) }), /trusted reviewer registry/u);
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, registry: undefined }));
 });
