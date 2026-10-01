@@ -1,0 +1,41 @@
+name: Reviewer trust gate
+
+# `pull_request_target` runs the workflow definition and the gate script from
+# the protected base branch, so a pull request cannot edit them to approve
+# itself. The pull request head is checked out as data only: nothing from it is
+# executed, and the job has read-only permissions and no secrets.
+on:
+  pull_request_target:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Reviewer trust gate
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out the protected base
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+
+      - name: Check out the pull request head as data
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.x
+
+      - name: Evaluate reviewer trust from the base branch
+        run: node base/scripts/ci/reviewer-trust-gate.mjs --base base --head head

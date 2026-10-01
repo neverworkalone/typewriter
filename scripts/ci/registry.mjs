@@ -115,6 +115,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
       testCheck('tests/ci-registry.test.mjs', 'Test CI check ownership registry'),
+      testCheck('tests/reviewer-trust.test.mjs', 'Test reviewer trust gate and registry rules'),
     ],
   },
 

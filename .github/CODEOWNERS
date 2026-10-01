@@ -1,0 +1,8 @@
+# Reviewer trust is a repository-owner decision. A change to the trusted
+# reviewer registry, the gate, or its workflow needs an owner review.
+/config/semantic-reviewers.json            @genonfire
+/scripts/validate/reviewer-trust.mjs       @genonfire
+/scripts/ci/reviewer-trust-gate.mjs        @genonfire
+/.github/workflows/reviewer-trust-gate.yml @genonfire
+/.github/CODEOWNERS                        @genonfire
+/docs/reviewer-trust.md                    @genonfire

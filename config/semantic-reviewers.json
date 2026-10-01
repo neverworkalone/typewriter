@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "description": "Reviewer identities trusted to author semantic review inputs. Trust is evaluated from this file as it exists on the protected base branch, never from the change that uses a reviewer (see docs/reviewer-trust.md).",
+  "reviewers": [
+    { "id": "claude-sonnet-5-5", "kind": "agent" },
+    {
+      "id": "claude-sonnet-5-5-independent-reviewer",
+      "kind": "agent",
+      "note": "Isolated subagent contexts that read only candidate evidence packets and write semantic review inputs; separate from the candidate-review author claude-sonnet-5-5."
+    }
+  ]
+}
