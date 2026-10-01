@@ -133,3 +133,16 @@ test('gate reads the head as data, skips unchanged inputs, and judges changed on
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// Documented boundary, not a defect to hide: the gate authenticates the trust
+// root, not authorship. Both labels come from the pull request head, so a
+// producer that uses a trusted identifier and a different author string passes.
+// Independent review must not be inferred from this gate alone (docs/reviewer-trust.md).
+test('gate boundary: label-only independence is not authenticated', () => {
+  const result = evaluateReviewerTrust({
+    baseRegistry: registry('trusted-a'),
+    headRegistry: registry('trusted-a'),
+    changedInputs: [input('data/batches/x-semantic-review-input.json', 'trusted-a', 'any-producer-label')],
+  });
+  assert.equal(result.ok, true);
+});

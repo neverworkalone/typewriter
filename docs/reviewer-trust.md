@@ -42,6 +42,22 @@ The gate is only binding if GitHub enforces it. The owner should:
 
 Until both are set, the gate reports failures but does not block a merge.
 
+## What this gate does NOT prove
+
+The gate separates the *trust root* from the producer; it does not authenticate
+authorship. Both the review input's `reviewer` and the candidate review's
+`reviewer` are labels read from the pull request head. A producer can write an
+already-trusted identifier and a different candidate-author string, and the gate
+accepts that shape (`tests/reviewer-trust.test.mjs`, "gate boundary" test).
+Passing this gate must therefore **not** be described as independent review.
+
+Authenticating who produced a review needs evidence the producer cannot mint,
+for example a review executed by a workflow or GitHub App that the producer
+cannot edit and that attests its output (artifact attestation bound to that
+workflow identity), or a human review recorded under a separate GitHub account.
+That mechanism is an owner decision and is not provided here. Until it exists, a
+batch that depends on this gate should not be claimed as independently reviewed.
+
 ## Limits
 
 - A registered reviewer name shows who is *trusted*, not that a given review was
