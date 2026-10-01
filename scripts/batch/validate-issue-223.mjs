@@ -13,6 +13,7 @@ import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
   assertSemanticReviewEnvelope,
   issue223CorrectionPassId,
+  makeSemanticDecision,
   parseIssue223BatchId,
 } from './build-issue-223-corpus-batch.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
@@ -112,7 +113,7 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
 // see docs/issue-223-m9-e-scale-coverage.md). Every later batch must carry one.
 const LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS = Object.freeze([1, 2, 3, 4]);
 
-export function validateSemanticReviewInputBinding({ semanticSource, inputBytes, batchId, admittedLemmas }) {
+export function validateSemanticReviewInputBinding({ semanticSource, inputBytes, batchId, admittedRows }) {
   const { ordinal } = parseIssue223BatchId(batchId);
   const digest = semanticSource.source_basis.semantic_review_input_sha256;
   if (digest === undefined) {
@@ -125,11 +126,32 @@ export function validateSemanticReviewInputBinding({ semanticSource, inputBytes,
   assert.equal(sha256Bytes(inputBytes), digest, `${batchId} semantic review input does not match its bound digest`);
   const input = JSON.parse(inputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(input, batchId);
+  const admittedLemmas = admittedRows.map((row) => row.morphology_proposal.lemma);
   assert.deepEqual(
     input.reviews.map(({ lemma }) => lemma).sort(),
     [...admittedLemmas].sort(),
     `${batchId} semantic review input must cover exactly the admitted lemmas`,
   );
+  // Every emitted decision must be exactly what the preserved authored review
+  // yields, so changing an outcome, rationale, or frame in the output (even
+  // with a recomputed artifact digest) fails against the stored input.
+  assert.equal(semanticSource.decisions.length, admittedRows.length, `${batchId} decision count must match admitted rows`);
+  const reviewByLemma = new Map(input.reviews.map((entry) => [entry.lemma, entry]));
+  admittedRows.forEach((row, index) => {
+    const lemma = row.morphology_proposal.lemma;
+    const record = semanticSource.candidate_records[index];
+    assert.equal(record.lemma, lemma, `${batchId} candidate record ${index + 1} is bound to ${lemma}`);
+    const expected = makeSemanticDecision(
+      row,
+      record,
+      index + 1,
+      semanticSource.review.review_pass_id,
+      semanticSource.source_id,
+      reviewByLemma.get(lemma),
+    );
+    assert.deepEqual(semanticSource.decisions[index], expected,
+      `${batchId} ${lemma} decision does not match its bound authored semantic review`);
+  });
   assert.equal(semanticSource.review.reviewer, input.reviewer, `${batchId} semantic output reviewer must match its bound input`);
   return input;
 }
@@ -438,7 +460,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       semanticSource,
       inputBytes: await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null,
       batchId: candidateReview.batch_id,
-      admittedLemmas: admittedRows.map((row) => row.morphology_proposal.lemma),
+      admittedRows,
     });
     const validatedSource = validateAuthoredSemanticDecisionSource({
       source: semanticSource,

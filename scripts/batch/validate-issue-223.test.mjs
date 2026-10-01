@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
+import { makeSemanticDecision } from './build-issue-223-corpus-batch.mjs';
 import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
 import { semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
@@ -85,21 +86,54 @@ test('Issue #223 validator derives the correction pass from a later batch date',
 
 const BOUND_BATCH = 'issue-223-m9-e-corpus-batch-06-20261002';
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
-function boundFixture(overrides = {}) {
+const RECORD = { id: 'w9001', lemma: '가락', senses: [{ id: 'w9001-s1', pos: 'noun', gloss: '소리나 움직임이 이어지며 이루는 흐름' }] };
+const ROW = {
+  inventory_id: 'm5-1',
+  morphology_proposal: { lemma: '가락' },
+  editorial_judgment: { writer_use_axis: 'S' },
+};
+
+function authoredReview() {
+  return {
+    lemma: RECORD.lemma,
+    gloss_sha256: sha256Json(RECORD.senses[0].gloss),
+    gloss_judgment: 'fit',
+    boundary_action: 'retain',
+    boundary_classification: 'atomic',
+    boundary_rationale: '하나의 의미로 읽힌다.',
+    semantic_rationale: '풀이가 표제어와 맞는다.',
+    no_relation_rationale: '관계 근거 없음.',
+    decision_rationale: '독립 검토 결과 포함.',
+    frame_rationale: '프레임이 같은 의미를 유지한다.',
+    single_sense_boundary_status: 'pass',
+    frames: [{ sentence_frame: '“가락”이라는 말이 문장에 번졌다.', relation_type: 'near', target_class: '흐름' }],
+  };
+}
+
+function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
+  const review = authoredReview();
   const input = {
     kind: 'authored-semantic-review-input',
     batch_id: BOUND_BATCH,
     reviewer: 'independent-agent',
     review_status: 'complete',
-    reviews: [{ lemma: '가락' }],
-    ...overrides,
+    reviews: [review],
+    ...inputOverrides,
   };
   const inputBytes = Buffer.from(JSON.stringify(input));
+  const decision = makeSemanticDecision(ROW, RECORD, 1, 'pass-1', 'source-1', review);
+  if (mutateDecision) mutateDecision(decision);
   return {
-    semanticSource: { source_basis: { semantic_review_input_sha256: sha(inputBytes) }, review: { reviewer: input.reviewer } },
+    semanticSource: {
+      source_id: 'source-1',
+      source_basis: { semantic_review_input_sha256: sha(inputBytes) },
+      review: { reviewer: input.reviewer, review_pass_id: 'pass-1' },
+      candidate_records: [RECORD],
+      decisions: [decision],
+    },
     inputBytes,
     batchId: BOUND_BATCH,
-    admittedLemmas: ['가락'],
+    admittedRows: [ROW],
   };
 }
 
@@ -117,17 +151,36 @@ test('Issue #223 semantic review input binding fails closed when missing, tamper
   const ok = boundFixture();
   assert.throws(() => validateSemanticReviewInputBinding({ ...ok, inputBytes: null }), /missing/u);
   assert.throws(() => validateSemanticReviewInputBinding({ ...ok, inputBytes: Buffer.concat([ok.inputBytes, Buffer.from(' ')]) }), /digest/u);
-  const other = boundFixture({ batch_id: 'issue-223-m9-e-corpus-batch-05-20261001' });
+  const other = boundFixture({ input: { batch_id: 'issue-223-m9-e-corpus-batch-05-20261001' } });
   assert.throws(() => validateSemanticReviewInputBinding({ ...other, batchId: BOUND_BATCH }));
-  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, admittedLemmas: ['가락', '다른'] }), /exactly the admitted/u);
-  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, semanticSource: { ...ok.semanticSource, review: { reviewer: 'codex-agent' } } }), /reviewer/u);
+  const extra = { ...ROW, morphology_proposal: { lemma: '다른' } };
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, admittedRows: [ROW, extra] }), /exactly the admitted/u);
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, semanticSource: { ...ok.semanticSource, review: { ...ok.semanticSource.review, reviewer: 'codex-agent' } } }), /reviewer/u);
   assert.throws(() => validateSemanticReviewInputBinding({
-    ...ok, semanticSource: { source_basis: {}, review: { reviewer: 'x' } }, inputBytes: null,
+    ...ok, semanticSource: { ...ok.semanticSource, source_basis: {} }, inputBytes: null,
   }), /must bind/u);
 });
 
+test('Issue #223 emitted decisions must match the bound authored review even with a recomputed digest', () => {
+  const mutations = {
+    gloss_judgment: (d) => { d.gloss_judgment = 'weak'; },
+    decision_rationale: (d) => { d.decision_rationale = '다른 근거'; },
+    boundary_action: (d) => { d.sense_reviews[0].boundary_action = 'split'; },
+    single_sense_status: (d) => { d.sense_reviews[0].single_sense_boundary_review.status = 'fail'; },
+    frame: (d) => { d.sense_reviews[0].single_sense_boundary_review.frame_observations[0].sentence_frame = '바뀐 프레임 “가락”'; },
+    frame_route: (d) => { d.sense_reviews[0].single_sense_boundary_review.frame_observations[0].writer_route.relation_type = 'mood'; },
+  };
+  for (const [name, mutateDecision] of Object.entries(mutations)) {
+    const fixture = boundFixture({ mutateDecision });
+    assert.throws(() => validateSemanticReviewInputBinding(fixture), /does not match its bound authored semantic review/u, name);
+  }
+  const missing = boundFixture();
+  missing.semanticSource.decisions = [];
+  assert.throws(() => validateSemanticReviewInputBinding(missing), /decision count/u);
+});
+
 test('Issue #223 legacy B01-B04 semantic sources stay exempt only without an input', () => {
-  const legacy = { semanticSource: { source_basis: {} }, inputBytes: null, admittedLemmas: [] };
+  const legacy = { semanticSource: { source_basis: {} }, inputBytes: null, admittedRows: [] };
   assert.equal(validateSemanticReviewInputBinding({ ...legacy, batchId: 'issue-223-m9-e-corpus-batch-04-20261001' }), null);
   assert.throws(() => validateSemanticReviewInputBinding({ ...legacy, batchId: 'issue-223-m9-e-corpus-batch-05-20261001' }));
 });
