@@ -15,7 +15,7 @@ import {
   inspectWriterDomainEvidence,
 } from '../validate/lexical-quality.mjs';
 import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
-import { assertInputDerivedFromRaw } from './reviewer-raw-outputs.mjs';
+import { assertInputBoundToRunRecord, assertInputDerivedFromRaw, runRecordFromRaw } from './reviewer-raw-outputs.mjs';
 import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
@@ -700,7 +700,7 @@ export async function buildIssue223CorpusBatch({
   const reviewPath = path.join(batchDirectory, `${batchStem}-candidate-review.json`);
   const semanticPath = path.join(batchDirectory, `${batchStem}-semantic-decisions.json`);
   const semanticInputPath = path.join(batchDirectory, `${batchStem}-semantic-review-input.json`);
-  const reviewerRawPath = path.join(batchDirectory, `${batchStem}-reviewer-raw-outputs.json`);
+  const reviewerRunRecordPath = path.join(batchDirectory, `${batchStem}-reviewer-run-record.json`);
   const importPath = path.join(canonicalDirectory, `${batchStem}.jsonl`);
   if (reviewOnly) {
     for (const sidecarPath of [semanticPath, importPath]) {
@@ -748,18 +748,32 @@ export async function buildIssue223CorpusBatch({
     required: batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH,
     hitCountByLemma: bindHitCounts(rows),
   });
-  let reviewerRawBytes = null;
+  let reviewerRunRecordBytes = null;
+  let reviewerRawArtifact = null;
   if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) {
     assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
-    assert.ok(reviewerRawOutputsPath, 'this batch requires --reviewer-raw-outputs: the reviewers\' original outputs must be preserved');
-    reviewerRawBytes = await readFile(path.resolve(ROOT, reviewerRawOutputsPath));
+    assert.ok(reviewerRawOutputsPath, 'this batch requires --reviewer-raw-outputs (staged locally): the reviewers\' original outputs back the tracked run record');
+    reviewerRawArtifact = JSON.parse(await readFile(path.resolve(ROOT, reviewerRawOutputsPath), 'utf8'));
+    // The tracked run record is metadata and digests only; the raw outputs stay
+    // in ignored local staging (repository policy keeps raw model responses and
+    // draft text out of data/batches/).
+    const runRecord = runRecordFromRaw(reviewerRawArtifact);
+    reviewerRunRecordBytes = prettyBytes(runRecord);
+    const glossByLemma = new Map(admittedRows.map((row) => [row.morphology_proposal.lemma, row.editorial_judgment.writer_gloss]));
+    assertInputBoundToRunRecord({
+      input: semanticInput,
+      runRecord,
+      runRecordBytes: reviewerRunRecordBytes,
+      candidateRows: rows,
+      glossByLemma,
+      sha256Bytes,
+    });
     assertInputDerivedFromRaw({
       input: semanticInput,
-      rawArtifact: JSON.parse(reviewerRawBytes.toString('utf8')),
-      rawBytes: reviewerRawBytes,
+      runRecord,
+      rawArtifact: reviewerRawArtifact,
       candidateRows: rows,
-      glossByLemma: new Map(admittedRows.map((row) => [row.morphology_proposal.lemma, row.editorial_judgment.writer_gloss])),
-      sha256Bytes,
+      glossByLemma,
     });
   }
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
@@ -879,9 +893,14 @@ export async function buildIssue223CorpusBatch({
     writeFile(reviewPath, reviewBytes),
     writeFile(semanticPath, semanticBytes),
     writeFile(semanticInputPath, semanticInputBytes),
-    ...(reviewerRawBytes ? [writeFile(reviewerRawPath, reviewerRawBytes)] : []),
+    ...(reviewerRunRecordBytes ? [writeFile(reviewerRunRecordPath, reviewerRunRecordBytes)] : []),
     writeFile(importPath, importBytes),
   ]);
+
+  if (reviewerRawArtifact) {
+    // Local staging only: this path is under ignored data/reference.
+    await writeFile(path.join(absoluteAnalysis, 'reviewer-raw-outputs.json'), prettyBytes(reviewerRawArtifact));
+  }
 
   const promotionRows = semanticDecisions.map((decision) => ({
     schema_version: '1',

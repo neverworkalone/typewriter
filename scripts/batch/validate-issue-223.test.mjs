@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { makeSemanticDecision } from './build-issue-223-corpus-batch.mjs';
-import { outcomeFromRaw, reviewFromRaw, runSummaries } from './reviewer-raw-outputs.mjs';
+import { outcomeFromRaw, reviewFromRaw, runRecordFromRaw } from './reviewer-raw-outputs.mjs';
 import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
 import { candidateRequiresBoundedContext, semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
@@ -123,7 +123,7 @@ function rawArtifactFor(outputs = [RAW_OUTPUT]) {
     reviewed_proposals: PROPOSALS,
     runs: [{
       run: 1, context: 'isolated-subagent', model: 'm', first_ordinal: 1, last_ordinal: outputs.length,
-      candidate_count: outputs.length, packet_sha256: 'a'.repeat(64), proposals_sha256: sha256Json(PROPOSALS),
+      candidate_count: outputs.length, packet_sha256: 'a'.repeat(64),
       raw_output_sha256: sha256Json(outputs), outputs,
     }],
   };
@@ -131,7 +131,8 @@ function rawArtifactFor(outputs = [RAW_OUTPUT]) {
 
 function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
   const rawArtifact = rawArtifactFor();
-  const rawBytes = Buffer.from(JSON.stringify(rawArtifact));
+  const runRecord = runRecordFromRaw(rawArtifact);
+  const runRecordBytes = Buffer.from(JSON.stringify(runRecord));
   const review = reviewFromRaw({ lemma: '가락', gloss: GLOSS, raw: RAW_OUTPUT });
   const input = {
     schema_version: '1',
@@ -140,9 +141,9 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
     batch_id: BOUND_BATCH,
     reviewer: 'reviewer-a',
     review_status: 'complete',
-    generator_proposal_sha256: sha256Json(PROPOSALS),
-    raw_outputs_sha256: sha(rawBytes),
-    review_runs: runSummaries(rawArtifact),
+    generator_proposal_sha256: sha256Json(runRecord.reviewed_proposals),
+    run_record_sha256: sha(runRecordBytes),
+    review_runs: runRecord.runs,
     reviews: [review],
     candidate_outcomes: [outcomeFromRaw('admit', RAW_OUTPUT)],
     ...inputOverrides,
@@ -159,7 +160,8 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
       decisions: [decision],
     },
     inputBytes,
-    rawBytes,
+    runRecordBytes,
+    rawArtifact,
     batchId: BOUND_BATCH,
     admittedRows: [ROW],
     candidateRows: [ROW],

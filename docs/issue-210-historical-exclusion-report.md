@@ -145,7 +145,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | Artifact | SHA-256 |
 | --- | --- |
 | `AGENTS.md` | `3cbd595f472dc6d54e4339cb6392f572a1f9eac21d31e4d7e904b24bbdd8f7b1` |
-| `config/artifact-policy.json` | `b09dd642b6dc2644d9f02bfb5b771c9eb2bc9afde0280215bb9465310ae2f926` |
+| `config/artifact-policy.json` | `f227ae12202afa6c0df3ebd0910dee5e02848694c1b95ff7ddf40e86f634b132` |
 | `data/batches/issue-204-pilot-decisions.json` | `f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b` |
 | `data/batches/issue-204-semantic-decisions.json` | `66d96ed2b0c104dab185625ebd5f09ef06b21092c9b84e1f3d1ad0d8b76fd60e` |
 | `data/batches/issue-211-lexical-unit-source.json` | `683ac43752125bdc23de25cf5c3f5c64c406055706609d719bee8f847eb22185` |
@@ -279,9 +279,9 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-7-recalibration.jsonl` | `a37677f7569e016e5e8f9525b978ec4911ff0c9afb5ba7f65d3c40dae5fc71c1` |
 | `data/canonical/m5-9-expansion.jsonl` | `a47e9322813780efd2eae29b2b5784bcd2948d7c3f7de621174ebee4a35ce4c4` |
 | `data/canonical/pilot.jsonl` | `d45c15164ef6f146ee51d40e265746515120a556b1e2fb65e057ed36781dff1d` |
-| `data/inventory/m5-target-promotions.jsonl` | `f70e97c83bdc14a0e4c72bb87bd3063af01644b6d45f38b1467289cb6a038deb` |
+| `data/inventory/m5-target-promotions.jsonl` | `af8ecba89eccef6fef1bff6d3ea3f1e871627bb3e1cb8d71bb29df29db3adcfb` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `6de2fc4b1049526c9f8f9987087d92a3e5226d7057d44d98e6fb81e6646ef5e1` |
+| `data/validation/canonical-semantic-decision-source.json` | `3883405399a5325214a3950130bc3a1ce32adbd142f632c20b50828d3f656c90` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `d42f4ebb96953905a5f5b820853f8c995e9e9707273a561af9ee212a0b1d44d2` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `5a2760af71d24c54ba09c05e1a780216c4081326f747b5b8604decc9cc72036a` |
 | `data/validation/m6-2-inflection-exceptions.json` | `511997ce9c0b56d89aeaa567dd484f5443fccd27194de88c209f16213ab0844f` |
@@ -302,7 +302,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `docs/m9-bounded-lexical-batches.md` | `06f1fd2ee398cba59f62a2b347e212d9e921cbdfa14e5cf9931bb22e4a78e70d` |
 | `docs/m9-corpus-production.md` | `6f01915428a299bf186d36ce4e526fed009555e27c74f129e6500704a50f2b88` |
 | `docs/pilot-scope.md` | `9d1d23b63c828838e5b326ee69e080f57a68ffae6e0e31dfe05e99d0865e6881` |
-| `package.json` | `b6ff6de7714879122a94bcb49a7999e00de66982f455e929b83d11d1da37bd8a` |
+| `package.json` | `2bb85e95d3489278b4bf8c64fc55d7fc54ac70ccc136e4b4bf5a3c5add0f0ec2` |
 | `schema/issue-220-m9-b-checkpoint-report.schema.json` | `ca40281d0863a36e36b6a2d5f3d7886efc0cc136ffddff8117a4a306d27e1710` |
 | `schema/m9-lexical-batch-report.schema.json` | `e2137ba54f1610f11412c8e6ce6da2cafc3f9b8b7a8b51dedb03c93b1db76dcb` |
 | `scripts/batch/authored-semantic-decision-source.mjs` | `c3af89b27224e2d7cea845712e54fa1b2051a0273cd956bbec86a56118665116` |
@@ -315,7 +315,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `scripts/batch/validate-issue-220.mjs` | `7a439cc11cce8eec6e1811d7c93a69f07e85decd800698c53359dddc4ee776e0` |
 | `scripts/batch/validate-issue-221.mjs` | `f4d45a6820de9050d714ea7f3711dffb2040fd4ec0f25434e9508b14fad3957a` |
 | `scripts/batch/validate-issue-222.mjs` | `c15383dc7d3c3a824de42645a86d8b1b5037a38f39634b5f0e55c17eb0429d82` |
-| `scripts/ci/registry.mjs` | `bfbc0583cfe900ff5e18f41f5d34e182e2ef665896865101560fd963e4ea312f` |
+| `scripts/ci/registry.mjs` | `dc17064e737476636361ef8bf1a52a0b5880a94aad4b7e651890528c7715df92` |
 | `scripts/inventory/build-issue-210-recovery-inventory.mjs` | `05946372f257ada78ef367a35401956055cd6054817733e9f83e928dcd4d69ec` |
 | `scripts/reference/corpus-candidate-review.test.mjs` | `f58f275b66d6de03e5a42009790f944b85cd87d02baa571052e09443ddb9e91e` |
 | `scripts/reference/corpus_lemma_pilot.py` | `0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e` |

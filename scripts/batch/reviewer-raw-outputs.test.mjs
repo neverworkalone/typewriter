@@ -4,10 +4,12 @@ import test from 'node:test';
 
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import {
+  assertInputBoundToRunRecord,
   assertInputDerivedFromRaw,
   outcomeFromRaw,
+  proposalDigests,
   reviewFromRaw,
-  runSummaries,
+  runRecordFromRaw,
 } from './reviewer-raw-outputs.mjs';
 
 const sha256Bytes = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -15,6 +17,8 @@ const BATCH = 'issue-223-m9-e-corpus-batch-06-20261001';
 const GLOSS = '소리나 움직임이 이어지며 이루는 흐름';
 const rows = [{ morphology_proposal: { lemma: '가락' } }, { morphology_proposal: { lemma: '나락' } }];
 const glossByLemma = new Map([['가락', GLOSS]]);
+const HEX_A = 'a'.repeat(64);
+const HEX_B = 'b'.repeat(64);
 
 const passRaw = {
   ordinal: 1, lemma: '가락', identity: 'ok', pos: 'ok', gloss: 'fit', sense_boundary: 'single',
@@ -25,16 +29,14 @@ const holdRaw = {
   ordinal: 2, lemma: '나락', identity: 'ok', pos: 'ok', gloss: 'misfit', sense_boundary: 'multiple',
   verdict: 'hold', generator_agreement: 'disagree', hold_basis: 'unresolved-identity', hold_rationale: '근거가 모호하다.',
 };
-
 const PROPOSALS = [
   { ordinal: 1, lemma: '가락', disposition: 'admit', gloss: GLOSS },
   { ordinal: 2, lemma: '나락', disposition: 'hold' },
 ];
-const HEX_A = 'a'.repeat(64);
-const HEX_B = 'b'.repeat(64);
 
-function fixture(outputs = [passRaw, holdRaw], proposals = PROPOSALS) {
-  const rawArtifact = {
+// Local, staged raw outputs (never tracked).
+function rawArtifactFor(outputs = [passRaw, holdRaw], proposals = PROPOSALS) {
+  return {
     schema_version: '1',
     contract_version: 'reviewer-raw-outputs-v1',
     kind: 'reviewer-raw-outputs',
@@ -42,137 +44,150 @@ function fixture(outputs = [passRaw, holdRaw], proposals = PROPOSALS) {
     reviewer: 'reviewer-a',
     reviewed_proposals: proposals,
     runs: [
-      { run: 1, context: 'isolated-subagent', model: 'm', first_ordinal: 1, last_ordinal: 1, candidate_count: 1, packet_sha256: HEX_A, proposals_sha256: sha256Json(proposals.slice(0, 1)), raw_output_sha256: sha256Json(outputs.slice(0, 1)), outputs: outputs.slice(0, 1) },
-      { run: 2, context: 'isolated-subagent', model: 'm', first_ordinal: 2, last_ordinal: 2, candidate_count: 1, packet_sha256: HEX_B, proposals_sha256: sha256Json(proposals.slice(1)), raw_output_sha256: sha256Json(outputs.slice(1)), outputs: outputs.slice(1) },
+      { run: 1, context: 'isolated-subagent', model: 'm', first_ordinal: 1, last_ordinal: 1, candidate_count: 1, packet_sha256: HEX_A, raw_output_sha256: sha256Json(outputs.slice(0, 1)), outputs: outputs.slice(0, 1) },
+      { run: 2, context: 'isolated-subagent', model: 'm', first_ordinal: 2, last_ordinal: 2, candidate_count: 1, packet_sha256: HEX_B, raw_output_sha256: sha256Json(outputs.slice(1)), outputs: outputs.slice(1) },
     ],
   };
-  const rawBytes = Buffer.from(JSON.stringify(rawArtifact));
+}
+
+function fixture() {
+  const rawArtifact = rawArtifactFor();
+  const runRecord = runRecordFromRaw(rawArtifact);
+  const runRecordBytes = Buffer.from(JSON.stringify(runRecord));
   const input = {
     batch_id: BATCH,
     reviewer: 'reviewer-a',
-    generator_proposal_sha256: sha256Json(proposals),
-    raw_outputs_sha256: sha256Bytes(rawBytes),
-    review_runs: runSummaries(rawArtifact),
+    generator_proposal_sha256: sha256Json(runRecord.reviewed_proposals),
+    run_record_sha256: sha256Bytes(runRecordBytes),
+    review_runs: runRecord.runs,
     reviews: [reviewFromRaw({ lemma: '가락', gloss: GLOSS, raw: passRaw })],
     candidate_outcomes: [outcomeFromRaw('admit', passRaw), outcomeFromRaw('hold', holdRaw)],
   };
-  return { input, rawArtifact, rawBytes, candidateRows: rows, glossByLemma, sha256Bytes };
+  return { input, runRecord, runRecordBytes, rawArtifact, candidateRows: rows, glossByLemma, sha256Bytes };
 }
 
-// Rebuild a consistent artifact/input pair from a mutated artifact, so a test
-// can change one thing and still pass every digest check except the one under test.
-function rebind(base, mutate) {
-  const rawArtifact = structuredClone(base.rawArtifact);
-  mutate(rawArtifact);
-  const rawBytes = Buffer.from(JSON.stringify(rawArtifact));
+// Rebuild a consistent record/input pair from a mutated run record so a test
+// changes one thing and still passes every digest check except the one under test.
+function rebindRecord(base, mutate) {
+  const runRecord = structuredClone(base.runRecord);
+  mutate(runRecord);
+  const runRecordBytes = Buffer.from(JSON.stringify(runRecord));
   return {
     ...base,
-    rawArtifact,
-    rawBytes,
+    runRecord,
+    runRecordBytes,
     input: {
       ...base.input,
-      raw_outputs_sha256: sha256Bytes(rawBytes),
-      generator_proposal_sha256: Array.isArray(rawArtifact.reviewed_proposals)
-        ? sha256Json(rawArtifact.reviewed_proposals)
+      run_record_sha256: sha256Bytes(runRecordBytes),
+      generator_proposal_sha256: Array.isArray(runRecord.reviewed_proposals)
+        ? sha256Json(runRecord.reviewed_proposals)
         : base.input.generator_proposal_sha256,
-      review_runs: runSummaries(rawArtifact),
+      review_runs: runRecord.runs,
     },
   };
 }
 
-const check = (args) => assertInputDerivedFromRaw(args);
+const bound = (args) => assertInputBoundToRunRecord(args);
+const derived = (args) => assertInputDerivedFromRaw(args);
 
-test('a review input that is a function of the preserved raw outputs passes', () => {
-  check(fixture());
-  // The producer's agreement label is derived, never copied: an admit proposal
-  // agrees exactly when the reviewer passes it.
+test('the tracked run record holds metadata and digests only, never gloss text or model prose', () => {
+  const { runRecord } = fixture();
+  const text = JSON.stringify(runRecord);
+  for (const forbidden of [GLOSS, passRaw.sense_note, passRaw.frames[0], holdRaw.hold_rationale]) {
+    assert.equal(text.includes(forbidden), false, `run record must not contain ${forbidden}`);
+  }
+  assert.equal(runRecord.reviewed_proposals[0].gloss_sha256, sha256Json(GLOSS));
+  assert.equal('outputs' in runRecord.runs[0], false);
+  assert.deepEqual(proposalDigests(PROPOSALS), runRecord.reviewed_proposals);
+});
+
+test('an input bound to its run record passes the tracked-artifact check', () => {
+  bound(fixture());
   assert.equal(outcomeFromRaw('admit', holdRaw).generator_agreement, 'disagree');
   assert.equal(outcomeFromRaw('admit', passRaw).generator_agreement, 'agree');
   assert.equal(outcomeFromRaw('hold', { ...holdRaw, generator_agreement: 'agree' }).generator_agreement, 'agree');
   assert.deepEqual(outcomeFromRaw('admit', passRaw).checked_hit_indices, [0, 1]);
 });
 
-test('tampered or mismatched raw outputs fail', () => {
+test('the reviewer result is bound to the exact gloss it assessed', () => {
   const base = fixture();
-  assert.throws(() => check({ ...base, rawBytes: Buffer.concat([base.rawBytes, Buffer.from(' ')]) }), /digest bound in the input/u);
-  const edited = structuredClone(base.rawArtifact);
-  edited.runs[0].outputs[0].sense_note = '바뀐 근거.';
-  const editedBytes = Buffer.from(JSON.stringify(edited));
-  assert.throws(() => check({ ...base, rawArtifact: edited, rawBytes: editedBytes, input: { ...base.input, raw_outputs_sha256: sha256Bytes(editedBytes) } }), /recorded digest/u);
-  assert.throws(() => check({ ...base, input: { ...base.input, batch_id: 'issue-223-m9-e-corpus-batch-07-20261001' } }), /different batch/u);
-  assert.throws(() => check({ ...base, input: { ...base.input, reviewer: 'someone-else' } }), /different reviewer/u);
-  assert.throws(() => check({ ...base, rawArtifact: { ...base.rawArtifact, kind: 'other' } }), /wrong kind/u);
-});
-
-test('runs must cover every candidate exactly once, in order', () => {
-  const base = fixture();
-  const gap = structuredClone(base.rawArtifact);
-  gap.runs[1].first_ordinal = 3;
-  gap.runs[1].last_ordinal = 3;
-  const gapBytes = Buffer.from(JSON.stringify(gap));
-  assert.throws(() => check({ ...base, rawArtifact: gap, rawBytes: gapBytes, input: { ...base.input, raw_outputs_sha256: sha256Bytes(gapBytes) } }), /must start at candidate 2/u);
-  const short = structuredClone(base.rawArtifact);
-  short.runs.pop();
-  const shortBytes = Buffer.from(JSON.stringify(short));
-  assert.throws(() => check({ ...base, rawArtifact: short, rawBytes: shortBytes, input: { ...base.input, raw_outputs_sha256: sha256Bytes(shortBytes), review_runs: runSummaries(short) } }), /every candidate/u);
-  assert.throws(() => check({ ...base, input: { ...base.input, review_runs: [] } }), /run information does not match/u);
-});
-
-test('an input that departs from what the raw outputs yield fails', () => {
-  const base = fixture();
-  const rejects = (name, change, pattern) => {
-    const input = structuredClone(base.input);
-    change(input);
-    assert.throws(() => check({ ...base, input }), pattern, name);
-  };
-  rejects('outcome rewritten', (i) => { i.candidate_outcomes[1].hold_rationale = '다른 사유.'; }, /not what the reviewer's raw output yields/u);
-  rejects('verdict flipped', (i) => { i.candidate_outcomes[0].verdict = 'hold'; }, /not what the reviewer's raw output yields/u);
-  rejects('review text edited', (i) => { i.reviews[0].boundary_rationale = '가락: 편집됨.'; }, /review row is not what/u);
-  rejects('frame edited', (i) => { i.reviews[0].frames[0].sentence_frame = '다른 문장 “가락”'; }, /review row is not what/u);
-  rejects('hold carries a review row', (i) => { i.reviews.push({ ...i.reviews[0], lemma: '나락' }); }, /cannot carry a review row/u);
-  rejects('pass lacks its review row', (i) => { i.reviews = []; }, /review row is not what|exactly for the reviewer passes/u);
-  rejects('extra review row count', (i) => { i.reviews.push(structuredClone(i.reviews[0])); }, /exactly for the reviewer passes/u);
-});
-
-test('the raw reviewer result is bound to the exact gloss it assessed', () => {
-  const base = fixture();
-  // The reviewer saw GLOSS and said fit. Changing the admitted gloss while the
-  // reviewer outputs stay unchanged must be rejected, even if the review row is
-  // regenerated for the new gloss.
-  assert.throws(
-    () => check({ ...base, glossByLemma: new Map([['가락', '전혀 다른 풀이']]) }),
-    /admitted gloss differs from the gloss the reviewer assessed/u,
-  );
+  // The reviewer saw GLOSS and said fit. A gloss changed after review is rejected
+  // even if the review row is regenerated for the new gloss.
+  assert.throws(() => bound({ ...base, glossByLemma: new Map([['가락', '전혀 다른 풀이']]) }), /admitted gloss differs from the gloss the reviewer assessed/u);
   const regenerated = { ...base, glossByLemma: new Map([['가락', '바뀐 풀이']]) };
   regenerated.input = { ...base.input, reviews: [reviewFromRaw({ lemma: '가락', gloss: '바뀐 풀이', raw: passRaw })] };
-  assert.throws(() => check(regenerated), /admitted gloss differs/u);
-  // Rewriting the preserved proposal to match a changed gloss breaks its digests.
-  const forgedProposals = structuredClone(PROPOSALS);
-  forgedProposals[0].gloss = '바뀐 풀이';
-  const forged = fixture([passRaw, holdRaw], PROPOSALS);
-  const withForgedProposal = { ...forged, rawArtifact: { ...forged.rawArtifact, reviewed_proposals: forgedProposals } };
-  const forgedBytes = Buffer.from(JSON.stringify(withForgedProposal.rawArtifact));
-  assert.throws(
-    () => check({ ...withForgedProposal, rawBytes: forgedBytes, glossByLemma: new Map([['가락', '바뀐 풀이']]), input: { ...forged.input, raw_outputs_sha256: sha256Bytes(forgedBytes) } }),
-    /review input does not match the digest of the reviewed proposals|did not review the recorded proposals/u,
-  );
+  assert.throws(() => bound(regenerated), /admitted gloss differs/u);
+  // A review row that was built for a different gloss is not bound to the reviewed one.
+  const wrongRow = structuredClone(base.input);
+  wrongRow.reviews[0].gloss_sha256 = sha256Json('다른 풀이');
+  assert.throws(() => bound({ ...base, input: wrongRow }), /not bound to the gloss the reviewer assessed/u);
+  // Rewriting the recorded gloss digest to match a changed gloss breaks the proposal digests.
+  const forged = structuredClone(base.runRecord);
+  forged.reviewed_proposals[0].gloss_sha256 = sha256Json('바뀐 풀이');
+  const forgedBytes = Buffer.from(JSON.stringify(forged));
+  assert.throws(() => bound({ ...base, runRecord: forged, runRecordBytes: forgedBytes, glossByLemma: new Map([['가락', '바뀐 풀이']]), input: { ...base.input, run_record_sha256: sha256Bytes(forgedBytes) } }), /digest of the reviewed proposals|did not review the recorded proposals/u);
 });
 
-test('reviewed proposals must be preserved, hashed, and consistent with the outcomes', () => {
+test('tampered or mismatched run records fail', () => {
   const base = fixture();
-  assert.throws(() => check(rebind(base, (a) => { delete a.reviewed_proposals; })), /reviewed proposal for every candidate/u);
-  assert.throws(() => check(rebind(base, (a) => { a.reviewed_proposals.pop(); })), /every candidate/u);
-  assert.throws(() => check(rebind(base, (a) => { a.reviewed_proposals[1].lemma = '다락'; })), /different lemma/u);
-  assert.throws(() => check(rebind(base, (a) => { delete a.reviewed_proposals[0].gloss; })), /must preserve its gloss/u);
-  assert.throws(() => check(rebind(base, (a) => { a.reviewed_proposals[1].gloss = '풀이'; })), /carries no gloss/u);
-  assert.throws(() => check({ ...base, input: { ...base.input, generator_proposal_sha256: HEX_A } }), /digest of the reviewed proposals/u);
-  // A run must have reviewed the proposals recorded for its range.
-  assert.throws(() => check(rebind(base, (a) => { a.runs[0].proposals_sha256 = HEX_A; })), /did not review the recorded proposals/u);
-  // The outcome must name the proposal the reviewer was shown.
+  assert.throws(() => bound({ ...base, runRecordBytes: Buffer.concat([base.runRecordBytes, Buffer.from(' ')]) }), /digest bound in the input/u);
+  assert.throws(() => bound({ ...base, input: { ...base.input, batch_id: 'issue-223-m9-e-corpus-batch-07-20261001' } }), /different batch/u);
+  assert.throws(() => bound({ ...base, input: { ...base.input, reviewer: 'someone-else' } }), /different reviewer/u);
+  assert.throws(() => bound({ ...base, runRecord: { ...base.runRecord, kind: 'other' } }), /wrong kind/u);
+  assert.throws(() => bound({ ...base, input: { ...base.input, review_runs: [] } }), /run information does not match/u);
+});
+
+test('runs must cover every candidate exactly once, with real digests', () => {
+  const base = fixture();
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.runs[1].first_ordinal = 3; r.runs[1].last_ordinal = 3; })), /must start at candidate 2/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.runs.pop(); })), /every candidate/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.runs[0].packet_sha256 = 'p1'; })), /packet's SHA-256/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.runs[0].packet_sha256 = ''; })), /packet's SHA-256/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.runs[0].raw_output_sha256 = 'x'; })), /raw output's SHA-256/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.runs[0].context = ''; })), /record its context/u);
+});
+
+test('reviewed proposal digests must be preserved and consistent with the outcomes', () => {
+  const base = fixture();
+  assert.throws(() => bound(rebindRecord(base, (r) => { delete r.reviewed_proposals; })), /proposal digest for every candidate/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.reviewed_proposals.pop(); })), /every candidate/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.reviewed_proposals[1].lemma = '다락'; })), /different lemma/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { delete r.reviewed_proposals[0].gloss_sha256; })), /gloss digest/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.reviewed_proposals[1].gloss_sha256 = HEX_A; })), /carries no gloss digest/u);
+  assert.throws(() => bound({ ...base, input: { ...base.input, generator_proposal_sha256: HEX_A } }), /digest of the reviewed proposals/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.runs[0].proposals_sha256 = HEX_A; })), /did not review the recorded proposals/u);
   const swapped = structuredClone(base.input);
   swapped.candidate_outcomes[0] = outcomeFromRaw('hold', passRaw);
-  assert.throws(() => check({ ...base, input: swapped }), /different proposal than the reviewer was shown|not what the reviewer's raw output yields/u);
-  // The recorded packet digest must be a SHA-256, not a placeholder.
-  assert.throws(() => check(rebind(base, (a) => { a.runs[0].packet_sha256 = 'p1'; })), /packet's SHA-256/u);
-  assert.throws(() => check(rebind(base, (a) => { a.runs[0].packet_sha256 = ''; })), /packet's SHA-256/u);
+  assert.throws(() => bound({ ...base, input: swapped }), /different proposal than the reviewer was shown/u);
+});
+
+test('review rows exist exactly for reviewer passes', () => {
+  const base = fixture();
+  const rejects = (change, pattern) => {
+    const input = structuredClone(base.input);
+    change(input);
+    assert.throws(() => bound({ ...base, input }), pattern);
+  };
+  rejects((i) => { i.reviews.push({ ...i.reviews[0], lemma: '나락' }); }, /cannot carry a review row/u);
+  rejects((i) => { i.reviews = []; }, /needs its review row/u);
+  rejects((i) => { i.reviews.push(structuredClone(i.reviews[0])); }, /exactly for the reviewer passes/u);
+});
+
+test('locally staged raw outputs re-derive the run record and the input', () => {
+  const base = fixture();
+  derived(base);
+  const rejects = (name, change, pattern) => {
+    const args = structuredClone({ input: base.input, runRecord: base.runRecord, rawArtifact: base.rawArtifact });
+    change(args);
+    assert.throws(() => derived({ ...base, ...args }), pattern, name);
+  };
+  rejects('raw edited after the record was made', (a) => { a.rawArtifact.runs[0].outputs[0].sense_note = '바뀐 근거.'; }, /recorded digest|run record is not what/u);
+  rejects('record rewritten', (a) => { a.runRecord.runs[0].context = 'other'; }, /run record is not what the staged raw outputs yield/u);
+  rejects('outcome rewritten', (a) => { a.input.candidate_outcomes[1].hold_rationale = '다른 사유.'; }, /not what the reviewer's raw output yields/u);
+  rejects('verdict flipped', (a) => { a.input.candidate_outcomes[0].verdict = 'hold'; }, /not what the reviewer's raw output yields/u);
+  rejects('review text edited', (a) => { a.input.reviews[0].boundary_rationale = '가락: 편집됨.'; }, /review row is not what/u);
+  rejects('frame edited', (a) => { a.input.reviews[0].frames[0].sentence_frame = '다른 문장 “가락”'; }, /review row is not what/u);
+  rejects('wrong kind', (a) => { a.rawArtifact.kind = 'other'; }, /wrong kind/u);
+  // The staged proposal's gloss must be the admitted gloss.
+  assert.throws(() => derived({ ...base, glossByLemma: new Map([['가락', '바뀐 풀이']]) }), /admitted gloss differs/u);
 });

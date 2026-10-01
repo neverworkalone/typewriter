@@ -182,9 +182,14 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
       ),
       commandCheck(
-        'Test Issue #223 reviewer raw-output preservation and derivation',
+        'Test Issue #223 reviewer run-record binding and raw-output derivation',
         ['--test', 'scripts/batch/reviewer-raw-outputs.test.mjs'],
       ),
+      commandCheck(
+        'Test Issue #223 committed-artifact cross-file regressions',
+        ['--test', 'scripts/batch/issue-223-tracked-artifacts.test.mjs'],
+      ),
+      npmCheck('Validate Issue #223 committed M9-E checkpoint artifacts', 'batch:issue-223:check'),
       commandCheck(
         'Test Issue #223 source-bound paragraph references',
         ['--test', 'scripts/batch/build-issue-223-corpus-batch.test.mjs'],

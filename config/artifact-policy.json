@@ -125,8 +125,8 @@
         "contract": "authored_semantic_review_input"
       },
       {
-        "pattern": "data/batches/issue-223-m9-e-corpus-batch-*-reviewer-raw-outputs.json",
-        "contract": "reviewer_raw_outputs"
+        "pattern": "data/batches/issue-223-m9-e-corpus-batch-*-reviewer-run-record.json",
+        "contract": "reviewer_run_record"
       },
       {
       "pattern": "data/batches/*-semantic-decisions.json",
@@ -2612,9 +2612,9 @@
           }
         }
       },
-      "reviewer_raw_outputs": {
+      "reviewer_run_record": {
         "contract_versions": [
-          "reviewer-raw-outputs-v1"
+          "reviewer-run-record-v1"
         ],
         "required_fields": [
           "batch_id",
@@ -2646,7 +2646,7 @@
         "nested_allowed_fields": {
           "$.reviewed_proposals.*": [
             "disposition",
-            "gloss",
+            "gloss_sha256",
             "lemma",
             "ordinal"
           ],
@@ -2656,39 +2656,16 @@
             "first_ordinal",
             "last_ordinal",
             "model",
-            "outputs",
             "packet_sha256",
             "proposals_sha256",
             "raw_output_sha256",
             "run"
-          ],
-          "$.runs.*.outputs.*": [
-            "directions",
-            "frames",
-            "generator_agreement",
-            "gloss",
-            "hold_basis",
-            "hold_rationale",
-            "identity",
-            "lemma",
-            "note_hit_checked",
-            "ordinal",
-            "pos",
-            "sense_boundary",
-            "sense_note",
-            "topic_rationale",
-            "use_note",
-            "verdict"
-          ],
-          "$.runs.*.outputs.*.directions.*": [
-            "hit_indices",
-            "label"
           ]
         },
         "nested_field_types": {
           "$.reviewed_proposals.*": {
             "disposition": "string",
-            "gloss": "string",
+            "gloss_sha256": "string",
             "lemma": "string",
             "ordinal": "integer"
           },
@@ -2698,33 +2675,10 @@
             "first_ordinal": "integer",
             "last_ordinal": "integer",
             "model": "string",
-            "outputs": "array<object>",
             "packet_sha256": "string",
             "proposals_sha256": "string",
             "raw_output_sha256": "string",
             "run": "integer"
-          },
-          "$.runs.*.outputs.*": {
-            "directions": "array<object>",
-            "frames": "array<string>",
-            "generator_agreement": "string",
-            "gloss": "string",
-            "hold_basis": "string",
-            "hold_rationale": "string",
-            "identity": "string",
-            "lemma": "string",
-            "note_hit_checked": "array<integer>",
-            "ordinal": "integer",
-            "pos": "string",
-            "sense_boundary": "string",
-            "sense_note": "string",
-            "topic_rationale": "string",
-            "use_note": "string",
-            "verdict": "string"
-          },
-          "$.runs.*.outputs.*.directions.*": {
-            "hit_indices": "array<integer>",
-            "label": "string"
           }
         }
       },
@@ -2747,7 +2701,7 @@
           "contract_version",
           "generator_proposal_sha256",
           "kind",
-          "raw_outputs_sha256",
+          "run_record_sha256",
           "review_runs",
           "review_status",
           "reviewer",
@@ -2760,7 +2714,7 @@
           "contract_version": "string",
           "generator_proposal_sha256": "string",
           "kind": "string",
-          "raw_outputs_sha256": "string",
+          "run_record_sha256": "string",
           "review_runs": "array<object>",
           "review_status": "string",
           "reviewer": "string",
