@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "f45b77db73a5d8007f7edddb18a51f7366f5a461ed62ba60d54cf6cc246d195c",
+    "current_canonical_revision": "4014f24874653c83cef9d0d59f986a6f0fd5807b3ad4d4e6b6e0291454f59077",
     "source_manifest": [
       {
         "path": "AGENTS.md",
@@ -622,6 +622,11 @@
         "byte_count": 78155
       },
       {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-08.jsonl",
+        "sha256": "ea42c62762803a21dcca1d6f1311d9179224386b720692a79eed7373c26544cf",
+        "byte_count": 71857
+      },
+      {
         "path": "data/canonical/m5-10-wave-a.jsonl",
         "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
         "byte_count": 15089
@@ -688,8 +693,8 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "e1519ff0647ac49d005c5ccc89de0e72085c119626ca6dd30c41dd71a3a09561",
-        "byte_count": 6008137
+        "sha256": "a744c6abad5cdbb906115a60e7f432f2b79c42028da81676e33a2b90dca331f1",
+        "byte_count": 6270066
       },
       {
         "path": "data/inventory/m5-target-seed.json",
@@ -698,28 +703,28 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "27cb9229c166a249b7a2e7634f130518fa26bbcc693e37d2a6f0ee2237678af5",
-        "byte_count": 8914660
+        "sha256": "250abc114c89fc023cd8107ae42289ed298d9a722339c141c6b87e9defdf2f85",
+        "byte_count": 9216131
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "d42f4ebb96953905a5f5b820853f8c995e9e9707273a561af9ee212a0b1d44d2",
+        "sha256": "1f26fe4d3e87f2698f05f2fcdd8cd918a2ff6b6670752765fcf82dbcbb1adb42",
         "byte_count": 11354
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "5a2760af71d24c54ba09c05e1a780216c4081326f747b5b8604decc9cc72036a",
+        "sha256": "067c8a11ca61d48c13d073dba363f6b958b1b80ae3e9cec174dce8b23693b919",
         "byte_count": 29628
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
-        "sha256": "511997ce9c0b56d89aeaa567dd484f5443fccd27194de88c209f16213ab0844f",
-        "byte_count": 10802
+        "sha256": "44eb8244ae6c03e3748cc3fec670097093a6e0f90318a034fb69365cc6d99e3b",
+        "byte_count": 10922
       },
       {
         "path": "data/validation/m6-3-surface-form-review.json",
-        "sha256": "84127083cf9cb1f8f64903c46850c0f0c4582e763d9fca1566e1d34cb3fb4f35",
-        "byte_count": 417211
+        "sha256": "6ec1a298aa8ba368eb05df50c769bdee537b3a5f271e8472cc2aab5ae5c0a8d5",
+        "byte_count": 423391
       },
       {
         "path": "docs/editorial-model.md",
@@ -743,12 +748,12 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "425d0503d222f776016c7ca25c50362ec21ad1fa1bc37c3155bb9568c63fb7a6",
+        "sha256": "474ee4b0a0c07eef4d642f68b822a7b4e31cd3c80be4e1a760f269e2a36fe8e7",
         "byte_count": 6006
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "92453f65f71f0035f4c9ba278cd7c4c64b0aac06742a8d55db5b909363846b65",
+        "sha256": "3bd1e5e48e7908f36fb21fa30e7aa34b2daa42f3fdcf2e9e8892094fd1bc4920",
         "byte_count": 8765
       },
       {
@@ -868,8 +873,8 @@
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "d567dc29ca90a279a1180de7c0b14caf87484a7f2e70914e3f0b629e1c037f53",
-        "byte_count": 14118
+        "sha256": "dc17064e737476636361ef8bf1a52a0b5880a94aad4b7e651890528c7715df92",
+        "byte_count": 13998
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
@@ -954,7 +959,7 @@
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
     "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; Issue #220 then reviewed 40 M5-13 reserve candidates and admitted 18 through current shared admission.",
     "issue_221": "Issue #221 separately reviewed 20 bounded corpus-derived proposals: 11 passed ordinary source-bound lexical admission and entered the promotion ledger, while 9 remain held. These corpus records are not added to the historical M5 recovery candidate pool; publication remains pending owner confirmation.",
-    "issue_222": "Issue #222 reviewed 2840 bounded corpus-derived proposals and 20 candidates from the frozen historical recovery inventory. Corpus review admitted 2396, held 444, and rejected 0; historical review admitted 20 through ordinary shared admission. The 28 admitted records increase directly searchable canonical coverage to 9,490; corpus source text remains local-reference-only pending owner publication confirmation. The separate M9-D scale checkpoint tracks the remaining gap to approximately 7,500 records.",
+    "issue_222": "Issue #222 reviewed 2840 bounded corpus-derived proposals and 20 candidates from the frozen historical recovery inventory. Corpus review admitted 2396, held 444, and rejected 0; historical review admitted 20 through ordinary shared admission. The 28 admitted records increase directly searchable canonical coverage to 9,815; corpus source text remains local-reference-only pending owner publication confirmation. The separate M9-D scale checkpoint tracks the remaining gap to approximately 7,500 records.",
     "source_material_boundary": "Uses tracked Typewriter decision artifacts and text-free Issue #221/#222 provenance only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
@@ -969,7 +974,7 @@
       "deferred": 252
     },
     "m5_promoted_seed_rows_present_in_canonical": 998,
-    "m5_promotion_ledger_events_audited": 8150,
+    "m5_promotion_ledger_events_audited": 8475,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
     "issue_219_admitted_count": 0,
@@ -997,7 +1002,7 @@
     "issue_222_historical_held_count": 0,
     "issue_222_historical_rejected_count": 0,
     "issue_222_promotion_events_audited": 2396,
-    "historical_recovery_ceiling_count": 9997,
+    "historical_recovery_ceiling_count": 10322,
     "historical_recovery_shortfall_to_6000": 0,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
@@ -1010,8 +1015,8 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 9490,
-    "exact_search_key_count": 9747,
+    "directly_searchable_canonical_record_count": 9815,
+    "exact_search_key_count": 10072,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
@@ -1044,20 +1049,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 9490,
-    "directly_searchable_record_count": 9490,
+    "canonical_record_count": 9815,
+    "directly_searchable_record_count": 9815,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 9747,
+    "exact_search_key_count": 10072,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 9448,
+      "start": 9773,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 8295,
+      "start/entry": 8620,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
