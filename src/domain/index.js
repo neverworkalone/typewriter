@@ -8,6 +8,13 @@ export {
 } from './relation-groups.js';
 
 export {
+  isPagedRelationGroup,
+  pageRelationItems,
+  RELATION_PAGE_MAX,
+  RELATION_PAGE_SIZE,
+} from './relation-paging.js';
+
+export {
   projectRecord,
   projectRelation,
   projectRelationTarget,

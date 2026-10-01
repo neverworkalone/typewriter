@@ -1,6 +1,7 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
+import { pageRelationItems } from '../domain/relation-paging.js';
 import { DEFAULT_SETTINGS } from '../ui/settings.js';
 
 const props = defineProps({
@@ -77,6 +78,32 @@ const hasVisibleSenseRelations = computed(() => (
   visibleSenses.value.some((sense) => sense.hasRelations)
 ));
 const candidateRefs = new Map();
+const pagesShown = ref({});
+
+function pageKey(sense, group) {
+  return `${sense.id}:${group.id}`;
+}
+
+function pagedItems(sense, group) {
+  return pageRelationItems(group.id, group.items, pagesShown.value[pageKey(sense, group)]);
+}
+
+watch(() => props.record.id, () => {
+  pagesShown.value = {};
+});
+
+async function showMore(sense, group, event) {
+  const key = pageKey(sense, group);
+  const section = event.currentTarget.closest('.result-section');
+  const hadMoreAfter = () => pagedItems(sense, group).hasMore;
+  pagesShown.value = { ...pagesShown.value, [key]: (pagesShown.value[key] || 1) + 1 };
+  if (hadMoreAfter()) return;
+
+  // The control is removed once the list is exhausted; keep keyboard focus in the list.
+  await nextTick();
+  const links = section?.querySelectorAll('.relation-link');
+  links?.[links.length - 1]?.focus?.();
+}
 
 function isGroupVisible(group) {
   return settings.value[group.id] !== false && Array.isArray(group.items) && group.items.length > 0;
@@ -193,7 +220,10 @@ defineExpose({ focusCandidate });
             {{ group.items[0].text || group.items[0].gloss }}
           </p>
           <div v-else class="relation-list">
-            <template v-for="(relation, relationIndex) in group.items" :key="relation.id">
+            <template
+              v-for="(relation, relationIndex) in pagedItems(sense, group).items"
+              :key="relation.id"
+            >
               <button
                 v-if="interactive"
                 class="relation-link"
@@ -204,12 +234,19 @@ defineExpose({ focusCandidate });
               >{{ relationText(relation) }}</button>
               <span v-else class="relation-link is-static">{{ relationText(relation) }}</span>
               <span
-                v-if="relationIndex < group.items.length - 1"
+                v-if="relationIndex < pagedItems(sense, group).items.length - 1"
                 class="relation-separator"
                 aria-hidden="true"
               >·</span>
             </template>
           </div>
+          <button
+            v-if="interactive && group.kind !== 'definition' && pagedItems(sense, group).hasMore"
+            class="relation-more"
+            type="button"
+            :aria-label="`${group.label} 더보기`"
+            @click="showMore(sense, group, $event)"
+          >더보기</button>
           <div
             v-if="groupIndex === 0 && group.kind === 'definition'"
             class="definition-divider"
@@ -416,6 +453,32 @@ defineExpose({ focusCandidate });
   font-weight: 500;
   line-height: 17px;
   text-align: left;
+}
+
+.relation-more {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #5f5955;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.relation-more:hover {
+  color: #7e433e;
+}
+
+.relation-more:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.dictionary-result.is-compact .relation-more {
+  font-size: 10.5px;
 }
 
 .relation-link.is-static {
