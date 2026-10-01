@@ -547,6 +547,7 @@ export async function buildIssue223CorpusBatch({
   const canonicalDirectory = path.join(ROOT, 'data/canonical');
   const reviewPath = path.join(batchDirectory, `${batchStem}-candidate-review.json`);
   const semanticPath = path.join(batchDirectory, `${batchStem}-semantic-decisions.json`);
+  const semanticInputPath = path.join(batchDirectory, `${batchStem}-semantic-review-input.json`);
   const importPath = path.join(canonicalDirectory, `${batchStem}.jsonl`);
   if (reviewOnly) {
     for (const sidecarPath of [semanticPath, importPath]) {
@@ -686,6 +687,7 @@ export async function buildIssue223CorpusBatch({
       generationPassId,
       verificationPassId: semanticPassId,
       correctionPassId: issue223CorrectionPassId(batchId),
+      reviewer: semanticInput.reviewer,
       semanticReviewVersion: 'issue-223-authored-semantic-review-v1',
       selectionPolicy: 'shared-authored-axis-coverage-selection-v6',
       selectionCount: admittedRows.length,
@@ -700,6 +702,7 @@ export async function buildIssue223CorpusBatch({
   await Promise.all([
     writeFile(reviewPath, reviewBytes),
     writeFile(semanticPath, semanticBytes),
+    writeFile(semanticInputPath, semanticInputBytes),
     writeFile(importPath, importBytes),
   ]);
 
@@ -771,6 +774,7 @@ export async function buildIssue223CorpusBatch({
     canonical_import_count: records.length,
     candidate_review_path: relative(reviewPath),
     semantic_decision_path: relative(semanticPath),
+    semantic_review_input_path: relative(semanticInputPath),
     canonical_import_path: relative(importPath),
     semantic_review_sha256: sha256Bytes(semanticBytes),
     semantic_review_artifact_sha256: semanticArtifactSha,

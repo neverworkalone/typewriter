@@ -10,7 +10,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { buildDictionary } from '../build/dictionary.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
-import { issue223CorrectionPassId } from './build-issue-223-corpus-batch.mjs';
+import {
+  assertSemanticReviewEnvelope,
+  issue223CorrectionPassId,
+  parseIssue223BatchId,
+} from './build-issue-223-corpus-batch.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
 import { validateAuthoredSemanticDecisionSource, M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION } from './authored-semantic-decision-source.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
@@ -104,7 +108,33 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
   );
 }
 
-export function semanticDecisionConfig(candidateReview, semanticSource, sourcePath) {
+// B01-B04 predate the bound semantic-review input contract (owner override,
+// see docs/issue-223-m9-e-scale-coverage.md). Every later batch must carry one.
+const LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS = Object.freeze([1, 2, 3, 4]);
+
+export function validateSemanticReviewInputBinding({ semanticSource, inputBytes, batchId, admittedLemmas }) {
+  const { ordinal } = parseIssue223BatchId(batchId);
+  const digest = semanticSource.source_basis.semantic_review_input_sha256;
+  if (digest === undefined) {
+    assert.ok(LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS.includes(ordinal),
+      `${batchId} semantic source must bind its authored semantic review input`);
+    assert.equal(inputBytes ?? null, null, `${batchId} legacy semantic source must not carry a review input`);
+    return null;
+  }
+  assert.ok(inputBytes, `${batchId} semantic review input artifact is missing`);
+  assert.equal(sha256Bytes(inputBytes), digest, `${batchId} semantic review input does not match its bound digest`);
+  const input = JSON.parse(inputBytes.toString('utf8'));
+  assertSemanticReviewEnvelope(input, batchId);
+  assert.deepEqual(
+    input.reviews.map(({ lemma }) => lemma).sort(),
+    [...admittedLemmas].sort(),
+    `${batchId} semantic review input must cover exactly the admitted lemmas`,
+  );
+  assert.equal(semanticSource.review.reviewer, input.reviewer, `${batchId} semantic output reviewer must match its bound input`);
+  return input;
+}
+
+export function semanticDecisionConfig(candidateReview, semanticSource, sourcePath, reviewer) {
   return {
     label: `Issue #223 ${candidateReview.batch_id}`,
     errorPrefix: 'ISSUE_223',
@@ -117,6 +147,7 @@ export function semanticDecisionConfig(candidateReview, semanticSource, sourcePa
     generationPassId: candidateReview.provenance.generation_pass_id,
     verificationPassId: semanticSource.provenance.verification_pass_id,
     correctionPassId: issue223CorrectionPassId(candidateReview.batch_id),
+    ...(reviewer ? { reviewer } : {}),
     semanticReviewVersion: semanticSource.provenance.generator_version,
     selectionPolicy: 'shared-authored-axis-coverage-selection-v6',
     selectionCount: candidateReview.decision_counts.admit,
@@ -402,12 +433,19 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     assert.equal(semanticSource.source_basis.candidate_evidence_sha256, candidateReview.source_artifacts.candidate_evidence_sha256);
     assert.equal(semanticSource.source_basis.exclusion_manifest_sha256, candidateReview.source_artifacts.exclusion_manifest_sha256);
     assert.equal(semanticSource.candidate_records_sha256, sha256Json(semanticSource.candidate_records));
+    const semanticInputPath = path.join(BATCH_DIRECTORY, `${stem}-semantic-review-input.json`);
+    const boundInput = validateSemanticReviewInputBinding({
+      semanticSource,
+      inputBytes: await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null,
+      batchId: candidateReview.batch_id,
+      admittedLemmas: admittedRows.map((row) => row.morphology_proposal.lemma),
+    });
     const validatedSource = validateAuthoredSemanticDecisionSource({
       source: semanticSource,
       sourceBytes: semanticBytes,
       identities,
       candidateRecords: semanticSource.candidate_records,
-      config: semanticDecisionConfig(candidateReview, semanticSource, `data/batches/${path.basename(semanticPath)}`),
+      config: semanticDecisionConfig(candidateReview, semanticSource, `data/batches/${path.basename(semanticPath)}`, boundInput?.reviewer),
     });
     const includedIds = new Set(validatedSource.selection.selected.map(({ candidate_record_id: id }) => id));
     const expectedImports = semanticSource.candidate_records.filter(({ id }) => includedIds.has(id));

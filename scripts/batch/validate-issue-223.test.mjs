@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary } from './validate-issue-223.mjs';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
+import { sha256Json } from '../validate/semantic-audit.mjs';
+import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
+import { semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
 function reviewOnlyBatch() {
   return {
@@ -76,4 +81,88 @@ test('Issue #223 validator derives the correction pass from a later batch date',
     semanticDecisionConfig(review, semantic, 'data/batches/x.json').correctionPassId,
     'issue-223-m9-e-corpus-batch-06-correction-20261002-r1',
   );
+});
+
+const BOUND_BATCH = 'issue-223-m9-e-corpus-batch-06-20261002';
+const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
+function boundFixture(overrides = {}) {
+  const input = {
+    kind: 'authored-semantic-review-input',
+    batch_id: BOUND_BATCH,
+    reviewer: 'independent-agent',
+    review_status: 'complete',
+    reviews: [{ lemma: '가락' }],
+    ...overrides,
+  };
+  const inputBytes = Buffer.from(JSON.stringify(input));
+  return {
+    semanticSource: { source_basis: { semantic_review_input_sha256: sha(inputBytes) }, review: { reviewer: input.reviewer } },
+    inputBytes,
+    batchId: BOUND_BATCH,
+    admittedLemmas: ['가락'],
+  };
+}
+
+test('Issue #223 bound semantic review input passes and any non-reviewer reviewer is carried to the shared contract', () => {
+  const fixture = boundFixture();
+  const input = validateSemanticReviewInputBinding(fixture);
+  assert.equal(input.reviewer, 'independent-agent');
+  const review = { batch_id: BOUND_BATCH, source_id: 'c', provenance: { generation_pass_id: 'g' }, decision_counts: { admit: 1 } };
+  const semantic = { source_id: 's', provenance: { verification_pass_id: 'v', generator_version: 'x' } };
+  assert.equal(semanticDecisionConfig(review, semantic, 'p', input.reviewer).reviewer, 'independent-agent');
+  assert.equal(semanticDecisionConfig(review, semantic, 'p').reviewer, undefined);
+});
+
+test('Issue #223 semantic review input binding fails closed when missing, tampered, mismatched, or unbound', () => {
+  const ok = boundFixture();
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, inputBytes: null }), /missing/u);
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, inputBytes: Buffer.concat([ok.inputBytes, Buffer.from(' ')]) }), /digest/u);
+  const other = boundFixture({ batch_id: 'issue-223-m9-e-corpus-batch-05-20261001' });
+  assert.throws(() => validateSemanticReviewInputBinding({ ...other, batchId: BOUND_BATCH }));
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, admittedLemmas: ['가락', '다른'] }), /exactly the admitted/u);
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, semanticSource: { ...ok.semanticSource, review: { reviewer: 'codex-agent' } } }), /reviewer/u);
+  assert.throws(() => validateSemanticReviewInputBinding({
+    ...ok, semanticSource: { source_basis: {}, review: { reviewer: 'x' } }, inputBytes: null,
+  }), /must bind/u);
+});
+
+test('Issue #223 legacy B01-B04 semantic sources stay exempt only without an input', () => {
+  const legacy = { semanticSource: { source_basis: {} }, inputBytes: null, admittedLemmas: [] };
+  assert.equal(validateSemanticReviewInputBinding({ ...legacy, batchId: 'issue-223-m9-e-corpus-batch-04-20261001' }), null);
+  assert.throws(() => validateSemanticReviewInputBinding({ ...legacy, batchId: 'issue-223-m9-e-corpus-batch-05-20261001' }));
+});
+
+test('Issue #223 shared semantic validator enforces the bound reviewer, not a fixed one', () => {
+  const batchFile = (suffix) => new URL(`../../data/batches/issue-223-m9-e-corpus-batch-01-${suffix}`, import.meta.url);
+  const review = JSON.parse(readFileSync(batchFile('candidate-review.json')));
+  const original = JSON.parse(readFileSync(batchFile('semantic-decisions.json')));
+  const identities = review.decisions
+    .filter((row) => row.editorial_judgment.disposition === 'admit')
+    .map((row, index) => ({
+      catalog_index: index,
+      slot_id: `${review.batch_id}-slot-${String(index + 1).padStart(4, '0')}`,
+      inventory_id: row.inventory_id,
+      candidate_record_id: row.editorial_judgment.candidate_record_id,
+      lemma: row.morphology_proposal.lemma,
+      axis: row.editorial_judgment.writer_use_axis,
+      record_type: 'entry',
+      pos: row.morphology_proposal.pos,
+    }));
+  const run = (source, reviewer) => validateAuthoredSemanticDecisionSource({
+    source,
+    sourceBytes: Buffer.from(`${JSON.stringify(source, null, 2)}\n`),
+    identities,
+    candidateRecords: source.candidate_records,
+    config: semanticDecisionConfig(review, source, 'data/batches/issue-223-m9-e-corpus-batch-01-semantic-decisions.json', reviewer),
+  });
+  const changed = structuredClone(original);
+  changed.review.reviewer = 'independent-agent';
+  const withoutDigest = structuredClone(changed);
+  delete withoutDigest.artifact_sha256;
+  withoutDigest.decisions = withoutDigest.decisions.map(compactAuthoredSemanticDecisionRow);
+  changed.artifact_sha256 = sha256Json(withoutDigest);
+
+  assert.doesNotThrow(() => run(changed, 'independent-agent'));
+  assert.throws(() => run(changed), /review is incomplete/u);
+  assert.throws(() => run(changed, 'someone-else'), /review is incomplete/u);
 });
