@@ -50,11 +50,12 @@
     "current": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["canonical_revision", "canonical_records_sha256", "canonical_record_count", "directly_searchable_record_count", "exact_search_key_count", "non_searchable_record_count", "record_type_counts", "role_counts", "sense_pos_counts", "sense_count", "relation_count", "canonical_search_form_count", "relation_empty_searchable_record_count", "exact_search_coverage"],
+      "required": ["canonical_revision", "canonical_records_sha256", "canonical_record_count", "records_added_after_issue_222_checkpoint", "directly_searchable_record_count", "exact_search_key_count", "non_searchable_record_count", "record_type_counts", "role_counts", "sense_pos_counts", "sense_count", "relation_count", "canonical_search_form_count", "relation_empty_searchable_record_count", "exact_search_coverage"],
       "properties": {
         "canonical_revision": { "$ref": "#/$defs/sha256" },
         "canonical_records_sha256": { "$ref": "#/$defs/sha256" },
         "canonical_record_count": { "type": "integer", "minimum": 0 },
+        "records_added_after_issue_222_checkpoint": { "type": "integer", "minimum": 0 },
         "directly_searchable_record_count": { "type": "integer", "minimum": 0 },
         "exact_search_key_count": { "type": "integer", "minimum": 0 },
         "non_searchable_record_count": { "type": "integer", "minimum": 0 },

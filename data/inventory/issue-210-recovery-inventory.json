@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "5b644b84e5c51ddc5d8fcb6c2a21c0a321a9ad32d52a2883ef4925edc5f4d570",
+    "current_canonical_revision": "00ce70e5139a9ba54bfbb17e342c38f444a16e662ae5a1a47595e4b5c05ebdc1",
     "source_manifest": [
       {
         "path": "AGENTS.md",
@@ -587,6 +587,26 @@
         "byte_count": 4611
       },
       {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-01.jsonl",
+        "sha256": "4c87f580ee1188e8396da9a05ba2a5dc8ff4ee4bff4b02f3cdc4be2a6122b373",
+        "byte_count": 39546
+      },
+      {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-02.jsonl",
+        "sha256": "571c113e2426b2c2f6864f4969ebfbc4dfed32ae4c30452759d6202246d9f176",
+        "byte_count": 40064
+      },
+      {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-03.jsonl",
+        "sha256": "e758b145f0dce4118765239fb02fd7d6f10764e1f84ab3ff7883a37022df76b2",
+        "byte_count": 97353
+      },
+      {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-04.jsonl",
+        "sha256": "026d99944fc28e2bfced64f17e59a23d20109850c179f6d97444fd4430112935",
+        "byte_count": 95378
+      },
+      {
         "path": "data/canonical/m5-10-wave-a.jsonl",
         "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
         "byte_count": 15089
@@ -653,8 +673,8 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "7d3e65703478d6597bfaba5ccc49afd4f116ebeffd9f590b32b76217e76d92a8",
-        "byte_count": 4426215
+        "sha256": "791d8ce503d2d3bf555253e53bd6576a76dc4d40d94d6b61fcff668731ed384e",
+        "byte_count": 5393922
       },
       {
         "path": "data/inventory/m5-target-seed.json",
@@ -663,28 +683,28 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "8e865aaf005bf01bc97bfc6b6c7a977d426540d01c1a917eb68fce67d144e607",
-        "byte_count": 7093276
+        "sha256": "3c4f297187f30bc1a2cde976540d137e96e630d1c74a2bb33e3a8b898533a3b0",
+        "byte_count": 8207683
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "d21ff6760352fc2ec41184a8a45d29a6544565203e83cb30ff3119e9077d12aa",
+        "sha256": "c0bf993e9b7a4fbded0a8b82f56394b55481ff8cf8d335aa3d152ad027a934c8",
         "byte_count": 11354
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "40295f80838f2a13491ae7b5665da83b85fd267646834aa177130d5f5a80de85",
-        "byte_count": 29629
+        "sha256": "c4d977b10519b6acb850bc1b223677fdcb78ba346c5d8f2898d2fa6cc5b7703a",
+        "byte_count": 29628
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
-        "sha256": "96a6ee051686f318925da8d1d56fa0ef271693c06e06896af067c8b80dd3c447",
-        "byte_count": 10082
+        "sha256": "9495ce21c92c1313adf62b806f308a20ec1998f0b29fc7a1e51de9151d391a7a",
+        "byte_count": 10562
       },
       {
         "path": "data/validation/m6-3-surface-form-review.json",
-        "sha256": "84433bda4694d24dc296e19d15e60b48607819f873e3eb6d1536d3c4712b99f3",
-        "byte_count": 373229
+        "sha256": "72ab90de8ec3310fd713db92e559edebf9dac4ce9e270e744f3fab27a0476001",
+        "byte_count": 400176
       },
       {
         "path": "docs/editorial-model.md",
@@ -708,12 +728,12 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "08192d819a0288faffd60ff9dec6cc2d841e3e56c823f745817ccfe8fa38e929",
-        "byte_count": 5991
+        "sha256": "1176e3296301957d244db58aa3e4c65d4f49c40e37efaef6a80fad9d052231f6",
+        "byte_count": 6006
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "fd72a779d6e02907c5b06be8a9d0bde31d0d542c6edd4f52479cab84a46b0bb5",
+        "sha256": "0751ce13718b2280053c1769cfac7ce2930ceaac3e6b59b0bca710b076037727",
         "byte_count": 8765
       },
       {
@@ -758,8 +778,8 @@
       },
       {
         "path": "docs/m9-corpus-production.md",
-        "sha256": "6a9462c696c70ea4600d7467c0f363cfccf1f387ee4fe49590b4ecbdec293d2a",
-        "byte_count": 11640
+        "sha256": "6f01915428a299bf186d36ce4e526fed009555e27c74f129e6500704a50f2b88",
+        "byte_count": 12751
       },
       {
         "path": "docs/pilot-scope.md",
@@ -768,8 +788,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "19a8a9c11cf032c7507b8baa7c544cda1cdc6a31764f51b186661331e9a2b3f6",
-        "byte_count": 10633
+        "sha256": "b6ff6de7714879122a94bcb49a7999e00de66982f455e929b83d11d1da37bd8a",
+        "byte_count": 10720
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -813,13 +833,13 @@
       },
       {
         "path": "scripts/batch/validate-issue-219.mjs",
-        "sha256": "44e8366633a2f977f68ff4f8375e9ff886fabab9d9af91425998009acf420587",
-        "byte_count": 34517
+        "sha256": "eaa67434e083a5d6e41fea1c7c99d75306930a894b9d2bacf2f7a14820ec427f",
+        "byte_count": 34496
       },
       {
         "path": "scripts/batch/validate-issue-220.mjs",
-        "sha256": "ba37148e347c0413f3c057b56e4df45dcf175d4d4651e83d182ac7ec22363eb8",
-        "byte_count": 57651
+        "sha256": "7a439cc11cce8eec6e1811d7c93a69f07e85decd800698c53359dddc4ee776e0",
+        "byte_count": 58121
       },
       {
         "path": "scripts/batch/validate-issue-221.mjs",
@@ -828,23 +848,23 @@
       },
       {
         "path": "scripts/batch/validate-issue-222.mjs",
-        "sha256": "93a5ea7ed39a040b8accbe60a78a4c3cf573e430eb8f79963ce1c1455edf1e5d",
-        "byte_count": 60659
+        "sha256": "c15383dc7d3c3a824de42645a86d8b1b5037a38f39634b5f0e55c17eb0429d82",
+        "byte_count": 61889
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "0a09c92b2fe867e07aa128c8d1a8e78e687fcb26e1a58b82ff869dd9dbdf92ee",
-        "byte_count": 13026
+        "sha256": "1dcb8b8f0fd25c65d9e070b850838d58711e83b42d37259add8bbcc50568bf1f",
+        "byte_count": 13549
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "636dbc860b61d7a918da616f12a43e2364447176bebb2d9cdb2b6ed8d92e1893",
-        "byte_count": 90380
+        "sha256": "100d3ad00ac462e06f5563a6135fcb44bd7cbeea5af046f8c1ce46e58876623f",
+        "byte_count": 90872
       },
       {
         "path": "scripts/reference/corpus-candidate-review.test.mjs",
-        "sha256": "c823091fa9beb8b140846280e05029a2f55aabd043b3864b7d0d7d9f56e0ecf0",
-        "byte_count": 9676
+        "sha256": "f58f275b66d6de03e5a42009790f944b85cd87d02baa571052e09443ddb9e91e",
+        "byte_count": 11422
       },
       {
         "path": "scripts/reference/corpus_lemma_pilot.py",
@@ -853,13 +873,13 @@
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.mjs",
-        "sha256": "08a85d5d4c7711a3c46bd0ab1ee03e18376758614acb830dd83382357a1f1917",
-        "byte_count": 20463
+        "sha256": "ace4c261409401c6590dfffadc250df819ebb592b417e2a0fd083a0d4597e4dd",
+        "byte_count": 30011
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.test.mjs",
-        "sha256": "d4b3c8d597d45e5027d7df1a697d4980ad76834a6758f4969edfe9446ce12634",
-        "byte_count": 4848
+        "sha256": "7498a9de34bd0461ebbfbeee58c8851618d0e2b5e778f0515952df85daf9cb4c",
+        "byte_count": 9502
       },
       {
         "path": "scripts/reference/test-corpus-lemma-pilot.py",
@@ -873,13 +893,13 @@
       },
       {
         "path": "scripts/validate/corpus-candidate-review.mjs",
-        "sha256": "1025222edd680dfcb8f2bcd671ddd159f7ec1000ca5c616fd6e167ddbc5a6d7c",
-        "byte_count": 9685
+        "sha256": "8fe3280a5e8f037bd3848a84e5f03bdb7b4f917323f8b594ba384513cee7c70a",
+        "byte_count": 10973
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "4a880c75b67e56ad0d104727e64dc024bff1b8a456ab156e30b3bff28ee8dd7b",
-        "byte_count": 114088
+        "sha256": "0b435919225e39b977b802e8bfb544fb501cfca2442284e46d870e125d33e03b",
+        "byte_count": 114158
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",
@@ -919,7 +939,7 @@
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
     "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; Issue #220 then reviewed 40 M5-13 reserve candidates and admitted 18 through current shared admission.",
     "issue_221": "Issue #221 separately reviewed 20 bounded corpus-derived proposals: 11 passed ordinary source-bound lexical admission and entered the promotion ledger, while 9 remain held. These corpus records are not added to the historical M5 recovery candidate pool; publication remains pending owner confirmation.",
-    "issue_222": "Issue #222 reviewed 2840 bounded corpus-derived proposals and 20 candidates from the frozen historical recovery inventory. Corpus review admitted 2396, held 444, and rejected 0; historical review admitted 20 through ordinary shared admission. The 28 admitted records increase directly searchable canonical coverage to 7,521; corpus source text remains local-reference-only pending owner publication confirmation. The separate M9-D scale checkpoint tracks the remaining gap to approximately 7,500 records.",
+    "issue_222": "Issue #222 reviewed 2840 bounded corpus-derived proposals and 20 candidates from the frozen historical recovery inventory. Corpus review admitted 2396, held 444, and rejected 0; historical review admitted 20 through ordinary shared admission. The 28 admitted records increase directly searchable canonical coverage to 8,727; corpus source text remains local-reference-only pending owner publication confirmation. The separate M9-D scale checkpoint tracks the remaining gap to approximately 7,500 records.",
     "source_material_boundary": "Uses tracked Typewriter decision artifacts and text-free Issue #221/#222 provenance only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
@@ -934,7 +954,7 @@
       "deferred": 252
     },
     "m5_promoted_seed_rows_present_in_canonical": 998,
-    "m5_promotion_ledger_events_audited": 6181,
+    "m5_promotion_ledger_events_audited": 7387,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
     "issue_219_admitted_count": 0,
@@ -962,7 +982,7 @@
     "issue_222_historical_held_count": 0,
     "issue_222_historical_rejected_count": 0,
     "issue_222_promotion_events_audited": 2396,
-    "historical_recovery_ceiling_count": 8028,
+    "historical_recovery_ceiling_count": 9234,
     "historical_recovery_shortfall_to_6000": 0,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
@@ -975,8 +995,8 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 7521,
-    "exact_search_key_count": 7778,
+    "directly_searchable_canonical_record_count": 8727,
+    "exact_search_key_count": 8984,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
@@ -1009,20 +1029,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 7521,
-    "directly_searchable_record_count": 7521,
+    "canonical_record_count": 8727,
+    "directly_searchable_record_count": 8727,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 7778,
+    "exact_search_key_count": 8984,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 7479,
+      "start": 8685,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 6326,
+      "start/entry": 7532,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1

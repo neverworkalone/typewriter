@@ -104,6 +104,15 @@ test('checkpoint JSON conforms to schema and its Markdown is regenerated from th
   assert.equal(report.validation.local_corpus_evidence_command, 'npm run batch:issue-222:check');
   assert.equal(report.current.non_searchable_record_count, 0);
   assert.equal(report.current.directly_searchable_record_count, report.current.canonical_record_count);
+  assert.equal(report.aggregate.canonical_records_added, report.validation.directly_searchable_new_records);
+  assert.equal(
+    report.current.records_added_after_issue_222_checkpoint,
+    report.current.canonical_record_count - report.continuation.canonical_count_now,
+  );
+  assert.equal(
+    report.baseline.canonical_record_count + report.aggregate.canonical_records_added,
+    report.continuation.canonical_count_now,
+  );
   assert.equal(report.current.relation_empty_searchable_record_count <= report.current.directly_searchable_record_count, true);
   assert.equal(report.runtime_package_impact.baseline_dictionary_record_count, 5105);
   assert.equal(report.runtime_package_impact.current_dictionary_record_count, report.current.canonical_record_count);

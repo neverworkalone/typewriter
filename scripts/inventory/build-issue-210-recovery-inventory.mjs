@@ -795,8 +795,16 @@ async function buildInventory() {
       const seedRow = seedByInventoryId.get(inventoryId);
       return seedRow?.status === 'promoted' && seedRow.canonical_id === canonicalId;
     }), 'Issue #222 historical admissions must be embedded in the current M5 seed without duplicate ledger rows');
+  const issue223PromotionRows = promotions.filter(({ batch_id: id }) => id.startsWith('issue-223-m9-e-corpus-batch-'));
+  assert.equal(issue223PromotionRows.length, 1206, 'Issue #223 B01-B04 canonical imports must match the promotion ledger');
+  assert.equal(promotions.some(({ batch_id: id }) => id === 'issue-223-m9-e-corpus-batch-05-20261001'), false,
+    'Issue #223 B05 review-only decisions must stay outside the promotion ledger');
   assert.equal(seedStatuses.promoted, 998, 'M5 promoted seed row count changed');
-  assert.equal(promotions.length, 3756 + issue219PromotionRows.length + issue220PromotionRows.length + issue221PromotionRows.length + issue222PromotionRows.length, 'Issue #219/#220/#221/#222 promotion ledger row count changed');
+  assert.equal(
+    promotions.length,
+    3756 + issue219PromotionRows.length + issue220PromotionRows.length + issue221PromotionRows.length + issue222PromotionRows.length + issue223PromotionRows.length,
+    'Issue #219/#220/#221/#222/#223 promotion ledger row count changed',
+  );
   assert.equal(issue204.decisions.length, 100, 'Issue #204 decision overlay row count changed');
   assert.equal(issue204Admitted.length, 10, 'Issue #204 admitted row count changed');
   assert.equal(issue204.decisions.filter(({ inventory_id: id }) => seedByInventoryId.has(id)).length, 90, 'Issue #204/M5 target overlay row count changed');
