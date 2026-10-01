@@ -25,6 +25,10 @@ Tracked candidate evidence contains bounded source identifiers, observed forms, 
 
 Six preliminary B05 admissions with source-bound analyzer ambiguity were held, preserving the shared morphology admission gate. Their decisions and bounded evidence remain in B05's review artifact.
 
+## Batch runner contract
+
+`scripts/batch/build-issue-223-corpus-batch.mjs` takes a batch ID of the form `issue-223-m9-e-corpus-batch-NN-YYYYMMDD`; the date is validated and source/pass IDs derive from it. Inventory and canonical IDs continue only from lower-numbered batches, so rebuilding an earlier batch is unaffected by later artifacts. The builder never mints semantic judgments: admitted records require a separately authored `--semantic-reviews` input (one review per admitted lemma, bound to the reviewed gloss digest, with explicit gloss/sense-boundary judgments and diagnostic frames). Missing or mismatched reviews fail closed. Review-only batches need no semantic input.
+
 ## Validation
 
 The Issue #223 validator checks source-bound candidate evidence, canonical imports for B01–B04, semantic coverage, direct search, and deterministic SQLite builds. For B05 it verifies the review-only marker, the absence of semantic and canonical sidecars, and that deferred IDs and lemmas are not already canonical. Normal CI separately discovers and checks every tracked M9 corpus candidate-review artifact.

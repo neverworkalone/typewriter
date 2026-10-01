@@ -39,6 +39,40 @@ const sha256Bytes = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const prettyBytes = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
 const relative = (absolutePath) => path.relative(ROOT, absolutePath).split(path.sep).join('/');
 
+const BATCH_ID_PATTERN = /^issue-223-m9-e-corpus-batch-([0-9]{2})-(20[0-9]{2})([0-9]{2})([0-9]{2})$/u;
+const REVIEW_FILE_PATTERN = /^issue-223-m9-e-corpus-batch-([0-9]{2})-candidate-review\.json$/u;
+
+export function parseIssue223BatchId(batchId) {
+  const match = BATCH_ID_PATTERN.exec(batchId);
+  assert.ok(match, `invalid Issue #223 batch id ${batchId}`);
+  const [, ordinalText, year, month, day] = match;
+  const calendar = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  assert.ok(
+    calendar.getUTCFullYear() === Number(year)
+      && calendar.getUTCMonth() === Number(month) - 1
+      && calendar.getUTCDate() === Number(day),
+    `batch id ${batchId} carries an invalid calendar date`,
+  );
+  return {
+    ordinal: Number(ordinalText),
+    ordinalText,
+    date: `${year}${month}${day}`,
+    stem: batchId.slice(0, -9),
+  };
+}
+
+// Inventory and canonical IDs continue only from earlier batches, so rebuilding
+// an earlier batch never shifts into identities reserved by later ones.
+export function selectPredecessorReviewFiles(names, batchId) {
+  const { ordinal } = parseIssue223BatchId(batchId);
+  return names
+    .filter((name) => {
+      const match = REVIEW_FILE_PATTERN.exec(name);
+      return match && Number(match[1]) < ordinal;
+    })
+    .sort();
+}
+
 function textFreeHits(hits) {
   return hits.map((hit) => ({
     source_path: hit.source_path,
@@ -188,11 +222,42 @@ function makeCanonicalRecord(row) {
   };
 }
 
-function makeSemanticDecision(row, candidate, rank, passId, sourceId) {
+const RELATION_TYPES = ['direct', 'near', 'mood', 'scene', 'sensory', 'action', 'association'];
+const nonEmpty = (value) => typeof value === 'string' && value.trim().length > 0;
+
+function assertAuthoredSemanticReview(review, candidate, glossDigest) {
+  const label = `${candidate.lemma} semantic review`;
+  assert.equal(review.lemma, candidate.lemma, `${label} is bound to its lemma`);
+  assert.equal(review.gloss_sha256, glossDigest, `${label} must bind the exact reviewed gloss`);
+  assert.equal(review.gloss_judgment, 'fit', `${label} gloss judgment must be an explicit fit`);
+  assert.equal(review.boundary_action, 'retain', `${label} must explicitly retain a single sense`);
+  assert.equal(review.boundary_classification, 'atomic', `${label} must classify the sense boundary`);
+  for (const field of [
+    'boundary_rationale', 'semantic_rationale', 'no_relation_rationale',
+    'decision_rationale', 'frame_rationale',
+  ]) assert.ok(nonEmpty(review[field]), `${label} requires authored ${field}`);
+  assert.ok(Array.isArray(review.frames) && review.frames.length > 0, `${label} requires authored frames`);
+  for (const frame of review.frames) {
+    assert.ok(nonEmpty(frame.sentence_frame) && frame.sentence_frame.includes(candidate.lemma),
+      `${label} frames must use the lemma`);
+    assert.ok(RELATION_TYPES.includes(frame.relation_type), `${label} frame needs a supported relation type`);
+    assert.ok(nonEmpty(frame.target_class), `${label} frame needs a route target class`);
+  }
+  if (findAmbiguousParticleFragments(candidate.senses[0].gloss).length > 0) {
+    assert.ok(nonEmpty(review.topic_rationale), `${label} requires an authored topic rationale`);
+  }
+}
+
+// The builder only binds an independently authored semantic review to the
+// canonical record. It never supplies judgment fields itself; missing or
+// mismatched authored review input fails closed.
+export function makeSemanticDecision(row, candidate, rank, passId, sourceId, authoredReview) {
   const sense = candidate.senses[0];
+  assert.ok(authoredReview, `${candidate.lemma}: admitted candidate requires an independently authored semantic review`);
   const domainAxes = inspectWriterDomainEvidence(sense.gloss).axes;
-  const boundaryDecision = domainAxes.length > 1 ? 'coordinated' : 'atomic';
   const glossDigest = sha256Json(sense.gloss);
+  assertAuthoredSemanticReview(authoredReview, candidate, glossDigest);
+  const boundaryDecision = domainAxes.length > 1 ? 'coordinated' : 'atomic';
   const topicFragments = findAmbiguousParticleFragments(sense.gloss);
   const topicAnalysisFor = (fragment) => ({
     status: 'pass',
@@ -203,7 +268,7 @@ function makeSemanticDecision(row, candidate, rank, passId, sourceId) {
     token_index: fragment.token_index,
     gloss_sha256: glossDigest,
     decision_source_id: sourceId,
-    rationale: `${candidate.id} ${sense.id}: the detected particle span is a predicate modifier in the authored gloss, not a noun-topic fragment.`,
+    rationale: authoredReview.topic_rationale,
   });
   const connectorObservations = inspectGlossConnectors(sense.gloss).sort((left, right) => left.index - right.index);
   let frameStart = 0;
@@ -230,15 +295,15 @@ function makeSemanticDecision(row, candidate, rank, passId, sourceId) {
   if (frameSpans.length === 0) frameSpans.push({ gloss_excerpt: sense.gloss, gloss_start: 0 });
   const senseReview = {
     sense_id: sense.id,
-    boundary_action: 'retain',
-    boundary_classification: 'atomic',
+    boundary_action: authoredReview.boundary_action,
+    boundary_classification: authoredReview.boundary_classification,
     boundary_decision: boundaryDecision,
-    boundary_rationale: `${row.inventory_id} ${candidate.id} ${sense.id}: the reviewed gloss expresses one bounded Typewriter meaning. Reviewed gloss SHA-256 ${glossDigest}.`,
-    semantic_rationale: `${candidate.id} ${sense.id}: the concise Typewriter-authored gloss fits the separately reviewed lexical identity and bounded observed use.`,
+    boundary_rationale: `${authoredReview.boundary_rationale} Reviewed gloss SHA-256 ${glossDigest}.`,
+    semantic_rationale: authoredReview.semantic_rationale,
     relation_decision: 'no-relations',
     relation_count: 0,
     relation_ids: [],
-    no_relation_rationale: `${row.inventory_id} ${candidate.id}-${sense.id}: this bounded review does not separately establish a candidate-specific relation; zero relations are valid.`,
+    no_relation_rationale: authoredReview.no_relation_rationale,
     ...(topicFragments.length > 0 ? {
       review_basis: {
         ...(topicFragments.length === 1
@@ -251,18 +316,16 @@ function makeSemanticDecision(row, candidate, rank, passId, sourceId) {
       sense_id: sense.id,
       gloss_sha256: glossDigest,
       decision_source_id: sourceId,
-      decision: 'retain',
+      decision: authoredReview.boundary_action,
       frame_observations: frameSpans.map((span, index) => ({
         ...span,
-        sentence_frame: index === 0
-          ? `“${candidate.lemma}”라는 말을 고르자 문장의 결이 달라졌다.`
-          : `“${candidate.lemma}”라는 표현의 자리를 바꾸어 보며 문장의 의미를 살폈다.`,
+        sentence_frame: authoredReview.frames[index].sentence_frame,
         writer_route: {
-          relation_type: 'near',
-          target_class: `${candidate.lemma} in its reviewed core lexical meaning`,
+          relation_type: authoredReview.frames[index].relation_type,
+          target_class: authoredReview.frames[index].target_class,
         },
       })),
-      rationale: `${candidate.id} ${sense.id} exact-gloss diagnostic frames preserve the same reviewed meaning; route labels are enrichment metadata, not admission evidence.`,
+      rationale: authoredReview.frame_rationale,
     },
   };
   const decision = {
@@ -271,9 +334,9 @@ function makeSemanticDecision(row, candidate, rank, passId, sourceId) {
     candidate_record_sha256: sha256Json(candidate),
     decision: 'included',
     rank,
-    decision_rationale: `${row.inventory_id} ${candidate.id}: separately reviewed source-bound identity, POS, gloss, and one-sense boundary support ordinary shared admission. Corpus frequency and writer-use notes do not authorize admission.`,
+    decision_rationale: authoredReview.decision_rationale,
     review_pass_id: passId,
-    gloss_judgment: 'fit',
+    gloss_judgment: authoredReview.gloss_judgment,
     sense_reviews: [senseReview],
     selection_axis: row.editorial_judgment.writer_use_axis,
   };
@@ -295,17 +358,18 @@ function requireArgs(args) {
     return [match[1], match[2]];
   }));
   for (const key of ['batch-id', 'analysis-directory', 'authored-decisions']) {
-    if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=data/reference/... --authored-decisions=data/batches/...json`);
+    if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=data/reference/... --authored-decisions=data/batches/...json [--semantic-reviews=...json]`);
   }
   return { ...values, 'review-only': values['review-only'] === 'true' };
 }
 
-export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, authoredDecisionsPath, reviewOnly = false }) {
+export async function buildIssue223CorpusBatch({
+  batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewOnly = false,
+}) {
   const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
-  const batchStem = batchId.replace(/-2026[0-9]{4}$/u, '');
-  assert.match(batchId, /^issue-223-m9-e-corpus-batch-[0-9]{2}-20261001$/u);
-  if (reviewOnly) assert.match(batchId, /corpus-batch-05-20261001$/u);
+  const { ordinal: batchOrdinal, ordinalText: batchNumber, date: batchDate, stem: batchStem } = parseIssue223BatchId(batchId);
+  if (reviewOnly) assert.equal(batchOrdinal, 5, 'only B05 is an owner-directed review-only batch');
   assert.equal(path.resolve(ROOT, analysisDirectory), absoluteAnalysis);
   const inventoryPath = path.join(absoluteAnalysis, 'candidate-inventory.json');
   const evidencePath = path.join(absoluteAnalysis, 'candidate-evidence.json');
@@ -324,10 +388,7 @@ export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, aut
   assert.equal(inventory.selection.selected_candidate_count, inventory.candidates.length);
   assert.equal(evidence.candidates.length, inventory.candidates.length);
 
-  const reviewFiles = (await readdir(path.join(ROOT, 'data/batches')))
-    .filter((name) => /^issue-223-m9-e-corpus-batch-[0-9]{2}-candidate-review\.json$/u.test(name)
-      && name !== `${batchStem}-candidate-review.json`)
-    .sort();
+  const reviewFiles = selectPredecessorReviewFiles(await readdir(path.join(ROOT, 'data/batches')), batchId);
   const previous = await Promise.all(reviewFiles.map(async (name) => (
     JSON.parse(await readFile(path.join(ROOT, 'data/batches', name), 'utf8'))
   )));
@@ -415,7 +476,7 @@ export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, aut
   const generationPassId = authored.generation_pass_id;
   const candidatePassId = authored.candidate_review_pass_id;
   const semanticPassId = authored.semantic_verification_pass_id;
-  const candidateSourceId = `issue-223-m9-e-corpus-candidate-review-20261001-batch-${batchId.match(/batch-([0-9]{2})/u)[1]}-r1`;
+  const candidateSourceId = `issue-223-m9-e-corpus-candidate-review-${batchDate}-batch-${batchNumber}-r1`;
   const review = {
     schema_version: '1',
     contract_version: 'm9-corpus-candidate-review-v1',
@@ -495,13 +556,20 @@ export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, aut
     record_type: 'entry',
     pos: row.morphology_proposal.pos,
   }));
-  const semanticSourceId = `${batchId}-semantic-decisions-20261001-r1`;
+  const semanticSourceId = `${batchId}-semantic-decisions-${batchDate}-r1`;
+  assert.ok(semanticReviewsPath, 'admitted records require --semantic-reviews: the builder cannot mint semantic pass evidence');
+  const semanticInput = JSON.parse(await readFile(path.resolve(ROOT, semanticReviewsPath), 'utf8'));
+  assert.ok(Array.isArray(semanticInput.reviews), 'semantic review input needs a reviews array');
+  const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
+  assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
+  assert.equal(semanticReviewByLemma.size, admittedRows.length, 'semantic review input must cover exactly the admitted records');
   const semanticDecisions = admittedRows.map((row, index) => makeSemanticDecision(
     row,
     records[index],
     index + 1,
     semanticPassId,
     semanticSourceId,
+    semanticReviewByLemma.get(row.morphology_proposal.lemma),
   ));
   const semanticSource = {
     schema_version: '1',
@@ -591,7 +659,7 @@ export async function buildIssue223CorpusBatch({ batchId, analysisDirectory, aut
       parentIssue: 218,
       generationPassId,
       verificationPassId: semanticPassId,
-      correctionPassId: `issue-223-m9-e-corpus-batch-${batchId.match(/batch-([0-9]{2})/u)[1]}-correction-20261001-r1`,
+      correctionPassId: `issue-223-m9-e-corpus-batch-${batchNumber}-correction-${batchDate}-r1`,
       semanticReviewVersion: 'issue-223-authored-semantic-review-v1',
       selectionPolicy: 'shared-authored-axis-coverage-selection-v6',
       selectionCount: admittedRows.length,
@@ -691,6 +759,7 @@ if (isMain) {
     batchId: args['batch-id'],
     analysisDirectory: args['analysis-directory'],
     authoredDecisionsPath: args['authored-decisions'],
+    semanticReviewsPath: args['semantic-reviews'],
     reviewOnly: args['review-only'],
   }).then((summary) => {
     console.log(JSON.stringify(summary, null, 2));
