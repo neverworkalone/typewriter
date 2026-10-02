@@ -135,7 +135,7 @@ test('a worker-reported duration amends a closed span without rewriting the ledg
   try {
     const id = await beginSpan(BATCH, { stage: 'review', worker: 'reviewer-1' }, directory);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    await endSpan(BATCH, id, { reportedDurationMs: '5', reportedDurationSource: 'test-source' }, directory);
+    await endSpan(BATCH, id, { reportedDurationMs: '5', reportedDurationSource: 'agent-task-notification-usage.duration_ms', reportedDurationRef: 'task-abc123' }, directory);
     const [reported] = pairSpans(await readLedger(BATCH, directory)).spans;
     assert.equal(reported.clock, 'reported');
     assert.equal(reported.duration_ms, 5);
@@ -145,7 +145,7 @@ test('a worker-reported duration amends a closed span without rewriting the ledg
     const late = await beginSpan(BATCH, { stage: 'review' }, directory);
     await endSpan(BATCH, late, {}, directory);
     const before = await readFile(ledgerPath(BATCH, directory), 'utf8');
-    await amendSpan(BATCH, late, { reportedDurationMs: '3', reportedDurationSource: 'test-source' }, directory);
+    await amendSpan(BATCH, late, { reportedDurationMs: '3', reportedDurationSource: 'agent-task-notification-usage.duration_ms', reportedDurationRef: 'task-abc123' }, directory);
     const after = await readFile(ledgerPath(BATCH, directory), 'utf8');
     assert.ok(after.startsWith(before), 'the ledger is append-only');
     const spans = pairSpans(await readLedger(BATCH, directory)).spans;
@@ -180,13 +180,18 @@ test('a reported duration needs a verifiable source and unsourced durations are 
     const id = await beginSpan(BATCH, { stage: 'review' }, directory);
     await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000' }, directory), /verifiable --reported-duration-source/u);
     await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000', reportedDurationSource: 'unavailable' }, directory), /verifiable/u);
+    for (const label of ['verified', 'test-source', 'manual', 'agent-task-notification-usage']) {
+      await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '999999', reportedDurationSource: label, reportedDurationRef: 'task-abc123' }, directory), /arbitrary labels are rejected/u, label);
+    }
+    await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000', reportedDurationSource: 'agent-task-notification-usage.duration_ms' }, directory), /--reported-duration-ref/u);
+    await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000', reportedDurationSource: 'agent-task-notification-usage.duration_ms', reportedDurationRef: 'x y' }, directory), /--reported-duration-ref/u);
     await endSpan(BATCH, id, {}, directory);
     await assert.rejects(() => amendSpan(BATCH, id, { reportedDurationMs: '5000' }, directory), /verifiable/u);
     // A legacy ledger line with an unsourced reported duration is ignored by aggregation.
     const legacy = await beginSpan(BATCH, { stage: 'review' }, directory);
     await endSpan(BATCH, legacy, {}, directory);
     const { appendFile } = await import('node:fs/promises');
-    await appendFile(ledgerPath(BATCH, directory), `${JSON.stringify({ v: 1, event: 'amend', id: legacy, reported_duration_ms: 999999, reported_duration_source: 'unavailable' })}\n`);
+    await appendFile(ledgerPath(BATCH, directory), `${JSON.stringify({ v: 1, event: 'amend', id: legacy, reported_duration_ms: 999999, reported_duration_source: 'verified' })}\n`);
     const { spans } = pairSpans(await readLedger(BATCH, directory));
     assert.ok(spans.every((span) => span.clock !== 'reported'));
   } finally {

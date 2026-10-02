@@ -132,7 +132,7 @@ const REVIEW_CLAIM_PATTERN = new RegExp([
   String.raw`\b(?:another|other|different|separate|second|new|fresh|outside|external)\s+(?:claude|model|agent|session|ai|llm|instance|team|editor|expert|person)\b`,
   String.raw`\b(?:reviewed|checked|verified|approved|audited|validated|signed[- ]off)\s+(?:by|with)\s+(?!the producing (?:AI )?agent\b)`,
   // Korean, with or without particles.
-  String.raw`독립\s*(?:적으로)?\s*(?:검|리뷰)|독립적|(?<![가-힣])(?:사람|인간)(?:이|은|가|의|에\s*의해|에게)?\s*(?:검|리뷰|확인|승인)`,
+  String.raw`독립\s*(?:적으로)?\s*(?:검|리뷰)|독립적|(?<![가-힣])(?:사람|인간)(?:이|은|가|의|들이|에\s*의해|에게)?\s*(?:직접\s*)?(?:검|리뷰|확인|승인|판단|판정|판별|결정|평가|심사|채택|선정|선별|보류|통과|감수|수정|교정|작성)`,
   String.raw`별도\s*(?:의\s*)?(?:검|리뷰|에이전트|모델|세션)|검수자|리뷰어|제\s*3\s*자|제삼자`,
   String.raw`(?<![가-힣])(?:외부|다른|타|추가|두\s*번째)\s*(?:의\s*)?(?:편집자|전문가|검토자|감수자|세션|에이전트|모델|클로드|팀)`,
   String.raw`(?<![가-힣])(?:편집자|전문가|감수자?|검토자|동료|팀)(?:들)?(?:이|가|께서|에게서)?\s*(?:직접\s*)?(?:검토|검수|확인|승인|리뷰)`,

@@ -14,7 +14,7 @@
  *   node scripts/batch/stage-timing.mjs run --batch=ID --stage=ci-fast -- npm run ci:fast
  *   node scripts/batch/stage-timing.mjs begin --batch=ID --stage=authoring --worker=author-1
  *   node scripts/batch/stage-timing.mjs end --batch=ID --id=SPAN [--outcome=ok]
- *   node scripts/batch/stage-timing.mjs amend --batch=ID --id=SPAN --reported-duration-ms=N --reported-duration-source=LABEL
+ *   node scripts/batch/stage-timing.mjs amend --batch=ID --id=SPAN --reported-duration-ms=N --reported-duration-source=SOURCE --reported-duration-ref=ID
  *   node scripts/batch/stage-timing.mjs publish --batch=ID   (snapshot the ignored working ledger into tracked data/timing/)
  *   node scripts/batch/stage-timing.mjs aggregate --batch=ID [--format=json|markdown]
  */
@@ -147,15 +147,24 @@ export async function beginSpan(batchId, options, directory = TIMING_DIRECTORY) 
   return id;
 }
 
+// External durations are accepted only from these machine-reporting channels,
+// each bound to the identifier of the notification or run that reported it.
+const VERIFIABLE_DURATION_SOURCES = ['agent-task-notification-usage.duration_ms', 'github-actions-run.duration'];
+const DURATION_REFERENCE_PATTERN = /^[A-Za-z0-9._:-]{6,64}$/u;
+
 function reportedDuration(options) {
   if (options.reportedDurationMs === undefined) return {};
   const value = Number(options.reportedDurationMs);
   if (!Number.isFinite(value) || value <= 0) fail('--reported-duration-ms must be a positive number', 'INVALID_DURATION');
   const source = optionalText(options.reportedDurationSource, '--reported-duration-source');
-  if (source === undefined || source === 'unavailable') {
-    fail('--reported-duration-ms needs a verifiable --reported-duration-source (not "unavailable")', 'UNVERIFIED_DURATION');
+  if (!VERIFIABLE_DURATION_SOURCES.includes(source)) {
+    fail(`--reported-duration-ms needs a verifiable --reported-duration-source (${VERIFIABLE_DURATION_SOURCES.join(' | ')}); arbitrary labels are rejected`, 'UNVERIFIED_DURATION');
   }
-  return { reported_duration_ms: value, reported_duration_source: source };
+  const reference = optionalText(options.reportedDurationRef, '--reported-duration-ref');
+  if (!reference || !DURATION_REFERENCE_PATTERN.test(reference)) {
+    fail('--reported-duration-ms needs --reported-duration-ref: the notification/task/run identifier (letters, digits, ._:-, 6 to 64 characters) that reported it', 'UNVERIFIED_DURATION');
+  }
+  return { reported_duration_ms: value, reported_duration_source: source, reported_duration_ref: reference };
 }
 
 /**
@@ -243,10 +252,11 @@ export async function readLedger(batchId, directory = TIMING_DIRECTORY) {
 /** Prefer the worker's own reported run time over the observer's end timestamp. */
 function applyReportedDuration(span, source) {
   // A reported duration without a named external source is not a measurement.
-  if (!source.reported_duration_source || source.reported_duration_source === 'unavailable') return;
+  if (!VERIFIABLE_DURATION_SOURCES.includes(source.reported_duration_source)) return;
   span.recorded_end_ms = span.recorded_end_ms ?? span.end_ms;
   span.reported_duration_ms = source.reported_duration_ms;
   span.reported_duration_source = source.reported_duration_source;
+  if (source.reported_duration_ref !== undefined) span.reported_duration_ref = source.reported_duration_ref;
   span.clock = 'reported';
   span.duration_ms = source.reported_duration_ms;
   span.end_ms = span.start_ms + source.reported_duration_ms;
