@@ -2647,6 +2647,7 @@
           "$.reviewed_proposals.*": [
             "disposition",
             "gloss_sha256",
+            "hold_basis",
             "lemma",
             "ordinal"
           ],
@@ -2666,6 +2667,7 @@
           "$.reviewed_proposals.*": {
             "disposition": "string",
             "gloss_sha256": "string",
+            "hold_basis": "string",
             "lemma": "string",
             "ordinal": "integer"
           },
@@ -2771,6 +2773,7 @@
             "semantic_rationale",
             "sense_boundary_check",
             "single_sense_boundary_status",
+            "topic_analyses",
             "topic_analysis"
           ],
           "$.reviews.*.frames.*": [
@@ -2779,9 +2782,26 @@
             "target_class"
           ],
           "$.reviews.*.topic_analysis": [
+            "evidence_basis",
+            "particle",
+            "predicate",
             "rationale",
             "state",
-            "status"
+            "status",
+            "token_index",
+            "topic",
+            "topic_pos"
+          ],
+          "$.reviews.*.topic_analyses.*": [
+            "evidence_basis",
+            "particle",
+            "predicate",
+            "rationale",
+            "state",
+            "status",
+            "token_index",
+            "topic",
+            "topic_pos"
           ]
         },
         "nested_field_types": {
@@ -2834,6 +2854,7 @@
             "semantic_rationale": "string",
             "sense_boundary_check": "string",
             "single_sense_boundary_status": "string",
+            "topic_analyses": "array<object>",
             "topic_analysis": "object"
           },
           "$.reviews.*.frames.*": {
@@ -2842,9 +2863,26 @@
             "target_class": "string"
           },
           "$.reviews.*.topic_analysis": {
+            "evidence_basis": "string",
+            "particle": "string",
+            "predicate": "string",
             "rationale": "string",
             "state": "string",
-            "status": "string"
+            "status": "string",
+            "token_index": "integer",
+            "topic": "string",
+            "topic_pos": "string"
+          },
+          "$.reviews.*.topic_analyses.*": {
+            "evidence_basis": "string",
+            "particle": "string",
+            "predicate": "string",
+            "rationale": "string",
+            "state": "string",
+            "status": "string",
+            "token_index": "integer",
+            "topic": "string",
+            "topic_pos": "string"
           }
         }
       },
