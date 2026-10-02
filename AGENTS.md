@@ -131,6 +131,20 @@ dictionary-grade precision; `near`, `mood`, `scene`, `sensory`, `action`, and
 enrichment remains independent of lexical admission. See
 [`docs/editorial-model.md`](docs/editorial-model.md) for the full contract.
 
+#### Editorial review independence
+
+Independent editorial review means independently authored,
+source-bound judgments, not multiple subagents.
+
+Spawning separate subagents does not itself establish
+independent review or trust authority.
+
+A producer's self-check must not be represented as
+independent approval. Preserve the required trust boundary.
+
+Use additional agents only when necessary for the task,
+not merely to satisfy the word "independent".
+
 When working before the scale milestones:
 
 - do not optimize architecture for 100,000+ entries without demonstrated need;
