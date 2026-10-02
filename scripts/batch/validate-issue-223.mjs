@@ -22,7 +22,7 @@ import {
   makeSemanticDecision,
   parseIssue223BatchId,
 } from './build-issue-223-corpus-batch.mjs';
-import { assertSelfCheckBinding, assertReviewContractForBatch,
+import { assertSelfCheckBinding, assertReviewContractForBatch, assertDecisionClaimsTruthful,
   assertSelfCheckEnvelope, assertSourceClaimsTruthful, isSelfCheckInput } from './semantic-self-check.mjs';
 import { assertInputBoundToRunRecord, assertInputDerivedFromRaw } from './reviewer-raw-outputs.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
@@ -165,6 +165,7 @@ export function validateSemanticReviewInputBinding({
   assertSourceClaimsTruthful(semanticSource, { selfCheck });
   if (selfCheck) {
     assertSelfCheckEnvelope(input, { ordinal, candidateAuthor });
+    assertDecisionClaimsTruthful({ reviews: input.reviews, decisions: semanticSource.decisions });
     // No separate review run took place, so no run record or staged reviewer
     // output may exist to suggest one.
     assert.equal(runRecordBytes ?? null, null, `${batchId} a self-check batch must not carry a reviewer run record`);

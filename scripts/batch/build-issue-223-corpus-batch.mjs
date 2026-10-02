@@ -25,6 +25,7 @@ import {
 } from './reviewer-raw-outputs.mjs';
 import {
   assertSelfCheckBinding,
+  assertDecisionClaimsTruthful,
   assertReviewContractForBatch,
   assertSelfCheckEnvelope,
   isSelfCheckInput,
@@ -842,6 +843,7 @@ export async function buildIssue223CorpusBatch({
   assertReviewContractForBatch(batchOrdinal, selfCheck);
   if (selfCheck) {
     assertSelfCheckEnvelope(semanticInput, { ordinal: batchOrdinal, candidateAuthor });
+    assertDecisionClaimsTruthful({ reviews: semanticInput.reviews, decisions: [] });
   } else {
     assertIndependentSemanticReviewer({
       reviewer: semanticInput.reviewer,

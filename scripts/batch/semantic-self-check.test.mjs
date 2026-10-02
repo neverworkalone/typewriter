@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  assertDecisionClaimsTruthful,
   assertLegacyReviewWorkflowAllowed,
   assertReviewContractForBatch,
   assertSelfCheckBinding,
@@ -138,6 +139,27 @@ test('the canonical source of a self-check batch never claims independent or hum
   // Legacy independent-review sources must not carry the self-check flags.
   assert.throws(() => assertSourceClaimsTruthful(honest(), { selfCheck: false }));
   assertSourceClaimsTruthful({ review: {}, provenance: {}, selection: {} }, { selfCheck: false });
+});
+
+test('per-candidate rationales and generated decisions never claim independent, separate, or human review', () => {
+  const clean = () => ({
+    reviews: [{ lemma: 'a', semantic_rationale: '풀이는 표제어의 검토된 핵심 뜻과 맞는다.', boundary_rationale: 'atomic sense boundary retained.' }],
+    decisions: [{ decision_rationale: '정체성·품사·풀이·의미 경계를 후보 근거에서 검토했다.', sense_reviews: [{ semantic_rationale: 'gloss fits the headword.' }] }],
+  });
+  assertDecisionClaimsTruthful(clean());
+  const bad = {
+    'English human claim in a review rationale': (x) => { x.reviews[0].semantic_rationale = 'human reviewed this gloss'; },
+    'independent claim in a boundary rationale': (x) => { x.reviews[0].boundary_rationale = 'independently reviewed boundary'; },
+    'separate claim in a decision rationale': (x) => { x.decisions[0].decision_rationale = 'separately verified'; },
+    'nested sense review claim': (x) => { x.decisions[0].sense_reviews[0].semantic_rationale = 'an independent reviewer approved'; },
+    'Korean independent review claim': (x) => { x.reviews[0].semantic_rationale = '독립 검토를 마쳤다.'; },
+    'Korean human review claim': (x) => { x.decisions[0].decision_rationale = '사람이 검토하여 승인했다.'; },
+  };
+  for (const [name, mutate] of Object.entries(bad)) {
+    const value = clean();
+    mutate(value);
+    assert.throws(() => assertDecisionClaimsTruthful(value), /must not claim/u, name);
+  }
 });
 
 test('the shared builder/validator gate fails closed on the review contract by batch', () => {

@@ -122,6 +122,27 @@ export function assertSourceClaimsTruthful(source, { selfCheck }) {
   }
 }
 
+const DECISION_CLAIM_PATTERN = /independent|separately|\bhuman\b|\breviewer\b|독립\s*(?:적으로)?\s*검(?:토|수)|독립적|사람이?\s*검(?:토|수)|인간\s*검(?:토|수)|별도\s*(?:의\s*)?(?:검토|검수|리뷰)|검수자|리뷰어/iu;
+
+/**
+ * Per-candidate rationales are free text copied into the canonical decisions
+ * (and kept in the self-check input); none may claim independent, separate, or
+ * human review. Every string under `reviews` and `decisions` is scanned.
+ */
+export function assertDecisionClaimsTruthful({ reviews, decisions }) {
+  const visit = (value, where) => {
+    if (typeof value === 'string') {
+      assert.ok(!DECISION_CLAIM_PATTERN.test(value), `a self-check batch must not claim independent, separate, or human review in ${where}: ${value.slice(0, 80)}`);
+    } else if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, `${where}[${index}]`));
+    } else if (value && typeof value === 'object') {
+      for (const [key, item] of Object.entries(value)) visit(item, `${where}.${key}`);
+    }
+  };
+  visit(reviews, 'reviews');
+  visit(decisions, 'decisions');
+}
+
 /**
  * Shared fail-closed gate for the builder and the validator: from the first
  * self-check batch, only self-check input is accepted; earlier batches keep
