@@ -80,6 +80,72 @@ Wall 2,131.9 s; active 1,504.8 s; summed worker 3,185.0 s; unattributed 627.1 s.
 
 The 2-character count was the measured bottleneck that the sidecar removed: B10 discovery was 690.8 s; B11/B12 with the sidecar were 167.7 s / 162.2 s. The batches contain different candidate mixes, so the cross-batch discovery ratio (about 4.1×) is indicative; only the 2-character comparison above is exact. The remaining discovery time is broken down in the re-measurement below: it is dominated by 2-character representative-context search, not FTS or Kiwi.
 
+## Complete per-batch stage tables (required format)
+
+Generated from the tracked ledgers in `data/timing/` (start/end are the first start and last end across that stage's spans, UTC; "Active" is the interval union; "Summed worker" counts overlap). Every value without a machine-observed source is `unavailable`; nothing is estimated. "Declared wait" is wait recorded as an explicit ledger event: none was declared in any batch, so gaps appear only as the unattributed row. Work counts for the 2-character, 3+-character and sidecar rows come from each original run's own counters; their time is `unavailable` because the original runs were not instrumented below the stage level (see the re-measurement section for representative per-path times).
+
+#### B10 (wall 2131.9 s, active union 1504.8 s)
+
+| Required stage | Start → end (UTC, first→last span) | Summed worker s | Active s | Timing source | Spans / retries / failures | Declared wait | Work count |
+| --- | --- | ---: | ---: | --- | --- | --- | --- |
+| 1. Discovery, dedup, filter | 07:23:44 → 07:36:04 | 693.6 | 693.6 | monotonic | 3 spans / 2 retry / 2 failed | none declared | 500 candidates selected |
+| 2a. Evidence: 1–2-char exact lookup | unavailable | unavailable | unavailable | not instrumented in original run | unavailable | unavailable | count 2-char 147 (1-char 0); search 1–2-char 286 |
+| 2b. Evidence: 3+-char FTS lookup | unavailable | unavailable | unavailable | not instrumented in original run | unavailable | unavailable | count 353; search 1,211 |
+| 2c. Sidecar cold build / warm reuse | unavailable (cold build measured once separately: 92.6 s) | unavailable | unavailable | not used (exact fallback) | unavailable | unavailable | unavailable |
+| 2d. Evidence packet generation | 07:36:30 → 07:36:31 | 0.1 | 0.1 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 500 candidates |
+| 3. Candidate judgment and gloss authoring | 07:37:39 → 07:51:26 | 732.9 | 185.3 | monotonic, worker-reported | 8 spans / 2 retry / 0 failed | none declared | 500 candidates |
+| 4. Semantic QA / self-check (incl. rework rounds) | 07:41:32 → 07:51:49 | 1549.4 | 416.7 | monotonic, worker-reported | 15 spans / 7 retry / 3 failed | none declared | 500 candidates checked; 141 held |
+| 5. Admission / artifact generation | 07:49:59 → 07:51:49 | 1.1 | 1.1 | monotonic | 2 spans / 1 retry / 1 failed | none declared | 359 admitted |
+| 6. M6-2/M6-3, pins, inventory, report regeneration | 07:52:53 → 07:57:39 | 118.0 | 118.0 | monotonic | 14 spans / 1 retry / 5 failed | none declared | unavailable (files not counted) |
+| 7. Batch validators | 07:51:53 → 07:53:39 | 40.1 | 40.1 | monotonic | 2 spans / 1 retry / 1 failed | none declared | 1 batch validated per attempt |
+| 8. `ci:fast` (per batch) | 07:53:43 → 07:59:16 | 49.8 | 49.8 | monotonic | 3 spans / 2 retry / 2 failed | none declared | ledger-recorded runs: 3 |
+| 9. `ci:normal` (checkpoint) | unavailable (no span) | unavailable | unavailable | unavailable | unavailable | unavailable | none recorded (covered by checkpoint run in B12) |
+| Unattributed gap (no span) | n/a | n/a | n/a | wall − active | n/a | n/a | 627.1 s |
+
+Query counts (original run): count 2-char 147, 3+ 353; search 1–2-char 286, 3+ 1,211.
+
+#### B11 (wall 18665.9 s, active union unavailable s)
+
+| Required stage | Start → end (UTC, first→last span) | Summed worker s | Active s | Timing source | Spans / retries / failures | Declared wait | Work count |
+| --- | --- | ---: | ---: | --- | --- | --- | --- |
+| 1. Discovery, dedup, filter | 08:21:21 → 08:24:08 | 167.7 | 167.7 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 500 candidates selected |
+| 2a. Evidence: 1–2-char exact lookup | unavailable | unavailable | unavailable | not instrumented in original run | unavailable | unavailable | count 2-char 127 (1-char 0); search 1–2-char 295 |
+| 2b. Evidence: 3+-char FTS lookup | unavailable | unavailable | unavailable | not instrumented in original run | unavailable | unavailable | count 373; search 1,192 |
+| 2c. Sidecar cold build / warm reuse | unavailable (cold build measured once separately: 92.6 s) | unavailable | unavailable | warm reuse; per-batch time unavailable | unavailable | unavailable | unavailable |
+| 2d. Evidence packet generation | 08:24:08 → 08:24:08 | 0.1 | 0.1 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 500 candidates |
+| 3. Candidate judgment and gloss authoring | 08:24:13 → 08:39:20 | 966.4 | 216.2 | monotonic, worker-reported | 6 spans / 0 retry / 0 failed | none declared | 500 candidates |
+| 4. Semantic QA / self-check (incl. rework rounds) | 08:39:20 → 13:29:14 (spans cross an owner-decision pause and a session handover) | 17389.2 (pause-contaminated) | unavailable | monotonic, wall | 3 spans / 0 retry / 0 failed | unavailable (pause not separately declared) | 500 candidates checked; 106 held; rework rounds unavailable |
+| 5. Admission / artifact generation | 13:29:24 → 13:29:25 | 0.9 | 0.9 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 394 admitted |
+| 6. M6-2/M6-3, pins, inventory, report regeneration | 13:29:49 → 13:31:54 | 65.8 | 65.8 | monotonic | 7 spans / 0 retry / 0 failed | none declared | unavailable (files not counted) |
+| 7. Batch validators | 13:29:45 → 13:30:42 | 46.4 | 46.5 | monotonic | 2 spans / 1 retry / 1 failed | none declared | 1 batch validated per attempt |
+| 8. `ci:fast` (per batch) | 13:32:05 → 13:32:26 | 21.1 | 21.1 | monotonic | 1 spans / 0 retry / 0 failed | none declared | ledger-recorded runs: 1 |
+| 9. `ci:normal` (checkpoint) | unavailable (no span) | unavailable | unavailable | unavailable | unavailable | unavailable | none recorded (covered by checkpoint run in B12) |
+| Unattributed gap (no span) | n/a | n/a | n/a | wall − active | n/a | n/a | 758.4 s |
+
+Query counts (original run): count 2-char 127, 3+ 373; search 1–2-char 295, 3+ 1,192.
+
+#### B12 (wall 1358.3 s, active union 521.7 s)
+
+| Required stage | Start → end (UTC, first→last span) | Summed worker s | Active s | Timing source | Spans / retries / failures | Declared wait | Work count |
+| --- | --- | ---: | ---: | --- | --- | --- | --- |
+| 1. Discovery, dedup, filter | 13:32:36 → 13:35:18 | 162.2 | 162.2 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 350 candidates selected |
+| 2a. Evidence: 1–2-char exact lookup | unavailable | unavailable | unavailable | not instrumented in original run | unavailable | unavailable | count 1-char 1, 2-char 77; search 1–2-char 187 |
+| 2b. Evidence: 3+-char FTS lookup | unavailable | unavailable | unavailable | not instrumented in original run | unavailable | unavailable | count 272; search 858 |
+| 2c. Sidecar cold build / warm reuse | unavailable (cold build measured once separately: 92.6 s) | unavailable | unavailable | warm reuse; per-batch time unavailable | unavailable | unavailable | unavailable |
+| 2d. Evidence packet generation | 13:35:18 → 13:35:18 | 0.1 | 0.1 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 350 candidates |
+| 3+4. Main-agent authoring and self-check (not spanned) | unavailable | unavailable | unavailable | not measured | unavailable | unavailable | 350 candidates; 70 held; rework rounds unavailable; upper bound = unattributed gap below |
+| 3h. Authoring helper span only (merge-authors) | 13:47:55 → 13:47:55 | 0.1 | 0.1 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 350 candidates (main-agent authoring not spanned) |
+| 4h. Self-check helper spans only (packets, assemble) | 13:47:55 → 13:48:51 | 0.3 | 0.4 | monotonic | 3 spans / 1 retry / 1 failed | none declared | 350 candidates checked; 70 held; rework rounds unavailable |
+| 5. Admission / artifact generation | 13:48:51 → 13:48:52 | 0.8 | 0.8 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 280 admitted |
+| 6. M6-2/M6-3, pins, inventory, report regeneration | 13:48:59 → 13:51:07 | 70.1 | 70.1 | monotonic | 7 spans / 0 retry / 0 failed | none declared | unavailable (files not counted) |
+| 7. Batch validators | 13:49:05 → 13:49:57 | 51.7 | 51.7 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 1 batch validated per attempt |
+| 8. `ci:fast` (per batch) | 13:51:13 → 13:51:35 | 22.3 | 22.3 | monotonic | 1 spans / 0 retry / 0 failed | none declared | ledger-recorded runs: 1 |
+| 9. `ci:normal` (checkpoint) | 13:51:40 → 13:55:14 | 213.9 | 213.9 | monotonic | 1 spans / 0 retry / 0 failed | none declared | 1 recorded run |
+| Unattributed gap (no span) | n/a | n/a | n/a | wall − active | n/a | n/a | 836.6 s |
+
+Query counts (original run): count 1-char 1, 2-char 77, 3+ 272; search 1–2-char 187, 3+ 858.
+
+
 ## Discovery sub-step re-measurement (lookup paths, same index and sidecar)
 
 ### Operation counts of the original B10–B12 runs
@@ -92,7 +158,7 @@ The `Spans` columns in the stage tables above are timing spans/attempts, not wor
 | B11 | 500 | 0 | 127 | 373 | 295 | 1,192 | 1,487 |
 | B12 | 350 | 1 | 77 | 272 | 187 | 858 | 1,045 |
 
-Evidence and authoring/self-check work units (candidates reviewed, glosses authored, rework rounds) are counted by candidate and hold totals above; per-round rework counts for B11/B12 authoring and self-check are `unavailable`. This report therefore does not present the per-batch measurement format as complete.
+Authoring and self-check work units are the candidate and hold totals in the complete per-batch tables above; per-round rework counts for B11/B12 authoring and self-check are `unavailable`. Every required stage is listed per batch with a source or an explicit `unavailable`; the unavailable values are measurement gaps in the original runs, not omissions, and are not estimated here.
 
 The original B10–B12 runs were not instrumented below the stage level, so per-path values for those exact runs are `unavailable`. `run-corpus-lemma-pilot.mjs` now records queries and wall milliseconds per lookup path (`evidence_collection.lookup_timing_by_path`). I re-ran discovery on the same index and warm sidecar with the cached Kiwi analysis, at the real batch sizes (350 and 500 candidates), with `stage-timing` spans (`data/timing/m10-a-substep-remeasure.jsonl`). The candidate sets are a re-selection, not the original batches (re-selection overlaps B12's set by 70 of 350 candidates), so these are representative re-measurements, not the recorded runs.
 
