@@ -1,0 +1,78 @@
+/**
+ * Agent self-check provenance for semantic review inputs (Issue #240, M10).
+ *
+ * Owner decision (2026-10-02): from M10 batch 11 the main implementation agent
+ * may both author and check candidate decisions. That check is recorded as
+ * exactly what it is, an AI producer self-check, and is never described as
+ * independent or human review. The input keeps every per-candidate judgment the
+ * independent-review contract preserved (identity, POS, gloss fit, sense
+ * boundary, checked contexts, candidate-specific notes, gloss-digest binding),
+ * and forbids the artifacts that would pretend a separate run happened: a
+ * registry reviewer label, review runs, a run record, or proposal digests.
+ *
+ * B05-B10 keep their original contract and evidence unchanged.
+ */
+
+import assert from 'node:assert/strict';
+
+import { sha256Json } from '../validate/semantic-audit.mjs';
+import { admissionGateFor, assertReviewNotesAreCandidateSpecific } from './reviewer-raw-outputs.mjs';
+
+export const SELF_CHECK_PROVENANCE = 'agent-self-check';
+export const SELF_CHECK_FIRST_BATCH = 11;
+const SEPARATE_RUN_FIELDS = ['review_runs', 'run_record_sha256', 'generator_proposal_sha256'];
+const CLAIM_PATTERN = /independent|reviewer|human/iu;
+
+export function isSelfCheckInput(input) {
+  return input?.review_provenance !== undefined;
+}
+
+/** Envelope rules; the caller still runs the shared envelope check first. */
+export function assertSelfCheckEnvelope(input, { ordinal, candidateAuthor }) {
+  assert.equal(input.review_provenance, SELF_CHECK_PROVENANCE, 'semantic review input names an unsupported review provenance');
+  assert.ok(ordinal >= SELF_CHECK_FIRST_BATCH,
+    `agent self-check applies from batch ${SELF_CHECK_FIRST_BATCH}; earlier batches keep their original review contract`);
+  assert.equal(input.independent_review, false, 'a self-check input must state independent_review: false');
+  assert.equal(input.reviewer, candidateAuthor,
+    'a self-check is recorded under the producing agent itself, never under a separate reviewer identity');
+  assert.ok(!CLAIM_PATTERN.test(input.reviewer), 'a self-check reviewer label must not claim independent, reviewer, or human status');
+  for (const field of SEPARATE_RUN_FIELDS) {
+    assert.equal(input[field], undefined, `a self-check input must not carry ${field}: no separate review run took place`);
+  }
+}
+
+/**
+ * Cross-check the preserved outcomes against the candidate review and the
+ * glosses admitted into canonical data (the tracked-artifact half of the
+ * independent contract, without any run record).
+ */
+export function assertSelfCheckBinding({ input, candidateRows, glossByLemma }) {
+  assert.equal(input.candidate_outcomes.length, candidateRows.length, 'self-check outcomes must cover every candidate');
+  const reviewByLemma = new Map(input.reviews.map((review) => [review.lemma, review]));
+  assert.equal(reviewByLemma.size, input.reviews.length, 'self-check reviews contain a duplicate lemma');
+  let passes = 0;
+  candidateRows.forEach((row, index) => {
+    const lemma = row.morphology_proposal.lemma;
+    const outcome = input.candidate_outcomes[index];
+    if (outcome.verdict !== 'pass') {
+      assert.equal(reviewByLemma.has(lemma), false, `${lemma}: a held candidate cannot carry a review row`);
+      return;
+    }
+    const gate = admissionGateFor(row);
+    if (gate) {
+      assert.equal(outcome.admission_gate, gate, `${lemma}: a gated candidate must record the gate that held it`);
+      assert.equal(reviewByLemma.has(lemma), false, `${lemma}: a gated candidate cannot carry a review row`);
+      return;
+    }
+    passes += 1;
+    const review = reviewByLemma.get(lemma);
+    assert.ok(review, `${lemma}: a passed candidate needs its review row`);
+    assert.equal(review.gloss_sha256, sha256Json(glossByLemma.get(lemma)),
+      `${lemma}: the self-check is not bound to the gloss admitted into canonical data`);
+    for (const field of ['identity_check', 'pos_check', 'gloss_check', 'sense_boundary_check', 'checked_hit_indices']) {
+      assert.deepEqual(review[field], outcome[field], `${lemma}: the outcome and the review row disagree on ${field}`);
+    }
+  });
+  assert.equal(input.reviews.length, passes, 'review rows must exist exactly for the passed candidates');
+  assertReviewNotesAreCandidateSpecific(input.reviews);
+}
