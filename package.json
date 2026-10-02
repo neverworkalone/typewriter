@@ -101,6 +101,7 @@
     "batch:issue-220:check": "node scripts/batch/validate-issue-220.mjs",
     "batch:issue-220:report": "node scripts/batch/validate-issue-220.mjs --write-report",
     "batch:issue-221:check": "node scripts/batch/validate-issue-221.mjs",
+    "batch:timing": "node scripts/batch/stage-timing.mjs",
     "batch:issue-223:check": "node scripts/batch/validate-issue-223.mjs --no-local-corpus-evidence --skip-issue-222 --no-build",
     "batch:issue-223:check:deep": "node scripts/batch/validate-issue-223.mjs --no-local-corpus-evidence --skip-issue-222",
     "batch:issue-222:check": "node scripts/batch/validate-issue-222.mjs",

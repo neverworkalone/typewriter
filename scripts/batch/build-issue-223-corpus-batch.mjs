@@ -289,7 +289,7 @@ function makeCanonicalRecord(row) {
   };
 }
 
-function glossFrameSpans(gloss) {
+export function glossFrameSpans(gloss) {
   const connectorObservations = inspectGlossConnectors(gloss).sort((left, right) => left.index - right.index);
   let frameStart = 0;
   const frameSpans = [];
