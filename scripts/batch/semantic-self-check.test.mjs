@@ -129,6 +129,7 @@ test('the canonical source of a self-check batch never claims independent or hum
     'independent claim in criteria': (s) => { s.review.criteria = ['gloss verified by an independent reviewer']; },
     'human claim in admission rule': (s) => { s.review.admission_rule = 'admitted after human review'; },
     'separate claim in a nested review field': (s) => { s.review.extra = { note: 'separately reviewed' }; },
+    'source mentions another reviewer': (s) => { s.provenance.authoring_note = 'another reviewer checked this.'; },
     'human authoring note': (s) => { s.provenance.authoring_note = 'Each lemma was human reviewed.'; },
   };
   for (const [name, mutate] of Object.entries(cases)) {
@@ -153,6 +154,10 @@ test('per-candidate rationales and generated decisions never claim independent, 
     'separate claim in a decision rationale': (x) => { x.decisions[0].decision_rationale = 'separately verified'; },
     'nested sense review claim': (x) => { x.decisions[0].sense_reviews[0].semantic_rationale = 'an independent reviewer approved'; },
     'Korean independent review claim': (x) => { x.reviews[0].semantic_rationale = '독립 검토를 마쳤다.'; },
+    'Korean 인간이 검토 with a particle': (x) => { x.reviews[0].semantic_rationale = '인간이 검토했다.'; },
+    'Korean 사람은 검수 with a particle': (x) => { x.decisions[0].decision_rationale = '사람은 검수를 마쳤다.'; },
+    'Korean separate reviewer': (x) => { x.reviews[0].boundary_rationale = '별도 리뷰어가 확인했다.'; },
+    'English another reviewer': (x) => { x.decisions[0].decision_rationale = 'another reviewer checked this'; },
     'Korean human review claim': (x) => { x.decisions[0].decision_rationale = '사람이 검토하여 승인했다.'; },
   };
   for (const [name, mutate] of Object.entries(bad)) {

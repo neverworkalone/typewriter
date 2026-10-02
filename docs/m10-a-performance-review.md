@@ -82,6 +82,18 @@ The 2-character count was the measured bottleneck that the sidecar removed: B10 
 
 ## Discovery sub-step re-measurement (lookup paths, same index and sidecar)
 
+### Operation counts of the original B10–B12 runs
+
+The `Spans` columns in the stage tables above are timing spans/attempts, not work units. The work counts below come from the original discovery runs' own outputs (`evidence_collection` counters and the per-candidate first query form in each run's candidate inventory, kept in ignored `data/reference/`), not from the re-selection. Per-path **time** for these original runs is `unavailable` (not instrumented then); the 2-character count path was served by the exact fallback in B10 and by the warm sidecar in B11/B12.
+
+| Batch | Candidates | Count queries 1-char | Count queries 2-char | Count queries 3+ | Search queries 1–2-char (literal scan) | Search queries 3+ (FTS5) | Search queries total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| B10 | 500 | 0 | 147 | 353 | 286 | 1,211 | 1,497 |
+| B11 | 500 | 0 | 127 | 373 | 295 | 1,192 | 1,487 |
+| B12 | 350 | 1 | 77 | 272 | 187 | 858 | 1,045 |
+
+Evidence and authoring/self-check work units (candidates reviewed, glosses authored, rework rounds) are counted by candidate and hold totals above; per-round rework counts for B11/B12 authoring and self-check are `unavailable`. This report therefore does not present the per-batch measurement format as complete.
+
 The original B10–B12 runs were not instrumented below the stage level, so per-path values for those exact runs are `unavailable`. `run-corpus-lemma-pilot.mjs` now records queries and wall milliseconds per lookup path (`evidence_collection.lookup_timing_by_path`). I re-ran discovery on the same index and warm sidecar with the cached Kiwi analysis, at the real batch sizes (350 and 500 candidates), with `stage-timing` spans (`data/timing/m10-a-substep-remeasure.jsonl`). The candidate sets are a re-selection, not the original batches (re-selection overlaps B12's set by 70 of 350 candidates), so these are representative re-measurements, not the recorded runs.
 
 | Path | Queries (350) | Seconds (350) | Queries (500) | Seconds (500) |

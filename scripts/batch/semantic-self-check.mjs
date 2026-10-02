@@ -118,11 +118,14 @@ export function assertSourceClaimsTruthful(source, { selfCheck }) {
   for (const text of claims) {
     let stripped = text;
     for (const disclaimer of SELF_CHECK_DISCLAIMERS) stripped = stripped.split(disclaimer).join('');
-    assert.ok(!/independent|separately|human/iu.test(stripped), `a self-check source must not claim independent, separate, or human review: ${text.slice(0, 80)}`);
+    assert.ok(!REVIEW_CLAIM_PATTERN.test(stripped), `a self-check source must not claim independent, separate, or human review: ${text.slice(0, 80)}`);
   }
 }
 
-const DECISION_CLAIM_PATTERN = /independent|separately|\bhuman\b|\breviewer\b|독립\s*(?:적으로)?\s*검(?:토|수)|독립적|사람이?\s*검(?:토|수)|인간\s*검(?:토|수)|별도\s*(?:의\s*)?(?:검토|검수|리뷰)|검수자|리뷰어/iu;
+// One shared claim vocabulary for sources, rationales and decisions: English
+// independent/separate/human/reviewer wording and Korean forms with or
+// without a particle (인간이 검토, 사람은 검수, 별도 리뷰어, ...).
+const REVIEW_CLAIM_PATTERN = /independent|separately|\bhuman\b|\bpeople\b|\bperson\b|\breviewers?\b|\bauditor\b|독립\s*(?:적으로)?\s*(?:검|리뷰)|독립적|(?<![가-힣])(?:사람|인간)(?:이|은|가|의|에\s*의해|에게)?\s*(?:검|리뷰|확인|승인)|별도\s*(?:의\s*)?(?:검|리뷰|에이전트|모델)|검수자|리뷰어|제\s*3\s*자|제삼자/iu;
 
 /**
  * Per-candidate rationales are free text copied into the canonical decisions
@@ -130,17 +133,22 @@ const DECISION_CLAIM_PATTERN = /independent|separately|\bhuman\b|\breviewer\b|�
  * human review. Every string under `reviews` and `decisions` is scanned.
  */
 export function assertDecisionClaimsTruthful({ reviews, decisions }) {
-  const visit = (value, where) => {
+  // Lexical content (glosses, frames, lemmas) may legitimately contain words
+  // such as 사람 or 독립; only free-text explanation fields are claim carriers.
+  const CLAIM_KEY = /rationale|reason|note|method|basis|criteria|summary|explanation|status/iu;
+  const visit = (value, where, inClaimField) => {
     if (typeof value === 'string') {
-      assert.ok(!DECISION_CLAIM_PATTERN.test(value), `a self-check batch must not claim independent, separate, or human review in ${where}: ${value.slice(0, 80)}`);
+      if (inClaimField) {
+        assert.ok(!REVIEW_CLAIM_PATTERN.test(value), `a self-check batch must not claim independent, separate, or human review in ${where}: ${value.slice(0, 80)}`);
+      }
     } else if (Array.isArray(value)) {
-      value.forEach((item, index) => visit(item, `${where}[${index}]`));
+      value.forEach((item, index) => visit(item, `${where}[${index}]`, inClaimField));
     } else if (value && typeof value === 'object') {
-      for (const [key, item] of Object.entries(value)) visit(item, `${where}.${key}`);
+      for (const [key, item] of Object.entries(value)) visit(item, `${where}.${key}`, inClaimField || CLAIM_KEY.test(key));
     }
   };
-  visit(reviews, 'reviews');
-  visit(decisions, 'decisions');
+  visit(reviews, 'reviews', false);
+  visit(decisions, 'decisions', false);
 }
 
 /**
