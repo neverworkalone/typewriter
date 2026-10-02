@@ -285,9 +285,9 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-7-recalibration.jsonl` | `a37677f7569e016e5e8f9525b978ec4911ff0c9afb5ba7f65d3c40dae5fc71c1` |
 | `data/canonical/m5-9-expansion.jsonl` | `a47e9322813780efd2eae29b2b5784bcd2948d7c3f7de621174ebee4a35ce4c4` |
 | `data/canonical/pilot.jsonl` | `d45c15164ef6f146ee51d40e265746515120a556b1e2fb65e057ed36781dff1d` |
-| `data/inventory/m5-target-promotions.jsonl` | `217626bb3105240449dc588eb5840f405779d9743e9786f4761d9dcdef81a96c` |
+| `data/inventory/m5-target-promotions.jsonl` | `f42bfa7ca7c01769b85d721e34eb05dd2ca1e5df9920360dc50cb0c0c3a237df` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `4dbbf91ff1d2680822e816e0567e8f6cd8cc8700e2cfd38317cc626aaa07b75d` |
+| `data/validation/canonical-semantic-decision-source.json` | `33c5ac41cde6237415d4aee702d4e4f3119c549660e090c78ee14ea21383cd98` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `4124246b172bfd9d7c0cbbf1dcd2b604714de20d327dc8d6872af1316eb12488` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `c5f8e4fd3069140e027f335eba43e0652209d3a4c880306f64855183d1d63d0a` |
 | `data/validation/m6-2-inflection-exceptions.json` | `3cc1a2413074c7844a0709004095006581b66b9aabfcd95692667297f85ffb86` |

@@ -4,6 +4,8 @@ import test from 'node:test';
 import {
   assertDecisionClaimsTruthful,
   assertLegacyReviewWorkflowAllowed,
+  assertNoCorpusPhraseCopy,
+  findCopiedContextPhrases,
   assertPrimaryAuthoringAllowed,
   assertReviewContractForBatch,
   assertSelfCheckBinding,
@@ -162,6 +164,8 @@ test('per-candidate rationales and generated decisions never claim independent, 
     'hold rationale claims an external reviewer': (x) => { x.outcomes[0].hold_rationale = 'held after an external reviewer checked it'; },
     'hold rationale claims another session': (x) => { x.outcomes[0].hold_rationale = 'another Claude session reviewed this hold'; },
     'hold rationale Korean human review': (x) => { x.outcomes[0].hold_rationale = '사람이 검토하여 보류했다.'; },
+    'hold rationale 별도 사람이 검토': (x) => { x.outcomes[0].hold_rationale = '별도 사람이 검토했다.'; },
+    'decision rationale 다른 인간이 확인': (x) => { x.decisions[0].decision_rationale = '다른 인간이 확인했다.'; },
     'Korean 인간이 검토 with a particle': (x) => { x.reviews[0].semantic_rationale = '인간이 검토했다.'; },
     'Korean 사람은 검수 with a particle': (x) => { x.decisions[0].decision_rationale = '사람은 검수를 마쳤다.'; },
     'Korean separate reviewer': (x) => { x.reviews[0].boundary_rationale = '별도 리뷰어가 확인했다.'; },
@@ -185,6 +189,20 @@ test('the generated self-check method describes the preserved frame contract, no
   const method = /const SELF_CHECK_METHOD = '([^']*)'/u.exec(source)[1];
   assert.match(method, /one authored diagnostic frame per gloss span/u);
   assert.doesNotMatch(method, /two authored diagnostic frames/u);
+});
+
+test('rationales may name observed forms but never reproduce corpus context wording', () => {
+  const contexts = ['그는 홍콩 주재 총영사관 앞에서 오래 기다렸다', '왕국을 주재하는 왕은 회의를 주재하던 사람이었다'];
+  const base = { lemma: '주재', contexts, allowedForms: ['주재', '주재하는', '주재하던'] };
+  assertNoCorpusPhraseCopy({ ...base, texts: [['boundary_rationale', '문맥 0의 주재는 머물러 있음을 뜻하고 문맥 1의 주재하는은 이끎을 뜻한다.']] });
+  assertNoCorpusPhraseCopy({ ...base, texts: [['boundary_rationale', '문맥 1의 왕국을 주재하는이 모두 같은 뜻이다.']] });
+  const copied = (where, text) => assert.throws(() => assertNoCorpusPhraseCopy({ ...base, texts: [[where, text]] }), /reproduces corpus context wording/u);
+  copied('boundary_rationale', '문맥 0의 그는 홍콩 주재 총영사관 앞에서 같은 뜻이다.');
+  copied('hold_rationale', '문맥 0의 홍콩 주재 총영사관 앞에서 머물러 있음을 뜻한다.');
+  // The hold limit is stricter: two copied neighbour words already fail there, not in a boundary rationale.
+  assert.deepEqual(findCopiedContextPhrases('회의를 주재하던 사람이었다', { contexts, allowedForms: ['주재'] }).length, 0);
+  assert.equal(findCopiedContextPhrases('회의를 주재하던 사람이었다', { contexts, allowedForms: ['주재'], threshold: 2 }).length, 1);
+  copied('hold_rationale', '문맥 1의 회의를 주재하던 사람이었다.');
 });
 
 test('the shared builder/validator gate fails closed on the review contract by batch', () => {

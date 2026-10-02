@@ -29,7 +29,7 @@ import { glossFrameSpans } from './build-issue-223-corpus-batch.mjs';
 import { findAmbiguousParticleFragments, validateLexicalRecord } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { packetCandidate, shardRanges } from './make-review-packets.mjs';
-import { assertLegacyReviewWorkflowAllowed, assertPrimaryAuthoringAllowed, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
+import { assertLegacyReviewWorkflowAllowed, assertNoCorpusPhraseCopy, assertPrimaryAuthoringAllowed, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
 import {
   admissionGateFor,
   outcomeFromRaw,
@@ -500,6 +500,35 @@ export async function selfCheckView({ directory, first, last, width = 110 }) {
  * `independent_review: false`, and carries no runs, run record, or digests of a
  * separate review.
  */
+/** Rationale strings of a review or outcome row (keys that name a rationale), with where they came from. */
+function rationaleTexts(row) {
+  const texts = [];
+  const visit = (value, key) => {
+    if (typeof value === 'string') { if (/rationale/iu.test(key)) texts.push([key, value]); }
+    else if (Array.isArray(value)) value.forEach((item) => visit(item, key));
+    else if (value && typeof value === 'object') Object.entries(value).forEach(([childKey, item]) => visit(item, childKey));
+  };
+  visit(row, '');
+  return texts;
+}
+
+/** Rationales must not reproduce the local corpus contexts they were judged from (the packets stay untracked). */
+export async function assertNoCopiedCorpusWording({ absolute, reviews, outcomes }) {
+  const packetDirectory = path.join(absolute, 'packets');
+  const byLemma = new Map();
+  for (const { name } of await numberedFiles(packetDirectory, 'packet')) {
+    const packet = await readJson(path.join(packetDirectory, name));
+    for (const candidate of packet.candidates) {
+      byLemma.set(candidate.lemma, { contexts: candidate.contexts.map((context) => context.text), allowedForms: candidate.observed_forms.map((form) => form.surface) });
+    }
+  }
+  for (const row of [...reviews, ...outcomes]) {
+    const evidence = byLemma.get(row.lemma);
+    assert.ok(evidence, `${row.lemma} has no evidence packet to check its rationales against`);
+    assertNoCorpusPhraseCopy({ lemma: row.lemma, texts: rationaleTexts(row), ...evidence });
+  }
+}
+
 export async function assembleSelfChecked({ batchId, directory, batchDirectory = 'data/batches', writeTracked = true }) {
   const absolute = path.resolve(ROOT, directory);
   const inventory = await readJson(path.join(absolute, 'candidate-inventory.json'));
@@ -532,6 +561,7 @@ export async function assembleSelfChecked({ batchId, directory, batchDirectory =
     outcomes.push(outcomeFromRaw(row.disposition, raw, raw.verdict === 'pass' ? gate : null));
     if (raw.verdict === 'pass' && !gate) reviews.push(reviewFromRaw({ lemma: row.lemma, gloss: row.gloss, raw }));
   });
+  await assertNoCopiedCorpusWording({ absolute, reviews, outcomes });
   const input = {
     schema_version: '1',
     contract_version: 'authored-semantic-review-input-v1',

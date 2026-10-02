@@ -16,7 +16,7 @@
     "source_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
     "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
     "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
-    "semantic_review_input_sha256": "3251b5a92d014b743d30f5f2ed2ce581732046575d6710b05745061386bba92a"
+    "semantic_review_input_sha256": "ff85c940ee1d92ff8a2bee7326a703a00d7351421de9fd1f6d5a4a1bb7411c2b"
   },
   "provenance": {
     "generator": "claude-sonnet-5-5",
@@ -5379,7 +5379,7 @@
       "candidate_record_sha256": "3ffc1474b326f195ccae2c42cbd2715d1dca7a480eda15f8af9ff45693b24250",
       "decision": "included",
       "rank": 10,
-      "decision_rationale": "m5-16495 w11108: 재력: 문맥 0의 돈을 안정적으로 수급하는 재력, 문맥 1의 재력을 과시, 문맥 2의 충분한 재력이 모두 재물이 지닌 힘을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16495 w11108: 재력: 문맥 0의 안정적으로 수급하는 재력, 문맥 1의 재력을 과시, 문맥 2의 충분한 재력이 모두 재물이 지닌 힘을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -5388,7 +5388,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16495 w11108 w11108-s1: 재력: 문맥 0의 돈을 안정적으로 수급하는 재력, 문맥 1의 재력을 과시, 문맥 2의 충분한 재력이 모두 재물이 지닌 힘을 가리킨다. Reviewed gloss SHA-256 31f4d3890b3cdd00861f8bd7367302e73d0d5717fc84c69644f36ad5e3370980.",
+          "boundary_rationale": "m5-16495 w11108 w11108-s1: 재력: 문맥 0의 안정적으로 수급하는 재력, 문맥 1의 재력을 과시, 문맥 2의 충분한 재력이 모두 재물이 지닌 힘을 가리킨다. Reviewed gloss SHA-256 31f4d3890b3cdd00861f8bd7367302e73d0d5717fc84c69644f36ad5e3370980.",
           "semantic_rationale": "w11108 w11108-s1: 재력: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 재력을 갖추다, 재력을 과시하다처럼 부의 영향력을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -5420,13 +5420,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11108",
         "candidate_record_sha256": "3ffc1474b326f195ccae2c42cbd2715d1dca7a480eda15f8af9ff45693b24250",
-        "decision_evidence_sha256": "fec8693b5d6b29202c352dece3634fb5ca826fd25b3b27ae2411084e80efa069",
+        "decision_evidence_sha256": "f9f05fe987c48972df154bd491d5e0669d5b6da0986d51ca93e3343501765888",
         "sense_evidence": [
           {
             "sense_id": "w11108-s1",
             "sense_sha256": "fded9748b49eb46a4783f10e4bb7115e1cb99a97ecc5e92c6957c6feffef8881",
             "gloss_sha256": "31f4d3890b3cdd00861f8bd7367302e73d0d5717fc84c69644f36ad5e3370980",
-            "evidence_sha256": "29fe76282fe1e21bd3781c14c4aca3abdd7ec2e89985f335f755c91ee3b6d3d1"
+            "evidence_sha256": "e704d2522aebfc25b293544f4ca3e0b620b378d9dbedd33f2553031711028cd8"
           }
         ]
       }
@@ -6276,7 +6276,7 @@
       "candidate_record_sha256": "2c15a6c0aebd54101311a02b2b8b9ff04f396b8110292d5a4a7394566768627f",
       "decision": "included",
       "rank": 25,
-      "decision_rationale": "m5-16514 w11123: 끝내주다: 문맥 0의 끝내주게 운이 좋을 수도, 문맥 1의 끝내주는 아이디어, 문맥 2의 끝내줘요가 모두 아주 뛰어나서 더할 나위 없이 훌륭하다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16514 w11123: 끝내주다: 문맥 0의 끝내주게 운이 좋을 문맥 1의 끝내주는 아이디어, 문맥 2의 끝내줘요가 모두 아주 뛰어나서 더할 나위 없이 훌륭하다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -6285,7 +6285,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16514 w11123 w11123-s1: 끝내주다: 문맥 0의 끝내주게 운이 좋을 수도, 문맥 1의 끝내주는 아이디어, 문맥 2의 끝내줘요가 모두 아주 뛰어나서 더할 나위 없이 훌륭하다는 하나의 뜻이다. Reviewed gloss SHA-256 9ad0c81ad24a8717c77e2c4884bb51c1bdacced4df3f941e9f52e4111e72e5eb.",
+          "boundary_rationale": "m5-16514 w11123 w11123-s1: 끝내주다: 문맥 0의 끝내주게 운이 좋을 문맥 1의 끝내주는 아이디어, 문맥 2의 끝내줘요가 모두 아주 뛰어나서 더할 나위 없이 훌륭하다는 하나의 뜻이다. Reviewed gloss SHA-256 9ad0c81ad24a8717c77e2c4884bb51c1bdacced4df3f941e9f52e4111e72e5eb.",
           "semantic_rationale": "w11123 w11123-s1: 끝내주다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 끝내주는 맛, 끝내주게 좋다처럼 구어체의 강한 칭찬에 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -6317,13 +6317,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11123",
         "candidate_record_sha256": "2c15a6c0aebd54101311a02b2b8b9ff04f396b8110292d5a4a7394566768627f",
-        "decision_evidence_sha256": "745d7f71d162be9b217fec5c657aba853c05b954c686b7068f85c49cae803de6",
+        "decision_evidence_sha256": "f875a55b9cf1ae0209e4cc350c5f4364f6c4706a991a1e18871b4d2a2edd911a",
         "sense_evidence": [
           {
             "sense_id": "w11123-s1",
             "sense_sha256": "4422583b141b7733cb7b040bf8fae953f212dcd02e684b5a71bb98442808ffb3",
             "gloss_sha256": "9ad0c81ad24a8717c77e2c4884bb51c1bdacced4df3f941e9f52e4111e72e5eb",
-            "evidence_sha256": "52438eac504139b97429831abd0033a5b62acb5a771c42ce48068e00c25db8f3"
+            "evidence_sha256": "29874ee4496e1c967f85e9d3beaebdfdf2168c6c5a04a028a6a51e3262dffc4a"
           }
         ]
       }
@@ -6334,7 +6334,7 @@
       "candidate_record_sha256": "12ee583af751dc9d9c4f42cfeb380feb7c43e847c4b26fb0edd9b828e2a81e92",
       "decision": "included",
       "rank": 26,
-      "decision_rationale": "m5-16515 w11124: 먹고살다: 문맥 0의 달리 먹고살 도리가 없잖아, 문맥 1의 먹고살기 위해 이주, 문맥 2의 먹고살려면 일을 해야가 모두 생계를 이어 간다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16515 w11124: 먹고살다: 문맥 0의 달리 먹고살 도리가 문맥 1의 먹고살기 위해 이주, 문맥 2의 먹고살려면 일을 해야가 모두 생계를 이어 간다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -6343,7 +6343,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16515 w11124 w11124-s1: 먹고살다: 문맥 0의 달리 먹고살 도리가 없잖아, 문맥 1의 먹고살기 위해 이주, 문맥 2의 먹고살려면 일을 해야가 모두 생계를 이어 간다는 하나의 뜻이다. Reviewed gloss SHA-256 5f5a979b432804082a1fdf0ddb50aecfa07021e10b15369b565974a37be126ab.",
+          "boundary_rationale": "m5-16515 w11124 w11124-s1: 먹고살다: 문맥 0의 달리 먹고살 도리가 문맥 1의 먹고살기 위해 이주, 문맥 2의 먹고살려면 일을 해야가 모두 생계를 이어 간다는 하나의 뜻이다. Reviewed gloss SHA-256 5f5a979b432804082a1fdf0ddb50aecfa07021e10b15369b565974a37be126ab.",
           "semantic_rationale": "w11124 w11124-s1: 먹고살다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 먹고살기 힘들다, 먹고살려면처럼 생계 걱정을 말할 때 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -6375,13 +6375,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11124",
         "candidate_record_sha256": "12ee583af751dc9d9c4f42cfeb380feb7c43e847c4b26fb0edd9b828e2a81e92",
-        "decision_evidence_sha256": "8477838a5ab685694703cca11f3af8524643588bcf0be5bac7f71d44014e9fb8",
+        "decision_evidence_sha256": "8daac00b143b8efba0398795293e5e7d1411d2746b722c40002352a7b6f3978c",
         "sense_evidence": [
           {
             "sense_id": "w11124-s1",
             "sense_sha256": "f28479d38ec8be316ccd5778e6986e3bf2bf45ff336e846fc166c6b4d7cd8bb3",
             "gloss_sha256": "5f5a979b432804082a1fdf0ddb50aecfa07021e10b15369b565974a37be126ab",
-            "evidence_sha256": "99898463a54b7f7f98d34d27742eca03d5f55c76063028df0753bc85dd4c3c28"
+            "evidence_sha256": "ab2689a506ad32ae75a1f19544dd704d5e49b549c860cd8258415a400c9d951d"
           }
         ]
       }
@@ -7655,7 +7655,7 @@
       "candidate_record_sha256": "388f9f19bfcf1e5c31ece75023521f2f3962e77cd2aeb22a0803398688b0c9b0",
       "decision": "included",
       "rank": 48,
-      "decision_rationale": "m5-16546 w11146: 지렁이: 문맥 0의 두더지와 지렁이, 문맥 1의 당신의 지렁이가 될 거라곤, 문맥 2의 땅에서 지렁이를 집어 날아감이 모두 흙 속에 사는 길쭉한 환형동물을 가리킨다. 문맥 1은 비유로 쓰였다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16546 w11146: 지렁이: 문맥 0의 두더지와 지렁이, 문맥 1의 당신의 지렁이가 될 문맥 2의 땅에서 지렁이를 집어 날아감이 모두 흙 속에 사는 길쭉한 환형동물을 가리킨다. 문맥 1은 비유로 쓰였다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -7664,7 +7664,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16546 w11146 w11146-s1: 지렁이: 문맥 0의 두더지와 지렁이, 문맥 1의 당신의 지렁이가 될 거라곤, 문맥 2의 땅에서 지렁이를 집어 날아감이 모두 흙 속에 사는 길쭉한 환형동물을 가리킨다. 문맥 1은 비유로 쓰였다. Reviewed gloss SHA-256 ce78d064914cd045c90a08df9e4bbec00a51ed79749120e640e59be89b6cd631.",
+          "boundary_rationale": "m5-16546 w11146 w11146-s1: 지렁이: 문맥 0의 두더지와 지렁이, 문맥 1의 당신의 지렁이가 될 문맥 2의 땅에서 지렁이를 집어 날아감이 모두 흙 속에 사는 길쭉한 환형동물을 가리킨다. 문맥 1은 비유로 쓰였다. Reviewed gloss SHA-256 ce78d064914cd045c90a08df9e4bbec00a51ed79749120e640e59be89b6cd631.",
           "semantic_rationale": "w11146 w11146-s1: 지렁이: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 지렁이가 꿈틀거리다처럼 비 온 뒤의 땅 풍경에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -7696,13 +7696,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11146",
         "candidate_record_sha256": "388f9f19bfcf1e5c31ece75023521f2f3962e77cd2aeb22a0803398688b0c9b0",
-        "decision_evidence_sha256": "6d1e5abc3ab3f78cc8e4941590a63f8804f7bed2f168722a79fc4cd8ed4ff1a0",
+        "decision_evidence_sha256": "07f3a9ff10b31d58e3bdd5e6a86d4e81a3bd981c3d9e74cc9daffb70090a6f36",
         "sense_evidence": [
           {
             "sense_id": "w11146-s1",
             "sense_sha256": "51cad6b505d2b7a0ce5381c4a78c4e93c91138d1ddc855a2ba299ce846492ff7",
             "gloss_sha256": "ce78d064914cd045c90a08df9e4bbec00a51ed79749120e640e59be89b6cd631",
-            "evidence_sha256": "c767186ca7db839cc88b7c458e6a54d3ad96d95f1430d9bfba7ce873432c9661"
+            "evidence_sha256": "2003e35edd1f0973c21ce2c58b0a3a0dd3c52b27888a42a2758ff6aa618919b2"
           }
         ]
       }
@@ -7771,7 +7771,7 @@
       "candidate_record_sha256": "5e2c94024ee5f75f8b5ee33aee94aef763273367bb8312cf0c735a3e2f7cf395",
       "decision": "included",
       "rank": 50,
-      "decision_rationale": "m5-16548 w11148: 수의사: 문맥 0의 그 수의사, 문맥 1의 그 수의사는 개를 좋아했다, 문맥 2의 수의사가 말했다가 모두 동물의 병을 진찰하고 치료하는 사람을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16548 w11148: 수의사: 문맥 0의 그 수의사, 문맥 1의 그 수의사는 개를 문맥 2의 수의사가 말했다가 모두 동물의 병을 진찰하고 치료하는 사람을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -7780,7 +7780,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16548 w11148 w11148-s1: 수의사: 문맥 0의 그 수의사, 문맥 1의 그 수의사는 개를 좋아했다, 문맥 2의 수의사가 말했다가 모두 동물의 병을 진찰하고 치료하는 사람을 가리킨다. Reviewed gloss SHA-256 6cf10b13b754d04719a10b3b5ed62b9c97cd87fb3c41f1ebe5b900ed7974b955.",
+          "boundary_rationale": "m5-16548 w11148 w11148-s1: 수의사: 문맥 0의 그 수의사, 문맥 1의 그 수의사는 개를 문맥 2의 수의사가 말했다가 모두 동물의 병을 진찰하고 치료하는 사람을 가리킨다. Reviewed gloss SHA-256 6cf10b13b754d04719a10b3b5ed62b9c97cd87fb3c41f1ebe5b900ed7974b955.",
           "semantic_rationale": "w11148 w11148-s1: 수의사: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 수의사가 진찰하다, 동물병원 수의사처럼 직업을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -7812,13 +7812,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11148",
         "candidate_record_sha256": "5e2c94024ee5f75f8b5ee33aee94aef763273367bb8312cf0c735a3e2f7cf395",
-        "decision_evidence_sha256": "3a39c2cb93d133d4e8878fe7e0dfc5583c0aa62bee2c449dfed37fa2866063de",
+        "decision_evidence_sha256": "bc04aa5b8ce480411b81bdca0d44d487ce0764431ad8a69005640d018d69ced9",
         "sense_evidence": [
           {
             "sense_id": "w11148-s1",
             "sense_sha256": "f59c70989865d7caa3035a0f2b7159351af1877ba8da0c2c3646889fce118f5f",
             "gloss_sha256": "6cf10b13b754d04719a10b3b5ed62b9c97cd87fb3c41f1ebe5b900ed7974b955",
-            "evidence_sha256": "5c7f11a37c8ef1b37bb640b4be175941e1ca2b55850bf6b0253f8266604f588b"
+            "evidence_sha256": "65716914c4b65b25b9718991a0af02a70578d393161717de677d5db3e19018fc"
           }
         ]
       }
@@ -9766,7 +9766,7 @@
       "candidate_record_sha256": "84105d1dae7a5112909b2ef25bd1473c1b684953d4978df5ac661d69445a4113",
       "decision": "included",
       "rank": 83,
-      "decision_rationale": "m5-16584 w11181: 부녀: 문맥 0의 시벨리우스 부녀, 문맥 1의 밤과 주말에는 부녀가 오붓하게, 문맥 2의 매일 부녀는 산책이 모두 아버지와 딸을 아울러 이르는 말이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16584 w11181: 부녀: 문맥 0의 시벨리우스 부녀, 문맥 1의 주말에는 부녀가 오붓하게, 문맥 2의 매일 부녀는 산책이 모두 아버지와 딸을 아울러 이르는 말이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -9775,7 +9775,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16584 w11181 w11181-s1: 부녀: 문맥 0의 시벨리우스 부녀, 문맥 1의 밤과 주말에는 부녀가 오붓하게, 문맥 2의 매일 부녀는 산책이 모두 아버지와 딸을 아울러 이르는 말이다. Reviewed gloss SHA-256 59a7f5a28c81359173788e66f57a7a1d54395ca5c7ad9be801ab6f66229946ff.",
+          "boundary_rationale": "m5-16584 w11181 w11181-s1: 부녀: 문맥 0의 시벨리우스 부녀, 문맥 1의 주말에는 부녀가 오붓하게, 문맥 2의 매일 부녀는 산책이 모두 아버지와 딸을 아울러 이르는 말이다. Reviewed gloss SHA-256 59a7f5a28c81359173788e66f57a7a1d54395ca5c7ad9be801ab6f66229946ff.",
           "semantic_rationale": "w11181 w11181-s1: 부녀: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 부녀가 함께하다, 부녀의 정처럼 가족 관계를 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -9807,13 +9807,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11181",
         "candidate_record_sha256": "84105d1dae7a5112909b2ef25bd1473c1b684953d4978df5ac661d69445a4113",
-        "decision_evidence_sha256": "c4a7468114ea5c21c44ba262e95b87ddb8e222710f0ec2d561f790227479a93f",
+        "decision_evidence_sha256": "dd052e2c83e4412b54c7f1b0b8f12cc5b82e0fb68c8a69cf49c0685ed7feb285",
         "sense_evidence": [
           {
             "sense_id": "w11181-s1",
             "sense_sha256": "907591df5718c42563120cb5b7252a25e8123a64fe58526365102254235ce29b",
             "gloss_sha256": "59a7f5a28c81359173788e66f57a7a1d54395ca5c7ad9be801ab6f66229946ff",
-            "evidence_sha256": "9dbe0afbdc2d5b336bbd7c79bc6cdf0767ec22d989980ac5ca2aa20d0801dea5"
+            "evidence_sha256": "4939a2360245ca3ca4dc6c79f5c5f97b327e13ee35493088e61cb97393e17233"
           }
         ]
       }
@@ -10422,7 +10422,7 @@
       "candidate_record_sha256": "252c4577f40fe7f3e67964322becdb093afaabd3d8b80a7fb6c9f4d6b0131ce9",
       "decision": "included",
       "rank": 94,
-      "decision_rationale": "m5-16599 w11192: 살인범: 문맥 0의 뇌가 없는 살인범, 문맥 1의 살인범이 살인을 저지른 뒤, 문맥 2의 살인범의 흉수가 모두 사람을 죽인 범인을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16599 w11192: 살인범: 문맥 0의 뇌가 없는 살인범, 문맥 1의 살인범이 살인을 저지른 문맥 2의 살인범의 흉수가 모두 사람을 죽인 범인을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -10431,7 +10431,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16599 w11192 w11192-s1: 살인범: 문맥 0의 뇌가 없는 살인범, 문맥 1의 살인범이 살인을 저지른 뒤, 문맥 2의 살인범의 흉수가 모두 사람을 죽인 범인을 가리킨다. Reviewed gloss SHA-256 99b1ca84e3993e493b2c539c22f997f6641c8aa7dc021a480c71d2d74ca2366e.",
+          "boundary_rationale": "m5-16599 w11192 w11192-s1: 살인범: 문맥 0의 뇌가 없는 살인범, 문맥 1의 살인범이 살인을 저지른 문맥 2의 살인범의 흉수가 모두 사람을 죽인 범인을 가리킨다. Reviewed gloss SHA-256 99b1ca84e3993e493b2c539c22f997f6641c8aa7dc021a480c71d2d74ca2366e.",
           "semantic_rationale": "w11192 w11192-s1: 살인범: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 살인범으로 몰리다, 살인범을 쫓다처럼 범죄 서술에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -10463,13 +10463,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11192",
         "candidate_record_sha256": "252c4577f40fe7f3e67964322becdb093afaabd3d8b80a7fb6c9f4d6b0131ce9",
-        "decision_evidence_sha256": "31a20c620efb5911fdec88bf531c091ba001c373b985398af7ff6a23d951e6bd",
+        "decision_evidence_sha256": "821c9409bd9dcf01847c583759949cb9d1044d0cbb61e5f4915f6782614ccd58",
         "sense_evidence": [
           {
             "sense_id": "w11192-s1",
             "sense_sha256": "7f00b67d40f59bd83e336272557d1a167346df212ecd19ddf921868451e9922f",
             "gloss_sha256": "99b1ca84e3993e493b2c539c22f997f6641c8aa7dc021a480c71d2d74ca2366e",
-            "evidence_sha256": "c2aa2f630b1a4fc27154817521dd29c0e4380065c1d27eef96fb1d54d099e6b5"
+            "evidence_sha256": "3b2f24e7a024c273c14d0bcee1b24baf7815a050ca9d8074a8183876f402ed71"
           }
         ]
       }
@@ -10654,7 +10654,7 @@
       "candidate_record_sha256": "550cb502c1672d405bb1ab764f8c07be53adfe2e0bee010c370af8b672f9d9c1",
       "decision": "included",
       "rank": 98,
-      "decision_rationale": "m5-16604 w11196: 테마: 문맥 0의 1편의 테마, 문맥 1의 가장 큰 주제이자 테마, 문맥 2의 차기작의 테마가 모두 작품이나 논의의 중심이 되는 주제를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16604 w11196: 테마: 문맥 0의 1편의 테마, 문맥 1의 가장 큰 테마, 문맥 2의 차기작의 테마가 모두 작품이나 논의의 중심이 되는 주제를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -10663,7 +10663,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16604 w11196 w11196-s1: 테마: 문맥 0의 1편의 테마, 문맥 1의 가장 큰 주제이자 테마, 문맥 2의 차기작의 테마가 모두 작품이나 논의의 중심이 되는 주제를 가리킨다. Reviewed gloss SHA-256 c389dbe3b52839b8884f17b4f0352f3d35f092df86473c453d7e64cf8ebce2e2.",
+          "boundary_rationale": "m5-16604 w11196 w11196-s1: 테마: 문맥 0의 1편의 테마, 문맥 1의 가장 큰 테마, 문맥 2의 차기작의 테마가 모두 작품이나 논의의 중심이 되는 주제를 가리킨다. Reviewed gloss SHA-256 c389dbe3b52839b8884f17b4f0352f3d35f092df86473c453d7e64cf8ebce2e2.",
           "semantic_rationale": "w11196 w11196-s1: 테마: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 테마를 잡다, 테마로 삼다처럼 창작과 기획에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -10704,13 +10704,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11196",
         "candidate_record_sha256": "550cb502c1672d405bb1ab764f8c07be53adfe2e0bee010c370af8b672f9d9c1",
-        "decision_evidence_sha256": "abd8d37d0cbca9008cf4c62384a1c99b8cd93bfcf241d535e616096ee8ea25a1",
+        "decision_evidence_sha256": "1c671667e0441b1c4d98beb6065648bf12342556184c0350cdaae76d2ae41659",
         "sense_evidence": [
           {
             "sense_id": "w11196-s1",
             "sense_sha256": "766581433483e9e69facb5460bd27daeea1d7e910d493fec702ff19a2f9af064",
             "gloss_sha256": "c389dbe3b52839b8884f17b4f0352f3d35f092df86473c453d7e64cf8ebce2e2",
-            "evidence_sha256": "85e8ee99e847a05c850e803780edf8a02eec05da6716ea19c10bad63a99f0169"
+            "evidence_sha256": "4339d45f212d3a0dac10b2b8b9f8d50804db4b178bb9b087b609249345f6c68f"
           }
         ]
       }
@@ -11993,7 +11993,7 @@
       "candidate_record_sha256": "06afd81ce334b756da89890dde6a4193183df83b49b45010377b08981fae85fb",
       "decision": "included",
       "rank": 120,
-      "decision_rationale": "m5-16633 w11218: 청탁: 문맥 0의 판사에게 하는 청탁, 문맥 1의 청탁을 들어주지 않으면, 문맥 2의 민원이 청탁이 될 수 있으니가 모두 어떤 일을 해 달라고 사사로이 부탁함을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16633 w11218: 청탁: 문맥 0의 판사에게 하는 청탁, 문맥 1의 청탁을 들어주지 않으면, 문맥 2의 민원이 청탁이 될 있으니가 모두 어떤 일을 해 달라고 사사로이 부탁함을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -12002,7 +12002,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16633 w11218 w11218-s1: 청탁: 문맥 0의 판사에게 하는 청탁, 문맥 1의 청탁을 들어주지 않으면, 문맥 2의 민원이 청탁이 될 수 있으니가 모두 어떤 일을 해 달라고 사사로이 부탁함을 가리킨다. Reviewed gloss SHA-256 4c17c9544152184183760ab08942ee8adc161abc730c2d55a45a4e84b7a1b07b.",
+          "boundary_rationale": "m5-16633 w11218 w11218-s1: 청탁: 문맥 0의 판사에게 하는 청탁, 문맥 1의 청탁을 들어주지 않으면, 문맥 2의 민원이 청탁이 될 있으니가 모두 어떤 일을 해 달라고 사사로이 부탁함을 가리킨다. Reviewed gloss SHA-256 4c17c9544152184183760ab08942ee8adc161abc730c2d55a45a4e84b7a1b07b.",
           "semantic_rationale": "w11218 w11218-s1: 청탁: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 청탁을 하다, 부정 청탁처럼 사적인 부탁을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -12034,13 +12034,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11218",
         "candidate_record_sha256": "06afd81ce334b756da89890dde6a4193183df83b49b45010377b08981fae85fb",
-        "decision_evidence_sha256": "90f23833a8236814031803b3d1d57ef16b13a9dfb0cbca970afea9fccdb66f9c",
+        "decision_evidence_sha256": "192ea1dcfe3052fa53f4501545009eec973f4a03af81127201fab7977dca4477",
         "sense_evidence": [
           {
             "sense_id": "w11218-s1",
             "sense_sha256": "852af610d13caa29220c5709561d62c7e02b19cb7c135270cfbce3608e852dcd",
             "gloss_sha256": "4c17c9544152184183760ab08942ee8adc161abc730c2d55a45a4e84b7a1b07b",
-            "evidence_sha256": "e08196e1afb8af3f621b142215a4b77ae6d21484223f2106503bb3025a6642a0"
+            "evidence_sha256": "5594b7d752c61747e82808080a01de7595fac00c585f98e9b0e058ebf9173a47"
           }
         ]
       }
@@ -13604,7 +13604,7 @@
       "candidate_record_sha256": "b914fd16f6f81d8a658aeb31ba469f9e0b8e1e94ff7116d4a66de13121ea53c2",
       "decision": "included",
       "rank": 147,
-      "decision_rationale": "m5-16665 w11245: 메아리치다: 문맥 0의 목소리가 메아리쳐, 문맥 1의 고통소리가 메아리쳤다, 문맥 2의 말이 제 안에서 메아리치는이 모두 소리가 울려 되돌아온다는 뜻이고 문맥 1, 2는 마음 속에서 울리는 비유로 쓰였다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16665 w11245: 메아리치다: 문맥 0의 목소리가 메아리쳐, 문맥 1의 고통소리가 메아리쳤다, 문맥 2의 말이 제 메아리치는이 모두 소리가 울려 되돌아온다는 뜻이고 문맥 1, 2는 마음 속에서 울리는 비유로 쓰였다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -13613,7 +13613,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16665 w11245 w11245-s1: 메아리치다: 문맥 0의 목소리가 메아리쳐, 문맥 1의 고통소리가 메아리쳤다, 문맥 2의 말이 제 안에서 메아리치는이 모두 소리가 울려 되돌아온다는 뜻이고 문맥 1, 2는 마음 속에서 울리는 비유로 쓰였다. Reviewed gloss SHA-256 bc0ae8ee90fe9dda12f0b61a6294b154f75aada753186214cbe69fb5859ac93b.",
+          "boundary_rationale": "m5-16665 w11245 w11245-s1: 메아리치다: 문맥 0의 목소리가 메아리쳐, 문맥 1의 고통소리가 메아리쳤다, 문맥 2의 말이 제 메아리치는이 모두 소리가 울려 되돌아온다는 뜻이고 문맥 1, 2는 마음 속에서 울리는 비유로 쓰였다. Reviewed gloss SHA-256 bc0ae8ee90fe9dda12f0b61a6294b154f75aada753186214cbe69fb5859ac93b.",
           "semantic_rationale": "w11245 w11245-s1: 메아리치다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 메아리치는 소리, 마음에 메아리치다처럼 울림과 여운을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -13645,13 +13645,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11245",
         "candidate_record_sha256": "b914fd16f6f81d8a658aeb31ba469f9e0b8e1e94ff7116d4a66de13121ea53c2",
-        "decision_evidence_sha256": "1619d4c10f2283aa082b4cad7de8ef35c7a8310d23eecb0b1d9265b8c005424d",
+        "decision_evidence_sha256": "69540e0e8dfd07aa602e77e41a6462703432145fb3dac749a5047102be619ac3",
         "sense_evidence": [
           {
             "sense_id": "w11245-s1",
             "sense_sha256": "8be99e7924d8d706a7937ad2ab4a02b36cca6fffdb0c1d4ab389bd9255cd0e40",
             "gloss_sha256": "bc0ae8ee90fe9dda12f0b61a6294b154f75aada753186214cbe69fb5859ac93b",
-            "evidence_sha256": "a16621dc4923cf8c1ade4141b4476d73705bc4d67015130eb9e33edf0e0f40ec"
+            "evidence_sha256": "bc0181d4975727ed7f955b0884df0170ac8c263fbdd04ed47dbb58cb6540c995"
           }
         ]
       }
@@ -13720,7 +13720,7 @@
       "candidate_record_sha256": "f7be56162ee1a42a2ae74d71a9a8dd3600673475b78d97f51deab1468df048d7",
       "decision": "included",
       "rank": 149,
-      "decision_rationale": "m5-16668 w11247: 숨지다: 문맥 0의 수천 명이 숨진, 문맥 1의 병원에 도착하기 전에 이미 숨져, 문맥 2의 칼에 찔려 숨지고가 모두 목숨이 끊어진다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16668 w11247: 숨지다: 문맥 0의 수천 명이 숨진, 문맥 1의 전에 이미 숨져, 문맥 2의 칼에 찔려 숨지고가 모두 목숨이 끊어진다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -13729,7 +13729,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16668 w11247 w11247-s1: 숨지다: 문맥 0의 수천 명이 숨진, 문맥 1의 병원에 도착하기 전에 이미 숨져, 문맥 2의 칼에 찔려 숨지고가 모두 목숨이 끊어진다는 하나의 뜻이다. Reviewed gloss SHA-256 95b286f20b813a8440dd11066467624aae37da33d017ac5e4088313c73a72d16.",
+          "boundary_rationale": "m5-16668 w11247 w11247-s1: 숨지다: 문맥 0의 수천 명이 숨진, 문맥 1의 전에 이미 숨져, 문맥 2의 칼에 찔려 숨지고가 모두 목숨이 끊어진다는 하나의 뜻이다. Reviewed gloss SHA-256 95b286f20b813a8440dd11066467624aae37da33d017ac5e4088313c73a72d16.",
           "semantic_rationale": "w11247 w11247-s1: 숨지다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 숨지다, 숨진 채 발견되다처럼 사고와 사건 보도에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -13761,13 +13761,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11247",
         "candidate_record_sha256": "f7be56162ee1a42a2ae74d71a9a8dd3600673475b78d97f51deab1468df048d7",
-        "decision_evidence_sha256": "7625d9cd019bdb93d6621372a3563afa59f7db4bfc49c38e031f22b838285633",
+        "decision_evidence_sha256": "59ea91cabc5674f26819aa2dd42a68e886e42ba970696b182a11569396d42b19",
         "sense_evidence": [
           {
             "sense_id": "w11247-s1",
             "sense_sha256": "d1b570dafcf771e5f437d9e51715f243a639d8f47d78e7d80decf93a0643aed8",
             "gloss_sha256": "95b286f20b813a8440dd11066467624aae37da33d017ac5e4088313c73a72d16",
-            "evidence_sha256": "5c6d6c7f0d28b97b5eae021383275c43089707c81dff9f2ce8b9a11029e20597"
+            "evidence_sha256": "c512a25fed365b2084c2df07332d5513caec304292ea9f2fd4a6b1b4fa75f62f"
           }
         ]
       }
@@ -13903,7 +13903,7 @@
       "candidate_record_sha256": "027bec7afa5942a9c9b6b3d80101ae4b201e3afc973d134e59e38d6b286eda78",
       "decision": "included",
       "rank": 152,
-      "decision_rationale": "m5-16671 w11250: 옥죄다: 문맥 0의 자신을 옥죄는 것, 문맥 1의 온몸을 옥죄고 있는 기분, 문맥 2의 몸을 옥죄어 버릴 것 같다가 모두 바싹 죄어 자유롭지 못하게 한다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16671 w11250: 옥죄다: 문맥 0의 자신을 옥죄는 것, 문맥 1의 온몸을 옥죄고 있는 기분, 문맥 2의 몸을 옥죄어 버릴 같다가 모두 바싹 죄어 자유롭지 못하게 한다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -13912,7 +13912,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16671 w11250 w11250-s1: 옥죄다: 문맥 0의 자신을 옥죄는 것, 문맥 1의 온몸을 옥죄고 있는 기분, 문맥 2의 몸을 옥죄어 버릴 것 같다가 모두 바싹 죄어 자유롭지 못하게 한다는 하나의 뜻이다. Reviewed gloss SHA-256 603074a95ebc2535f716b6e1673f6069ab12be91f50626c9cef5c6a9190faf22.",
+          "boundary_rationale": "m5-16671 w11250 w11250-s1: 옥죄다: 문맥 0의 자신을 옥죄는 것, 문맥 1의 온몸을 옥죄고 있는 기분, 문맥 2의 몸을 옥죄어 버릴 같다가 모두 바싹 죄어 자유롭지 못하게 한다는 하나의 뜻이다. Reviewed gloss SHA-256 603074a95ebc2535f716b6e1673f6069ab12be91f50626c9cef5c6a9190faf22.",
           "semantic_rationale": "w11250 w11250-s1: 옥죄다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 옥죄는 느낌처럼 몸이나 마음을 압박하는 상황에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -13944,13 +13944,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11250",
         "candidate_record_sha256": "027bec7afa5942a9c9b6b3d80101ae4b201e3afc973d134e59e38d6b286eda78",
-        "decision_evidence_sha256": "95a36f4a7abe9f0cc05c7142ee802ac4e75e0cf0a387da97b32731098612b730",
+        "decision_evidence_sha256": "c895c619cd805a296f8b3e70a789fe4d20bb2095ebc21f15cbe27d678a145514",
         "sense_evidence": [
           {
             "sense_id": "w11250-s1",
             "sense_sha256": "91a025a667e0c9209b7b4f529694beb139affdf0fa89b4acea5326da199c4323",
             "gloss_sha256": "603074a95ebc2535f716b6e1673f6069ab12be91f50626c9cef5c6a9190faf22",
-            "evidence_sha256": "ebc951e18e7ee1038ad9dbe803c0344a906a13ee3fd7f3e78e0257e07f1306a7"
+            "evidence_sha256": "9512d837a144fb687a48619a97c983c515bdffc52771ff9a0aac9964d7cafb01"
           }
         ]
       }
@@ -14550,7 +14550,7 @@
       "candidate_record_sha256": "db19d7497281324a0ec346c5990339ced63261703f88a09c78e86e81d656cde5",
       "decision": "included",
       "rank": 163,
-      "decision_rationale": "m5-16687 w11261: 민들레: 문맥 0의 민들레 홑씨, 문맥 1의 민들레가 날려 보낸 씨앗, 문맥 2의 흔들리다 바람을 타는 민들레가 모두 노란 꽃이 피고 씨앗이 바람에 날리는 풀을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16687 w11261: 민들레: 문맥 0의 민들레 홑씨, 문맥 1의 민들레가 날려 보낸 문맥 2의 흔들리다 바람을 타는 민들레가 모두 노란 꽃이 피고 씨앗이 바람에 날리는 풀을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -14559,7 +14559,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16687 w11261 w11261-s1: 민들레: 문맥 0의 민들레 홑씨, 문맥 1의 민들레가 날려 보낸 씨앗, 문맥 2의 흔들리다 바람을 타는 민들레가 모두 노란 꽃이 피고 씨앗이 바람에 날리는 풀을 가리킨다. Reviewed gloss SHA-256 810572df0f2cec5ae7808f8ef3b5b6b4d2db2c117dcce831309f6c34658f7dfe.",
+          "boundary_rationale": "m5-16687 w11261 w11261-s1: 민들레: 문맥 0의 민들레 홑씨, 문맥 1의 민들레가 날려 보낸 문맥 2의 흔들리다 바람을 타는 민들레가 모두 노란 꽃이 피고 씨앗이 바람에 날리는 풀을 가리킨다. Reviewed gloss SHA-256 810572df0f2cec5ae7808f8ef3b5b6b4d2db2c117dcce831309f6c34658f7dfe.",
           "semantic_rationale": "w11261 w11261-s1: 민들레: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 민들레 홑씨, 민들레가 피다처럼 봄 들판 풍경에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -14591,13 +14591,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11261",
         "candidate_record_sha256": "db19d7497281324a0ec346c5990339ced63261703f88a09c78e86e81d656cde5",
-        "decision_evidence_sha256": "72dba42f7ed7d654103374cac998cea1dc0b7d190a2acf31a50432d313b6ee41",
+        "decision_evidence_sha256": "cceb48a79f60d9434c9d41e8be9e72a399095b7bdfc0d99ac4bcb7d030daeddb",
         "sense_evidence": [
           {
             "sense_id": "w11261-s1",
             "sense_sha256": "22d1a388706b72c485fa3e253f6c514e36e9b5d8563aa653da87a5e343ae9945",
             "gloss_sha256": "810572df0f2cec5ae7808f8ef3b5b6b4d2db2c117dcce831309f6c34658f7dfe",
-            "evidence_sha256": "255cad522e2be381a3a07784c9bb66bf8a7056bedcd012820e3648a9bdd679a0"
+            "evidence_sha256": "1f3e2324c6ef69f83affef03f1638d906e26ca543b4d658e34ef4ae25ff4c1a7"
           }
         ]
       }
@@ -14608,7 +14608,7 @@
       "candidate_record_sha256": "e1601667267d048a5e0ffeec4bbf2565684acd589ecd5b5786132d768f15fe47",
       "decision": "included",
       "rank": 164,
-      "decision_rationale": "m5-16688 w11262: 애벌레: 문맥 0의 애벌레, 제비, 문맥 1의 애벌레가 허물을 벗고 나비로, 문맥 2의 애벌레는 나비가 되는데가 모두 알에서 나와 아직 다 자라지 않은 곤충의 어린 것을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16688 w11262: 애벌레: 문맥 0의 애벌레, 제비, 문맥 1의 애벌레가 허물을 벗고 문맥 2의 애벌레는 나비가 되는데가 모두 알에서 나와 아직 다 자라지 않은 곤충의 어린 것을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -14617,7 +14617,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16688 w11262 w11262-s1: 애벌레: 문맥 0의 애벌레, 제비, 문맥 1의 애벌레가 허물을 벗고 나비로, 문맥 2의 애벌레는 나비가 되는데가 모두 알에서 나와 아직 다 자라지 않은 곤충의 어린 것을 가리킨다. Reviewed gloss SHA-256 c71cba3698fe005366de954b373b64538ac09a811845f327c082fcb11591568a.",
+          "boundary_rationale": "m5-16688 w11262 w11262-s1: 애벌레: 문맥 0의 애벌레, 제비, 문맥 1의 애벌레가 허물을 벗고 문맥 2의 애벌레는 나비가 되는데가 모두 알에서 나와 아직 다 자라지 않은 곤충의 어린 것을 가리킨다. Reviewed gloss SHA-256 c71cba3698fe005366de954b373b64538ac09a811845f327c082fcb11591568a.",
           "semantic_rationale": "w11262 w11262-s1: 애벌레: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 애벌레가 자라다, 애벌레에서 나비가 되다처럼 변태 이야기에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -14649,13 +14649,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11262",
         "candidate_record_sha256": "e1601667267d048a5e0ffeec4bbf2565684acd589ecd5b5786132d768f15fe47",
-        "decision_evidence_sha256": "a8e27d093b919a56fe570fc18c80637e250304e81ee54c93ad318e1d2dd4b3e8",
+        "decision_evidence_sha256": "7c6ff3e26b442dd0703abd36a9b769c95cb0cd56f7db59a41b11b2811caae7a8",
         "sense_evidence": [
           {
             "sense_id": "w11262-s1",
             "sense_sha256": "9b1d2357dd8236d7f9cbff52c90b32715672964e17f5989b4e5e72e23902de4e",
             "gloss_sha256": "c71cba3698fe005366de954b373b64538ac09a811845f327c082fcb11591568a",
-            "evidence_sha256": "13035337c0806b915a699c1dec6be0f3f70549f820d87d22455de054053d52e3"
+            "evidence_sha256": "418175840fc399fd1680607f4d547c6d43d6c0d94b767f279961546e3eb1874f"
           }
         ]
       }
@@ -14782,7 +14782,7 @@
       "candidate_record_sha256": "86fff5bc148a2e4ab8c9b7f907f95e71aaf36b6fe9b2d7e044ac6453574667c1",
       "decision": "included",
       "rank": 167,
-      "decision_rationale": "m5-16691 w11265: 제독: 문맥 0의 넬슨 제독, 문맥 1의 제독은 관 속에서 알코올에 절여진 상태, 문맥 2의 넬슨 제독이 해전에서 잃은 팔이 모두 함대를 지휘하는 해군 장교를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16691 w11265: 제독: 문맥 0의 넬슨 제독, 문맥 1의 제독은 관 속에서 상태, 문맥 2의 넬슨 제독이 해전에서 팔이 모두 함대를 지휘하는 해군 장교를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -14791,7 +14791,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16691 w11265 w11265-s1: 제독: 문맥 0의 넬슨 제독, 문맥 1의 제독은 관 속에서 알코올에 절여진 상태, 문맥 2의 넬슨 제독이 해전에서 잃은 팔이 모두 함대를 지휘하는 해군 장교를 가리킨다. Reviewed gloss SHA-256 fb63f650b64802603f1cc81dd86a016902d81f7865d36501e3d602e30f00a217.",
+          "boundary_rationale": "m5-16691 w11265 w11265-s1: 제독: 문맥 0의 넬슨 제독, 문맥 1의 제독은 관 속에서 상태, 문맥 2의 넬슨 제독이 해전에서 팔이 모두 함대를 지휘하는 해군 장교를 가리킨다. Reviewed gloss SHA-256 fb63f650b64802603f1cc81dd86a016902d81f7865d36501e3d602e30f00a217.",
           "semantic_rationale": "w11265 w11265-s1: 제독: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 제독이 지휘하다, 넬슨 제독처럼 해군 지휘관을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -14823,13 +14823,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11265",
         "candidate_record_sha256": "86fff5bc148a2e4ab8c9b7f907f95e71aaf36b6fe9b2d7e044ac6453574667c1",
-        "decision_evidence_sha256": "bd386039459f70f35a1104065bf2dfea96af888b6aa68943a06fc83a591fcdde",
+        "decision_evidence_sha256": "f71a91720ace22c8a6eb2a20811b7b417b339b0db2595978e4e695097fbd6fa4",
         "sense_evidence": [
           {
             "sense_id": "w11265-s1",
             "sense_sha256": "10135a5d9e18486bc41994128eca48e2e8ffe4eb07a7a1a11ad6517aa205c1fe",
             "gloss_sha256": "fb63f650b64802603f1cc81dd86a016902d81f7865d36501e3d602e30f00a217",
-            "evidence_sha256": "372137217a3550d4980b3410c31b191041521d80f04ff7dda148e7c314df4d40"
+            "evidence_sha256": "6ec4fae54f29c91249f38fe78c15f18de6ddf8596931e27c66e5a7a002bd96f6"
           }
         ]
       }
@@ -15996,7 +15996,7 @@
       "candidate_record_sha256": "b242c2f234140edc7302417cd15d053bb150ae2becd501d7d0d2e4c9a4a396d7",
       "decision": "included",
       "rank": 187,
-      "decision_rationale": "m5-16719 w11285: 해킹: 문맥 0의 스쿨북 해킹, 문맥 1의 해킹을 해서 감방문을 열기, 문맥 2의 해킹은 사형으로 다스리는 범죄가 모두 남의 컴퓨터에 몰래 들어가 정보를 건드리는 일을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16719 w11285: 해킹: 문맥 0의 스쿨북 해킹, 문맥 1의 해킹을 해서 감방문을 열기, 문맥 2의 해킹은 사형으로 다스리는 모두 남의 컴퓨터에 몰래 들어가 정보를 건드리는 일을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -16005,7 +16005,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16719 w11285 w11285-s1: 해킹: 문맥 0의 스쿨북 해킹, 문맥 1의 해킹을 해서 감방문을 열기, 문맥 2의 해킹은 사형으로 다스리는 범죄가 모두 남의 컴퓨터에 몰래 들어가 정보를 건드리는 일을 가리킨다. Reviewed gloss SHA-256 10da6b7fba02875da8f065e6266aef7c1b3c3d8605df7c1311b543587bc013b8.",
+          "boundary_rationale": "m5-16719 w11285 w11285-s1: 해킹: 문맥 0의 스쿨북 해킹, 문맥 1의 해킹을 해서 감방문을 열기, 문맥 2의 해킹은 사형으로 다스리는 모두 남의 컴퓨터에 몰래 들어가 정보를 건드리는 일을 가리킨다. Reviewed gloss SHA-256 10da6b7fba02875da8f065e6266aef7c1b3c3d8605df7c1311b543587bc013b8.",
           "semantic_rationale": "w11285 w11285-s1: 해킹: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 해킹을 당하다, 해킹 사건처럼 보안 침해를 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -16046,13 +16046,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11285",
         "candidate_record_sha256": "b242c2f234140edc7302417cd15d053bb150ae2becd501d7d0d2e4c9a4a396d7",
-        "decision_evidence_sha256": "09e2597adcd94e62a71c6e465d0cb5c2cdac625d7fe325650d3dd3fd10565dde",
+        "decision_evidence_sha256": "3683d2f5aca9d82de8249db8fa6070af7b860b8a5c2919d539a093bdcbeebadc",
         "sense_evidence": [
           {
             "sense_id": "w11285-s1",
             "sense_sha256": "c8112568c8efef86f6031d9761a7877c84ad65bf63866dab80b1ebb2db1049f0",
             "gloss_sha256": "10da6b7fba02875da8f065e6266aef7c1b3c3d8605df7c1311b543587bc013b8",
-            "evidence_sha256": "ae5da3a9ca2d3299d41955f3f53c38e3552ba24d3da5512d5e82cc785687f04b"
+            "evidence_sha256": "28d3f0136caf597db596f16070963f6f16b61cc4214a5805abbd9ee0d6b1d811"
           }
         ]
       }
@@ -16188,7 +16188,7 @@
       "candidate_record_sha256": "ee5c699eb71ced64187a5536013091a7501a3ac1567e8931faa970383bb58554",
       "decision": "included",
       "rank": 190,
-      "decision_rationale": "m5-16722 w11288: 주치의: 문맥 0의 주치의 보우 씨, 문맥 1의 주치의는 두 달은 더 입원, 문맥 2의 환자와 주치의가 모두 환자를 맡아 병을 주로 치료하는 의사를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16722 w11288: 주치의: 문맥 0의 주치의 보우 씨, 문맥 1의 주치의는 두 달은 입원, 문맥 2의 환자와 주치의가 모두 환자를 맡아 병을 주로 치료하는 의사를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -16197,7 +16197,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16722 w11288 w11288-s1: 주치의: 문맥 0의 주치의 보우 씨, 문맥 1의 주치의는 두 달은 더 입원, 문맥 2의 환자와 주치의가 모두 환자를 맡아 병을 주로 치료하는 의사를 가리킨다. Reviewed gloss SHA-256 c3569bbd29b6972e1a28fad273e2090ad8f91b80fe39430679c4fb5e9defcdf1.",
+          "boundary_rationale": "m5-16722 w11288 w11288-s1: 주치의: 문맥 0의 주치의 보우 씨, 문맥 1의 주치의는 두 달은 입원, 문맥 2의 환자와 주치의가 모두 환자를 맡아 병을 주로 치료하는 의사를 가리킨다. Reviewed gloss SHA-256 c3569bbd29b6972e1a28fad273e2090ad8f91b80fe39430679c4fb5e9defcdf1.",
           "semantic_rationale": "w11288 w11288-s1: 주치의: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 주치의가 권하다, 주치의와 상담하다처럼 맡은 의사를 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -16229,13 +16229,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11288",
         "candidate_record_sha256": "ee5c699eb71ced64187a5536013091a7501a3ac1567e8931faa970383bb58554",
-        "decision_evidence_sha256": "5f265ff14417a6db4bac3e76e95a44298ca7f5d92e43f357e81ed0a64f91beea",
+        "decision_evidence_sha256": "4e580e8667f3c23a3ebdbcb3922d8ab421194b77ae42a04856fe9d10214d611b",
         "sense_evidence": [
           {
             "sense_id": "w11288-s1",
             "sense_sha256": "23eb607b3208f4691aaf19d43d23e84a2286d12ed86c66c7a69d56e369e7fe62",
             "gloss_sha256": "c3569bbd29b6972e1a28fad273e2090ad8f91b80fe39430679c4fb5e9defcdf1",
-            "evidence_sha256": "4ab0f8c8206aae0b7204bc11253a1eeb47fda5671f561f17e7fba73e8a7b6df6"
+            "evidence_sha256": "f3513d8d356fbad1736b0ab98803fc2687d8bbc33fd4f6916e3269df4f4a7561"
           }
         ]
       }
@@ -18245,7 +18245,7 @@
       "candidate_record_sha256": "73faf2d11dc8a9923d5cb49ec8e939159417e21114f37014ca7f387c98d5e259",
       "decision": "included",
       "rank": 224,
-      "decision_rationale": "m5-16766 w11322: 섬유: 문맥 0의 섬유 근육증, 문맥 1의 섬유가 들어 있는 직물, 문맥 2의 섬유상 세포가 모두 실 모양으로 가늘고 긴 물질을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16766 w11322: 섬유: 문맥 0의 섬유 근육증, 문맥 1의 섬유가 들어 있는 문맥 2의 섬유상 세포가 모두 실 모양으로 가늘고 긴 물질을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -18254,7 +18254,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16766 w11322 w11322-s1: 섬유: 문맥 0의 섬유 근육증, 문맥 1의 섬유가 들어 있는 직물, 문맥 2의 섬유상 세포가 모두 실 모양으로 가늘고 긴 물질을 가리킨다. Reviewed gloss SHA-256 be50e7879bebbbbf65153a85631bcfcf3050e533021cfd6f908386c32602c78a.",
+          "boundary_rationale": "m5-16766 w11322 w11322-s1: 섬유: 문맥 0의 섬유 근육증, 문맥 1의 섬유가 들어 있는 문맥 2의 섬유상 세포가 모두 실 모양으로 가늘고 긴 물질을 가리킨다. Reviewed gloss SHA-256 be50e7879bebbbbf65153a85631bcfcf3050e533021cfd6f908386c32602c78a.",
           "semantic_rationale": "w11322 w11322-s1: 섬유: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 합성섬유, 섬유질처럼 옷감과 생체 조직에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -18286,13 +18286,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11322",
         "candidate_record_sha256": "73faf2d11dc8a9923d5cb49ec8e939159417e21114f37014ca7f387c98d5e259",
-        "decision_evidence_sha256": "b760a68fb060c3917fa26bd7772c86b44b2f961b56549c54fc77123c2fd5ec3d",
+        "decision_evidence_sha256": "096fada19d6c4cf0ec42d19316218bc52b112236b1033ec3c5768f86982ff039",
         "sense_evidence": [
           {
             "sense_id": "w11322-s1",
             "sense_sha256": "e3c1188a8ac84988d38c6bbdaa35e4ba6114751c4d03230eb084212bbd85f7d9",
             "gloss_sha256": "be50e7879bebbbbf65153a85631bcfcf3050e533021cfd6f908386c32602c78a",
-            "evidence_sha256": "cb7e938b4a567bc48a93154632b3a98a120c9e4bcf01cc64c3d3be5906a9d85d"
+            "evidence_sha256": "95da121ada1458ef14a1a7a0a009589d927eecb2ed23be143da759b87d921efe"
           }
         ]
       }
@@ -18477,7 +18477,7 @@
       "candidate_record_sha256": "a6360caebe5ef4a41a0edab8c1c2449abe95b1f26f8f1261c9a49fb345a06e82",
       "decision": "included",
       "rank": 228,
-      "decision_rationale": "m5-16771 w11326: 적수: 문맥 0의 깊은 원한을 품은 적수, 문맥 1의 두 적수, 문맥 2의 다가오는 적수가 모두 힘이나 재주가 비슷하여 맞서는 상대를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16771 w11326: 적수: 문맥 0의 깊은 원한을 적수, 문맥 1의 두 적수, 문맥 2의 다가오는 적수가 모두 힘이나 재주가 비슷하여 맞서는 상대를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -18486,7 +18486,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16771 w11326 w11326-s1: 적수: 문맥 0의 깊은 원한을 품은 적수, 문맥 1의 두 적수, 문맥 2의 다가오는 적수가 모두 힘이나 재주가 비슷하여 맞서는 상대를 가리킨다. Reviewed gloss SHA-256 9e384a01361059a94cb0cc6c698a9dfeb363371b1bafe965987dc4882beb7e43.",
+          "boundary_rationale": "m5-16771 w11326 w11326-s1: 적수: 문맥 0의 깊은 원한을 적수, 문맥 1의 두 적수, 문맥 2의 다가오는 적수가 모두 힘이나 재주가 비슷하여 맞서는 상대를 가리킨다. Reviewed gloss SHA-256 9e384a01361059a94cb0cc6c698a9dfeb363371b1bafe965987dc4882beb7e43.",
           "semantic_rationale": "w11326 w11326-s1: 적수: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 적수가 없다, 좋은 적수를 만나다처럼 겨루는 상대를 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -18527,13 +18527,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11326",
         "candidate_record_sha256": "a6360caebe5ef4a41a0edab8c1c2449abe95b1f26f8f1261c9a49fb345a06e82",
-        "decision_evidence_sha256": "0e2e1b1c9a0476c5193509e404c8e99a530be1e8b30780991259d3d5b9e00d81",
+        "decision_evidence_sha256": "0aa4fa1ddd1405f34f75731128cdf98c485a74bafc3fc40c1bbfae0b8355b7a8",
         "sense_evidence": [
           {
             "sense_id": "w11326-s1",
             "sense_sha256": "42a4e10d6e3dd4f207868cdba726add5964f2902194b12c8e686687ea2351cb0",
             "gloss_sha256": "9e384a01361059a94cb0cc6c698a9dfeb363371b1bafe965987dc4882beb7e43",
-            "evidence_sha256": "5e785f8bd0d92b7b0f05b978f4f21c473c7a3e571a096378144a8d854c957a3f"
+            "evidence_sha256": "ba2d4e8594445612ff563a2d8d1a5bb0dd2043cb433887b3e0f55ee02dabc28c"
           }
         ]
       }
@@ -18834,7 +18834,7 @@
       "candidate_record_sha256": "b17bf0f2a9d6f10fa0b9f46b88f0b83ac3dc434202b2e593d734ad665f2bdef6",
       "decision": "included",
       "rank": 234,
-      "decision_rationale": "m5-16781 w11332: 여생: 문맥 0의 얼마 남지 않은 여생, 문맥 1의 여기서 여생을 마감, 문맥 2의 남은 여생이 모두 앞으로 남은 삶을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16781 w11332: 여생: 문맥 0의 남지 않은 여생, 문맥 1의 여기서 여생을 마감, 문맥 2의 남은 여생이 모두 앞으로 남은 삶을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -18843,7 +18843,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16781 w11332 w11332-s1: 여생: 문맥 0의 얼마 남지 않은 여생, 문맥 1의 여기서 여생을 마감, 문맥 2의 남은 여생이 모두 앞으로 남은 삶을 가리킨다. Reviewed gloss SHA-256 448db53a5467e617f2bdd29689336701aa3cadbf21b52b51466576e995a449a8.",
+          "boundary_rationale": "m5-16781 w11332 w11332-s1: 여생: 문맥 0의 남지 않은 여생, 문맥 1의 여기서 여생을 마감, 문맥 2의 남은 여생이 모두 앞으로 남은 삶을 가리킨다. Reviewed gloss SHA-256 448db53a5467e617f2bdd29689336701aa3cadbf21b52b51466576e995a449a8.",
           "semantic_rationale": "w11332 w11332-s1: 여생: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 여생을 보내다, 남은 여생처럼 노년의 삶을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -18875,13 +18875,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11332",
         "candidate_record_sha256": "b17bf0f2a9d6f10fa0b9f46b88f0b83ac3dc434202b2e593d734ad665f2bdef6",
-        "decision_evidence_sha256": "c076ba33a997eef4d5ae3d8ec9e96e5f97f923a15b8b36bcacafbd7a06c5a1f4",
+        "decision_evidence_sha256": "968d16a65d4eec16083d62a7914a99ded2a5a64593250c92b3b4ff8f33904406",
         "sense_evidence": [
           {
             "sense_id": "w11332-s1",
             "sense_sha256": "f0d54bb6590049015ac3e52b56fa8c8cb5c0d42565c08ab1642baa30044248ce",
             "gloss_sha256": "448db53a5467e617f2bdd29689336701aa3cadbf21b52b51466576e995a449a8",
-            "evidence_sha256": "531736258baf8978617796b68a9dcba7f1b061946d38ca3dd9c27d41eb9e9072"
+            "evidence_sha256": "9195e004cb9d586b6d7317e324d6b27b9ad461d96e51b6af4a07b5bd9b334e7a"
           }
         ]
       }
@@ -19646,7 +19646,7 @@
       "candidate_record_sha256": "a8fcb54bc5b829f63ff189a09def60dec4d1ec27f36f534acdbfbeaa1e841d53",
       "decision": "included",
       "rank": 248,
-      "decision_rationale": "m5-16797 w11346: 버무리다: 문맥 0의 드레싱을 치고 버무린 샐러드, 문맥 1의 로맨스와 코미디 요소를 버무려, 문맥 2의 매력이 버무려진 연주가 모두 여러 가지를 한데 섞는다는 하나의 뜻이며 문맥 1, 2는 비유로 쓰였다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16797 w11346: 버무리다: 문맥 0의 치고 버무린 샐러드, 문맥 1의 로맨스와 코미디 요소를 버무려, 문맥 2의 매력이 버무려진 연주가 모두 여러 가지를 한데 섞는다는 하나의 뜻이며 문맥 1, 2는 비유로 쓰였다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -19655,7 +19655,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16797 w11346 w11346-s1: 버무리다: 문맥 0의 드레싱을 치고 버무린 샐러드, 문맥 1의 로맨스와 코미디 요소를 버무려, 문맥 2의 매력이 버무려진 연주가 모두 여러 가지를 한데 섞는다는 하나의 뜻이며 문맥 1, 2는 비유로 쓰였다. Reviewed gloss SHA-256 7bef700d4e2a93995063b74350a9481a42f0a52bbb727fdf0fea793e92fdafb7.",
+          "boundary_rationale": "m5-16797 w11346 w11346-s1: 버무리다: 문맥 0의 치고 버무린 샐러드, 문맥 1의 로맨스와 코미디 요소를 버무려, 문맥 2의 매력이 버무려진 연주가 모두 여러 가지를 한데 섞는다는 하나의 뜻이며 문맥 1, 2는 비유로 쓰였다. Reviewed gloss SHA-256 7bef700d4e2a93995063b74350a9481a42f0a52bbb727fdf0fea793e92fdafb7.",
           "semantic_rationale": "w11346 w11346-s1: 버무리다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 나물을 버무리다, 장르를 버무리다처럼 재료나 요소를 섞는 상황에서 쓰인다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -19687,13 +19687,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11346",
         "candidate_record_sha256": "a8fcb54bc5b829f63ff189a09def60dec4d1ec27f36f534acdbfbeaa1e841d53",
-        "decision_evidence_sha256": "ebdd2f611ed2b5fe1cd90e99b66801b92307d17d5149957a88b55770fa371a09",
+        "decision_evidence_sha256": "b7485cdb9cd4b0ccc5f675c7ae976f823d87d751e9eef668fc49253695a1cfd8",
         "sense_evidence": [
           {
             "sense_id": "w11346-s1",
             "sense_sha256": "cc5fa25b31cb1a545f6f86460a10e89e02073ece0889e9035e0cd1e2a5a8a2a1",
             "gloss_sha256": "7bef700d4e2a93995063b74350a9481a42f0a52bbb727fdf0fea793e92fdafb7",
-            "evidence_sha256": "db7374307ff4421beba6f7799862de2a4c2f891bd1afc478ca7a5590bda1b126"
+            "evidence_sha256": "6314f7c17b504e033a935083db12c6a4c495b4b8bf09291d4bffa5cf7752006f"
           }
         ]
       }
@@ -20293,7 +20293,7 @@
       "candidate_record_sha256": "963283219d599433a5f3fd0b6e2dd41f3e098dc28a57a924ecae14a168e8c20f",
       "decision": "included",
       "rank": 259,
-      "decision_rationale": "m5-16809 w11357: 내역: 문맥 0의 수상 내역, 문맥 1의 카드 사용 내역, 문맥 2의 음식을 시켜 먹은 내역이 모두 항목별로 나눈 구체적인 내용을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16809 w11357: 내역: 문맥 0의 수상 내역, 문맥 1의 카드 사용 내역, 문맥 2의 시켜 먹은 내역이 모두 항목별로 나눈 구체적인 내용을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -20302,7 +20302,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16809 w11357 w11357-s1: 내역: 문맥 0의 수상 내역, 문맥 1의 카드 사용 내역, 문맥 2의 음식을 시켜 먹은 내역이 모두 항목별로 나눈 구체적인 내용을 가리킨다. Reviewed gloss SHA-256 b256a113aa74add429462a19b0ec5891c26b87148551ed1ff2af40fc0c8789ac.",
+          "boundary_rationale": "m5-16809 w11357 w11357-s1: 내역: 문맥 0의 수상 내역, 문맥 1의 카드 사용 내역, 문맥 2의 시켜 먹은 내역이 모두 항목별로 나눈 구체적인 내용을 가리킨다. Reviewed gloss SHA-256 b256a113aa74add429462a19b0ec5891c26b87148551ed1ff2af40fc0c8789ac.",
           "semantic_rationale": "w11357 w11357-s1: 내역: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 내역을 확인하다, 사용 내역처럼 세부 항목을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -20334,13 +20334,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11357",
         "candidate_record_sha256": "963283219d599433a5f3fd0b6e2dd41f3e098dc28a57a924ecae14a168e8c20f",
-        "decision_evidence_sha256": "6abe7cef8664897c90e5a5f06a9f54547e3890a5e12c2cf942dea758823b77e3",
+        "decision_evidence_sha256": "6bbad30ba58467368b62b1172bd466450caf2b860ff7bcc0f9e80768336ca089",
         "sense_evidence": [
           {
             "sense_id": "w11357-s1",
             "sense_sha256": "f6863ae1f65cd5b8334ef154d03c8fd8e5d8f4be14f4a1e05ab317f28271facd",
             "gloss_sha256": "b256a113aa74add429462a19b0ec5891c26b87148551ed1ff2af40fc0c8789ac",
-            "evidence_sha256": "101dd8cad87ef46f3ab6deb9807fe76d8b4cc59adbd8268fcbbf1597bb714180"
+            "evidence_sha256": "595e7549a76714751c9110f086aee18130c227311772dd1d9860b8524cd8fddc"
           }
         ]
       }
@@ -20592,7 +20592,7 @@
       "candidate_record_sha256": "4985d6288c1001b52aba919fb9f4a853a293b4114079c58f4537cc4fcf532a0e",
       "decision": "included",
       "rank": 264,
-      "decision_rationale": "m5-16815 w11362: 양옆: 문맥 0의 양옆 담장, 문맥 1의 주먹 쥔 손을 양옆에, 문맥 2의 머리 양옆이 모두 어떤 것의 왼쪽과 오른쪽 옆을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16815 w11362: 양옆: 문맥 0의 양옆 담장, 문맥 1의 쥔 손을 양옆에, 문맥 2의 머리 양옆이 모두 어떤 것의 왼쪽과 오른쪽 옆을 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -20601,7 +20601,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16815 w11362 w11362-s1: 양옆: 문맥 0의 양옆 담장, 문맥 1의 주먹 쥔 손을 양옆에, 문맥 2의 머리 양옆이 모두 어떤 것의 왼쪽과 오른쪽 옆을 가리킨다. Reviewed gloss SHA-256 e14fbeb4d9876403dd3526a08e66a36185ea6b2ccd28a9508a9b44819f4d30f8.",
+          "boundary_rationale": "m5-16815 w11362 w11362-s1: 양옆: 문맥 0의 양옆 담장, 문맥 1의 쥔 손을 양옆에, 문맥 2의 머리 양옆이 모두 어떤 것의 왼쪽과 오른쪽 옆을 가리킨다. Reviewed gloss SHA-256 e14fbeb4d9876403dd3526a08e66a36185ea6b2ccd28a9508a9b44819f4d30f8.",
           "semantic_rationale": "w11362 w11362-s1: 양옆: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 양옆에 서다, 양옆으로 벌리다처럼 좌우 가장자리를 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -20633,13 +20633,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11362",
         "candidate_record_sha256": "4985d6288c1001b52aba919fb9f4a853a293b4114079c58f4537cc4fcf532a0e",
-        "decision_evidence_sha256": "89eeb4ea5bb8fc6f34ca4192a381f827e40e690bf556b1e411f16b1090de7012",
+        "decision_evidence_sha256": "74a550208d18f1df219a73904e7b4df77f43716bbe16d488e64edff24b0c730f",
         "sense_evidence": [
           {
             "sense_id": "w11362-s1",
             "sense_sha256": "cc947f2c7597fffbfdb8ba72a0f2d0d2e6750926267be8aab1cf76244c43a01f",
             "gloss_sha256": "e14fbeb4d9876403dd3526a08e66a36185ea6b2ccd28a9508a9b44819f4d30f8",
-            "evidence_sha256": "bf863ce0a227563e62d87c5895144090a6dea6433c1a3c7143543ad6c56900fb"
+            "evidence_sha256": "df450773b98bde6284a414189dff7ce2de1411fa4b285b292ea8452f9c0a162b"
           }
         ]
       }
@@ -20650,7 +20650,7 @@
       "candidate_record_sha256": "8eaa82784362a17cd5cdcd9a0bd9c51607f03c0ed54defb90ac0503057ea0b37",
       "decision": "included",
       "rank": 265,
-      "decision_rationale": "m5-16818 w11363: 청색: 문맥 0의 적, 백, 청색 장미 매듭과 문맥 1의 청색과 「성모 수태고지」의 청색이 푸른 빛깔을 가리킨다. 용례는 둘뿐이나 같은 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16818 w11363: 청색: 문맥 0의 백, 청색 장미 매듭과 문맥 1의 청색과 「성모 청색이 푸른 빛깔을 가리킨다. 용례는 둘뿐이나 같은 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -20659,7 +20659,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16818 w11363 w11363-s1: 청색: 문맥 0의 적, 백, 청색 장미 매듭과 문맥 1의 청색과 「성모 수태고지」의 청색이 푸른 빛깔을 가리킨다. 용례는 둘뿐이나 같은 뜻이다. Reviewed gloss SHA-256 3ed2a572789eb5198796a21a1e166a178c21cb25e2f900d4cb8e2a7c1cea3388.",
+          "boundary_rationale": "m5-16818 w11363 w11363-s1: 청색: 문맥 0의 백, 청색 장미 매듭과 문맥 1의 청색과 「성모 청색이 푸른 빛깔을 가리킨다. 용례는 둘뿐이나 같은 뜻이다. Reviewed gloss SHA-256 3ed2a572789eb5198796a21a1e166a178c21cb25e2f900d4cb8e2a7c1cea3388.",
           "semantic_rationale": "w11363 w11363-s1: 청색: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 청색 옷, 청색으로 물들다처럼 색 이름을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -20691,13 +20691,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11363",
         "candidate_record_sha256": "8eaa82784362a17cd5cdcd9a0bd9c51607f03c0ed54defb90ac0503057ea0b37",
-        "decision_evidence_sha256": "87de45df69fb7da0e05ca83b202b820ffedefe75b23af4942b55dd031ebaaaab",
+        "decision_evidence_sha256": "c95c92d342be620778256a4b43c689abc1f0f5ab190f81892a70f8fc3ca8619a",
         "sense_evidence": [
           {
             "sense_id": "w11363-s1",
             "sense_sha256": "5f1c2339e2048e0196152a205aa62bfcacb1a01e71f160c8fcb885d4bbab566c",
             "gloss_sha256": "3ed2a572789eb5198796a21a1e166a178c21cb25e2f900d4cb8e2a7c1cea3388",
-            "evidence_sha256": "fb9fe3bc0d4ec248f3cfcfd509adefb6604828f05d7a6b11c10935e2631cb473"
+            "evidence_sha256": "bb88bb86bb4d82ccbe695054a7e15d64609496b126a3f6c1bd4b9421c36eb45d"
           }
         ]
       }
@@ -20998,7 +20998,7 @@
       "candidate_record_sha256": "71c807e660e82ffd60f48e43839de4027fe9dddc57f8b881c98a47fd7204260f",
       "decision": "included",
       "rank": 271,
-      "decision_rationale": "m5-16824 w11369: 더러워지다: 문맥 0의 더러워진 발, 문맥 1의 더러워져 밖이 보이지도 않는 창문, 문맥 2의 더러워지는 발이 모두 때나 먼지로 지저분하게 된다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16824 w11369: 더러워지다: 문맥 0의 더러워진 발, 문맥 1의 더러워져 밖이 보이지도 창문, 문맥 2의 더러워지는 발이 모두 때나 먼지로 지저분하게 된다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -21007,7 +21007,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16824 w11369 w11369-s1: 더러워지다: 문맥 0의 더러워진 발, 문맥 1의 더러워져 밖이 보이지도 않는 창문, 문맥 2의 더러워지는 발이 모두 때나 먼지로 지저분하게 된다는 하나의 뜻이다. Reviewed gloss SHA-256 8fee5e5ebd7674aece3363a5368ebfca9d5f6f9fe78f7eb1e98e0cf63eda3aed.",
+          "boundary_rationale": "m5-16824 w11369 w11369-s1: 더러워지다: 문맥 0의 더러워진 발, 문맥 1의 더러워져 밖이 보이지도 창문, 문맥 2의 더러워지는 발이 모두 때나 먼지로 지저분하게 된다는 하나의 뜻이다. Reviewed gloss SHA-256 8fee5e5ebd7674aece3363a5368ebfca9d5f6f9fe78f7eb1e98e0cf63eda3aed.",
           "semantic_rationale": "w11369 w11369-s1: 더러워지다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 옷이 더러워지다처럼 깨끗한 것이 지저분해지는 변화를 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -21039,13 +21039,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11369",
         "candidate_record_sha256": "71c807e660e82ffd60f48e43839de4027fe9dddc57f8b881c98a47fd7204260f",
-        "decision_evidence_sha256": "548e76776030cfff1212595243f69229ea5e84d26883bbc9925cd6d95055e663",
+        "decision_evidence_sha256": "e2ac042df152b64f94f97f51c999eb5981104e18f9991daa60a2686472847eea",
         "sense_evidence": [
           {
             "sense_id": "w11369-s1",
             "sense_sha256": "a92fc28d2c096c3f449a8afb9d8099924a57a1c665bc82ed2826ffc27d5ba5ce",
             "gloss_sha256": "8fee5e5ebd7674aece3363a5368ebfca9d5f6f9fe78f7eb1e98e0cf63eda3aed",
-            "evidence_sha256": "e417e4e876d30ca03f1ddc1b2396a2037f2a32bb7a10bd81ba8f55d1bec42b44"
+            "evidence_sha256": "ef34b8dfe148c9bf808390d739cc709278a637830b9f4ae399ec9adf8afc0c1b"
           }
         ]
       }
@@ -21056,7 +21056,7 @@
       "candidate_record_sha256": "0a0ab181277e1bf03499e29fe3f49a48fa0e933df254fdc043af5ea3edac91b7",
       "decision": "included",
       "rank": 272,
-      "decision_rationale": "m5-16825 w11370: 몸담다: 문맥 0의 아늘이 몸담고 있는, 문맥 1의 내가 몸담은 의원실, 문맥 2의 10년 동안 교직에 몸담을이 모두 어떤 조직이나 분야에 속해 일한다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16825 w11370: 몸담다: 문맥 0의 아늘이 몸담고 있는, 문맥 1의 내가 몸담은 의원실, 문맥 2의 10년 동안 몸담을이 모두 어떤 조직이나 분야에 속해 일한다는 하나의 뜻이다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -21065,7 +21065,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16825 w11370 w11370-s1: 몸담다: 문맥 0의 아늘이 몸담고 있는, 문맥 1의 내가 몸담은 의원실, 문맥 2의 10년 동안 교직에 몸담을이 모두 어떤 조직이나 분야에 속해 일한다는 하나의 뜻이다. Reviewed gloss SHA-256 8d6a4ff15f133faf53a18c74bd9e679f8b1d04a252cf248b10aa1ff6049f6f43.",
+          "boundary_rationale": "m5-16825 w11370 w11370-s1: 몸담다: 문맥 0의 아늘이 몸담고 있는, 문맥 1의 내가 몸담은 의원실, 문맥 2의 10년 동안 몸담을이 모두 어떤 조직이나 분야에 속해 일한다는 하나의 뜻이다. Reviewed gloss SHA-256 8d6a4ff15f133faf53a18c74bd9e679f8b1d04a252cf248b10aa1ff6049f6f43.",
           "semantic_rationale": "w11370 w11370-s1: 몸담다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 몸담고 있다, 교직에 몸담다처럼 소속과 활동을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -21106,13 +21106,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11370",
         "candidate_record_sha256": "0a0ab181277e1bf03499e29fe3f49a48fa0e933df254fdc043af5ea3edac91b7",
-        "decision_evidence_sha256": "368178d791a1787bdb1eb314e43079ac9736adec6e01dc246b56e16103110a37",
+        "decision_evidence_sha256": "b30556e4d5cf56632997d2041e6e0d6c55941bd7a6d77820a80c5d6a876e051c",
         "sense_evidence": [
           {
             "sense_id": "w11370-s1",
             "sense_sha256": "44d82b588ffb0b9a8d0fb1074161cfd44ec8519de80d031abca67ad0c0cea14a",
             "gloss_sha256": "8d6a4ff15f133faf53a18c74bd9e679f8b1d04a252cf248b10aa1ff6049f6f43",
-            "evidence_sha256": "6440e0775c3c1b96e2fc863fd5a0499b9594c661e5f378083537d5204fa85c39"
+            "evidence_sha256": "a473be4acd12d9ad931dc619b8a9180684e6cf95c765abf7425291355558d3a7"
           }
         ]
       }
@@ -21248,7 +21248,7 @@
       "candidate_record_sha256": "3d4ac3ef39540f6fba495974879dc6c9a2069769159910098a4c8973f85b5412",
       "decision": "included",
       "rank": 275,
-      "decision_rationale": "m5-16828 w11373: 아량: 문맥 0의 승자가 보내는 아량, 문맥 1의 용서할 수 있는 아량, 문맥 2의 강자의 아량이 모두 너그럽게 이해하고 받아들이는 마음씨를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "decision_rationale": "m5-16828 w11373: 아량: 문맥 0의 승자가 보내는 아량, 문맥 1의 용서할 수 아량, 문맥 2의 강자의 아량이 모두 너그럽게 이해하고 받아들이는 마음씨를 가리킨다. 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
       "review_pass_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1",
       "gloss_judgment": "fit",
       "sense_reviews": [
@@ -21257,7 +21257,7 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "m5-16828 w11373 w11373-s1: 아량: 문맥 0의 승자가 보내는 아량, 문맥 1의 용서할 수 있는 아량, 문맥 2의 강자의 아량이 모두 너그럽게 이해하고 받아들이는 마음씨를 가리킨다. Reviewed gloss SHA-256 288600c1732d495d374921ead412b9d1946c24446b8b5f5f43c44baf9136c3fb.",
+          "boundary_rationale": "m5-16828 w11373 w11373-s1: 아량: 문맥 0의 승자가 보내는 아량, 문맥 1의 용서할 수 아량, 문맥 2의 강자의 아량이 모두 너그럽게 이해하고 받아들이는 마음씨를 가리킨다. Reviewed gloss SHA-256 288600c1732d495d374921ead412b9d1946c24446b8b5f5f43c44baf9136c3fb.",
           "semantic_rationale": "w11373 w11373-s1: 아량: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 아량을 베풀다, 아량이 넓다처럼 너그러움을 말한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
@@ -21289,13 +21289,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w11373",
         "candidate_record_sha256": "3d4ac3ef39540f6fba495974879dc6c9a2069769159910098a4c8973f85b5412",
-        "decision_evidence_sha256": "2678382a8b0d7aa9e6a06210da7c237c89f372948ce109420af88545aac17e02",
+        "decision_evidence_sha256": "e2e9b6727206863e66cf9292f0aa7b971382f478153b9210703b74326025cadb",
         "sense_evidence": [
           {
             "sense_id": "w11373-s1",
             "sense_sha256": "2355df41c8e202646b1ae01b4755c750af92fad9356e8ce86593bcb5c2b1654a",
             "gloss_sha256": "288600c1732d495d374921ead412b9d1946c24446b8b5f5f43c44baf9136c3fb",
-            "evidence_sha256": "e5a43a69068ff2bc677340724dbb96da61bcb1d3c0cbdd4f16e6481309c51954"
+            "evidence_sha256": "1abc7d06fa0a82cc9f382091d428276c558ef1d6056fa4fae243fa89df4c4dab"
           }
         ]
       }
@@ -21591,5 +21591,5 @@
       }
     }
   ],
-  "artifact_sha256": "25500fa69039f200424d432c24c868cd4610cbacaac66b238ec1ed1685edf8d4"
+  "artifact_sha256": "68efee253cfdec63a8abd4eef0b8048fb9e7ba4b002595d0eb78e53045bbbfd3"
 }

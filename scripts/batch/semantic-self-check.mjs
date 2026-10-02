@@ -132,7 +132,7 @@ const REVIEW_CLAIM_PATTERN = new RegExp([
   String.raw`\b(?:another|other|different|separate|second|new|fresh|outside|external)\s+(?:claude|model|agent|session|ai|llm|instance|team|editor|expert|person)\b`,
   String.raw`\b(?:reviewed|checked|verified|approved|audited|validated|signed[- ]off)\s+(?:by|with)\s+(?!the producing (?:AI )?agent\b)`,
   // Korean, with or without particles.
-  String.raw`독립\s*(?:적으로)?\s*(?:검|리뷰)|독립적|(?<![가-힣])(?:사람|인간)(?:이|은|가|의|들이|에\s*의해|에게)?\s*(?:직접\s*)?(?:검|리뷰|확인|승인|판단|판정|판별|결정|평가|심사|채택|선정|선별|보류|통과|감수|수정|교정|작성)`,
+  String.raw`독립\s*(?:적으로)?\s*(?:검|리뷰)|독립적|(?:(?:별도|다른|외부|추가|독립|제\s*3)\s*(?:의\s*)?(?:사람|인간)|(?<![가-힣])(?:사람|인간))(?:이|은|가|의|들이|에\s*의해|에게)?\s*(?:직접\s*)?(?:검|리뷰|확인|승인|판단|판정|판별|결정|평가|심사|채택|선정|선별|보류|통과|감수|수정|교정|작성)`,
   String.raw`별도\s*(?:의\s*)?(?:검|리뷰|에이전트|모델|세션)|검수자|리뷰어|제\s*3\s*자|제삼자`,
   String.raw`(?<![가-힣])(?:외부|다른|타|추가|두\s*번째)\s*(?:의\s*)?(?:편집자|전문가|검토자|감수자|세션|에이전트|모델|클로드|팀)`,
   String.raw`(?<![가-힣])(?:편집자|전문가|감수자?|검토자|동료|팀)(?:들)?(?:이|가|께서|에게서)?\s*(?:직접\s*)?(?:검토|검수|확인|승인|리뷰)`,
@@ -162,6 +162,45 @@ export function assertDecisionClaimsTruthful({ reviews, decisions, outcomes = []
   visit(reviews, 'reviews', false);
   visit(decisions, 'decisions', false);
   visit(outcomes, 'candidate_outcomes', false);
+}
+
+const COPIED_NEIGHBOR_WORDS = 3;
+const HOLD_COPIED_NEIGHBOR_WORDS = 2;
+const wordsOf = (text) => text.replace(/[^\p{L}\p{N}_\s]/gu, ' ').split(/\s+/u).filter(Boolean);
+
+/**
+ * Rationales may name the observed form of a candidate but must not reproduce
+ * its corpus contexts. A verbatim run of consecutive context words that holds
+ * three or more words other than the lemma, its stem, or an observed form is a copied
+ * phrase. Needs the local context text, so it runs where that text exists.
+ */
+export function findCopiedContextPhrases(text, { contexts, allowedForms, threshold = COPIED_NEIGHBOR_WORDS }) {
+  const bigrams = new Set();
+  for (const context of contexts) {
+    const words = wordsOf(context);
+    for (let index = 0; index + 1 < words.length; index += 1) bigrams.add(`${words[index]}\u0000${words[index + 1]}`);
+  }
+  const words = wordsOf(text);
+  const copied = [];
+  let index = 0;
+  while (index + 1 < words.length) {
+    if (!bigrams.has(`${words[index]}\u0000${words[index + 1]}`)) { index += 1; continue; }
+    let end = index + 1;
+    while (end + 1 < words.length && bigrams.has(`${words[end]}\u0000${words[end + 1]}`)) end += 1;
+    const run = words.slice(index, end + 1);
+    if (run.filter((word) => !allowedForms.some((form) => word.includes(form))).length >= threshold) copied.push(run.join(' '));
+    index = end + 1;
+  }
+  return copied;
+}
+
+export function assertNoCorpusPhraseCopy({ lemma, texts, contexts, allowedForms }) {
+  for (const [where, text] of texts) {
+    const stem = lemma.endsWith('다') ? lemma.slice(0, -1) : lemma;
+    // Holds quote contexts to explain a split; they get the stricter limit.
+    const copied = findCopiedContextPhrases(text, { contexts, allowedForms: [lemma, stem, ...allowedForms], threshold: /hold/iu.test(where) ? HOLD_COPIED_NEIGHBOR_WORDS : COPIED_NEIGHBOR_WORDS });
+    assert.deepEqual(copied, [], `${lemma} ${where} reproduces corpus context wording; describe contexts in your own words and quote at most the observed form`);
+  }
 }
 
 /**
