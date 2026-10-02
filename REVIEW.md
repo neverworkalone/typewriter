@@ -171,3 +171,6 @@ Stop gathering context once the issue and approach are understood, the changed
 surface and relevant risks are accounted for, required checks are confirmed,
 and remaining blockers are decided. If a material uncertainty remains, obtain
 just enough additional evidence to resolve it; do not search unrelated areas.
+
+A reviewer must not turn a previously settled owner decision into a recurring
+blocker without new, concrete evidence.
