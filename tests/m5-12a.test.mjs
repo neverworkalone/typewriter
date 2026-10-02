@@ -93,9 +93,9 @@ test('M5-12A prospective dictionary remains unchanged through product checks and
 
   assert.equal(evidence.status, 'pass');
   assert.equal(evidence.record_count, '2042');
-  assert.equal(evidence.generated_surface_form_count, '2112');
-  assert.equal(evidence.surface_form_eligible_sense_count, '644');
-  assert.equal(evidence.surface_form_exclusion_count, '170');
+  assert.equal(evidence.generated_surface_form_count, '2161');
+  assert.equal(evidence.surface_form_eligible_sense_count, '658');
+  assert.equal(evidence.surface_form_exclusion_count, '172');
   assert.equal(evidence.product_checks_preserved_database, true);
   assert.equal(evidence.package_preparation_preserved_database, true);
   assert.match(evidence.database_sha256, /^[a-f0-9]{64}$/u);
@@ -327,6 +327,7 @@ test('M5-12A shared production rejects copied semantic evidence before admission
   const result = await buildM512A();
   const reviews = structuredClone(result.reviewRows);
   reviews[0].semantic_review.authored_decision.candidate_record_sha256 = '0'.repeat(64);
+  const dispositionBytes = await readFile(path.resolve('data/batches/m5-12a-semantic-decisions.json'));
 
   await assert.rejects(
     () => import('../scripts/batch/lexical-production.mjs').then(({ validateLexicalProduction }) => (
@@ -342,6 +343,12 @@ test('M5-12A shared production rejects copied semantic evidence before admission
         productionPayloads: result.production.production_payloads,
         catalogCount: M5_12A_SELECTION_COUNT,
         expectedSelectedCount: M5_12A_IMPORT_COUNT,
+        allowReplay: true,
+        historicalReplay: true,
+        historicalDispositionSource: {
+          sourcePath: 'data/batches/m5-12a-semantic-decisions.json',
+          sourceBytes: dispositionBytes,
+        },
         checkPilotCompleteness: true,
       })
     )),
