@@ -131,6 +131,33 @@ dictionary-grade precision; `near`, `mood`, `scene`, `sensory`, `action`, and
 enrichment remains independent of lexical admission. See
 [`docs/editorial-model.md`](docs/editorial-model.md) for the full contract.
 
+#### No external model delegation for lexical QA — Codex and Claude (owner directive, 2026-10-02)
+
+**Applies to all implementation agents, including Codex and Claude, and to M9
+retrospective B01–B04 as well as new M10 batches.** Perform candidate authoring,
+semantic checks, and historical validation **in the currently assigned primary
+agent context**. Do not start Claude CLI, Codex CLI, another AI model/API,
+subagents, or a separate agent session to author, verify, review, or endorse
+lexical records. Do not invoke a different LLM to satisfy a historical
+`reviewer` label or an obsolete independent-review gate. Existing source
+files and deterministic local validators/tests may be read/run normally.
+
+Do not inspect `claude auth status` or other agent account identity, email,
+subscription, authentication, or usage details to troubleshoot lexical review.
+If a tool reports rate/usage limits, treat the reported execution failure as
+sufficient; do not probe account state. Use only owner-authorized, task-relevant
+diagnostics.
+
+For B01–B04's 1,206 historical records, perform a **new source-bound semantic
+quality audit in the primary Codex context**, recording accurate `AI self-check`
+provenance, candidate-specific findings, unresolved evidence, and necessary
+corrections. Do not relabel it as an independent audit or invent another agent's
+review. A gap in the historical independent-review record must remain labeled as
+such; the owner has explicitly replaced the retrospective requirement with
+source-bound quality assurance. If a legacy validator blocks this truthful
+workflow, adjust the **shared contract and generalized regressions** without
+relaxing semantic admission, and preserve original B05–B09 evidence as-is.
+
 #### Editorial semantic QA and review provenance (owner decision, 2026-10-02)
 
 Typewriter requires **source-bound semantic quality assurance**, not a number
