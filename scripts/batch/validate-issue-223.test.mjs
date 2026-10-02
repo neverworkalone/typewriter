@@ -212,12 +212,6 @@ test('Issue #223 emitted decisions must match the bound authored review even wit
   assert.throws(() => validateSemanticReviewInputBinding(missing), /decision count/u);
 });
 
-test('Issue #223 legacy B01-B04 semantic sources stay exempt only without an input', () => {
-  const legacy = { semanticSource: { source_basis: {} }, inputBytes: null, admittedRows: [] };
-  assert.equal(validateSemanticReviewInputBinding({ ...legacy, batchId: 'issue-223-m9-e-corpus-batch-04-20261001' }), null);
-  assert.throws(() => validateSemanticReviewInputBinding({ ...legacy, batchId: 'issue-223-m9-e-corpus-batch-05-20261001' }));
-});
-
 test('Issue #223 shared semantic validator enforces the bound reviewer, not a fixed one', () => {
   const batchFile = (suffix) => new URL(`../../data/batches/issue-223-m9-e-corpus-batch-01-${suffix}`, import.meta.url);
   const review = JSON.parse(readFileSync(batchFile('candidate-review.json')));
@@ -305,4 +299,24 @@ test('Issue #223 bound review input rejects a gloss changed after the reviewers 
     () => validateSemanticReviewInputBinding({ ...fixture, semanticSource: { ...fixture.semanticSource, candidate_records: [record] } }),
     /admitted gloss differs from the gloss the reviewer assessed/u,
   );
+});
+
+test('Issue #223 legacy unbound exception is pinned to the exact historical B01–B04 artifacts', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const load = async (n) => ({
+    candidate_review: await readFile(`data/batches/issue-223-m9-e-corpus-batch-0${n}-candidate-review.json`),
+    semantic_decisions: await readFile(`data/batches/issue-223-m9-e-corpus-batch-0${n}-semantic-decisions.json`),
+    canonical_import: await readFile(`data/canonical/issue-223-m9-e-corpus-batch-0${n}.jsonl`),
+  });
+  const base = { semanticSource: { source_basis: {} }, inputBytes: null, admittedRows: [], candidateRows: [], candidateAuthor: 'a', registry: new Set() };
+  for (const n of [1, 2, 3, 4]) {
+    const batchId = `issue-223-m9-e-corpus-batch-0${n}-20261001`;
+    const bytes = await load(n);
+    assert.equal(validateSemanticReviewInputBinding({ ...base, batchId, legacyArtifactBytes: bytes }), null);
+    // A new-dated batch with the same ordinal is not exempt.
+    assert.throws(() => validateSemanticReviewInputBinding({ ...base, batchId: `issue-223-m9-e-corpus-batch-0${n}-20270101`, legacyArtifactBytes: bytes }), /must bind its authored semantic review input/u);
+    // Any change to a pinned artifact ends the exemption.
+    assert.throws(() => validateSemanticReviewInputBinding({ ...base, batchId, legacyArtifactBytes: { ...bytes, semantic_decisions: Buffer.concat([bytes.semantic_decisions, Buffer.from(' ')]) } }), /no longer matches the pinned historical artifact/u);
+    assert.throws(() => validateSemanticReviewInputBinding({ ...base, batchId, legacyArtifactBytes: { candidate_review: bytes.candidate_review } }), /needs every pinned artifact/u);
+  }
 });

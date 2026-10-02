@@ -128,17 +128,29 @@ export function candidateRequiresBoundedContext(reviewRow) {
 }
 
 // B01-B04 predate the bound semantic-review input contract (owner override,
-// see docs/issue-223-m9-e-scale-coverage.md). Every later batch must carry one.
-const LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS = Object.freeze([1, 2, 3, 4]);
+// see docs/issue-223-m9-e-scale-coverage.md). The exception is pinned to the
+// exact historical batch IDs and artifact bytes, so a new-dated batch with the
+// same ordinal, or any change to these artifacts, must carry a bound review.
+export const LEGACY_UNBOUND_SEMANTIC_BATCHES = Object.freeze({
+  'issue-223-m9-e-corpus-batch-01-20261001': { candidate_review: 'ea7c5bfed57959141a9ed5bdda4405ed6221b83296e61b2aee8070ce3bd59097', semantic_decisions: '7ae7e5205e81feee6d5386050662b2a95ff6c68fba498e9abca00c478d618809', canonical_import: '4c87f580ee1188e8396da9a05ba2a5dc8ff4ee4bff4b02f3cdc4be2a6122b373' },
+  'issue-223-m9-e-corpus-batch-02-20261001': { candidate_review: 'f3f2d30a2e74b64cfb9cb41858ba6e30f14951ef2130fe817f467fc8413d4a0c', semantic_decisions: '361232221c2ba28131bcf147e64ae0301bd093a515d300a40d38f323b9a3e464', canonical_import: '571c113e2426b2c2f6864f4969ebfbc4dfed32ae4c30452759d6202246d9f176' },
+  'issue-223-m9-e-corpus-batch-03-20261001': { candidate_review: 'ec94648428e3e79380e0a328133b5b5c64803d010cb24c457070288118c0649f', semantic_decisions: '64ef0a15da969ffb007ba2b84d4fc74d580739785e16163c9b90a0129df132a0', canonical_import: 'e758b145f0dce4118765239fb02fd7d6f10764e1f84ab3ff7883a37022df76b2' },
+  'issue-223-m9-e-corpus-batch-04-20261001': { candidate_review: '6f56a388cd0e4d2291e6b9263554574969ceeea2895186d71c2e054f1bfb52d6', semantic_decisions: '44f5fc819ecea2be29111cbec0c7bc8030a74f2322536c978923cc44e861ea08', canonical_import: '026d99944fc28e2bfced64f17e59a23d20109850c179f6d97444fd4430112935' },
+});
 
 export function validateSemanticReviewInputBinding({
-  semanticSource, inputBytes, runRecordBytes, rawArtifact, batchId, admittedRows, candidateRows, candidateAuthor, registry,
+  semanticSource, inputBytes, runRecordBytes, rawArtifact, batchId, admittedRows, candidateRows, candidateAuthor, registry, legacyArtifactBytes,
 }) {
   const { ordinal } = parseIssue223BatchId(batchId);
   const digest = semanticSource.source_basis.semantic_review_input_sha256;
   if (digest === undefined) {
-    assert.ok(LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS.includes(ordinal),
-      `${batchId} semantic source must bind its authored semantic review input`);
+    const pinned = LEGACY_UNBOUND_SEMANTIC_BATCHES[batchId];
+    assert.ok(pinned, `${batchId} semantic source must bind its authored semantic review input`);
+    for (const [name, bytes] of Object.entries(legacyArtifactBytes ?? {})) {
+      assert.equal(sha256Bytes(bytes), pinned[name], `${batchId} legacy ${name} no longer matches the pinned historical artifact`);
+    }
+    assert.deepEqual(Object.keys(legacyArtifactBytes ?? {}).sort(), Object.keys(pinned).sort(),
+      `${batchId} legacy exception needs every pinned artifact`);
     assert.equal(inputBytes ?? null, null, `${batchId} legacy semantic source must not carry a review input`);
     return null;
   }
@@ -501,6 +513,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       candidateRows: candidateReview.decisions,
       candidateAuthor: candidateReview.reviewer,
       registry: reviewerRegistry,
+      legacyArtifactBytes: { candidate_review: candidateBytes, semantic_decisions: semanticBytes, canonical_import: importBytes },
     });
     const validatedSource = validateAuthoredSemanticDecisionSource({
       source: semanticSource,
