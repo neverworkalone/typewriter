@@ -60,6 +60,6 @@ The semantic-decision sources for B01–B04 (1,206 records) were produced by the
 
 ## Validation
 
-The Issue #223 validator checks source-bound candidate evidence, canonical imports for B01–B05, semantic coverage, direct search, and deterministic SQLite builds. A review-only batch, if one is used, is verified for its marker, the absence of semantic and canonical sidecars, and that deferred IDs and lemmas are not already canonical. Normal CI separately discovers and checks every tracked M9 corpus candidate-review artifact.
+The Issue #223 validator checks source-bound candidate evidence, canonical imports for B01–B09, semantic coverage, and direct search; the independent two-build SQLite comparison is the manual `batch:issue-223:check:deep` path. A review-only batch, if one is used, is verified for its marker, the absence of semantic and canonical sidecars, and that deferred IDs and lemmas are not already canonical. Normal CI separately discovers and checks every tracked M9 corpus candidate-review artifact.
 
-The exact-head CI result is reported by GitHub checks; this checkpoint report does not reuse prior CI status. The 10,000-record Issue #223 target remains unfinished, — the target is reached.
+The exact-head CI result is reported by GitHub checks; this checkpoint report does not reuse prior CI status. The ~10K canonical target is reached (10,009 records). The owner approved publishing the B05–B09 corpus-derived records in the public repository; whether the source material's redistribution terms are satisfied is a separate condition that this checkpoint does not establish.
