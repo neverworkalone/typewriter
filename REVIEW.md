@@ -66,9 +66,16 @@ validators for all applicable mechanical invariants, **not** a manual reading
 of every generated line. Mechanical validation is not proof of semantic truth.
 
 A producer must not mint its own editorial approval (`gloss_judgment=fit`,
-`status=pass`, etc.) and call that independent review. Verify that acceptance
-is tied to genuinely separately authored, source-bound decisions; hashes and
-internally consistent output alone do not establish that. For reusable batch
+`status=pass`, etc.) **and call that independent review**. Under the owner's
+2026-10-02 M10 operating decision, new lexical batches may use explicitly
+labeled **AI producer self-check / semantic QA** with no subagents. Distinct
+Claude contexts or reviewer labels do not prove substantive independence.
+Review that the new shared producer/validator and generic regressions actually
+check the source-bound lemma/POS/gloss/sense evidence, reject invalid or
+unresolved cases, preserve honest review provenance and cannot mint *claims*
+of independent or human approval. Require historical B05–B09 records to keep
+their actual contracts and evidence. This M10 semantic QA rule does not change
+the independent Stage 1/Stage 2 **PR code-review** gate. For reusable batch
 producers, check stable IDs/order and metadata when rebuilding older batches
 with newer batches present and when proceeding to later dates/batches.
 

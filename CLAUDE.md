@@ -21,16 +21,22 @@
 - Execute file edits, verification, commits, and pushes as
 separate tool operations, not as one compound shell command.
 
-## Subagent Usage
+## Subagent Usage — Owner Decision (2026-10-02)
 
-- Prefer direct execution over spawning subagents.
-- Do not spawn subagents merely because a task
-  mentions independent review.
-- Delegate only when separate execution provides
-  a clear benefit or is explicitly required.
-- Avoid duplicate context loading and repository exploration.
-- Optimize total token usage, not just elapsed time.
-- Never weaken validation to reduce token consumption.
+- **Do not spawn subagents** for Typewriter implementation, lexical candidate
+  authoring, semantic QA, batch production or M10 throughput work. The owner
+  has withdrawn the previous optional-delegation permission because of token
+  cost. Only a *new explicit owner authorization* may make an exception.
+- Execute tasks directly in the main Claude context. Do not call self-checking
+  "independent review" or create fictional reviewer identities/runs.
+- For new M10 batches, implement honest AI-authored semantic QA provenance in
+  the shared producer, validators, and regressions before changing acceptance.
+  Do not retroactively modify M9 B05–B09 review history.
+- Retain source-bound semantic checks, fail-closed decisions, CI and canonical
+  invariants. Optimize total measured token usage, not just wall-clock speed.
+- The independent Stage 1/2 **PR review** process is separate and governed
+  exclusively by `REVIEW.md`; this instruction addresses *implementation*
+  subagents, not separately commissioned reviewers.
 
 ## Communication
 
