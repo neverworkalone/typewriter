@@ -400,7 +400,7 @@ export async function aggregateBatch(batchId, { netAdmitted, directory = TIMING_
 // Any POSIX-rooted path (not an enumerated set of roots), home-relative path,
 // file URL, Windows drive path, or UNC path. Relative repository paths pass.
 const ABSOLUTE_PATH_PATTERNS = [
-  /(?:^|[\s"'=(,;:])\/[^\s/"')]+\//u,
+  /(?:^|[\s"'=(,;:])\/[^\s/"'),;:]+(?:\/|(?=$|[\s"'),;:]))/u,
   /(?:^|[\s"'=(,;:])~\//u,
   /file:\/\//iu,
   /(?:^|[^A-Za-z0-9])[A-Za-z]:[\\/]/u,

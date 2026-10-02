@@ -110,6 +110,8 @@ test('the canonical source of a self-check batch never claims independent or hum
       review_provenance: SELF_CHECK_PROVENANCE,
       independent_review: false,
       method: 'The producing agent checks each identity (agent self-check, not independent or human review).',
+      criteria: ['bounded in-scope lexical meaning and complete single-sense boundary review'],
+      admission_rule: 'Admit only identities that pass the agent self-check.',
     },
     selection: { coverage_basis: ['identity after agent self-check semantic eligibility'], selection_rationale: 'Every self-checked, admitted identity proceeds.' },
   });
@@ -122,6 +124,9 @@ test('the canonical source of a self-check batch never claims independent or hum
     'independently reviewed rationale': (s) => { s.selection.selection_rationale = 'Every independently reviewed identity proceeds.'; },
     'self-check parenthetical hiding a human claim': (s) => { s.review.method = 'The agent checks identities (self-check; human review completed).'; },
     'self-check parenthetical hiding an independent claim': (s) => { s.provenance.authoring_note = 'checked (agent self-check and independent reviewer approved).'; },
+    'independent claim in criteria': (s) => { s.review.criteria = ['gloss verified by an independent reviewer']; },
+    'human claim in admission rule': (s) => { s.review.admission_rule = 'admitted after human review'; },
+    'separate claim in a nested review field': (s) => { s.review.extra = { note: 'separately reviewed' }; },
     'human authoring note': (s) => { s.provenance.authoring_note = 'Each lemma was human reviewed.'; },
   };
   for (const [name, mutate] of Object.entries(cases)) {

@@ -102,12 +102,17 @@ export function assertSourceClaimsTruthful(source, { selfCheck }) {
   }
   assert.equal(review.review_provenance, SELF_CHECK_PROVENANCE, 'a self-check source must record its provenance');
   assert.equal(review.independent_review, false, 'a self-check source must state independent_review: false');
-  const claims = [
-    source.provenance.authoring_note,
-    review.method,
-    ...source.selection.coverage_basis,
-    source.selection.selection_rationale,
-  ];
+  // Every free-text value the source stores about its review, authoring, or
+  // selection (criteria and admission rules included) is a possible claim.
+  const claims = [];
+  const collect = (value) => {
+    if (typeof value === 'string') claims.push(value);
+    else if (Array.isArray(value)) value.forEach(collect);
+    else if (value && typeof value === 'object') Object.values(value).forEach(collect);
+  };
+  collect(source.provenance);
+  collect(review);
+  collect(source.selection);
   for (const text of claims) {
     let stripped = text;
     for (const disclaimer of SELF_CHECK_DISCLAIMERS) stripped = stripped.split(disclaimer).join('');
