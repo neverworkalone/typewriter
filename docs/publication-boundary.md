@@ -10,9 +10,10 @@ audit (#151), public-surface and history audit (#152), and release preparation.
 The classifications below are publication decisions, not a grant of rights or a
 release approval. `PUBLIC-WITH-SEPARATE-LICENSE` means the material is an intended
 public surface only after its applicable license, provenance, and notices are
-confirmed. Unknown rights, provenance, privacy, or security conditions remain
-blockers. The repository must stay private until the MO-8 release gate explicitly
-approves a specific release commit.
+confirmed. Unknown rights, provenance, privacy, or security conditions remain subject
+to applicable source terms and product-release gates. The historical rule
+requiring a private repository until MO-8 is superseded by the owner's public
+research/development visibility override recorded below.
 
 The path inventory was first checked against the tracked tree at f3822cf (the M5
 final-audit merge, 2026-09-24). MO-2 / #151 finalized the license model. GitHub
@@ -26,10 +27,9 @@ conditions against the exact release commit.
 
 ## Current operating reality versus the original private-repository assumption
 
-The paragraph above states that the repository must stay private until the MO-8
-release gate approves a release commit. That assumption does not match current
-operation: the GitHub repository is public, as the project's operating reality, and
-it is used to open the research and development process. This section records the
+The original MO-1 policy assumed a private repository until MO-8. The owner
+has superseded that assumption: this GitHub repository remains public to make
+research and development transparent. This section records the
 difference; it does not change any classification below and does not clear any data.
 
 Three approvals are distinct and must not be conflated:
@@ -54,10 +54,9 @@ Three approvals are distinct and must not be conflated:
 
 Intended practice stated by the owner: the corpus informs candidate discovery and
 usage review; canonical glosses are authored independently by Typewriter; corpus
-text and the analysis database are never published. The remaining decision —
-keeping corpus-informed records out of public refs, or documenting a concrete rights
-determination that permits their disclosure and revising this policy accordingly —
-is a repository-level owner decision, not settled by this document.
+text and the analysis database are never published. The repository-visibility choice is settled by the owner override below for
+internal development review. This does not establish third-party permission to
+redistribute restricted corpus contents.
 
 **Owner override (repository-level decision, PR #235).** The owner decided that,
 before the Chrome Extension that uses corpus-informed data is distributed, the
