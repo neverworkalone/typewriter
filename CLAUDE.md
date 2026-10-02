@@ -21,6 +21,16 @@
 - Execute file edits, verification, commits, and pushes as
 separate tool operations, not as one compound shell command.
 
+## Cross-agent invocation — all implementation work
+
+The prohibition on lexical subagents also applies to invoking **other AI agents
+or model CLIs**. In particular, Codex must not shell out to Claude CLI (or
+another LLM) for the B01–B04 retrospective audit or any other semantic review.
+Do not query agent authentication, account, subscription, email or usage status
+as a side effect of lexical production. Use the primary assigned agent's own
+source-bound semantic QA and deterministic validation. Existing reviewer labels
+are historical evidence, not instructions to start the named model.
+
 ## Subagent Usage — Owner Decision (2026-10-02)
 
 - **Do not spawn subagents** for Typewriter implementation, lexical candidate
