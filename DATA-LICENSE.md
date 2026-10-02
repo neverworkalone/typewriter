@@ -38,3 +38,11 @@ Third-party material, where retained with a valid basis, remains under its
 original license and notices. Public-domain material is not relicensed by this
 notice. Current records remain held until record-level rights review has
 evidence-backed completion and the applicable release gate approves distribution.
+
+Note on the public repository: the repository is currently public, which the
+hold above does not change. Permission to use the NIKL corpus for research and
+development (reference role) is recorded in
+`docs/external-material-review-written-corpus-2025.md`; it is not a rights
+determination for public disclosure of corpus-informed records, and NIKL's
+approval for product distribution of corpus-informed results is pending. See
+`docs/publication-boundary.md`.
