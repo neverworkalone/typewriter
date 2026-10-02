@@ -158,6 +158,10 @@ test('per-candidate rationales and generated decisions never claim independent, 
     'Korean 사람은 검수 with a particle': (x) => { x.decisions[0].decision_rationale = '사람은 검수를 마쳤다.'; },
     'Korean separate reviewer': (x) => { x.reviews[0].boundary_rationale = '별도 리뷰어가 확인했다.'; },
     'English another reviewer': (x) => { x.decisions[0].decision_rationale = 'another reviewer checked this'; },
+    'Korean external editor reviewed': (x) => { x.reviews[0].semantic_rationale = '외부 편집자가 검토했다.'; },
+    'English another Claude session reviewed': (x) => { x.reviews[0].semantic_rationale = 'another Claude session reviewed this'; },
+    'English reviewed by passive': (x) => { x.decisions[0].decision_rationale = 'gloss was checked by a colleague'; },
+    'Korean expert': (x) => { x.decisions[0].decision_rationale = '전문가가 승인했다.'; },
     'Korean human review claim': (x) => { x.decisions[0].decision_rationale = '사람이 검토하여 승인했다.'; },
   };
   for (const [name, mutate] of Object.entries(bad)) {
