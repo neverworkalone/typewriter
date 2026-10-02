@@ -14,6 +14,7 @@ import test from 'node:test';
 
 import {
   M5_12A_BASE_CANONICAL_SHA256,
+  M5_12A_BASE_SEED_SHA256,
   M5_12A_FINAL_SUMMARY,
   buildM512A,
   buildM512AReviewRows,
@@ -724,6 +725,55 @@ test('M5-12A rejects a failed shared product preflight without mutating promotio
     await assert.rejects(stat(canonicalImportPath), { code: 'ENOENT' });
     await assert.rejects(stat(admissionPath), { code: 'ENOENT' });
     await assert.rejects(stat(promotionPath), { code: 'ENOENT' });
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('M5-12A replay uses the frozen M5-11 base seed and ignores legitimate later seed evolution', async () => {
+  const baseSeedPath = path.resolve('data/batches/m5-12-base-seed.json');
+  const baseBytes = await readFile(baseSeedPath);
+  assert.equal(createHash('sha256').update(baseBytes).digest('hex'), M5_12A_BASE_SEED_SHA256);
+
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-seed-'));
+  try {
+    const evolved = JSON.parse(baseBytes.toString('utf8'));
+    evolved.revision = 'm5-99';
+    evolved.targets = evolved.targets.slice(1);
+    evolved.targets.push({ ...structuredClone(evolved.targets[0]), inventory_id: 'later-batch-row', decision_note: 'x after separate generation m5-99' });
+    const evolvedSeedPath = path.join(temporaryDirectory, 'seed.json');
+    await writeFile(evolvedSeedPath, `${JSON.stringify(evolved, null, 2)}\n`);
+    const live = await buildM512A();
+    const replayed = await buildM512A({ currentSeedPath: evolvedSeedPath });
+    assert.deepEqual(replayed.inputs.baseSeedBytes, baseBytes);
+    assert.deepEqual(replayed.prospective.seedBytes, live.prospective.seedBytes);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('M5-12A rejects a mutated frozen base seed by bytes, ordering, or record content', async () => {
+  const baseBytes = await readFile(path.resolve('data/batches/m5-12-base-seed.json'));
+  const original = JSON.parse(baseBytes.toString('utf8'));
+  const variants = {
+    reserialized: Buffer.from(JSON.stringify(original), 'utf8'),
+    reordered: Buffer.from(`${JSON.stringify({ ...original, targets: [...original.targets].reverse() }, null, 2)}\n`, 'utf8'),
+    mutated: Buffer.from(`${JSON.stringify({
+      ...original,
+      targets: original.targets.map((row, index) => (index === 0 ? { ...row, decision_note: 'tampered' } : row)),
+    }, null, 2)}\n`, 'utf8'),
+  };
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-seed-invalid-'));
+  try {
+    for (const [name, bytes] of Object.entries(variants)) {
+      const baseSeedPath = path.join(temporaryDirectory, `${name}.json`);
+      await writeFile(baseSeedPath, bytes);
+      await assert.rejects(
+        buildM512A({ baseSeedPath }),
+        (error) => error.code === 'BASE_SEED_MISMATCH',
+        name,
+      );
+    }
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }

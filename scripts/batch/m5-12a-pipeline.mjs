@@ -1171,9 +1171,9 @@ async function readJson(filePath, label) {
 // The M5-11 seed is a frozen historical snapshot (bytes of
 // data/inventory/m5-target-seed.json at b161c8b, revision m5-11).  Replay never
 // derives it from the live seed, which later batches legitimately evolve.
-async function loadBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
+async function loadBaseSeed(currentSeedPath = CURRENT_SEED_PATH, baseSeedPath = BASE_SEED_PATH) {
   const current = await readJson(currentSeedPath, 'current M5 seed');
-  const base = await readJson(BASE_SEED_PATH, 'M5-12A base seed');
+  const base = await readJson(baseSeedPath, 'M5-12A base seed');
   if (sha256(base.bytes) !== M5_12A_BASE_SEED_SHA256 || base.value.revision !== 'm5-11') {
     fail('frozen M5-12A base seed drifted from its pinned digest', 'BASE_SEED_MISMATCH');
   }
@@ -1182,6 +1182,7 @@ async function loadBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
 
 async function loadBaseInputs({
   currentSeedPath = CURRENT_SEED_PATH,
+  baseSeedPath = BASE_SEED_PATH,
   currentPromotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
 } = {}) {
   const baseCanonical = await readCanonicalRecords(BASE_CANONICAL_DIRECTORY);
@@ -1193,7 +1194,7 @@ async function loadBaseInputs({
   if (baseCanonicalDigest !== M5_12A_BASE_CANONICAL_SHA256) {
     fail('M5-12A base canonical digest drifted', 'BASE_CANONICAL_MISMATCH');
   }
-  const { current, baseSeed, baseSeedBytes } = await loadBaseSeed(currentSeedPath);
+  const { current, baseSeed, baseSeedBytes } = await loadBaseSeed(currentSeedPath, baseSeedPath);
   const baseInventory = await readJson(BASE_INVENTORY_PATH, 'M5-12 base inventory');
   if (sha256(baseInventory.bytes) !== M5_12A_BASE_INVENTORY_SHA256) {
     fail('M5-12A base inventory digest drifted', 'BASE_INVENTORY_MISMATCH');
@@ -1606,12 +1607,13 @@ function buildProductionStageEvidence({
 
 export async function buildM512A({
   currentSeedPath = CURRENT_SEED_PATH,
+  baseSeedPath = BASE_SEED_PATH,
   currentPromotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
   decisionSourcePath = DECISION_SOURCE_PATH,
   semanticDecisionSourcePath = M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
   preflightRunner = runM512APreflight,
 } = {}) {
-  const inputs = await loadBaseInputs({ currentSeedPath, currentPromotionLedgerPath });
+  const inputs = await loadBaseInputs({ currentSeedPath, baseSeedPath, currentPromotionLedgerPath });
   const baseRecords = inputs.baseCanonical.records.map(recordOf);
   const identities = M5_12A_CANDIDATE_IDENTITIES;
   const semanticDecisionSourceFile = await readM512ADecisionSource(semanticDecisionSourcePath);
