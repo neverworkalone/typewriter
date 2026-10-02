@@ -19,7 +19,7 @@ Corpus-text-free. It contains only counts, durations and method notes. Raw ledge
 
 - B10–B12 ledgers predate environment recording: the environment of those runs is `unavailable` per span (the ledger tool now stores Node version, OS/arch/release, CPU model/count and memory on every new span, and `aggregate` reports `unavailable` for spans without a record; a regression pins both).
 - For context only, the workstation that produced this report at report time (captured after the runs, not recorded at run time): Node v24.19.0, darwin-arm64, OS release 25.6.0, Apple M1 Pro, 8 logical CPUs, 16 GiB. CI pins Node 22.13.x, so local and CI timings must not be mixed.
-- Worker-reported durations (19 spans, B10/B11 subagents) all carry the source `agent-task-notification-usage.duration_ms`. The tool now accepts a reported duration only from a fixed list of machine-reporting channels (`agent-task-notification-usage.duration_ms`, `github-actions-run.duration`) together with the reporting notification/task/run identifier (`--reported-duration-ref`); arbitrary labels such as `verified` are rejected when writing and ignored at aggregation. Aggregation and publish apply the same rule: a duration without an allowed source and a valid identifier is not counted, and token totals likewise count only the `agent-task-notification-usage.subagent_tokens` channel bound to a notification identifier (arbitrary labels such as `test-usage` are rejected on write and left uncounted). The 19 legacy worker spans (B10 14, B11 5) were written without identifiers; their agent task identifiers were recovered from this session's own task notifications by matching reported duration and token count (two duplicate matches resolved to the agent task id) and appended to the ledgers as amendments, so the aggregates and token totals above are unchanged and now carry a verifiable identifier each. Identifiers are opaque task ids, not corpus text.
+- Worker-reported durations (19 spans, B10/B11 subagents) all carry the source `agent-task-notification-usage.duration_ms`. The tool now accepts a reported duration only from a fixed list of machine-reporting channels (`agent-task-notification-usage.duration_ms`, `github-actions-run.duration`) together with the reporting notification/task/run identifier (`--reported-duration-ref`); arbitrary labels such as `verified` are rejected when writing and ignored at aggregation. Aggregation and publish apply the same rule: a duration without an allowed source and a valid identifier is not counted, and token totals likewise count only the `agent-task-notification-usage.subagent_tokens` channel bound to a notification identifier (arbitrary labels such as `test-usage` are rejected on write and left uncounted). The 19 legacy worker spans (B10 14, B11 5) were written without identifiers; their agent task identifiers were recovered from this session's own task notifications by matching reported duration and token count (two duplicate matches resolved to the agent task id) and appended to the ledgers as amendments, so the aggregates and token totals above are unchanged and now carry a verifiable identifier each. Identifiers are opaque task ids, not corpus text. **Verification boundary:** the aggregate and publish gates check source and identifier *form* only; they cannot prove an identifier exists. `stage-timing.mjs verify-references --batch=ID --notifications=PATH` checks each identifier-bound span against local notification evidence (the identifier must appear and the recorded duration and tokens must equal a notification it reported; arbitrary ids and altered values fail, with regressions). Run against this session's transcript it verified 14/14 (B10) and 5/5 (B11) spans. The transcript is not in the repository, so this verification is a local, non-reproducible-from-repo check that CI cannot repeat; the worker durations and subagent tokens are therefore reported as locally verified against the session record, and anyone without that record should treat them as attested rather than independently verified. Main-agent tokens remain `unavailable`.
 
 ## Per-batch stage tables
 
@@ -212,19 +212,37 @@ The 213.9 s is **one recorded B12 local invocation** (`ci-normal-checkpoint-1104
 
 ### Local, uninstrumented or not retrievable
 
-- Retrievable from this session's transcript: exactly one local `ci:normal` command (the instrumented one above) and, after the ledger snapshots, one un-spanned `ci:fast` on the committed head db2fdf2 (passed; duration `unavailable`). Local `ci:fast` runs made while diagnosing failures that were not spanned: `unavailable`.
+- Retrievable from this session's transcript and scratch logs: after the ledger-recorded `ci:normal` (B12 checkpoint, 213.9 s), nine further local `ci:normal` runs were launched directly from the shell during review fixes (logs `cinormal2` to `cinormal10`; each exited 0 on a then-current head; heads were committed just before each run). Their durations were **not recorded** (`unavailable`); they were not launched through `stage-timing.mjs run`. Together with the instrumented run, 10 local `ci:normal` invocations are known; none failed. Failed local `ci:normal` attempts are not known to exist but cannot be excluded.
+- Local `ci:fast` runs outside the ledger (several, including at least four after the ledger snapshots, one of which stopped on a dirty worktree and one of which ran while a defect existed that only the normal continuation would catch): durations `unavailable`.
 - Local runs made by the earlier cloud session, and any manual shell invocations outside the ledger or this transcript: `unavailable` (no shell history or CI log was collected). Missing observability: no wrapper recorded invocations that were not launched through `stage-timing.mjs run`.
-- Partial/aborted runs: a dirty-worktree refusal of `ci:fast` (provenance check, sub-second) happened once before the ledger moved to ignored space and once more on this PR before commit; neither produced a timed category result and neither is counted above.
+- Partial/aborted runs: dirty-worktree refusals of `ci:fast` (sub-second) happened before the ledger moved to ignored space and again on this PR before commits; they produced no timed category result and are not counted above.
 
 ### GitHub Actions `ci:normal` (remote runner wall time, kept separate)
 
-| Run ID | Head | Trigger | Result | Observed seconds |
-| --- | --- | --- | --- | ---: |
-| 36988521267 | 364c382 | pull_request | success | 322 (job 09:13:20 to 09:18:42) |
-| 36989234325 | c080501 | pull_request | success | 320 (job 09:20:47 to 09:26:07) |
-| 37017843162 | db2fdf2 | pull_request | success | 351 (job 14:09:04 to 14:14:55) |
+All `pull_request` runs of workflow `CI` on this PR branch at the time of writing (`gh run list --branch claude/issue-239-240-de9cc5-xw0cwi --workflow CI`), one per pushed head. Later pushes add further runs; this table is a snapshot up to run 37058877186 (head e932a11), not a live count.
 
-Three remote normal runs, one per pushed head; cumulative job time 993 s (322 + 320 + 351). These are on different hardware and must not be mixed with local `stage-timing` seconds or charged twice. Remote runs cover only pushed heads, which are not checkpoints per batch.
+| Run ID | Head | Trigger | Result | Job seconds |
+| --- | --- | --- | --- | ---: |
+| 36988521267 | 364c382 | pull_request | success | 322 |
+| 36989234325 | c080501 | pull_request | success | 320 |
+| 37017843162 | db2fdf2 | pull_request | success | 351 |
+| 37019137170 | 404e166 | pull_request | success | 347 |
+| 37020784708 | 5913f74 | pull_request | success | 364 |
+| 37022504875 | 0e93f61 | pull_request | success | 325 |
+| 37027870243 | 5809f7d | pull_request | success | 347 |
+| 37030118325 | 7ea3444 | pull_request | failure | 174 |
+| 37031127349 | 2f2119e | pull_request | success | 345 |
+| 37035243962 | e5b9d34 | pull_request | success | 362 |
+| 37037445553 | 5b57076 | pull_request | success | 350 |
+| 37039359058 | 99d431b | pull_request | success | 403 |
+| 37042761358 | 2b02e3e | pull_request | success | 213 |
+| 37047415460 | 139410a | pull_request | success | 345 |
+| 37049423138 | 0a1777a | pull_request | success | 257 |
+| 37052325560 | 996ca15 | pull_request | success | 278 |
+| 37056190480 | b33d133 | pull_request | success | 291 |
+| 37058877186 | e932a11 | pull_request | success | 339 |
+
+18 runs (17 success, 1 failure: 37030118325); cumulative job time 5733 s (95.5 min); success-only median 345 s, mean 327 s. These are on different hardware than the local seconds and are never mixed with them or charged twice. The failing run (head 7ea3444) was a real defect, fixed in the next head.
 
 ### Grouping of batch checkpoints
 

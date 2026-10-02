@@ -16,6 +16,8 @@ import {
   publishLedger,
   publishableEvent,
   summarizeEnvironments,
+  parseNotificationUsage,
+  verifyReferences,
   environmentLabel,
   readLedger,
   runTimed,
@@ -266,6 +268,17 @@ test('unverifiable token sources and duration references are rejected or left un
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('references are checked against local notification evidence: arbitrary ids and mismatched values fail', () => {
+  const evidence = 'tasks/a3abdd5c2558622ec.output</output-file> x <usage><subagent_tokens>101042</subagent_tokens><tool_uses>8</tool_uses><duration_ms>121334</duration_ms></usage>';
+  const usage = parseNotificationUsage(evidence);
+  const span = (ref, duration, tokens) => ({ id: `s-${ref}`, reported_duration_ref: ref, reported_duration_ms: duration, tokens: { value: String(tokens) } });
+  assert.deepEqual(verifyReferences([span('a3abdd5c2558622ec', 121334, 101042)], usage).map((r) => r.verified), [true]);
+  assert.deepEqual(verifyReferences([span('a1b2c3d4e5f6a7b8c', 121334, 101042)], usage).map((r) => r.verified), [false]);
+  assert.deepEqual(verifyReferences([span('a3abdd5c2558622ec', 999999, 101042)], usage).map((r) => r.verified), [false]);
+  assert.deepEqual(verifyReferences([span('a3abdd5c2558622ec', 121334, 5)], usage).map((r) => r.verified), [false]);
+  assert.deepEqual(verifyReferences([{ id: 'no-ref' }], usage), []);
 });
 
 test('token totals count only machine-reported values and never estimate the rest', async () => {

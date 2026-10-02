@@ -481,6 +481,39 @@ export async function publishLedger(batchId, { directory = TIMING_DIRECTORY, tra
   return target;
 }
 
+const NOTIFICATION_PATTERN = /tasks\/([A-Za-z0-9]+)\.output<\/output-file>[\s\S]*?<subagent_tokens>(\d+)<\/subagent_tokens><tool_uses>\d+<\/tool_uses><duration_ms>(\d+)<\/duration_ms>/gu;
+
+/** Notification usage records (task id, tokens, duration) found in a local evidence text such as a session transcript. */
+export function parseNotificationUsage(text) {
+  const usage = new Map();
+  for (const match of text.matchAll(NOTIFICATION_PATTERN)) {
+    const key = match[1];
+    const entries = usage.get(key) ?? [];
+    entries.push({ tokens: Number(match[2]), duration_ms: Number(match[3]) });
+    usage.set(key, entries);
+  }
+  return usage;
+}
+
+/**
+ * Check every identifier-bound worker span against local notification evidence:
+ * the identifier must exist there and the recorded duration and tokens must equal
+ * a notification it reported. The evidence is a local file and cannot ship in the
+ * repository, so CI cannot run this; the result is reported as a local verification.
+ */
+export function verifyReferences(spans, usage) {
+  const results = [];
+  for (const span of spans) {
+    const ref = span.reported_duration_ref ?? span.tokens?.ref;
+    if (!ref) continue;
+    const entries = usage.get(ref);
+    const durationOk = entries?.some((entry) => entry.duration_ms === Math.round(span.reported_duration_ms));
+    const tokensOk = span.tokens === undefined || entries?.some((entry) => entry.tokens === Number(span.tokens.value));
+    results.push({ id: span.id, ref, verified: Boolean(entries && durationOk && tokensOk) });
+  }
+  return results;
+}
+
 export async function listBatchLedgers(directory = TIMING_DIRECTORY) {
   try {
     return (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).map((name) => name.slice(0, -'.jsonl'.length)).sort();
@@ -549,6 +582,14 @@ async function main(argv) {
   if (command === 'end') {
     process.stdout.write(`${await endSpan(batchId, options.id, options)}\n`);
     return 0;
+  }
+  if (command === 'verify-references') {
+    const evidence = await readFile(path.resolve(options.notifications ?? fail('verify-references needs --notifications=PATH (a local transcript with task notifications)', 'USAGE')), 'utf8');
+    const { spans } = pairSpans(await readLedger(batchId));
+    const results = verifyReferences(spans, parseNotificationUsage(evidence));
+    const failed = results.filter((result) => !result.verified);
+    process.stdout.write(`${JSON.stringify({ batch_id: batchId, checked: results.length, verified: results.length - failed.length, unverified_span_ids: failed.map((result) => result.id) })}\n`);
+    return failed.length === 0 ? 0 : 1;
   }
   if (command === 'publish') {
     process.stdout.write(`${path.relative(REPOSITORY_DIRECTORY, await publishLedger(batchId))}\n`);
