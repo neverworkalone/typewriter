@@ -29,7 +29,7 @@ import { glossFrameSpans } from './build-issue-223-corpus-batch.mjs';
 import { findAmbiguousParticleFragments, validateLexicalRecord } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { packetCandidate, shardRanges } from './make-review-packets.mjs';
-import { assertLegacyReviewWorkflowAllowed, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
+import { assertLegacyReviewWorkflowAllowed, assertPrimaryAuthoringAllowed, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
 import {
   admissionGateFor,
   outcomeFromRaw,
@@ -152,7 +152,8 @@ export function assertSharedIntake(row, candidate) {
   }, { label: `intake ${row.lemma}`, mode: 'candidate', expectedId: id, expectedLemma: row.lemma });
 }
 
-export async function mergeAuthors({ batchId, directory }) {
+export async function mergeAuthors({ batchId, directory, primaryAgentAuthored }) {
+  assertPrimaryAuthoringAllowed(batchId, { primaryAgentAuthored });
   const absolute = path.resolve(ROOT, directory);
   const inventory = await readJson(path.join(absolute, 'candidate-inventory.json'));
   const files = await numberedFiles(path.join(absolute, 'authored'), 'author');
@@ -205,7 +206,8 @@ export function reviewerPacketCandidate(packetCandidate, decision, candidateRow)
   return out;
 }
 
-export async function makeReviewerPackets({ directory, shards }) {
+export async function makeReviewerPackets({ batchId, directory, shards }) {
+  assertLegacyReviewWorkflowAllowed(batchId);
   const absolute = path.resolve(ROOT, directory);
   const inventory = await readJson(path.join(absolute, 'candidate-inventory.json'));
   const evidence = await readJson(path.join(absolute, 'candidate-evidence.json'));
@@ -241,7 +243,8 @@ export async function makeReviewerPackets({ directory, shards }) {
  * contiguous ranges, so no run claims to have reviewed a proposal it did not.
  * The shard's reviewed file is split verbatim and the later shards renumbered.
  */
-export async function splitRunForAmendment({ directory, shard, ordinal }) {
+export async function splitRunForAmendment({ batchId, directory, shard, ordinal }) {
+  assertLegacyReviewWorkflowAllowed(batchId);
   const absolute = path.resolve(ROOT, directory);
   const manifestPath = path.join(absolute, 'review-packets/review-packet-manifest.json');
   const manifest = await readJson(manifestPath);
@@ -569,9 +572,9 @@ async function main(argv) {
     return [match[1], match[2]];
   }));
   assert.ok(options.directory, '--directory is required');
-  if (command === 'merge-authors') return mergeAuthors({ batchId: options['batch-id'], directory: options.directory });
-  if (command === 'reviewer-packets') return makeReviewerPackets({ directory: options.directory, shards: Number(options.shards ?? 5) });
-  if (command === 'split-run') return splitRunForAmendment({ directory: options.directory, shard: Number(options.shard), ordinal: Number(options.ordinal) });
+  if (command === 'merge-authors') return mergeAuthors({ batchId: options['batch-id'], directory: options.directory, primaryAgentAuthored: options['primary-agent-authored'] === 'true' });
+  if (command === 'reviewer-packets') return makeReviewerPackets({ batchId: options['batch-id'], directory: options.directory, shards: Number(options.shards ?? 5) });
+  if (command === 'split-run') return splitRunForAmendment({ batchId: options['batch-id'], directory: options.directory, shard: Number(options.shard), ordinal: Number(options.ordinal) });
   if (command === 'self-check-assemble') return assembleSelfChecked({ batchId: options['batch-id'], directory: options.directory });
   if (command === 'self-check-view') { console.log(await selfCheckView({ directory: options.directory, first: Number(options.first), last: Number(options.last), width: Number(options.width ?? 110) })); return { artifacts: null }; }
   if (command === 'assemble') return assembleReviewed({ batchId: options['batch-id'], directory: options.directory });

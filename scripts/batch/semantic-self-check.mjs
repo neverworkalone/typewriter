@@ -177,6 +177,19 @@ export function assertReviewContractForBatch(ordinal, selfCheck) {
   }
 }
 
+/**
+ * From the first self-check batch the primary producer authors every decision
+ * itself. Merging author outputs therefore needs an explicit statement that
+ * the files were written by the primary agent (no worker fan-out).
+ */
+export function assertPrimaryAuthoringAllowed(batchId, { primaryAgentAuthored } = {}) {
+  const match = /-batch-([0-9]{2})-/u.exec(batchId ?? '');
+  assert.ok(match, `unsupported batch id ${batchId}`);
+  if (Number(match[1]) < SELF_CHECK_FIRST_BATCH) return;
+  assert.ok(primaryAgentAuthored === true,
+    `batch ${match[1]} uses the agent self-check contract: author outputs must be written by the primary agent; pass --primary-agent-authored to attest that no subagent or worker wrote them`);
+}
+
 /** Legacy separate-reviewer workflows may not be used for self-check batches. */
 export function assertLegacyReviewWorkflowAllowed(batchId) {
   const match = /-batch-([0-9]{2})-/u.exec(batchId);

@@ -9,6 +9,8 @@ import {
   assertSharedIntake,
   collectFailures,
   splitRunForAmendment,
+  makeReviewerPackets,
+  mergeAuthors,
   finalDecisionRow,
   passIdsFor,
   reviewerPacketCandidate,
@@ -239,7 +241,7 @@ test('an amended candidate gets its own run and the other rows keep their origin
     ]));
     await writeFile(path.join(directory, 'reviewed/review-01.json'), JSON.stringify([{ ordinal: 1 }, { ordinal: 2 }, { ordinal: 3 }, { ordinal: 4 }]));
     await writeFile(path.join(directory, 'reviewed/review-02.json'), JSON.stringify([{ ordinal: 5 }]));
-    const result = await splitRunForAmendment({ directory: path.relative(process.cwd(), directory), shard: 1, ordinal: 2 });
+    const result = await splitRunForAmendment({ batchId: 'issue-223-m9-e-corpus-batch-10-20261002', directory: path.relative(process.cwd(), directory), shard: 1, ordinal: 2 });
     assert.equal(result.shards, 4);
     const manifest = JSON.parse(await readFile(path.join(directory, 'review-packets/review-packet-manifest.json'), 'utf8'));
     assert.deepEqual(manifest.map(({ shard, first_ordinal: first, last_ordinal: last }) => [shard, first, last]), [[1, 1, 1], [2, 2, 2], [3, 3, 4], [4, 5, 5]]);
@@ -253,4 +255,11 @@ test('an amended candidate gets its own run and the other rows keep their origin
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('the legacy fan-out entrypoints refuse batch 11 and later', async () => {
+  const later = 'issue-223-m9-e-corpus-batch-11-20261003';
+  await assert.rejects(() => makeReviewerPackets({ batchId: later, directory: 'unused', shards: 5 }), /self-check contract/u);
+  await assert.rejects(() => splitRunForAmendment({ batchId: later, directory: 'unused', shard: 1, ordinal: 1 }), /self-check contract/u);
+  await assert.rejects(() => mergeAuthors({ batchId: later, directory: 'unused' }), /primary agent/u);
 });

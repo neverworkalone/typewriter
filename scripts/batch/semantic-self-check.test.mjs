@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   assertDecisionClaimsTruthful,
   assertLegacyReviewWorkflowAllowed,
+  assertPrimaryAuthoringAllowed,
   assertReviewContractForBatch,
   assertSelfCheckBinding,
   assertSelfCheckEnvelope,
@@ -193,6 +194,14 @@ test('the shared builder/validator gate fails closed on the review contract by b
   assert.throws(() => assertReviewContractForBatch(11, false), /self-check contract/u);
   assert.throws(() => assertReviewContractForBatch(25, false), /self-check contract/u);
   assert.throws(() => assertReviewContractForBatch(10, true), /predates/u);
+});
+
+test('author merging from batch 11 needs a primary-agent attestation; legacy batches are unaffected', () => {
+  assertPrimaryAuthoringAllowed('issue-223-m9-e-corpus-batch-10-20261002');
+  assertPrimaryAuthoringAllowed('issue-223-m9-e-corpus-batch-11-20261003', { primaryAgentAuthored: true });
+  assert.throws(() => assertPrimaryAuthoringAllowed('issue-223-m9-e-corpus-batch-11-20261003'), /primary agent/u);
+  assert.throws(() => assertPrimaryAuthoringAllowed('issue-223-m9-e-corpus-batch-12-20261003', { primaryAgentAuthored: false }), /primary agent/u);
+  assert.throws(() => assertPrimaryAuthoringAllowed('bogus', { primaryAgentAuthored: true }), /unsupported batch id/u);
 });
 
 test('the separate-reviewer workflow is refused for self-check batches only', () => {

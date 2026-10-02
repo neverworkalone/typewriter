@@ -1,4 +1,6 @@
-# Candidate-author protocol (M9/M10 corpus batches)
+# Candidate-author protocol (legacy: M9 through batch 10 only)
+
+> **Not for batch 11 and later.** From the agent self-check contract onward the primary producer authors every decision itself; subagents and worker fan-out must not be used. `review-workflow.mjs merge-authors` rejects batch 11+ unless `--primary-agent-authored=true` attests that the primary agent wrote the files.
 
 You are the **candidate author** for one shard of a Korean lexical production batch for Typewriter, a writer-focused Korean dictionary. For every candidate in your packet you decide `admit` or `hold` and, for admissions, write a Typewriter-authored gloss. An independent reviewer will later check your work from the same evidence without seeing your rationale, so be accurate rather than generous.
 

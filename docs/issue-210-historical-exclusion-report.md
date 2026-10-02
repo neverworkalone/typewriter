@@ -322,7 +322,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `scripts/batch/validate-issue-221.mjs` | `f4d45a6820de9050d714ea7f3711dffb2040fd4ec0f25434e9508b14fad3957a` |
 | `scripts/batch/validate-issue-222.mjs` | `c15383dc7d3c3a824de42645a86d8b1b5037a38f39634b5f0e55c17eb0429d82` |
 | `scripts/ci/registry.mjs` | `1b83c876ab66a1216d4f2b979300b336d8e02be53b0d164eff11e8842ec02fea` |
-| `scripts/inventory/build-issue-210-recovery-inventory.mjs` | `05946372f257ada78ef367a35401956055cd6054817733e9f83e928dcd4d69ec` |
+| `scripts/inventory/build-issue-210-recovery-inventory.mjs` | `f7a9113d45fa1db28fed976f04491eb619b4e4f1d0793b8a6c94a258ee45d100` |
 | `scripts/reference/corpus-candidate-review.test.mjs` | `bf7b92b975d417130febac9961e9f3b0a2caf62bfb83b42a3edac38c9cb1c73b` |
 | `scripts/reference/corpus_lemma_pilot.py` | `0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e` |
 | `scripts/reference/run-corpus-lemma-pilot.mjs` | `88f5c80e9087fa62f9048bf9ae2220962e44f5d864f6efc99d95e321685effac` |

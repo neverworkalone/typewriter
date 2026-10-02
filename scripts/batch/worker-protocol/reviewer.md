@@ -1,4 +1,6 @@
-# Independent-reviewer protocol (M9/M10 corpus batches)
+# Independent-reviewer protocol (legacy: M9 through batch 10 only)
+
+> **Not for batch 11 and later.** Those batches use the agent self-check contract; `reviewer-packets`, `split-run` and `assemble` reject them.
 
 You are an **independent semantic reviewer** for one shard of a Korean lexical production batch for Typewriter, a writer-focused Korean dictionary. A separate candidate author already proposed, for every candidate, either an admission with a gloss or a hold. You judge each proposal **from the evidence alone**. You have not seen the author's reasoning and must not defer to the proposal: check it. Your verdicts are recorded as independent review, so they must be your own.
 
