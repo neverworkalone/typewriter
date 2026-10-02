@@ -97,7 +97,8 @@ test('ledger pairs begin/end events and rejects malformed or invalid input', asy
     assert.deepEqual(stillOpen.map(({ id }) => id), [open]);
     assert.equal(spans[0].worker, 'author-1');
     const aggregate = await aggregateBatch(BATCH, { netAdmitted: 10, directory });
-    assert.equal(aggregate.tokens, 'unavailable');
+    assert.deepEqual(aggregate.tokens.reported_total, 0);
+    assert.equal(aggregate.tokens.spans_without_token_data, 1);
     assert.deepEqual(aggregate.open_span_ids, [open]);
     await appendFile(ledgerPath(BATCH, directory), 'not json\n');
     await assert.rejects(() => readLedger(BATCH, directory), /not JSON/u);
@@ -167,5 +168,21 @@ test('publish snapshots a complete ledger and refuses one with open spans', asyn
   } finally {
     await rm(directory, { recursive: true, force: true });
     await rm(tracked, { recursive: true, force: true });
+  }
+});
+
+test('token totals count only machine-reported values and never estimate the rest', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const first = await beginSpan(BATCH, { stage: 'authoring', worker: 'a' }, directory);
+    await endSpan(BATCH, first, { tokens: '1200', tokensSource: 'test-usage' }, directory);
+    const second = await beginSpan(BATCH, { stage: 'review', worker: 'main' }, directory);
+    await endSpan(BATCH, second, {}, directory);
+    const { tokens } = await aggregateBatch(BATCH, { directory });
+    assert.equal(tokens.reported_total, 1200);
+    assert.equal(tokens.reported_spans, 1);
+    assert.equal(tokens.spans_without_token_data, 1);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

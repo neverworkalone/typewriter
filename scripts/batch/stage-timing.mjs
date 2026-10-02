@@ -368,6 +368,21 @@ export function throughput(totals, netAdmitted) {
   };
 }
 
+/**
+ * Sum only token values that carry a machine-reported source. Spans without
+ * one (every main-agent stage) are counted as unavailable, never estimated.
+ */
+export function summarizeTokens(spans) {
+  const reported = spans.filter((span) => span.tokens && Number.isFinite(Number(span.tokens.value))
+    && span.tokens.source && span.tokens.source !== 'unavailable');
+  return {
+    reported_total: reported.reduce((sum, span) => sum + Number(span.tokens.value), 0),
+    reported_spans: reported.length,
+    spans_without_token_data: spans.length - reported.length,
+    note: 'subagent/worker tokens only where a machine-reported value was recorded; main-agent tokens are unavailable',
+  };
+}
+
 export async function aggregateBatch(batchId, { netAdmitted, directory = TIMING_DIRECTORY } = {}) {
   const { spans, open } = pairSpans(await readLedger(batchId, directory));
   const totals = aggregateSpans(spans);
@@ -378,7 +393,7 @@ export async function aggregateBatch(batchId, { netAdmitted, directory = TIMING_
     open_span_ids: open.map(({ id }) => id),
     totals,
     throughput: throughput(totals, netAdmitted),
-    tokens: 'unavailable',
+    tokens: summarizeTokens(spans),
   };
 }
 
@@ -419,6 +434,15 @@ export function renderMarkdown(aggregate) {
     if (row) lines.push(`| ${stage} | ${row.spans} | ${seconds(row.worker_ms)} | ${seconds(row.active_ms)} | ${row.retry_spans} | ${row.failed_spans} |`);
   }
   return `${lines.join('\n')}\n`;
+}
+
+/** One row per span: the raw evidence behind every aggregate, in start order. */
+export function renderSpansMarkdown(spans) {
+  const rows = [...spans].sort((left, right) => left.start_ms - right.start_ms).map((span) => {
+    const method = span.clock === 'monotonic' ? 'monotonic' : span.clock === 'reported' ? 'worker-reported' : 'wall-clock';
+    return `| ${span.stage} | ${span.label ?? ''} | ${span.worker} | ${span.attempt} | ${span.outcome}${span.kind === 'wait' ? ` (wait: ${span.wait_kind})` : ''} | ${(span.duration_ms / 1000).toFixed(1)} | ${method} |`;
+  });
+  return ['| Stage | Label | Worker | Attempt | Outcome | Seconds | Method |', '| --- | --- | --- | ---: | --- | ---: | --- |', ...rows].join('\n') + '\n';
 }
 
 function parseCli(argv) {
@@ -463,6 +487,10 @@ async function main(argv) {
   if (command === 'aggregate') {
     const netAdmitted = options.netAdmitted === undefined ? undefined : Number(options.netAdmitted);
     const aggregate = await aggregateBatch(batchId, { netAdmitted });
+    if (options.format === 'spans') {
+      process.stdout.write(renderSpansMarkdown(pairSpans(await readLedger(batchId)).spans));
+      return 0;
+    }
     process.stdout.write(options.format === 'markdown' ? renderMarkdown(aggregate) : `${JSON.stringify(aggregate, null, 2)}\n`);
     return 0;
   }

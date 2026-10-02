@@ -48,6 +48,7 @@
   "durable_tracked_patterns": [
     "data/canonical/**",
     "data/batches/**",
+    "data/timing/*.jsonl",
     "data/inventory/m5-target-seed.json",
     "data/inventory/m5-target-promotions.jsonl",
     "data/inventory/issue-210-recovery-inventory.json",
