@@ -177,6 +177,9 @@ test('a published ledger keeps only the executable name and refuses absolute pat
   assert.equal(publishableEvent({ id: 's-2', command: 'npm run ci:normal' }).command, 'npm');
   assert.throws(() => publishableEvent({ id: 's-3', note: 'ran in /Users/someone/repo' }), /absolute path/u);
   assert.throws(() => publishableEvent({ id: 's-4', label: 'x', note: 'see /private/tmp/a' }), /absolute path/u);
+  for (const note of ['at /workspace/repo/out', 'in /mnt/data/x', 'see /Volumes/Disk/a', 'on \\\\server\\share\\x', 'C:\\Users\\a\\b', 'D:/work/x', 'file:///srv/x', '~/notes/x']) {
+    assert.throws(() => publishableEvent({ id: 's-6', note }), /absolute path/u, note);
+  }
   assert.doesNotThrow(() => publishableEvent({ id: 's-5', label: 'ci-normal-checkpoint-11042', note: 'data/reference ok' }));
   const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
   const tracked = await mkdtemp(path.join(tmpdir(), 'stage-timing-tracked-'));

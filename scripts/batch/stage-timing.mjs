@@ -397,13 +397,27 @@ export async function aggregateBatch(batchId, { netAdmitted, directory = TIMING_
   };
 }
 
-const ABSOLUTE_PATH_PATTERN = /(?:^|[\s"'=(])(?:\/(?:Users|private|home|tmp|var|etc|opt|root)\/|[A-Za-z]:\\)/u;
+// Any POSIX-rooted path (not an enumerated set of roots), home-relative path,
+// file URL, Windows drive path, or UNC path. Relative repository paths pass.
+const ABSOLUTE_PATH_PATTERNS = [
+  /(?:^|[\s"'=(,;:])\/[^\s/"')]+\//u,
+  /(?:^|[\s"'=(,;:])~\//u,
+  /file:\/\//iu,
+  /(?:^|[^A-Za-z0-9])[A-Za-z]:[\\/]/u,
+  /(?:^|[\s"'=(,;:])\\\\[^\s\\]/u,
+];
+
+function containsAbsolutePath(value) {
+  if (typeof value === 'string') return ABSOLUTE_PATH_PATTERNS.some((pattern) => pattern.test(value));
+  if (Array.isArray(value)) return value.some(containsAbsolutePath);
+  if (value && typeof value === 'object') return Object.values(value).some(containsAbsolutePath);
+  return false;
+}
 
 /** A tracked ledger keeps only the executable name of a command and never an absolute path. */
 export function publishableEvent(event) {
   const sanitized = typeof event.command === 'string' ? { ...event, command: path.basename(event.command.split(/\s+/u)[0]) } : event;
-  const serialized = JSON.stringify(sanitized);
-  if (ABSOLUTE_PATH_PATTERN.test(serialized.replace(/\\"/gu, '"'))) fail(`ledger event ${event.id ?? ''} contains an absolute path; remove it before publishing`, 'ABSOLUTE_PATH');
+  if (containsAbsolutePath(sanitized)) fail(`ledger event ${event.id ?? ''} contains an absolute path; remove it before publishing`, 'ABSOLUTE_PATH');
   return sanitized;
 }
 

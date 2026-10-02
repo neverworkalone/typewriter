@@ -22,7 +22,8 @@ import {
   makeSemanticDecision,
   parseIssue223BatchId,
 } from './build-issue-223-corpus-batch.mjs';
-import { assertSelfCheckBinding, assertSelfCheckEnvelope, assertSourceClaimsTruthful, isSelfCheckInput } from './semantic-self-check.mjs';
+import { assertSelfCheckBinding, assertReviewContractForBatch,
+  assertSelfCheckEnvelope, assertSourceClaimsTruthful, isSelfCheckInput } from './semantic-self-check.mjs';
 import { assertInputBoundToRunRecord, assertInputDerivedFromRaw } from './reviewer-raw-outputs.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
 import { validateAuthoredSemanticDecisionSource, M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION } from './authored-semantic-decision-source.mjs';
@@ -160,6 +161,7 @@ export function validateSemanticReviewInputBinding({
   const input = JSON.parse(inputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(input, batchId);
   const selfCheck = isSelfCheckInput(input);
+  assertReviewContractForBatch(ordinal, selfCheck);
   assertSourceClaimsTruthful(semanticSource, { selfCheck });
   if (selfCheck) {
     assertSelfCheckEnvelope(input, { ordinal, candidateAuthor });

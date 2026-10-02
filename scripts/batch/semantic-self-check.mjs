@@ -115,6 +115,19 @@ export function assertSourceClaimsTruthful(source, { selfCheck }) {
   }
 }
 
+/**
+ * Shared fail-closed gate for the builder and the validator: from the first
+ * self-check batch, only self-check input is accepted; earlier batches keep
+ * their original review contract and may not carry the self-check marker.
+ */
+export function assertReviewContractForBatch(ordinal, selfCheck) {
+  if (ordinal >= SELF_CHECK_FIRST_BATCH) {
+    assert.ok(selfCheck, `batch ${ordinal} must use the agent self-check contract; separate-reviewer input is only accepted for batches before ${SELF_CHECK_FIRST_BATCH}`);
+  } else {
+    assert.ok(!selfCheck, `batch ${ordinal} predates the agent self-check contract and may not carry self-check input`);
+  }
+}
+
 /** Legacy separate-reviewer workflows may not be used for self-check batches. */
 export function assertLegacyReviewWorkflowAllowed(batchId) {
   const match = /-batch-([0-9]{2})-/u.exec(batchId);

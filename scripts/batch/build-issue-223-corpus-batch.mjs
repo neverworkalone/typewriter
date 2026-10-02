@@ -25,6 +25,7 @@ import {
 } from './reviewer-raw-outputs.mjs';
 import {
   assertSelfCheckBinding,
+  assertReviewContractForBatch,
   assertSelfCheckEnvelope,
   isSelfCheckInput,
   SELF_CHECK_PROVENANCE,
@@ -838,6 +839,7 @@ export async function buildIssue223CorpusBatch({
   const semanticInput = JSON.parse(semanticInputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(semanticInput, batchId);
   const selfCheck = isSelfCheckInput(semanticInput);
+  assertReviewContractForBatch(batchOrdinal, selfCheck);
   if (selfCheck) {
     assertSelfCheckEnvelope(semanticInput, { ordinal: batchOrdinal, candidateAuthor });
   } else {

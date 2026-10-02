@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   assertLegacyReviewWorkflowAllowed,
+  assertReviewContractForBatch,
   assertSelfCheckBinding,
   assertSelfCheckEnvelope,
   assertSourceClaimsTruthful,
@@ -131,6 +132,15 @@ test('the canonical source of a self-check batch never claims independent or hum
   // Legacy independent-review sources must not carry the self-check flags.
   assert.throws(() => assertSourceClaimsTruthful(honest(), { selfCheck: false }));
   assertSourceClaimsTruthful({ review: {}, provenance: {}, selection: {} }, { selfCheck: false });
+});
+
+test('the shared builder/validator gate fails closed on the review contract by batch', () => {
+  assertReviewContractForBatch(10, false);
+  assertReviewContractForBatch(11, true);
+  assertReviewContractForBatch(12, true);
+  assert.throws(() => assertReviewContractForBatch(11, false), /self-check contract/u);
+  assert.throws(() => assertReviewContractForBatch(25, false), /self-check contract/u);
+  assert.throws(() => assertReviewContractForBatch(10, true), /predates/u);
 });
 
 test('the separate-reviewer workflow is refused for self-check batches only', () => {
