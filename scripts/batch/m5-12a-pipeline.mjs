@@ -88,7 +88,8 @@ const INVENTORY_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/inventory');
 const CURRENT_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
 const BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-12-base-canonical');
 const BASE_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-12-base-inventory.json');
-const CURRENT_SEED_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-seed.json');
+const BASE_SEED_PATH = path.join(BATCH_DIRECTORY, 'm5-12-base-seed.json');
+const CURRENT_SEED_PATH =path.join(INVENTORY_DIRECTORY, 'm5-target-seed.json');
 const CURRENT_PROMOTION_LEDGER_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-promotions.jsonl');
 const DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
@@ -1163,34 +1164,16 @@ async function readJson(filePath, label) {
   }
 }
 
-async function reconstructBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
+// The M5-11 seed is a frozen historical snapshot (bytes of
+// data/inventory/m5-target-seed.json at b161c8b, revision m5-11).  Replay never
+// derives it from the live seed, which later batches legitimately evolve.
+async function loadBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
   const current = await readJson(currentSeedPath, 'current M5 seed');
-  const candidateInventoryIds = new Set(M5_12A_CANDIDATE_IDENTITIES.map(({ inventory_id: id }) => id));
-  const baseSeed = {
-    ...current.value,
-    revision: 'm5-11',
-    // Historical M5-12A replay must remain valid after a later promotion has
-    // appended its own held/deferred rows to the shared seed.  Agent-generated
-    // rows identify their owning generation pass; those rows are not part of
-    // the M5-11 reconstruction even when their inventory IDs are outside the
-    // M5-12A candidate identity set.
-    targets: current.value.targets.filter(({ inventory_id: id, decision_note: decisionNote }) => (
-      !candidateInventoryIds.has(id)
-      && !decisionNote?.includes(' after separate generation ')
-    )),
-  };
-  const baseSeedBytes = jsonBytes(baseSeed);
-  if (sha256(baseSeedBytes) !== M5_12A_BASE_SEED_SHA256) {
-    fail('base seed cannot be reconstructed without mutation or historical drift', 'BASE_SEED_MISMATCH');
+  const base = await readJson(BASE_SEED_PATH, 'M5-12A base seed');
+  if (sha256(base.bytes) !== M5_12A_BASE_SEED_SHA256 || base.value.revision !== 'm5-11') {
+    fail('frozen M5-12A base seed drifted from its pinned digest', 'BASE_SEED_MISMATCH');
   }
-  return { current, baseSeed, baseSeedBytes };
-}
-
-function isLaterM5GenerationNote(decisionNote) {
-  if (typeof decisionNote !== 'string') return false;
-  const generationId = decisionNote.match(/after separate generation (m5-\S+)/u)?.[1];
-  const milestone = generationId?.match(/^m5-(\d+)/u)?.[1];
-  return milestone !== undefined && Number(milestone) > 12;
+  return { current, baseSeed: base.value, baseSeedBytes: base.bytes };
 }
 
 async function loadBaseInputs({
@@ -1206,7 +1189,7 @@ async function loadBaseInputs({
   if (baseCanonicalDigest !== M5_12A_BASE_CANONICAL_SHA256) {
     fail('M5-12A base canonical digest drifted', 'BASE_CANONICAL_MISMATCH');
   }
-  const { current, baseSeed, baseSeedBytes } = await reconstructBaseSeed(currentSeedPath);
+  const { current, baseSeed, baseSeedBytes } = await loadBaseSeed(currentSeedPath);
   const baseInventory = await readJson(BASE_INVENTORY_PATH, 'M5-12 base inventory');
   if (sha256(baseInventory.bytes) !== M5_12A_BASE_INVENTORY_SHA256) {
     fail('M5-12A base inventory digest drifted', 'BASE_INVENTORY_MISMATCH');
@@ -2264,17 +2247,14 @@ export async function validateM512AFinal({
       fail('historical M5-12A canonical digest drifted from prospective canonical', 'FINAL_DIGEST_MISMATCH');
     }
 
-    const currentSeed = JSON.parse(currentSeedBytes.toString('utf8'));
-    const historicalSeed = {
-      ...currentSeed,
-      revision: 'm5-12',
-      targets: currentSeed.targets.filter(({ decision_note: decisionNote }) => (
-        !isLaterM5GenerationNote(decisionNote)
-      )),
-    };
-    const historicalSeedBytes = jsonBytes(historicalSeed);
-    if (sha256(historicalSeedBytes) !== sha256(result.prospective.seedBytes)) {
-      fail('historical M5-12A seed digest drifted from prospective seed', 'FINAL_DIGEST_MISMATCH');
+    // The M5-12 seed is replayed from the frozen M5-11 snapshot, never derived
+    // from the mutable live seed; it must match the durable promotion evidence.
+    const historicalSeedBytes = result.prospective.seedBytes;
+    if (promotion.outputs?.seed?.sha256 !== sha256(historicalSeedBytes)) {
+      fail('historical M5-12A seed digest drifted from promotion evidence', 'FINAL_DIGEST_MISMATCH');
+    }
+    if (currentIsM512AFinal && sha256(currentSeedBytes) !== sha256(historicalSeedBytes)) {
+      fail('current seed is not the M5-12A promoted seed', 'FINAL_DIGEST_MISMATCH');
     }
 
     const historicalPromotionLedger = currentPromotionLedgerEntries.slice(0, result.promotionLedger.length);
