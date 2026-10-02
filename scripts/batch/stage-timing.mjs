@@ -84,10 +84,14 @@ function gitSha() {
 }
 
 export function environmentLabel() {
+  const cpus = os.cpus();
   return {
     node: process.version,
     platform: `${os.platform()}-${os.arch()}`,
-    cpu_count: os.cpus().length,
+    os_release: os.release(),
+    cpu_model: cpus[0]?.model?.trim() || 'unavailable',
+    cpu_count: cpus.length || 'unavailable',
+    memory_gib: Math.round(os.totalmem() / 2 ** 30),
   };
 }
 
@@ -133,6 +137,7 @@ function baseEvent(batchId, options) {
     ...(options.label ? { label: optionalText(options.label, '--label') } : {}),
     ...(options.model ? { model: optionalText(options.model, '--model') } : {}),
     git_sha: gitSha(),
+    environment: environmentLabel(),
   };
 }
 
@@ -146,10 +151,11 @@ function reportedDuration(options) {
   if (options.reportedDurationMs === undefined) return {};
   const value = Number(options.reportedDurationMs);
   if (!Number.isFinite(value) || value <= 0) fail('--reported-duration-ms must be a positive number', 'INVALID_DURATION');
-  return {
-    reported_duration_ms: value,
-    reported_duration_source: optionalText(options.reportedDurationSource ?? 'unavailable', '--reported-duration-source'),
-  };
+  const source = optionalText(options.reportedDurationSource, '--reported-duration-source');
+  if (source === undefined || source === 'unavailable') {
+    fail('--reported-duration-ms needs a verifiable --reported-duration-source (not "unavailable")', 'UNVERIFIED_DURATION');
+  }
+  return { reported_duration_ms: value, reported_duration_source: source };
 }
 
 /**
@@ -236,6 +242,8 @@ export async function readLedger(batchId, directory = TIMING_DIRECTORY) {
 
 /** Prefer the worker's own reported run time over the observer's end timestamp. */
 function applyReportedDuration(span, source) {
+  // A reported duration without a named external source is not a measurement.
+  if (!source.reported_duration_source || source.reported_duration_source === 'unavailable') return;
   span.recorded_end_ms = span.recorded_end_ms ?? span.end_ms;
   span.reported_duration_ms = source.reported_duration_ms;
   span.reported_duration_source = source.reported_duration_source;
@@ -394,7 +402,19 @@ export async function aggregateBatch(batchId, { netAdmitted, directory = TIMING_
     totals,
     throughput: throughput(totals, netAdmitted),
     tokens: summarizeTokens(spans),
+    environments: summarizeEnvironments(spans),
   };
+}
+
+/** Distinct execution environments recorded in the ledger; spans from before recording are `unavailable`. */
+export function summarizeEnvironments(spans) {
+  const distinct = new Map();
+  let withoutEnvironment = 0;
+  for (const span of spans) {
+    if (!span.environment) withoutEnvironment += 1;
+    else distinct.set(JSON.stringify(span.environment), span.environment);
+  }
+  return { recorded: [...distinct.values()], spans_without_environment: withoutEnvironment, note: 'spans without an environment record are unavailable; nothing is inferred from the machine that aggregates' };
 }
 
 // Any POSIX-rooted path (not an enumerated set of roots), home-relative path,
@@ -448,6 +468,8 @@ export function renderMarkdown(aggregate) {
   const { totals } = aggregate;
   const lines = [
     `### ${aggregate.batch_id}`,
+    '',
+    `Environment: ${aggregate.environments?.recorded?.length ? aggregate.environments.recorded.map((e) => `Node ${e.node}, ${e.platform}, ${e.cpu_model} ×${e.cpu_count}`).join(' | ') : 'unavailable (not recorded in this ledger)'}`,
     '',
     `Wall ${seconds(totals.wall_ms)} s · active (union) ${seconds(totals.active_ms)} s · summed worker ${seconds(totals.worker_ms)} s · declared wait ${seconds(totals.wait_ms)} s · unattributed ${seconds(totals.unattributed_ms)} s · retry spans ${totals.retry_spans}`,
     '',

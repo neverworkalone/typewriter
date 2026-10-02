@@ -15,6 +15,12 @@ Corpus-text-free. It contains only counts, durations and method notes. Raw ledge
 - Wall = first start to last end of the batch ledger. Active = interval union (no double counting of overlapping workers). Summed worker = sum of span durations (overlap counted). Unattributed = wall minus active (gaps with no span).
 - Tokens only where machine-reported (subagent task notifications). Main-session tokens: `unavailable`.
 
+## Execution environment and duration sources
+
+- B10–B12 ledgers predate environment recording: the environment of those runs is `unavailable` per span (the ledger tool now stores Node version, OS/arch/release, CPU model/count and memory on every new span, and `aggregate` reports `unavailable` for spans without a record; a regression pins both).
+- For context only, the workstation that produced this report at report time (captured after the runs, not recorded at run time): Node v24.19.0, darwin-arm64, OS release 25.6.0, Apple M1 Pro, 8 logical CPUs, 16 GiB. CI pins Node 22.13.x, so local and CI timings must not be mixed.
+- Worker-reported durations (19 spans, B10/B11 subagents) all carry the source `agent-task-notification-usage.duration_ms`. The tool now rejects a reported duration with no source (or `unavailable`) when writing and ignores one at aggregation, so an unsourced number can never enter active time or throughput.
+
 ## Per-batch stage tables
 
 Seconds. "Active" is the union; retries/failures are counted from the ledger.

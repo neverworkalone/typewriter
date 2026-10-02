@@ -15,6 +15,8 @@ import {
   pairSpans,
   publishLedger,
   publishableEvent,
+  summarizeEnvironments,
+  environmentLabel,
   readLedger,
   runTimed,
   throughput,
@@ -169,6 +171,43 @@ test('publish snapshots a complete ledger and refuses one with open spans', asyn
   } finally {
     await rm(directory, { recursive: true, force: true });
     await rm(tracked, { recursive: true, force: true });
+  }
+});
+
+test('a reported duration needs a verifiable source and unsourced durations are never aggregated', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000' }, directory), /verifiable --reported-duration-source/u);
+    await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000', reportedDurationSource: 'unavailable' }, directory), /verifiable/u);
+    await endSpan(BATCH, id, {}, directory);
+    await assert.rejects(() => amendSpan(BATCH, id, { reportedDurationMs: '5000' }, directory), /verifiable/u);
+    // A legacy ledger line with an unsourced reported duration is ignored by aggregation.
+    const legacy = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await endSpan(BATCH, legacy, {}, directory);
+    const { appendFile } = await import('node:fs/promises');
+    await appendFile(ledgerPath(BATCH, directory), `${JSON.stringify({ v: 1, event: 'amend', id: legacy, reported_duration_ms: 999999, reported_duration_source: 'unavailable' })}\n`);
+    const { spans } = pairSpans(await readLedger(BATCH, directory));
+    assert.ok(spans.every((span) => span.clock !== 'reported'));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('every new span records the execution environment and absent records stay unavailable', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await endSpan(BATCH, id, {}, directory);
+    const { spans } = pairSpans(await readLedger(BATCH, directory));
+    assert.deepEqual(spans[0].environment, environmentLabel());
+    for (const key of ['node', 'platform', 'os_release', 'cpu_model', 'cpu_count']) assert.ok(spans[0].environment[key] !== undefined, key);
+    const summary = summarizeEnvironments([...spans, { id: 'old' }]);
+    assert.equal(summary.recorded.length, 1);
+    assert.equal(summary.spans_without_environment, 1);
+    assert.equal(summarizeEnvironments([{ id: 'old' }]).recorded.length, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
 
