@@ -59,6 +59,17 @@ keeping corpus-informed records out of public refs, or documenting a concrete ri
 determination that permits their disclosure and revising this policy accordingly —
 is a repository-level owner decision, not settled by this document.
 
+**Owner override (repository-level decision, PR #235).** The owner decided that,
+before the Chrome Extension that uses corpus-informed data is distributed, the
+repository serves research and development, and its public visibility shows the
+transparency of that process rather than publishing a product result. The
+repository therefore stays public with the current held-data classifications
+unchanged, as an owner decision and not as a third-party rights determination.
+NIKL's approval for product distribution of corpus-informed results remains
+pending, and no corpus-informed data is distributed in a product until it is
+received and its terms are met. Agents and reviewers treat the repository's
+visibility as settled by this override and do not reopen it within issue work.
+
 ## Classification states
 
 - `PUBLIC` — may be visible without a separate project-specific license decision;
