@@ -504,12 +504,14 @@ export function parseNotificationUsage(text) {
 export function verifyReferences(spans, usage) {
   const results = [];
   for (const span of spans) {
-    const ref = span.reported_duration_ref ?? span.tokens?.ref;
-    if (!ref) continue;
-    const entries = usage.get(ref);
-    const durationOk = entries?.some((entry) => entry.duration_ms === Math.round(span.reported_duration_ms));
-    const tokensOk = span.tokens === undefined || entries?.some((entry) => entry.tokens === Number(span.tokens.value));
-    results.push({ id: span.id, ref, verified: Boolean(entries && durationOk && tokensOk) });
+    // Duration and tokens may come from different notifications: each is checked
+    // against the notification its own identifier names.
+    const durationRef = span.reported_duration_ref;
+    const tokenRef = span.tokens ? (span.tokens.ref ?? durationRef) : undefined;
+    if (!durationRef && !tokenRef) continue;
+    const durationOk = !durationRef || Boolean(usage.get(durationRef)?.some((entry) => entry.duration_ms === Math.round(span.reported_duration_ms)));
+    const tokensOk = !span.tokens || !tokenRef || Boolean(usage.get(tokenRef)?.some((entry) => entry.tokens === Number(span.tokens.value)));
+    results.push({ id: span.id, duration_ref: durationRef ?? null, token_ref: tokenRef ?? null, verified: durationOk && tokensOk });
   }
   return results;
 }

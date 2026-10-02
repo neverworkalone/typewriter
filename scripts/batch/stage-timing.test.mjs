@@ -279,6 +279,13 @@ test('references are checked against local notification evidence: arbitrary ids 
   assert.deepEqual(verifyReferences([span('a3abdd5c2558622ec', 999999, 101042)], usage).map((r) => r.verified), [false]);
   assert.deepEqual(verifyReferences([span('a3abdd5c2558622ec', 121334, 5)], usage).map((r) => r.verified), [false]);
   assert.deepEqual(verifyReferences([{ id: 'no-ref' }], usage), []);
+  // Separate duration and token references are each checked against their own notification.
+  const twoTasks = parseNotificationUsage(`${evidence} tasks/a0000000000000001.output</output-file> y <usage><subagent_tokens>555</subagent_tokens><tool_uses>1</tool_uses><duration_ms>777</duration_ms></usage>`);
+  const split = (tokenRef, tokens) => ({ id: 's-split', reported_duration_ref: 'a3abdd5c2558622ec', reported_duration_ms: 121334, tokens: { value: String(tokens), ref: tokenRef } });
+  assert.deepEqual(verifyReferences([split('a0000000000000001', 555)], twoTasks).map((r) => r.verified), [true]);
+  assert.deepEqual(verifyReferences([split('a0000000000000001', 101042)], twoTasks).map((r) => r.verified), [false], 'tokens must match the notification their own ref names, not the duration task');
+  assert.deepEqual(verifyReferences([split('a9999999999999999', 555)], twoTasks).map((r) => r.verified), [false]);
+  assert.deepEqual(verifyReferences([{ id: 'tokens-only', tokens: { value: '555', ref: 'a0000000000000001' } }], twoTasks).map((r) => r.verified), [true]);
 });
 
 test('token totals count only machine-reported values and never estimate the rest', async () => {
