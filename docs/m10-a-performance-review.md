@@ -90,6 +90,46 @@ Wall 2,131.9 s; active 1,504.8 s; summed worker 3,185.0 s; unattributed 627.1 s.
 6. `ci:fast`: 1.6 %
 7. Admission, evidence, assemble: <0.2 %
 
+## CI invocation audit (stable table for M10-B onwards)
+
+Counts are of *recorded or retrievable* invocations only; they are not proof that every run was captured. `ci:normal` runs the fast checkpoint first and then the continuation (`.github/workflows/ci.yml`: "fast checkpoint + continuation"), so a normal run already contains a fast run: never add the two for the same invocation.
+
+### Local, instrumented (`data/timing` ledgers)
+
+| Batch | `ci:fast` spans | `ci:fast` failed | `ci:fast` seconds (all spans) | `ci:normal` spans | `ci:normal` seconds |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| B10 | 3 | 2 | 49.8 (10.0 / 19.2 / 20.6) | 0 | 0 |
+| B11 | 1 | 0 | 21.1 | 0 | 0 |
+| B12 | 1 | 0 | 22.3 | 1 | 213.9 |
+| Total | 5 | 2 | 93.2 | 1 | 213.9 |
+
+The 213.9 s is **one recorded B12 local invocation** (`ci-normal-checkpoint-11042`, attempt 1, ok, at the 11,042 checkpoint). It is not the whole project's normal-validation cost. Mean/median per run are not reported: one normal sample, five fast samples across different states.
+
+### Local, uninstrumented or not retrievable
+
+- Retrievable from this session's transcript: exactly one local `ci:normal` command (the instrumented one above) and, after the ledger snapshots, one un-spanned `ci:fast` on the committed head db2fdf2 (passed; duration `unavailable`). Local `ci:fast` runs made while diagnosing failures that were not spanned: `unavailable`.
+- Local runs made by the earlier cloud session, and any manual shell invocations outside the ledger or this transcript: `unavailable` (no shell history or CI log was collected). Missing observability: no wrapper recorded invocations that were not launched through `stage-timing.mjs run`.
+- Partial/aborted runs: a dirty-worktree refusal of `ci:fast` (provenance check, sub-second) happened once before the ledger moved to ignored space and once more on this PR before commit; neither produced a timed category result and neither is counted above.
+
+### GitHub Actions `ci:normal` (remote runner wall time, kept separate)
+
+| Run ID | Head | Trigger | Result | Observed seconds |
+| --- | --- | --- | --- | ---: |
+| 36988521267 | 364c382 | pull_request | success | 322 (job 09:13:20 to 09:18:42) |
+| 36989234325 | c080501 | pull_request | success | 320 (job 09:20:47 to 09:26:07) |
+| 37017843162 | db2fdf2 | pull_request | success | 351 (job 14:09:04 to 14:14:55) |
+
+Three remote normal runs, one per pushed head; cumulative job time 993 s (322 + 320 + 351). These are on different hardware and must not be mixed with local `stage-timing` seconds or charged twice. Remote runs cover only pushed heads, which are not checkpoints per batch.
+
+### Grouping of batch checkpoints
+
+- Batches B10, B11, B12 each ran `ci:fast` (B10 three times because two attempts failed on provenance/derived-refresh problems). One local `ci:normal` covered all three batch checkpoints together (at 11,042). Normal runs avoided: 2 (B10 and B11 had none).
+- Measured comparison of actual batch-by-batch vs grouped policy: not made. Savings from the two skipped normal runs would be hypothetical (no per-batch normal run was measured), so none is claimed.
+
+### Report columns to keep for M10-B
+
+Per invocation: category (`fast`/`normal`/`all`/deep), where (local/GitHub), batch/phase, trigger/purpose, attempt, result, head, seconds, provenance (`ledger`/`transcript`/`GitHub run`/`unavailable`). Launch every local run through `stage-timing.mjs run` so the table is complete.
+
 ## Tokens
 
 - Subagent tokens (machine-reported): B10 1,260,832; B11 910,804 (authors only).
