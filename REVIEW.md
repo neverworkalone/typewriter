@@ -6,6 +6,31 @@ Correctness takes precedence over token savings. This file is the review policy;
 read it from the **current PR HEAD** before reviewing. Do not use `AGENTS.md`
 for PR reviews.
 
+## Owner override: public research/development repository (2026-10-02)
+
+The repository owner intentionally operates Typewriter's GitHub repository as
+**public research and development**, to make the process transparent. For the
+project's **internal PR-review and product-release classification**, GitHub
+visibility before the corpus-informed Chrome Extension release is not itself
+the Chrome Extension's product-distribution event. Typewriter 0.1 predates
+corpus use; Typewriter 0.2 remains gated on the pending NIKL results-publication
+authorization. This repository-level owner decision supersedes the historic
+private-repository operating assumption in `docs/publication-boundary.md`.
+
+**Agents and reviewers must treat that owner operating decision as settled.**
+Do not reopen the public-versus-private decision, request the owner to restate
+it, or block an otherwise clean lexical-development PR solely because the repo
+is public, NIKL's product-release decision is pending, or Typewriter has not
+issued a downstream CC BY 4.0 grant for its canonical data. Do not require a
+private repository as a condition of merging an ordinary development PR.
+
+This is an **internal review policy**, not a legal conclusion or a grant of
+third-party rights. Actual exposure of verbatim restricted corpus passages,
+third-party copyrighted content, confidential information, or concrete evidence
+of a specific violated source term remains independently reviewable. Source-
+material exclusion, provenance, lexical validity, CI, and product release gates
+remain in force; identify evidence rather than rearguing repo visibility.
+
 ## 1. Determine the review gate first
 
 Read the active issue, PR metadata/current HEAD, complete changed-file **names**,
