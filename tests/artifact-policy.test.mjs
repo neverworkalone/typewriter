@@ -241,6 +241,47 @@ test('artifact policy classifies projections before they can become tracked data
   );
 });
 
+test('Issue #223 retrospective semantic QA uses a registered closed durable artifact contract', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-223-qa-policy-'));
+  const relativePath = 'data/batches/issue-223-b01-b04-semantic-qa.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '1',
+    contract_version: 'issue-223-b01-b04-semantic-qa-v1',
+    kind: 'issue-223-retrospective-semantic-qa',
+    issue: 223,
+    parent_issue: 218,
+    recorded_on: '2026-10-02',
+    policy: 'source-bound AI self-check; preserve completed legacy review results',
+    source_batches: [],
+    legacy_runs: [],
+    legacy_review_results: [],
+    ai_self_checks: [],
+    historical_overlap: {},
+    coverage: {},
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.doesNotReject(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }));
+
+    await writeFile(filePath, `${JSON.stringify({ ...value, unregistered_decision: true })}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+
+    await writeFile(filePath, `${JSON.stringify({ ...value, contract_version: 'issue-223-b01-b04-semantic-qa-v2' })}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
 test('artifact policy rejects role-shaped projections relocated into a future batch path', async () => {
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-artifact-policy-'));
   const cases = [

@@ -129,6 +129,10 @@
         "contract": "reviewer_run_record"
       },
       {
+        "pattern": "data/batches/issue-223-b01-b04-semantic-qa.json",
+        "contract": "issue_223_semantic_qa"
+      },
+      {
       "pattern": "data/batches/*-semantic-decisions.json",
       "contract": "decision_source"
     },
@@ -4081,6 +4085,56 @@
           "reason_codes": "array<string>",
           "flags": "array<string>",
           "decision_note": "string"
+        }
+      },
+      "issue_223_semantic_qa": {
+        "contract_versions": [
+          "issue-223-b01-b04-semantic-qa-v1"
+        ],
+        "required_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "issue",
+          "parent_issue",
+          "recorded_on",
+          "policy",
+          "source_batches",
+          "legacy_runs",
+          "legacy_review_results",
+          "ai_self_checks",
+          "historical_overlap",
+          "coverage"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "issue",
+          "parent_issue",
+          "recorded_on",
+          "policy",
+          "source_batches",
+          "legacy_runs",
+          "legacy_review_results",
+          "ai_self_checks",
+          "historical_overlap",
+          "coverage"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "issue": "number",
+          "parent_issue": "number",
+          "recorded_on": "string",
+          "policy": "string",
+          "source_batches": "array<object>",
+          "legacy_runs": "array<object>",
+          "legacy_review_results": "array<object>",
+          "ai_self_checks": "array<object>",
+          "historical_overlap": "object",
+          "coverage": "object"
         }
       }
     }
