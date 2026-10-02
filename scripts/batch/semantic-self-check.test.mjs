@@ -119,6 +119,8 @@ test('the canonical source of a self-check batch never claims independent or hum
     'separately verify method': (s) => { s.review.method = 'Separately verify each identity.'; },
     'independent coverage basis': (s) => { s.selection.coverage_basis = ['identity after independent semantic eligibility']; },
     'independently reviewed rationale': (s) => { s.selection.selection_rationale = 'Every independently reviewed identity proceeds.'; },
+    'self-check parenthetical hiding a human claim': (s) => { s.review.method = 'The agent checks identities (self-check; human review completed).'; },
+    'self-check parenthetical hiding an independent claim': (s) => { s.provenance.authoring_note = 'checked (agent self-check and independent reviewer approved).'; },
     'human authoring note': (s) => { s.provenance.authoring_note = 'Each lemma was human reviewed.'; },
   };
   for (const [name, mutate] of Object.entries(cases)) {

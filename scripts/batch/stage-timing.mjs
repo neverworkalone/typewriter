@@ -196,7 +196,7 @@ export async function runTimed(batchId, options, command, directory = TIMING_DIR
     event: 'begin',
     id,
     start: startIso,
-    command: command.slice(0, 4).join(' ').slice(0, 160),
+    command: path.basename(command[0]),
   }, directory);
   const exitCode = await new Promise((resolve) => {
     const child = spawn(command[0], command.slice(1), { cwd: REPOSITORY_DIRECTORY, stdio: 'inherit' });
@@ -397,15 +397,26 @@ export async function aggregateBatch(batchId, { netAdmitted, directory = TIMING_
   };
 }
 
+const ABSOLUTE_PATH_PATTERN = /(?:^|[\s"'=(])(?:\/(?:Users|private|home|tmp|var|etc|opt|root)\/|[A-Za-z]:\\)/u;
+
+/** A tracked ledger keeps only the executable name of a command and never an absolute path. */
+export function publishableEvent(event) {
+  const sanitized = typeof event.command === 'string' ? { ...event, command: path.basename(event.command.split(/\s+/u)[0]) } : event;
+  const serialized = JSON.stringify(sanitized);
+  if (ABSOLUTE_PATH_PATTERN.test(serialized.replace(/\\"/gu, '"'))) fail(`ledger event ${event.id ?? ''} contains an absolute path; remove it before publishing`, 'ABSOLUTE_PATH');
+  return sanitized;
+}
+
 /** Copy the working ledger into tracked space, refusing a ledger with open spans. */
 export async function publishLedger(batchId, { directory = TIMING_DIRECTORY, trackedDirectory = TRACKED_TIMING_DIRECTORY } = {}) {
   const events = await readLedger(batchId, directory);
   if (events.length === 0) fail(`no ledger for ${batchId}`, 'UNKNOWN_BATCH');
   const { open } = pairSpans(events);
   if (open.length > 0) fail(`${batchId} has open spans: ${open.map(({ id }) => id).join(', ')}`, 'OPEN_SPANS');
+  const published = events.map(publishableEvent);
   await mkdir(trackedDirectory, { recursive: true });
   const target = ledgerPath(batchId, trackedDirectory);
-  await writeFile(target, events.map((event) => JSON.stringify(event)).join('\n') + '\n', 'utf8');
+  await writeFile(target, published.map((event) => JSON.stringify(event)).join('\n') + '\n', 'utf8');
   return target;
 }
 

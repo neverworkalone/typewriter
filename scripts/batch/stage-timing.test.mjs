@@ -14,6 +14,7 @@ import {
   ledgerPath,
   pairSpans,
   publishLedger,
+  publishableEvent,
   readLedger,
   runTimed,
   throughput,
@@ -165,6 +166,24 @@ test('publish snapshots a complete ledger and refuses one with open spans', asyn
     await endSpan(BATCH, open, {}, directory);
     const target = await publishLedger(BATCH, { directory, trackedDirectory: tracked });
     assert.equal(await readFile(target, 'utf8'), await readFile(ledgerPath(BATCH, directory), 'utf8'));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+    await rm(tracked, { recursive: true, force: true });
+  }
+});
+
+test('a published ledger keeps only the executable name and refuses absolute paths', async () => {
+  assert.equal(publishableEvent({ id: 's-1', command: '/private/tmp/x/discover.sh 12 --flag' }).command, 'discover.sh');
+  assert.equal(publishableEvent({ id: 's-2', command: 'npm run ci:normal' }).command, 'npm');
+  assert.throws(() => publishableEvent({ id: 's-3', note: 'ran in /Users/someone/repo' }), /absolute path/u);
+  assert.throws(() => publishableEvent({ id: 's-4', label: 'x', note: 'see /private/tmp/a' }), /absolute path/u);
+  assert.doesNotThrow(() => publishableEvent({ id: 's-5', label: 'ci-normal-checkpoint-11042', note: 'data/reference ok' }));
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  const tracked = await mkdtemp(path.join(tmpdir(), 'stage-timing-tracked-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await endSpan(BATCH, id, { note: 'wrote /Users/someone/out.json' }, directory);
+    await assert.rejects(() => publishLedger(BATCH, { directory, trackedDirectory: tracked }), /absolute path/u);
   } finally {
     await rm(directory, { recursive: true, force: true });
     await rm(tracked, { recursive: true, force: true });

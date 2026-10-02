@@ -87,6 +87,12 @@ export function assertSelfCheckBinding({ input, candidateRows, glossByLemma }) {
  * (`kind` and `prior_generator_replaced` are structural fields required by the
  * shared decision-source contract and carry no review-independence claim.)
  */
+/** The only parenthetical disclaimers allowed to name independent/human review, and only to deny it. */
+const SELF_CHECK_DISCLAIMERS = [
+  '(agent self-check, not independent or human review)',
+  '(agent self-check; not independent, separately authored, or human review)',
+];
+
 export function assertSourceClaimsTruthful(source, { selfCheck }) {
   const { review } = source;
   if (!selfCheck) {
@@ -103,7 +109,8 @@ export function assertSourceClaimsTruthful(source, { selfCheck }) {
     source.selection.selection_rationale,
   ];
   for (const text of claims) {
-    const stripped = text.replace(/\([^()]*self-check[^()]*\)/giu, '');
+    let stripped = text;
+    for (const disclaimer of SELF_CHECK_DISCLAIMERS) stripped = stripped.split(disclaimer).join('');
     assert.ok(!/independent|separately|human/iu.test(stripped), `a self-check source must not claim independent, separate, or human review: ${text.slice(0, 80)}`);
   }
 }
