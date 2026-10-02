@@ -1,0 +1,305 @@
+import assert from 'node:assert/strict';
+import { appendFile, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+
+import {
+  aggregateBatch,
+  amendSpan,
+  aggregateSpans,
+  beginSpan,
+  endSpan,
+  intervalUnionMs,
+  ledgerPath,
+  pairSpans,
+  publishLedger,
+  publishableEvent,
+  summarizeEnvironments,
+  parseNotificationUsage,
+  verifyReferences,
+  environmentLabel,
+  readLedger,
+  runTimed,
+  throughput,
+} from './stage-timing.mjs';
+
+const BATCH = 'timing-regression-batch';
+const span = (stage, startSeconds, endSeconds, extra = {}) => ({
+  stage,
+  kind: 'work',
+  attempt: 1,
+  outcome: 'ok',
+  start_ms: startSeconds * 1000,
+  end_ms: endSeconds * 1000,
+  duration_ms: (endSeconds - startSeconds) * 1000,
+  ...extra,
+});
+
+test('interval union counts overlapping workers once', () => {
+  assert.equal(intervalUnionMs([[0, 10], [5, 20], [30, 40]]), 30);
+  assert.equal(intervalUnionMs([[0, 10], [2, 4]]), 10);
+  assert.equal(intervalUnionMs([]), 0);
+});
+
+test('concurrent workers separate elapsed from summed worker time', () => {
+  const totals = aggregateSpans([
+    span('authoring', 0, 100, { worker: 'a' }),
+    span('authoring', 10, 90, { worker: 'b' }),
+    span('review', 100, 160),
+  ]);
+  assert.equal(totals.wall_ms, 160_000);
+  assert.equal(totals.active_ms, 160_000);
+  assert.equal(totals.worker_ms, 240_000);
+  assert.equal(totals.stages.authoring.active_ms, 100_000);
+  assert.equal(totals.stages.authoring.worker_ms, 180_000);
+  assert.equal(totals.unattributed_ms, 0);
+});
+
+test('waits, retries and unattributed time stay out of active work', () => {
+  const totals = aggregateSpans([
+    span('authoring', 0, 50),
+    { ...span('authoring', 50, 80), kind: 'wait', wait_kind: 'rate-limit', duration_ms: 30_000 },
+    span('authoring', 80, 120, { attempt: 2 }),
+    span('ci-fast', 200, 220),
+  ]);
+  assert.equal(totals.active_ms, 110_000);
+  assert.equal(totals.wait_ms, 30_000);
+  assert.deepEqual(totals.wait_by_kind, { 'rate-limit': { spans: 1, ms: 30_000 } });
+  assert.equal(totals.retry_spans, 1);
+  assert.equal(totals.stages.authoring.retry_worker_ms, 40_000);
+  assert.equal(totals.unattributed_ms, 80_000);
+  assert.equal(totals.wall_ms, 220_000);
+});
+
+test('throughput is derived only from a positive admitted count', () => {
+  const totals = { wall_ms: 7_200_000, active_ms: 3_600_000 };
+  assert.deepEqual(throughput(totals, 200), {
+    net_admitted: 200,
+    per_hour_wall: 100,
+    per_hour_active: 200,
+    minutes_per_100_wall: 60,
+    minutes_per_100_active: 30,
+  });
+  assert.deepEqual(throughput(totals, 0), { net_admitted: 0 });
+  assert.deepEqual(throughput(totals, undefined), { net_admitted: null });
+});
+
+test('ledger pairs begin/end events and rejects malformed or invalid input', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const first = await beginSpan(BATCH, { stage: 'authoring', worker: 'author-1', model: 'test-model' }, directory);
+    await endSpan(BATCH, first, { outcome: 'ok' }, directory);
+    await assert.rejects(() => endSpan(BATCH, first, {}, directory), /already closed/u);
+    await assert.rejects(() => endSpan(BATCH, 's-missing', {}, directory), /no open span/u);
+    await assert.rejects(() => beginSpan(BATCH, { stage: 'not-a-stage' }, directory), /--stage must be one of/u);
+    await assert.rejects(() => beginSpan(BATCH, { stage: 'review', kind: 'wait' }, directory), /needs --wait-kind/u);
+    await assert.rejects(() => beginSpan(BATCH, { stage: 'review', attempt: '0' }, directory), /positive integer/u);
+    await assert.rejects(() => beginSpan('Bad Batch', { stage: 'review' }, directory), /lowercase hyphenated/u);
+    const open = await beginSpan(BATCH, { stage: 'review' }, directory);
+    const { spans, open: stillOpen } = pairSpans(await readLedger(BATCH, directory));
+    assert.equal(spans.length, 1);
+    assert.deepEqual(stillOpen.map(({ id }) => id), [open]);
+    assert.equal(spans[0].worker, 'author-1');
+    const aggregate = await aggregateBatch(BATCH, { netAdmitted: 10, directory });
+    assert.deepEqual(aggregate.tokens.reported_total, 0);
+    assert.equal(aggregate.tokens.spans_without_token_data, 1);
+    assert.deepEqual(aggregate.open_span_ids, [open]);
+    await appendFile(ledgerPath(BATCH, directory), 'not json\n');
+    await assert.rejects(() => readLedger(BATCH, directory), /not JSON/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('run measures a process on the monotonic clock and records its exit status', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const ok = await runTimed(BATCH, { stage: 'validation' }, [process.execPath, '-e', 'setTimeout(() => {}, 30)'], directory);
+    const bad = await runTimed(BATCH, { stage: 'validation', attempt: '2' }, [process.execPath, '-e', 'process.exit(3)'], directory);
+    assert.equal(ok.exitCode, 0);
+    assert.equal(bad.exitCode, 3);
+    const { spans } = pairSpans(await readLedger(BATCH, directory));
+    assert.equal(spans[0].clock, 'monotonic');
+    assert.ok(spans[0].duration_ms >= 25);
+    assert.equal(spans[1].outcome, 'failed');
+    assert.equal(spans[1].exit_code, 3);
+    assert.equal(spans[1].attempt, 2);
+    const text = await readFile(ledgerPath(BATCH, directory), 'utf8');
+    assert.ok(!/token|cost/iu.test(text), 'no invented token or cost data');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a worker-reported duration amends a closed span without rewriting the ledger', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'review', worker: 'reviewer-1' }, directory);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await endSpan(BATCH, id, { reportedDurationMs: '5', reportedDurationSource: 'agent-task-notification-usage.duration_ms', reportedDurationRef: 'task-abc123' }, directory);
+    const [reported] = pairSpans(await readLedger(BATCH, directory)).spans;
+    assert.equal(reported.clock, 'reported');
+    assert.equal(reported.duration_ms, 5);
+    assert.equal(reported.end_ms - reported.start_ms, 5);
+    assert.ok(reported.recorded_end_ms - reported.start_ms >= 15, 'the observed end is preserved');
+
+    const late = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await endSpan(BATCH, late, {}, directory);
+    const before = await readFile(ledgerPath(BATCH, directory), 'utf8');
+    await amendSpan(BATCH, late, { reportedDurationMs: '3', reportedDurationSource: 'agent-task-notification-usage.duration_ms', reportedDurationRef: 'task-abc123' }, directory);
+    const after = await readFile(ledgerPath(BATCH, directory), 'utf8');
+    assert.ok(after.startsWith(before), 'the ledger is append-only');
+    const spans = pairSpans(await readLedger(BATCH, directory)).spans;
+    assert.equal(spans.find((span) => span.id === late).duration_ms, 3);
+    await assert.rejects(() => amendSpan(BATCH, 's-nope', { reportedDurationMs: '3' }, directory), /no closed span/u);
+    await assert.rejects(() => amendSpan(BATCH, late, {}, directory), /needs --reported-duration-ms/u);
+    await assert.rejects(() => amendSpan(BATCH, late, { reportedDurationMs: '-4' }, directory), /positive number/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('publish snapshots a complete ledger and refuses one with open spans', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  const tracked = await mkdtemp(path.join(tmpdir(), 'stage-timing-tracked-'));
+  try {
+    await assert.rejects(() => publishLedger(BATCH, { directory, trackedDirectory: tracked }), /no ledger/u);
+    const open = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await assert.rejects(() => publishLedger(BATCH, { directory, trackedDirectory: tracked }), /open spans/u);
+    await endSpan(BATCH, open, {}, directory);
+    const target = await publishLedger(BATCH, { directory, trackedDirectory: tracked });
+    assert.equal(await readFile(target, 'utf8'), await readFile(ledgerPath(BATCH, directory), 'utf8'));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+    await rm(tracked, { recursive: true, force: true });
+  }
+});
+
+test('a reported duration needs a verifiable source and unsourced durations are never aggregated', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000' }, directory), /verifiable --reported-duration-source/u);
+    await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000', reportedDurationSource: 'unavailable' }, directory), /verifiable/u);
+    for (const label of ['verified', 'test-source', 'manual', 'agent-task-notification-usage']) {
+      await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '999999', reportedDurationSource: label, reportedDurationRef: 'task-abc123' }, directory), /arbitrary labels are rejected/u, label);
+    }
+    await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000', reportedDurationSource: 'agent-task-notification-usage.duration_ms' }, directory), /--reported-duration-ref/u);
+    await assert.rejects(() => endSpan(BATCH, id, { reportedDurationMs: '5000', reportedDurationSource: 'agent-task-notification-usage.duration_ms', reportedDurationRef: 'x y' }, directory), /--reported-duration-ref/u);
+    await endSpan(BATCH, id, {}, directory);
+    await assert.rejects(() => amendSpan(BATCH, id, { reportedDurationMs: '5000' }, directory), /verifiable/u);
+    // A legacy ledger line with an unsourced reported duration is ignored by aggregation.
+    const legacy = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await endSpan(BATCH, legacy, {}, directory);
+    const { appendFile } = await import('node:fs/promises');
+    await appendFile(ledgerPath(BATCH, directory), `${JSON.stringify({ v: 1, event: 'amend', id: legacy, reported_duration_ms: 999999, reported_duration_source: 'verified' })}\n`);
+    const { spans } = pairSpans(await readLedger(BATCH, directory));
+    assert.ok(spans.every((span) => span.clock !== 'reported'));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('every new span records the execution environment and absent records stay unavailable', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await endSpan(BATCH, id, {}, directory);
+    const { spans } = pairSpans(await readLedger(BATCH, directory));
+    assert.deepEqual(spans[0].environment, environmentLabel());
+    for (const key of ['node', 'platform', 'os_release', 'cpu_model', 'cpu_count']) assert.ok(spans[0].environment[key] !== undefined, key);
+    const summary = summarizeEnvironments([...spans, { id: 'old' }]);
+    assert.equal(summary.recorded.length, 1);
+    assert.equal(summary.spans_without_environment, 1);
+    assert.equal(summarizeEnvironments([{ id: 'old' }]).recorded.length, 0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a published ledger keeps only the executable name and refuses absolute paths', async () => {
+  assert.equal(publishableEvent({ id: 's-1', command: '/private/tmp/x/discover.sh 12 --flag' }).command, 'discover.sh');
+  assert.equal(publishableEvent({ id: 's-2', command: 'npm run ci:normal' }).command, 'npm');
+  assert.throws(() => publishableEvent({ id: 's-3', note: 'ran in /Users/someone/repo' }), /absolute path/u);
+  assert.throws(() => publishableEvent({ id: 's-4', label: 'x', note: 'see /private/tmp/a' }), /absolute path/u);
+  for (const note of ['/workspace', 'cwd=/tmp', 'wrote to /tmp.', 'at /workspace/repo/out', 'in /mnt/data/x', 'see /Volumes/Disk/a', 'on \\\\server\\share\\x', 'C:\\Users\\a\\b', 'D:/work/x', 'file:///srv/x', '~/notes/x']) {
+    assert.throws(() => publishableEvent({ id: 's-6', note }), /absolute path/u, note);
+  }
+  for (const note of ['5 / 3 queries', 'a/b relative', 'data/reference/x', 'and/or', 'ratio 1/2']) assert.doesNotThrow(() => publishableEvent({ id: 's-7', note }), note);
+  assert.doesNotThrow(() => publishableEvent({ id: 's-5', label: 'ci-normal-checkpoint-11042', note: 'data/reference ok' }));
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  const tracked = await mkdtemp(path.join(tmpdir(), 'stage-timing-tracked-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'review' }, directory);
+    await endSpan(BATCH, id, { note: 'wrote /Users/someone/out.json' }, directory);
+    await assert.rejects(() => publishLedger(BATCH, { directory, trackedDirectory: tracked }), /absolute path/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+    await rm(tracked, { recursive: true, force: true });
+  }
+});
+
+test('unverifiable token sources and duration references are rejected or left uncounted', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'authoring', worker: 'a' }, directory);
+    for (const label of ['test-usage', 'verified', 'measured', 'agent-task-notification-usage']) {
+      await assert.rejects(() => endSpan(BATCH, id, { tokens: '1200', tokensSource: label, tokensRef: 'task-abc123' }, directory), /arbitrary labels are rejected/u, label);
+    }
+    await assert.rejects(() => endSpan(BATCH, id, { tokens: '1200', tokensSource: 'agent-task-notification-usage.subagent_tokens' }, directory), /--tokens-ref/u);
+    await endSpan(BATCH, id, {}, directory);
+    const { appendFile } = await import('node:fs/promises');
+    // Legacy lines: an unlisted token label, and a listed source with no identifier anywhere.
+    const legacyTokens = await beginSpan(BATCH, { stage: 'review', worker: 'b' }, directory);
+    await appendFile(ledgerPath(BATCH, directory), `${JSON.stringify({ v: 1, event: 'end', id: legacyTokens, end: new Date().toISOString(), clock: 'wall', outcome: 'ok', tokens: { value: '5000', source: 'test-usage' } })}\n`);
+    const noRef = await beginSpan(BATCH, { stage: 'review', worker: 'c' }, directory);
+    await appendFile(ledgerPath(BATCH, directory), `${JSON.stringify({ v: 1, event: 'end', id: noRef, end: new Date().toISOString(), clock: 'wall', outcome: 'ok', reported_duration_ms: 777000, reported_duration_source: 'agent-task-notification-usage.duration_ms', tokens: { value: '9000', source: 'agent-task-notification-usage.subagent_tokens' } })}\n`);
+    const { spans } = pairSpans(await readLedger(BATCH, directory));
+    assert.ok(spans.every((span) => span.clock !== 'reported'), 'a duration without an identifier must not be aggregated');
+    const { tokens } = await aggregateBatch(BATCH, { directory });
+    assert.equal(tokens.reported_total, 0);
+    assert.equal(tokens.reported_spans, 0);
+    // Binding the identifier later (amend) makes the same span count.
+    await amendSpan(BATCH, noRef, { reportedDurationMs: '777000', reportedDurationSource: 'agent-task-notification-usage.duration_ms', reportedDurationRef: 'a1b2c3d4e5f6a7b8c' }, directory);
+    const after = await aggregateBatch(BATCH, { directory });
+    assert.equal(after.tokens.reported_total, 9000);
+    assert.equal(pairSpans(await readLedger(BATCH, directory)).spans.find((span) => span.id === noRef).clock, 'reported');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('references are checked against local notification evidence: arbitrary ids and mismatched values fail', () => {
+  const evidence = 'tasks/a3abdd5c2558622ec.output</output-file> x <usage><subagent_tokens>101042</subagent_tokens><tool_uses>8</tool_uses><duration_ms>121334</duration_ms></usage>';
+  const usage = parseNotificationUsage(evidence);
+  const span = (ref, duration, tokens) => ({ id: `s-${ref}`, reported_duration_ref: ref, reported_duration_ms: duration, tokens: { value: String(tokens) } });
+  assert.deepEqual(verifyReferences([span('a3abdd5c2558622ec', 121334, 101042)], usage).map((r) => r.verified), [true]);
+  assert.deepEqual(verifyReferences([span('a1b2c3d4e5f6a7b8c', 121334, 101042)], usage).map((r) => r.verified), [false]);
+  assert.deepEqual(verifyReferences([span('a3abdd5c2558622ec', 999999, 101042)], usage).map((r) => r.verified), [false]);
+  assert.deepEqual(verifyReferences([span('a3abdd5c2558622ec', 121334, 5)], usage).map((r) => r.verified), [false]);
+  assert.deepEqual(verifyReferences([{ id: 'no-ref' }], usage), []);
+  // Separate duration and token references are each checked against their own notification.
+  const twoTasks = parseNotificationUsage(`${evidence} tasks/a0000000000000001.output</output-file> y <usage><subagent_tokens>555</subagent_tokens><tool_uses>1</tool_uses><duration_ms>777</duration_ms></usage>`);
+  const split = (tokenRef, tokens) => ({ id: 's-split', reported_duration_ref: 'a3abdd5c2558622ec', reported_duration_ms: 121334, tokens: { value: String(tokens), ref: tokenRef } });
+  assert.deepEqual(verifyReferences([split('a0000000000000001', 555)], twoTasks).map((r) => r.verified), [true]);
+  assert.deepEqual(verifyReferences([split('a0000000000000001', 101042)], twoTasks).map((r) => r.verified), [false], 'tokens must match the notification their own ref names, not the duration task');
+  assert.deepEqual(verifyReferences([split('a9999999999999999', 555)], twoTasks).map((r) => r.verified), [false]);
+  assert.deepEqual(verifyReferences([{ id: 'tokens-only', tokens: { value: '555', ref: 'a0000000000000001' } }], twoTasks).map((r) => r.verified), [true]);
+});
+
+test('token totals count only machine-reported values and never estimate the rest', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const first = await beginSpan(BATCH, { stage: 'authoring', worker: 'a' }, directory);
+    await endSpan(BATCH, first, { tokens: '1200', tokensSource: 'agent-task-notification-usage.subagent_tokens', tokensRef: 'task-abc123' }, directory);
+    const second = await beginSpan(BATCH, { stage: 'review', worker: 'main' }, directory);
+    await endSpan(BATCH, second, {}, directory);
+    const { tokens } = await aggregateBatch(BATCH, { directory });
+    assert.equal(tokens.reported_total, 1200);
+    assert.equal(tokens.reported_spans, 1);
+    assert.equal(tokens.spans_without_token_data, 1);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

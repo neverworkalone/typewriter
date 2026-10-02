@@ -13,6 +13,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
 
+import { openShortQueryCounts, SHORT_QUERY_LENGTH } from './short-query-counts.mjs';
+
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 
@@ -812,10 +814,14 @@ export function countCorpusMatches({
 }
 
 /** Keep one read-only SQLite connection open while collecting evidence for a bounded candidate batch. */
-export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH } = {}) {
+export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH, useShortCounts = true } = {}) {
   const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
   const statements = new Map();
   let closed = false;
+  // Two-character literal counts are answered from an exact, digest-bound
+  // sidecar when one exists; otherwise the exact scan below runs, so the
+  // result never depends on whether the sidecar was built.
+  const shortCounts = useShortCounts ? openShortQueryCounts({ indexPath: databasePath, indexDatabase: database }) : null;
 
   const statement = (key, sql) => {
     if (!statements.has(key)) statements.set(key, database.prepare(sql));
@@ -876,6 +882,7 @@ export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH } = 
       ensureOpen();
       const useFts = validateCorpusQuery(query);
       if (query.length === 0) return 0;
+      if (shortCounts && [...query].length === SHORT_QUERY_LENGTH) return shortCounts.count(query);
       const sql = `
         SELECT COUNT(*) AS match_count
         ${corpusCountFromAndWhere(useFts)}
@@ -894,6 +901,7 @@ export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH } = 
     close() {
       if (closed) return;
       closed = true;
+      shortCounts?.close();
       database.close();
     },
   };

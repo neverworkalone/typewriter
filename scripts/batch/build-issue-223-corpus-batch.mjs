@@ -24,6 +24,14 @@ import {
   runRecordFromRaw,
 } from './reviewer-raw-outputs.mjs';
 import {
+  assertSelfCheckBinding,
+  assertDecisionClaimsTruthful,
+  assertReviewContractForBatch,
+  assertSelfCheckEnvelope,
+  isSelfCheckInput,
+  SELF_CHECK_PROVENANCE,
+} from './semantic-self-check.mjs';
+import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
 } from '../validate/semantic-decision-row.mjs';
@@ -41,6 +49,8 @@ const WRITER_USE_BY_AXIS = Object.freeze({
   X: '생각이나 관계의 결을 구체적인 말로 잡을 때 출발점으로 쓴다.',
 });
 const SCOPE_METHOD = 'Review each bounded proposal against morphology, current canonical and surface coverage, source-bound paragraph identifiers, and local contexts. Admit only a resolved in-scope lexical identity, POS, and one bounded Typewriter-authored meaning; hold evidenced identity, POS, sense, or collision uncertainty. Analyzer counts and writer usefulness do not determine lexical eligibility.';
+const SELF_CHECK_AUTHORING_NOTE = 'Local corpus and pinned morphology establish bounded lexical candidate evidence only. Each included lemma, POS, gloss, and one-sense boundary was checked by the producing AI agent against that evidence (agent self-check; not independent, separately authored, or human review). Diagnostic frames are Typewriter-authored examples, not corpus quotations or measured writer outcomes. No relation quota is applied; empty relation lists are valid.';
+const SELF_CHECK_METHOD = 'The producing agent checks each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using one authored diagnostic frame per gloss span (agent self-check, not independent or human review); apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.';
 const AUTHORING_NOTE = 'Local corpus and pinned morphology establish bounded lexical candidate evidence only. Each included lemma, POS, gloss, and one-sense boundary was separately reviewed. Diagnostic frames are Typewriter-authored examples, not corpus quotations or measured writer outcomes. No relation quota is applied; empty relation lists are valid.';
 
 const sha256Bytes = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -289,7 +299,7 @@ function makeCanonicalRecord(row) {
   };
 }
 
-function glossFrameSpans(gloss) {
+export function glossFrameSpans(gloss) {
   const connectorObservations = inspectGlossConnectors(gloss).sort((left, right) => left.index - right.index);
   let frameStart = 0;
   const frameSpans = [];
@@ -829,18 +839,30 @@ export async function buildIssue223CorpusBatch({
   const semanticInputBytes = await readFile(path.resolve(ROOT, semanticReviewsPath));
   const semanticInput = JSON.parse(semanticInputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(semanticInput, batchId);
-  assertIndependentSemanticReviewer({
-    reviewer: semanticInput.reviewer,
-    candidateAuthor,
-    registry: await loadSemanticReviewerRegistry(),
-  });
+  const selfCheck = isSelfCheckInput(semanticInput);
+  assertReviewContractForBatch(batchOrdinal, selfCheck);
+  if (selfCheck) {
+    assertSelfCheckEnvelope(semanticInput, { ordinal: batchOrdinal, candidateAuthor });
+    assertDecisionClaimsTruthful({ reviews: semanticInput.reviews, decisions: [], outcomes: semanticInput.candidate_outcomes });
+  } else {
+    assertIndependentSemanticReviewer({
+      reviewer: semanticInput.reviewer,
+      candidateAuthor,
+      registry: await loadSemanticReviewerRegistry(),
+    });
+  }
   assertReviewerChecks(semanticInput.reviews, {
     required: batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH,
     hitCountByLemma: bindHitCounts(rows),
   });
   let reviewerRunRecordBytes = null;
   let reviewerRawArtifact = null;
-  if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) {
+  const glossByLemma = new Map(admittedRows.map((row) => [row.morphology_proposal.lemma, row.editorial_judgment.writer_gloss]));
+  if (selfCheck) {
+    assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
+    assertSelfCheckBinding({ input: semanticInput, candidateRows: rows, glossByLemma });
+    assert.equal(reviewerRawOutputsPath, undefined, 'a self-check batch has no separate reviewer outputs to stage');
+  } else if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) {
     assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
     assert.ok(reviewerRawOutputsPath, 'this batch requires --reviewer-raw-outputs (staged locally): the reviewers\' original outputs back the tracked run record');
     reviewerRawArtifact = JSON.parse(await readFile(path.resolve(ROOT, reviewerRawOutputsPath), 'utf8'));
@@ -849,7 +871,6 @@ export async function buildIssue223CorpusBatch({
     // draft text out of data/batches/).
     const runRecord = runRecordFromRaw(reviewerRawArtifact);
     reviewerRunRecordBytes = prettyBytes(runRecord);
-    const glossByLemma = new Map(admittedRows.map((row) => [row.morphology_proposal.lemma, row.editorial_judgment.writer_gloss]));
     assertInputBoundToRunRecord({
       input: semanticInput,
       runRecord,
@@ -903,7 +924,7 @@ export async function buildIssue223CorpusBatch({
       generation_pass_id: generationPassId,
       verification_pass_id: semanticPassId,
       human_reviewed: false,
-      authoring_note: AUTHORING_NOTE,
+      authoring_note: selfCheck ? SELF_CHECK_AUTHORING_NOTE : AUTHORING_NOTE,
     },
     review: {
       review_pass_id: semanticPassId,
@@ -911,7 +932,8 @@ export async function buildIssue223CorpusBatch({
       status: semanticInput.review_status,
       candidate_count: admittedRows.length,
       reviewed_candidate_count: admittedRows.length,
-      method: 'Separately verify each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using two authored diagnostic frames; apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.',
+      ...(selfCheck ? { review_provenance: SELF_CHECK_PROVENANCE, independent_review: false } : {}),
+      method: selfCheck ? SELF_CHECK_METHOD : 'Separately verify each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using two authored diagnostic frames; apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.',
       criteria: [
         'exact source-bound observed candidate and POS; corrected analyzer POS requires bounded paragraph identifiers',
         'no canonical lemma, curated search-form, or generated-surface collision',
@@ -938,8 +960,8 @@ export async function buildIssue223CorpusBatch({
       imported: admittedRows.length,
       reserve: 0,
       coverage_field: 'selection_axis',
-      coverage_basis: ['source-bound Typewriter lexical identity after independent semantic eligibility'],
-      selection_rationale: 'Every independently reviewed, admitted lexical identity proceeds through ordinary shared admission. The bounded candidate queue does not set an admission quota; unresolved identities, POS, senses, and collisions remain held.',
+      coverage_basis: [selfCheck ? 'source-bound Typewriter lexical identity after agent self-check semantic eligibility' : 'source-bound Typewriter lexical identity after independent semantic eligibility'],
+      selection_rationale: `Every ${selfCheck ? 'self-checked' : 'independently reviewed'}, admitted lexical identity proceeds through ordinary shared admission. The bounded candidate queue does not set an admission quota; unresolved identities, POS, senses, and collisions remain held.`,
     },
     candidate_records: records,
     candidate_records_sha256: sha256Json(records),

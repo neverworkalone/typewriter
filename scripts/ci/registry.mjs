@@ -197,6 +197,14 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/issue-222-report.test.mjs', 'Test Issue #222 checkpoint audit and M9-E handoff'),
       npmCheck('Validate portable Issue #222 checkpoint regeneration', 'batch:issue-222:report:check'),
       testCheck('tests/m9-production-progress.test.mjs', 'Test M9 production checkpoint progress'),
+      commandCheck(
+        'Test M10 per-batch stage timing ledger',
+        ['--test', 'scripts/batch/stage-timing.test.mjs'],
+      ),
+      commandCheck(
+        'Test agent self-check semantic review contract and legacy review workflow',
+        ['--test', 'scripts/batch/semantic-self-check.test.mjs', 'scripts/batch/review-workflow.test.mjs'],
+      ),
       inProcessCheck(
         'Validate M5-15 pre-admission boundary',
         'm5-15-pre-admission',

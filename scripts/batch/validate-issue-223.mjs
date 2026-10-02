@@ -22,6 +22,8 @@ import {
   makeSemanticDecision,
   parseIssue223BatchId,
 } from './build-issue-223-corpus-batch.mjs';
+import { assertSelfCheckBinding, assertReviewContractForBatch, assertDecisionClaimsTruthful,
+  assertSelfCheckEnvelope, assertSourceClaimsTruthful, isSelfCheckInput } from './semantic-self-check.mjs';
 import { assertInputBoundToRunRecord, assertInputDerivedFromRaw } from './reviewer-raw-outputs.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
 import { validateAuthoredSemanticDecisionSource, M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION } from './authored-semantic-decision-source.mjs';
@@ -159,12 +161,28 @@ export function validateSemanticReviewInputBinding({
   assert.equal(sha256Bytes(inputBytes), digest, `${batchId} semantic review input does not match its bound digest`);
   const input = JSON.parse(inputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(input, batchId);
-  assertIndependentSemanticReviewer({ reviewer: input.reviewer, candidateAuthor, registry });
+  const selfCheck = isSelfCheckInput(input);
+  assertReviewContractForBatch(ordinal, selfCheck);
+  assertSourceClaimsTruthful(semanticSource, { selfCheck });
+  if (selfCheck) {
+    assertSelfCheckEnvelope(input, { ordinal, candidateAuthor });
+    assertDecisionClaimsTruthful({ reviews: input.reviews, decisions: semanticSource.decisions, outcomes: input.candidate_outcomes });
+    // No separate review run took place, so no run record or staged reviewer
+    // output may exist to suggest one.
+    assert.equal(runRecordBytes ?? null, null, `${batchId} a self-check batch must not carry a reviewer run record`);
+    assert.equal(rawArtifact ?? null, null, `${batchId} a self-check batch has no staged reviewer outputs`);
+  } else {
+    assertIndependentSemanticReviewer({ reviewer: input.reviewer, candidateAuthor, registry });
+  }
   assertReviewerChecks(input.reviews, {
     required: ordinal >= REVIEWER_CHECK_FIRST_BATCH,
     hitCountByLemma: bindHitCounts(candidateRows ?? admittedRows),
   });
-  if (ordinal >= REVIEWER_CHECK_FIRST_BATCH) {
+  if (selfCheck) {
+    assertReviewerOutcomes(input.candidate_outcomes, candidateRows);
+    const glossByLemma = new Map(semanticSource.candidate_records.map((record) => [record.lemma, record.senses[0].gloss]));
+    assertSelfCheckBinding({ input, candidateRows, glossByLemma });
+  } else if (ordinal >= REVIEWER_CHECK_FIRST_BATCH) {
     assertReviewerOutcomes(input.candidate_outcomes, candidateRows);
     // The tracked run record (metadata and digests only) binds the input to the
     // runs, the reviewed proposals, and the exact reviewed glosses.
@@ -504,11 +522,13 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     assert.equal(semanticSource.candidate_records_sha256, sha256Json(semanticSource.candidate_records));
     const semanticInputPath = path.join(BATCH_DIRECTORY, `${stem}-semantic-review-input.json`);
     const reviewerRunRecordPath = path.join(BATCH_DIRECTORY, `${stem}-reviewer-run-record.json`);
+    const semanticInputBytes = await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null;
+    const selfCheckBatch = semanticInputBytes !== null && isSelfCheckInput(JSON.parse(semanticInputBytes.toString('utf8')));
     const boundInput = validateSemanticReviewInputBinding({
       semanticSource,
-      inputBytes: await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null,
+      inputBytes: semanticInputBytes,
       runRecordBytes: await fileExists(reviewerRunRecordPath) ? await readFile(reviewerRunRecordPath) : null,
-      rawArtifact: await stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence),
+      rawArtifact: await stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence, selfCheckBatch),
       batchId: candidateReview.batch_id,
       admittedRows,
       candidateRows: candidateReview.decisions,
@@ -600,10 +620,11 @@ async function validateDeterministicBuild(admittedRecords, { compareSecondBuild 
 // The reviewers' raw outputs are staged next to the candidate inventory under
 // ignored data/reference. Only batches that require reviewer checks (B06 on)
 // have them, and the local-evidence mode requires them to be present.
-async function stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence) {
+async function stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence, selfCheck = false) {
   if (!verifyLocalCorpusEvidence) return null;
   const { ordinal } = parseIssue223BatchId(candidateReview.batch_id);
   if (ordinal < REVIEWER_CHECK_FIRST_BATCH) return null;
+  if (selfCheck) return null;
   const inventoryPath = path.resolve(ROOT, candidateReview.source_artifacts.candidate_inventory_path);
   const stagedPath = path.join(path.dirname(inventoryPath), 'reviewer-raw-outputs.json');
   assert.ok(await fileExists(stagedPath), `${candidateReview.batch_id} staged reviewer raw outputs are missing: ${path.relative(ROOT, stagedPath)}`);

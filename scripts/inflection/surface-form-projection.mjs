@@ -932,13 +932,14 @@ function validateCollisionReview(manifest, actual) {
   }
 }
 
-function validateClassDispositionCoverage(
-  eligible,
-  exceptionsBySense,
-  dispositionsBySense,
-  requireClassDispositions,
-) {
-  if (!requireClassDispositions) return;
+/**
+ * Every predicate sense that still lacks a required M6-2/M6-3 disposition,
+ * collected in one pass (record order). `fix` names the manifest entry that
+ * the rule itself dictates, or is null where the entry needs a reviewer's
+ * judgment (a risk-coda regular class).
+ */
+export function collectClassDispositionGaps(eligible, exceptionsBySense, dispositionsBySense) {
+  const gaps = [];
   for (const { record } of eligible) {
     for (const sense of record.senses) {
       if (sense.pos !== 'verb' && sense.pos !== 'adjective') continue;
@@ -946,6 +947,8 @@ function validateClassDispositionCoverage(
       const exceptionClass = exceptionsBySense.get(key) ?? null;
       const disposition = dispositionsBySense.get(key);
       const fullyExcluded = disposition?.class_id === 'm6-3-predicate-excluded';
+      const where = record.id + '/' + sense.id;
+      const gap = (code, message, fix) => gaps.push({ code, message: message + where + '.', record_id: record.id, sense_id: sense.id, fix });
 
       if (
         sense.pos === 'adjective'
@@ -953,11 +956,12 @@ function validateClassDispositionCoverage(
         && exceptionClass !== 'm6-2-eopda-present-adnominal'
         && !fullyExcluded
       ) {
-        throw new SurfaceFormProjectionError(
-          'An adjective ending in 없다 requires its present-adnominal class or an explicit exclusion of all generated forms: '
-            + record.id + '/' + sense.id + '.',
+        gap(
           'MISSING_EXCEPTION_CLASS',
+          'An adjective ending in 없다 requires its present-adnominal class or an explicit exclusion of all generated forms: ',
+          { manifest: 'exception', class_id: 'm6-2-eopda-present-adnominal' },
         );
+        continue;
       }
       if (
         sense.pos === 'adjective'
@@ -965,11 +969,12 @@ function validateClassDispositionCoverage(
         && exceptionClass !== 'm6-2-itda-present-adnominal'
         && !fullyExcluded
       ) {
-        throw new SurfaceFormProjectionError(
-          'An adjective ending in 있다 requires its present-adnominal class or an explicit exclusion of all generated forms: '
-            + record.id + '/' + sense.id + '.',
+        gap(
           'MISSING_EXCEPTION_CLASS',
+          'An adjective ending in 있다 requires its present-adnominal class or an explicit exclusion of all generated forms: ',
+          { manifest: 'exception', class_id: 'm6-2-itda-present-adnominal' },
         );
+        continue;
       }
       if (fullyExcluded) continue;
       if (!record.lemma.endsWith('다') || record.lemma.includes(' ')) continue;
@@ -980,11 +985,12 @@ function validateClassDispositionCoverage(
         && !exceptionClass
         && disposition?.class_id !== riskClass
       ) {
-        throw new SurfaceFormProjectionError(
-          'Predicate sense with a risk coda requires an explicit regular class, supported exception, or exclusion: '
-            + record.id + '/' + sense.id + '.',
+        gap(
           'MISSING_PREDICATE_CLASS_DISPOSITION',
+          'Predicate sense with a risk coda requires an explicit regular class, supported exception, or exclusion: ',
+          null,
         );
+        continue;
       }
 
       if (
@@ -993,14 +999,26 @@ function validateClassDispositionCoverage(
           === SURFACE_FORM_RULE_IDS.predicatePlainPastRegisteredException
         && disposition?.class_id !== 'm6-3-open-vowel-past-excluded'
       ) {
-        throw new SurfaceFormProjectionError(
-          'Unsupported open-vowel past requires an explicit sense-bound exclusion: '
-            + record.id + '/' + sense.id + '.',
+        gap(
           'MISSING_PLAIN_PAST_DISPOSITION',
+          'Unsupported open-vowel past requires an explicit sense-bound exclusion: ',
+          { manifest: 'review', class_id: 'm6-3-open-vowel-past-excluded' },
         );
       }
     }
   }
+  return gaps;
+}
+
+function validateClassDispositionCoverage(
+  eligible,
+  exceptionsBySense,
+  dispositionsBySense,
+  requireClassDispositions,
+) {
+  if (!requireClassDispositions) return;
+  const [first] = collectClassDispositionGaps(eligible, exceptionsBySense, dispositionsBySense);
+  if (first) throw new SurfaceFormProjectionError(first.message, first.code);
 }
 
 export async function loadSurfaceFormExceptionManifest(
@@ -1089,6 +1107,18 @@ export function loadSurfaceFormReviewManifestSync(
       'INVALID_SURFACE_FORM_REVIEW_MANIFEST',
     );
   }
+}
+
+/** All missing M6-2/M6-3 dispositions for a record set, in one pass. */
+export function listSurfaceFormDispositionGaps(records, { exceptionManifest, reviewManifest }) {
+  const exceptionsBySense = validateManifestBindings(records, exceptionManifest, true);
+  const dispositionsBySense = validateReviewManifestBindings(
+    records,
+    reviewManifest ?? EMPTY_SURFACE_FORM_REVIEW_MANIFEST,
+    exceptionsBySense,
+    true,
+  );
+  return collectClassDispositionGaps(allRelevantRecords(records), exceptionsBySense, dispositionsBySense);
 }
 
 export function buildSurfaceFormProjection(
