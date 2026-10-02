@@ -19,6 +19,17 @@
 - If blocked, report the cause and a concrete recommendation.
 - Never weaken validation to complete a task.
 
+## Subagent Usage
+
+- Prefer direct execution over spawning subagents.
+- Do not spawn subagents merely because a task
+  mentions independent review.
+- Delegate only when separate execution provides
+  a clear benefit or is explicitly required.
+- Avoid duplicate context loading and repository exploration.
+- Optimize total token usage, not just elapsed time.
+- Never weaken validation to reduce token consumption.
+
 ## Communication
 
 - Prioritize execution over discussion.
