@@ -19,30 +19,46 @@ Attribution must identify Typewriter, link to this license, and indicate changes
 when data is adapted. For example: “Typewriter data, CC BY 4.0; modified for this
 use.”
 
-## Current hold
+## Current hold — Product distribution and data licensing
 
-The current `data/canonical/*.jsonl` files do not have a complete record-level
-source and rights-clearance map. They are therefore **not yet covered by a CC BY
-4.0 redistribution grant**. The same hold applies to generated SQLite databases,
-extension or web bundles containing the data, and batch, inventory, or validation
-artifacts that reproduce uncleared lexical content.
+Typewriter has obtained approval to use the NIKL Written Corpus 2025 for
+research and development, including local processing, indexing, lexical candidate
+discovery, and reference use, as documented in
+`docs/external-material-review-written-corpus-2025.md`.
 
-The hold is not an added license restriction. It records that Typewriter has not
-established authority to license those items yet. Before release, each included
-record needs a documented source and redistribution-rights disposition. Records
-without a verifiable basis must remain excluded or be independently rewritten and
-re-admitted using a source process with recorded rights. Closing issue #152 does
-not itself provide clearance or lift this hold.
+The project maintains an owner-approved public GitHub research and development
+workflow (issue #239). This workflow tracks Typewriter-authored lexical records
+and editorial evidence while keeping raw corpus text, excerpts, local corpus
+indexes, and restricted source material out of the repository.
 
-Third-party material, where retained with a valid basis, remains under its
-original license and notices. Public-domain material is not relicensed by this
-notice. Current records remain held until record-level rights review has
-evidence-backed completion and the applicable release gate approves distribution.
+**Research and development approval is not product distribution approval.**
 
-Note on the public repository: the repository is currently public, which the
-hold above does not change. Permission to use the NIKL corpus for research and
-development (reference role) is recorded in
-`docs/external-material-review-written-corpus-2025.md`; it is not a rights
-determination for public disclosure of corpus-informed records, and NIKL's
-approval for product distribution of corpus-informed results is pending. See
-`docs/publication-boundary.md`.
+Before distributing a corpus-informed Chrome Extension, including its packaged
+SQLite dictionary, Typewriter must obtain approval for the NIKL
+result-publication application and satisfy the applicable release requirements.
+The application has been submitted, but approval has not yet been recorded.
+
+Separately, the current `data/canonical/*.jsonl` records do not have a complete
+record-level source and rights-clearance map. Therefore, they are **not yet
+covered by a CC BY 4.0 redistribution grant**. The same licensing hold applies
+to generated databases, product bundles, and data-bearing artifacts that
+reproduce uncleared lexical content.
+
+This hold is not an added license restriction and must not be interpreted as
+requiring product distribution approval before each ordinary development
+commit. However, the owner's public development workflow does not itself
+establish third-party disclosure rights or eliminate unresolved public
+repository publication risks. Any newly identified restricted material,
+unapproved corpus excerpt, or improperly copied source content must be
+addressed.
+
+Before product distribution or an independent open-data release, all applicable
+permissions, source-rights dispositions, attribution requirements, and release
+gates must be satisfied. NIKL result-publication approval does not automatically
+grant rights in unrelated third-party content or establish CC BY 4.0 eligibility
+for every record. Third-party material with an authorized basis retains its
+original terms, and public-domain material is not relicensed by this notice.
+
+Closing issue #152 does not itself grant redistribution rights. See
+`docs/publication-boundary.md` for the distinction between approved research
+and development and the separate product-release requirements.
