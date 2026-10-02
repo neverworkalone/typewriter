@@ -14,7 +14,7 @@
  *   node scripts/batch/stage-timing.mjs run --batch=ID --stage=ci-fast -- npm run ci:fast
  *   node scripts/batch/stage-timing.mjs begin --batch=ID --stage=authoring --worker=author-1
  *   node scripts/batch/stage-timing.mjs end --batch=ID --id=SPAN [--outcome=ok]
- *   node scripts/batch/stage-timing.mjs amend --batch=ID --id=SPAN --reported-duration-ms=N --reported-duration-source=SOURCE --reported-duration-ref=ID
+ *   node scripts/batch/stage-timing.mjs amend --batch=ID --id=SPAN --reported-duration-ms=N --reported-duration-source=SOURCE --reported-duration-ref=ID (tokens: --tokens-source/--tokens-ref)
  *   node scripts/batch/stage-timing.mjs publish --batch=ID   (snapshot the ignored working ledger into tracked data/timing/)
  *   node scripts/batch/stage-timing.mjs aggregate --batch=ID [--format=json|markdown]
  */
@@ -151,6 +151,20 @@ export async function beginSpan(batchId, options, directory = TIMING_DIRECTORY) 
 // each bound to the identifier of the notification or run that reported it.
 const VERIFIABLE_DURATION_SOURCES = ['agent-task-notification-usage.duration_ms', 'github-actions-run.duration'];
 const DURATION_REFERENCE_PATTERN = /^[A-Za-z0-9._:-]{6,64}$/u;
+const VERIFIABLE_TOKEN_SOURCES = ['agent-task-notification-usage.subagent_tokens'];
+const validReference = (value) => typeof value === 'string' && DURATION_REFERENCE_PATTERN.test(value);
+
+function tokenRecord(options) {
+  const value = optionalText(options.tokens, '--tokens');
+  if (!Number.isFinite(Number(value)) || Number(value) < 0) fail('--tokens must be a non-negative number', 'INVALID_TOKENS');
+  const source = optionalText(options.tokensSource, '--tokens-source');
+  if (!VERIFIABLE_TOKEN_SOURCES.includes(source)) {
+    fail(`--tokens needs a verifiable --tokens-source (${VERIFIABLE_TOKEN_SOURCES.join(' | ')}); arbitrary labels are rejected`, 'UNVERIFIED_TOKENS');
+  }
+  const reference = optionalText(options.tokensRef, '--tokens-ref');
+  if (!validReference(reference)) fail('--tokens needs --tokens-ref: the notification/task identifier that reported the usage', 'UNVERIFIED_TOKENS');
+  return { value, source, ref: reference };
+}
 
 function reportedDuration(options) {
   if (options.reportedDurationMs === undefined) return {};
@@ -196,7 +210,7 @@ export async function endSpan(batchId, id, options = {}, directory = TIMING_DIRE
     outcome: requireOutcome(options.outcome),
     ...(options.note ? { note: optionalText(options.note, '--note') } : {}),
     ...reportedDuration(options),
-    ...(options.tokens ? { tokens: { value: optionalText(options.tokens, '--tokens'), source: optionalText(options.tokensSource ?? 'unavailable', '--tokens-source') } } : {}),
+    ...(options.tokens ? { tokens: tokenRecord(options) } : {}),
   }, directory);
   return end.toISOString();
 }
@@ -252,7 +266,7 @@ export async function readLedger(batchId, directory = TIMING_DIRECTORY) {
 /** Prefer the worker's own reported run time over the observer's end timestamp. */
 function applyReportedDuration(span, source) {
   // A reported duration without a named external source is not a measurement.
-  if (!VERIFIABLE_DURATION_SOURCES.includes(source.reported_duration_source)) return;
+  if (!VERIFIABLE_DURATION_SOURCES.includes(source.reported_duration_source) || !validReference(source.reported_duration_ref)) return;
   span.recorded_end_ms = span.recorded_end_ms ?? span.end_ms;
   span.reported_duration_ms = source.reported_duration_ms;
   span.reported_duration_source = source.reported_duration_source;
@@ -391,8 +405,11 @@ export function throughput(totals, netAdmitted) {
  * one (every main-agent stage) are counted as unavailable, never estimated.
  */
 export function summarizeTokens(spans) {
+  // A token total counts only from a fixed machine-reporting channel bound to a notification
+  // identifier (its own, or the one that reported the same span's duration).
   const reported = spans.filter((span) => span.tokens && Number.isFinite(Number(span.tokens.value))
-    && span.tokens.source && span.tokens.source !== 'unavailable');
+    && VERIFIABLE_TOKEN_SOURCES.includes(span.tokens.source)
+    && validReference(span.tokens.ref ?? span.reported_duration_ref));
   return {
     reported_total: reported.reduce((sum, span) => sum + Number(span.tokens.value), 0),
     reported_spans: reported.length,

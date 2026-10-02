@@ -238,11 +238,41 @@ test('a published ledger keeps only the executable name and refuses absolute pat
   }
 });
 
+test('unverifiable token sources and duration references are rejected or left uncounted', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
+  try {
+    const id = await beginSpan(BATCH, { stage: 'authoring', worker: 'a' }, directory);
+    for (const label of ['test-usage', 'verified', 'measured', 'agent-task-notification-usage']) {
+      await assert.rejects(() => endSpan(BATCH, id, { tokens: '1200', tokensSource: label, tokensRef: 'task-abc123' }, directory), /arbitrary labels are rejected/u, label);
+    }
+    await assert.rejects(() => endSpan(BATCH, id, { tokens: '1200', tokensSource: 'agent-task-notification-usage.subagent_tokens' }, directory), /--tokens-ref/u);
+    await endSpan(BATCH, id, {}, directory);
+    const { appendFile } = await import('node:fs/promises');
+    // Legacy lines: an unlisted token label, and a listed source with no identifier anywhere.
+    const legacyTokens = await beginSpan(BATCH, { stage: 'review', worker: 'b' }, directory);
+    await appendFile(ledgerPath(BATCH, directory), `${JSON.stringify({ v: 1, event: 'end', id: legacyTokens, end: new Date().toISOString(), clock: 'wall', outcome: 'ok', tokens: { value: '5000', source: 'test-usage' } })}\n`);
+    const noRef = await beginSpan(BATCH, { stage: 'review', worker: 'c' }, directory);
+    await appendFile(ledgerPath(BATCH, directory), `${JSON.stringify({ v: 1, event: 'end', id: noRef, end: new Date().toISOString(), clock: 'wall', outcome: 'ok', reported_duration_ms: 777000, reported_duration_source: 'agent-task-notification-usage.duration_ms', tokens: { value: '9000', source: 'agent-task-notification-usage.subagent_tokens' } })}\n`);
+    const { spans } = pairSpans(await readLedger(BATCH, directory));
+    assert.ok(spans.every((span) => span.clock !== 'reported'), 'a duration without an identifier must not be aggregated');
+    const { tokens } = await aggregateBatch(BATCH, { directory });
+    assert.equal(tokens.reported_total, 0);
+    assert.equal(tokens.reported_spans, 0);
+    // Binding the identifier later (amend) makes the same span count.
+    await amendSpan(BATCH, noRef, { reportedDurationMs: '777000', reportedDurationSource: 'agent-task-notification-usage.duration_ms', reportedDurationRef: 'a1b2c3d4e5f6a7b8c' }, directory);
+    const after = await aggregateBatch(BATCH, { directory });
+    assert.equal(after.tokens.reported_total, 9000);
+    assert.equal(pairSpans(await readLedger(BATCH, directory)).spans.find((span) => span.id === noRef).clock, 'reported');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('token totals count only machine-reported values and never estimate the rest', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'stage-timing-'));
   try {
     const first = await beginSpan(BATCH, { stage: 'authoring', worker: 'a' }, directory);
-    await endSpan(BATCH, first, { tokens: '1200', tokensSource: 'test-usage' }, directory);
+    await endSpan(BATCH, first, { tokens: '1200', tokensSource: 'agent-task-notification-usage.subagent_tokens', tokensRef: 'task-abc123' }, directory);
     const second = await beginSpan(BATCH, { stage: 'review', worker: 'main' }, directory);
     await endSpan(BATCH, second, {}, directory);
     const { tokens } = await aggregateBatch(BATCH, { directory });
