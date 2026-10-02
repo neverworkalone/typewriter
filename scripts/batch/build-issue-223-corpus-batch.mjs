@@ -27,6 +27,7 @@ import {
   assertSelfCheckBinding,
   assertSelfCheckEnvelope,
   isSelfCheckInput,
+  SELF_CHECK_PROVENANCE,
 } from './semantic-self-check.mjs';
 import {
   authorSemanticReviewBinding,
@@ -46,6 +47,8 @@ const WRITER_USE_BY_AXIS = Object.freeze({
   X: '생각이나 관계의 결을 구체적인 말로 잡을 때 출발점으로 쓴다.',
 });
 const SCOPE_METHOD = 'Review each bounded proposal against morphology, current canonical and surface coverage, source-bound paragraph identifiers, and local contexts. Admit only a resolved in-scope lexical identity, POS, and one bounded Typewriter-authored meaning; hold evidenced identity, POS, sense, or collision uncertainty. Analyzer counts and writer usefulness do not determine lexical eligibility.';
+const SELF_CHECK_AUTHORING_NOTE = 'Local corpus and pinned morphology establish bounded lexical candidate evidence only. Each included lemma, POS, gloss, and one-sense boundary was checked by the producing AI agent against that evidence (agent self-check; not independent, separately authored, or human review). Diagnostic frames are Typewriter-authored examples, not corpus quotations or measured writer outcomes. No relation quota is applied; empty relation lists are valid.';
+const SELF_CHECK_METHOD = 'The producing agent checks each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using two authored diagnostic frames (agent self-check, not independent or human review); apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.';
 const AUTHORING_NOTE = 'Local corpus and pinned morphology establish bounded lexical candidate evidence only. Each included lemma, POS, gloss, and one-sense boundary was separately reviewed. Diagnostic frames are Typewriter-authored examples, not corpus quotations or measured writer outcomes. No relation quota is applied; empty relation lists are valid.';
 
 const sha256Bytes = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -917,7 +920,7 @@ export async function buildIssue223CorpusBatch({
       generation_pass_id: generationPassId,
       verification_pass_id: semanticPassId,
       human_reviewed: false,
-      authoring_note: AUTHORING_NOTE,
+      authoring_note: selfCheck ? SELF_CHECK_AUTHORING_NOTE : AUTHORING_NOTE,
     },
     review: {
       review_pass_id: semanticPassId,
@@ -925,7 +928,8 @@ export async function buildIssue223CorpusBatch({
       status: semanticInput.review_status,
       candidate_count: admittedRows.length,
       reviewed_candidate_count: admittedRows.length,
-      method: 'Separately verify each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using two authored diagnostic frames; apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.',
+      ...(selfCheck ? { review_provenance: SELF_CHECK_PROVENANCE, independent_review: false } : {}),
+      method: selfCheck ? SELF_CHECK_METHOD : 'Separately verify each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using two authored diagnostic frames; apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.',
       criteria: [
         'exact source-bound observed candidate and POS; corrected analyzer POS requires bounded paragraph identifiers',
         'no canonical lemma, curated search-form, or generated-surface collision',
@@ -952,8 +956,8 @@ export async function buildIssue223CorpusBatch({
       imported: admittedRows.length,
       reserve: 0,
       coverage_field: 'selection_axis',
-      coverage_basis: ['source-bound Typewriter lexical identity after independent semantic eligibility'],
-      selection_rationale: 'Every independently reviewed, admitted lexical identity proceeds through ordinary shared admission. The bounded candidate queue does not set an admission quota; unresolved identities, POS, senses, and collisions remain held.',
+      coverage_basis: [selfCheck ? 'source-bound Typewriter lexical identity after agent self-check semantic eligibility' : 'source-bound Typewriter lexical identity after independent semantic eligibility'],
+      selection_rationale: `Every ${selfCheck ? 'self-checked' : 'independently reviewed'}, admitted lexical identity proceeds through ordinary shared admission. The bounded candidate queue does not set an admission quota; unresolved identities, POS, senses, and collisions remain held.`,
     },
     candidate_records: records,
     candidate_records_sha256: sha256Json(records),

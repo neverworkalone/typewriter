@@ -984,6 +984,8 @@
             "expression_lexical_unit_review_contract_version": "string",
             "prior_generator_replaced": "boolean",
             "prior_generator_verification_pass_id": "string",
+            "review_provenance": "string",
+            "independent_review": "boolean",
             "correction_passes": "array<object>",
             "counts": "object"
           },
@@ -1132,7 +1134,7 @@
           "$.decisions.*.sense_reviews.*.review_basis": ["topic_analysis", "topic_analyses"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analyses.*": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
-          "$.review": ["review_pass_id", "reviewer", "status", "candidate_count", "reviewed_candidate_count", "method", "criteria", "decision_counts", "admission_rule", "expression_lexical_unit_review_contract_version", "prior_generator_replaced", "prior_generator_verification_pass_id", "correction_passes", "counts"],
+          "$.review": ["review_pass_id", "reviewer", "status", "candidate_count", "reviewed_candidate_count", "method", "criteria", "decision_counts", "admission_rule", "expression_lexical_unit_review_contract_version", "prior_generator_replaced", "prior_generator_verification_pass_id", "review_provenance", "independent_review", "correction_passes", "counts"],
           "$.review.correction_passes.*": ["review_pass_id", "prior_review_pass_id", "reviewer", "status", "candidate_record_count", "candidate_record_ids", "method"],
           "$.review.decision_counts": ["included", "corrected", "held", "rejected", "deferred"],
           "$.review.counts": ["included", "corrected", "held", "rejected", "deferred"],

@@ -29,7 +29,7 @@ import { glossFrameSpans } from './build-issue-223-corpus-batch.mjs';
 import { findAmbiguousParticleFragments, validateLexicalRecord } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { packetCandidate, shardRanges } from './make-review-packets.mjs';
-import { SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
+import { assertLegacyReviewWorkflowAllowed, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
 import {
   admissionGateFor,
   outcomeFromRaw,
@@ -364,6 +364,7 @@ export function finalDecisionRow(proposalRow, output) {
 }
 
 export async function assembleReviewed({ batchId, directory, batchDirectory = 'data/batches', writeTracked = true }) {
+  assertLegacyReviewWorkflowAllowed(batchId);
   const absolute = path.resolve(ROOT, directory);
   const inventory = await readJson(path.join(absolute, 'candidate-inventory.json'));
   const evidence = await readJson(path.join(absolute, 'candidate-evidence.json'));

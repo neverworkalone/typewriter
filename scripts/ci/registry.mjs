@@ -201,6 +201,10 @@ export const CI_CATEGORIES = Object.freeze({
         'Test M10 per-batch stage timing ledger',
         ['--test', 'scripts/batch/stage-timing.test.mjs'],
       ),
+      commandCheck(
+        'Test agent self-check semantic review contract and legacy review workflow',
+        ['--test', 'scripts/batch/semantic-self-check.test.mjs', 'scripts/batch/review-workflow.test.mjs'],
+      ),
       inProcessCheck(
         'Validate M5-15 pre-admission boundary',
         'm5-15-pre-admission',

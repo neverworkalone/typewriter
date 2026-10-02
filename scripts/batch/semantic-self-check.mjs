@@ -54,6 +54,8 @@ export function assertSelfCheckBinding({ input, candidateRows, glossByLemma }) {
   candidateRows.forEach((row, index) => {
     const lemma = row.morphology_proposal.lemma;
     const outcome = input.candidate_outcomes[index];
+    assert.equal(outcome?.ordinal, index + 1, `${lemma}: self-check outcome ordinal must follow batch order`);
+    assert.equal(outcome.lemma, lemma, `${lemma}: self-check outcome is bound to a different lemma`);
     if (outcome.verdict !== 'pass') {
       assert.equal(reviewByLemma.has(lemma), false, `${lemma}: a held candidate cannot carry a review row`);
       return;
@@ -75,4 +77,41 @@ export function assertSelfCheckBinding({ input, candidateRows, glossByLemma }) {
   });
   assert.equal(input.reviews.length, passes, 'review rows must exist exactly for the passed candidates');
   assertReviewNotesAreCandidateSpecific(input.reviews);
+}
+
+/**
+ * Truthfulness of the admitted semantic decision source. A self-check batch's
+ * canonical source must carry the machine-readable provenance flag and no
+ * claim of independent, separate, or human review; every other batch must not
+ * carry the flag, so historical serialized artifacts stay byte-compatible.
+ * (`kind` and `prior_generator_replaced` are structural fields required by the
+ * shared decision-source contract and carry no review-independence claim.)
+ */
+export function assertSourceClaimsTruthful(source, { selfCheck }) {
+  const { review } = source;
+  if (!selfCheck) {
+    assert.equal(review.review_provenance, undefined, 'only a self-check source may carry review_provenance');
+    assert.equal(review.independent_review, undefined, 'only a self-check source may carry independent_review');
+    return;
+  }
+  assert.equal(review.review_provenance, SELF_CHECK_PROVENANCE, 'a self-check source must record its provenance');
+  assert.equal(review.independent_review, false, 'a self-check source must state independent_review: false');
+  const claims = [
+    source.provenance.authoring_note,
+    review.method,
+    ...source.selection.coverage_basis,
+    source.selection.selection_rationale,
+  ];
+  for (const text of claims) {
+    const stripped = text.replace(/\([^()]*self-check[^()]*\)/giu, '');
+    assert.ok(!/independent|separately|human/iu.test(stripped), `a self-check source must not claim independent, separate, or human review: ${text.slice(0, 80)}`);
+  }
+}
+
+/** Legacy separate-reviewer workflows may not be used for self-check batches. */
+export function assertLegacyReviewWorkflowAllowed(batchId) {
+  const match = /-batch-([0-9]{2})-/u.exec(batchId);
+  assert.ok(match, `unsupported batch id ${batchId}`);
+  assert.ok(Number(match[1]) < SELF_CHECK_FIRST_BATCH,
+    `batch ${match[1]} uses the agent self-check contract; the separate-reviewer workflow is only for earlier batches`);
 }
