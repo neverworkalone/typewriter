@@ -62927,7 +62927,6 @@
     "ai_self_check_pass_count": 503,
     "ai_self_check_hold_count": 31,
     "records_with_an_outcome_count": 1206,
-    "records_with_pass_outcome_count": 1105,
     "records_with_hold_outcome_count": 101,
     "canonical_records_changed": 0,
     "batches": {
@@ -62938,7 +62937,13 @@
         "legacy_hold": 18,
         "ai_self_check_records": 0,
         "ai_self_check_pass": 0,
-        "ai_self_check_hold": 0
+        "ai_self_check_hold": 0,
+        "legacy_earlier_hold_later_pass_conflict_count": 10,
+        "legacy_earlier_pass_later_hold_conflict_count": 3,
+        "records_with_unconflicted_pass_outcome_count": 146,
+        "records_with_hold_outcome_count": 18,
+        "records_with_conflicted_outcome_count": 10,
+        "records_requiring_follow_up_count": 28
       },
       "B02": {
         "canonical_records": 173,
@@ -62947,7 +62952,13 @@
         "legacy_hold": 22,
         "ai_self_check_records": 0,
         "ai_self_check_pass": 0,
-        "ai_self_check_hold": 0
+        "ai_self_check_hold": 0,
+        "legacy_earlier_hold_later_pass_conflict_count": 5,
+        "legacy_earlier_pass_later_hold_conflict_count": 6,
+        "records_with_unconflicted_pass_outcome_count": 146,
+        "records_with_hold_outcome_count": 22,
+        "records_with_conflicted_outcome_count": 5,
+        "records_requiring_follow_up_count": 27
       },
       "B03": {
         "canonical_records": 439,
@@ -62956,7 +62967,13 @@
         "legacy_hold": 30,
         "ai_self_check_records": 114,
         "ai_self_check_pass": 105,
-        "ai_self_check_hold": 9
+        "ai_self_check_hold": 9,
+        "legacy_earlier_hold_later_pass_conflict_count": 4,
+        "legacy_earlier_pass_later_hold_conflict_count": 4,
+        "records_with_unconflicted_pass_outcome_count": 396,
+        "records_with_hold_outcome_count": 39,
+        "records_with_conflicted_outcome_count": 4,
+        "records_requiring_follow_up_count": 43
       },
       "B04": {
         "canonical_records": 420,
@@ -62965,8 +62982,17 @@
         "legacy_hold": 0,
         "ai_self_check_records": 420,
         "ai_self_check_pass": 398,
-        "ai_self_check_hold": 22
+        "ai_self_check_hold": 22,
+        "legacy_earlier_hold_later_pass_conflict_count": 0,
+        "legacy_earlier_pass_later_hold_conflict_count": 0,
+        "records_with_unconflicted_pass_outcome_count": 398,
+        "records_with_hold_outcome_count": 22,
+        "records_with_conflicted_outcome_count": 0,
+        "records_requiring_follow_up_count": 22
       }
-    }
+    },
+    "records_with_unconflicted_pass_outcome_count": 1086,
+    "records_with_conflicted_outcome_count": 19,
+    "records_requiring_follow_up_count": 120
   }
 }

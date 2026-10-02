@@ -42,6 +42,78 @@ function assertCheckedContexts(indices, contextIds, storedContexts, label) {
 }
 
 /**
+ * Derive a record's current QA disposition without erasing either historical
+ * result. A later PASS contradicted by an earlier HOLD remains unresolved
+ * until a separate evidence-bound check resolves that conflict. A later HOLD
+ * remains held even when the earlier result was PASS.
+ */
+export function classifyIssue223QaOutcome({ earlierVerdict, laterVerdict, aiSelfCheckVerdict }) {
+  assert.equal(aiSelfCheckVerdict !== undefined && laterVerdict !== undefined, false,
+    'AI self-check outcomes cannot overlap completed legacy outcomes');
+  if (aiSelfCheckVerdict !== undefined) return aiSelfCheckVerdict;
+  if (earlierVerdict === 'hold' && laterVerdict === 'pass') return 'conflicted';
+  return laterVerdict ?? null;
+}
+
+/** Summarize synthetic or source-bound record outcomes and their batch totals. */
+export function summarizeIssue223QaOutcomes(records) {
+  const summary = {
+    records_with_an_outcome_count: 0,
+    records_with_unconflicted_pass_outcome_count: 0,
+    records_with_hold_outcome_count: 0,
+    records_with_conflicted_outcome_count: 0,
+    records_requiring_follow_up_count: 0,
+    batches: {},
+  };
+  const seen = new Set();
+
+  for (const row of records) {
+    const key = `${row.batch_id}:${row.canonical_id}`;
+    assert.equal(seen.has(key), false, `${key} occurs once in outcome coverage`);
+    seen.add(key);
+    const outcome = classifyIssue223QaOutcome(row);
+    assert.ok(['pass', 'hold', 'conflicted'].includes(outcome), `${key} has one reportable QA disposition`);
+
+    const batchNumber = batchNumberOf(row.batch_id);
+    assert.ok(batchNumber, `${key} uses the Issue #223 batch ID contract`);
+    const batchKey = `B${batchNumber}`;
+    if (!summary.batches[batchKey]) {
+      summary.batches[batchKey] = {
+        legacy_earlier_hold_later_pass_conflict_count: 0,
+        legacy_earlier_pass_later_hold_conflict_count: 0,
+        records_with_unconflicted_pass_outcome_count: 0,
+        records_with_hold_outcome_count: 0,
+        records_with_conflicted_outcome_count: 0,
+        records_requiring_follow_up_count: 0,
+      };
+    }
+
+    summary.records_with_an_outcome_count += 1;
+    const batch = summary.batches[batchKey];
+    if (row.earlierVerdict === 'hold' && row.laterVerdict === 'pass') {
+      batch.legacy_earlier_hold_later_pass_conflict_count += 1;
+    } else if (row.earlierVerdict === 'pass' && row.laterVerdict === 'hold') {
+      batch.legacy_earlier_pass_later_hold_conflict_count += 1;
+    }
+    if (outcome === 'pass') {
+      summary.records_with_unconflicted_pass_outcome_count += 1;
+      batch.records_with_unconflicted_pass_outcome_count += 1;
+    } else if (outcome === 'hold') {
+      summary.records_with_hold_outcome_count += 1;
+      batch.records_with_hold_outcome_count += 1;
+      summary.records_requiring_follow_up_count += 1;
+      batch.records_requiring_follow_up_count += 1;
+    } else {
+      summary.records_with_conflicted_outcome_count += 1;
+      batch.records_with_conflicted_outcome_count += 1;
+      summary.records_requiring_follow_up_count += 1;
+      batch.records_requiring_follow_up_count += 1;
+    }
+  }
+  return summary;
+}
+
+/**
  * Validate the preserved B01-B04 legacy outputs and the new AI self-checks
  * against the already validated tracked batch sources. The self-check lane is
  * retrospective QA only; it is not an admission or independent-review pass.
@@ -288,6 +360,20 @@ export function validateIssue223SemanticQaArtifact(artifact, validatedBatches) {
   assert.equal(allOutcomeKeys.size, latestKeys.size + selfCheckByKey.size, 'legacy results and AI self-checks do not overlap');
   assert.deepEqual(allOutcomeKeys, new Set(canonicalByKey.keys()), 'every B01-B04 canonical ID has one current QA outcome');
 
+  const outcomeRows = [...canonicalByKey.keys()].map((key) => {
+    const earlier = earlierByRecord.get(key);
+    const later = laterByRecord.get(key);
+    const selfCheck = selfCheckByKey.get(key);
+    return {
+      batch_id: (later ?? selfCheck).batch_id,
+      canonical_id: (later ?? selfCheck).canonical_id,
+      earlierVerdict: earlier?.verdict,
+      laterVerdict: later?.verdict,
+      aiSelfCheckVerdict: selfCheck?.verdict,
+    };
+  });
+  const outcomeSummary = summarizeIssue223QaOutcomes(outcomeRows);
+
   const expectedBatchCoverage = {};
   for (const batch of sourceBatches) {
     const batchNumber = batchNumberOf(batch.batch_id);
@@ -301,6 +387,7 @@ export function validateIssue223SemanticQaArtifact(artifact, validatedBatches) {
       ai_self_check_records: selfChecks.length,
       ai_self_check_pass: countRows(selfChecks, ({ verdict }) => verdict === 'pass'),
       ai_self_check_hold: countRows(selfChecks, ({ verdict }) => verdict === 'hold'),
+      ...outcomeSummary.batches[`B${batchNumber}`],
     };
   }
   const expectedCoverage = {
@@ -321,11 +408,7 @@ export function validateIssue223SemanticQaArtifact(artifact, validatedBatches) {
     ai_self_check_record_count: selfCheckByKey.size,
     ai_self_check_pass_count: countRows([...selfCheckByKey.values()], ({ verdict }) => verdict === 'pass'),
     ai_self_check_hold_count: countRows([...selfCheckByKey.values()], ({ verdict }) => verdict === 'hold'),
-    records_with_an_outcome_count: allOutcomeKeys.size,
-    records_with_pass_outcome_count: countRows(laterRows, ({ verdict }) => verdict === 'pass')
-      + countRows([...selfCheckByKey.values()], ({ verdict }) => verdict === 'pass'),
-    records_with_hold_outcome_count: countRows(laterRows, ({ verdict }) => verdict === 'hold')
-      + countRows([...selfCheckByKey.values()], ({ verdict }) => verdict === 'hold'),
+    ...outcomeSummary,
     canonical_records_changed: 0,
     batches: expectedBatchCoverage,
   };

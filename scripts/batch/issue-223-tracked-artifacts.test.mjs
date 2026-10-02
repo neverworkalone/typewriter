@@ -6,7 +6,11 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { loadSemanticReviewerRegistry } from './build-issue-223-corpus-batch.mjs';
-import { validateIssue223SemanticQaArtifact } from './issue-223-semantic-qa.mjs';
+import {
+  classifyIssue223QaOutcome,
+  summarizeIssue223QaOutcomes,
+  validateIssue223SemanticQaArtifact,
+} from './issue-223-semantic-qa.mjs';
 import { validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
 // Cross-file regressions over the COMMITTED B06 artifacts: the review input, the
@@ -143,10 +147,27 @@ test('the B01-B04 semantic QA audit preserves completed legacy results and cover
   assert.equal(coverage.legacy_overlap_axis_conflict_count, 42);
   assert.equal(coverage.ai_self_check_record_count, 534);
   assert.equal(coverage.records_with_an_outcome_count, 1206);
-  assert.equal(coverage.records_with_pass_outcome_count, 1105);
+  assert.equal(coverage.records_with_unconflicted_pass_outcome_count, 1086);
   assert.equal(coverage.records_with_hold_outcome_count, 101);
+  assert.equal(coverage.records_with_conflicted_outcome_count, 19);
+  assert.equal(coverage.records_requiring_follow_up_count, 120);
   assert.equal(coverage.canonical_records_changed, 0);
   assert.deepEqual(Object.keys(coverage.batches), ['B01', 'B02', 'B03', 'B04']);
+  assert.deepEqual(coverage.batches.B01, {
+    canonical_records: 174,
+    legacy_result_records: 174,
+    legacy_pass: 156,
+    legacy_hold: 18,
+    ai_self_check_records: 0,
+    ai_self_check_pass: 0,
+    ai_self_check_hold: 0,
+    legacy_earlier_hold_later_pass_conflict_count: 10,
+    legacy_earlier_pass_later_hold_conflict_count: 3,
+    records_with_unconflicted_pass_outcome_count: 146,
+    records_with_hold_outcome_count: 18,
+    records_with_conflicted_outcome_count: 10,
+    records_requiring_follow_up_count: 28,
+  });
   assert.deepEqual(coverage.batches.B03, {
     canonical_records: 439,
     legacy_result_records: 325,
@@ -155,6 +176,12 @@ test('the B01-B04 semantic QA audit preserves completed legacy results and cover
     ai_self_check_records: 114,
     ai_self_check_pass: 105,
     ai_self_check_hold: 9,
+    legacy_earlier_hold_later_pass_conflict_count: 4,
+    legacy_earlier_pass_later_hold_conflict_count: 4,
+    records_with_unconflicted_pass_outcome_count: 396,
+    records_with_hold_outcome_count: 39,
+    records_with_conflicted_outcome_count: 4,
+    records_requiring_follow_up_count: 43,
   });
   assert.deepEqual(coverage.batches.B04, {
     canonical_records: 420,
@@ -164,6 +191,46 @@ test('the B01-B04 semantic QA audit preserves completed legacy results and cover
     ai_self_check_records: 420,
     ai_self_check_pass: 398,
     ai_self_check_hold: 22,
+    legacy_earlier_hold_later_pass_conflict_count: 0,
+    legacy_earlier_pass_later_hold_conflict_count: 0,
+    records_with_unconflicted_pass_outcome_count: 398,
+    records_with_hold_outcome_count: 22,
+    records_with_conflicted_outcome_count: 0,
+    records_requiring_follow_up_count: 22,
+  });
+});
+
+test('a prior HOLD contradicted by a later PASS stays conflicted while a later HOLD stays held', () => {
+  assert.equal(classifyIssue223QaOutcome({ earlierVerdict: 'hold', laterVerdict: 'pass' }), 'conflicted');
+  assert.equal(classifyIssue223QaOutcome({ earlierVerdict: 'pass', laterVerdict: 'hold' }), 'hold');
+
+  const coverage = summarizeIssue223QaOutcomes([
+    { batch_id: 'issue-223-m9-e-corpus-batch-01-20261001', canonical_id: 'w1', earlierVerdict: 'hold', laterVerdict: 'pass' },
+    { batch_id: 'issue-223-m9-e-corpus-batch-01-20261001', canonical_id: 'w2', earlierVerdict: 'pass', laterVerdict: 'hold' },
+    { batch_id: 'issue-223-m9-e-corpus-batch-02-20261001', canonical_id: 'w3', laterVerdict: 'pass' },
+    { batch_id: 'issue-223-m9-e-corpus-batch-02-20261001', canonical_id: 'w4', aiSelfCheckVerdict: 'pass' },
+    { batch_id: 'issue-223-m9-e-corpus-batch-02-20261001', canonical_id: 'w5', aiSelfCheckVerdict: 'hold' },
+  ]);
+  assert.equal(coverage.records_with_an_outcome_count, 5);
+  assert.equal(coverage.records_with_unconflicted_pass_outcome_count, 2);
+  assert.equal(coverage.records_with_hold_outcome_count, 2);
+  assert.equal(coverage.records_with_conflicted_outcome_count, 1);
+  assert.equal(coverage.records_requiring_follow_up_count, 3);
+  assert.deepEqual(coverage.batches.B01, {
+    legacy_earlier_hold_later_pass_conflict_count: 1,
+    legacy_earlier_pass_later_hold_conflict_count: 1,
+    records_with_unconflicted_pass_outcome_count: 0,
+    records_with_hold_outcome_count: 1,
+    records_with_conflicted_outcome_count: 1,
+    records_requiring_follow_up_count: 2,
+  });
+  assert.deepEqual(coverage.batches.B02, {
+    legacy_earlier_hold_later_pass_conflict_count: 0,
+    legacy_earlier_pass_later_hold_conflict_count: 0,
+    records_with_unconflicted_pass_outcome_count: 2,
+    records_with_hold_outcome_count: 1,
+    records_with_conflicted_outcome_count: 0,
+    records_requiring_follow_up_count: 1,
   });
 });
 
@@ -184,4 +251,6 @@ test('the B01-B04 semantic QA validator rejects detached, missing, overstated, o
   rejects('self-check relabeled as independent', (value) => { value.ai_self_checks[0].review_mode = 'independent-review'; }, /review mode/u);
   rejects('legacy identity falsely authenticated', (value) => { value.legacy_runs[0].reviewer_identity_authenticated = true; }, /must not claim authenticated reviewer identity/u);
   rejects('batch coverage summary altered', (value) => { value.coverage.batches.B04.ai_self_check_hold = 0; }, /coverage is derived from bound results/u);
+  rejects('conflicted outcome aggregate overstated', (value) => { value.coverage.records_with_conflicted_outcome_count = 0; }, /coverage is derived from bound results/u);
+  rejects('per-batch unconflicted pass total overstated', (value) => { value.coverage.batches.B01.records_with_unconflicted_pass_outcome_count += 1; }, /coverage is derived from bound results/u);
 });
