@@ -486,6 +486,18 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
   let observedSurfaceQueryCount = 0;
   let observedSurfaceParagraphRowsSearched = 0;
   const corpusReader = createCorpusIndexReader({ databasePath: DEFAULT_INDEX_PATH });
+  const lookupTiming = new Map();
+  const timedLookup = (operation, query, run) => {
+    const length = [...query].length;
+    const bucket = `${operation}:${length >= 3 ? '3+' : length}-char:${searchModeFor(query)}`;
+    const startedAt = performance.now();
+    const result = run();
+    const entry = lookupTiming.get(bucket) ?? { operation, query_length: length >= 3 ? '3+' : length, search_mode: searchModeFor(query), queries: 0, milliseconds: 0 };
+    entry.queries += 1;
+    entry.milliseconds += performance.now() - startedAt;
+    lookupTiming.set(bucket, entry);
+    return result;
+  };
   try {
     for (const [index, candidate] of candidates.entries()) {
       const literalMatchQuery = candidate.observed_surface_forms?.[0]?.surface;
@@ -493,13 +505,13 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
         throw new Error('Candidate evidence query is missing for one extracted lemma.');
       }
 
-      const matchCount = corpusReader.count(literalMatchQuery);
+      const matchCount = timedLookup('count', literalMatchQuery, () => corpusReader.count(literalMatchQuery));
       const representativeHits = collectRepresentativeSurfaceHits(
         candidate,
         (surface, limit) => {
           observedSurfaceQueryCount += 1;
           if (searchModeFor(surface) === 'literal-scan') observedSurfaceLiteralFallbackQueryCount += 1;
-          const matches = corpusReader.search(surface, limit);
+          const matches = timedLookup('search', surface, () => corpusReader.search(surface, limit));
           observedSurfaceParagraphRowsSearched += matches.length;
           return matches;
         },
@@ -550,6 +562,10 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
       representative_surface_search_limit: OBSERVED_SURFACE_SEARCH_LIMIT,
       maximum_observed_surface_queries_per_candidate: MAX_OBSERVED_SURFACE_QUERIES,
       observed_surface_query_count: observedSurfaceQueryCount,
+      lookup_timing_by_path: [...lookupTiming.values()]
+        .map((entry) => ({ ...entry, milliseconds: Math.round(entry.milliseconds * 1000) / 1000 }))
+        .sort((left, right) => String(left.operation + left.query_length).localeCompare(String(right.operation + right.query_length))),
+      lookup_timing_note: 'Wall-clock per lookup path in this discovery run; 2-character counts use the short-count sidecar when it is bound to the index.',
       observed_surface_paragraph_rows_searched: observedSurfaceParagraphRowsSearched,
       maximum_total_paragraph_rows_materialized:
         candidates.length * MAX_OBSERVED_SURFACE_QUERIES * OBSERVED_SURFACE_SEARCH_LIMIT,

@@ -43,13 +43,13 @@ Throughput (wall, incl. checkpoint `ci:normal`): 280 admitted / 1,358.3 s = 742 
 | discovery | 1 | 167.7 | 167.7 | 0 |
 | evidence | 1 | 0.1 | 0.1 | 0 |
 | authoring (5 subagent authors, pre-policy) | 6 | 966.4 | 216.2 | 0 |
-| review / self-check | 3 | 17,389.2 | 17,389.2 | 0 |
+| review / self-check | 3 | 17,389.2 (pause-contaminated) | unavailable | 0 |
 | admission | 1 | 0.9 | 0.9 | 0 |
 | derived refresh | 7 | 65.8 | 65.8 | 0 |
 | validation | 2 | 46.4 | 46.5 | 1 failed |
 | `ci:fast` | 1 | 21.1 | 21.1 | 0 |
 
-Wall 18,665.9 s, but the review span is **not** an active-time measurement: it covers the owner-decision pause and the handover to the cloud session. File mtimes put chunks 01–07 and chunks 08–12 in two sittings hours apart. Admitted/hour for B11 is therefore `unavailable`; do not compute it from the wall figure. Authoring used subagent authors (reported 910,804 subagent tokens) before the no-subagent directive.
+Wall 18,665.9 s and active (union) `unavailable`: the review span is **not** an active-time measurement and is excluded from any active figure: it covers the owner-decision pause and the handover to the cloud session. File mtimes put chunks 01–07 and chunks 08–12 in two sittings hours apart. Admitted/hour for B11 is therefore `unavailable`; do not compute it from the wall figure. Authoring used subagent authors (reported 910,804 subagent tokens) before the no-subagent directive.
 
 ### B10 (500 candidates, 359 admitted, 141 held; baseline, unoptimized flow)
 
@@ -78,17 +78,38 @@ Wall 2,131.9 s; active 1,504.8 s; summed worker 3,185.0 s; unattributed 627.1 s.
 | Cold sidecar build | 92.6 s, one time per index (bound to `logical_rows_sha256`; rebuilds when the index changes) |
 | Break-even | about 17 queries (92.6 s / 5.3 s); a 350–500 batch queries far more than that |
 
-1–2-character exact lookups were the measured bottleneck: B10 discovery was 690.8 s; B11/B12 with the sidecar were 167.7 s / 162.2 s. The batches contain different candidate mixes, so the cross-batch discovery ratio (about 4.1×) is indicative; only the 2-character comparison above is exact. The remaining ≈160 s is 3+-character/FTS counting and Kiwi analysis reuse, not separately timed per sub-step yet.
+The 2-character count was the measured bottleneck that the sidecar removed: B10 discovery was 690.8 s; B11/B12 with the sidecar were 167.7 s / 162.2 s. The batches contain different candidate mixes, so the cross-batch discovery ratio (about 4.1×) is indicative; only the 2-character comparison above is exact. The remaining discovery time is broken down in the re-measurement below: it is dominated by 2-character representative-context search, not FTS or Kiwi.
+
+## Discovery sub-step re-measurement (lookup paths, same index and sidecar)
+
+The original B10–B12 runs were not instrumented below the stage level, so per-path values for those exact runs are `unavailable`. `run-corpus-lemma-pilot.mjs` now records queries and wall milliseconds per lookup path (`evidence_collection.lookup_timing_by_path`). I re-ran discovery on the same index and warm sidecar with the cached Kiwi analysis, at the real batch sizes (350 and 500 candidates), with `stage-timing` spans (`data/timing/m10-a-substep-remeasure.jsonl`). The candidate sets are a re-selection, not the original batches (re-selection overlaps B12's set by 70 of 350 candidates), so these are representative re-measurements, not the recorded runs.
+
+| Path | Queries (350) | Seconds (350) | Queries (500) | Seconds (500) |
+| --- | ---: | ---: | ---: | ---: |
+| count, 1-char literal scan | 1 | 5.80 | 1 | 5.71 |
+| count, 2-char (warm sidecar) | 77 | 0.02 | 117 | 0.02 |
+| count, 3+-char FTS5 trigram | 272 | 3.05 | 382 | 6.66 |
+| search (representative contexts), 1-char | 1 | 0.20 | 1 | 0.25 |
+| search (representative contexts), 2-char literal scan | 195 | 120.19 | 288 | 170.50 |
+| search (representative contexts), 3+-char FTS5 | 849 | 4.28 | 1,194 | 8.35 |
+| Lookup subtotal | 1,395 | 133.54 | 1,984 | 191.49 |
+| Stage span (`run`, includes selection, Kiwi cache reuse, writing) | | 140.18 | | 197.40 |
+| Not attributed to lookups | | 6.64 | | 5.91 |
+
+- Sidecar cold construction: 92.6 s one time (separate measurement above); warm reuse is the 0.02 s rows. Old-fallback equivalence and the 410,113 ms figure remain the controlled 77-query comparison; the 117-query count was not run against the fallback, so no fallback time is claimed for it.
+- 2-character search still costs 87.7 % (500) / 90.0 % (350) of lookup time and 86.4 % / 85.7 % of the discovery stage. The sidecar only covers counts; the representative-context search for 2-character forms is an `instr()` scan (about 0.6 s per query).
+- Earlier text in this report that attributed the remaining ≈160 s to "3+/FTS and Kiwi" is withdrawn: 3+ lookups total 7.3 s (350) / 15.0 s (500).
 
 ## Stages by observed wall contribution (B12)
 
-1. Main-agent authoring + self-check: 61.6 % (upper bound, untimed)
-2. `ci:normal` checkpoint: 15.7 % (once per checkpoint, not per batch)
-3. Discovery: 11.9 % (was ≈32 % of B10 wall)
-4. Derived refresh: 5.2 % (issue-222 report 42.0 s of 70.1 s)
-5. Batch validators: 3.8 %
-6. `ci:fast`: 1.6 %
-7. Admission, evidence, assemble: <0.2 %
+Measured stages only, ranked by observed share of wall (B12). Authoring + self-check (up to 61.6 %, untimed upper bound) is listed separately and is not ranked as an observed stage.
+
+1. `ci:normal` checkpoint: 15.7 % (one recorded invocation, once per checkpoint)
+2. Discovery: 11.9 % (was ≈32 % of B10 wall); within it, 2-character search is about 86 % (re-measured)
+3. Derived refresh: 5.2 % (issue-222 report 42.0 s of 70.1 s)
+4. Batch validators: 3.8 %
+5. `ci:fast`: 1.6 %
+6. Admission, evidence, assemble: <0.2 %
 
 ## CI invocation audit (stable table for M10-B onwards)
 
@@ -137,14 +158,15 @@ Per invocation: category (`fast`/`normal`/`all`/deep), where (local/GitHub), bat
 
 ## One next change for M10-B (recommendation, not applied)
 
-Instrument and shrink the authoring + self-check loop, the largest and least-measured stage: wrap each author/self-check chunk in `stage-timing` spans, and add a pre-assemble lint that runs the frame-count, lemma-in-citation-form and `topic_verdicts` checks before `self-check-assemble`, so those validation failures are fixed in the authoring pass instead of in rework loops. Discovery is already the second-order stage and derived refresh is a smaller fixed cost.
+Make the 2-character representative-context search index-backed, extending the short-count sidecar approach: it is the largest measured item in discovery (120.2 s of 140.2 s at 350 candidates; 170.5 s of 197.4 s at 500). Expected effect is an upper bound of about 2 minutes per batch if the lookup were free; equivalence to the scan must be proved the way the count sidecar was. The authoring + self-check loop is likely larger but is not measured; spanning each chunk in M10-B is a measurement task, not the optimization.
 
 ## Uncertainties
 
 - B12 authoring/self-check time is an upper bound from ledger gaps; rework share is unmeasured.
 - B11 admitted/hour is unavailable (pause-contaminated). B10 timing overlaps tool development.
 - Candidate mixes differ per batch, so no cross-batch speedup beyond the controlled comparison is claimed.
-- The lint's benefit is a hypothesis until spanned in M10-B.
+- Authoring + self-check share (61.6 %) is a gap-derived upper bound and is not used to rank the next optimization.
+- Sub-step lookup numbers are from re-measurement runs, not the original B10–B12 runs.
 
 ## Boundaries
 
