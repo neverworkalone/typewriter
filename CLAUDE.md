@@ -18,6 +18,8 @@
   require an explicit decision.
 - If blocked, report the cause and a concrete recommendation.
 - Never weaken validation to complete a task.
+- Execute file edits, verification, commits, and pushes as
+separate tool operations, not as one compound shell command.
 
 ## Subagent Usage
 
