@@ -17,6 +17,11 @@ import {
   REPOSITORY_DIRECTORY,
   searchCorpusIndex,
 } from './corpus-index.mjs';
+import {
+  buildShortQueryCounts,
+  shortCountsPathFor,
+  tallyParagraphs,
+} from './short-query-counts.mjs';
 
 let fts5TrigramError;
 try {
@@ -616,4 +621,55 @@ test('a literal quote is safely searched through the trigram phrase path', {
 
   assert.equal(hits.length, 1);
   assert.equal(hits[0].paragraph_id, 'quoted-paragraph');
+});
+
+test('two-character counts from the sidecar equal the exact scan and ignore a stale sidecar', {
+  skip: hasFts5Trigram ? false : fts5TrigramError.message,
+}, async () => {
+  const directory = await makeTemporaryDirectory();
+  const corpusDirectory = await makeCorpus(directory);
+  const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);
+
+  const scanning = createCorpusIndexReader({ databasePath: outputPath, useShortCounts: false });
+  const forms = new Set();
+  const database = new DatabaseSync(outputPath, { readOnly: true });
+  for (const row of database.prepare('SELECT form FROM paragraphs').all()) {
+    const characters = [...row.form];
+    for (let index = 0; index + 1 < characters.length; index += 1) forms.add(characters[index] + characters[index + 1]);
+  }
+  database.close();
+  const queries = [...forms, '없는쌍', '쿵쿵'].filter((query) => [...query].length === 2);
+  const expected = queries.map((query) => scanning.count(query));
+  scanning.close();
+  assert.ok(expected.some((count) => count > 0));
+
+  // No sidecar yet: the reader falls back to the exact scan.
+  const withoutSidecar = createCorpusIndexReader({ databasePath: outputPath });
+  assert.deepEqual(queries.map((query) => withoutSidecar.count(query)), expected);
+  withoutSidecar.close();
+
+  const built = await buildShortQueryCounts({ indexPath: outputPath });
+  assert.equal(built.outputPath, shortCountsPathFor(outputPath));
+  assert.ok(built.distinctQueryCount > 0);
+  const cached = createCorpusIndexReader({ databasePath: outputPath });
+  assert.deepEqual(queries.map((query) => cached.count(query)), expected);
+  assert.equal(cached.count('쿵쿵'), 0);
+  cached.close();
+
+  // A sidecar built for different rows is ignored, so a wrong count is never served.
+  const sidecar = new DatabaseSync(built.outputPath);
+  sidecar.exec("UPDATE short_counts SET paragraph_count = 999; UPDATE sidecar_metadata SET value = 'stale' WHERE key = 'index_logical_rows_sha256'");
+  sidecar.close();
+  const stale = createCorpusIndexReader({ databasePath: outputPath });
+  assert.deepEqual(queries.map((query) => stale.count(query)), expected);
+  stale.close();
+});
+
+test('bigram tallies count a paragraph once and treat supplementary characters as one character', () => {
+  const counts = tallyParagraphs(['가나가나', '나가', '😀가😀가']);
+  assert.equal(counts.get('가나'), 1);
+  assert.equal(counts.get('나가'), 2);
+  assert.equal(counts.get('😀가'), 1);
+  assert.equal(counts.get('가😀'), 1);
+  assert.equal(counts.has('가나가'), false);
 });

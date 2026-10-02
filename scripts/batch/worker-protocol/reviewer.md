@@ -54,6 +54,10 @@ Be skeptical: a proposal that merges two directions, adds an unsupported nuance 
   - Record your own finding for proposed holds; never just copy the proposal.
 - A lexical blocker must be backed by its own axis; a missing gloss is not a blocker.
 
+## Language and substance
+
+Write every free-text field (`sense_note`, `use_note`, `hold_rationale`, direction labels, topic rationales) in **Korean**, as complete sentences of your own that cite concrete context indices. A one-word or few-word note is not a review. Frames are Korean example sentences you invent.
+
 ## Before finishing
 
 Re-read your JSON: valid, one object per ordinal in order, `lemma` identical to the packet, pass rows carry every pass field, no corpus phrases copied, no repeated templated notes. Reply only with the output path and your pass / hold counts.
