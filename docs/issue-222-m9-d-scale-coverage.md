@@ -4,7 +4,7 @@ State: **complete**. The 7,500 record target remains reached.
 
 ## Progress
 
-The issue started from 5,105 directly searchable canonical records at 77f52ae7ae8040146c25b75b2dcdf29f7b4f5e42. The current canonical set has 10,368 directly searchable records, leaving 0 to the target. The historical recovery batch and 8 bounded corpus batches reviewed 2860 candidates and admitted 2416 records for Issue #222. The current set includes 2,847 records added after that checkpoint.
+The issue started from 5,105 directly searchable canonical records at 77f52ae7ae8040146c25b75b2dcdf29f7b4f5e42. The current canonical set has 10,762 directly searchable records, leaving 0 to the target. The historical recovery batch and 8 bounded corpus batches reviewed 2860 candidates and admitted 2416 records for Issue #222. The current set includes 3,241 records added after that checkpoint.
 
 | Source class | Reviewed | Admitted | Held | Rejected |
 | --- | ---: | ---: | ---: | ---: |
@@ -47,22 +47,22 @@ The checkpoint validates 2416 records added since the baseline under exact searc
 
 ## Checkpoint audit
 
-Current canonical inventory: 10368 records, 10368 directly searchable, 0 non-searchable, 10630 senses, and 487 relations. Relation-empty searchable records: 10032.
+Current canonical inventory: 10762 records, 10762 directly searchable, 0 non-searchable, 11024 senses, and 487 relations. Relation-empty searchable records: 10426.
 
 | Record type | Records |
 | --- | ---: |
-| entry | 9214 |
+| entry | 9608 |
 | expression | 1154 |
 
 | Sense POS | Senses |
 | --- | ---: |
-| adjective | 480 |
-| adverb | 9 |
+| adjective | 485 |
+| adverb | 11 |
 | expression | 1176 |
-| noun | 7566 |
-| verb | 1399 |
+| noun | 7921 |
+| verb | 1431 |
 
-Exact lemma coverage: 10368/10368; exact search-form owner keys: 10625/10625; missing owners: 0; unexpected owners: 0; cross-record collisions: 0.
+Exact lemma coverage: 10762/10762; exact search-form owner keys: 11019/11019; missing owners: 0; unexpected owners: 0; cross-record collisions: 0.
 
 ### Candidate yield and disposition
 
@@ -110,8 +110,8 @@ Across reviewed batches, hold reasons were search-collision: 9; unresolved-ident
 
 Correction rate: **NOT_MEASURED_NO_HUMAN_REVIEW**. Writer review burden: **NOT_MEASURED_NO_WRITER_REVIEW**. Systemic defect classes: 0; shared system fixes recorded: 0.
 
-Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `73750a4f9c6b7a4ad6dc0d372df5f31395e184dcdf3499d70b3e4ad0a493c8ae`.
-Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 10,368 records (+5,263; 103.10%). Runtime contract changed: false; package bytes measured: false. Issue #222 and later checkpointed work add canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
+Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `78e81619924e7c634f4d57d931222a4ec5f6e37d4124dd5d59a6cbfba29c1c6e`.
+Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 10,762 records (+5,657; 110.81%). Runtime contract changed: false; package bytes measured: false. Issue #222 and later checkpointed work add canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
 
 ## Continuation
 
