@@ -6,6 +6,11 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { loadSemanticReviewerRegistry } from './build-issue-223-corpus-batch.mjs';
+import {
+  classifyIssue223QaOutcome,
+  summarizeIssue223QaOutcomes,
+  validateIssue223SemanticQaArtifact,
+} from './issue-223-semantic-qa.mjs';
 import { validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
 // Cross-file regressions over the COMMITTED B06 artifacts: the review input, the
@@ -15,6 +20,7 @@ import { validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const BATCHES = ['06', '07', '08', '09'];
+const HISTORICAL_QA_BATCHES = ['01', '02', '03', '04'];
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const read = (relativePath) => readFile(path.join(ROOT, relativePath));
 
@@ -45,6 +51,27 @@ async function load(number = '06') {
       registry,
     }),
   };
+}
+
+async function loadHistoricalQa() {
+  const artifact = JSON.parse(await read('data/batches/issue-223-b01-b04-semantic-qa.json').then((bytes) => bytes.toString('utf8')));
+  const batches = await Promise.all(HISTORICAL_QA_BATCHES.map(async (number) => {
+    const STEM = `issue-223-m9-e-corpus-batch-${number}`;
+    const [candidateReviewBytes, semanticSourceBytes, canonicalImportBytes] = await Promise.all([
+      read(`data/batches/${STEM}-candidate-review.json`),
+      read(`data/batches/${STEM}-semantic-decisions.json`),
+      read(`data/canonical/${STEM}.jsonl`),
+    ]);
+    return {
+      batch_id: `issue-223-m9-e-corpus-batch-${number}-20261001`,
+      candidateReview: JSON.parse(candidateReviewBytes.toString('utf8')),
+      candidateReviewBytes,
+      semanticSourceBytes,
+      canonicalImportBytes,
+      importRecords: canonicalImportBytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map(JSON.parse),
+    };
+  }));
+  return { artifact, batches };
 }
 
 test('every committed reviewer-checked batch is bound to its artifacts', async () => {
@@ -108,4 +135,122 @@ test('tampering with any committed B06 artifact is rejected', async () => {
     const held = a.candidateRows.find((row) => row.editorial_judgment.disposition === 'hold');
     held.editorial_judgment = { ...held.editorial_judgment, disposition: 'admit' };
   }, /cannot be admitted|must be admitted|exactly the admitted/u);
+});
+
+test('the B01-B04 semantic QA audit preserves completed legacy results and covers only the remaining rows with AI self-check', async () => {
+  const { artifact, batches } = await loadHistoricalQa();
+  const coverage = validateIssue223SemanticQaArtifact(artifact, batches);
+  assert.equal(coverage.canonical_record_count, 1206);
+  assert.equal(coverage.preserved_legacy_review_event_count, 1219);
+  assert.equal(coverage.latest_legacy_unique_record_count, 672);
+  assert.equal(coverage.legacy_overlap_verdict_conflict_count, 32);
+  assert.equal(coverage.legacy_overlap_axis_conflict_count, 42);
+  assert.equal(coverage.ai_self_check_record_count, 534);
+  assert.equal(coverage.records_with_an_outcome_count, 1206);
+  assert.equal(coverage.records_with_unconflicted_pass_outcome_count, 1086);
+  assert.equal(coverage.records_with_hold_outcome_count, 101);
+  assert.equal(coverage.records_with_conflicted_outcome_count, 19);
+  assert.equal(coverage.records_requiring_follow_up_count, 120);
+  assert.equal(coverage.canonical_records_changed, 0);
+  assert.deepEqual(Object.keys(coverage.batches), ['B01', 'B02', 'B03', 'B04']);
+  assert.deepEqual(coverage.batches.B01, {
+    canonical_records: 174,
+    legacy_result_records: 174,
+    legacy_pass: 156,
+    legacy_hold: 18,
+    ai_self_check_records: 0,
+    ai_self_check_pass: 0,
+    ai_self_check_hold: 0,
+    legacy_earlier_hold_later_pass_conflict_count: 10,
+    legacy_earlier_pass_later_hold_conflict_count: 3,
+    records_with_unconflicted_pass_outcome_count: 146,
+    records_with_hold_outcome_count: 18,
+    records_with_conflicted_outcome_count: 10,
+    records_requiring_follow_up_count: 28,
+  });
+  assert.deepEqual(coverage.batches.B03, {
+    canonical_records: 439,
+    legacy_result_records: 325,
+    legacy_pass: 295,
+    legacy_hold: 30,
+    ai_self_check_records: 114,
+    ai_self_check_pass: 105,
+    ai_self_check_hold: 9,
+    legacy_earlier_hold_later_pass_conflict_count: 4,
+    legacy_earlier_pass_later_hold_conflict_count: 4,
+    records_with_unconflicted_pass_outcome_count: 396,
+    records_with_hold_outcome_count: 39,
+    records_with_conflicted_outcome_count: 4,
+    records_requiring_follow_up_count: 43,
+  });
+  assert.deepEqual(coverage.batches.B04, {
+    canonical_records: 420,
+    legacy_result_records: 0,
+    legacy_pass: 0,
+    legacy_hold: 0,
+    ai_self_check_records: 420,
+    ai_self_check_pass: 398,
+    ai_self_check_hold: 22,
+    legacy_earlier_hold_later_pass_conflict_count: 0,
+    legacy_earlier_pass_later_hold_conflict_count: 0,
+    records_with_unconflicted_pass_outcome_count: 398,
+    records_with_hold_outcome_count: 22,
+    records_with_conflicted_outcome_count: 0,
+    records_requiring_follow_up_count: 22,
+  });
+});
+
+test('a prior HOLD contradicted by a later PASS stays conflicted while a later HOLD stays held', () => {
+  assert.equal(classifyIssue223QaOutcome({ earlierVerdict: 'hold', laterVerdict: 'pass' }), 'conflicted');
+  assert.equal(classifyIssue223QaOutcome({ earlierVerdict: 'pass', laterVerdict: 'hold' }), 'hold');
+
+  const coverage = summarizeIssue223QaOutcomes([
+    { batch_id: 'issue-223-m9-e-corpus-batch-01-20261001', canonical_id: 'w1', earlierVerdict: 'hold', laterVerdict: 'pass' },
+    { batch_id: 'issue-223-m9-e-corpus-batch-01-20261001', canonical_id: 'w2', earlierVerdict: 'pass', laterVerdict: 'hold' },
+    { batch_id: 'issue-223-m9-e-corpus-batch-02-20261001', canonical_id: 'w3', laterVerdict: 'pass' },
+    { batch_id: 'issue-223-m9-e-corpus-batch-02-20261001', canonical_id: 'w4', aiSelfCheckVerdict: 'pass' },
+    { batch_id: 'issue-223-m9-e-corpus-batch-02-20261001', canonical_id: 'w5', aiSelfCheckVerdict: 'hold' },
+  ]);
+  assert.equal(coverage.records_with_an_outcome_count, 5);
+  assert.equal(coverage.records_with_unconflicted_pass_outcome_count, 2);
+  assert.equal(coverage.records_with_hold_outcome_count, 2);
+  assert.equal(coverage.records_with_conflicted_outcome_count, 1);
+  assert.equal(coverage.records_requiring_follow_up_count, 3);
+  assert.deepEqual(coverage.batches.B01, {
+    legacy_earlier_hold_later_pass_conflict_count: 1,
+    legacy_earlier_pass_later_hold_conflict_count: 1,
+    records_with_unconflicted_pass_outcome_count: 0,
+    records_with_hold_outcome_count: 1,
+    records_with_conflicted_outcome_count: 1,
+    records_requiring_follow_up_count: 2,
+  });
+  assert.deepEqual(coverage.batches.B02, {
+    legacy_earlier_hold_later_pass_conflict_count: 0,
+    legacy_earlier_pass_later_hold_conflict_count: 0,
+    records_with_unconflicted_pass_outcome_count: 2,
+    records_with_hold_outcome_count: 1,
+    records_with_conflicted_outcome_count: 0,
+    records_requiring_follow_up_count: 1,
+  });
+});
+
+test('the B01-B04 semantic QA validator rejects detached, missing, overstated, or mislabeled evidence', async () => {
+  const { artifact, batches } = await loadHistoricalQa();
+  const rejects = (name, change, pattern) => {
+    const changed = structuredClone(artifact);
+    change(changed);
+    assert.throws(() => validateIssue223SemanticQaArtifact(changed, batches), pattern, name);
+  };
+
+  rejects('source digest changed', (value) => { value.source_batches[2].canonical_import_sha256 = '0'.repeat(64); }, /source digests and counts/u);
+  rejects('legacy result removed', (value) => { value.legacy_review_results.pop(); }, /result count matches preserved events|sequential result event/u);
+  rejects('legacy result detached from canonical ID', (value) => { value.legacy_review_results[0].canonical_id = 'w0000'; }, /binds to a B01-B03 canonical record/u);
+  rejects('AI self-check ID changed', (value) => { value.ai_self_checks[0].canonical_id = 'w0000'; }, /was not already completed|binds to a source batch/u);
+  rejects('AI self-check ordinal changed', (value) => { value.ai_self_checks[0].canonical_import_ordinal += 1; }, /canonical import ordinal/u);
+  rejects('AI self-check context out of range', (value) => { value.ai_self_checks[0].checked_context_indices = [999]; }, /outside its candidate's bounded evidence/u);
+  rejects('self-check relabeled as independent', (value) => { value.ai_self_checks[0].review_mode = 'independent-review'; }, /review mode/u);
+  rejects('legacy identity falsely authenticated', (value) => { value.legacy_runs[0].reviewer_identity_authenticated = true; }, /must not claim authenticated reviewer identity/u);
+  rejects('batch coverage summary altered', (value) => { value.coverage.batches.B04.ai_self_check_hold = 0; }, /coverage is derived from bound results/u);
+  rejects('conflicted outcome aggregate overstated', (value) => { value.coverage.records_with_conflicted_outcome_count = 0; }, /coverage is derived from bound results/u);
+  rejects('per-batch unconflicted pass total overstated', (value) => { value.coverage.batches.B01.records_with_unconflicted_pass_outcome_count += 1; }, /coverage is derived from bound results/u);
 });

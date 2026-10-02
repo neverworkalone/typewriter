@@ -25,6 +25,7 @@ import {
 import { assertInputBoundToRunRecord, assertInputDerivedFromRaw } from './reviewer-raw-outputs.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
 import { validateAuthoredSemanticDecisionSource, M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION } from './authored-semantic-decision-source.mjs';
+import { validateIssue223SemanticQaArtifact } from './issue-223-semantic-qa.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import { productionReviewRows, productionStageEvidence } from './validate-issue-211.mjs';
 import { hasMorphologyBlocker, validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
@@ -538,6 +539,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       candidateReviewBytes: candidateBytes,
       semanticSource,
       semanticSourceBytes: semanticBytes,
+      canonicalImportBytes: importBytes,
       validatedSource,
       identities,
       importRecords,
@@ -611,6 +613,9 @@ async function stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence) {
 export async function validateIssue223({ verifyLocalCorpusEvidence = true, validatePreviousIssue = true, compareSecondBuild = true, rebuildDatabase = true } = {}) {
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const batches = await validateCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence });
+  const semanticQaArtifactPath = path.join(BATCH_DIRECTORY, 'issue-223-b01-b04-semantic-qa.json');
+  const semanticQaArtifact = JSON.parse(await readFile(semanticQaArtifactPath, 'utf8'));
+  const semanticQaCoverage = validateIssue223SemanticQaArtifact(semanticQaArtifact, batches);
   const issue223Imports = batches.flatMap(({ importRecords }) => importRecords);
   const issue223ImportIds = new Set(issue223Imports.map(({ id }) => id));
   assert.equal(issue223ImportIds.size, issue223Imports.length, 'Issue #223 canonical record IDs are unique');
@@ -695,6 +700,7 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
       rejected_count: rejectedCount,
       review_only: reviewOnly,
     })),
+    historical_semantic_qa: semanticQaCoverage,
     semantic_coverage_complete: true,
     shared_admission: productionResults,
     duplicate_canonical_lemma_count: 0,
