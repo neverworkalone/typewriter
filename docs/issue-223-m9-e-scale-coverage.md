@@ -1,6 +1,6 @@
 # Issue #223 — M9-E coverage checkpoint
 
-State: **partial checkpoint; Issue #223 remains open**. B05–B09 are imported under the independent semantic-review input contract, and the canonical corpus now reaches 10,009 records. B06 covers the 305 candidates left in B05's generated queue; B07 and B08 are fresh 500-candidate batches and B09 a fresh 300-candidate batch.
+State: **partial checkpoint; Issue #223 remains open**. B05–B09 are imported under the independent semantic-review input contract, and the canonical corpus now holds 10,009 records (1,206 of them, from B01–B04, without independent semantic review). B06 covers the 305 candidates left in B05's generated queue; B07 and B08 are fresh 500-candidate batches and B09 a fresh 300-candidate batch.
 
 ## Progress
 
@@ -62,4 +62,4 @@ The semantic-decision sources for B01–B04 (1,206 records) were produced by the
 
 The Issue #223 validator checks source-bound candidate evidence, canonical imports for B01–B09, semantic coverage, and direct search; the independent two-build SQLite comparison is the manual `batch:issue-223:check:deep` path. A review-only batch, if one is used, is verified for its marker, the absence of semantic and canonical sidecars, and that deferred IDs and lemmas are not already canonical. Normal CI separately discovers and checks every tracked M9 corpus candidate-review artifact.
 
-The exact-head CI result is reported by GitHub checks; this checkpoint report does not reuse prior CI status. The ~10K canonical target is reached (10,009 records). The owner approved publishing the B05–B09 corpus-derived records in the public repository; whether the source material's redistribution terms are satisfied is a separate condition that this checkpoint does not establish.
+The exact-head CI result is reported by GitHub checks; this checkpoint report does not reuse prior CI status. The canonical corpus holds 10,009 records, the ~10K count target. Of those, the 1,206 B01–B04 records are counted as canonical records but not as independently reviewed ones (see the semantic-decision paragraph above), so this checkpoint does not claim 10,009 independently reviewed records and Issue #223 stays open until they are independently reviewed or the target is restated. Publication of the B05–B09 corpus-derived records is not authorized by this checkpoint: the B05–B09 candidate-review artifacts keep `publication_state` `local_reference_only_pending_owner_publication_confirmation`, the NIKL disclosure application is pending, and no record-level rights disposition is recorded (`DATA-LICENSE.md`, `docs/publication-boundary.md`, `docs/m9-corpus-production.md`).
