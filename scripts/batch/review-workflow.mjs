@@ -29,6 +29,7 @@ import { glossFrameSpans } from './build-issue-223-corpus-batch.mjs';
 import { findAmbiguousParticleFragments, validateLexicalRecord } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { packetCandidate, shardRanges } from './make-review-packets.mjs';
+import { SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
 import {
   admissionGateFor,
   outcomeFromRaw,
@@ -459,6 +460,106 @@ export async function assembleReviewed({ batchId, directory, batchDirectory = 'd
   };
 }
 
+/**
+ * Compact text view of a candidate range for the checking agent, so the
+ * evidence is read once with the least overhead. Trims each context window
+ * around the observed form.
+ */
+export async function selfCheckView({ directory, first, last, width = 110 }) {
+  const absolute = path.resolve(ROOT, directory);
+  const manifest = await readJson(path.join(absolute, 'review-packets/review-packet-manifest.json'));
+  const lines = [];
+  for (const entry of manifest) {
+    if (entry.last_ordinal < first || entry.first_ordinal > last) continue;
+    const packet = await readJson(path.join(absolute, entry.file));
+    for (const candidate of packet.candidates) {
+      if (candidate.ordinal < first || candidate.ordinal > last) continue;
+      const proposal = candidate.proposal.disposition === 'admit'
+        ? `ADMIT ${candidate.proposal.corrected_pos ?? ''} axis=${candidate.proposal.axis} gloss=「${candidate.proposal.gloss}」 frames=${candidate.frames_required}${candidate.topic_spans_requiring_verdict.length ? ` topics=${JSON.stringify(candidate.topic_spans_requiring_verdict)}` : ''}`
+        : `HOLD ${candidate.proposal.hold_basis}`;
+      const gate = candidate.admission_gate_note ? ` GATE` : '';
+      lines.push(`#${candidate.ordinal} ${candidate.lemma} (${candidate.proposed_pos}) forms=${candidate.observed_forms.map((form) => `${form.surface}:${form.count}`).join(',')}${gate} :: ${proposal}`);
+      for (const context of candidate.contexts) {
+        const at = context.observed_form ? context.text.indexOf(context.observed_form) : -1;
+        const text = at < 0 ? context.text.slice(0, width * 2) : context.text.slice(Math.max(0, at - width), at + (context.observed_form?.length ?? 0) + width);
+        lines.push(`  ${context.index}: ${text}`);
+      }
+    }
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Assemble a batch whose semantic check was done by the producing agent itself
+ * (owner decision 2026-10-02). Rows use the same per-candidate verdict shape a
+ * reviewer used, but the tracked input records `agent-self-check`,
+ * `independent_review: false`, and carries no runs, run record, or digests of a
+ * separate review.
+ */
+export async function assembleSelfChecked({ batchId, directory, batchDirectory = 'data/batches', writeTracked = true }) {
+  const absolute = path.resolve(ROOT, directory);
+  const inventory = await readJson(path.join(absolute, 'candidate-inventory.json'));
+  const evidence = await readJson(path.join(absolute, 'candidate-evidence.json'));
+  const generator = await readJson(path.join(absolute, 'authored-decisions.generator.json'));
+  const files = await numberedFiles(path.join(absolute, 'selfcheck'), 'selfcheck');
+  const proposals = generator.decisions.map((row) => (row.disposition === 'admit'
+    ? { ordinal: row.candidate_ordinal, lemma: row.lemma, disposition: 'admit', gloss: row.gloss }
+    : { ordinal: row.candidate_ordinal, lemma: row.lemma, disposition: 'hold', hold_basis: row.basis }));
+  const flat = [];
+  for (const { name } of files) {
+    const rows = await readJson(path.join(absolute, 'selfcheck', name));
+    assert.ok(Array.isArray(rows), `${name} must be a JSON array`);
+    const base = flat.length;
+    collectFailures(rows, (output, index) => {
+      const ordinal = base + index + 1;
+      assert.ok(proposals[ordinal - 1], `${name} lists more candidates than the batch`);
+      validateReviewerOutput(output, proposals[ordinal - 1], inventory.candidates[ordinal - 1], ordinal);
+    });
+    flat.push(...rows);
+  }
+  assert.equal(flat.length, proposals.length, 'the self-check must cover every candidate exactly once');
+
+  const finalDecisions = generator.decisions.map((row, index) => finalDecisionRow(row, flat[index]));
+  const reviews = [];
+  const outcomes = [];
+  generator.decisions.forEach((row, index) => {
+    const raw = flat[index];
+    const gate = admissionGateFor({ ...inventory.candidates[index], ...evidence.candidates[index] });
+    outcomes.push(outcomeFromRaw(row.disposition, raw, raw.verdict === 'pass' ? gate : null));
+    if (raw.verdict === 'pass' && !gate) reviews.push(reviewFromRaw({ lemma: row.lemma, gloss: row.gloss, raw }));
+  });
+  const input = {
+    schema_version: '1',
+    contract_version: 'authored-semantic-review-input-v1',
+    kind: 'authored-semantic-review-input',
+    batch_id: batchId,
+    reviewer: AUTHOR_NAME,
+    review_status: 'complete',
+    review_provenance: SELF_CHECK_PROVENANCE,
+    independent_review: false,
+    reviews,
+    candidate_outcomes: outcomes,
+  };
+  await writeFile(path.join(absolute, 'authored-decisions.json'), pretty({
+    decisions: finalDecisions,
+    reviewer: AUTHOR_NAME,
+    generator: AUTHOR_NAME,
+    ...passIdsFor(batchId),
+  }));
+  if (writeTracked) {
+    const stem = batchId.replace(/-[0-9]{8}$/u, '');
+    await writeFile(path.join(ROOT, batchDirectory, `${stem}-semantic-review-input.json`), pretty(input));
+  }
+  return {
+    candidates: proposals.length,
+    admit: finalDecisions.filter((row) => row.disposition === 'admit').length,
+    hold: finalDecisions.filter((row) => row.disposition === 'hold').length,
+    changed_admit_to_hold: finalDecisions.filter((row, index) => row !== generator.decisions[index]).length,
+    review_rows: reviews.length,
+    artifacts: { input, finalDecisions },
+  };
+}
+
 async function main(argv) {
   const [command, ...rest] = argv;
   const options = Object.fromEntries(rest.map((argument) => {
@@ -470,6 +571,8 @@ async function main(argv) {
   if (command === 'merge-authors') return mergeAuthors({ batchId: options['batch-id'], directory: options.directory });
   if (command === 'reviewer-packets') return makeReviewerPackets({ directory: options.directory, shards: Number(options.shards ?? 5) });
   if (command === 'split-run') return splitRunForAmendment({ directory: options.directory, shard: Number(options.shard), ordinal: Number(options.ordinal) });
+  if (command === 'self-check-assemble') return assembleSelfChecked({ batchId: options['batch-id'], directory: options.directory });
+  if (command === 'self-check-view') { console.log(await selfCheckView({ directory: options.directory, first: Number(options.first), last: Number(options.last), width: Number(options.width ?? 110) })); return { artifacts: null }; }
   if (command === 'assemble') return assembleReviewed({ batchId: options['batch-id'], directory: options.directory });
   throw new Error('usage: review-workflow.mjs merge-authors|reviewer-packets|assemble --batch-id=ID --directory=DIR');
 }

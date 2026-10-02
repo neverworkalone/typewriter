@@ -24,6 +24,11 @@ import {
   runRecordFromRaw,
 } from './reviewer-raw-outputs.mjs';
 import {
+  assertSelfCheckBinding,
+  assertSelfCheckEnvelope,
+  isSelfCheckInput,
+} from './semantic-self-check.mjs';
+import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
 } from '../validate/semantic-decision-row.mjs';
@@ -829,18 +834,28 @@ export async function buildIssue223CorpusBatch({
   const semanticInputBytes = await readFile(path.resolve(ROOT, semanticReviewsPath));
   const semanticInput = JSON.parse(semanticInputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(semanticInput, batchId);
-  assertIndependentSemanticReviewer({
-    reviewer: semanticInput.reviewer,
-    candidateAuthor,
-    registry: await loadSemanticReviewerRegistry(),
-  });
+  const selfCheck = isSelfCheckInput(semanticInput);
+  if (selfCheck) {
+    assertSelfCheckEnvelope(semanticInput, { ordinal: batchOrdinal, candidateAuthor });
+  } else {
+    assertIndependentSemanticReviewer({
+      reviewer: semanticInput.reviewer,
+      candidateAuthor,
+      registry: await loadSemanticReviewerRegistry(),
+    });
+  }
   assertReviewerChecks(semanticInput.reviews, {
     required: batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH,
     hitCountByLemma: bindHitCounts(rows),
   });
   let reviewerRunRecordBytes = null;
   let reviewerRawArtifact = null;
-  if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) {
+  const glossByLemma = new Map(admittedRows.map((row) => [row.morphology_proposal.lemma, row.editorial_judgment.writer_gloss]));
+  if (selfCheck) {
+    assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
+    assertSelfCheckBinding({ input: semanticInput, candidateRows: rows, glossByLemma });
+    assert.equal(reviewerRawOutputsPath, undefined, 'a self-check batch has no separate reviewer outputs to stage');
+  } else if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) {
     assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
     assert.ok(reviewerRawOutputsPath, 'this batch requires --reviewer-raw-outputs (staged locally): the reviewers\' original outputs back the tracked run record');
     reviewerRawArtifact = JSON.parse(await readFile(path.resolve(ROOT, reviewerRawOutputsPath), 'utf8'));
@@ -849,7 +864,6 @@ export async function buildIssue223CorpusBatch({
     // draft text out of data/batches/).
     const runRecord = runRecordFromRaw(reviewerRawArtifact);
     reviewerRunRecordBytes = prettyBytes(runRecord);
-    const glossByLemma = new Map(admittedRows.map((row) => [row.morphology_proposal.lemma, row.editorial_judgment.writer_gloss]));
     assertInputBoundToRunRecord({
       input: semanticInput,
       runRecord,
