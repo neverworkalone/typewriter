@@ -90,3 +90,14 @@ npm run ci:normal
 The batch validator binds the reviewed candidate/evidence artifacts, authored semantic decisions, and canonical import; it then invokes `validateLexicalProduction` on the full selected candidate pool, checks direct exact-lemma search, validates complete canonical semantic coverage, and compares two deterministic SQLite builds by logical contents. Keep corpus/index access and synthetic corpus-extraction fixtures out of `ci:normal`; the text-free candidate-disposition regressions and artifact gate run there.
 
 M9-D/E can reuse the same runner and validation contracts with a new batch ID, output directory, pinned source/index and tool metadata, a 200-candidate starting limit (scaling toward 500 after clean batches), and exclusion sources for the current target seed and all prior corpus reviews. Run the generic candidate-disposition validator for each review file, then bind it to that batch's source evidence and semantic decisions. Low editorial yield means continuing to later ranked candidates, not lowering standards. No corpus-to-canonical automation or publication authorization is implied by this workflow.
+
+## Corpus usage and release strategy (owner statement)
+
+Typewriter separates three activities: research and development (analyzing the NIKL corpus as reference evidence and producing independently authored lexical records), repository visibility (development artifacts reachable through source control, under separate licensing and disclosure obligations), and product distribution (shipping corpus-informed lexical data in the Chrome Extension). A development milestone does not authorize publication, and an unreleased extension version does not resolve what publicly accessible repository data implies.
+
+- Version 0.1 was published as a Chrome Extension before corpus processing began and does not distribute lexical records generated through the corpus workflow.
+- Corpus analysis since then serves only as evidence for candidate words and usage; canonical entries and definitions are authored and validated through Typewriter's own pipeline, and corpus passages are excluded from product data.
+- An application to NIKL for authorization to disclose corpus-derived results has been submitted and is awaiting a decision. No authorization is recorded here.
+- Version 0.2, which would introduce the expanded dataset, is conditional on receiving that authorization and satisfying its terms. Sequence: 0.1 released, corpus-assisted development, NIKL authorization, 0.2 release.
+
+This statement records the owner's release plan. It is not an authorization to disclose corpus-derived data, and it does not settle the redistribution status of the B05–B09 records held under `data/canonical/`; that status stays governed by `DATA-LICENSE.md` and `docs/publication-boundary.md` until the NIKL decision is documented.
