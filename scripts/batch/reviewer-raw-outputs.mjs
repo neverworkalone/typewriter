@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 
+import { hasCoverageCollision, hasMorphologyBlocker } from '../validate/corpus-candidate-review.mjs';
 import { findAmbiguousParticleFragments } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 
@@ -25,10 +26,29 @@ export const RAW_OUTPUTS_KIND = 'reviewer-raw-outputs';
 const nonEmpty = (value) => typeof value === 'string' && value.trim().length > 0;
 const HEX_64 = /^[0-9a-f]{64}$/u;
 
+// Reviewers judge meaning; the shared admission path separately refuses to admit
+// a candidate whose surface collides with an existing entry's search or
+// generated form, or whose morphology the analyzer left ambiguous. A reviewer
+// pass on such a candidate stays a faithful `pass` and carries the gate that
+// held it, rather than the reviewer's output being rewritten.
+// `row` may be a candidate-review decision row or a raw candidate: both expose
+// the coverage and morphology fields these checks read.
+export function admissionGateFor(row) {
+  const proposal = row.morphology_proposal ?? row;
+  if (hasCoverageCollision(row)) return 'coverage-collision';
+  if (hasMorphologyBlocker(proposal)) return 'morphology-blocker';
+  return null;
+}
+
+export const GATE_HOLD_BASIS = Object.freeze({
+  'coverage-collision': 'search-collision',
+  'morphology-blocker': 'unresolved-identity',
+});
+
 // The producer's own generator-agreement label is derived, not copied: an
 // admit proposal agrees exactly when the reviewer passes it. For a proposed
 // hold the reviewer's own label is kept.
-export function outcomeFromRaw(generatorDisposition, raw) {
+export function outcomeFromRaw(generatorDisposition, raw, gate = null) {
   const outcome = {
     ordinal: raw.ordinal,
     lemma: raw.lemma,
@@ -48,6 +68,7 @@ export function outcomeFromRaw(generatorDisposition, raw) {
     if (raw.hold_basis === 'unresolved-sense') outcome.directions = raw.directions;
   } else {
     outcome.checked_hit_indices = [...new Set(raw.note_hit_checked)].sort((left, right) => left - right);
+    if (gate) outcome.admission_gate = gate;
   }
   return outcome;
 }
@@ -194,6 +215,14 @@ export function assertInputBoundToRunRecord({
       assert.equal(reviewByLemma.has(lemma), false, `${lemma}: a reviewer hold cannot carry a review row`);
       return;
     }
+    const gate = admissionGateFor(row);
+    if (gate) {
+      // The reviewer passed the meaning, but the shared admission gate holds it.
+      assert.equal(outcome.admission_gate, gate, `${lemma}: a gated candidate must record the gate that held it`);
+      assert.equal(reviewByLemma.has(lemma), false, `${lemma}: a gated candidate cannot carry a review row`);
+      return;
+    }
+    assert.equal(outcome.admission_gate, undefined, `${lemma}: only a gated candidate records an admission gate`);
     passes += 1;
     assert.equal(proposals[index].disposition, 'admit', `${lemma}: a reviewer pass needs an admit proposal`);
     const review = reviewByLemma.get(lemma);
@@ -239,9 +268,10 @@ export function assertInputDerivedFromRaw({ input, runRecord, rawArtifact, candi
     assert.equal(raw.ordinal, index + 1, `${lemma}: raw output ordinal`);
     assert.equal(raw.lemma, lemma, `${lemma}: raw output is bound to a different lemma`);
     const stated = input.candidate_outcomes[index];
-    assert.deepEqual(stated, outcomeFromRaw(stated.generator_disposition, raw),
+    const gate = admissionGateFor(row);
+    assert.deepEqual(stated, outcomeFromRaw(stated.generator_disposition, raw, gate),
       `${lemma}: candidate outcome is not what the reviewer's raw output yields`);
-    if (raw.verdict !== 'pass') return;
+    if (raw.verdict !== 'pass' || gate) return;
     const reviewedGloss = proposals[index].gloss;
     assert.equal(glossByLemma.get(lemma), reviewedGloss,
       `${lemma}: the admitted gloss differs from the gloss the reviewer assessed`);

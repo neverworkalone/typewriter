@@ -2734,6 +2734,7 @@
             "run"
           ],
           "$.candidate_outcomes.*": [
+            "admission_gate",
             "checked_hit_indices",
             "directions",
             "generator_agreement",
@@ -2796,6 +2797,7 @@
             "run": "integer"
           },
           "$.candidate_outcomes.*": {
+            "admission_gate": "string",
             "checked_hit_indices": "array<integer>",
             "directions": "array<object>",
             "generator_agreement": "string",

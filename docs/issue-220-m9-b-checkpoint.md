@@ -72,7 +72,7 @@ The two independent review slices contain 20 rows each. There was no admission o
 
 ## Historical checkpoint
 
-The pinned Issue #210 candidate inventory contains 584 classified rows. After the 18 M9-B admissions and 20 later M9-D historical recoveries, 507 historical rows remain potentially recoverable. Added to the current 9,815 canonical records, they yield a bounded source-pool ceiling of 10,322, 4,322 above 6,000. This is a source-pool limit, not a reason to admit held rows or reconstruct absent candidates.
+The pinned Issue #210 candidate inventory contains 584 classified rows. After the 18 M9-B admissions and 20 later M9-D historical recoveries, 507 historical rows remain potentially recoverable. Added to the current 10,009 canonical records, they yield a bounded source-pool ceiling of 10,516, 4,516 above 6,000. This is a source-pool limit, not a reason to admit held rows or reconstruct absent candidates.
 
 | Remaining Issue #210 disposition | Count |
 | --- | ---: |
@@ -87,24 +87,24 @@ The pinned Issue #210 candidate inventory contains 584 classified rows. After th
 | wrong-pos | 0 |
 | Recovered in the current inventory | 62 |
 
-Current canonical totals: 9,815 records (9,773 starts and 42 reference-only records), 10,077 senses, 487 relations, and 10,072 canonical search-form rows. Relation-empty searchable records: 9,479.
+Current canonical totals: 10,009 records (9,967 starts and 42 reference-only records), 10,271 senses, 487 relations, and 10,266 canonical search-form rows. Relation-empty searchable records: 9,673.
 
 | Record type | Records |
 | --- | ---: |
-| entry | 8661 |
+| entry | 8855 |
 | expression | 1154 |
 
 Sense POS distribution:
 
 | POS | Senses |
 | --- | ---: |
-| adjective | 468 |
+| adjective | 474 |
 | adverb | 9 |
 | expression | 1176 |
-| noun | 7078 |
-| verb | 1346 |
+| noun | 7250 |
+| verb | 1362 |
 
-Direct exact lemma coverage: 9815/9815; non-searchable records: 0. Exact search-form owner keys: 10072/10072; missing owners: 0; unexpected owners: 0; cross-record collision keys: 0.
+Direct exact lemma coverage: 10009/10009; non-searchable records: 0. Exact search-form owner keys: 10266/10266; missing owners: 0; unexpected owners: 0; cross-record collision keys: 0.
 
 | Surface-form regression | Included forms | Excluded forms | Result |
 | --- | --- | --- | --- |
@@ -127,7 +127,7 @@ Direct exact lemma coverage: 9815/9815; non-searchable records: 0. Exact search-
 | authored semantic evidence projection | 1 | scripts/batch/validate-issue-211.mjs | The common producer projects authored topic_analysis and topic_analyses into the shared semantic evidence for the exact reviewed span, including w5399. |
 | surface-form decision coverage | 2 | data/validation/m6-3-surface-form-review.json | Added sense-bound M6-3 decisions for the two admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed. |
 
-Normal CI: `npm run ci:normal` — pending for canonical digest `880d975a32efebd2e4d4a658effb15cf78624a134d97ada9274a2448b368301f`.
+Normal CI: `npm run ci:normal` — pending for canonical digest `4b5c39c3944439f7a667ba0090a8cb52a5cf95bc38d82d52eac47f4142c18432`.
 Extension/Web parity is covered by the normal CI product builds and output-contract validation: pending.
 
 ## Reproduction

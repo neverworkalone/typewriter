@@ -14,12 +14,13 @@ import { validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 // them in memory and expects rejection.
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const STEM = 'issue-223-m9-e-corpus-batch-06';
-const BATCH_ID = `${STEM}-20261001`;
+const BATCHES = ['06', '07', '08', '09'];
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const read = (relativePath) => readFile(path.join(ROOT, relativePath));
 
-async function load() {
+async function load(number = '06') {
+  const STEM = `issue-223-m9-e-corpus-batch-${number}`;
+  const BATCH_ID = `${STEM}-20261001`;
   const [reviewBytes, inputBytes, runRecordBytes, sourceBytes, importBytes, registry] = await Promise.all([
     read(`data/batches/${STEM}-candidate-review.json`),
     read(`data/batches/${STEM}-semantic-review-input.json`),
@@ -46,8 +47,17 @@ async function load() {
   };
 }
 
+test('every committed reviewer-checked batch is bound to its artifacts', async () => {
+  for (const number of BATCHES) {
+    const { args, importRecords, semanticSource, candidateReview } = await load(number);
+    validateSemanticReviewInputBinding(args());
+    assert.deepEqual(importRecords, semanticSource.candidate_records, `B${number} import matches its source`);
+    assert.equal(importRecords.length, candidateReview.decision_counts.admit);
+  }
+});
+
 test('the committed B06 artifacts are bound to each other', async () => {
-  const { args, importRecords, semanticSource, candidateReview } = await load();
+  const { args, importRecords, semanticSource, candidateReview } = await load('06');
   validateSemanticReviewInputBinding(args());
   // The canonical import is exactly the semantic source's candidate records.
   assert.deepEqual(importRecords, semanticSource.candidate_records);
@@ -57,7 +67,7 @@ test('the committed B06 artifacts are bound to each other', async () => {
 });
 
 test('tampering with any committed B06 artifact is rejected', async () => {
-  const { args, inputBytes, runRecordBytes } = await load();
+  const { args, inputBytes, runRecordBytes } = await load('06');
   const rejects = (name, change, pattern) => {
     const a = args();
     change(a);

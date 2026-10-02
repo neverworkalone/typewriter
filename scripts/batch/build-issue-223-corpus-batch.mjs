@@ -15,7 +15,14 @@ import {
   inspectWriterDomainEvidence,
 } from '../validate/lexical-quality.mjs';
 import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
-import { assertInputBoundToRunRecord, assertInputDerivedFromRaw, runRecordFromRaw } from './reviewer-raw-outputs.mjs';
+import { hasMorphologyBlocker } from '../validate/corpus-candidate-review.mjs';
+import {
+  GATE_HOLD_BASIS,
+  admissionGateFor,
+  assertInputBoundToRunRecord,
+  assertInputDerivedFromRaw,
+  runRecordFromRaw,
+} from './reviewer-raw-outputs.mjs';
 import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
@@ -229,11 +236,32 @@ export function componentOnlyIdentityEvidence(candidate, rationale) {
   };
 }
 
+// With no context and no component-only reading, a clear candidate can still be
+// held by citing its analyzed forms and morpheme span.
+export function noExactStartContextEvidence(candidate, rationale) {
+  const lemma = candidate.proposed_lemma;
+  const forms = (candidate.observed_surface_forms ?? []).map(({ surface }) => surface);
+  const ok = forms.length > 0
+    && new Set(forms).size === forms.length
+    && forms.every((surface) => typeof surface === 'string' && surface.includes(lemma))
+    && (candidate.observed_morpheme_spans ?? []).some(({ surface }) => surface === lemma);
+  if (!ok) return {};
+  return {
+    identity_evidence: {
+      evidence_type: 'no-exact-start-context-available',
+      rationale,
+      candidate_morpheme_span_surface: lemma,
+      observed_surface_forms: forms,
+    },
+  };
+}
+
 export function defaultIdentityEvidence(editorial, hitRefs, candidate) {
   if (editorial.identity_evidence !== undefined) return { identity_evidence: editorial.identity_evidence };
   if (hitRefs.length === 0 && editorial.paragraph_ids === undefined) {
     const componentOnly = candidate ? componentOnlyIdentityEvidence(candidate, editorial.rationale) : null;
-    return componentOnly ? { identity_evidence: componentOnly } : {};
+    if (componentOnly) return { identity_evidence: componentOnly };
+    return candidate && !hasMorphologyBlocker(candidate) ? noExactStartContextEvidence(candidate, editorial.rationale) : {};
   }
   return {
     identity_evidence: {
@@ -376,6 +404,15 @@ export function assertReviewerOutcomes(outcomes, candidateRows) {
         `${label}: a pass needs every axis to pass`,
       );
       assertHitIndices(outcome.checked_hit_indices, hits.length, label);
+      const gate = admissionGateFor(row);
+      if (gate) {
+        // A reviewer pass on a candidate the shared admission gate holds.
+        assert.equal(outcome.admission_gate, gate, `${label}: a gated pass must record its admission gate`);
+        assert.equal(judgment.disposition, 'hold', `${label}: a gated candidate cannot be admitted`);
+        assert.equal(judgment.disposition_basis, GATE_HOLD_BASIS[gate], `${label}: a ${gate} hold needs basis ${GATE_HOLD_BASIS[gate]}`);
+        return;
+      }
+      assert.equal(outcome.admission_gate, undefined, `${label}: only a gated candidate records an admission gate`);
       assert.equal(judgment.disposition, 'admit', `${label}: a reviewer pass must be admitted`);
       for (const field of ['hold_basis', 'hold_rationale', 'directions']) {
         assert.equal(outcome[field], undefined, `${label}: a pass cannot carry ${field}`);
@@ -612,6 +649,9 @@ export async function buildIssue223CorpusBatch({
       ? `w${String(canonicalNumber++).padStart(4, '0')}`
       : null;
     if (editorial.disposition === 'admit') {
+      // The shared admission path refuses these; fail early with the reason.
+      const gate = admissionGateFor(evidence.candidates[index]) ?? admissionGateFor(candidate);
+      assert.equal(gate, null, `candidate ${ordinal} ${candidate.proposed_lemma} cannot be admitted: ${gate}; hold it (${GATE_HOLD_BASIS[gate]})`);
       assert.ok(WRITER_USE_BY_AXIS[editorial.axis], `candidate ${ordinal} needs a supported writer axis`);
       assert.equal(typeof editorial.gloss, 'string');
       assert.ok(editorial.gloss.trim().length > 0);
@@ -627,7 +667,7 @@ export async function buildIssue223CorpusBatch({
       }
     } else {
       assert.equal(editorial.disposition, 'hold');
-      assert.ok(['unresolved-identity', 'unresolved-sense'].includes(editorial.basis));
+      assert.ok(['unresolved-identity', 'unresolved-sense', 'search-collision'].includes(editorial.basis));
       assert.ok(typeof editorial.rationale === 'string' && editorial.rationale.trim());
       if (editorial.basis === 'unresolved-sense') {
         assert.ok(Array.isArray(editorial.directions) && editorial.directions.length >= 2);

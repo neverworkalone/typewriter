@@ -28,7 +28,7 @@ export function hasMorphologyBlocker(proposal) {
     || proposal?.oov_morpheme_occurrences_in_sample > 0;
 }
 
-function hasCoverageCollision(row) {
+export function hasCoverageCollision(row) {
   return COLLISION_STATUSES.has(row?.coverage_status)
     && Array.isArray(row?.typewriter_surface_matches)
     && row.typewriter_surface_matches.length > 0;
@@ -131,6 +131,31 @@ function validateIdentityEvidence(row, label) {
         || !surface.includes(lemma)
         || surface.startsWith(lemma))) {
       fail(label, 'component-only identity holds must bind every analyzed full form and have no exact-start representative context', 'IDENTITY_EVIDENCE');
+    }
+    return;
+  }
+
+  if (evidence?.evidence_type === 'no-exact-start-context-available') {
+    // A fail-closed hold route (it can never admit): the sample produced no
+    // representative context that starts at the analyzed morpheme, so neither
+    // contexts nor a component-only reading can be cited. The analyzed forms
+    // and the morpheme span are cited instead.
+    const lemma = row.morphology_proposal?.lemma;
+    const forms = Array.isArray(row.observed_surface_forms)
+      ? row.observed_surface_forms.map(({ surface }) => surface)
+      : [];
+    if (typeof evidence.rationale !== 'string'
+      || evidence.rationale.trim() === ''
+      || evidence.candidate_morpheme_span_surface !== lemma
+      || !Array.isArray(row.observed_morpheme_spans)
+      || !row.observed_morpheme_spans.some(({ surface }) => surface === lemma)
+      || forms.length === 0
+      || JSON.stringify(evidence.observed_surface_forms) !== JSON.stringify(forms)
+      || new Set(forms).size !== forms.length
+      || forms.some((surface) => typeof surface !== 'string' || !surface.includes(lemma))
+      || !Array.isArray(hits)
+      || hits.length !== 0) {
+      fail(label, 'a no-exact-start-context identity hold must cite every analyzed form and the morpheme span, and have no representative context', 'IDENTITY_EVIDENCE');
     }
     return;
   }

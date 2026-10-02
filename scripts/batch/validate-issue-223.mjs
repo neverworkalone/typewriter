@@ -122,9 +122,9 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
 export function candidateRequiresBoundedContext(reviewRow) {
   const judgment = reviewRow.editorial_judgment;
   if (judgment.disposition !== 'hold' || judgment.disposition_basis !== 'unresolved-identity') return true;
-  const componentOnly = judgment.identity_evidence?.evidence_type
-    === 'reviewed-analyzed-forms-show-component-only-usage';
-  return !(componentOnly || hasMorphologyBlocker(reviewRow.morphology_proposal));
+  const zeroContextEvidence = ['reviewed-analyzed-forms-show-component-only-usage', 'no-exact-start-context-available']
+    .includes(judgment.identity_evidence?.evidence_type);
+  return !(zeroContextEvidence || hasMorphologyBlocker(reviewRow.morphology_proposal));
 }
 
 // B01-B04 predate the bound semantic-review input contract (owner override,
@@ -407,8 +407,8 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
           assert.equal(selected.proposed_lemma, localCandidate.proposed_lemma);
           if (candidateRequiresBoundedContext(reviewRow)) {
             assert.ok(selected.evidence.representative_hits.length > 0, `${candidateLabel} ${reviewRow.inventory_id} needs at least one morphology-bound paragraph context`);
-          } else if (reviewRow.editorial_judgment.identity_evidence?.evidence_type
-            === 'reviewed-analyzed-forms-show-component-only-usage') {
+          } else if (['reviewed-analyzed-forms-show-component-only-usage', 'no-exact-start-context-available']
+            .includes(reviewRow.editorial_judgment.identity_evidence?.evidence_type)) {
             assert.equal(selected.evidence.representative_hits.length, 0);
           }
           const localHitsById = new Map(localCandidate.evidence.representative_hits.map((hit) => [hit.paragraph_id, hit]));

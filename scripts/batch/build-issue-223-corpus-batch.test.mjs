@@ -6,6 +6,7 @@ import {
   assertIndependentSemanticReviewer,
   assertReviewerChecks,
   componentOnlyIdentityEvidence,
+  noExactStartContextEvidence,
   assertReviewerOutcomes,
   bindHitCounts,
   assertSemanticReviewEnvelope,
@@ -269,5 +270,52 @@ test('Issue #223 component-only identity holds are derived from the analyzed for
   assert.equal(componentOnlyIdentityEvidence(candidate([]), 'r'), null);
   assert.equal(componentOnlyIdentityEvidence(candidate(['봉식이가', '봉식이가']), 'r'), null);
   assert.equal(componentOnlyIdentityEvidence(candidate(['봉식이가'], [{ surface: '다른' }]), 'r'), null);
-  assert.deepEqual(defaultIdentityEvidence({ rationale: 'r' }, [], candidate(['식이가'])), {});
+  assert.equal(defaultIdentityEvidence({ rationale: 'r' }, [], candidate(['식이가'])).identity_evidence.evidence_type, 'no-exact-start-context-available');
+});
+
+test('Issue #223 a clear zero-context candidate that is not component-only is held with cited forms', () => {
+  const candidate = (forms, extra = {}) => ({
+    proposed_lemma: '살이',
+    observed_surface_forms: forms.map((surface) => ({ surface })),
+    observed_morpheme_spans: [{ surface: '살이' }],
+    ...extra,
+  });
+  // A form that starts with the lemma rules out component-only, yet there is no context.
+  const forms = ['살이를', '시골살이를'];
+  assert.deepEqual(defaultIdentityEvidence({ rationale: '붙은 형태다.' }, [], candidate(forms)).identity_evidence, {
+    evidence_type: 'no-exact-start-context-available',
+    rationale: '붙은 형태다.',
+    candidate_morpheme_span_surface: '살이',
+    observed_surface_forms: forms,
+  });
+  assert.deepEqual(noExactStartContextEvidence(candidate([]), 'r'), {});
+  assert.deepEqual(noExactStartContextEvidence(candidate(['다른말']), 'r'), {});
+  assert.deepEqual(noExactStartContextEvidence(candidate(['살이', '살이']), 'r'), {});
+  // A morphology blocker keeps the older no-evidence route instead.
+  assert.deepEqual(defaultIdentityEvidence({ rationale: 'r' }, [], candidate(forms, { ambiguity_status: 'held_surface_has_multiple_analyzer_interpretations' })), {});
+});
+
+test('Issue #223 an admission gate holds a reviewer pass without rewriting it', () => {
+  const hits = [{ paragraph_id: 'p0' }];
+  const collided = (judgment) => ({
+    morphology_proposal: { lemma: '관할' },
+    coverage_status: 'generated_surface_collision',
+    typewriter_surface_matches: [{ record_id: 'w1', canonical_lemma: '관하다' }],
+    bounded_provenance: { representative_hits: hits },
+    editorial_judgment: judgment,
+  });
+  const axes = { identity_check: 'ok', pos_check: 'ok', gloss_check: 'fit', sense_boundary_check: 'single' };
+  const outcome = (extra = {}) => ({
+    ordinal: 1, lemma: '관할', generator_disposition: 'admit', generator_agreement: 'agree', verdict: 'pass',
+    ...axes, checked_hit_indices: [0], ...extra,
+  });
+  const hold = { disposition: 'hold', disposition_basis: 'search-collision', rationale: '충돌 보류.' };
+  assertReviewerOutcomes([outcome({ admission_gate: 'coverage-collision' })], [collided(hold)]);
+  // The reviewer's pass cannot become an admission while the gate holds the candidate.
+  assert.throws(() => assertReviewerOutcomes([outcome({ admission_gate: 'coverage-collision' })], [collided({ disposition: 'admit' })]), /cannot be admitted/u);
+  assert.throws(() => assertReviewerOutcomes([outcome()], [collided(hold)]), /must record its admission gate/u);
+  assert.throws(() => assertReviewerOutcomes([outcome({ admission_gate: 'coverage-collision' })], [collided({ ...hold, disposition_basis: 'unresolved-identity' })]), /needs basis search-collision/u);
+  // An ungated pass may not claim a gate.
+  const clean = { ...collided({ disposition: 'admit' }), coverage_status: 'uncovered', typewriter_surface_matches: [] };
+  assert.throws(() => assertReviewerOutcomes([outcome({ admission_gate: 'coverage-collision' })], [clean]), /only a gated candidate records/u);
 });
