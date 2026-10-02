@@ -8,11 +8,14 @@ removed before publication. It is the MO-1 boundary for the later license/proven
 audit (#151), public-surface and history audit (#152), and release preparation.
 
 The classifications below are publication decisions, not a grant of rights or a
-release approval. `PUBLIC-WITH-SEPARATE-LICENSE` means the material is an intended
-public surface only after its applicable license, provenance, and notices are
-confirmed. Unknown rights, provenance, privacy, or security conditions remain
-blockers. The repository must stay private until the MO-8 release gate explicitly
-approves a specific release commit.
+release approval. `PUBLIC-WITH-SEPARATE-LICENSE` means that redistribution
+requires the applicable license, provenance, and notices to be confirmed.
+The repository is already public for owner-approved research and development;
+the original requirement to keep the entire repository private is superseded
+by that operating decision. It does not authorize disclosure of raw corpus
+material, grant third-party redistribution rights, or approve any product release.
+The corpus-informed Chrome Extension remains subject to the separate
+result-publication approval and release gates below.
 
 The path inventory was first checked against the tracked tree at f3822cf (the M5
 final-audit merge, 2026-09-24). MO-2 / #151 finalized the license model. GitHub
@@ -24,40 +27,45 @@ grant rights or approve release. The current tree has no tracked SQLite database
 extension package, or Pages artifact. Recheck the inventory and all release
 conditions against the exact release commit.
 
-## Current operating reality versus the original private-repository assumption
+## Approved research/development use and the Chrome Extension release gate
 
-The paragraph above states that the repository must stay private until the MO-8
-release gate approves a release commit. That assumption does not match current
-operation: the GitHub repository is public, as the project's operating reality, and
-it is used to open the research and development process. This section records the
-difference; it does not change any classification below and does not clear any data.
+**Research and development use — approved.** The owner confirmed that the
+application to use the National Institute of Korean Language (NIKL) Written Corpus
+2025 was approved for Typewriter's research/development reference role, as recorded
+in `docs/external-material-review-written-corpus-2025.md`. That role covers
+local storage, schema scanning and processing, local SQLite/FTS indexing, and
+lexical-reference use. The raw corpus text, paragraphs, excerpts, and local
+analysis index must never be committed, exposed in GitHub artifacts, or included
+in the product.
 
-Three approvals are distinct and must not be conflated:
+**Public development workflow — existing owner decision.** Typewriter's GitHub
+repository is public and is used for research/development with Typewriter-authored
+lexical records and traceable editorial/batch artifacts. The owner explicitly
+confirmed this operating policy for M10 in issue #239. Continuing ordinary
+development PRs under this policy is distinct from distributing a packaged
+Chrome Extension. Pending product approval alone is not a new reason to block
+every research/development batch PR. A concrete new exposure of restricted source
+text, copied passages, raw indexes, sensitive information, or another demonstrable
+rights violation must still be reviewed and stopped.
 
-1. **Research and development use of the corpus — obtained.** The NIKL Written
-   Corpus 2025 review (`docs/external-material-review-written-corpus-2025.md`)
-   records the owner-confirmed permission for the `reference` role: local storage,
-   schema scanning and processing, SQLite/FTS indexing, and lexical-reference use.
-   Corpus text and the local analysis index are not published.
-2. **A rights determination for public repository disclosure of corpus-informed
-   records — not made.** No record-level source and rights-clearance map exists, and
-   the review above covers the reference role, not public disclosure of the derived
-   records. The B05–B09 canonical imports and their batch artifacts (and earlier
-   corpus-informed records) are therefore in a public Git ref without that
-   determination. This is an open publication risk, not an approved state, and
-   `DATA-LICENSE.md`'s hold on `data/canonical/`, `data/batches/`, `data/inventory/`
-   and `data/validation/` still applies.
-3. **Approval for product distribution of corpus-informed results — pending.** An
-   application to NIKL has been submitted and no decision is recorded. Typewriter 0.1
-   was released before corpus use and does not contain corpus-informed records; the
-   Chrome Extension 0.2 that would is planned only after approval.
+**Result publication and Chrome Extension distribution — separate approval
+required.** Before publishing or distributing a Chrome Extension containing
+results informed by the NIKL corpus (including its packaged dictionary SQLite
+database), Typewriter must obtain NIKL approval for the **result-publication
+application** and satisfy the applicable project release/license gates. The owner
+has reported that the application was submitted; no approval decision is recorded
+here. Typewriter 0.1 predates corpus use and contains no corpus-informed records.
+Do not distribute the corpus-informed extension (planned 0.2) before approval.
 
-Intended practice stated by the owner: the corpus informs candidate discovery and
-usage review; canonical glosses are authored independently by Typewriter; corpus
-text and the analysis database are never published. The remaining decision —
-keeping corpus-informed records out of public refs, or documenting a concrete rights
-determination that permits their disclosure and revising this policy accordingly —
-is a repository-level owner decision, not settled by this document.
+These statements distinguish the permitted R&D use from the not-yet-approved
+product release. They do **not** assert that the R&D permission grants a general
+license to disclose derived records on public GitHub, or that public repository
+visibility independently clears third-party rights. Existing publication-rights
+uncertainty and the incomplete record-level CC BY 4.0 clearance described in
+`DATA-LICENSE.md` remain release/audit work; do not silently represent it as
+resolved. The release gate is not a requirement to obtain another NIKL approval
+before every development commit. Keep authored glosses and editorial judgments
+distinct from the external corpus, and keep all raw source passages private.
 
 ## Classification states
 
@@ -69,6 +77,16 @@ is a repository-level owner decision, not settled by this document.
   removed, or cleared before publication. This does not mean deleting an entire
   category when only individual violating items need remediation.
 - `KEEP-PRIVATE` — do not commit, distribute, or expose this material.
+
+
+**Interpretation of publication states in the existing public R&D repository:**
+The path classifications below describe rights and safety checks for reuse,
+redistribution, and release; they do not reverse the owner's decision to keep
+the R&D repository public. In particular, `PURGE-BEFORE-PUBLIC` is a historical
+classification label for material requiring audit/remediation before a new
+public release or artifact exposure, not an instruction to reopen repository
+visibility at every ordinary development PR. New restricted material must not
+be introduced into the existing public repository.
 
 ## Repository path matrix
 
@@ -133,8 +151,10 @@ that this boundary has held across Git history or GitHub-hosted surfaces.
 
 MO-3 issue #152 is closed. Its closure does not provide item-level rights evidence,
 does not provide a verifiable audit disposition for the exact refs and hosted
-surfaces, and does not approve repository visibility. The following release
-conditions remain active:
+surfaces, and does not approve distribution of corpus-informed products.
+Research/development permission is already approved; a separate NIKL
+result-publication approval is required before Chrome Extension distribution.
+The following product-release conditions remain active:
 
 1. Establish whether every canonical record, inventory item, evidence file, and
    historical snapshot may be redistributed. The M5 counts are not a provenance
@@ -149,9 +169,10 @@ conditions remain active:
 4. Investigate and remediate any personal metadata, local path, credential, raw
    external material, or license-incompatible historical content.
 
-These blockers are intentionally explicit. MO-1 does not decide final licenses,
-approve redistribution, rewrite history, publish Pages, or change repository
-visibility.
+These product-release conditions remain explicit. They are not a blanket veto
+on the owner-approved public R&D workflow in issue #239. MO-1 does not decide
+final licenses, approve corpus-informed Chrome Extension distribution, rewrite
+history, or publish a corpus-informed Pages product.
 
 ## Pages boundary
 
