@@ -796,9 +796,22 @@ async function buildInventory() {
       return seedRow?.status === 'promoted' && seedRow.canonical_id === canonicalId;
     }), 'Issue #222 historical admissions must be embedded in the current M5 seed without duplicate ledger rows');
   const issue223PromotionRows = promotions.filter(({ batch_id: id }) => id.startsWith('issue-223-m9-e-corpus-batch-'));
-  assert.equal(issue223PromotionRows.length, 1206, 'Issue #223 B01-B04 canonical imports must match the promotion ledger');
-  assert.equal(promotions.some(({ batch_id: id }) => id === 'issue-223-m9-e-corpus-batch-05-20261001'), false,
-    'Issue #223 B05 review-only decisions must stay outside the promotion ledger');
+  // Derive the expectation from the tracked Issue #223 candidate reviews: an
+  // imported batch promotes exactly its admitted decisions; a review-only batch
+  // promotes nothing.
+  const issue223ReviewNames = (await readdir(path.join(ROOT, 'data/batches')))
+    .filter((name) => /^issue-223-m9-e-corpus-batch-[0-9]{2}-candidate-review\.json$/u.test(name))
+    .sort();
+  let issue223ExpectedPromotions = 0;
+  for (const name of issue223ReviewNames) {
+    const review = JSON.parse(await readFile(path.join(ROOT, 'data/batches', name), 'utf8'));
+    const reviewOnly = review.canonical_import_status === 'owner-deferred-review-only';
+    const batchPromotions = promotions.filter(({ batch_id: id }) => id === review.batch_id).length;
+    assert.equal(batchPromotions, reviewOnly ? 0 : review.decision_counts.admit,
+      `Issue #223 ${review.batch_id} promotion ledger rows must match its ${reviewOnly ? 'review-only boundary' : 'admitted canonical imports'}`);
+    issue223ExpectedPromotions += batchPromotions;
+  }
+  assert.equal(issue223PromotionRows.length, issue223ExpectedPromotions, 'Issue #223 canonical imports must match the promotion ledger');
   assert.equal(seedStatuses.promoted, 998, 'M5 promoted seed row count changed');
   assert.equal(
     promotions.length,

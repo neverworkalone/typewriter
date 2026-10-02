@@ -24,6 +24,41 @@ grant rights or approve release. The current tree has no tracked SQLite database
 extension package, or Pages artifact. Recheck the inventory and all release
 conditions against the exact release commit.
 
+## Current operating reality versus the original private-repository assumption
+
+The paragraph above states that the repository must stay private until the MO-8
+release gate approves a release commit. That assumption does not match current
+operation: the GitHub repository is public, as the project's operating reality, and
+it is used to open the research and development process. This section records the
+difference; it does not change any classification below and does not clear any data.
+
+Three approvals are distinct and must not be conflated:
+
+1. **Research and development use of the corpus — obtained.** The NIKL Written
+   Corpus 2025 review (`docs/external-material-review-written-corpus-2025.md`)
+   records the owner-confirmed permission for the `reference` role: local storage,
+   schema scanning and processing, SQLite/FTS indexing, and lexical-reference use.
+   Corpus text and the local analysis index are not published.
+2. **A rights determination for public repository disclosure of corpus-informed
+   records — not made.** No record-level source and rights-clearance map exists, and
+   the review above covers the reference role, not public disclosure of the derived
+   records. The B05–B09 canonical imports and their batch artifacts (and earlier
+   corpus-informed records) are therefore in a public Git ref without that
+   determination. This is an open publication risk, not an approved state, and
+   `DATA-LICENSE.md`'s hold on `data/canonical/`, `data/batches/`, `data/inventory/`
+   and `data/validation/` still applies.
+3. **Approval for product distribution of corpus-informed results — pending.** An
+   application to NIKL has been submitted and no decision is recorded. Typewriter 0.1
+   was released before corpus use and does not contain corpus-informed records; the
+   Chrome Extension 0.2 that would is planned only after approval.
+
+Intended practice stated by the owner: the corpus informs candidate discovery and
+usage review; canonical glosses are authored independently by Typewriter; corpus
+text and the analysis database are never published. The remaining decision —
+keeping corpus-informed records out of public refs, or documenting a concrete rights
+determination that permits their disclosure and revising this policy accordingly —
+is a repository-level owner decision, not settled by this document.
+
 ## Classification states
 
 - `PUBLIC` — may be visible without a separate project-specific license decision;

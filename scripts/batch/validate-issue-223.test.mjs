@@ -6,8 +6,9 @@ import { readFileSync } from 'node:fs';
 import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { makeSemanticDecision } from './build-issue-223-corpus-batch.mjs';
+import { outcomeFromRaw, reviewFromRaw, runRecordFromRaw } from './reviewer-raw-outputs.mjs';
 import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
-import { semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
+import { candidateRequiresBoundedContext, semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
 function reviewOnlyBatch() {
   return {
@@ -90,34 +91,61 @@ const RECORD = { id: 'w9001', lemma: '가락', senses: [{ id: 'w9001-s1', pos: '
 const ROW = {
   inventory_id: 'm5-1',
   morphology_proposal: { lemma: '가락' },
-  editorial_judgment: { writer_use_axis: 'S' },
+  bounded_provenance: { representative_hits: [{ paragraph_id: 'p0' }, { paragraph_id: 'p1' }] },
+  editorial_judgment: { disposition: 'admit', writer_use_axis: 'S' },
 };
 
-function authoredReview() {
+const GLOSS = RECORD.senses[0].gloss;
+const RAW_OUTPUT = {
+  ordinal: 1,
+  lemma: '가락',
+  identity: 'ok',
+  pos: 'ok',
+  gloss: 'fit',
+  sense_boundary: 'single',
+  verdict: 'pass',
+  generator_agreement: 'agree',
+  sense_note: '하나의 의미로 읽힌다.',
+  use_note: '흐름의 결을 짚는다.',
+  frames: ['“가락”이라는 말이 문장에 번졌다.'],
+  note_hit_checked: [0],
+};
+
+const PROPOSALS = [{ ordinal: 1, lemma: '가락', disposition: 'admit', gloss: GLOSS }];
+
+function rawArtifactFor(outputs = [RAW_OUTPUT]) {
   return {
-    lemma: RECORD.lemma,
-    gloss_sha256: sha256Json(RECORD.senses[0].gloss),
-    gloss_judgment: 'fit',
-    boundary_action: 'retain',
-    boundary_classification: 'atomic',
-    boundary_rationale: '하나의 의미로 읽힌다.',
-    semantic_rationale: '풀이가 표제어와 맞는다.',
-    no_relation_rationale: '관계 근거 없음.',
-    decision_rationale: '독립 검토 결과 포함.',
-    frame_rationale: '프레임이 같은 의미를 유지한다.',
-    single_sense_boundary_status: 'pass',
-    frames: [{ sentence_frame: '“가락”이라는 말이 문장에 번졌다.', relation_type: 'near', target_class: '흐름' }],
+    schema_version: '1',
+    contract_version: 'reviewer-raw-outputs-v1',
+    kind: 'reviewer-raw-outputs',
+    batch_id: BOUND_BATCH,
+    reviewer: 'reviewer-a',
+    reviewed_proposals: PROPOSALS,
+    runs: [{
+      run: 1, context: 'isolated-subagent', model: 'm', first_ordinal: 1, last_ordinal: outputs.length,
+      candidate_count: outputs.length, packet_sha256: 'a'.repeat(64),
+      raw_output_sha256: sha256Json(outputs), outputs,
+    }],
   };
 }
 
 function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
-  const review = authoredReview();
+  const rawArtifact = rawArtifactFor();
+  const runRecord = runRecordFromRaw(rawArtifact);
+  const runRecordBytes = Buffer.from(JSON.stringify(runRecord));
+  const review = reviewFromRaw({ lemma: '가락', gloss: GLOSS, raw: RAW_OUTPUT });
   const input = {
+    schema_version: '1',
+    contract_version: 'authored-semantic-review-input-v1',
     kind: 'authored-semantic-review-input',
     batch_id: BOUND_BATCH,
-    reviewer: 'independent-agent',
+    reviewer: 'reviewer-a',
     review_status: 'complete',
+    generator_proposal_sha256: sha256Json(runRecord.reviewed_proposals),
+    run_record_sha256: sha(runRecordBytes),
+    review_runs: runRecord.runs,
     reviews: [review],
+    candidate_outcomes: [outcomeFromRaw('admit', RAW_OUTPUT)],
     ...inputOverrides,
   };
   const inputBytes = Buffer.from(JSON.stringify(input));
@@ -132,18 +160,23 @@ function boundFixture({ input: inputOverrides = {}, mutateDecision } = {}) {
       decisions: [decision],
     },
     inputBytes,
+    runRecordBytes,
+    rawArtifact,
     batchId: BOUND_BATCH,
     admittedRows: [ROW],
+    candidateRows: [ROW],
+    candidateAuthor: 'author-x',
+    registry: new Set(['reviewer-a']),
   };
 }
 
 test('Issue #223 bound semantic review input passes and any non-reviewer reviewer is carried to the shared contract', () => {
   const fixture = boundFixture();
   const input = validateSemanticReviewInputBinding(fixture);
-  assert.equal(input.reviewer, 'independent-agent');
+  assert.equal(input.reviewer, 'reviewer-a');
   const review = { batch_id: BOUND_BATCH, source_id: 'c', provenance: { generation_pass_id: 'g' }, decision_counts: { admit: 1 } };
   const semantic = { source_id: 's', provenance: { verification_pass_id: 'v', generator_version: 'x' } };
-  assert.equal(semanticDecisionConfig(review, semantic, 'p', input.reviewer).reviewer, 'independent-agent');
+  assert.equal(semanticDecisionConfig(review, semantic, 'p', input.reviewer).reviewer, 'reviewer-a');
   assert.equal(semanticDecisionConfig(review, semantic, 'p').reviewer, undefined);
 });
 
@@ -179,12 +212,6 @@ test('Issue #223 emitted decisions must match the bound authored review even wit
   assert.throws(() => validateSemanticReviewInputBinding(missing), /decision count/u);
 });
 
-test('Issue #223 legacy B01-B04 semantic sources stay exempt only without an input', () => {
-  const legacy = { semanticSource: { source_basis: {} }, inputBytes: null, admittedRows: [] };
-  assert.equal(validateSemanticReviewInputBinding({ ...legacy, batchId: 'issue-223-m9-e-corpus-batch-04-20261001' }), null);
-  assert.throws(() => validateSemanticReviewInputBinding({ ...legacy, batchId: 'issue-223-m9-e-corpus-batch-05-20261001' }));
-});
-
 test('Issue #223 shared semantic validator enforces the bound reviewer, not a fixed one', () => {
   const batchFile = (suffix) => new URL(`../../data/batches/issue-223-m9-e-corpus-batch-01-${suffix}`, import.meta.url);
   const review = JSON.parse(readFileSync(batchFile('candidate-review.json')));
@@ -218,4 +245,78 @@ test('Issue #223 shared semantic validator enforces the bound reviewer, not a fi
   assert.doesNotThrow(() => run(changed, 'independent-agent'));
   assert.throws(() => run(changed), /review is incomplete/u);
   assert.throws(() => run(changed, 'someone-else'), /review is incomplete/u);
+});
+
+test('Issue #223 semantic review binding rejects self-review and unregistered reviewers', () => {
+  const ok = boundFixture();
+  // The candidate-review author reviewing its own batch is not independent, however the name is cased.
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, candidateAuthor: 'reviewer-a' }), /self-review/u);
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, candidateAuthor: ' Reviewer-A ' }), /self-review/u);
+  // A reviewer name the input merely declares is not a trusted identity.
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, registry: new Set(['someone-else']) }), /trusted reviewer registry/u);
+  assert.throws(() => validateSemanticReviewInputBinding({ ...ok, registry: undefined }));
+});
+
+test('Issue #223 bounded context is required unless an identity hold rests on a morphology blocker', () => {
+  const hold = (extra = {}, proposal = {}) => ({
+    editorial_judgment: { disposition: 'hold', disposition_basis: 'unresolved-identity', ...extra },
+    morphology_proposal: proposal,
+  });
+  assert.equal(candidateRequiresBoundedContext({ editorial_judgment: { disposition: 'admit' }, morphology_proposal: {} }), true);
+  assert.equal(candidateRequiresBoundedContext(hold()), true);
+  assert.equal(candidateRequiresBoundedContext({ editorial_judgment: { disposition: 'hold', disposition_basis: 'unresolved-sense' }, morphology_proposal: { ambiguity_status: 'held_surface_has_multiple_analyzer_interpretations' } }), true);
+  assert.equal(candidateRequiresBoundedContext(hold({}, { ambiguity_status: 'held_surface_has_multiple_analyzer_interpretations' })), false);
+  assert.equal(candidateRequiresBoundedContext(hold({ identity_evidence: { evidence_type: 'reviewed-analyzed-forms-show-component-only-usage' } })), false);
+});
+
+test('Issue #223 bound review input from B06 on must preserve the reviewer checks', () => {
+  const fixture = boundFixture();
+  const input = JSON.parse(fixture.inputBytes.toString('utf8'));
+  delete input.reviews[0].identity_check;
+  const inputBytes = Buffer.from(JSON.stringify(input));
+  const semanticSource = { ...fixture.semanticSource, source_basis: { semantic_review_input_sha256: sha(inputBytes) } };
+  assert.throws(() => validateSemanticReviewInputBinding({ ...fixture, inputBytes, semanticSource }), /all five/u);
+});
+
+test('Issue #223 bound review input from B06 on must preserve an outcome for every candidate', () => {
+  const fixture = boundFixture();
+  const rebind = (mutateInput) => {
+    const input = JSON.parse(fixture.inputBytes.toString('utf8'));
+    mutateInput(input);
+    const inputBytes = Buffer.from(JSON.stringify(input));
+    return { ...fixture, inputBytes, semanticSource: { ...fixture.semanticSource, source_basis: { semantic_review_input_sha256: sha(inputBytes) } } };
+  };
+  assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { delete i.candidate_outcomes; })), /candidate_outcomes/u);
+  assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.candidate_outcomes = []; })), /every candidate/u);
+  assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.candidate_outcomes[0].checked_hit_indices = [999]; })), /outside the candidate's 2/u);
+  assert.throws(() => validateSemanticReviewInputBinding(rebind((i) => { i.reviews[0].checked_hit_indices = [999]; })), /outside the candidate's 2/u);
+});
+
+test('Issue #223 bound review input rejects a gloss changed after the reviewers assessed it', () => {
+  const fixture = boundFixture();
+  const record = { ...RECORD, senses: [{ ...RECORD.senses[0], gloss: '검수 뒤에 바뀐 풀이' }] };
+  assert.throws(
+    () => validateSemanticReviewInputBinding({ ...fixture, semanticSource: { ...fixture.semanticSource, candidate_records: [record] } }),
+    /admitted gloss differs from the gloss the reviewer assessed/u,
+  );
+});
+
+test('Issue #223 legacy unbound exception is pinned to the exact historical B01–B04 artifacts', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const load = async (n) => ({
+    candidate_review: await readFile(`data/batches/issue-223-m9-e-corpus-batch-0${n}-candidate-review.json`),
+    semantic_decisions: await readFile(`data/batches/issue-223-m9-e-corpus-batch-0${n}-semantic-decisions.json`),
+    canonical_import: await readFile(`data/canonical/issue-223-m9-e-corpus-batch-0${n}.jsonl`),
+  });
+  const base = { semanticSource: { source_basis: {} }, inputBytes: null, admittedRows: [], candidateRows: [], candidateAuthor: 'a', registry: new Set() };
+  for (const n of [1, 2, 3, 4]) {
+    const batchId = `issue-223-m9-e-corpus-batch-0${n}-20261001`;
+    const bytes = await load(n);
+    assert.equal(validateSemanticReviewInputBinding({ ...base, batchId, legacyArtifactBytes: bytes }), null);
+    // A new-dated batch with the same ordinal is not exempt.
+    assert.throws(() => validateSemanticReviewInputBinding({ ...base, batchId: `issue-223-m9-e-corpus-batch-0${n}-20270101`, legacyArtifactBytes: bytes }), /must bind its authored semantic review input/u);
+    // Any change to a pinned artifact ends the exemption.
+    assert.throws(() => validateSemanticReviewInputBinding({ ...base, batchId, legacyArtifactBytes: { ...bytes, semantic_decisions: Buffer.concat([bytes.semantic_decisions, Buffer.from(' ')]) } }), /no longer matches the pinned historical artifact/u);
+    assert.throws(() => validateSemanticReviewInputBinding({ ...base, batchId, legacyArtifactBytes: { candidate_review: bytes.candidate_review } }), /needs every pinned artifact/u);
+  }
 });

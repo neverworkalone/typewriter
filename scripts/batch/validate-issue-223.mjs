@@ -11,16 +11,23 @@ import { buildDictionary } from '../build/dictionary.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
+  assertIndependentSemanticReviewer,
+  assertReviewerChecks,
+  assertReviewerOutcomes,
+  bindHitCounts,
   assertSemanticReviewEnvelope,
+  REVIEWER_CHECK_FIRST_BATCH,
   issue223CorrectionPassId,
+  loadSemanticReviewerRegistry,
   makeSemanticDecision,
   parseIssue223BatchId,
 } from './build-issue-223-corpus-batch.mjs';
+import { assertInputBoundToRunRecord, assertInputDerivedFromRaw } from './reviewer-raw-outputs.mjs';
 import { validateIssue222 } from './validate-issue-222.mjs';
 import { validateAuthoredSemanticDecisionSource, M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION } from './authored-semantic-decision-source.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import { productionReviewRows, productionStageEvidence } from './validate-issue-211.mjs';
-import { validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
+import { hasMorphologyBlocker, validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import {
   buildSemanticAuditFromDecisionSource,
@@ -109,16 +116,41 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
   );
 }
 
-// B01-B04 predate the bound semantic-review input contract (owner override,
-// see docs/issue-223-m9-e-scale-coverage.md). Every later batch must carry one.
-const LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS = Object.freeze([1, 2, 3, 4]);
+// Admissions (and sense holds) need at least one morphology-bound paragraph
+// context. An identity hold claims no lexical entry, so it may rest on a
+// component-only analysis or on the analyzer's own morphology blocker.
+export function candidateRequiresBoundedContext(reviewRow) {
+  const judgment = reviewRow.editorial_judgment;
+  if (judgment.disposition !== 'hold' || judgment.disposition_basis !== 'unresolved-identity') return true;
+  const zeroContextEvidence = ['reviewed-analyzed-forms-show-component-only-usage', 'no-exact-start-context-available']
+    .includes(judgment.identity_evidence?.evidence_type);
+  return !(zeroContextEvidence || hasMorphologyBlocker(reviewRow.morphology_proposal));
+}
 
-export function validateSemanticReviewInputBinding({ semanticSource, inputBytes, batchId, admittedRows }) {
+// B01-B04 predate the bound semantic-review input contract (owner override,
+// see docs/issue-223-m9-e-scale-coverage.md). The exception is pinned to the
+// exact historical batch IDs and artifact bytes, so a new-dated batch with the
+// same ordinal, or any change to these artifacts, must carry a bound review.
+export const LEGACY_UNBOUND_SEMANTIC_BATCHES = Object.freeze({
+  'issue-223-m9-e-corpus-batch-01-20261001': { candidate_review: 'ea7c5bfed57959141a9ed5bdda4405ed6221b83296e61b2aee8070ce3bd59097', semantic_decisions: '7ae7e5205e81feee6d5386050662b2a95ff6c68fba498e9abca00c478d618809', canonical_import: '4c87f580ee1188e8396da9a05ba2a5dc8ff4ee4bff4b02f3cdc4be2a6122b373' },
+  'issue-223-m9-e-corpus-batch-02-20261001': { candidate_review: 'f3f2d30a2e74b64cfb9cb41858ba6e30f14951ef2130fe817f467fc8413d4a0c', semantic_decisions: '361232221c2ba28131bcf147e64ae0301bd093a515d300a40d38f323b9a3e464', canonical_import: '571c113e2426b2c2f6864f4969ebfbc4dfed32ae4c30452759d6202246d9f176' },
+  'issue-223-m9-e-corpus-batch-03-20261001': { candidate_review: 'ec94648428e3e79380e0a328133b5b5c64803d010cb24c457070288118c0649f', semantic_decisions: '64ef0a15da969ffb007ba2b84d4fc74d580739785e16163c9b90a0129df132a0', canonical_import: 'e758b145f0dce4118765239fb02fd7d6f10764e1f84ab3ff7883a37022df76b2' },
+  'issue-223-m9-e-corpus-batch-04-20261001': { candidate_review: '6f56a388cd0e4d2291e6b9263554574969ceeea2895186d71c2e054f1bfb52d6', semantic_decisions: '44f5fc819ecea2be29111cbec0c7bc8030a74f2322536c978923cc44e861ea08', canonical_import: '026d99944fc28e2bfced64f17e59a23d20109850c179f6d97444fd4430112935' },
+});
+
+export function validateSemanticReviewInputBinding({
+  semanticSource, inputBytes, runRecordBytes, rawArtifact, batchId, admittedRows, candidateRows, candidateAuthor, registry, legacyArtifactBytes,
+}) {
   const { ordinal } = parseIssue223BatchId(batchId);
   const digest = semanticSource.source_basis.semantic_review_input_sha256;
   if (digest === undefined) {
-    assert.ok(LEGACY_UNBOUND_SEMANTIC_BATCH_ORDINALS.includes(ordinal),
-      `${batchId} semantic source must bind its authored semantic review input`);
+    const pinned = LEGACY_UNBOUND_SEMANTIC_BATCHES[batchId];
+    assert.ok(pinned, `${batchId} semantic source must bind its authored semantic review input`);
+    for (const [name, bytes] of Object.entries(legacyArtifactBytes ?? {})) {
+      assert.equal(sha256Bytes(bytes), pinned[name], `${batchId} legacy ${name} no longer matches the pinned historical artifact`);
+    }
+    assert.deepEqual(Object.keys(legacyArtifactBytes ?? {}).sort(), Object.keys(pinned).sort(),
+      `${batchId} legacy exception needs every pinned artifact`);
     assert.equal(inputBytes ?? null, null, `${batchId} legacy semantic source must not carry a review input`);
     return null;
   }
@@ -126,6 +158,22 @@ export function validateSemanticReviewInputBinding({ semanticSource, inputBytes,
   assert.equal(sha256Bytes(inputBytes), digest, `${batchId} semantic review input does not match its bound digest`);
   const input = JSON.parse(inputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(input, batchId);
+  assertIndependentSemanticReviewer({ reviewer: input.reviewer, candidateAuthor, registry });
+  assertReviewerChecks(input.reviews, {
+    required: ordinal >= REVIEWER_CHECK_FIRST_BATCH,
+    hitCountByLemma: bindHitCounts(candidateRows ?? admittedRows),
+  });
+  if (ordinal >= REVIEWER_CHECK_FIRST_BATCH) {
+    assertReviewerOutcomes(input.candidate_outcomes, candidateRows);
+    // The tracked run record (metadata and digests only) binds the input to the
+    // runs, the reviewed proposals, and the exact reviewed glosses.
+    assert.ok(runRecordBytes, `${batchId} reviewer run record is missing`);
+    const runRecord = JSON.parse(runRecordBytes.toString('utf8'));
+    const glossByLemma = new Map(semanticSource.candidate_records.map((record) => [record.lemma, record.senses[0].gloss]));
+    assertInputBoundToRunRecord({ input, runRecord, runRecordBytes, candidateRows, glossByLemma, sha256Bytes });
+    // Where the raw outputs are staged locally, re-derive the record and input.
+    if (rawArtifact) assertInputDerivedFromRaw({ input, runRecord, rawArtifact, candidateRows, glossByLemma });
+  }
   const admittedLemmas = admittedRows.map((row) => row.morphology_proposal.lemma);
   assert.deepEqual(
     input.reviews.map(({ lemma }) => lemma).sort(),
@@ -230,6 +278,7 @@ function stripVolatileDatabaseMetadata(snapshot) {
 }
 
 async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence }) {
+  const reviewerRegistry = await loadSemanticReviewerRegistry();
   const names = (await readdir(BATCH_DIRECTORY))
     .filter((name) => /^issue-223-m9-e-corpus-batch-\d+-candidate-review\.json$/u.test(name))
     .sort((left, right) => Number(/batch-(\d+)/u.exec(left)?.[1]) - Number(/batch-(\d+)/u.exec(right)?.[1]));
@@ -368,13 +417,10 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
         if (selected.evidence.evidence_type === 'observed_surface_form_contexts_and_literal_text_match_count'
           || selected.evidence.evidence_type === 'candidate_morpheme_rooted_eojeol_contexts_and_literal_text_match_count') {
           assert.equal(selected.proposed_lemma, localCandidate.proposed_lemma);
-          const componentOnlyBoundaryHold = reviewRow.editorial_judgment.disposition === 'hold'
-            && reviewRow.editorial_judgment.disposition_basis === 'unresolved-identity'
-            && reviewRow.editorial_judgment.identity_evidence?.evidence_type
-              === 'reviewed-analyzed-forms-show-component-only-usage';
-          if (!componentOnlyBoundaryHold) {
+          if (candidateRequiresBoundedContext(reviewRow)) {
             assert.ok(selected.evidence.representative_hits.length > 0, `${candidateLabel} ${reviewRow.inventory_id} needs at least one morphology-bound paragraph context`);
-          } else {
+          } else if (['reviewed-analyzed-forms-show-component-only-usage', 'no-exact-start-context-available']
+            .includes(reviewRow.editorial_judgment.identity_evidence?.evidence_type)) {
             assert.equal(selected.evidence.representative_hits.length, 0);
           }
           const localHitsById = new Map(localCandidate.evidence.representative_hits.map((hit) => [hit.paragraph_id, hit]));
@@ -456,11 +502,18 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     assert.equal(semanticSource.source_basis.exclusion_manifest_sha256, candidateReview.source_artifacts.exclusion_manifest_sha256);
     assert.equal(semanticSource.candidate_records_sha256, sha256Json(semanticSource.candidate_records));
     const semanticInputPath = path.join(BATCH_DIRECTORY, `${stem}-semantic-review-input.json`);
+    const reviewerRunRecordPath = path.join(BATCH_DIRECTORY, `${stem}-reviewer-run-record.json`);
     const boundInput = validateSemanticReviewInputBinding({
       semanticSource,
       inputBytes: await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null,
+      runRecordBytes: await fileExists(reviewerRunRecordPath) ? await readFile(reviewerRunRecordPath) : null,
+      rawArtifact: await stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence),
       batchId: candidateReview.batch_id,
       admittedRows,
+      candidateRows: candidateReview.decisions,
+      candidateAuthor: candidateReview.reviewer,
+      registry: reviewerRegistry,
+      legacyArtifactBytes: { candidate_review: candidateBytes, semantic_decisions: semanticBytes, canonical_import: importBytes },
     });
     const validatedSource = validateAuthoredSemanticDecisionSource({
       source: semanticSource,
@@ -501,12 +554,12 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
   return batches;
 }
 
-async function validateDeterministicBuild(admittedRecords) {
+async function validateDeterministicBuild(admittedRecords, { compareSecondBuild = true } = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-223-determinism-'));
   try {
     const snapshots = [];
     let directlySearchable = 0;
-    for (const name of ['first', 'second']) {
+    for (const name of compareSecondBuild ? ['first', 'second'] : ['first']) {
       const outputPath = path.join(temporaryDirectory, `${name}.sqlite`);
       await buildDictionary({
         inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
@@ -529,14 +582,33 @@ async function validateDeterministicBuild(admittedRecords) {
         database.close();
       }
     }
-    assert.deepEqual(snapshots[0], snapshots[1], 'two SQLite builds must have identical logical contents');
-    return { logical_builds_compared: 2, deterministic_logical_contents: true, issue_223_records_directly_searchable: directlySearchable };
+    // Independent two-build reproducibility is a deep/manual validation path
+    // (REVIEW.md); normal CI builds once and checks direct search.
+    if (compareSecondBuild) assert.deepEqual(snapshots[0], snapshots[1], 'two SQLite builds must have identical logical contents');
+    return {
+      logical_builds_compared: snapshots.length,
+      ...(compareSecondBuild ? { deterministic_logical_contents: true } : {}),
+      issue_223_records_directly_searchable: directlySearchable,
+    };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
 }
 
-export async function validateIssue223({ verifyLocalCorpusEvidence = true, validatePreviousIssue = true } = {}) {
+// The reviewers' raw outputs are staged next to the candidate inventory under
+// ignored data/reference. Only batches that require reviewer checks (B06 on)
+// have them, and the local-evidence mode requires them to be present.
+async function stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence) {
+  if (!verifyLocalCorpusEvidence) return null;
+  const { ordinal } = parseIssue223BatchId(candidateReview.batch_id);
+  if (ordinal < REVIEWER_CHECK_FIRST_BATCH) return null;
+  const inventoryPath = path.resolve(ROOT, candidateReview.source_artifacts.candidate_inventory_path);
+  const stagedPath = path.join(path.dirname(inventoryPath), 'reviewer-raw-outputs.json');
+  assert.ok(await fileExists(stagedPath), `${candidateReview.batch_id} staged reviewer raw outputs are missing: ${path.relative(ROOT, stagedPath)}`);
+  return JSON.parse(await readFile(stagedPath, 'utf8'));
+}
+
+export async function validateIssue223({ verifyLocalCorpusEvidence = true, validatePreviousIssue = true, compareSecondBuild = true, rebuildDatabase = true } = {}) {
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const batches = await validateCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence });
   const issue223Imports = batches.flatMap(({ importRecords }) => importRecords);
@@ -599,7 +671,9 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
     assert.equal(existing, undefined, `Canonical lemma ${record.lemma} must not have duplicate records (${existing ?? ''}, ${record.id})`);
     duplicateLemmas.set(record.lemma, record.id);
   }
-  const deterministicBuild = await validateDeterministicBuild(issue223Imports);
+  // Normal CI already builds and validates the shared SQLite artifact once;
+  // rebuilding here is a manual/deep path (REVIEW.md).
+  const deterministicBuild = rebuildDatabase ? await validateDeterministicBuild(issue223Imports, { compareSecondBuild }) : {};
   const previousIssue = validatePreviousIssue ? await validateIssue222({ verifyLocalCorpusEvidence }) : undefined;
   return {
     issue: 223,
@@ -637,7 +711,9 @@ const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === path.r
 if (isMainModule) {
   const verifyLocalCorpusEvidence = !process.argv.includes('--no-local-corpus-evidence');
   const validatePreviousIssue = !process.argv.includes('--skip-issue-222');
-  validateIssue223({ verifyLocalCorpusEvidence, validatePreviousIssue })
+  const compareSecondBuild = true;
+  const rebuildDatabase = !process.argv.includes('--no-build');
+  validateIssue223({ verifyLocalCorpusEvidence, validatePreviousIssue, compareSecondBuild, rebuildDatabase })
     .then((summary) => console.log(JSON.stringify(summary, null, 2)))
     .catch((error) => {
       console.error(error.code ? `${error.code}: ${error.message}` : error.message);

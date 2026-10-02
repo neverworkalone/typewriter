@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "description": "Operating-policy list of reviewer identities named by Issue #223 semantic review inputs. The names are labels recorded by the batch changes themselves and this registry is part of the same change, so it neither authenticates nor protects reviewer identities (see docs/issue-223-m9-e-scale-coverage.md, \"Reviewer independence\").",
+  "reviewers": [
+    {
+      "id": "claude-sonnet-5-5",
+      "kind": "agent"
+    },
+    {
+      "id": "claude-sonnet-5-5-independent-reviewer",
+      "kind": "agent",
+      "note": "Isolated subagent contexts that read only candidate evidence packets and write semantic review inputs; separate from the candidate-review author claude-sonnet-5-5."
+    }
+  ]
+}

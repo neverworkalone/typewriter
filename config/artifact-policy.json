@@ -121,6 +121,14 @@
         "contract": "m9_corpus_candidate_review"
       },
       {
+        "pattern": "data/batches/issue-223-m9-e-corpus-batch-*-semantic-review-input.json",
+        "contract": "authored_semantic_review_input"
+      },
+      {
+        "pattern": "data/batches/issue-223-m9-e-corpus-batch-*-reviewer-run-record.json",
+        "contract": "reviewer_run_record"
+      },
+      {
       "pattern": "data/batches/*-semantic-decisions.json",
       "contract": "decision_source"
     },
@@ -764,7 +772,8 @@
           "exclusion_manifest_sha256": "string",
             "source_manifest_sha256": "string",
             "logical_rows_sha256": "string",
-            "permission_record_sha256": "string"
+            "permission_record_sha256": "string",
+            "semantic_review_input_sha256": "string"
           },
           "$.provenance": {
             "generator": "string",
@@ -1097,7 +1106,7 @@
           "decision_source_id"
         ],
         "nested_allowed_fields": {
-          "$.source_basis": ["pilot_decision_ledger_sha256", "candidate_selection_sha256", "candidate_count", "admitted_candidate_ordinals", "candidate_review_sha256", "candidate_evidence_sha256", "candidate_source_sha256", "candidate_source_artifact_sha256", "base_inventory_sha256", "base_seed_sha256", "candidate_records_sha256", "exclusion_manifest_sha256", "source_manifest_sha256", "logical_rows_sha256", "permission_record_sha256"],
+          "$.source_basis": ["pilot_decision_ledger_sha256", "candidate_selection_sha256", "candidate_count", "admitted_candidate_ordinals", "candidate_review_sha256", "candidate_evidence_sha256", "candidate_source_sha256", "candidate_source_artifact_sha256", "base_inventory_sha256", "base_seed_sha256", "candidate_records_sha256", "exclusion_manifest_sha256", "source_manifest_sha256", "logical_rows_sha256", "permission_record_sha256", "semantic_review_input_sha256"],
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
           "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "coverage_field", "coverage_basis", "selection_rationale"],
@@ -2600,6 +2609,280 @@
           "$.decisions.*.editorial_judgment.competing_canonical_matches.*": {
             "record_id": "string",
             "match_kind": "string"
+          }
+        }
+      },
+      "reviewer_run_record": {
+        "contract_versions": [
+          "reviewer-run-record-v1"
+        ],
+        "required_fields": [
+          "batch_id",
+          "contract_version",
+          "kind",
+          "reviewed_proposals",
+          "reviewer",
+          "runs",
+          "schema_version"
+        ],
+        "allowed_fields": [
+          "batch_id",
+          "contract_version",
+          "kind",
+          "reviewed_proposals",
+          "reviewer",
+          "runs",
+          "schema_version"
+        ],
+        "field_types": {
+          "batch_id": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "reviewed_proposals": "array<object>",
+          "reviewer": "string",
+          "runs": "array<object>",
+          "schema_version": "string"
+        },
+        "nested_allowed_fields": {
+          "$.reviewed_proposals.*": [
+            "disposition",
+            "gloss_sha256",
+            "hold_basis",
+            "lemma",
+            "ordinal"
+          ],
+          "$.runs.*": [
+            "candidate_count",
+            "context",
+            "first_ordinal",
+            "last_ordinal",
+            "model",
+            "packet_sha256",
+            "proposals_sha256",
+            "raw_output_sha256",
+            "run"
+          ]
+        },
+        "nested_field_types": {
+          "$.reviewed_proposals.*": {
+            "disposition": "string",
+            "gloss_sha256": "string",
+            "hold_basis": "string",
+            "lemma": "string",
+            "ordinal": "integer"
+          },
+          "$.runs.*": {
+            "candidate_count": "integer",
+            "context": "string",
+            "first_ordinal": "integer",
+            "last_ordinal": "integer",
+            "model": "string",
+            "packet_sha256": "string",
+            "proposals_sha256": "string",
+            "raw_output_sha256": "string",
+            "run": "integer"
+          }
+        }
+      },
+      "authored_semantic_review_input": {
+        "contract_versions": [
+          "authored-semantic-review-input-v1"
+        ],
+        "required_fields": [
+          "batch_id",
+          "contract_version",
+          "kind",
+          "review_status",
+          "reviewer",
+          "reviews",
+          "schema_version"
+        ],
+        "allowed_fields": [
+          "batch_id",
+          "candidate_outcomes",
+          "contract_version",
+          "generator_proposal_sha256",
+          "kind",
+          "run_record_sha256",
+          "review_runs",
+          "review_status",
+          "reviewer",
+          "reviews",
+          "schema_version"
+        ],
+        "field_types": {
+          "batch_id": "string",
+          "candidate_outcomes": "array<object>",
+          "contract_version": "string",
+          "generator_proposal_sha256": "string",
+          "kind": "string",
+          "run_record_sha256": "string",
+          "review_runs": "array<object>",
+          "review_status": "string",
+          "reviewer": "string",
+          "reviews": "array<object>",
+          "schema_version": "string"
+        },
+        "nested_allowed_fields": {
+          "$.review_runs.*": [
+            "candidate_count",
+            "context",
+            "first_ordinal",
+            "last_ordinal",
+            "model",
+            "packet_sha256",
+            "proposals_sha256",
+            "raw_output_sha256",
+            "run"
+          ],
+          "$.candidate_outcomes.*": [
+            "admission_gate",
+            "checked_hit_indices",
+            "directions",
+            "generator_agreement",
+            "generator_disposition",
+            "gloss_check",
+            "hold_basis",
+            "hold_rationale",
+            "identity_check",
+            "lemma",
+            "ordinal",
+            "pos_check",
+            "sense_boundary_check",
+            "verdict"
+          ],
+          "$.candidate_outcomes.*.directions.*": [
+            "hit_indices",
+            "label"
+          ],
+          "$.reviews.*": [
+            "boundary_action",
+            "boundary_classification",
+            "boundary_rationale",
+            "checked_hit_indices",
+            "decision_rationale",
+            "frame_rationale",
+            "frames",
+            "gloss_check",
+            "gloss_judgment",
+            "gloss_sha256",
+            "identity_check",
+            "lemma",
+            "no_relation_rationale",
+            "pos_check",
+            "semantic_rationale",
+            "sense_boundary_check",
+            "single_sense_boundary_status",
+            "topic_analyses",
+            "topic_analysis"
+          ],
+          "$.reviews.*.frames.*": [
+            "relation_type",
+            "sentence_frame",
+            "target_class"
+          ],
+          "$.reviews.*.topic_analysis": [
+            "evidence_basis",
+            "particle",
+            "predicate",
+            "rationale",
+            "state",
+            "status",
+            "token_index",
+            "topic",
+            "topic_pos"
+          ],
+          "$.reviews.*.topic_analyses.*": [
+            "evidence_basis",
+            "particle",
+            "predicate",
+            "rationale",
+            "state",
+            "status",
+            "token_index",
+            "topic",
+            "topic_pos"
+          ]
+        },
+        "nested_field_types": {
+          "$.review_runs.*": {
+            "candidate_count": "integer",
+            "context": "string",
+            "first_ordinal": "integer",
+            "last_ordinal": "integer",
+            "model": "string",
+            "packet_sha256": "string",
+            "proposals_sha256": "string",
+            "raw_output_sha256": "string",
+            "run": "integer"
+          },
+          "$.candidate_outcomes.*": {
+            "admission_gate": "string",
+            "checked_hit_indices": "array<integer>",
+            "directions": "array<object>",
+            "generator_agreement": "string",
+            "generator_disposition": "string",
+            "gloss_check": "string",
+            "hold_basis": "string",
+            "hold_rationale": "string",
+            "identity_check": "string",
+            "lemma": "string",
+            "ordinal": "integer",
+            "pos_check": "string",
+            "sense_boundary_check": "string",
+            "verdict": "string"
+          },
+          "$.candidate_outcomes.*.directions.*": {
+            "hit_indices": "array<integer>",
+            "label": "string"
+          },
+          "$.reviews.*": {
+            "boundary_action": "string",
+            "boundary_classification": "string",
+            "boundary_rationale": "string",
+            "checked_hit_indices": "array<integer>",
+            "decision_rationale": "string",
+            "frame_rationale": "string",
+            "frames": "array<object>",
+            "gloss_check": "string",
+            "gloss_judgment": "string",
+            "gloss_sha256": "string",
+            "identity_check": "string",
+            "lemma": "string",
+            "no_relation_rationale": "string",
+            "pos_check": "string",
+            "semantic_rationale": "string",
+            "sense_boundary_check": "string",
+            "single_sense_boundary_status": "string",
+            "topic_analyses": "array<object>",
+            "topic_analysis": "object"
+          },
+          "$.reviews.*.frames.*": {
+            "relation_type": "string",
+            "sentence_frame": "string",
+            "target_class": "string"
+          },
+          "$.reviews.*.topic_analysis": {
+            "evidence_basis": "string",
+            "particle": "string",
+            "predicate": "string",
+            "rationale": "string",
+            "state": "string",
+            "status": "string",
+            "token_index": "integer",
+            "topic": "string",
+            "topic_pos": "string"
+          },
+          "$.reviews.*.topic_analyses.*": {
+            "evidence_basis": "string",
+            "particle": "string",
+            "predicate": "string",
+            "rationale": "string",
+            "state": "string",
+            "status": "string",
+            "token_index": "integer",
+            "topic": "string",
+            "topic_pos": "string"
           }
         }
       },

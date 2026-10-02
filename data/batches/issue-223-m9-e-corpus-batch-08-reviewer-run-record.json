@@ -1,0 +1,3066 @@
+{
+  "schema_version": "1",
+  "contract_version": "reviewer-run-record-v1",
+  "kind": "reviewer-run-record",
+  "batch_id": "issue-223-m9-e-corpus-batch-08-20261001",
+  "reviewer": "claude-sonnet-5-5-independent-reviewer",
+  "reviewed_proposals": [
+    {
+      "ordinal": 1,
+      "lemma": "주거",
+      "disposition": "admit",
+      "gloss_sha256": "4d5c9022873d8aedafa16dc1e705fd16f10ca4119fbd984235c146fb3c282e50"
+    },
+    {
+      "ordinal": 2,
+      "lemma": "안주인",
+      "disposition": "admit",
+      "gloss_sha256": "5b48367db1f9c3fba446818f1a22e271e4b02341ec9ffd37e27082d4aef39cbb"
+    },
+    {
+      "ordinal": 3,
+      "lemma": "멧돼지",
+      "disposition": "admit",
+      "gloss_sha256": "a7da63d9033eefe073ab0883c8b86b16a236f35a02986a2e151b950c7c7dcd2b"
+    },
+    {
+      "ordinal": 4,
+      "lemma": "중산",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 5,
+      "lemma": "폭격",
+      "disposition": "admit",
+      "gloss_sha256": "8f8b60d81dfb6cace8caf43a408e43feadade6c8928899a434e25dcb4a977180"
+    },
+    {
+      "ordinal": 6,
+      "lemma": "암살",
+      "disposition": "admit",
+      "gloss_sha256": "5a4eba90a0ce1c835d6ee900da882f8963e8d431d449a63cc4f8598531d37f9d"
+    },
+    {
+      "ordinal": 7,
+      "lemma": "군자",
+      "disposition": "admit",
+      "gloss_sha256": "f5da7dc21443dadf17781a1cbc785674934d5bfc9310edfe1061ded879478457"
+    },
+    {
+      "ordinal": 8,
+      "lemma": "기수",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 9,
+      "lemma": "갈고리",
+      "disposition": "admit",
+      "gloss_sha256": "100ea90987ed9046d792a993cae7c20bf1912fdd7ba4a0ba178dd9af0aecefb7"
+    },
+    {
+      "ordinal": 10,
+      "lemma": "강당",
+      "disposition": "admit",
+      "gloss_sha256": "50542fe6001b19bbc1fddd3adbb004cd58066be7a60e0c6f3c4a2f0d5b444115"
+    },
+    {
+      "ordinal": 11,
+      "lemma": "생쥐",
+      "disposition": "admit",
+      "gloss_sha256": "1faa65b35ea9b1bf755008585782ee3ba35c84c004468f629c5fc9f3dcf39b2f"
+    },
+    {
+      "ordinal": 12,
+      "lemma": "장편",
+      "disposition": "admit",
+      "gloss_sha256": "3c9aa798398dc357a8daebb23b5ef32e11412b94ab2cb17b2f2bc375ba7834b4"
+    },
+    {
+      "ordinal": 13,
+      "lemma": "수송",
+      "disposition": "admit",
+      "gloss_sha256": "19e188fcd624cf939f10a3dd256b840a1f38d1542107223093d5ccf8b4ef1755"
+    },
+    {
+      "ordinal": 14,
+      "lemma": "신분증",
+      "disposition": "admit",
+      "gloss_sha256": "0a4e5d8aa29a894db49c803914d94105c1c8c0018a174d6765998bcd5d10709b"
+    },
+    {
+      "ordinal": 15,
+      "lemma": "콜라",
+      "disposition": "admit",
+      "gloss_sha256": "e9defb029465672b2d72c120ae9fe5eb18d4afaecda303a86e12b327ba8d37e7"
+    },
+    {
+      "ordinal": 16,
+      "lemma": "어질다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 17,
+      "lemma": "유리문",
+      "disposition": "admit",
+      "gloss_sha256": "c73777cc7cb4dd9403ad867ef57e7e19d3229edffcf288edad5c719301072652"
+    },
+    {
+      "ordinal": 18,
+      "lemma": "조립",
+      "disposition": "admit",
+      "gloss_sha256": "a17c2aacaaff2accbf117ca0f8b7b6887e8be96c60b8217a2cbd10e9f81c5be5"
+    },
+    {
+      "ordinal": 19,
+      "lemma": "복구",
+      "disposition": "admit",
+      "gloss_sha256": "31d6b8b8bad9a4eaf2d05ea65e09f21d233aa5a3bfe0e633e093375f00ebfa20"
+    },
+    {
+      "ordinal": 20,
+      "lemma": "상복",
+      "disposition": "admit",
+      "gloss_sha256": "0cf562e0ce1f99ee50f89b7600afdc524fc9b678b5c909a05ee19f71dcc7aa9b"
+    },
+    {
+      "ordinal": 21,
+      "lemma": "용지",
+      "disposition": "admit",
+      "gloss_sha256": "b47c6c70bf817da54fd371c07d37e33400260f2745f3dad1c970a1f9f128ba91"
+    },
+    {
+      "ordinal": 22,
+      "lemma": "먹잇감",
+      "disposition": "admit",
+      "gloss_sha256": "f15dd9317d8c0a9f3585abc7e9d21d04d0e17c2c1e6bab97adcfb10eb53466ab"
+    },
+    {
+      "ordinal": 23,
+      "lemma": "반전",
+      "disposition": "admit",
+      "gloss_sha256": "0c82737e998c9f5bc6345052947e36a9a614ce20fad536b5f8b2b6f669eed18c"
+    },
+    {
+      "ordinal": 24,
+      "lemma": "스러지다",
+      "disposition": "admit",
+      "gloss_sha256": "db84fa5edd8d03a7ec8e663d111c9a2af9b5a6b74a6e92b324ac512cf1ba7368"
+    },
+    {
+      "ordinal": 25,
+      "lemma": "큰아들",
+      "disposition": "admit",
+      "gloss_sha256": "28195a414820c59fe1c8aab7ddc2c96333decb9f90a23f26602dcbaff970bf9e"
+    },
+    {
+      "ordinal": 26,
+      "lemma": "결백",
+      "disposition": "admit",
+      "gloss_sha256": "2df6c5a4c206be659c8c96ba071452a96bd46563f98b102c35b94a9df3ada8ee"
+    },
+    {
+      "ordinal": 27,
+      "lemma": "낙서",
+      "disposition": "admit",
+      "gloss_sha256": "26ab4157b9bc9fcdc64018109e7935e96307a89140f908b353ffa636d67a6be8"
+    },
+    {
+      "ordinal": 28,
+      "lemma": "스파이",
+      "disposition": "admit",
+      "gloss_sha256": "49028456c00d4675345d12a97a7bf2f8b91fc486e089fb1ff9e2b3e68435c4fa"
+    },
+    {
+      "ordinal": 29,
+      "lemma": "자립",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 30,
+      "lemma": "청각",
+      "disposition": "admit",
+      "gloss_sha256": "1a0eeb378c50bbe9d3504050b56999d6a19351fb2198a58b18badfd57c9fd281"
+    },
+    {
+      "ordinal": 31,
+      "lemma": "물소리",
+      "disposition": "admit",
+      "gloss_sha256": "9e1beafc1bbfc2a98756e36bec848eab1c5392fe638fffdb5fce827387584acc"
+    },
+    {
+      "ordinal": 32,
+      "lemma": "변태",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 33,
+      "lemma": "양철",
+      "disposition": "admit",
+      "gloss_sha256": "09d480982c0fa903de451ab9a72b9ff068b996ca13fc5d8143c730008297af32"
+    },
+    {
+      "ordinal": 34,
+      "lemma": "웃옷",
+      "disposition": "admit",
+      "gloss_sha256": "e06095a7977694deecfcf540aba26a9d64fb22818a69b752d42b601ccd3f9ba8"
+    },
+    {
+      "ordinal": 35,
+      "lemma": "은신처",
+      "disposition": "admit",
+      "gloss_sha256": "9962eb2be0f234a7b9536661f32a0ba6c854c238015e5aac1a604cad17d2d6ea"
+    },
+    {
+      "ordinal": 36,
+      "lemma": "커피숍",
+      "disposition": "admit",
+      "gloss_sha256": "68713455df1a6ad54d6c339bb0f81c6bb941ab1b963fb4cae914814a9c62ee87"
+    },
+    {
+      "ordinal": 37,
+      "lemma": "걸려들다",
+      "disposition": "admit",
+      "gloss_sha256": "808984d58cd4a95af3f421b776c11b9738ce8c5a380d489107957e02304668dd"
+    },
+    {
+      "ordinal": 38,
+      "lemma": "단기",
+      "disposition": "admit",
+      "gloss_sha256": "9a8f1624f55ed5621897cf93226550f8c7256b3cb88896721f56ddbbe220c5e3"
+    },
+    {
+      "ordinal": 39,
+      "lemma": "비늘",
+      "disposition": "admit",
+      "gloss_sha256": "e9941fcaa6600a457631cbb1e11fbd067696e71c2c3b222824b2c2494410159a"
+    },
+    {
+      "ordinal": 40,
+      "lemma": "신원",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 41,
+      "lemma": "조장",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 42,
+      "lemma": "노여움",
+      "disposition": "admit",
+      "gloss_sha256": "bdafdac42acc91da1d0a8ca308bea34145dffe3bee0979d8fa1daedd0c08a94f"
+    },
+    {
+      "ordinal": 43,
+      "lemma": "레몬",
+      "disposition": "admit",
+      "gloss_sha256": "b2f644cbb8028c1399f27403eb5bcff72d667db1a266d2c6cdc6044dd345a27d"
+    },
+    {
+      "ordinal": 44,
+      "lemma": "칭호",
+      "disposition": "admit",
+      "gloss_sha256": "221b61861041a44796e8d3084d535041734dde188fd29a8bf56b70276d411a1e"
+    },
+    {
+      "ordinal": 45,
+      "lemma": "풀숲",
+      "disposition": "admit",
+      "gloss_sha256": "ad0772f6cd448d731a80f3d560e3b251aac67756029a959690ac4412e0857dd5"
+    },
+    {
+      "ordinal": 46,
+      "lemma": "용무",
+      "disposition": "admit",
+      "gloss_sha256": "13699c0dd6e516fd0e58b4bbda6a3f8936f9f2cb57e12299e57e1a53e2945e9a"
+    },
+    {
+      "ordinal": 47,
+      "lemma": "고양",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 48,
+      "lemma": "곤두세우다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 49,
+      "lemma": "꼽히다",
+      "disposition": "admit",
+      "gloss_sha256": "3e4a27a65f792cb91663aaa270611d837bed159400ba726c324967b8e8d55ef9"
+    },
+    {
+      "ordinal": 50,
+      "lemma": "떠받치다",
+      "disposition": "admit",
+      "gloss_sha256": "6c7882244526a92cba97f995f6b1a96776cfbd96b28b3dd078998fc4aba1dee8"
+    },
+    {
+      "ordinal": 51,
+      "lemma": "영위",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 52,
+      "lemma": "기름지다",
+      "disposition": "admit",
+      "gloss_sha256": "180d021831ebc0df1ebeb6f7a71cd81e4bd3a2e6bf66d542ce4aa79fa3a31064"
+    },
+    {
+      "ordinal": 53,
+      "lemma": "내려서다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 54,
+      "lemma": "상반",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 55,
+      "lemma": "선보이다",
+      "disposition": "admit",
+      "gloss_sha256": "396ee50e108491cea61883d919461267fb054ca61c57e482aaa5f7c47d0c92ca"
+    },
+    {
+      "ordinal": 56,
+      "lemma": "슬다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 57,
+      "lemma": "감명",
+      "disposition": "admit",
+      "gloss_sha256": "39614346d9f408a2a0b692b5b2ef01460b000574351fd293d83fd0e0a8159d1b"
+    },
+    {
+      "ordinal": 58,
+      "lemma": "늦잠",
+      "disposition": "admit",
+      "gloss_sha256": "01d07206acfcc2b09dad493803c075c4bb5734dca507d2ce74bd170d8367fc12"
+    },
+    {
+      "ordinal": 59,
+      "lemma": "무언",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 60,
+      "lemma": "양팔",
+      "disposition": "admit",
+      "gloss_sha256": "724e9ac6f6738d9b93c7c93bc5ce544fde37af656099ff942952038d213436a3"
+    },
+    {
+      "ordinal": 61,
+      "lemma": "착오",
+      "disposition": "admit",
+      "gloss_sha256": "afeda157f9d66d1ef9ff913ac6cf55172cac54209134fc3651c620a6b4386b7c"
+    },
+    {
+      "ordinal": 62,
+      "lemma": "물거품",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 63,
+      "lemma": "반나절",
+      "disposition": "admit",
+      "gloss_sha256": "e412f9c613b6b1777795e3227b910b6a66271aac86b65ffae694ede9359f7832"
+    },
+    {
+      "ordinal": 64,
+      "lemma": "뼈저리다",
+      "disposition": "admit",
+      "gloss_sha256": "b1147fb8f0a5e269970470ce0cd10304ef4d8f4a8af3a9dc07fbc32216e2d88b"
+    },
+    {
+      "ordinal": 65,
+      "lemma": "엉망진창",
+      "disposition": "admit",
+      "gloss_sha256": "9b4a89cfed8c8d9c848d18dd9d7eecc43564749edefe015e39d94784fcb7cbf8"
+    },
+    {
+      "ordinal": 66,
+      "lemma": "유효",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 67,
+      "lemma": "은연중",
+      "disposition": "admit",
+      "gloss_sha256": "405351e15f398024e9e0eccfc249bce47735d9f1a3668922f182738c1ef3b782"
+    },
+    {
+      "ordinal": 68,
+      "lemma": "해보다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 69,
+      "lemma": "무당",
+      "disposition": "admit",
+      "gloss_sha256": "f6a42ace249156748f26e1ff296fa7cfd9da43d7b74c612c82b627c4d71bb876"
+    },
+    {
+      "ordinal": 70,
+      "lemma": "이삭",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 71,
+      "lemma": "여인숙",
+      "disposition": "admit",
+      "gloss_sha256": "1ea54460d38208fcd02807f397a7b8ceb8b1bbb72d60b25f90a7742ed915ff95"
+    },
+    {
+      "ordinal": 72,
+      "lemma": "항공",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 73,
+      "lemma": "마인드",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 74,
+      "lemma": "황야",
+      "disposition": "admit",
+      "gloss_sha256": "1e1051725bd197522c757867931120e311ff970709afbf3a88308ce94e7d136a"
+    },
+    {
+      "ordinal": 75,
+      "lemma": "거하다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 76,
+      "lemma": "상공",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 77,
+      "lemma": "마크",
+      "disposition": "admit",
+      "gloss_sha256": "1f1da221ae7e6670b6ea4895b6fdb786ad95d2222daf0e931c003f360db3ece7"
+    },
+    {
+      "ordinal": 78,
+      "lemma": "자작나무",
+      "disposition": "admit",
+      "gloss_sha256": "7d5fa0dae998afc0e363c7c04aff04271d6a53fff7568c6e86c934ba0821bc61"
+    },
+    {
+      "ordinal": 79,
+      "lemma": "외식",
+      "disposition": "admit",
+      "gloss_sha256": "dec83e5870073d4e956ccc6a8b6c5693fc7ed1033ffd8ba125951a05cc5de081"
+    },
+    {
+      "ordinal": 80,
+      "lemma": "경전",
+      "disposition": "admit",
+      "gloss_sha256": "bc04fdb2be3f22fd79b29c2c73181eaae45ee0713e1586f745c0fe5fbcced898"
+    },
+    {
+      "ordinal": 81,
+      "lemma": "살점",
+      "disposition": "admit",
+      "gloss_sha256": "bd0d6454301b1c06f486bd5ff19c28b01d22fe3fcb11171ddc4994a9dd770471"
+    },
+    {
+      "ordinal": 82,
+      "lemma": "측근",
+      "disposition": "admit",
+      "gloss_sha256": "edb639cf36955daca96180de1d301642c258c7dc41d1139664182e551b5774f0"
+    },
+    {
+      "ordinal": 83,
+      "lemma": "기도문",
+      "disposition": "admit",
+      "gloss_sha256": "8e1b5c716b057a9a5615f1334cb69985726ad811a84a58fd2fe8351176f1971d"
+    },
+    {
+      "ordinal": 84,
+      "lemma": "기저귀",
+      "disposition": "admit",
+      "gloss_sha256": "1965c80e54022c9b766bf6895c265e5c673f3cc451e2ac2c59227f6637c2e9da"
+    },
+    {
+      "ordinal": 85,
+      "lemma": "복제",
+      "disposition": "admit",
+      "gloss_sha256": "737cddbc0fdfd526e5b6004f8b1612b7c1034503c16ce34f8c4f7c5729d029e7"
+    },
+    {
+      "ordinal": 86,
+      "lemma": "선임",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 87,
+      "lemma": "계몽",
+      "disposition": "admit",
+      "gloss_sha256": "4d68f65946aef770f5154fdb014024a2d60bebb69eab17d9c7e99cea5b1dd122"
+    },
+    {
+      "ordinal": 88,
+      "lemma": "선출",
+      "disposition": "admit",
+      "gloss_sha256": "eaa6aa21923a9272343a78accbb6922484f21020eef820a8eb5529bf0655c7cf"
+    },
+    {
+      "ordinal": 89,
+      "lemma": "횡단",
+      "disposition": "admit",
+      "gloss_sha256": "e9d481a135d438a76aadc97107ef2f6610dd50cd013b9e3c0e59ab798b63905f"
+    },
+    {
+      "ordinal": 90,
+      "lemma": "이력서",
+      "disposition": "admit",
+      "gloss_sha256": "5edde7bacf2403c77de6ce3e52e2bca159786b2622e96e5981f4e4140ecad8ce"
+    },
+    {
+      "ordinal": 91,
+      "lemma": "디저트",
+      "disposition": "admit",
+      "gloss_sha256": "e360d54cb2b730b40dd3ef9a9a410106771e6ca15eb7bb92d237e507848d1c44"
+    },
+    {
+      "ordinal": 92,
+      "lemma": "복원",
+      "disposition": "admit",
+      "gloss_sha256": "0e52ee58288cf6c326b007f75c6a7c331039dd19394b8c34447240fcdf314d94"
+    },
+    {
+      "ordinal": 93,
+      "lemma": "작업복",
+      "disposition": "admit",
+      "gloss_sha256": "d9edd44dc7e82060d7ea7453149c7b9f00d5246382c21f0380c9401040f1239a"
+    },
+    {
+      "ordinal": 94,
+      "lemma": "소독",
+      "disposition": "admit",
+      "gloss_sha256": "e739effc33698ab769db2443fa363c184c2e7ee92d4ebfd898ca8b4244cfee89"
+    },
+    {
+      "ordinal": 95,
+      "lemma": "계산대",
+      "disposition": "admit",
+      "gloss_sha256": "fbb969028d9902befc883304d2a6d0f512dafdec0bd71d5509f71c205cddb3f9"
+    },
+    {
+      "ordinal": 96,
+      "lemma": "불륜",
+      "disposition": "admit",
+      "gloss_sha256": "510386dee6afd75abb5029cc0df61c12d29d199154ddc9df7fef288cafea34a2"
+    },
+    {
+      "ordinal": 97,
+      "lemma": "영장",
+      "disposition": "admit",
+      "gloss_sha256": "0fc29905268ba4797ca47b8efbc3d8f2c5706d1d8420f009e4d40ca55a066157"
+    },
+    {
+      "ordinal": 98,
+      "lemma": "창녀",
+      "disposition": "admit",
+      "gloss_sha256": "4289cf8fe458b274e9b024d75a5ec281ea4e77ea8866ba32f94e8a973468672c"
+    },
+    {
+      "ordinal": 99,
+      "lemma": "책자",
+      "disposition": "admit",
+      "gloss_sha256": "0599a4e64ced3a6fc6542c40d512528feee06be593c6fe6c1d480f7be0314a9f"
+    },
+    {
+      "ordinal": 100,
+      "lemma": "배척",
+      "disposition": "admit",
+      "gloss_sha256": "3c7b416171a4439d3bdb26e855ceddec0213f5f3f79cff189b3f6d4583eff61a"
+    },
+    {
+      "ordinal": 101,
+      "lemma": "베스트셀러",
+      "disposition": "admit",
+      "gloss_sha256": "67e7fb6304aad362a414a1055e2f3b2f73628987eae60ffb54cd8fdf611b0538"
+    },
+    {
+      "ordinal": 102,
+      "lemma": "사상가",
+      "disposition": "admit",
+      "gloss_sha256": "97636052f630209f5dcc9e1841e2decaf12d3c8cd56ebeb18424eb9b26c268c0"
+    },
+    {
+      "ordinal": 103,
+      "lemma": "삽입",
+      "disposition": "admit",
+      "gloss_sha256": "60c8dd5b6f10dfc7e83ed5f0b51b9d25bb08a0326c3e8e39bc9d4ff69f99a1f3"
+    },
+    {
+      "ordinal": 104,
+      "lemma": "모텔",
+      "disposition": "admit",
+      "gloss_sha256": "51c2e4a4abc48e5e5c7f90918c733df533d798cb6b5dd9f88b71df620642c6e1"
+    },
+    {
+      "ordinal": 105,
+      "lemma": "어치",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 106,
+      "lemma": "인질",
+      "disposition": "admit",
+      "gloss_sha256": "511a95335062c7eae43763d360188519a044d8765ec68ea4dd4ddd412a356558"
+    },
+    {
+      "ordinal": 107,
+      "lemma": "디테일",
+      "disposition": "admit",
+      "gloss_sha256": "0d0784a8374082eaf720c00dbbfc3e7f91ef91b389bd4196faa0f26d13e38074"
+    },
+    {
+      "ordinal": 108,
+      "lemma": "마케팅",
+      "disposition": "admit",
+      "gloss_sha256": "0f17b8a0b7835517e84ddb04e141ab178fffd8093395eb2d076e6edbe945522e"
+    },
+    {
+      "ordinal": 109,
+      "lemma": "벽장",
+      "disposition": "admit",
+      "gloss_sha256": "4a77609852c15b8547bf92315a5dfe87456724da3673dad08d64ebeeba5ad3d1"
+    },
+    {
+      "ordinal": 110,
+      "lemma": "과업",
+      "disposition": "admit",
+      "gloss_sha256": "228cd523f9bff72db25ab3412b00457fa65a8ff275648fe94e943f57b69eecee"
+    },
+    {
+      "ordinal": 111,
+      "lemma": "방아쇠",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 112,
+      "lemma": "분자",
+      "disposition": "admit",
+      "gloss_sha256": "959edbc5f6fcfab70715c981fa83b69e3432f63a9e53b2c67296680a45c39708"
+    },
+    {
+      "ordinal": 113,
+      "lemma": "수법",
+      "disposition": "admit",
+      "gloss_sha256": "99631231c7502091dd64485e8e8750149481bd3b77449def5e9b644efaf93f03"
+    },
+    {
+      "ordinal": 114,
+      "lemma": "오두막집",
+      "disposition": "admit",
+      "gloss_sha256": "80b4a56ddacd50e6c5d8886a09b8c0160ff2921f64b7c6d446380ede2cca03e7"
+    },
+    {
+      "ordinal": 115,
+      "lemma": "격자",
+      "disposition": "admit",
+      "gloss_sha256": "bab509ddc3d06375535650149db9684dd909ff35857aaf5b9269d8414123e8d3"
+    },
+    {
+      "ordinal": 116,
+      "lemma": "덧없다",
+      "disposition": "admit",
+      "gloss_sha256": "d37cbd2213e091af4233ef65bd61ed2e1cecede36b18439ebd101cf530f1a9b5"
+    },
+    {
+      "ordinal": 117,
+      "lemma": "분출",
+      "disposition": "admit",
+      "gloss_sha256": "f290bad185f9d09931c2c91ba518dc91f92022312a438601512c7acfdb217208"
+    },
+    {
+      "ordinal": 118,
+      "lemma": "삽시간",
+      "disposition": "admit",
+      "gloss_sha256": "bcd3f2fdb92e97dc66c7176176ef82866e1e5369d9c519df23047a31e34b502f"
+    },
+    {
+      "ordinal": 119,
+      "lemma": "요점",
+      "disposition": "admit",
+      "gloss_sha256": "8e665ff26f544f48fc5132a0be0969b0c7c50c93f733bb5be84da50cb5c28bb7"
+    },
+    {
+      "ordinal": 120,
+      "lemma": "천연",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 121,
+      "lemma": "편입",
+      "disposition": "admit",
+      "gloss_sha256": "fc7b5b34112e7eeefb0d0b1db14c783510beedb62bf655d9d503e48660ae538e"
+    },
+    {
+      "ordinal": 122,
+      "lemma": "표본",
+      "disposition": "admit",
+      "gloss_sha256": "c2d7fde2ac6037c96ec3a1f0e25c980fe187d72128848c029b85f2c4bfc140fd"
+    },
+    {
+      "ordinal": 123,
+      "lemma": "정수리",
+      "disposition": "admit",
+      "gloss_sha256": "e49fef920db1c994cf707fa29808b660a8393e737681c32ee48daa48253fb606"
+    },
+    {
+      "ordinal": 124,
+      "lemma": "구박",
+      "disposition": "admit",
+      "gloss_sha256": "f577b41c58ff1f8ee56ac91a9f762b86a9fd40ef7274305850c7f64db61f275b"
+    },
+    {
+      "ordinal": 125,
+      "lemma": "늘이다",
+      "disposition": "admit",
+      "gloss_sha256": "bcfafa9453886bbaabbfd394ce2ed7bf1c23c3730e9dbd49d05a5b60ea5f954e"
+    },
+    {
+      "ordinal": 126,
+      "lemma": "모다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 127,
+      "lemma": "야기",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 128,
+      "lemma": "여가",
+      "disposition": "admit",
+      "gloss_sha256": "6bdaced4a7cee18e5d2e36c82637319ed61a699e94b3cff27d62523747846c19"
+    },
+    {
+      "ordinal": 129,
+      "lemma": "왕족",
+      "disposition": "admit",
+      "gloss_sha256": "905066f5a68f4d68f8fe61d566a5e250eee497b4a40c09bc6d210f1d932f6f14"
+    },
+    {
+      "ordinal": 130,
+      "lemma": "위세",
+      "disposition": "admit",
+      "gloss_sha256": "2d24b0d1708bd0f84d5b821ee3d0429b42b8249754b574226eec485ae057ccf0"
+    },
+    {
+      "ordinal": 131,
+      "lemma": "전환점",
+      "disposition": "admit",
+      "gloss_sha256": "d1d7b8025b0fc227e2d270626cd51854ae5215f23aef73628eabbea4a01fe760"
+    },
+    {
+      "ordinal": 132,
+      "lemma": "통쾌",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 133,
+      "lemma": "배기다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 134,
+      "lemma": "써먹다",
+      "disposition": "admit",
+      "gloss_sha256": "7c2610f0f2b316ac8626ae42af58d0ed6ec1a163a3a468a28a63f6588342541f"
+    },
+    {
+      "ordinal": 135,
+      "lemma": "인위",
+      "disposition": "admit",
+      "gloss_sha256": "f3ca2f94ead7304284ae41415267d93c39245f4fc18a70fc1a924edb3d868967"
+    },
+    {
+      "ordinal": 136,
+      "lemma": "혈기",
+      "disposition": "admit",
+      "gloss_sha256": "7a0ecf83c2e905c6c9874643b2d62c7c260074a4d4d07120c7cd0f5abd7fb6e0"
+    },
+    {
+      "ordinal": 137,
+      "lemma": "무안",
+      "disposition": "admit",
+      "gloss_sha256": "cef471e4eb20e849186d709d5e8c37f5f0c9d814f8209f71a854ef5d84be2332"
+    },
+    {
+      "ordinal": 138,
+      "lemma": "분통",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 139,
+      "lemma": "안타까워하다",
+      "disposition": "admit",
+      "gloss_sha256": "781caddd4020855f9f6ec048c70d6eb55bdf842e5616cb423af4f0a51d46a9cf"
+    },
+    {
+      "ordinal": 140,
+      "lemma": "의향",
+      "disposition": "admit",
+      "gloss_sha256": "7dbec618f17bdfe1551b03d2eaacbc9f9c466510163c107bf93bd82c37d42256"
+    },
+    {
+      "ordinal": 141,
+      "lemma": "전염",
+      "disposition": "admit",
+      "gloss_sha256": "c007ec00733defc4574ffa6db6ec13963b98e7b1ac70db5ff1372dfaae20a7aa"
+    },
+    {
+      "ordinal": 142,
+      "lemma": "혼미",
+      "disposition": "admit",
+      "gloss_sha256": "88c9c45686bb25a6b84ba2f4c0e266e9f90a472f4af12009267e4688ac2e7f6c"
+    },
+    {
+      "ordinal": 143,
+      "lemma": "땀방울",
+      "disposition": "admit",
+      "gloss_sha256": "7eddfa71943a047bb4f587c68cd5e3dedeb35cd2a8897b252b4a03087804fa31"
+    },
+    {
+      "ordinal": 144,
+      "lemma": "위급",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 145,
+      "lemma": "집어먹다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 146,
+      "lemma": "참담",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 147,
+      "lemma": "틈타다",
+      "disposition": "admit",
+      "gloss_sha256": "a6e54810086c02e346abbda43d973b53a7a3d571c5b26dcc8c89ca9a68830354"
+    },
+    {
+      "ordinal": 148,
+      "lemma": "편성",
+      "disposition": "admit",
+      "gloss_sha256": "b4d1dce25d0348f3f5cd1b80e4d60c07af261ee8c30feeed5521df9742ac3854"
+    },
+    {
+      "ordinal": 149,
+      "lemma": "비옥",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 150,
+      "lemma": "어안",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 151,
+      "lemma": "잡아끌다",
+      "disposition": "admit",
+      "gloss_sha256": "f3ee5c4b8782efb8a92ef08ad303b1a4dcb29524f52592b0417327b8d1daf6e0"
+    },
+    {
+      "ordinal": 152,
+      "lemma": "전전",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 153,
+      "lemma": "정점",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 154,
+      "lemma": "단축",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 155,
+      "lemma": "손사래",
+      "disposition": "admit",
+      "gloss_sha256": "6289605cf57843516af7a75648517baead62ecc104eb4b712461cc44f7ef4676"
+    },
+    {
+      "ordinal": 156,
+      "lemma": "아랫",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 157,
+      "lemma": "북적이다",
+      "disposition": "admit",
+      "gloss_sha256": "65cb8afcbeffd7c8e0e7f2479364bd8c469f38a954531f2933125d2bbf252f35"
+    },
+    {
+      "ordinal": 158,
+      "lemma": "루블",
+      "disposition": "admit",
+      "gloss_sha256": "a317ce2791b95cd9b0601c945c7d7e9bd36e91bad18742c7f07b659e3caf3356"
+    },
+    {
+      "ordinal": 159,
+      "lemma": "선녀",
+      "disposition": "admit",
+      "gloss_sha256": "6f155965d1a8bfe296ea0b49755b629f3f8edd691b7ba3d950c0ea5cf843eb8d"
+    },
+    {
+      "ordinal": 160,
+      "lemma": "마담",
+      "disposition": "admit",
+      "gloss_sha256": "abda2c99668a95b952e511004ab417334c3637b2ca1a14c736f157d4d3b9a049"
+    },
+    {
+      "ordinal": 161,
+      "lemma": "포탄",
+      "disposition": "admit",
+      "gloss_sha256": "1ae7d670060b8717b5f39053904484c5dc34c69ca0bdf576c4ec0bae1ee31b09"
+    },
+    {
+      "ordinal": 162,
+      "lemma": "교인",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 163,
+      "lemma": "국화",
+      "disposition": "admit",
+      "gloss_sha256": "c46b686e7bd453b7bb86d0602cb9f16034e52576c5a77825f3b944bccc6d0e13"
+    },
+    {
+      "ordinal": 164,
+      "lemma": "여편네",
+      "disposition": "admit",
+      "gloss_sha256": "774bc9ca3139b5616e97e2440da5d8c7485dfb774e88764674c4e975958a5ba9"
+    },
+    {
+      "ordinal": 165,
+      "lemma": "추모",
+      "disposition": "admit",
+      "gloss_sha256": "0eaa999dea934de0c15ac0ee7d9b9abf39d791c375a6230a058d7a5dd58f9da6"
+    },
+    {
+      "ordinal": 166,
+      "lemma": "아편",
+      "disposition": "admit",
+      "gloss_sha256": "877a4b45033ab9ee528455c2e38b5fc83431d9a094fd74325356c8004dac8ccb"
+    },
+    {
+      "ordinal": 167,
+      "lemma": "자치",
+      "disposition": "admit",
+      "gloss_sha256": "08e0997e14a42ed126da64ef54a1462cc97dac180ed0048676580b23389d53cc"
+    },
+    {
+      "ordinal": 168,
+      "lemma": "지사",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 169,
+      "lemma": "정벌",
+      "disposition": "admit",
+      "gloss_sha256": "aaba234cc73d878d1e0ccb038947de691e3d56ad13e603de71b1e3c8407dba97"
+    },
+    {
+      "ordinal": 170,
+      "lemma": "해바라기",
+      "disposition": "admit",
+      "gloss_sha256": "58add6613d440273bf36b5dd33f10c9b6b950c773e93a0165e9c910ca711311a"
+    },
+    {
+      "ordinal": 171,
+      "lemma": "인문학",
+      "disposition": "admit",
+      "gloss_sha256": "8e5e43f95e2b306635b9e083d725635d0bec010cc726a88cd697b1dd72f74290"
+    },
+    {
+      "ordinal": 172,
+      "lemma": "포대",
+      "disposition": "admit",
+      "gloss_sha256": "e5c074811cc4897cbd80952ddf971bc8b888d77d2147c1ba77a582c17ad284de"
+    },
+    {
+      "ordinal": 173,
+      "lemma": "도사",
+      "disposition": "admit",
+      "gloss_sha256": "52df1c9fdd82d76a7c36e0ab1ff55d58baeed7376044f99c335b3a18db21bbfd"
+    },
+    {
+      "ordinal": 174,
+      "lemma": "급식",
+      "disposition": "admit",
+      "gloss_sha256": "382b69e3782211d5d370d814122ce97fc919f6daf8715218674e83d0ae8b2a1a"
+    },
+    {
+      "ordinal": 175,
+      "lemma": "사이즈",
+      "disposition": "admit",
+      "gloss_sha256": "63918c0975df9e66f9b5cb750e0a35545b0ddca5b7c873c52896cf31e2ec256f"
+    },
+    {
+      "ordinal": 176,
+      "lemma": "잡수다",
+      "disposition": "admit",
+      "gloss_sha256": "2dfba485ac0f83e60d0f90edeef8b38c1ae0a184c0350e57e7be6ca27c30de09"
+    },
+    {
+      "ordinal": 177,
+      "lemma": "팬티",
+      "disposition": "admit",
+      "gloss_sha256": "814197234cd22eeefcfc61195a497d54ef115e532cf56459ef85dd963a7de1d7"
+    },
+    {
+      "ordinal": 178,
+      "lemma": "정당",
+      "disposition": "admit",
+      "gloss_sha256": "47d401ce4c56d0e1c6b4aad183d2d6fd27c0f6420f49516e027e456c36613154"
+    },
+    {
+      "ordinal": 179,
+      "lemma": "개체",
+      "disposition": "admit",
+      "gloss_sha256": "0c876565178ea28aa37ad19a101a1805aa2e96fd313fb3a96b9f0a039390a9d7"
+    },
+    {
+      "ordinal": 180,
+      "lemma": "봉쇄",
+      "disposition": "admit",
+      "gloss_sha256": "1de520a4afefab7fdd807240527adb95bcd56d030fa1c6fa9ada83fd13a77926"
+    },
+    {
+      "ordinal": 181,
+      "lemma": "전나무",
+      "disposition": "admit",
+      "gloss_sha256": "b0cad1a56e944c16af5c3d5478bfc893f2e2b4d850ab73865ec0d5c1ca424b20"
+    },
+    {
+      "ordinal": 182,
+      "lemma": "침해",
+      "disposition": "admit",
+      "gloss_sha256": "f39cfab087a5704975b017a067ef5a2b67f0e95f4ef9216fb9116fb40c314974"
+    },
+    {
+      "ordinal": 183,
+      "lemma": "휘장",
+      "disposition": "admit",
+      "gloss_sha256": "8b487d1d2e40d6540ddf8c43dc7f4cde908234a39f43085b603222cb78b1f5ce"
+    },
+    {
+      "ordinal": 184,
+      "lemma": "다큐멘터리",
+      "disposition": "admit",
+      "gloss_sha256": "4548e599b6837af2eb83ba4fc8c068b75d4f5cb7c7b84587d1390180667ef951"
+    },
+    {
+      "ordinal": 185,
+      "lemma": "떡갈나무",
+      "disposition": "admit",
+      "gloss_sha256": "9355df5405e52e957d3223fdcd3a84ccaf552e8d10ba77e88e4f474576f265f7"
+    },
+    {
+      "ordinal": 186,
+      "lemma": "새우",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 187,
+      "lemma": "문인",
+      "disposition": "admit",
+      "gloss_sha256": "565e1fc132c1b0427eb53ab27f63ed640817a23d68b6ce9160eb6a4c59e60f6d"
+    },
+    {
+      "ordinal": 188,
+      "lemma": "돌격",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 189,
+      "lemma": "분할",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 190,
+      "lemma": "상금",
+      "disposition": "admit",
+      "gloss_sha256": "17097c606515eb3886a18fcc2a7606a98556393782569d45b58e785d469793f7"
+    },
+    {
+      "ordinal": 191,
+      "lemma": "스타킹",
+      "disposition": "admit",
+      "gloss_sha256": "71702af341879373299a7f651ad0baae8cb72c61b1b367a53e2dc4822bb7e9dd"
+    },
+    {
+      "ordinal": 192,
+      "lemma": "화목",
+      "disposition": "admit",
+      "gloss_sha256": "23b7e008a59f4e163f507a89b369eceaab692abc3bd3295b8f2e308cd41a78e4"
+    },
+    {
+      "ordinal": 193,
+      "lemma": "굽어보다",
+      "disposition": "admit",
+      "gloss_sha256": "a452e6849fa0c2fb3fa535608075fb773c41808eae6f7d61406bb1771265909f"
+    },
+    {
+      "ordinal": 194,
+      "lemma": "발급",
+      "disposition": "admit",
+      "gloss_sha256": "6121febab2167de1ff0bb5c134c1e0a6594377827fea0d48b41ea8c601863079"
+    },
+    {
+      "ordinal": 195,
+      "lemma": "칼라",
+      "disposition": "admit",
+      "gloss_sha256": "ac33db0084f170dbda7d3670f844523301541ac3c8feca1811e67dde668d35f0"
+    },
+    {
+      "ordinal": 196,
+      "lemma": "고행",
+      "disposition": "admit",
+      "gloss_sha256": "371a9cebfaeda8288ea3d843b90f5e73c8f075ba41994585d2057a637dbf72ff"
+    },
+    {
+      "ordinal": 197,
+      "lemma": "투기",
+      "disposition": "admit",
+      "gloss_sha256": "7eb22756d69e59063ff7b7ed742c4b4208932498029e4595dc45bdeffaec3925"
+    },
+    {
+      "ordinal": 198,
+      "lemma": "퍼즐",
+      "disposition": "admit",
+      "gloss_sha256": "cdf40c9d947dcb6b50e0025b5507e41db3e90c0b8b1289934a40745b497f11fc"
+    },
+    {
+      "ordinal": 199,
+      "lemma": "캔버스",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 200,
+      "lemma": "파장",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 201,
+      "lemma": "하숙",
+      "disposition": "admit",
+      "gloss_sha256": "f3a063455cc23d20b971eb7441391262a6627cee0a75be5be40d9beb38422b95"
+    },
+    {
+      "ordinal": 202,
+      "lemma": "단풍",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 203,
+      "lemma": "팔걸이",
+      "disposition": "admit",
+      "gloss_sha256": "3094e04f5a9ca7b736d18e228aa6c9b29f5cfe91b6cd7c421496fd5bd96571ee"
+    },
+    {
+      "ordinal": 204,
+      "lemma": "효력",
+      "disposition": "admit",
+      "gloss_sha256": "b658c77057c6c2e85d2440b1bd5340fbabb793cf7e0b5345e48d83372a8ac1cf"
+    },
+    {
+      "ordinal": 205,
+      "lemma": "들어앉다",
+      "disposition": "admit",
+      "gloss_sha256": "3572982ccdcf4092d9ff9629577a4d0928cea38a546852483707921fb9994339"
+    },
+    {
+      "ordinal": 206,
+      "lemma": "민심",
+      "disposition": "admit",
+      "gloss_sha256": "e8def15bfb4a26600270df0029a7bc89fccff44fc872a0935f8d4636c5ae701a"
+    },
+    {
+      "ordinal": 207,
+      "lemma": "반동",
+      "disposition": "admit",
+      "gloss_sha256": "1a16f3251a78e09130bc41c904162603618836dcd4922340c001f6ae714e53cc"
+    },
+    {
+      "ordinal": 208,
+      "lemma": "업히다",
+      "disposition": "admit",
+      "gloss_sha256": "78197149f530e2e2f041464bc103e90b193f3d105f83692cfb779cc017ba14ba"
+    },
+    {
+      "ordinal": 209,
+      "lemma": "적의",
+      "disposition": "admit",
+      "gloss_sha256": "980e2f8eadf0203326d447962fc99f7d09b2e8d536bbfab9158727618439dfcf"
+    },
+    {
+      "ordinal": 210,
+      "lemma": "권력자",
+      "disposition": "admit",
+      "gloss_sha256": "b083b47b3709fc73fcfa32783fa84b6586535661f2df56bfd48ae68d7d007bdd"
+    },
+    {
+      "ordinal": 211,
+      "lemma": "단상",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 212,
+      "lemma": "대의",
+      "disposition": "admit",
+      "gloss_sha256": "0afda3bc0911acde6ef5af8614e4fc0552cb2038205d0d5ec34bbb94ed735c7d"
+    },
+    {
+      "ordinal": 213,
+      "lemma": "아물다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 214,
+      "lemma": "글썽이다",
+      "disposition": "admit",
+      "gloss_sha256": "724463c3e09a43df6467cdf6d4e056adf520a68187c421bed1d856b52bdecf44"
+    },
+    {
+      "ordinal": 215,
+      "lemma": "어처구니",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 216,
+      "lemma": "웅변",
+      "disposition": "admit",
+      "gloss_sha256": "8cfbcf248821e59861d512b333f59bf2c91591b9a8c9760883e2176ab19f2128"
+    },
+    {
+      "ordinal": 217,
+      "lemma": "잉태",
+      "disposition": "admit",
+      "gloss_sha256": "98b2ea9d2d10fe9cd0d353c67ce3d2c85ae350168754653af481227aaaf1a14b"
+    },
+    {
+      "ordinal": 218,
+      "lemma": "소고기",
+      "disposition": "admit",
+      "gloss_sha256": "2b58013294f79704edc5a481fc0c469b9fcad0f977ae7819aba83e5c57539bdb"
+    },
+    {
+      "ordinal": 219,
+      "lemma": "열등",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 220,
+      "lemma": "게시판",
+      "disposition": "admit",
+      "gloss_sha256": "e7de62398a6f92979aaadcd9eaa9b159cb54666db7d4708fcdbd578ed8d68616"
+    },
+    {
+      "ordinal": 221,
+      "lemma": "공문",
+      "disposition": "admit",
+      "gloss_sha256": "1d5a997720692a9e585ce697c5459aa0b048ee9e1302b01bca77aa1f4e95ff33"
+    },
+    {
+      "ordinal": 222,
+      "lemma": "꾀하다",
+      "disposition": "admit",
+      "gloss_sha256": "104e3324960e7a760d6bce6961b4e848b3e10ef293f9efa3c060437fae5e3046"
+    },
+    {
+      "ordinal": 223,
+      "lemma": "도발",
+      "disposition": "admit",
+      "gloss_sha256": "65e96c3d1e7c8ca69b8d43a4b0f1bf704dfb4087224185266c445f6dec70b37d"
+    },
+    {
+      "ordinal": 224,
+      "lemma": "방침",
+      "disposition": "admit",
+      "gloss_sha256": "0a5a228a7ea36071b8ed8177749c58a5cbaba214991bb8e74bfa901905b9815a"
+    },
+    {
+      "ordinal": 225,
+      "lemma": "이목구비",
+      "disposition": "admit",
+      "gloss_sha256": "e52a0d06b7d9d30c47003f99908b515e42526eef69d2546bac0c3aed1a56da2b"
+    },
+    {
+      "ordinal": 226,
+      "lemma": "과실",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 227,
+      "lemma": "소용돌이치다",
+      "disposition": "admit",
+      "gloss_sha256": "cefa600e345f3d892e9e4e2058a1fc246b7dd73febbbbb4b6b029bb1d2f51aa4"
+    },
+    {
+      "ordinal": 228,
+      "lemma": "값싸다",
+      "disposition": "admit",
+      "gloss_sha256": "73106266b59b436998bb01534c2fb98bc81022666a2f306b87816546bb9f769d"
+    },
+    {
+      "ordinal": 229,
+      "lemma": "그새",
+      "disposition": "admit",
+      "gloss_sha256": "2561fbac1b87805dd6e4767eff8153cdec243216f363500ee4f6db7a539025cc"
+    },
+    {
+      "ordinal": 230,
+      "lemma": "뒤적거리다",
+      "disposition": "admit",
+      "gloss_sha256": "4740543d970f328a71499b9e1687ec2c92e900f13bd88f4e6e2fb85b2adb9a53"
+    },
+    {
+      "ordinal": 231,
+      "lemma": "소지",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 232,
+      "lemma": "실물",
+      "disposition": "admit",
+      "gloss_sha256": "5001f30f5c8e370fefe33ac444097a6c38cc34cbceea3babb01edcfaa0d556c8"
+    },
+    {
+      "ordinal": 233,
+      "lemma": "연발",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 234,
+      "lemma": "투영",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 235,
+      "lemma": "틔우다",
+      "disposition": "admit",
+      "gloss_sha256": "df574d6bda85f6c8af47da4a0f6cdb0ee5e262958c0cd4e7965de2a02f5e3800"
+    },
+    {
+      "ordinal": 236,
+      "lemma": "가슴팍",
+      "disposition": "admit",
+      "gloss_sha256": "f3612cc6af863623156410aaeb4e5413bffc249c9443b7218174223f08d3e356"
+    },
+    {
+      "ordinal": 237,
+      "lemma": "나빠지다",
+      "disposition": "admit",
+      "gloss_sha256": "9739fcb9bf4acf67ff00dae769ba4f42e6783063d7e764f3dbd90cfebdf5f95e"
+    },
+    {
+      "ordinal": 238,
+      "lemma": "도처",
+      "disposition": "admit",
+      "gloss_sha256": "8d96de5d5bcdc47dd379a2d0dc1a2b516d45f9001f6afd57695d432f062736af"
+    },
+    {
+      "ordinal": 239,
+      "lemma": "떠벌리다",
+      "disposition": "admit",
+      "gloss_sha256": "130688f8b1f45f00f08e7236bff5d400bc8fe77bd7a448663bb968676a2336f5"
+    },
+    {
+      "ordinal": 240,
+      "lemma": "보채다",
+      "disposition": "admit",
+      "gloss_sha256": "7525974fc90a39b29ae870d8ec7f90c33918a2cb4fe5918bdc0cbfe4a3a3774a"
+    },
+    {
+      "ordinal": 241,
+      "lemma": "소소하다",
+      "disposition": "admit",
+      "gloss_sha256": "d78651f51e1686f4f7f0376989369fb37783032b367e92ad6063b1b6f7305499"
+    },
+    {
+      "ordinal": 242,
+      "lemma": "은폐",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 243,
+      "lemma": "응수",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 244,
+      "lemma": "진통제",
+      "disposition": "admit",
+      "gloss_sha256": "e166b4aea8945a88c5f09397c141c2c64763c1eed83b1cb1d3d94d7b26a9ca06"
+    },
+    {
+      "ordinal": 245,
+      "lemma": "두말",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 246,
+      "lemma": "부응",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 247,
+      "lemma": "사생활",
+      "disposition": "admit",
+      "gloss_sha256": "148896a99bd81270109c1f7a888429b9429ea2f0cfd69395548d0427225655b7"
+    },
+    {
+      "ordinal": 248,
+      "lemma": "여념",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 249,
+      "lemma": "장착",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 250,
+      "lemma": "집집",
+      "disposition": "admit",
+      "gloss_sha256": "a9535236415db5af4107c69e76802a3196d435f5497abc87ca8ee11f7f1013e2"
+    },
+    {
+      "ordinal": 251,
+      "lemma": "숨통",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 252,
+      "lemma": "아른거리다",
+      "disposition": "admit",
+      "gloss_sha256": "32322fdcb1817d43c2eb9db7ac0e8a9d91031bb10bb6b7965af7750de2395ae7"
+    },
+    {
+      "ordinal": 253,
+      "lemma": "쓸리다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 254,
+      "lemma": "언약",
+      "disposition": "admit",
+      "gloss_sha256": "d0bf4d3ddc247874a77576bf4f5beb1d1f3cb1ba6d1d5953ab0281133859d7d4"
+    },
+    {
+      "ordinal": 255,
+      "lemma": "정숙",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 256,
+      "lemma": "계명",
+      "disposition": "admit",
+      "gloss_sha256": "68a1089cc164515e8bdd6c77af1b05fbda4b033865784f8e4284a6944c5bc537"
+    },
+    {
+      "ordinal": 257,
+      "lemma": "조종사",
+      "disposition": "admit",
+      "gloss_sha256": "1fc89138b42de33eb30886ef8a96beab5478fa7ac65432241a0bde559bdedb67"
+    },
+    {
+      "ordinal": 258,
+      "lemma": "암컷",
+      "disposition": "admit",
+      "gloss_sha256": "aba7b3138a0eff42ff1e6c794bd9dd3e5e314e781112a5ef23b79a885daf5e32"
+    },
+    {
+      "ordinal": 259,
+      "lemma": "청구",
+      "disposition": "admit",
+      "gloss_sha256": "4cf0bad1f41d7cdbb1f58fc72f442da281e1a9d198104ef81ae441a7798576a5"
+    },
+    {
+      "ordinal": 260,
+      "lemma": "헬멧",
+      "disposition": "admit",
+      "gloss_sha256": "b6c4ee121ad4805c2db7ad528a555b5779fc7e4c3932834f2647ae18dbc10849"
+    },
+    {
+      "ordinal": 261,
+      "lemma": "재판관",
+      "disposition": "admit",
+      "gloss_sha256": "ee206ae15eb7fbe1ab086ab98c116d75c69302e52a7c542836a90f5a8bda48f3"
+    },
+    {
+      "ordinal": 262,
+      "lemma": "희곡",
+      "disposition": "admit",
+      "gloss_sha256": "ed1a84c340dc4d968c61cbd8498fcb734bc3852664cfda1289706696fa2f9a7c"
+    },
+    {
+      "ordinal": 263,
+      "lemma": "출정",
+      "disposition": "admit",
+      "gloss_sha256": "e4e42b617d3c33254b27c6340c8e9281a3e43a6cd33dd4b2f1e2bcf69a1806d2"
+    },
+    {
+      "ordinal": 264,
+      "lemma": "주막",
+      "disposition": "admit",
+      "gloss_sha256": "b8236c49783a23b581849fca49d07821608e5503164b88a8bc16c8fde4c43e9f"
+    },
+    {
+      "ordinal": 265,
+      "lemma": "보드",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 266,
+      "lemma": "시아버지",
+      "disposition": "admit",
+      "gloss_sha256": "e00fd98bbd7ce4af5a0accaa53a80d62f368e21f356d11c27ccf8acb3de4d83c"
+    },
+    {
+      "ordinal": 267,
+      "lemma": "여직원",
+      "disposition": "admit",
+      "gloss_sha256": "62efcc2dcee63fd1927a78f35075e1d3c7da17e7b2288faaffbdf92670ad9bb3"
+    },
+    {
+      "ordinal": 268,
+      "lemma": "모함",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 269,
+      "lemma": "목장",
+      "disposition": "admit",
+      "gloss_sha256": "06d740fb56e01f8acd7f424ac4ab7b4825f59e9d0d6a64f021a70209e5b5202b"
+    },
+    {
+      "ordinal": 270,
+      "lemma": "이직",
+      "disposition": "admit",
+      "gloss_sha256": "6b1fa89b3feeb037e7a4551e22683e3e20b79fe9d5696840cc149df553ad9101"
+    },
+    {
+      "ordinal": 271,
+      "lemma": "표범",
+      "disposition": "admit",
+      "gloss_sha256": "72924b3e1dc41a015ea6eeaff1ccb0f19a22745b3c72d2b8c1f3bdbf438ec4ba"
+    },
+    {
+      "ordinal": 272,
+      "lemma": "돌봄",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 273,
+      "lemma": "바나나",
+      "disposition": "admit",
+      "gloss_sha256": "99719db00ee5a925e9c6c0f2f4a10bce2b542e9c5a403285b6300d5c16358cea"
+    },
+    {
+      "ordinal": 274,
+      "lemma": "수박",
+      "disposition": "admit",
+      "gloss_sha256": "eb57e99d45b513b41a5e48ac325aaa4811863c5e4d9096d4a2369c9de3c79ca4"
+    },
+    {
+      "ordinal": 275,
+      "lemma": "매매",
+      "disposition": "admit",
+      "gloss_sha256": "b9ac351fe5a4f7a19b652cbedc076889c5e2caccd80ced7619da0f265518ce83"
+    },
+    {
+      "ordinal": 276,
+      "lemma": "변론",
+      "disposition": "admit",
+      "gloss_sha256": "a694bdddd029396d1a949c61fe9a24ef2c20c20949400bda68588262b6c62a0e"
+    },
+    {
+      "ordinal": 277,
+      "lemma": "입자",
+      "disposition": "admit",
+      "gloss_sha256": "f4d052432ce96cb84829ded8c44d90cbc30e0ec4634e4c8ecbedd915a418f203"
+    },
+    {
+      "ordinal": 278,
+      "lemma": "총성",
+      "disposition": "admit",
+      "gloss_sha256": "617a3edb27e5116c8ce25c2ffbab356c38809ae631dbfaf5f1a1c492565df523"
+    },
+    {
+      "ordinal": 279,
+      "lemma": "부상자",
+      "disposition": "admit",
+      "gloss_sha256": "7a9eec47252389bddf4b6dce10f2a3c5a581194280e750982cc1a9cf906234c2"
+    },
+    {
+      "ordinal": 280,
+      "lemma": "멸종",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 281,
+      "lemma": "인가",
+      "disposition": "admit",
+      "gloss_sha256": "4efb1cb4904f3812a7a645400b21620e6b3f0e0e279a2c360e41a10ae904661c"
+    },
+    {
+      "ordinal": 282,
+      "lemma": "처소",
+      "disposition": "admit",
+      "gloss_sha256": "08e1dff64d789dbe207ecd58101eceb44d068638fa3deffd8b0371f131b20773"
+    },
+    {
+      "ordinal": 283,
+      "lemma": "성명",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 284,
+      "lemma": "교수형",
+      "disposition": "admit",
+      "gloss_sha256": "4ab2dc124d00fd1f58be2b00a33fb0094a2b37557f6129253657a83804566c1b"
+    },
+    {
+      "ordinal": 285,
+      "lemma": "마개",
+      "disposition": "admit",
+      "gloss_sha256": "6845937ca2b37f67d8aa8534ed5be67beefc094504bb34fda21a2814e87022e6"
+    },
+    {
+      "ordinal": 286,
+      "lemma": "청원",
+      "disposition": "admit",
+      "gloss_sha256": "171a67a88da8176259f0b8605749b6756820e81263fc5a91c3ad997adb2a44a1"
+    },
+    {
+      "ordinal": 287,
+      "lemma": "동서",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 288,
+      "lemma": "키워드",
+      "disposition": "admit",
+      "gloss_sha256": "f04a8f0150d1350f0f4afa8c4255cbaaf6155a7ba763dd1f9bc5bf6d15c44b49"
+    },
+    {
+      "ordinal": 289,
+      "lemma": "피차",
+      "disposition": "admit",
+      "gloss_sha256": "5c165ec23a3e605826d10e1b59377ea45e5049ebaa5c6d35a14b4c051512e317"
+    },
+    {
+      "ordinal": 290,
+      "lemma": "암송",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 291,
+      "lemma": "인과",
+      "disposition": "admit",
+      "gloss_sha256": "255e6d13629d09e74fd2ed1f02b09e177eaf0d75d61e9aa7abd7d53b042af335"
+    },
+    {
+      "ordinal": 292,
+      "lemma": "어휘",
+      "disposition": "admit",
+      "gloss_sha256": "63cbc5c10f1f66afd45232b22a194071c183468a2c28137628b4b22347face55"
+    },
+    {
+      "ordinal": 293,
+      "lemma": "오징어",
+      "disposition": "admit",
+      "gloss_sha256": "2e26e002a4ef70ab7c47ba98be24b206bad87f96487d6f114f2ef56e843ef1fa"
+    },
+    {
+      "ordinal": 294,
+      "lemma": "격파",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 295,
+      "lemma": "베이다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 296,
+      "lemma": "블라우스",
+      "disposition": "admit",
+      "gloss_sha256": "55dcb745157d40fdab1602f7a8dbc4cdae6a4de4057ee56f720bb8967658ec6b"
+    },
+    {
+      "ordinal": 297,
+      "lemma": "유한",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 298,
+      "lemma": "패하다",
+      "disposition": "admit",
+      "gloss_sha256": "a8eabbda12355faf4ecae384b93dba3da5d5d2fc3b20f98a3bfcbe2a79b93b93"
+    },
+    {
+      "ordinal": 299,
+      "lemma": "다락",
+      "disposition": "admit",
+      "gloss_sha256": "ab58391cc3acdcf6872381d11426b0a1af789c2616b1a912e7b6346296217b69"
+    },
+    {
+      "ordinal": 300,
+      "lemma": "받침",
+      "disposition": "admit",
+      "gloss_sha256": "f85a8c8697ad714944021ea1795576392d060717546b622158d187d973e98df9"
+    },
+    {
+      "ordinal": 301,
+      "lemma": "냉동",
+      "disposition": "admit",
+      "gloss_sha256": "bbb5d59493c0b060fa8cd10da9ee7b31cc44d7f8ed79fca9091c3d28624d8e95"
+    },
+    {
+      "ordinal": 302,
+      "lemma": "도약",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 303,
+      "lemma": "동그라미",
+      "disposition": "admit",
+      "gloss_sha256": "331c93aa1bc94dad7ab11215559ca6ed0004fdff01212839a35a5166f320c0bc"
+    },
+    {
+      "ordinal": 304,
+      "lemma": "초과",
+      "disposition": "admit",
+      "gloss_sha256": "5dbd705a9c57064ef88fb27c9a69dd0e57bc86617d8851d293f8e9208e955c36"
+    },
+    {
+      "ordinal": 305,
+      "lemma": "혼잡",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 306,
+      "lemma": "대상자",
+      "disposition": "admit",
+      "gloss_sha256": "43f8aaf804823527fba88f98b126cd42733bebd53385a6ebae1bddcb96772800"
+    },
+    {
+      "ordinal": 307,
+      "lemma": "보전",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 308,
+      "lemma": "살림살이",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 309,
+      "lemma": "국립",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 310,
+      "lemma": "꽃밭",
+      "disposition": "admit",
+      "gloss_sha256": "0465d1d71bce6c02caa2a616c0b08933715f257f4f89f3979b7222ba5ea45414"
+    },
+    {
+      "ordinal": 311,
+      "lemma": "실시간",
+      "disposition": "admit",
+      "gloss_sha256": "14f188ac55ebfe6fb32aff2a3fae9727ed9a24309a0f42a013b70c5054657aa6"
+    },
+    {
+      "ordinal": 312,
+      "lemma": "혓바닥",
+      "disposition": "admit",
+      "gloss_sha256": "e9828b04b15113d7d56211ee6e00ba821c80afd3f26c468f5367be95117d5660"
+    },
+    {
+      "ordinal": 313,
+      "lemma": "내려치다",
+      "disposition": "admit",
+      "gloss_sha256": "3b9f2c646206283140ea7285706f31430c780f2bcbe6d6ec7f793187895a8511"
+    },
+    {
+      "ordinal": 314,
+      "lemma": "디자이너",
+      "disposition": "admit",
+      "gloss_sha256": "0a8066f8f2ecb75dc88f488329e345021bbf4c0a953fe630d510069e6b6d0841"
+    },
+    {
+      "ordinal": 315,
+      "lemma": "소견",
+      "disposition": "admit",
+      "gloss_sha256": "2e9493e00634564888a306db47efb30e67eaefbbfa55e2e1de6af922a3b1c9c9"
+    },
+    {
+      "ordinal": 316,
+      "lemma": "전수",
+      "disposition": "admit",
+      "gloss_sha256": "eaaf0032cc0b8fa121cab34a4816bac3a0d51a45d9e3bfdbaab6de993f70c50f"
+    },
+    {
+      "ordinal": 317,
+      "lemma": "호기",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 318,
+      "lemma": "화염",
+      "disposition": "admit",
+      "gloss_sha256": "c447ea9e0f810c8283a4d8e427c8c87803fd221d962aa397f15fe88b3f538758"
+    },
+    {
+      "ordinal": 319,
+      "lemma": "횡단보도",
+      "disposition": "admit",
+      "gloss_sha256": "45599d943b1d442ec362a74552dc60369342aa1001e3583e99a6c81b71720c9e"
+    },
+    {
+      "ordinal": 320,
+      "lemma": "원룸",
+      "disposition": "admit",
+      "gloss_sha256": "2158db1ef52d2aee661f5f8faa7182a3044fc12e8f187a9db18f6a977915cf3f"
+    },
+    {
+      "ordinal": 321,
+      "lemma": "품격",
+      "disposition": "admit",
+      "gloss_sha256": "3c6535a9d4ed68b785b45ec87bba90069723c875c24c585c98076888bb620dae"
+    },
+    {
+      "ordinal": 322,
+      "lemma": "독촉",
+      "disposition": "admit",
+      "gloss_sha256": "4ac2365993eb6038b04ba7474824488999bf44d5f6cd008d7c53b421c175e3e4"
+    },
+    {
+      "ordinal": 323,
+      "lemma": "알몸",
+      "disposition": "admit",
+      "gloss_sha256": "ed981b92438a37a5386e3c8ff9a1149b7f5f9d8084aea879a0bd370284c3dba2"
+    },
+    {
+      "ordinal": 324,
+      "lemma": "인테리어",
+      "disposition": "admit",
+      "gloss_sha256": "1dc1d9c8c4afc7f67a5e3bec75f758ab40c6fda03cbb19264e3c88d00fc7441c"
+    },
+    {
+      "ordinal": 325,
+      "lemma": "기차역",
+      "disposition": "admit",
+      "gloss_sha256": "a23029fa93b314db054d2cf01f96561024c43a7602648ce0a068fa38e15734d3"
+    },
+    {
+      "ordinal": 326,
+      "lemma": "뽀뽀",
+      "disposition": "admit",
+      "gloss_sha256": "b58504568b2daef1f157ace90ff129ca825aeb4a8ae0fbe58897714e5015c366"
+    },
+    {
+      "ordinal": 327,
+      "lemma": "팽개치다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 328,
+      "lemma": "내성",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 329,
+      "lemma": "뽑아내다",
+      "disposition": "admit",
+      "gloss_sha256": "945156f69d416806359b4d3c7cc6760dc6deb6f1773f5eedb5179b436e0e87a4"
+    },
+    {
+      "ordinal": 330,
+      "lemma": "안중",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 331,
+      "lemma": "이승",
+      "disposition": "admit",
+      "gloss_sha256": "5b5f9d2c0d028846a005d67d48fa54ad5b84ce8a5532d0d312a399053beabdf1"
+    },
+    {
+      "ordinal": 332,
+      "lemma": "즉흥",
+      "disposition": "admit",
+      "gloss_sha256": "9fcc04b615ae5da2b1983540888638a2833a214d529d33bc87636b4f10b65e1b"
+    },
+    {
+      "ordinal": 333,
+      "lemma": "업신여기다",
+      "disposition": "admit",
+      "gloss_sha256": "76c868b060d9bf8970487a180d0a4c413889a79e450ae91d4f18a01d38767541"
+    },
+    {
+      "ordinal": 334,
+      "lemma": "엇갈리다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 335,
+      "lemma": "응석",
+      "disposition": "admit",
+      "gloss_sha256": "6646b9fbfb9cb36475deea27b4b9c741fce487b2680c4fe983a4a64a1dbd0ffa"
+    },
+    {
+      "ordinal": 336,
+      "lemma": "폭넓다",
+      "disposition": "admit",
+      "gloss_sha256": "475549b8a3b668cd81bc5588b6884a802dd5b6f2582c2f71367482284263cf09"
+    },
+    {
+      "ordinal": 337,
+      "lemma": "긁적이다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 338,
+      "lemma": "멘트",
+      "disposition": "admit",
+      "gloss_sha256": "56b264f04bf519fe34fef169a5e8ef0a69cf0edec9421aad0f53d33d99eb7d2b"
+    },
+    {
+      "ordinal": 339,
+      "lemma": "씩씩거리다",
+      "disposition": "admit",
+      "gloss_sha256": "dfcc434df6359c31da7b595556589ce0cd936d03e433f1dfe5931b01a2e5a9ac"
+    },
+    {
+      "ordinal": 340,
+      "lemma": "얼떨결",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 341,
+      "lemma": "외톨이",
+      "disposition": "admit",
+      "gloss_sha256": "1cb6c8defc85fd978ee025ed1739393a2e8fb5549a78ee33e1e048899cc62485"
+    },
+    {
+      "ordinal": 342,
+      "lemma": "짜이다",
+      "disposition": "admit",
+      "gloss_sha256": "514cafdf5f231cd34a3ace9bfb1048b96adad77d2eb3b92b55c7a431ab32d753"
+    },
+    {
+      "ordinal": 343,
+      "lemma": "홈페이지",
+      "disposition": "admit",
+      "gloss_sha256": "9df37b825e92230d5fee49ae6081a303e9ff3cd8562ad2361a1e3c1b53559f3e"
+    },
+    {
+      "ordinal": 344,
+      "lemma": "끌어내리다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 345,
+      "lemma": "눈곱",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 346,
+      "lemma": "담소",
+      "disposition": "admit",
+      "gloss_sha256": "f297c1f25c40c7d7257889b4053f95f9e2fb2c2922d42de374a256fe1113d16e"
+    },
+    {
+      "ordinal": 347,
+      "lemma": "속물",
+      "disposition": "admit",
+      "gloss_sha256": "7c4f6b6a2afcbe061062fa0f82a4c4d33dabf4c91a9f1bf3a23f97b92bd25f06"
+    },
+    {
+      "ordinal": 348,
+      "lemma": "질기다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 349,
+      "lemma": "돌발",
+      "disposition": "admit",
+      "gloss_sha256": "6e18b46317b14b4fe9787a507f77c6316de559db6a133231aaf7157abc8ed38f"
+    },
+    {
+      "ordinal": 350,
+      "lemma": "황후",
+      "disposition": "admit",
+      "gloss_sha256": "f8c845925e1313a3efa6d6d890a9bcbc990028bf06048dbe5675925508e47bd9"
+    },
+    {
+      "ordinal": 351,
+      "lemma": "로켓",
+      "disposition": "admit",
+      "gloss_sha256": "c38fedf31d62f57b1d7be4001280ae52d7dc8c951cb17c98cf505b0994784660"
+    },
+    {
+      "ordinal": 352,
+      "lemma": "블루",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 353,
+      "lemma": "동사",
+      "disposition": "admit",
+      "gloss_sha256": "32f6bd49335dc21d1faca65ce2f206bd723cca3cf55bfc1def00210a759a6ccc"
+    },
+    {
+      "ordinal": 354,
+      "lemma": "장원",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 355,
+      "lemma": "번지",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 356,
+      "lemma": "제왕",
+      "disposition": "admit",
+      "gloss_sha256": "d0b9f0c268fcf95ab284d127e5a651c27a89705475ccc8543f0b4609d89b2821"
+    },
+    {
+      "ordinal": 357,
+      "lemma": "초소",
+      "disposition": "admit",
+      "gloss_sha256": "bf09f207bf6a2f010775d46794c1f1fc037088bc9de71e128e9eac4684ad317f"
+    },
+    {
+      "ordinal": 358,
+      "lemma": "목발",
+      "disposition": "admit",
+      "gloss_sha256": "b2341e0b50e05e4502cd4cdfe9b0ea69380bc18ff7b283ac9a351de69501adc6"
+    },
+    {
+      "ordinal": 359,
+      "lemma": "야수",
+      "disposition": "admit",
+      "gloss_sha256": "814072d1d75e0b90032f70a9a0626b49bd82c998dd81bda86ec4894e7e7a21bb"
+    },
+    {
+      "ordinal": 360,
+      "lemma": "안채",
+      "disposition": "admit",
+      "gloss_sha256": "214c003baa8974f3f44e9006b65ef7b42b8b1e00c36322ba00daae4506af8e98"
+    },
+    {
+      "ordinal": 361,
+      "lemma": "인성",
+      "disposition": "admit",
+      "gloss_sha256": "8289a160ca7a40b34712f7108edcef5f335bd7e7f1acefb8865ed30a8d249d00"
+    },
+    {
+      "ordinal": 362,
+      "lemma": "회화",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 363,
+      "lemma": "위성",
+      "disposition": "admit",
+      "gloss_sha256": "c0bdc49fa44b411e6ab0be13dfc963f803292abfbc1fc1dbbcf4dba08b1b522e"
+    },
+    {
+      "ordinal": 364,
+      "lemma": "노모",
+      "disposition": "admit",
+      "gloss_sha256": "b1590afbe2f23bca61ad55f2ea0d8f1a6252f7a7ae12221c5d8daec6060f11fe"
+    },
+    {
+      "ordinal": 365,
+      "lemma": "코치",
+      "disposition": "admit",
+      "gloss_sha256": "2330fd81819d8ce04f0ade4d0b270c78833c340edc5bb3f11b146ee7db24b099"
+    },
+    {
+      "ordinal": 366,
+      "lemma": "상투",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 367,
+      "lemma": "스튜디오",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 368,
+      "lemma": "페달",
+      "disposition": "admit",
+      "gloss_sha256": "68a13b52b091b4f60306cd285275ce15faf5be1dec4035fb72fe49c7fcc84ff5"
+    },
+    {
+      "ordinal": 369,
+      "lemma": "약혼자",
+      "disposition": "admit",
+      "gloss_sha256": "d4a8c4f05bd9798f48ce4a68a9ecc240f991b627cf9c45b707ac3b2c2a6a40e2"
+    },
+    {
+      "ordinal": 370,
+      "lemma": "조서",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 371,
+      "lemma": "낭송",
+      "disposition": "admit",
+      "gloss_sha256": "eedb225a9fb21f1b59eb361a007b80c4863b4d4e00d58aaeb9dcb7fa728f15ae"
+    },
+    {
+      "ordinal": 372,
+      "lemma": "복권",
+      "disposition": "admit",
+      "gloss_sha256": "be58c0a641d025045378f0790ca3f60da520c8e329550397a4f08daaeb1c89a9"
+    },
+    {
+      "ordinal": 373,
+      "lemma": "학술",
+      "disposition": "admit",
+      "gloss_sha256": "d56d9c04e8ce5d0f32392efc62ea0b96a54106d6b3f68293ec3791d360b4d063"
+    },
+    {
+      "ordinal": 374,
+      "lemma": "의료진",
+      "disposition": "admit",
+      "gloss_sha256": "b43d08e8cadf8d92cf9fa2f61d0eea92ae8b859db9591130eefab8be78cd4973"
+    },
+    {
+      "ordinal": 375,
+      "lemma": "강간",
+      "disposition": "admit",
+      "gloss_sha256": "0e4f30e3ca374f7c70e3b01b56041add1e144194c735faa4846268f063caa61a"
+    },
+    {
+      "ordinal": 376,
+      "lemma": "신장",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 377,
+      "lemma": "융합",
+      "disposition": "admit",
+      "gloss_sha256": "5887e83bde76d92c62f0361211ff49cfed4129a5ed8382bb815761d898a57421"
+    },
+    {
+      "ordinal": 378,
+      "lemma": "준수",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 379,
+      "lemma": "추세",
+      "disposition": "admit",
+      "gloss_sha256": "3cfff2e3716ab1c859e73366dd58386c37eea44df5b01b35d42bce18664f620f"
+    },
+    {
+      "ordinal": 380,
+      "lemma": "출처",
+      "disposition": "admit",
+      "gloss_sha256": "a93158fa44458b119655617f373cd52811d77646d48f0d29711a05d98642f98f"
+    },
+    {
+      "ordinal": 381,
+      "lemma": "발령",
+      "disposition": "admit",
+      "gloss_sha256": "48eec3d9c7d9950d3eb278c3ad6c30711ba181f19ad8cfe9b67264be525837d5"
+    },
+    {
+      "ordinal": 382,
+      "lemma": "분홍",
+      "disposition": "admit",
+      "gloss_sha256": "32a872fe8f534bed959614b079776095fc66ae071b36a72f209c278ab5293739"
+    },
+    {
+      "ordinal": 383,
+      "lemma": "얼간이",
+      "disposition": "admit",
+      "gloss_sha256": "db7cbaccc9d36686d54e58f76a383340b3a665a18c10de5e3866de8a859d8b7b"
+    },
+    {
+      "ordinal": 384,
+      "lemma": "채취",
+      "disposition": "admit",
+      "gloss_sha256": "0619cb51ba9f45b85b083163ac12624b871c8f09e95e40bc7f2645643b2056b0"
+    },
+    {
+      "ordinal": 385,
+      "lemma": "초가집",
+      "disposition": "admit",
+      "gloss_sha256": "c7ed07a3265ebc4027b1d57dc363981188a7b46c7192784ab0824a9fa87b64ea"
+    },
+    {
+      "ordinal": 386,
+      "lemma": "자만심",
+      "disposition": "admit",
+      "gloss_sha256": "4e27dbf2f8d506f3e57903fc1e79a91079cd8a12974af5bf142d84f759f263d7"
+    },
+    {
+      "ordinal": 387,
+      "lemma": "암기",
+      "disposition": "admit",
+      "gloss_sha256": "5007e8108a56dd80f46c0c2177209e7a542eb6fd85550bb8b6d0032e7d6dda61"
+    },
+    {
+      "ordinal": 388,
+      "lemma": "총구",
+      "disposition": "admit",
+      "gloss_sha256": "3cf8858e12aa401ea958537039405a95958e47854c37f0439bf621301ecae8e5"
+    },
+    {
+      "ordinal": 389,
+      "lemma": "총기",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 390,
+      "lemma": "파렴치",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 391,
+      "lemma": "환각",
+      "disposition": "admit",
+      "gloss_sha256": "7193b355bb0e3c600a80b27a654bb915802f5ee6eaebe7bf6969edd1c7b449f3"
+    },
+    {
+      "ordinal": 392,
+      "lemma": "눈멀다",
+      "disposition": "admit",
+      "gloss_sha256": "68ef6875a03536ca2483e7f41e1a3ba29a1e080173d2df2e7ad9b59946a1cf6c"
+    },
+    {
+      "ordinal": 393,
+      "lemma": "수줍음",
+      "disposition": "admit",
+      "gloss_sha256": "0b6cc5da7801a091b98c641192f94bd639e4fc4376a7e34b4873321ba7e7fd83"
+    },
+    {
+      "ordinal": 394,
+      "lemma": "승자",
+      "disposition": "admit",
+      "gloss_sha256": "8128723378c29da60f35e5ee694a0feeb8c30602fb386f2866880d1a5f3e0b91"
+    },
+    {
+      "ordinal": 395,
+      "lemma": "차디차다",
+      "disposition": "admit",
+      "gloss_sha256": "0b7956cb386c8b91c9a44ce2907ff4b4082448387bb2939a5afe1ebcd3118985"
+    },
+    {
+      "ordinal": 396,
+      "lemma": "체류",
+      "disposition": "admit",
+      "gloss_sha256": "293a3e3df37e5001f2211e3fd85738360ee7d8287ec40a3edf5626b6044310cc"
+    },
+    {
+      "ordinal": 397,
+      "lemma": "충직",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 398,
+      "lemma": "회로",
+      "disposition": "admit",
+      "gloss_sha256": "8e4dc219339bcca4b50ca7a0d24963b0a7b0d8c6b5cdb2f2ebafe0a4814f217f"
+    },
+    {
+      "ordinal": 399,
+      "lemma": "경외",
+      "disposition": "admit",
+      "gloss_sha256": "2baf8e082147f8cd309f13b67c4496c3509b9fa3f2c4fe68e7488d3a3050add8"
+    },
+    {
+      "ordinal": 400,
+      "lemma": "마취",
+      "disposition": "admit",
+      "gloss_sha256": "c8d41f6ef98904861d6b50f4f2ff742ed29b5616fa3a6f63a9ac111cf4066f2f"
+    },
+    {
+      "ordinal": 401,
+      "lemma": "배신자",
+      "disposition": "admit",
+      "gloss_sha256": "e7c512e9fe8591d2ff62eae6f6045a0e108e8a93a00d06363ebce4e24d7016b4"
+    },
+    {
+      "ordinal": 402,
+      "lemma": "번영",
+      "disposition": "admit",
+      "gloss_sha256": "f1d60f2ba6d965777d02d85bbd765d8f5d08ddff59ce23f7f5a3f18598dbb154"
+    },
+    {
+      "ordinal": 403,
+      "lemma": "상대편",
+      "disposition": "admit",
+      "gloss_sha256": "244903214d98d1630fe816b6dc57c8ccd6457d4aa3f5295cca521c33fc51338f"
+    },
+    {
+      "ordinal": 404,
+      "lemma": "예복",
+      "disposition": "admit",
+      "gloss_sha256": "ec5b2a9d080f6dc887945ec70466c9fb1d79e3c4c47cd76c3b211a964aa02bc9"
+    },
+    {
+      "ordinal": 405,
+      "lemma": "공포감",
+      "disposition": "admit",
+      "gloss_sha256": "835e3236ee1fca6181ea1a502b55a2de1b0a6b5dca4ed13a1366688600452cdb"
+    },
+    {
+      "ordinal": 406,
+      "lemma": "선입견",
+      "disposition": "admit",
+      "gloss_sha256": "daf4fee795646574f5fd06f7a72c9a17f7593bbe6b9adf0710f00e290ec8e35f"
+    },
+    {
+      "ordinal": 407,
+      "lemma": "지표",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 408,
+      "lemma": "그러하다",
+      "disposition": "admit",
+      "gloss_sha256": "bda86cf6aa1dadee3720ca58ecb91036991115faf71a68116ee657ddd62e7f2e"
+    },
+    {
+      "ordinal": 409,
+      "lemma": "상당수",
+      "disposition": "admit",
+      "gloss_sha256": "ad780b3be8da30450c973d8e94468a10883347d02647e3f80812a8e62f2afa9a"
+    },
+    {
+      "ordinal": 410,
+      "lemma": "연루",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 411,
+      "lemma": "염증",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 412,
+      "lemma": "주스",
+      "disposition": "admit",
+      "gloss_sha256": "d159fa5c0b3ade50b7f3154699f16f27c66345d7989ce0ea5e11282f2641b8c9"
+    },
+    {
+      "ordinal": 413,
+      "lemma": "후대",
+      "disposition": "admit",
+      "gloss_sha256": "9c97cb7c9d00f3405b4aa95d8948b388f9944c0983a13d1cb9bae103ef61e03b"
+    },
+    {
+      "ordinal": 414,
+      "lemma": "구차",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 415,
+      "lemma": "앞지르다",
+      "disposition": "admit",
+      "gloss_sha256": "0bd75162354dabaaac5d30e392cf16dade1e405173afeee03fe7ed6068aae965"
+    },
+    {
+      "ordinal": 416,
+      "lemma": "원활",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 417,
+      "lemma": "눌러쓰다",
+      "disposition": "admit",
+      "gloss_sha256": "feb3507749b1eec54e523bc0f5e1c0d1da46644a033796553409e3f0593f3778"
+    },
+    {
+      "ordinal": 418,
+      "lemma": "수반",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 419,
+      "lemma": "심산",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 420,
+      "lemma": "이기심",
+      "disposition": "admit",
+      "gloss_sha256": "d9792075c985c805196be056dc5bbbc6ea43868f4bbcd5238622686e0e69e636"
+    },
+    {
+      "ordinal": 421,
+      "lemma": "짓거리",
+      "disposition": "admit",
+      "gloss_sha256": "38c9c18172aed1dd7552a380c3575e73906809145c94cb94068fa36413da3b99"
+    },
+    {
+      "ordinal": 422,
+      "lemma": "최저",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 423,
+      "lemma": "캠퍼스",
+      "disposition": "admit",
+      "gloss_sha256": "4e30bb30d48c65275401ca41db99f849bf0218cc0e8f45fe102520004a595a0f"
+    },
+    {
+      "ordinal": 424,
+      "lemma": "답례",
+      "disposition": "admit",
+      "gloss_sha256": "297d66aa8ae7af8d48e4c694fc02592cd79e63de75a66373b708ca46ca3cb00d"
+    },
+    {
+      "ordinal": 425,
+      "lemma": "말뜻",
+      "disposition": "admit",
+      "gloss_sha256": "2ce60f06f21801c16b72e36a6c5c2d60263b38d86d6ad2a5fcc7cc5ff302764e"
+    },
+    {
+      "ordinal": 426,
+      "lemma": "수상쩍다",
+      "disposition": "admit",
+      "gloss_sha256": "ada108eefd711febba6f1a5978e4508343cab0305ad66aa0419365be9279444c"
+    },
+    {
+      "ordinal": 427,
+      "lemma": "운전대",
+      "disposition": "admit",
+      "gloss_sha256": "b7de318b6d3f7ddaf9603686817e35f48a2276f044ff397c03a11e3f27390f4c"
+    },
+    {
+      "ordinal": 428,
+      "lemma": "후예",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 429,
+      "lemma": "두건",
+      "disposition": "admit",
+      "gloss_sha256": "48e48d4d421cc0cd3c6fb0c5cf20ddce8bfc057b65c821b1ffa438a24c9d279e"
+    },
+    {
+      "ordinal": 430,
+      "lemma": "말단",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 431,
+      "lemma": "반주",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 432,
+      "lemma": "상책",
+      "disposition": "admit",
+      "gloss_sha256": "7ec0dd11a270d690c55cc02f52a570517e7948e70103e8252a83ceca34137a7f"
+    },
+    {
+      "ordinal": 433,
+      "lemma": "증폭",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 434,
+      "lemma": "공지",
+      "disposition": "admit",
+      "gloss_sha256": "c40a512de2820e5d49d662ae0c49494271ff1771c43a649316a6cc7dab23704d"
+    },
+    {
+      "ordinal": 435,
+      "lemma": "긁히다",
+      "disposition": "admit",
+      "gloss_sha256": "667c6b40f3acc97b499eb8bb4a072d6b8eda50f00d3394c075f316476f991cc1"
+    },
+    {
+      "ordinal": 436,
+      "lemma": "되돌다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 437,
+      "lemma": "부름",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 438,
+      "lemma": "수소문",
+      "disposition": "admit",
+      "gloss_sha256": "66f9a3e50916d15727fb09a06d0ec199e3bcb33e94289f66c0d94e2fb6ba380d"
+    },
+    {
+      "ordinal": 439,
+      "lemma": "억눌리다",
+      "disposition": "admit",
+      "gloss_sha256": "10ba2df1326d7aa9bf7454a434289feb0c5eabbc480d4828b255f5b16ed5a5b0"
+    },
+    {
+      "ordinal": 440,
+      "lemma": "우러나오다",
+      "disposition": "admit",
+      "gloss_sha256": "7cd74b505fc25063aabac40eed164e495ea80755f53632b966dc0141d2755da2"
+    },
+    {
+      "ordinal": 441,
+      "lemma": "웃음거리",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 442,
+      "lemma": "인사말",
+      "disposition": "admit",
+      "gloss_sha256": "3346212fedad939980f3f01f6c5d03f950a90aec6f4c68e013431fc248eebfd7"
+    },
+    {
+      "ordinal": 443,
+      "lemma": "일하다",
+      "disposition": "admit",
+      "gloss_sha256": "56bed95117a05b98fc20dfb50e4649c8b726cba8ed0a4549860eef7fe8a98838"
+    },
+    {
+      "ordinal": 444,
+      "lemma": "간단하다",
+      "disposition": "admit",
+      "gloss_sha256": "a3e509cab577ba8d2437b120bdfc053a02fbe55563999db803d71e2585c33edd"
+    },
+    {
+      "ordinal": 445,
+      "lemma": "흘러들다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 446,
+      "lemma": "교황",
+      "disposition": "admit",
+      "gloss_sha256": "6c35eb3b20a5bb39129912bfa6c6e4a5e37d0e61409bf30e054e11c9009696ad"
+    },
+    {
+      "ordinal": 447,
+      "lemma": "경호",
+      "disposition": "admit",
+      "gloss_sha256": "17215739ad66b57defcf1926d04e22663d36f3420d40cdd1557981e140fde80d"
+    },
+    {
+      "ordinal": 448,
+      "lemma": "순사",
+      "disposition": "admit",
+      "gloss_sha256": "a301056c095ead07b5c6375f438e43b4de63ee77e35cd9a147af9b33076f8295"
+    },
+    {
+      "ordinal": 449,
+      "lemma": "필드",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 450,
+      "lemma": "기동",
+      "disposition": "admit",
+      "gloss_sha256": "0995e9b28503b15b94d74f5f4352858b7bc24747340cb2ced0764eb357536e35"
+    },
+    {
+      "ordinal": 451,
+      "lemma": "해적",
+      "disposition": "admit",
+      "gloss_sha256": "20e71512852bf5c57d8b4538908348db43a84e64a1ce46f336c6d7a32992da58"
+    },
+    {
+      "ordinal": 452,
+      "lemma": "피드백",
+      "disposition": "admit",
+      "gloss_sha256": "13d7d6d75c909aa297917a0416520b2722c68ab8f2bfe75338654cefed277f45"
+    },
+    {
+      "ordinal": 453,
+      "lemma": "뜨개",
+      "disposition": "admit",
+      "gloss_sha256": "75a2f9de34d8c90136e78805f6b7a77133750a58fbc0b6d40193222608ca371e"
+    },
+    {
+      "ordinal": 454,
+      "lemma": "왕궁",
+      "disposition": "admit",
+      "gloss_sha256": "1107e78ecae98b53376d5ddc7b33f4397adc43e302e75e2d4f7da2442562cf16"
+    },
+    {
+      "ordinal": 455,
+      "lemma": "뱃사람",
+      "disposition": "admit",
+      "gloss_sha256": "7a717d09f2d2a700ea50ba86d0f7ccd61ff091f06a13b8e7a1c338977c8ea9c6"
+    },
+    {
+      "ordinal": 456,
+      "lemma": "신규",
+      "disposition": "admit",
+      "gloss_sha256": "a72f609cb0c38571eebcb359348bdc783cf94497beb35e6ae71a5d70b477e0b0"
+    },
+    {
+      "ordinal": 457,
+      "lemma": "지게",
+      "disposition": "admit",
+      "gloss_sha256": "5080db12ba657d0ad1041fdd100dd707ddf1be3b57fcb377be477556ceb6c793"
+    },
+    {
+      "ordinal": 458,
+      "lemma": "규제",
+      "disposition": "admit",
+      "gloss_sha256": "e71b236cdf6313c363b31bf5b00d2629e3f983ce746b19ab366a2db67ddb821a"
+    },
+    {
+      "ordinal": 459,
+      "lemma": "의인",
+      "disposition": "admit",
+      "gloss_sha256": "0687c8001975ded3145d90030b8d8604785657725f5bf186deb7b19022c570a2"
+    },
+    {
+      "ordinal": 460,
+      "lemma": "의대",
+      "disposition": "admit",
+      "gloss_sha256": "50a43be5512aca366f5169245a819946ce49e02072668a693dafda820c19baaa"
+    },
+    {
+      "ordinal": 461,
+      "lemma": "주권",
+      "disposition": "admit",
+      "gloss_sha256": "909620de779c78ebdea1048c593d3cbca06638d17cc4f5706d8470afce7ba98a"
+    },
+    {
+      "ordinal": 462,
+      "lemma": "계좌",
+      "disposition": "admit",
+      "gloss_sha256": "a57e590c7cf999c0a6b6868acfa786b914abc9e4a9f9c6e24d556e4910e22915"
+    },
+    {
+      "ordinal": 463,
+      "lemma": "사냥개",
+      "disposition": "admit",
+      "gloss_sha256": "38097b99d689e46719abfa2ab55935540d21c44027e9b2a44bc716904ef1a9f1"
+    },
+    {
+      "ordinal": 464,
+      "lemma": "매수",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 465,
+      "lemma": "트라우마",
+      "disposition": "admit",
+      "gloss_sha256": "2cc8fbdd722821107e58c2d01f2eff9e913fa79f247845ddad5b8a5bc422d0a9"
+    },
+    {
+      "ordinal": 466,
+      "lemma": "공헌",
+      "disposition": "admit",
+      "gloss_sha256": "5f6f4a75aafcfb4b3f1332cfb8873ca9d9a5bedf72b3792dc73441855a38b6a1"
+    },
+    {
+      "ordinal": 467,
+      "lemma": "상경",
+      "disposition": "admit",
+      "gloss_sha256": "2fe8b8ace5d45ede589c629476697f7c09d35508b0a3eb2e20ea9a7b021fd7f7"
+    },
+    {
+      "ordinal": 468,
+      "lemma": "경배",
+      "disposition": "admit",
+      "gloss_sha256": "de168d7e155679066af4e2cc2925d8cd625fd696691809ebc7c79a16065167c6"
+    },
+    {
+      "ordinal": 469,
+      "lemma": "비스킷",
+      "disposition": "admit",
+      "gloss_sha256": "63814195d5c865a91212532c6c197bb747ab742b350b230393477f6a1353a946"
+    },
+    {
+      "ordinal": 470,
+      "lemma": "임자",
+      "disposition": "admit",
+      "gloss_sha256": "3bcbc47f776502dc4d2bf843bd5889414deb2eac899f2a45ceacf0196a824abd"
+    },
+    {
+      "ordinal": 471,
+      "lemma": "병아리",
+      "disposition": "admit",
+      "gloss_sha256": "14df22ae3c168616db841e144936ac8a3a5bea4558f5467c231b9fef076e235a"
+    },
+    {
+      "ordinal": 472,
+      "lemma": "묘비",
+      "disposition": "admit",
+      "gloss_sha256": "dae4889402b33a62ec621dd73ecfdb70522fd7250d7b644b5e68114515f6187a"
+    },
+    {
+      "ordinal": 473,
+      "lemma": "반론",
+      "disposition": "admit",
+      "gloss_sha256": "74fabae6dda0e92cf3bdd870e216803a89c03d28bf331f38365da031698b3518"
+    },
+    {
+      "ordinal": 474,
+      "lemma": "변방",
+      "disposition": "admit",
+      "gloss_sha256": "919739a589e3c92891fe114666d5d4158d9f41dc7986023ab36934ff22f6273b"
+    },
+    {
+      "ordinal": 475,
+      "lemma": "쓰리다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 476,
+      "lemma": "주력",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 477,
+      "lemma": "처먹다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 478,
+      "lemma": "영예",
+      "disposition": "admit",
+      "gloss_sha256": "2d5996c54f6ab938b0cdcc72467b4a6325f661286f071e5898a2aa886e33b671"
+    },
+    {
+      "ordinal": 479,
+      "lemma": "이식",
+      "disposition": "admit",
+      "gloss_sha256": "ed56569202c838d701cb0417b14796e4e341a60400e33d33078f3c6d32a9862d"
+    },
+    {
+      "ordinal": 480,
+      "lemma": "커버",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 481,
+      "lemma": "탈락",
+      "disposition": "admit",
+      "gloss_sha256": "0f6f211a3c770edc4a8c114ed31d9f9d0eba3c58be64e40fdef165785a7bd702"
+    },
+    {
+      "ordinal": 482,
+      "lemma": "가옥",
+      "disposition": "admit",
+      "gloss_sha256": "a125fe39a0a8be509719e536d68f75a7abbf0db2582c58f533f265d10f2f2571"
+    },
+    {
+      "ordinal": 483,
+      "lemma": "셔터",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 484,
+      "lemma": "유력",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 485,
+      "lemma": "재발",
+      "disposition": "admit",
+      "gloss_sha256": "550608ea649d5ebfd7d17ed1c26f3b7cc40c20bc2b8725ec71f7bc07b05b29f2"
+    },
+    {
+      "ordinal": 486,
+      "lemma": "증명서",
+      "disposition": "admit",
+      "gloss_sha256": "213d39ec8cd8076949606867e9559cbfad73929b75d46e0ab72e5fecd3f7e04a"
+    },
+    {
+      "ordinal": 487,
+      "lemma": "큰딸",
+      "disposition": "admit",
+      "gloss_sha256": "d2536228d1fdc80a0cd22fc10a2a70b28f396725c9b3162f601523048aeade35"
+    },
+    {
+      "ordinal": 488,
+      "lemma": "효도",
+      "disposition": "admit",
+      "gloss_sha256": "b4f206bd3304d53a5474536c03f46f0cd9fbca7308091ababb5fce0deb7f4708"
+    },
+    {
+      "ordinal": 489,
+      "lemma": "종속",
+      "disposition": "hold",
+      "hold_basis": "unresolved-sense"
+    },
+    {
+      "ordinal": 490,
+      "lemma": "개수",
+      "disposition": "admit",
+      "gloss_sha256": "a6311d21213524763d899a4ed6fc09a98453834eb95965dd4f7092736258a2f0"
+    },
+    {
+      "ordinal": 491,
+      "lemma": "헝겊",
+      "disposition": "admit",
+      "gloss_sha256": "137a81b70c9b252177a69d850bbedc7f9eda7c169dca60b808808355dedb05ad"
+    },
+    {
+      "ordinal": 492,
+      "lemma": "다그다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 493,
+      "lemma": "명시",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 494,
+      "lemma": "계열",
+      "disposition": "admit",
+      "gloss_sha256": "75bad375e19711246abc4022c6acf700b1fb3dbf521f5826fdc6d2ebdb67b6ee"
+    },
+    {
+      "ordinal": 495,
+      "lemma": "덕택",
+      "disposition": "admit",
+      "gloss_sha256": "6421572d760e04e0eaed089891edf814ccf4930370b1546de2a4093121cc9634"
+    },
+    {
+      "ordinal": 496,
+      "lemma": "일순간",
+      "disposition": "admit",
+      "gloss_sha256": "f18eeceb773d6cc317bc2e9e057e29e89d6a8d991007c57cc52cd4eab217a5c0"
+    },
+    {
+      "ordinal": 497,
+      "lemma": "지지자",
+      "disposition": "admit",
+      "gloss_sha256": "ccce340c8b0ffe09804de4307719320906be5480345b49be33326047e4c6dce3"
+    },
+    {
+      "ordinal": 498,
+      "lemma": "청바지",
+      "disposition": "admit",
+      "gloss_sha256": "acc1117b31bccebd28bf9d3cda97af1caea0af51c9e53d0cb6d6a4ee52e8bcb1"
+    },
+    {
+      "ordinal": 499,
+      "lemma": "막다르다",
+      "disposition": "hold",
+      "hold_basis": "unresolved-identity"
+    },
+    {
+      "ordinal": 500,
+      "lemma": "맹수",
+      "disposition": "admit",
+      "gloss_sha256": "dcd8c19d7415df2a32846c5584de48e089f48086418e632a05a0f8f0e37e00d5"
+    }
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "context": "isolated-subagent",
+      "model": "claude-sonnet-5-5",
+      "first_ordinal": 1,
+      "last_ordinal": 100,
+      "candidate_count": 100,
+      "packet_sha256": "56801b72e0c0afe85ac3c4c29f9042fff151c8277ca42085c0a5ff2362c9bef3",
+      "raw_output_sha256": "22a0e225661f1c878597c652afb95b0cd7ab4c2c8ce2c971a7a8273fe874cdb1",
+      "proposals_sha256": "6dc92441b2af397ac4d16f705ceeabb77048fa5d3ef86479b614c45f5ad4273d"
+    },
+    {
+      "run": 2,
+      "context": "isolated-subagent",
+      "model": "claude-sonnet-5-5",
+      "first_ordinal": 101,
+      "last_ordinal": 200,
+      "candidate_count": 100,
+      "packet_sha256": "111318e941e0a98efe408684155f3422a6305728655c31daa2d7e8ee0f0bda85",
+      "raw_output_sha256": "d7da52e115c3f1a96596d6945708dc8d014ee89832bfed3dc0f9e675e9fa41f6",
+      "proposals_sha256": "78f7083f3d2671676e9680549b3c8d54f1e2755d86b79643898d864deaa04ec8"
+    },
+    {
+      "run": 3,
+      "context": "isolated-subagent",
+      "model": "claude-sonnet-5-5",
+      "first_ordinal": 201,
+      "last_ordinal": 300,
+      "candidate_count": 100,
+      "packet_sha256": "414d7ac5515613e6141db7b97c8f4f290455994f720f6321931162004d2e17b0",
+      "raw_output_sha256": "80718858c8ba3fc9db65b72eb238b6e17bde56cb56b2e6b7ecab74800fba8427",
+      "proposals_sha256": "68fa26dd7d8cad1e3db1ef985cd1df36f0d04eac2d73e6a720e1cd6dbdf84db7"
+    },
+    {
+      "run": 4,
+      "context": "isolated-subagent",
+      "model": "claude-sonnet-5-5",
+      "first_ordinal": 301,
+      "last_ordinal": 400,
+      "candidate_count": 100,
+      "packet_sha256": "d30521cda2abc9712c94206b622c5d68b84c290538460805a5c4421ad515afd3",
+      "raw_output_sha256": "8e52e411aeb0d870da917808de7551c6e557aa07bbb9bd9cb27cd126dd4408da",
+      "proposals_sha256": "18ebd621baa8160c099b1dd68be306624afe383f4fc0a7116818c1e320064d2b"
+    },
+    {
+      "run": 5,
+      "context": "isolated-subagent",
+      "model": "claude-sonnet-5-5",
+      "first_ordinal": 401,
+      "last_ordinal": 500,
+      "candidate_count": 100,
+      "packet_sha256": "d39a8e2a7e1094661dc9523cf21bc36c27ae5c420a1eac74006d8474308e5845",
+      "raw_output_sha256": "a09eadbab7b3119258017ca2caf792c466e2728b4df6234b374ead6eb2afc274",
+      "proposals_sha256": "c3355d3e92eb20918ec96cce708bdf909d870640f406735de5b01bfa561141ba"
+    }
+  ]
+}

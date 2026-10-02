@@ -282,3 +282,42 @@ test('rejections need a demonstrated duplicate, nonlexical unit, or out-of-scope
   unsupported.morphology_proposal.analyzer_pos = 'JKS';
   assert.deepEqual(validateCorpusCandidateReviewDispositions([unsupported]), { admit: 0, hold: 0, reject: 1 });
 });
+
+test('no-exact-start-context identity holds cite every analyzed form and the span, and reject invalid mutations', () => {
+  const surfaces = ['살이가', '삶살이를'];
+  const build = (mutate = () => {}) => {
+    const row = candidate({
+      disposition: 'hold',
+      basis: 'unresolved-identity',
+      lemma: '살이',
+      candidateRecordId: null,
+      identityEvidence: {
+        evidence_type: 'no-exact-start-context-available',
+        candidate_morpheme_span_surface: '살이',
+        observed_surface_forms: surfaces,
+        rationale: '표본에 형태소 시작 위치의 대표 문맥이 없어 표제어 정체를 확정할 수 없다.',
+      },
+    });
+    row.observed_surface_forms = surfaces.map((surface) => ({ surface }));
+    row.observed_morpheme_spans = [{ surface: '살이' }];
+    row.bounded_provenance.representative_hits = [];
+    mutate(row);
+    return row;
+  };
+  assert.deepEqual(validateCorpusCandidateReviewDispositions([build()]), { admit: 0, hold: 1, reject: 0 });
+  const invalid = {
+    code: 'CORPUS_CANDIDATE_REVIEW_IDENTITY_EVIDENCE',
+  };
+  assert.throws(() => validateCorpusCandidateReviewDispositions([build((row) => {
+    row.editorial_judgment.identity_evidence.observed_surface_forms = ['살이가'];
+  })]), invalid, 'form mismatch');
+  assert.throws(() => validateCorpusCandidateReviewDispositions([build((row) => {
+    row.bounded_provenance.representative_hits = [{ paragraph_id: 'CORPUS.1.10' }];
+  })]), invalid, 'unexpected representative hit');
+  assert.throws(() => validateCorpusCandidateReviewDispositions([build((row) => {
+    row.observed_morpheme_spans = [];
+  })]), invalid, 'missing span');
+  assert.throws(() => validateCorpusCandidateReviewDispositions([build((row) => {
+    row.editorial_judgment.identity_evidence.rationale = ' ';
+  })]), invalid, 'blank rationale');
+});

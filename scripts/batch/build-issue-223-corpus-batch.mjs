@@ -15,6 +15,14 @@ import {
   inspectWriterDomainEvidence,
 } from '../validate/lexical-quality.mjs';
 import { validateAuthoredSemanticDecisionSource } from './authored-semantic-decision-source.mjs';
+import { hasMorphologyBlocker } from '../validate/corpus-candidate-review.mjs';
+import {
+  GATE_HOLD_BASIS,
+  admissionGateFor,
+  assertInputBoundToRunRecord,
+  assertInputDerivedFromRaw,
+  runRecordFromRaw,
+} from './reviewer-raw-outputs.mjs';
 import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
@@ -107,14 +115,14 @@ export function bindAuthoredParagraphReferences(hitRefs, references) {
   });
 }
 
-function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, inventoryId, canonicalId, batchId, sampleParagraphCount) {
+function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, inventoryId, canonicalId, batchId, sampleParagraphCount, candidateAuthor) {
   const hitRefs = textFreeHits(textFreeCandidate.evidence.representative_hits);
   const proposalPos = editorial.corrected_pos ?? candidate.proposed_pos;
   const judgment = editorial.disposition === 'admit'
     ? {
       disposition: 'admit',
       rationale: `${candidate.proposed_lemma}: reviewed bounded contexts support this in-scope lexical identity and ${proposalPos} part of speech. The gloss is limited to one resolved meaning; analyzer counts, commonness, writer usefulness, and relation availability do not determine admission.`,
-      reviewer: 'codex-agent',
+      reviewer: candidateAuthor,
       human_reviewed: false,
       candidate_record_id: canonicalId,
       disposition_basis: 'valid-in-scope-lexical-entry',
@@ -136,18 +144,12 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
     : {
       disposition: 'hold',
       rationale: editorial.rationale,
-      reviewer: 'codex-agent',
+      reviewer: candidateAuthor,
       human_reviewed: false,
       candidate_record_id: null,
       disposition_basis: editorial.basis,
       ...(editorial.basis === 'unresolved-identity'
-        ? {
-          identity_evidence: editorial.identity_evidence ?? {
-          evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
-          rationale: editorial.rationale,
-          paragraph_ids: bindAuthoredParagraphReferences(hitRefs, editorial.paragraph_ids),
-        },
-        }
+        ? defaultIdentityEvidence(editorial, hitRefs, candidate)
         : {}),
       ...(editorial.basis === 'unresolved-sense'
         ? {
@@ -210,6 +212,66 @@ function candidateReviewRow(candidate, textFreeCandidate, editorial, ordinal, in
   };
 }
 
+// A bounded-context identity hold needs cited paragraphs. When no representative
+// context exists, the hold rests on the analyzer's morphology blocker alone and
+// carries no context evidence unless the author supplies explicit evidence.
+// With no contexts, a candidate whose every observed form merely contains the
+// lemma inside a longer word (never starting with it) is a component-only
+// identity hold, which the shared validator accepts with the analyzed forms as
+// evidence.
+export function componentOnlyIdentityEvidence(candidate, rationale) {
+  const lemma = candidate.proposed_lemma;
+  const forms = (candidate.observed_surface_forms ?? []).map(({ surface }) => surface);
+  const spans = candidate.observed_morpheme_spans ?? [];
+  const componentOnly = forms.length > 0
+    && new Set(forms).size === forms.length
+    && forms.every((surface) => typeof surface === 'string' && surface.includes(lemma) && !surface.startsWith(lemma))
+    && spans.some(({ surface }) => surface === lemma);
+  if (!componentOnly) return null;
+  return {
+    evidence_type: 'reviewed-analyzed-forms-show-component-only-usage',
+    rationale,
+    candidate_morpheme_span_surface: lemma,
+    observed_surface_forms: forms,
+  };
+}
+
+// With no context and no component-only reading, a clear candidate can still be
+// held by citing its analyzed forms and morpheme span.
+export function noExactStartContextEvidence(candidate, rationale) {
+  const lemma = candidate.proposed_lemma;
+  const forms = (candidate.observed_surface_forms ?? []).map(({ surface }) => surface);
+  const ok = forms.length > 0
+    && new Set(forms).size === forms.length
+    && forms.every((surface) => typeof surface === 'string' && surface.includes(lemma))
+    && (candidate.observed_morpheme_spans ?? []).some(({ surface }) => surface === lemma);
+  if (!ok) return {};
+  return {
+    identity_evidence: {
+      evidence_type: 'no-exact-start-context-available',
+      rationale,
+      candidate_morpheme_span_surface: lemma,
+      observed_surface_forms: forms,
+    },
+  };
+}
+
+export function defaultIdentityEvidence(editorial, hitRefs, candidate) {
+  if (editorial.identity_evidence !== undefined) return { identity_evidence: editorial.identity_evidence };
+  if (hitRefs.length === 0 && editorial.paragraph_ids === undefined) {
+    const componentOnly = candidate ? componentOnlyIdentityEvidence(candidate, editorial.rationale) : null;
+    if (componentOnly) return { identity_evidence: componentOnly };
+    return candidate && !hasMorphologyBlocker(candidate) ? noExactStartContextEvidence(candidate, editorial.rationale) : {};
+  }
+  return {
+    identity_evidence: {
+      evidence_type: 'reviewed-bounded-contexts-undermine-standalone-lemma',
+      rationale: editorial.rationale,
+      paragraph_ids: bindAuthoredParagraphReferences(hitRefs, editorial.paragraph_ids),
+    },
+  };
+}
+
 function makeCanonicalRecord(row) {
   const judgment = row.editorial_judgment;
   return {
@@ -255,11 +317,186 @@ function glossFrameSpans(gloss) {
 }
 
 export function assertSemanticReviewEnvelope(input, batchId) {
+  assert.equal(input.schema_version, '1', 'semantic review input has an unsupported schema version');
+  assert.equal(input.contract_version, 'authored-semantic-review-input-v1', 'semantic review input has an unregistered contract version');
   assert.equal(input.kind, 'authored-semantic-review-input', 'semantic review input has the wrong kind');
   assert.equal(input.batch_id, batchId, 'semantic review input is bound to a different batch');
   assert.ok(nonEmpty(input.reviewer), 'semantic review input needs a named reviewer');
   assert.equal(input.review_status, 'complete', 'semantic review input must be a completed review');
   assert.ok(Array.isArray(input.reviews), 'semantic review input needs a reviews array');
+}
+
+// From B06 on, a review input must preserve the reviewer's own four-axis
+// verdicts and the contexts it checked, not only the approval, so the
+// independent evidence survives with the input.
+export const REVIEWER_CHECK_FIRST_BATCH = 6;
+const assertHitIndices = (indices, hitCount, label) => {
+  assert.ok(Array.isArray(indices) && indices.length > 0, `${label}: must cite the contexts it checked`);
+  assert.ok(indices.every((index) => Number.isInteger(index) && index >= 0 && index < hitCount),
+    `${label}: cites a context outside the candidate's ${hitCount} bounded contexts`);
+  assert.equal(new Set(indices).size, indices.length, `${label}: cites a context twice`);
+};
+
+export function bindHitCounts(candidateRows) {
+  return new Map(candidateRows.map((row) => [
+    row.morphology_proposal.lemma,
+    row.bounded_provenance.representative_hits.length,
+  ]));
+}
+
+export function assertReviewerChecks(reviews, { required, hitCountByLemma }) {
+  for (const review of reviews) {
+    const label = `${review.lemma} reviewer checks`;
+    const present = ['identity_check', 'pos_check', 'gloss_check', 'sense_boundary_check', 'checked_hit_indices']
+      .filter((field) => review[field] !== undefined);
+    if (present.length === 0) {
+      assert.ok(!required, `${label} are required for this batch`);
+      continue;
+    }
+    assert.equal(present.length, 5, `${label} must carry all five fields`);
+    assert.equal(review.identity_check, 'ok', `${label}: identity must be ok`);
+    assert.equal(review.pos_check, 'ok', `${label}: POS must be ok`);
+    assert.equal(review.gloss_check, 'fit', `${label}: gloss must fit`);
+    assert.equal(review.sense_boundary_check, 'single', `${label}: sense boundary must be single`);
+    const hitCount = hitCountByLemma?.get(review.lemma);
+    assert.ok(Number.isInteger(hitCount), `${label}: no bounded contexts to bind the checked indices to`);
+    assertHitIndices(review.checked_hit_indices, hitCount, label);
+  }
+}
+
+// A review input must preserve the reviewer's outcome for EVERY candidate in
+// the batch, holds included, and the final dispositions must follow from those
+// outcomes: a reviewer pass is the only route to an admission, a reviewer hold
+// is reproduced exactly in the candidate review, and a candidate the generator
+// held can never be admitted by the review.
+const OUTCOME_AXES = Object.freeze({
+  identity_check: ['ok', 'unresolved'],
+  pos_check: ['ok', 'mismatch'],
+  gloss_check: ['fit', 'misfit', 'n/a'],
+  sense_boundary_check: ['single', 'multiple'],
+});
+const OUTCOME_HOLD_BASES = ['unresolved-identity', 'unresolved-sense'];
+// A non-lexical outcome state: the candidate author held the candidate and
+// proposed no gloss, and the reviewer found no lexical blocker. The candidate
+// stays held (under the author's own basis) until a gloss is proposed and
+// reviewed; it is not evidence of an identity or sense problem.
+export const NO_GLOSS_PROPOSED = 'no-gloss-proposed';
+
+export function assertReviewerOutcomes(outcomes, candidateRows) {
+  assert.ok(Array.isArray(outcomes), 'review input must preserve candidate_outcomes for every candidate');
+  assert.equal(outcomes.length, candidateRows.length, 'candidate_outcomes must cover every candidate in the batch');
+  candidateRows.forEach((row, index) => {
+    const outcome = outcomes[index];
+    const lemma = row.morphology_proposal.lemma;
+    const label = `${lemma} reviewer outcome`;
+    const hits = row.bounded_provenance.representative_hits;
+    const judgment = row.editorial_judgment;
+    assert.equal(outcome?.ordinal, index + 1, `${label}: ordinal must follow batch order`);
+    assert.equal(outcome.lemma, lemma, `${label}: bound to a different lemma`);
+    assert.ok(['admit', 'hold'].includes(outcome.generator_disposition), `${label}: names no generator disposition`);
+    assert.ok(['agree', 'disagree'].includes(outcome.generator_agreement), `${label}: names no generator agreement`);
+    for (const [axis, allowed] of Object.entries(OUTCOME_AXES)) {
+      assert.ok(allowed.includes(outcome[axis]), `${label}: ${axis} is not a valid verdict`);
+    }
+    assert.ok(['pass', 'hold'].includes(outcome.verdict), `${label}: names no verdict`);
+
+    if (outcome.verdict === 'pass') {
+      assert.equal(outcome.generator_disposition, 'admit', `${label}: a reviewer cannot pass a generator hold`);
+      assert.equal(outcome.generator_agreement, 'agree', `${label}: a pass must agree with the admit proposal`);
+      assert.deepEqual(
+        [outcome.identity_check, outcome.pos_check, outcome.gloss_check, outcome.sense_boundary_check],
+        ['ok', 'ok', 'fit', 'single'],
+        `${label}: a pass needs every axis to pass`,
+      );
+      assertHitIndices(outcome.checked_hit_indices, hits.length, label);
+      const gate = admissionGateFor(row);
+      if (gate) {
+        // A reviewer pass on a candidate the shared admission gate holds.
+        assert.equal(outcome.admission_gate, gate, `${label}: a gated pass must record its admission gate`);
+        assert.equal(judgment.disposition, 'hold', `${label}: a gated candidate cannot be admitted`);
+        assert.equal(judgment.disposition_basis, GATE_HOLD_BASIS[gate], `${label}: a ${gate} hold needs basis ${GATE_HOLD_BASIS[gate]}`);
+        return;
+      }
+      assert.equal(outcome.admission_gate, undefined, `${label}: only a gated candidate records an admission gate`);
+      assert.equal(judgment.disposition, 'admit', `${label}: a reviewer pass must be admitted`);
+      for (const field of ['hold_basis', 'hold_rationale', 'directions']) {
+        assert.equal(outcome[field], undefined, `${label}: a pass cannot carry ${field}`);
+      }
+      return;
+    }
+
+    assert.equal(judgment.disposition, 'hold', `${label}: a reviewer hold cannot be admitted`);
+    assert.ok(nonEmpty(outcome.hold_rationale), `${label}: hold needs an evidence-specific rationale`);
+    assert.equal(outcome.checked_hit_indices, undefined, `${label}: a hold cannot carry checked_hit_indices`);
+    if (outcome.hold_basis === NO_GLOSS_PROPOSED) {
+      assert.equal(outcome.generator_disposition, 'hold', `${label}: only a proposed hold can lack a proposed gloss`);
+      assert.equal(outcome.generator_agreement, 'disagree', `${label}: a no-gloss hold records that no lexical blocker was found`);
+      assert.deepEqual(
+        [outcome.identity_check, outcome.pos_check, outcome.gloss_check, outcome.sense_boundary_check],
+        ['ok', 'ok', 'n/a', 'single'],
+        `${label}: a no-gloss hold must not record a lexical blocker`,
+      );
+      assert.equal(outcome.directions, undefined, `${label}: only a sense hold carries directions`);
+      return;
+    }
+    assert.ok(OUTCOME_HOLD_BASES.includes(outcome.hold_basis), `${label}: hold needs a closed basis`);
+    // A lexical hold basis must be backed by its own axis, not by a missing gloss.
+    if (outcome.hold_basis === 'unresolved-identity') {
+      assert.ok(outcome.identity_check === 'unresolved' || outcome.pos_check === 'mismatch' || outcome.generator_disposition === 'admit',
+        `${label}: an identity hold needs an unresolved identity or POS axis`);
+    } else {
+      assert.equal(outcome.sense_boundary_check === 'multiple' || outcome.generator_disposition === 'admit', true,
+        `${label}: a sense hold needs a multiple-sense axis`);
+    }
+    assert.equal(outcome.generator_disposition === 'hold' ? outcome.gloss_check : 'n/a', 'n/a',
+      `${label}: a proposed hold carries no gloss to judge`);
+    if (outcome.hold_basis === 'unresolved-sense') {
+      assert.ok(Array.isArray(outcome.directions) && outcome.directions.length >= 2, `${label}: a sense hold needs two directions`);
+      for (const direction of outcome.directions) {
+        assert.ok(nonEmpty(direction.label), `${label}: a direction needs a label`);
+        assertHitIndices(direction.hit_indices, hits.length, `${label} direction`);
+      }
+    } else {
+      assert.equal(outcome.directions, undefined, `${label}: only a sense hold carries directions`);
+    }
+    if (outcome.generator_disposition === 'admit') {
+      // A reviewer-originated hold is reproduced exactly in the candidate review.
+      assert.equal(outcome.generator_agreement, 'disagree', `${label}: changing an admit to a hold is a disagreement`);
+      assert.equal(judgment.disposition_basis, outcome.hold_basis, `${label}: candidate review basis differs from the reviewer's`);
+      assert.equal(judgment.rationale, outcome.hold_rationale, `${label}: candidate review rationale differs from the reviewer's`);
+      if (outcome.hold_basis === 'unresolved-sense') {
+        const reproduced = judgment.sense_boundary_evidence?.directions;
+        const expected = outcome.directions.map((direction) => ({
+          label: direction.label,
+          paragraph_ids: direction.hit_indices.map((hitIndex) => hits[hitIndex].paragraph_id),
+        }));
+        assert.deepEqual(reproduced, expected, `${label}: candidate review directions differ from the reviewer's`);
+      }
+    }
+  });
+}
+
+export const SEMANTIC_REVIEWER_REGISTRY_PATH = path.join(ROOT, 'config/semantic-reviewers.json');
+
+export function parseSemanticReviewerRegistry(value) {
+  assert.equal(value?.schema_version, 1, 'semantic reviewer registry has an unsupported schema version');
+  assert.ok(Array.isArray(value.reviewers) && value.reviewers.length > 0, 'semantic reviewer registry lists no reviewers');
+  const ids = value.reviewers.map((entry) => entry?.id);
+  assert.ok(ids.every(nonEmpty) && new Set(ids).size === ids.length, 'semantic reviewer registry ids must be unique, non-empty strings');
+  return new Set(ids);
+}
+
+export async function loadSemanticReviewerRegistry(filePath = SEMANTIC_REVIEWER_REGISTRY_PATH) {
+  return parseSemanticReviewerRegistry(JSON.parse(await readFile(filePath, 'utf8')));
+}
+
+// The reviewer identity comes from a tracked registry outside the review input,
+// and a review authored by the candidate-review author is self-review.
+export function assertIndependentSemanticReviewer({ reviewer, candidateAuthor, registry }) {
+  assert.ok(nonEmpty(reviewer) && nonEmpty(candidateAuthor), 'semantic review needs a named reviewer and candidate author');
+  assert.ok(registry.has(reviewer), `semantic reviewer ${reviewer} is not in the trusted reviewer registry`);
+  assert.notEqual(reviewer.trim().toLowerCase(), candidateAuthor.trim().toLowerCase(),
+    `semantic reviewer ${reviewer} is the candidate-review author; self-review is not independent`);
 }
 
 const RELATION_TYPES = ['direct', 'near', 'mood', 'scene', 'sensory', 'action', 'association'];
@@ -314,7 +551,7 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
     token_index: fragment.token_index,
     gloss_sha256: glossDigest,
     decision_source_id: sourceId,
-    rationale: authoredReview.topic_analysis.rationale,
+    rationale: `${candidate.id} ${sense.id}: ${authoredReview.topic_analysis.rationale}`,
   });
   const frameSpans = glossFrameSpans(sense.gloss);
   const senseReview = {
@@ -322,12 +559,12 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
     boundary_action: authoredReview.boundary_action,
     boundary_classification: authoredReview.boundary_classification,
     boundary_decision: boundaryDecision,
-    boundary_rationale: `${authoredReview.boundary_rationale} Reviewed gloss SHA-256 ${glossDigest}.`,
-    semantic_rationale: authoredReview.semantic_rationale,
+    boundary_rationale: `${row.inventory_id} ${candidate.id} ${sense.id}: ${authoredReview.boundary_rationale} Reviewed gloss SHA-256 ${glossDigest}.`,
+    semantic_rationale: `${candidate.id} ${sense.id}: ${authoredReview.semantic_rationale}`,
     relation_decision: 'no-relations',
     relation_count: 0,
     relation_ids: [],
-    no_relation_rationale: authoredReview.no_relation_rationale,
+    no_relation_rationale: `${row.inventory_id} ${candidate.id}-${sense.id}: ${authoredReview.no_relation_rationale}`,
     ...(topicFragments.length > 0 ? {
       review_basis: {
         ...(topicFragments.length === 1
@@ -349,7 +586,7 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
           target_class: authoredReview.frames[index].target_class,
         },
       })),
-      rationale: authoredReview.frame_rationale,
+      rationale: `${candidate.id} ${sense.id}: ${authoredReview.frame_rationale}`,
     },
   };
   const decision = {
@@ -358,7 +595,7 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
     candidate_record_sha256: sha256Json(candidate),
     decision: 'included',
     rank,
-    decision_rationale: authoredReview.decision_rationale,
+    decision_rationale: `${row.inventory_id} ${candidate.id}: ${authoredReview.decision_rationale}`,
     review_pass_id: passId,
     gloss_judgment: authoredReview.gloss_judgment,
     sense_reviews: [senseReview],
@@ -382,13 +619,13 @@ function requireArgs(args) {
     return [match[1], match[2]];
   }));
   for (const key of ['batch-id', 'analysis-directory', 'authored-decisions']) {
-    if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=data/reference/... --authored-decisions=data/batches/...json [--semantic-reviews=...json]`);
+    if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=data/reference/... --authored-decisions=data/batches/...json [--semantic-reviews=...json] [--reviewer-raw-outputs=...json]`);
   }
   return { ...values, 'review-only': values['review-only'] === 'true' };
 }
 
 export async function buildIssue223CorpusBatch({
-  batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewOnly = false,
+  batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewerRawOutputsPath, reviewOnly = false,
 }) {
   const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
@@ -405,6 +642,7 @@ export async function buildIssue223CorpusBatch({
   const evidence = JSON.parse(evidenceBytes.toString('utf8'));
   const selectionArtifact = JSON.parse(selectionBytes.toString('utf8'));
   const authored = JSON.parse(inputBytes.toString('utf8'));
+  const candidateAuthor = authored.reviewer ?? 'codex-agent';
   const authoredDecisionRows = authored.decisions ?? [
     ...(authored.admissions ?? []).map(([lemma, axis, gloss]) => ({ lemma, disposition: 'admit', axis, gloss })),
     ...(authored.holds ?? []).map((row) => ({ ...row, disposition: 'hold' })),
@@ -437,6 +675,9 @@ export async function buildIssue223CorpusBatch({
       ? `w${String(canonicalNumber++).padStart(4, '0')}`
       : null;
     if (editorial.disposition === 'admit') {
+      // The shared admission path refuses these; fail early with the reason.
+      const gate = admissionGateFor(evidence.candidates[index]) ?? admissionGateFor(candidate);
+      assert.equal(gate, null, `candidate ${ordinal} ${candidate.proposed_lemma} cannot be admitted: ${gate}; hold it (${GATE_HOLD_BASIS[gate]})`);
       assert.ok(WRITER_USE_BY_AXIS[editorial.axis], `candidate ${ordinal} needs a supported writer axis`);
       assert.equal(typeof editorial.gloss, 'string');
       assert.ok(editorial.gloss.trim().length > 0);
@@ -452,7 +693,7 @@ export async function buildIssue223CorpusBatch({
       }
     } else {
       assert.equal(editorial.disposition, 'hold');
-      assert.ok(['unresolved-identity', 'unresolved-sense'].includes(editorial.basis));
+      assert.ok(['unresolved-identity', 'unresolved-sense', 'search-collision'].includes(editorial.basis));
       assert.ok(typeof editorial.rationale === 'string' && editorial.rationale.trim());
       if (editorial.basis === 'unresolved-sense') {
         assert.ok(Array.isArray(editorial.directions) && editorial.directions.length >= 2);
@@ -471,6 +712,7 @@ export async function buildIssue223CorpusBatch({
       canonicalId,
       batchId,
       inventory.index.sample_paragraph_count,
+      candidateAuthor,
     );
   });
 
@@ -510,7 +752,7 @@ export async function buildIssue223CorpusBatch({
     parent_issue: 218,
     batch_id: batchId,
     authoring_mode: 'agent-authored-decision',
-    reviewer: 'codex-agent',
+    reviewer: candidateAuthor,
     human_reviewed: false,
     publication_state: PUBLICATION_STATE,
     provenance: {
@@ -548,6 +790,7 @@ export async function buildIssue223CorpusBatch({
   const reviewPath = path.join(batchDirectory, `${batchStem}-candidate-review.json`);
   const semanticPath = path.join(batchDirectory, `${batchStem}-semantic-decisions.json`);
   const semanticInputPath = path.join(batchDirectory, `${batchStem}-semantic-review-input.json`);
+  const reviewerRunRecordPath = path.join(batchDirectory, `${batchStem}-reviewer-run-record.json`);
   const importPath = path.join(canonicalDirectory, `${batchStem}.jsonl`);
   if (reviewOnly) {
     for (const sidecarPath of [semanticPath, importPath]) {
@@ -586,6 +829,43 @@ export async function buildIssue223CorpusBatch({
   const semanticInputBytes = await readFile(path.resolve(ROOT, semanticReviewsPath));
   const semanticInput = JSON.parse(semanticInputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(semanticInput, batchId);
+  assertIndependentSemanticReviewer({
+    reviewer: semanticInput.reviewer,
+    candidateAuthor,
+    registry: await loadSemanticReviewerRegistry(),
+  });
+  assertReviewerChecks(semanticInput.reviews, {
+    required: batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH,
+    hitCountByLemma: bindHitCounts(rows),
+  });
+  let reviewerRunRecordBytes = null;
+  let reviewerRawArtifact = null;
+  if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) {
+    assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
+    assert.ok(reviewerRawOutputsPath, 'this batch requires --reviewer-raw-outputs (staged locally): the reviewers\' original outputs back the tracked run record');
+    reviewerRawArtifact = JSON.parse(await readFile(path.resolve(ROOT, reviewerRawOutputsPath), 'utf8'));
+    // The tracked run record is metadata and digests only; the raw outputs stay
+    // in ignored local staging (repository policy keeps raw model responses and
+    // draft text out of data/batches/).
+    const runRecord = runRecordFromRaw(reviewerRawArtifact);
+    reviewerRunRecordBytes = prettyBytes(runRecord);
+    const glossByLemma = new Map(admittedRows.map((row) => [row.morphology_proposal.lemma, row.editorial_judgment.writer_gloss]));
+    assertInputBoundToRunRecord({
+      input: semanticInput,
+      runRecord,
+      runRecordBytes: reviewerRunRecordBytes,
+      candidateRows: rows,
+      glossByLemma,
+      sha256Bytes,
+    });
+    assertInputDerivedFromRaw({
+      input: semanticInput,
+      runRecord,
+      rawArtifact: reviewerRawArtifact,
+      candidateRows: rows,
+      glossByLemma,
+    });
+  }
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
   assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
   assert.equal(semanticReviewByLemma.size, admittedRows.length, 'semantic review input must cover exactly the admitted records');
@@ -618,7 +898,7 @@ export async function buildIssue223CorpusBatch({
       semantic_review_input_sha256: sha256Bytes(semanticInputBytes),
     },
     provenance: {
-      generator: 'codex',
+      generator: authored.generator ?? 'codex',
       generator_version: 'issue-223-authored-semantic-review-v1',
       generation_pass_id: generationPassId,
       verification_pass_id: semanticPassId,
@@ -703,8 +983,14 @@ export async function buildIssue223CorpusBatch({
     writeFile(reviewPath, reviewBytes),
     writeFile(semanticPath, semanticBytes),
     writeFile(semanticInputPath, semanticInputBytes),
+    ...(reviewerRunRecordBytes ? [writeFile(reviewerRunRecordPath, reviewerRunRecordBytes)] : []),
     writeFile(importPath, importBytes),
   ]);
+
+  if (reviewerRawArtifact) {
+    // Local staging only: this path is under ignored data/reference.
+    await writeFile(path.join(absoluteAnalysis, 'reviewer-raw-outputs.json'), prettyBytes(reviewerRawArtifact));
+  }
 
   const promotionRows = semanticDecisions.map((decision) => ({
     schema_version: '1',
@@ -790,6 +1076,7 @@ if (isMain) {
     analysisDirectory: args['analysis-directory'],
     authoredDecisionsPath: args['authored-decisions'],
     semanticReviewsPath: args['semantic-reviews'],
+    reviewerRawOutputsPath: args['reviewer-raw-outputs'],
     reviewOnly: args['review-only'],
   }).then((summary) => {
     console.log(JSON.stringify(summary, null, 2));

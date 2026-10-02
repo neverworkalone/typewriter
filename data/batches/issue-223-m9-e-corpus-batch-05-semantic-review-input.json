@@ -1,0 +1,3725 @@
+{
+  "schema_version": "1",
+  "contract_version": "authored-semantic-review-input-v1",
+  "kind": "authored-semantic-review-input",
+  "batch_id": "issue-223-m9-e-corpus-batch-05-20261001",
+  "reviewer": "claude-sonnet-5-5",
+  "review_status": "complete",
+  "reviews": [
+    {
+      "lemma": "참회",
+      "gloss_sha256": "79e8278cf265647d83aee14a79bb4ee56c53809c242d58c5004e10b16b93a37f",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "참회: 뉘우침과 고백이 하나로 묶인 한 가지 행위로 읽힌다.",
+      "semantic_rationale": "참회: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 잘못을 돌아보는 장면에서 고백의 무게를 드러낸다.",
+      "no_relation_rationale": "참회: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "참회: 뉘우침과 고백이 하나로 묶인 한 가지 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "참회: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“참회”라는 말로 바꾸자 잘못을 털어놓는 장면의 무게가 달라졌다.",
+          "relation_type": "near",
+          "target_class": "참회의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "진격",
+      "gloss_sha256": "d1459aeb7c62b49e53bf85f164cb065810419a6442178db0b30c3b25a6263259",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "진격: 적을 향한 전진이라는 한 가지 움직임으로 읽힌다.",
+      "semantic_rationale": "진격: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 공세의 기세를 담은 이동 장면에 쓴다.",
+      "no_relation_rationale": "진격: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "진격: 적을 향한 전진이라는 한 가지 움직임으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "진격: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“진격”이라는 말을 고르자 앞으로 밀고 나가는 기세가 살아났다.",
+          "relation_type": "near",
+          "target_class": "진격의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "하숙집",
+      "gloss_sha256": "e25c9336b29a3f257e93265ac6461289a30b859682db4b01bbfc0d5407e36f06",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "하숙집: 방을 빌려 지내는 사람이 머무는 집이라는 하나의 장소로 읽힌다.",
+      "semantic_rationale": "하숙집: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 생활의 공간과 사람살이를 함께 불러온다.",
+      "no_relation_rationale": "하숙집: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "하숙집: 방을 빌려 지내는 사람이 머무는 집이라는 하나의 장소로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "하숙집: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“하숙집”이라는 말이 놓이자 방을 빌려 사는 이들의 저녁 풍경이 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "하숙집의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "웨이터",
+      "gloss_sha256": "4e24f6b95f5ab005fa308415c91983c251dfa6fb6726f744e1a14f2dc43a89ac",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "웨이터: 식당에서 주문을 받고 음식을 나르는 직업인 하나로 읽힌다.",
+      "semantic_rationale": "웨이터: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 식당 장면의 인물을 직업으로 세운다.",
+      "no_relation_rationale": "웨이터: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "웨이터: 식당에서 주문을 받고 음식을 나르는 직업인 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "웨이터: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“웨이터”를 넣자 식당 장면에 주문 받는 사람이 분명하게 서 있었다.",
+          "relation_type": "near",
+          "target_class": "웨이터의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "테러",
+      "gloss_sha256": "400af787eeda8acd07c60619d987974103cb555100e8beb4eeea6032908a73bc",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "테러: 폭력과 위협으로 공포를 일으키는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "테러: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 사건을 폭력 행위로 규정할 때 쓴다.",
+      "no_relation_rationale": "테러: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "테러: 폭력과 위협으로 공포를 일으키는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "테러: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“테러”는 정치적 목적 아래 가해지는 폭력의 면을 붙잡는다.",
+          "relation_type": "near",
+          "target_class": "테러의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“테러”라는 말은 위협으로 공포를 퍼뜨리는 면을 함께 가리킨다.",
+          "relation_type": "near",
+          "target_class": "테러의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "관절",
+      "gloss_sha256": "20518258edc5381d63af8a70f5ebf23b08ea5b847089b9322587a1279a357f38",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "관절: 뼈가 이어져 굽히고 펴는 몸의 부위 하나로 읽힌다.",
+      "semantic_rationale": "관절: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 몸의 움직임과 통증을 구체적으로 짚을 때 쓴다.",
+      "no_relation_rationale": "관절: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "관절: 뼈가 이어져 굽히고 펴는 몸의 부위 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "관절: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“관절”은 뼈와 뼈가 이어져 몸을 굽히는 부분을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "관절의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“관절”은 몸을 펴게 하는 부분으로도 읽혀 움직임의 장면에 어울린다.",
+          "relation_type": "near",
+          "target_class": "관절의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "전염병",
+      "gloss_sha256": "7b3a5825c9697035eb025c8818c1a7e9ca7bca3d246dabe6aac739ef915d3815",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "전염병: 사람 사이에 옮아 퍼지는 병 하나로 읽힌다.",
+      "semantic_rationale": "전염병: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 병이 번지는 사회적 장면을 그릴 때 쓴다.",
+      "no_relation_rationale": "전염병: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "전염병: 사람 사이에 옮아 퍼지는 병 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "전염병: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“전염병”이라는 말을 쓰자 병이 사람 사이로 번지는 불안이 선명해졌다.",
+          "relation_type": "near",
+          "target_class": "전염병의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "안식",
+      "gloss_sha256": "d3c4b88f5d434bfb9b935c689dc7752272520a9e00ba31c5304f505230ab9bf9",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "안식: 몸과 마음이 편안히 쉬는 상태 하나로 읽힌다.",
+      "semantic_rationale": "안식: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 고요한 휴식의 정서를 짚을 때 쓴다.",
+      "no_relation_rationale": "안식: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "안식: 몸과 마음이 편안히 쉬는 상태 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "안식: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“안식”이라는 말이 놓이자 몸과 마음이 쉬는 고요가 문장에 깔렸다.",
+          "relation_type": "near",
+          "target_class": "안식의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "정치가",
+      "gloss_sha256": "d90004313750b11306d6681453b5bbfe3c917d60796fce7b73d45d93abbbb285",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "정치가: 정치를 직업으로 삼아 활동하는 사람 하나로 읽힌다.",
+      "semantic_rationale": "정치가: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 인물을 직업과 활동 영역으로 소개할 때 쓴다.",
+      "no_relation_rationale": "정치가: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "정치가: 정치를 직업으로 삼아 활동하는 사람 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "정치가: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“정치가”라는 말로 인물을 소개하자 정치를 직업으로 삼은 사람의 윤곽이 잡혔다.",
+          "relation_type": "near",
+          "target_class": "정치가의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“정치가”는 정치를 전문으로 삼아 활동하는 사람이라는 면도 지닌다.",
+          "relation_type": "near",
+          "target_class": "정치가의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "지랄",
+      "gloss_sha256": "2da4d66144efd7ff08c68aac9ca58d5808bd05fcbe41a79804e90b6f7c87556b",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "지랄: 제멋대로 구는 행동을 속되게 이르는 말 하나로 읽힌다.",
+      "semantic_rationale": "지랄: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 거친 어조로 행동을 나무랄 때의 결을 보여 준다.",
+      "no_relation_rationale": "지랄: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "지랄: 제멋대로 구는 행동을 속되게 이르는 말 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "지랄: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“지랄”이라는 속된 말이 말썽스러운 행동을 거칠게 꾸짖는 어조를 만들었다.",
+          "relation_type": "near",
+          "target_class": "지랄의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“지랄”은 제멋대로 구는 행동을 가리키는 말로도 읽혔다.",
+          "relation_type": "near",
+          "target_class": "지랄의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "암탉",
+      "gloss_sha256": "c82b9f3c89be51d8b04e4959d293ab61f93e279e76a22a39bc0c6ef72bc22a09",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "암탉: 암컷인 닭이라는 하나의 대상으로 읽힌다.",
+      "semantic_rationale": "암탉: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 마당이나 닭장 장면의 동물을 성별까지 짚는다.",
+      "no_relation_rationale": "암탉: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "암탉: 암컷인 닭이라는 하나의 대상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "암탉: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“암탉”이라는 말로 쓰자 마당의 닭이 암컷으로 또렷해졌다.",
+          "relation_type": "near",
+          "target_class": "암탉의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "체중",
+      "gloss_sha256": "2b25d3f136461ce6c7c9fce4942acc3abfbea71e0688f05ab18e94ae546ca778",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "체중: 사람 몸의 무게라는 하나의 양으로 읽힌다.",
+      "semantic_rationale": "체중: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 몸 상태를 수치와 감각으로 짚을 때 쓴다.",
+      "no_relation_rationale": "체중: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "체중: 사람 몸의 무게라는 하나의 양으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "체중: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“체중”이라는 말을 쓰자 몸의 무게가 건강의 수치로 문장에 올랐다.",
+          "relation_type": "near",
+          "target_class": "체중의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "정세",
+      "gloss_sha256": "1f06d6437aeff5bad10976ab679aa839f43cfe0899299dee6d739981e07c7692",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "정세: 어떤 일을 둘러싼 형편과 그 흐름을 하나로 가리킨다.",
+      "semantic_rationale": "정세: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 큰 사건의 배경 형편을 짚을 때 쓴다.",
+      "no_relation_rationale": "정세: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "정세: 어떤 일을 둘러싼 형편과 그 흐름을 하나로 가리킨다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "정세: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“정세”라는 말이 놓이자 사건을 둘러싼 형편과 흐름이 한눈에 잡혔다.",
+          "relation_type": "near",
+          "target_class": "정세의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "선박",
+      "gloss_sha256": "bdd3faf3faa52cefcdaedb12782f2bc93722fb41814c51bf282ebccba0b65005",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "선박: 물 위를 다니는 배라는 하나의 대상으로 읽힌다.",
+      "semantic_rationale": "선박: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 바다와 항구 장면의 큰 배를 격식 있게 부른다.",
+      "no_relation_rationale": "선박: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "선박: 물 위를 다니는 배라는 하나의 대상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "선박: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“선박”은 사람을 싣고 물 위를 다니는 배를 격식 있게 가리킨다.",
+          "relation_type": "near",
+          "target_class": "선박의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“선박”은 짐을 싣는 배로도 읽혀 항구 장면에 어울린다.",
+          "relation_type": "near",
+          "target_class": "선박의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "침투",
+      "gloss_sha256": "c7ad33ea30b0e34587de3e0b35157baefe97d9eb191ea83511f03c2c1f70d7de",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "침투: 안으로 파고들어 감이라는 하나의 움직임으로 읽힌다.",
+      "semantic_rationale": "침투: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 경계를 넘어 스며드는 행동을 그릴 때 쓴다.",
+      "no_relation_rationale": "침투: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "침투: 안으로 파고들어 감이라는 하나의 움직임으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "침투: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“침투”라는 말로 쓰자 바깥에서 안으로 들어가는 움직임이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "침투의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“침투”는 깊숙한 곳까지 파고드는 면을 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "침투의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "습득",
+      "gloss_sha256": "ca98ef5b1198e182423c9c3c6940c1fb8ff3a3e67285364acf492e3ff280060e",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "습득: 배워서 익힘이라는 하나의 과정으로 읽힌다.",
+      "semantic_rationale": "습득: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 기술이나 지식이 몸에 붙는 과정을 짚을 때 쓴다.",
+      "no_relation_rationale": "습득: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "습득: 배워서 익힘이라는 하나의 과정으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "습득: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“습득”이라는 말을 넣자 배워서 몸에 익히는 과정이 드러났다.",
+          "relation_type": "near",
+          "target_class": "습득의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "국적",
+      "gloss_sha256": "17734d3dd92550a82fea84d8c5c3bbd5ecebd95509ea76a88f84ce33c986b896",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "국적: 한 국가에 속한 법적 자격 하나로 읽힌다.",
+      "semantic_rationale": "국적: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 인물의 소속을 법적 자격으로 밝힐 때 쓴다.",
+      "no_relation_rationale": "국적: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "국적: 한 국가에 속한 법적 자격 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "국적: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“국적”이라는 말로 적자 인물이 어느 나라에 속하는지가 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "국적의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "분쟁",
+      "gloss_sha256": "a3a09d80c676c0f4fb8c6bdec867aa8572daf747cf3d8f6b29ea473038f9b567",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "분쟁: 이해나 주장이 맞서 다투는 일 하나로 읽힌다.",
+      "semantic_rationale": "분쟁: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 이해가 부딪치는 갈등 장면을 객관적으로 쓴다.",
+      "no_relation_rationale": "분쟁: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "분쟁: 이해나 주장이 맞서 다투는 일 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "분쟁: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“분쟁”이라는 말이 놓이자 서로의 주장이 맞서는 다툼이 드러났다.",
+          "relation_type": "near",
+          "target_class": "분쟁의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "절약",
+      "gloss_sha256": "8ba4addedcb713274aa777b076d542f29e605595aad5eb4af46bedc3e3548003",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "절약: 아껴 씀이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "절약: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 씀씀이를 줄이는 태도를 구체적으로 짚는다.",
+      "no_relation_rationale": "절약: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "절약: 아껴 씀이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "절약: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“절약”이라는 말로 바꾸자 쓰지 않고 아끼는 태도가 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "절약의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "총애",
+      "gloss_sha256": "ea38f8c381449bcc1515655ca5307cbdb777d73904f1fde7b3f4e391d46c0517",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "총애: 윗사람의 특별한 사랑이라는 하나의 정서로 읽힌다.",
+      "semantic_rationale": "총애: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 위계가 있는 관계의 편애를 짚을 때 쓴다.",
+      "no_relation_rationale": "총애: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "총애: 윗사람의 특별한 사랑이라는 하나의 정서로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "총애: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“총애”라는 말이 놓이자 윗사람에게 받는 특별한 아낌이 드러났다.",
+          "relation_type": "near",
+          "target_class": "총애의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "문제점",
+      "gloss_sha256": "a79520cacc9e8084f9e360c2ae741a1f686897424e9445e19781dc8b7ef5d7e7",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "문제점: 결함이 되는 부분이라는 하나의 대상으로 읽힌다.",
+      "semantic_rationale": "문제점: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 살펴 고칠 부분을 짚어 말할 때 쓴다.",
+      "no_relation_rationale": "문제점: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "문제점: 결함이 되는 부분이라는 하나의 대상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "문제점: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“문제점”이라는 말로 쓰자 고쳐야 할 부분이 분명하게 지목되었다.",
+          "relation_type": "near",
+          "target_class": "문제점의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "부임",
+      "gloss_sha256": "465f8f4aea5d7f833ed06fe5818015df11abaa4051291b2a567a5b69c19fadda",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "부임: 새 자리로 옮겨 일을 맡음이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "부임: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 직무 이동의 장면을 격식 있게 쓴다.",
+      "no_relation_rationale": "부임: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "부임: 새 자리로 옮겨 일을 맡음이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "부임: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“부임”이라는 말을 고르자 새 자리로 옮겨 일을 맡는 장면이 서늘하게 열렸다.",
+          "relation_type": "near",
+          "target_class": "부임의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "거역",
+      "gloss_sha256": "90c534c09df561a9636bb253939902cb072a9cfc34db9ddc04b4f9bbe8d0db2f",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "거역: 윗사람의 뜻을 따르지 않고 거스름이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "거역: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 권위에 맞서는 태도를 짚을 때 쓴다.",
+      "no_relation_rationale": "거역: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "거역: 윗사람의 뜻을 따르지 않고 거스름이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "거역: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“거역”은 윗사람의 뜻을 따르지 않는 행동을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "거역의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“거역”은 정해진 이치를 거스르는 면도 함께 지닌다.",
+          "relation_type": "near",
+          "target_class": "거역의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "지난주",
+      "gloss_sha256": "015292e0ed1efaf0afdce3135b118536a9787da6324cd182218a3c054ee4cb45",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "지난주: 이번 주의 바로 앞 주라는 하나의 시간으로 읽힌다.",
+      "semantic_rationale": "지난주: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 시간의 위치를 바로 앞 주로 짚는다.",
+      "no_relation_rationale": "지난주: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "지난주: 이번 주의 바로 앞 주라는 하나의 시간으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "지난주: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“지난주”라는 말로 쓰자 이번 주 바로 앞의 시간이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "지난주의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "면도",
+      "gloss_sha256": "7ae031c13004a232f2f22f358bfaf114205ecb4ece27ccf62ae3f8eb872004a0",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "면도: 털을 밀어 없앰이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "면도: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 아침 몸단장의 구체적 동작을 짚는다.",
+      "no_relation_rationale": "면도: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "면도: 털을 밀어 없앰이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "면도: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“면도”라는 말을 넣자 털을 밀어 내는 아침의 동작이 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "면도의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "상위",
+      "gloss_sha256": "384a540f4fbbd4ce569522243d8dbc635c784c9250f0e3b44b36b6a5d562b7a7",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "상위: 높은 쪽에 놓인 위치라는 하나의 자리로 읽힌다.",
+      "semantic_rationale": "상위: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 순위나 등급의 높은 자리를 짚어 말한다.",
+      "no_relation_rationale": "상위: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "상위: 높은 쪽에 놓인 위치라는 하나의 자리로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "상위: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“상위”는 등급에서 높은 쪽에 놓인 위치를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "상위의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“상위”는 순위에서 높은 쪽이라는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "상위의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "선택지",
+      "gloss_sha256": "56d1223a92153be059a9563ba9f027d109434fc6b57a23575efa8a9408d8fb7c",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "선택지: 선택할 수 있게 주어진 항목이라는 하나의 대상으로 읽힌다.",
+      "semantic_rationale": "선택지: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 결정 앞에 놓인 가능성을 항목으로 보여 준다.",
+      "no_relation_rationale": "선택지: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "선택지: 선택할 수 있게 주어진 항목이라는 하나의 대상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "선택지: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“선택지”는 선택할 수 있도록 주어진 항목을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "선택지의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“선택지”는 열려 있는 가능성이라는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "선택지의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "짓눌리다",
+      "gloss_sha256": "7c5d8851716f7fd6025c5dd028e68ccb9fa13374c4b39a7c319b39195bb75068",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "짓눌리다: 눌려 크게 억눌리는 하나의 상태로 읽힌다.",
+      "semantic_rationale": "짓눌리다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 무게나 압박에 눌린 몸과 기운을 그릴 때 쓴다.",
+      "no_relation_rationale": "짓눌리다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "짓눌리다: 눌려 크게 억눌리는 하나의 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "짓눌리다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“짓눌리다”는 무게나 압박에 눌려 움직임이 막히는 상태를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "짓눌리다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“짓눌리다”는 기운이 크게 억눌리는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "짓눌리다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "장난치다",
+      "gloss_sha256": "4afd046d60e279562b4316a39f485cecbdda397301215f5d833d80bf783be508",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "장난치다: 장난스러운 행동을 하는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "장난치다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 웃음을 위한 가벼운 행동을 짚는다.",
+      "no_relation_rationale": "장난치다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "장난치다: 장난스러운 행동을 하는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "장난치다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“장난치다”라는 말로 쓰자 웃음을 위한 가벼운 행동이 살아났다.",
+          "relation_type": "near",
+          "target_class": "장난치다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "모색",
+      "gloss_sha256": "6fa10407d45c0ed43600f01a6e9f353118c19b8ed3d22a2459d0034066f9a5b2",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "모색: 방법이나 길을 궁리하며 찾는 하나의 과정으로 읽힌다.",
+      "semantic_rationale": "모색: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 해법을 찾아 헤매는 단계를 짚을 때 쓴다.",
+      "no_relation_rationale": "모색: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "모색: 방법이나 길을 궁리하며 찾는 하나의 과정으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "모색: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“모색”은 방법을 찾으려는 궁리를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "모색의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“모색”은 길을 살펴보며 찾는 과정이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "모색의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "존경심",
+      "gloss_sha256": "19abe1f77222acb38c9fc8711d6ee1a8ce4c9ef9754ec6cdef844f089dcb2032",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "존경심: 훌륭한 사람을 높이 받드는 마음 하나로 읽힌다.",
+      "semantic_rationale": "존경심: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 인물을 향한 마음의 태도를 짚는다.",
+      "no_relation_rationale": "존경심: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "존경심: 훌륭한 사람을 높이 받드는 마음 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "존경심: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“존경심”이라는 말이 놓이자 상대를 높이 받드는 마음이 선명해졌다.",
+          "relation_type": "near",
+          "target_class": "존경심의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "추궁",
+      "gloss_sha256": "035c5e87eb46c619043074c3a22ca87579e692419116cb1e7971e858636358ef",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "추궁: 잘못을 밝히려 따져 물음이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "추궁: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 책임을 캐묻는 긴장된 장면을 그린다.",
+      "no_relation_rationale": "추궁: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "추궁: 잘못을 밝히려 따져 물음이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "추궁: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“추궁”은 잘못을 밝히려고 따져 묻는 행동을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "추궁의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“추궁”은 숨긴 일을 밝혀내려는 집요함도 담는다.",
+          "relation_type": "near",
+          "target_class": "추궁의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "겁내다",
+      "gloss_sha256": "e5fd5baad2b639ce88dc3b1dab8d27fd69b42336ec5abcfcc2480fa17a862c35",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "겁내다: 두려워하는 하나의 마음 상태로 읽힌다.",
+      "semantic_rationale": "겁내다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 위험이나 상대 앞에서 움츠러드는 태도를 짚는다.",
+      "no_relation_rationale": "겁내다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "겁내다: 두려워하는 하나의 마음 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "겁내다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“겁내다”는 위험을 두려워하는 태도를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "겁내다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“겁내다”는 상대를 두려워하는 면도 함께 지닌다.",
+          "relation_type": "near",
+          "target_class": "겁내다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "익숙하다",
+      "gloss_sha256": "aabd86ee68aa0ae6e6b0ce63a87873cbcd51479ff888f711c65b587a3c8f6a70",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "익숙하다: 낯설지 않고 편한 하나의 상태로 읽힌다.",
+      "semantic_rationale": "익숙하다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 겪어서 몸에 밴 편안함을 짚을 때 쓴다.",
+      "no_relation_rationale": "익숙하다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "익숙하다: 낯설지 않고 편한 하나의 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "익숙하다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“익숙하다”는 오래 겪어 낯설지 않은 상태를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "익숙하다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“익숙하다”는 배워서 편해진 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "익숙하다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "청산",
+      "gloss_sha256": "1826617ff373dd06bd8420fc7391cc4c632de7eb01de8d8bfc618ea474917c6f",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "청산: 정리해 끝냄이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "청산: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 오래된 일이나 관계를 끝맺는 장면에 쓴다.",
+      "no_relation_rationale": "청산: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "청산: 정리해 끝냄이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "청산: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“청산”은 오래 이어진 일을 정리하는 행동을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "청산의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“청산”은 관계를 끊어 끝내는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "청산의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "허약",
+      "gloss_sha256": "6d492a46694d7dc84bb9002c899821cedef32bf0b1500ea68a9fc52f51ec7b11",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "허약: 몸과 기운이 약한 하나의 상태로 읽힌다.",
+      "semantic_rationale": "허약: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 체질이나 기력의 약함을 짚을 때 쓴다.",
+      "no_relation_rationale": "허약: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "허약: 몸과 기운이 약한 하나의 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "허약: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“허약”은 몸이 약한 상태를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "허약의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“허약”은 기운이 튼튼하지 못한 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "허약의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "갸웃거리다",
+      "gloss_sha256": "8d82c15f79bba4deb4dc4cab63ecd459d4bba5749068c85f566badd9a9f8b350",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "갸웃거리다: 고개를 자꾸 기울이는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "갸웃거리다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 의아함이 몸짓으로 드러나는 순간을 그린다.",
+      "no_relation_rationale": "갸웃거리다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "갸웃거리다: 고개를 자꾸 기울이는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "갸웃거리다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“갸웃거리다”는 의아해 고개를 기울이는 동작을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "갸웃거리다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“갸웃거리다”는 확신하지 못해 자꾸 기울이는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "갸웃거리다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "의구심",
+      "gloss_sha256": "3420b7526c779dbfd98059023515abdd2816b5c7425c9c493ef9498b3c13dc18",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "의구심: 믿기 어려워하는 하나의 의심으로 읽힌다.",
+      "semantic_rationale": "의구심: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 확신이 흔들리는 마음을 짚을 때 쓴다.",
+      "no_relation_rationale": "의구심: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "의구심: 믿기 어려워하는 하나의 의심으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "의구심: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“의구심”은 무엇이 옳은지 믿기 어려워하는 마음을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "의구심의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“의구심”은 사실인지 의심하는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "의구심의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "찬물",
+      "gloss_sha256": "ac4fb2b963ab6c888ad9dec117af663f82081695d9a60a4fb30cd30135c7b92c",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "찬물: 차게 느껴지는 물이라는 하나의 대상으로 읽힌다.",
+      "semantic_rationale": "찬물: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 차가운 감각을 물로 구체화한다.",
+      "no_relation_rationale": "찬물: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "찬물: 차게 느껴지는 물이라는 하나의 대상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "찬물: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“찬물”은 차갑게 식은 물을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "찬물의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“찬물”은 차게 느껴지는 물이라는 감각의 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "찬물의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "아쉬워하다",
+      "gloss_sha256": "f6ff9d07ca570afcefb802f431f382b803c03d860fe2328bf37dcd4854f455f1",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "아쉬워하다: 섭섭하게 여기는 하나의 마음으로 읽힌다.",
+      "semantic_rationale": "아쉬워하다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 얻지 못한 것을 못내 그리는 태도를 짚는다.",
+      "no_relation_rationale": "아쉬워하다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "아쉬워하다: 섭섭하게 여기는 하나의 마음으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "아쉬워하다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“아쉬워하다”는 바라던 일을 얻지 못해 섭섭해하는 태도를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "아쉬워하다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“아쉬워하다”는 사람을 얻지 못한 섭섭함도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "아쉬워하다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "통틀다",
+      "gloss_sha256": "08e63a21089a9ebf37b736a0a3cdfe8905cfa5c0c83ae18e3b2080126e88d060",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "통틀다: 빠짐없이 하나로 묶어 포함하는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "통틀다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 여러 대상을 한꺼번에 아우를 때 쓴다.",
+      "no_relation_rationale": "통틀다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "통틀다: 빠짐없이 하나로 묶어 포함하는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "통틀다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“통틀다”라는 말로 쓰자 여러 대상이 빠짐없이 하나로 묶였다.",
+          "relation_type": "near",
+          "target_class": "통틀다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "궁지",
+      "gloss_sha256": "7129cede5ea743608bdc09fb99a88a0983796eb961f0e949a3a4c93f55f97265",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "궁지: 빠져나가기 어려운 곤란한 처지 하나로 읽힌다.",
+      "semantic_rationale": "궁지: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 몰린 상황의 막막함을 짚을 때 쓴다.",
+      "no_relation_rationale": "궁지: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "궁지: 빠져나가기 어려운 곤란한 처지 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "궁지: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“궁지”는 빠져나가기 어려운 처지를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "궁지의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“궁지”는 해결하기 어려운 곤란함도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "궁지의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "주교",
+      "gloss_sha256": "982bd99dc8b0a1fd72dfedcb6eb0f300b1403838e94eb6ec8c6eba262525e017",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "주교: 교구를 맡아 다스리는 고위 성직자 하나로 읽힌다.",
+      "semantic_rationale": "주교: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 종교 조직의 인물을 직위로 짚는다.",
+      "no_relation_rationale": "주교: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "주교: 교구를 맡아 다스리는 고위 성직자 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "주교: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“주교”라는 말로 쓰자 교구를 다스리는 성직자의 직위가 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "주교의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "탱크",
+      "gloss_sha256": "cba1c2d21a7b74c4e7ecd88f017b54098e5b5a92ab7dcc19952b4d5209e70a75",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "탱크: 무한궤도로 움직이는 장갑 전투 차량 하나로 읽힌다.",
+      "semantic_rationale": "탱크: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 전장 장면의 무기를 구체적으로 짚는다.",
+      "no_relation_rationale": "탱크: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "탱크: 무한궤도로 움직이는 장갑 전투 차량 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "탱크: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“탱크”라는 말을 넣자 전장에 장갑 전투 차량이 굴러 오는 모습이 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "탱크의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "교도소",
+      "gloss_sha256": "bd3e74543d33a43726efe87063c061cb23fe26ce520e3c62ecc400db2885fb8e",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "교도소: 죄를 지은 사람을 가두는 시설 하나로 읽힌다.",
+      "semantic_rationale": "교도소: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 수감과 격리의 장소를 짚을 때 쓴다.",
+      "no_relation_rationale": "교도소: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "교도소: 죄를 지은 사람을 가두는 시설 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "교도소: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“교도소”라는 말로 쓰자 형을 집행하는 시설의 차가운 공간이 드러났다.",
+          "relation_type": "near",
+          "target_class": "교도소의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "막사",
+      "gloss_sha256": "3ec9bcbb6e6a79e65f90fbbcb84f9bdd0ea0e4bb6bf828700c788134abcad44e",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "막사: 머무는 임시 숙소라는 하나의 장소로 읽힌다.",
+      "semantic_rationale": "막사: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 군영이나 단체 야영의 숙소를 짚는다.",
+      "no_relation_rationale": "막사: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "막사: 머무는 임시 숙소라는 하나의 장소로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "막사: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“막사”는 군인이 머무는 임시 숙소를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "막사의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“막사”는 단체 구성원이 머무는 숙소라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "막사의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "연수",
+      "gloss_sha256": "35c0754876867380235c7557ecb120a6b6ec2ed5ad3b3cedd4788c07e97c1803",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "연수: 익히기 위해 받는 교육이라는 하나의 활동으로 읽힌다.",
+      "semantic_rationale": "연수: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 업무 기술을 익히는 교육 장면을 짚는다.",
+      "no_relation_rationale": "연수: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "연수: 익히기 위해 받는 교육이라는 하나의 활동으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "연수: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“연수”는 일정한 목적을 위해 받는 교육을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "연수의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“연수”는 기술을 익히려고 받는 교육이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "연수의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "순례",
+      "gloss_sha256": "ba33bc580cf687d7ef2d3e203f5fe5f230c1b6642bb996b1e0d7a74b3a7ce2a2",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "순례: 성스러운 장소를 찾아다님이라는 하나의 여정으로 읽힌다.",
+      "semantic_rationale": "순례: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 신앙이나 뜻을 품은 걸음의 여정을 그린다.",
+      "no_relation_rationale": "순례: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "순례: 성스러운 장소를 찾아다님이라는 하나의 여정으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "순례: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“순례”는 뜻을 품고 찾아다니는 걸음을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "순례의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“순례”는 성스러운 장소를 차례로 찾는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "순례의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "형수",
+      "gloss_sha256": "ecba1d4de458f7703fe445245fec80e85af940024a067121724a5766588fd695",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "형수: 형의 아내라는 하나의 친족 관계로 읽힌다.",
+      "semantic_rationale": "형수: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 친족 호칭으로 관계의 거리를 짚는다.",
+      "no_relation_rationale": "형수: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "형수: 형의 아내라는 하나의 친족 관계로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "형수: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“형수”라는 말로 쓰자 형의 아내라는 친족 관계가 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "형수의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "관청",
+      "gloss_sha256": "3aceb5a7c1678cb7b2aabc9cb48559e09157c3b460a38bd57891a67ad091b1b1",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "관청: 행정을 맡은 기관이라는 하나의 대상으로 읽힌다.",
+      "semantic_rationale": "관청: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 공적 기관과 그 건물을 함께 가리킨다.",
+      "no_relation_rationale": "관청: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "관청: 행정을 맡은 기관이라는 하나의 대상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "관청: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“관청”은 국가 행정을 맡은 기관을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "관청의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“관청”은 그 기관이 일하는 건물이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "관청의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "소진",
+      "gloss_sha256": "30f86b5f4f7283c98ce60ad6229811fe65b3445acc7dda9cd42ab3d8dd054fa5",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "소진: 다하여 없어짐이라는 하나의 상태 변화로 읽힌다.",
+      "semantic_rationale": "소진: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 힘이나 자원이 바닥나는 순간을 짚는다.",
+      "no_relation_rationale": "소진: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "소진: 다하여 없어짐이라는 하나의 상태 변화로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "소진: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“소진”은 힘이 다해 없어지는 상태를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "소진의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“소진”은 자원이 바닥나는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "소진의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "여권",
+      "gloss_sha256": "faf0bab1c5deebfe932f3173238dbb7fdbe70782dce023b9309b1ee6125ff7e3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "여권: 신분과 국적을 증명하는 문서 하나로 읽힌다.",
+      "semantic_rationale": "여권: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 여행 장면의 필수 서류를 짚는다.",
+      "no_relation_rationale": "여권: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "여권: 신분과 국적을 증명하는 문서 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "여권: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“여권”이라는 말로 쓰자 외국을 오갈 때 내미는 문서가 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "여권의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "당직",
+      "gloss_sha256": "87cc35d44741de5f74506acdce2760d0d309067c6dda6a42c462fff7cd4a4fb3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "당직: 정해진 시간에 맡아 근무하는 일 하나로 읽힌다.",
+      "semantic_rationale": "당직: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 밤이나 휴일의 근무 시간을 짚는다.",
+      "no_relation_rationale": "당직: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "당직: 정해진 시간에 맡아 근무하는 일 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "당직: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“당직”이라는 말을 넣자 정해진 시간을 지키는 근무의 모습이 드러났다.",
+          "relation_type": "near",
+          "target_class": "당직의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "한자",
+      "gloss_sha256": "dab0b420bc2cd996a0c17303cc59cee59dd136e39e6543d78db33f990ab59bd3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "한자: 한문을 적는 글자라는 하나의 문자로 읽힌다.",
+      "semantic_rationale": "한자: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 문자 체계를 짚을 때 쓴다.",
+      "no_relation_rationale": "한자: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "한자: 한문을 적는 글자라는 하나의 문자로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "한자: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“한자”라는 말로 쓰자 한문을 적는 글자의 결이 드러났다.",
+          "relation_type": "near",
+          "target_class": "한자의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "통역",
+      "gloss_sha256": "06977e8ed1433a95efe6572d63931ac0e3e3302bc0de3522ee86f3799d798dd1",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "통역: 말을 다른 언어로 옮겨 전하는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "통역: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 서로 다른 언어 사이의 중개를 그린다.",
+      "no_relation_rationale": "통역: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "통역: 말을 다른 언어로 옮겨 전하는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "통역: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“통역”이라는 말을 넣자 말을 다른 언어로 옮겨 전하는 일이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "통역의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "곱슬머리",
+      "gloss_sha256": "bb71478849ee0e48c0e4069f2c4af0613fc98c6c483c443896f8daad2e8b0f2d",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "곱슬머리: 꼬불꼬불하게 굽은 머리카락 하나로 읽힌다.",
+      "semantic_rationale": "곱슬머리: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 인물의 머리 모양을 구체적으로 그린다.",
+      "no_relation_rationale": "곱슬머리: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "곱슬머리: 꼬불꼬불하게 굽은 머리카락 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "곱슬머리: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“곱슬머리”는 둥글게 말린 머리카락을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "곱슬머리의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“곱슬머리”는 꼬불꼬불하게 굽은 모양이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "곱슬머리의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "행군",
+      "gloss_sha256": "081ca2838b6d12769d3fb69997ba138539920edadbb3c1ce04d444d73b93a6ee",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "행군: 대열을 지어 걸어 이동함이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "행군: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 군대의 긴 걸음을 짚는다.",
+      "no_relation_rationale": "행군: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "행군: 대열을 지어 걸어 이동함이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "행군: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“행군”이라는 말을 넣자 군대가 대열을 지어 걷는 긴 걸음이 드러났다.",
+          "relation_type": "near",
+          "target_class": "행군의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "병세",
+      "gloss_sha256": "7101bc9b9d6cf52a6954bf48eb93841b5d6ba8688fc27731c813ca686dcee1ea",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "병세: 병이 진행되는 상태와 정도 하나로 읽힌다.",
+      "semantic_rationale": "병세: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 병의 경과를 짚을 때 쓴다.",
+      "no_relation_rationale": "병세: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "병세: 병이 진행되는 상태와 정도 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "병세: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“병세”라는 말을 쓰자 병이 진행되는 정도가 드러났다.",
+          "relation_type": "near",
+          "target_class": "병세의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "가출",
+      "gloss_sha256": "183f23b0f79a23634482e1d9b7d1a9f13e14d7e376c19167face21c5a917696d",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "가출: 집을 나가 돌아오지 않음이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "가출: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 집을 떠나는 결심의 장면을 짚는다.",
+      "no_relation_rationale": "가출: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "가출: 집을 나가 돌아오지 않음이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "가출: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“가출”은 가족의 동의 없이 집을 나가는 행동을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "가출의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“가출”은 보호자 없이 돌아오지 않는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "가출의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "주석",
+      "gloss_sha256": "8c93d3df828a04b37cb1ef13ee3a08b77aa51331bd140e8a8fd1faee9e8ece81",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "주석: 덧붙이는 설명이라는 하나의 글로 읽힌다.",
+      "semantic_rationale": "주석: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 본문 옆의 풀이를 짚을 때 쓴다.",
+      "no_relation_rationale": "주석: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "주석: 덧붙이는 설명이라는 하나의 글로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "주석: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“주석”은 글의 뜻을 풀어 덧붙이는 설명을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "주석의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“주석”은 배경을 이해하게 돕는 설명이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "주석의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "시력",
+      "gloss_sha256": "2ecda56ffc9f865dbee50ea2551d6a1ed90e2149bef88a99d95b6cb76a21e2d6",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "시력: 보는 능력이라는 하나의 기능으로 읽힌다.",
+      "semantic_rationale": "시력: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 눈의 기능을 구체적으로 짚을 때 쓴다.",
+      "no_relation_rationale": "시력: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "시력: 보는 능력이라는 하나의 기능으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "시력: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“시력”은 눈으로 사물을 알아보는 능력을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "시력의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“시력”은 글자를 알아보는 능력이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "시력의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "관문",
+      "gloss_sha256": "c6f57a7d011aeff510e88d8fdd60675de5ee81030c30071e8a98ad0c86bf39b5",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "관문: 드나드는 문이나 통로 하나로 읽힌다.",
+      "semantic_rationale": "관문: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 넘어야 할 경계를 공간으로 그린다.",
+      "no_relation_rationale": "관문: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "관문: 드나드는 문이나 통로 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "관문: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“관문”은 경계를 드나들게 하는 문을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "관문의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“관문”은 막힌 곳을 지나는 통로라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "관문의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "제대",
+      "gloss_sha256": "8eb489637d4e9362bfa59c066abc8a9b814dda81626830ab02a022f981e47f75",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "제대: 군 복무를 마치고 나옴이라는 하나의 사건으로 읽힌다.",
+      "semantic_rationale": "제대: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 복무 기간의 끝을 짚을 때 쓴다.",
+      "no_relation_rationale": "제대: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "제대: 군 복무를 마치고 나옴이라는 하나의 사건으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "제대: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“제대”라는 말을 쓰자 군 복무를 마치고 나오는 날이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "제대의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "타입",
+      "gloss_sha256": "26b1d5130b7bb970514e93aa37251aacf7cd767e584720778e0c0db249162f1e",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "타입: 공통 성질로 나눈 부류 하나로 읽힌다.",
+      "semantic_rationale": "타입: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 대상을 성향에 따라 묶어 말할 때 쓴다.",
+      "no_relation_rationale": "타입: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "타입: 공통 성질로 나눈 부류 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "타입: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“타입”이라는 말을 넣자 공통된 성질로 묶은 부류가 드러났다.",
+          "relation_type": "near",
+          "target_class": "타입의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "삭제",
+      "gloss_sha256": "9ed53f2c84c290e3a7090953286d7e16ac024a80e1f571b4f9dee4ee1a0e6fa0",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "삭제: 지워 없앰이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "삭제: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 기록을 지우는 동작을 짚는다.",
+      "no_relation_rationale": "삭제: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "삭제: 지워 없앰이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "삭제: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“삭제”는 기록을 지워 없애는 행동을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "삭제의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“삭제”는 내용을 없애는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "삭제의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "성분",
+      "gloss_sha256": "a33ac093b162ac592203fdee21bc31bb6d639afd0b1e70187a6b02891854d907",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "성분: 물질을 이루는 요소 하나로 읽힌다.",
+      "semantic_rationale": "성분: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 재료의 구성 요소를 짚을 때 쓴다.",
+      "no_relation_rationale": "성분: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "성분: 물질을 이루는 요소 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "성분: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“성분”은 물질을 이루는 요소를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "성분의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“성분”은 음식이나 약을 이루는 요소라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "성분의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "야채",
+      "gloss_sha256": "b7a96dceb700f386c8dce8b42a67f41aca7078482cce9bbf7c181ef1aa86f98f",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "야채: 밭에서 기른 푸성귀라는 하나의 식재료로 읽힌다.",
+      "semantic_rationale": "야채: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 식탁의 푸성귀를 가리킨다.",
+      "no_relation_rationale": "야채: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "야채: 밭에서 기른 푸성귀라는 하나의 식재료로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "야채: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“야채”는 밭에서 기른 푸성귀를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "야채의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“야채”는 채취해 먹는 푸성귀라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "야채의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "복합",
+      "gloss_sha256": "e431e4743111c7ee86069f930206311a4fad86749b21f1301f57270f6ad404de",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "복합: 여러 요소가 모여 이루는 구성 하나로 읽힌다.",
+      "semantic_rationale": "복합: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 하나가 아닌 여러 요소의 어울림을 짚는다.",
+      "no_relation_rationale": "복합: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "복합: 여러 요소가 모여 이루는 구성 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "복합: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“복합”은 여러 요소가 모여 이룬 구성을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "복합의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“복합”은 그렇게 이루어진 상태라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "복합의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "해설",
+      "gloss_sha256": "8fcb375d9b0f944b1d423ddeb7d61aa968a7d4b3e9a7b130ffd52f9e88a6efe9",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "해설: 이해를 돕는 설명이라는 하나의 글로 읽힌다.",
+      "semantic_rationale": "해설: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 내용을 풀어 주는 설명을 짚는다.",
+      "no_relation_rationale": "해설: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "해설: 이해를 돕는 설명이라는 하나의 글로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "해설: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“해설”이라는 말을 쓰자 내용을 이해하도록 풀어 주는 설명이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "해설의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "변장",
+      "gloss_sha256": "b0754a6504e680ebcd1fc5ecad68656e79a17a26b5b7dd8a2ae3b9a485e9f36f",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "변장: 겉모습을 바꾸어 꾸밈이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "변장: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 정체를 가리는 꾸밈을 그린다.",
+      "no_relation_rationale": "변장: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "변장: 겉모습을 바꾸어 꾸밈이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "변장: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“변장”이라는 말을 넣자 다른 사람처럼 꾸민 모습이 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "변장의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "소극",
+      "gloss_sha256": "731e113daef1a03a04163237f494782227c3f3215fe448c30a837f9c7941d848",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "소극: 앞장서지 않는 태도라는 하나의 성향으로 읽힌다.",
+      "semantic_rationale": "소극: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 적극적이지 않은 태도를 짚을 때 쓴다.",
+      "no_relation_rationale": "소극: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "소극: 앞장서지 않는 태도라는 하나의 성향으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "소극: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“소극”이라는 말을 넣자 앞장서지 않는 태도가 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "소극의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "막아서다",
+      "gloss_sha256": "63c40948aacbe5f4b79cfb551a7bbafa651b235a57f63945f86f624646ed2891",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "막아서다: 앞을 가로막는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "막아서다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 길을 막고 선 몸짓을 그린다.",
+      "no_relation_rationale": "막아서다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "막아서다: 앞을 가로막는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "막아서다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“막아서다”는 앞을 가리고 서는 동작을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "막아서다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“막아서다”는 나아가지 못하게 가로막는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "막아서다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "색다르다",
+      "gloss_sha256": "204ad70597ac992eaf6708c76cf8964409b1fdda8279047dbb1a48a1d1ab938a",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "색다르다: 흔한 것과 달라 새로운 하나의 상태로 읽힌다.",
+      "semantic_rationale": "색다르다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 신선한 낯섦을 짚을 때 쓴다.",
+      "no_relation_rationale": "색다르다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "색다르다: 흔한 것과 달라 새로운 하나의 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "색다르다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“색다르다”는 흔히 보던 것과 다른 상태를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "색다르다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“색다르다”는 겪던 것과 달라 신선한 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "색다르다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "위력",
+      "gloss_sha256": "28dfd04f522b097f9d6f7c4dcbdf69b8c6ebee168c280eab2e9a24e086c20fa1",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "위력: 큰 영향을 미치는 힘 하나로 읽힌다.",
+      "semantic_rationale": "위력: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 힘의 압도적인 면을 짚을 때 쓴다.",
+      "no_relation_rationale": "위력: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "위력: 큰 영향을 미치는 힘 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "위력: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“위력”은 사람에게 큰 영향을 미치는 힘을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "위력의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“위력”은 일에 영향을 미치는 힘이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "위력의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "직관",
+      "gloss_sha256": "818d9f18ccb8315b117084f6dc23b40fc6bb63942b78ad98bc762fc292e7f1c6",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "직관: 곧바로 알아차리는 감각 하나로 읽힌다.",
+      "semantic_rationale": "직관: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 따져 보기 전의 앎을 짚는다.",
+      "no_relation_rationale": "직관: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "직관: 곧바로 알아차리는 감각 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "직관: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“직관”은 깊이 따지지 않고 본질을 아는 감각을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "직관의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“직관”은 참됨을 곧바로 알아차리는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "직관의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "심기",
+      "gloss_sha256": "67c53beda71ca039e59ecfbc339e933dc93451ac037656fe7080f4bb7e4308d8",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "심기: 마음이나 기분이라는 하나의 정서 상태로 읽힌다.",
+      "semantic_rationale": "심기: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 윗사람의 기분을 조심스레 살필 때 쓴다.",
+      "no_relation_rationale": "심기: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "심기: 마음이나 기분이라는 하나의 정서 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "심기: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“심기”는 사람의 마음 상태를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "심기의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“심기”는 기분이라는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "심기의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "기겁",
+      "gloss_sha256": "e283133567e5aef4ae346dd1b934dbcd46178d05f23326a873591498a63f4506",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "기겁: 몹시 놀라는 하나의 반응으로 읽힌다.",
+      "semantic_rationale": "기겁: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 갑작스러운 놀람의 몸짓을 그린다.",
+      "no_relation_rationale": "기겁: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "기겁: 몹시 놀라는 하나의 반응으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "기겁: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“기겁”은 몹시 놀라는 반응을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "기겁의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“기겁”은 두려움에 질리는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "기겁의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "선의",
+      "gloss_sha256": "928a490abaaceebae383f293bd173fb294c6985b5e9b1a76e4bb6c7da1dac91a",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "선의: 이롭게 하려는 좋은 마음 하나로 읽힌다.",
+      "semantic_rationale": "선의: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 상대를 위한 마음의 바탕을 짚는다.",
+      "no_relation_rationale": "선의: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "선의: 이롭게 하려는 좋은 마음 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "선의: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“선의”라는 말을 쓰자 다른 사람을 이롭게 하려는 마음이 드러났다.",
+          "relation_type": "near",
+          "target_class": "선의의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "청하다",
+      "gloss_sha256": "fae30189d91fd359d115df1ce407eebee6554d662a281bbe0514956ca3d5a938",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "청하다: 요청하는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "청하다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 도움을 부탁하는 말투를 짚는다.",
+      "no_relation_rationale": "청하다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "청하다: 요청하는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "청하다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“청하다”는 상대에게 일을 해 달라고 요청하는 행동을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "청하다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“청하다”는 도움을 구하는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "청하다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "끼얹다",
+      "gloss_sha256": "41c97f1339674d073da00830404c1c501247c624197eb3771e6012685c15120e",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "끼얹다: 쏟아 붓는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "끼얹다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 물이나 가루를 위에서 쏟는 몸짓을 그린다.",
+      "no_relation_rationale": "끼얹다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "끼얹다: 쏟아 붓는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "끼얹다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“끼얹다”라는 말을 넣자 액체가 위에서 쏟아지는 동작이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "끼얹다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "불어나다",
+      "gloss_sha256": "f904be501b812c35401200dea752fb0e8162e3a89c0894de7678bff074624071",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "불어나다: 늘어나 커지는 하나의 변화로 읽힌다.",
+      "semantic_rationale": "불어나다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 양이 커지는 과정을 짚을 때 쓴다.",
+      "no_relation_rationale": "불어나다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "불어나다: 늘어나 커지는 하나의 변화로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "불어나다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“불어나다”는 양이 늘어나 커지는 변화를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "불어나다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“불어나다”는 부피가 커지는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "불어나다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "타들다",
+      "gloss_sha256": "3bd1a171943b9d0c1fa2f1cbbfdabf6092b0288c3bebdf1a0c15dae3b82c7186",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "타들다: 안쪽으로 타 들어가는 하나의 변화로 읽힌다.",
+      "semantic_rationale": "타들다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 열기에 말라 가는 모습을 그린다.",
+      "no_relation_rationale": "타들다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "타들다: 안쪽으로 타 들어가는 하나의 변화로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "타들다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“타들다”는 불에 타 들어가는 변화를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "타들다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“타들다”는 열기에 말라 가는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "타들다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "중순",
+      "gloss_sha256": "da167ef831e9d94d4fa04249e2c2e421affb6e85f6f7fad2a948e5f7c929fbf2",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "중순: 한 달의 가운데 열흘 무렵이라는 하나의 시기로 읽힌다.",
+      "semantic_rationale": "중순: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 달 가운데의 시간을 짚는다.",
+      "no_relation_rationale": "중순: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "중순: 한 달의 가운데 열흘 무렵이라는 하나의 시기로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "중순: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“중순”이라는 말을 쓰자 한 달의 가운데 열흘이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "중순의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "누님",
+      "gloss_sha256": "6c487b5c9afe66ddf57db0e980e6deca7f06fc7f7cf05f3de1bb164564baf476",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "누님: 손위 여형제를 높여 이르는 하나의 호칭으로 읽힌다.",
+      "semantic_rationale": "누님: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 가족 호칭의 정서를 담는다.",
+      "no_relation_rationale": "누님: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "누님: 손위 여형제를 높여 이르는 하나의 호칭으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "누님: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“누님”이라는 말로 부르자 손위 여형제를 높이는 정이 드러났다.",
+          "relation_type": "near",
+          "target_class": "누님의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "다람쥐",
+      "gloss_sha256": "0183b0d71b169ab26e96881f3d2067c7f35ee2f41bd14ac38cb65c8fbdc03b2d",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "다람쥐: 나무를 오르내리는 작은 설치류 하나로 읽힌다.",
+      "semantic_rationale": "다람쥐: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 숲의 작은 동물을 그린다.",
+      "no_relation_rationale": "다람쥐: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "다람쥐: 나무를 오르내리는 작은 설치류 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "다람쥐: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“다람쥐”라는 말을 넣자 나무를 오르내리는 작은 동물이 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "다람쥐의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "텍스트",
+      "gloss_sha256": "db6341aa6db2193de3f6319146365ec684e2cc2754719536ada839021e62427a",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "텍스트: 문자로 적은 내용이라는 하나의 대상으로 읽힌다.",
+      "semantic_rationale": "텍스트: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 읽고 분석하는 글 자체를 가리킨다.",
+      "no_relation_rationale": "텍스트: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "텍스트: 문자로 적은 내용이라는 하나의 대상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "텍스트: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“텍스트”는 읽을 수 있도록 적은 내용을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "텍스트의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“텍스트”는 분석할 수 있는 글이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "텍스트의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "결투",
+      "gloss_sha256": "903fdf79a28b10c0f40d4aae9b5728db1a3c0a60732124fcdd6f4397c7f2335a",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "결투: 맞서 싸우는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "결투: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 명예를 건 대결을 그린다.",
+      "no_relation_rationale": "결투: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "결투: 맞서 싸우는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "결투: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“결투”라는 말을 쓰자 두 사람이 맞서 싸우는 긴장이 드러났다.",
+          "relation_type": "near",
+          "target_class": "결투의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "수비",
+      "gloss_sha256": "e6f888b934c5ee0ed42623af5554b261dc05260030cdcff965d0cd6c9787df1c",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "수비: 공격을 막아 지키는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "수비: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 지키는 쪽의 움직임을 짚는다.",
+      "no_relation_rationale": "수비: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "수비: 공격을 막아 지키는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "수비: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“수비”는 상대의 공격을 막아 지키는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "수비의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“수비”는 지키는 움직임이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "수비의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "대열",
+      "gloss_sha256": "51ac3ab9bfac860a3d1f8fedd456716e1f8fd9303d99c383346f323415b741c5",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "대열: 질서 있게 늘어선 줄 하나로 읽힌다.",
+      "semantic_rationale": "대열: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 사람들이 줄지은 모습을 짚는다.",
+      "no_relation_rationale": "대열: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "대열: 질서 있게 늘어선 줄 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "대열: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“대열”은 일정한 질서로 늘어선 줄을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "대열의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“대열”은 그렇게 이룬 편성이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "대열의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "편집자",
+      "gloss_sha256": "0fc53fbef6a904a506476423997cc31445a6b6124d701d1ec7881ad8d8b006f8",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "편집자: 내용을 다듬고 구성하는 사람 하나로 읽힌다.",
+      "semantic_rationale": "편집자: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 출판 과정의 인물을 짚는다.",
+      "no_relation_rationale": "편집자: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "편집자: 내용을 다듬고 구성하는 사람 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "편집자: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“편집자”는 출판할 글을 다듬는 사람을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "편집자의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“편집자”는 책의 구성을 맡는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "편집자의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "실습",
+      "gloss_sha256": "d03fc430901e1fd4b3e8123792e771df29c7c3ee12361233522fb2e16ba3b10f",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "실습: 해 보며 익히는 하나의 활동으로 읽힌다.",
+      "semantic_rationale": "실습: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 배운 것을 몸으로 해 보는 장면을 그린다.",
+      "no_relation_rationale": "실습: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "실습: 해 보며 익히는 하나의 활동으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "실습: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“실습”이라는 말을 넣자 배운 것을 직접 해 보는 장면이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "실습의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "모닥불",
+      "gloss_sha256": "e78f2c383ac3aedf5a0117b1583f752f5adb88069f9243e8a1af38cbaea6898c",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "모닥불: 모아 피운 불이라는 하나의 대상으로 읽힌다.",
+      "semantic_rationale": "모닥불: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 야외의 불빛과 온기를 그린다.",
+      "no_relation_rationale": "모닥불: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "모닥불: 모아 피운 불이라는 하나의 대상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "모닥불: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“모닥불”이라는 말을 쓰자 모아 피운 불의 온기가 퍼졌다.",
+          "relation_type": "near",
+          "target_class": "모닥불의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "올림픽",
+      "gloss_sha256": "ce9db5adef62b86802b6a35e080e8f0af4e06b4cdf334025b62e0c5f2cff91b4",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "올림픽: 국제 스포츠 경기라는 하나의 행사로 읽힌다.",
+      "semantic_rationale": "올림픽: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 큰 경기 행사를 짚는다.",
+      "no_relation_rationale": "올림픽: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "올림픽: 국제 스포츠 경기라는 하나의 행사로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "올림픽: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“올림픽”이라는 말을 쓰자 여러 나라 선수가 겨루는 행사가 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "올림픽의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "어린이집",
+      "gloss_sha256": "c1531094c33b68044a61d2ca70f69248f2703b3a7b2f0d7f40966166d70c54ad",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "어린이집: 어린아이를 맡아 돌보는 시설 하나로 읽힌다.",
+      "semantic_rationale": "어린이집: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 돌봄 장소를 짚을 때 쓴다.",
+      "no_relation_rationale": "어린이집: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "어린이집: 어린아이를 맡아 돌보는 시설 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "어린이집: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“어린이집”이라는 말을 쓰자 낮 동안 아이를 맡아 돌보는 장소가 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "어린이집의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "샴페인",
+      "gloss_sha256": "06ad9c2a9f588333bab9c91968a6e34978203be714649134e27a401431d693e8",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "샴페인: 발포성 포도주 하나로 읽힌다.",
+      "semantic_rationale": "샴페인: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 축하 자리의 술을 짚는다.",
+      "no_relation_rationale": "샴페인: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "샴페인: 발포성 포도주 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "샴페인: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“샴페인”이라는 말을 쓰자 거품이 이는 술의 분위기가 드러났다.",
+          "relation_type": "near",
+          "target_class": "샴페인의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "월세",
+      "gloss_sha256": "51bfd3b59ebeba29c9cabb7afc6729c35fc4fb2d832b37fd1bc6ab5d9d1a3765",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "월세: 다달이 내는 돈이라는 하나의 비용으로 읽힌다.",
+      "semantic_rationale": "월세: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 집 값을 다달이 치르는 부담을 짚는다.",
+      "no_relation_rationale": "월세: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "월세: 다달이 내는 돈이라는 하나의 비용으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "월세: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“월세”는 집을 빌려 사는 대가로 내는 돈을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "월세의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“월세”는 방을 빌린 대가를 다달이 낸다는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "월세의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "참나무",
+      "gloss_sha256": "a99de3c5a3d00d48b980aa86d1debfb366f25c49505968833d33f9edbf6ebb0b",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "참나무: 도토리가 열리는 나무 하나로 읽힌다.",
+      "semantic_rationale": "참나무: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 숲의 나무를 특정해 그린다.",
+      "no_relation_rationale": "참나무: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "참나무: 도토리가 열리는 나무 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "참나무: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“참나무”라는 말을 쓰자 도토리가 열리는 단단한 나무가 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "참나무의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "여위다",
+      "gloss_sha256": "3f1df8146236e23a13209bc71841096d79bc27a3f88d201b7e0880f6bbfcad6a",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "여위다: 살이 빠져 마르는 하나의 변화로 읽힌다.",
+      "semantic_rationale": "여위다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 몸이 야위어 가는 모습을 그린다.",
+      "no_relation_rationale": "여위다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "여위다: 살이 빠져 마르는 하나의 변화로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "여위다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“여위다”라는 말을 쓰자 몸에 살이 빠져 마른 모습이 드러났다.",
+          "relation_type": "near",
+          "target_class": "여위다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "산문",
+      "gloss_sha256": "1baf22ae611964325a85aa60a46fa31a6d6b99e1a2a8816a299764bca0835b8a",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "산문: 일상적인 문장으로 이어 쓴 글 하나로 읽힌다.",
+      "semantic_rationale": "산문: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 운율 없는 글의 갈래를 짚는다.",
+      "no_relation_rationale": "산문: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "산문: 일상적인 문장으로 이어 쓴 글 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "산문: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“산문”은 운율 없이 이어 쓴 글을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "산문의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“산문”은 정해진 행 구분이 없는 글이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "산문의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "불가사의",
+      "gloss_sha256": "49f9c772b6deb74663224d1a8fcca23fbbe6decf01e3619f8456ee45fb0d58ac",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "불가사의: 설명하기 어려운 신비한 일 하나로 읽힌다.",
+      "semantic_rationale": "불가사의: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 이해를 넘어서는 일을 짚는다.",
+      "no_relation_rationale": "불가사의: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "불가사의: 설명하기 어려운 신비한 일 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "불가사의: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“불가사의”는 이해하기 어려운 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "불가사의의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“불가사의”는 설명하기 어려운 신비라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "불가사의의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "염색",
+      "gloss_sha256": "60abf2a97ee3789329f02c1d22c837f7ddd5ab1c70680dfd6c7b047401ee49a3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "염색: 물을 들임이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "염색: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 색을 입히는 작업을 그린다.",
+      "no_relation_rationale": "염색: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "염색: 물을 들임이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "염색: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“염색”은 머리카락에 물을 들이는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "염색의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“염색”은 천에 물을 들이는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "염색의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "용건",
+      "gloss_sha256": "58dd6665a5708c41becd6218763e6fca828ffd2d8b3f35b98232676c91144459",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "용건: 처리하거나 전할 일 하나로 읽힌다.",
+      "semantic_rationale": "용건: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 만남의 이유를 짚을 때 쓴다.",
+      "no_relation_rationale": "용건: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "용건: 처리하거나 전할 일 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "용건: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“용건”은 처리할 필요가 있는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "용건의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“용건”은 전할 일이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "용건의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "섭취",
+      "gloss_sha256": "f880e9c5fdc60bf42101dc2bdb216a58e343a327465c9a689b4bfcb4dad0d762",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "섭취: 영양분을 몸속으로 받아들이는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "섭취: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 먹고 마시는 일을 몸의 관점에서 짚는다.",
+      "no_relation_rationale": "섭취: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "섭취: 영양분을 몸속으로 받아들이는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "섭취: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“섭취”는 음식을 몸속으로 받아들이는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "섭취의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“섭취”는 영양분을 받아들이는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "섭취의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "학비",
+      "gloss_sha256": "9def34f08a5ccbb8d25d81f92699d4dbccc387583ab28cddd26346e2aaca67e7",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "학비: 학교 공부에 드는 비용 하나로 읽힌다.",
+      "semantic_rationale": "학비: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 공부에 드는 돈의 부담을 짚는다.",
+      "no_relation_rationale": "학비: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "학비: 학교 공부에 드는 비용 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "학비: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“학비”라는 말을 쓰자 공부에 드는 돈의 무게가 드러났다.",
+          "relation_type": "near",
+          "target_class": "학비의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "속죄",
+      "gloss_sha256": "e84a193b9f7e883d07afd09309cde198cb3801842405a9bbdab16b53832ae9d1",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "속죄: 대가를 치르며 뉘우치는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "속죄: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 죄에 값하는 마음과 행동을 짚는다.",
+      "no_relation_rationale": "속죄: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "속죄: 대가를 치르며 뉘우치는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "속죄: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“속죄”라는 말을 쓰자 지은 죄의 대가를 치르는 무게가 드러났다.",
+          "relation_type": "near",
+          "target_class": "속죄의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "알람",
+      "gloss_sha256": "2698608b7086b3efe16a1605be8d46a6bfdc47f5e315ded5e0371976fbec3354",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "알람: 소리나 신호로 알려 주는 하나의 장치로 읽힌다.",
+      "semantic_rationale": "알람: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 정해 둔 때를 알리는 소리를 짚는다.",
+      "no_relation_rationale": "알람: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "알람: 소리나 신호로 알려 주는 하나의 장치로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "알람: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“알람”은 정해 둔 때를 소리로 알려 주는 장치를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "알람의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“알람”은 상황을 알리는 신호라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "알람의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "취약",
+      "gloss_sha256": "e6efe09ac5ae25457416560ddc04f657c6c55604bc2bc22a1857307a17de3313",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "취약: 쉽게 손상되는 약한 상태 하나로 읽힌다.",
+      "semantic_rationale": "취약: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 공격받기 쉬운 약점을 짚을 때 쓴다.",
+      "no_relation_rationale": "취약: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "취약: 쉽게 손상되는 약한 상태 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "취약: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“취약”은 쉽게 손상되는 약함을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "취약의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“취약”은 공격받기 쉬운 약한 부분이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "취약의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "비례",
+      "gloss_sha256": "2a87774713f9f8d72149f62145f6ea6a760fa9c13572b884db08ba526a43f4e3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "비례: 일정한 관계를 이루는 하나의 일로 읽힌다.",
+      "semantic_rationale": "비례: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 두 양이 함께 변하는 관계를 짚는다.",
+      "no_relation_rationale": "비례: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "비례: 일정한 관계를 이루는 하나의 일로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "비례: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“비례”는 두 양이 이루는 관계를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "비례의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“비례”는 정도가 일정하게 맞춰지는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "비례의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "장거리",
+      "gloss_sha256": "e1fb3a18f578cf3b1bcf4a543d273fb05db39870bf2f2c9814260577461c684c",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "장거리: 먼 거리라는 하나의 길이로 읽힌다.",
+      "semantic_rationale": "장거리: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 먼 이동의 부담을 짚는다.",
+      "no_relation_rationale": "장거리: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "장거리: 먼 거리라는 하나의 길이로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "장거리: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“장거리”라는 말을 쓰자 먼 길의 부담이 드러났다.",
+          "relation_type": "near",
+          "target_class": "장거리의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "제정",
+      "gloss_sha256": "d23dfe82d1775024979870b1bbe3b73ed43a7c410a74089823372448580c8bc1",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "제정: 새로 정하여 만듦이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "제정: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 법과 제도를 세우는 일을 그린다.",
+      "no_relation_rationale": "제정: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "제정: 새로 정하여 만듦이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "제정: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“제정”은 법을 새로 정하여 만드는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "제정의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“제정”은 제도와 규칙을 새로 세우는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "제정의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "행실",
+      "gloss_sha256": "f55809f0182daf743608c0689fa6ed028c74e4a1a56428cd7750821695fb6d88",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "행실: 평소의 행동과 처신 하나로 읽힌다.",
+      "semantic_rationale": "행실: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 사람됨을 드러내는 행동을 짚는다.",
+      "no_relation_rationale": "행실: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "행실: 평소의 행동과 처신 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "행실: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“행실”이라는 말을 쓰자 평소의 행동과 처신이 드러났다.",
+          "relation_type": "near",
+          "target_class": "행실의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "혐오감",
+      "gloss_sha256": "c7dc4f4efdf6ea1ad25986c4bac42551243196a30b2fc6be46afb5187a8ed608",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "혐오감: 몹시 싫어하는 하나의 감정으로 읽힌다.",
+      "semantic_rationale": "혐오감: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 꺼리는 마음을 짚을 때 쓴다.",
+      "no_relation_rationale": "혐오감: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "혐오감: 몹시 싫어하는 하나의 감정으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "혐오감: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“혐오감”이라는 말을 쓰자 몹시 싫어하고 꺼리는 마음이 드러났다.",
+          "relation_type": "near",
+          "target_class": "혐오감의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "조율",
+      "gloss_sha256": "da28880dcee4ed0526027453e2d13f6bb85d79232e6323cf451654bcb83e0549",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "조율: 서로 맞추어 정리하는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "조율: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 의견이나 요소를 어울리게 하는 과정을 그린다.",
+      "no_relation_rationale": "조율: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "조율: 서로 맞추어 정리하는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "조율: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“조율”이라는 말을 쓰자 여러 의견을 맞추어 정리하는 과정이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "조율의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "수록",
+      "gloss_sha256": "fe6559f8c6fdc86bff04ee656ec1298da18c85d1e9f406c8758be349c4c7d6be",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "수록: 작품을 실어 넣는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "수록: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 책이나 음반에 담는 일을 짚는다.",
+      "no_relation_rationale": "수록: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "수록: 작품을 실어 넣는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "수록: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“수록”은 책에 내용을 실어 넣는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "수록의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“수록”은 음반에 내용을 담는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "수록의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“수록”은 작품을 실어 넣는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "수록의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "심리학자",
+      "gloss_sha256": "2c3a9e618c912d4391130c870db1ecbd3f2eff0d1792f99b48ad96237db43e42",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "심리학자: 마음과 행동을 연구하는 전문가 하나로 읽힌다.",
+      "semantic_rationale": "심리학자: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 인물을 학문 분야로 소개한다.",
+      "no_relation_rationale": "심리학자: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "심리학자: 마음과 행동을 연구하는 전문가 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "심리학자: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“심리학자”라는 말을 쓰자 마음과 행동을 연구하는 사람이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "심리학자의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "벨트",
+      "gloss_sha256": "7f8a7fcb944e7146290958f3028e08ddbfd705646595ffd45cfa431047b9dc69",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "벨트: 둘러매거나 고정하는 띠 하나로 읽힌다.",
+      "semantic_rationale": "벨트: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 허리나 짐을 조이는 띠를 짚는다.",
+      "no_relation_rationale": "벨트: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "벨트: 둘러매거나 고정하는 띠 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "벨트: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“벨트”는 허리나 물건을 둘러매는 띠를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "벨트의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“벨트”는 무언가를 고정하는 띠라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "벨트의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "지칭",
+      "gloss_sha256": "834823a9a6aa66efce2486806ae5a6e415af24ebc19b72bec52d03f8e5541473",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "지칭: 가리켜 말로 나타냄이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "지칭: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 대상을 이름으로 가리키는 일을 짚는다.",
+      "no_relation_rationale": "지칭: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "지칭: 가리켜 말로 나타냄이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "지칭: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“지칭”은 어떤 대상을 가리켜 이름 붙이는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "지칭의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“지칭”은 말로 나타내는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "지칭의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "걱정거리",
+      "gloss_sha256": "ec373b488a802b249b554608412491434b1ebfaf08c73ee9bbf5612c5690742d",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "걱정거리: 걱정하게 되는 일 하나로 읽힌다.",
+      "semantic_rationale": "걱정거리: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 마음에 걸리는 문제를 짚는다.",
+      "no_relation_rationale": "걱정거리: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "걱정거리: 걱정하게 되는 일 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "걱정거리: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“걱정거리”는 마음에 걸려 걱정하게 되는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "걱정거리의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“걱정거리”는 문제라는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "걱정거리의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "글귀",
+      "gloss_sha256": "d802e09596ea40aeb7c49527f11407fcf6fcaf3102bff04cfd24f3ca9690b8c0",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "글귀: 뜻을 이루는 짧은 구절 하나로 읽힌다.",
+      "semantic_rationale": "글귀: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 글 속의 짧은 문장을 짚는다.",
+      "no_relation_rationale": "글귀: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "글귀: 뜻을 이루는 짧은 구절 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "글귀: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“글귀”는 뜻을 이루는 짧은 문장을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "글귀의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“글귀”는 구절이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "글귀의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "결여",
+      "gloss_sha256": "1e39bf2bedaa7952b0e20086c566e74faf26ffd194035389ce1d87a3d4a28e1f",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "결여: 있어야 할 것이 빠져 모자람이라는 하나의 상태로 읽힌다.",
+      "semantic_rationale": "결여: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 빠진 것을 짚을 때 쓴다.",
+      "no_relation_rationale": "결여: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "결여: 있어야 할 것이 빠져 모자람이라는 하나의 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "결여: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“결여”라는 말을 쓰자 있어야 할 것이 빠진 모자람이 드러났다.",
+          "relation_type": "near",
+          "target_class": "결여의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "애당초",
+      "gloss_sha256": "0aab15ad87bb5915ddca427fdede5a4e49d8b9a654f18942fef107ce35a6a392",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "애당초: 처음 시작될 때부터라는 하나의 시점으로 읽힌다.",
+      "semantic_rationale": "애당초: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 일의 출발점을 짚을 때 쓴다.",
+      "no_relation_rationale": "애당초: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "애당초: 처음 시작될 때부터라는 하나의 시점으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "애당초: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“애당초”는 일이 처음 시작될 때부터를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "애당초의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“애당초”는 상황이 시작된 처음부터라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "애당초의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "근래",
+      "gloss_sha256": "677e48221531c5c0ec868ae8d7aa5dd829098890f1704f37b46ef24aaeb2094e",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "근래: 가까운 과거부터 지금까지의 동안 하나로 읽힌다.",
+      "semantic_rationale": "근래: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 최근의 시간 폭을 짚는다.",
+      "no_relation_rationale": "근래: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "근래: 가까운 과거부터 지금까지의 동안 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "근래: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“근래”라는 말을 쓰자 가까운 과거부터 지금까지의 시간이 드러났다.",
+          "relation_type": "near",
+          "target_class": "근래의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "뼛속",
+      "gloss_sha256": "7d552d0960791a3f06d32680ebe87826e58b957b09fd22fb42064c398545a7f4",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "뼛속: 뼈의 안쪽이라는 하나의 부위로 읽힌다.",
+      "semantic_rationale": "뼛속: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 몸 깊은 곳의 감각을 그린다.",
+      "no_relation_rationale": "뼛속: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "뼛속: 뼈의 안쪽이라는 하나의 부위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "뼛속: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“뼛속”이라는 말을 쓰자 뼈의 안쪽 깊은 감각이 문장에 스몄다.",
+          "relation_type": "near",
+          "target_class": "뼛속의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "허물어지다",
+      "gloss_sha256": "495ecd68d7c8b404e52742c9948801002f8d83edcaae40d7a74f715e5b108d1e",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "허물어지다: 무너져 내려앉는 하나의 변화로 읽힌다.",
+      "semantic_rationale": "허물어지다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 형태가 무너지는 장면을 그린다.",
+      "no_relation_rationale": "허물어지다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "허물어지다: 무너져 내려앉는 하나의 변화로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "허물어지다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“허물어지다”는 형태가 무너져 내리는 변화를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "허물어지다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“허물어지다”는 주저앉는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "허물어지다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "웅얼거리다",
+      "gloss_sha256": "55a9eaa18a2c956d3729223f66d17c311d1b787aceb57dff916944d375a9a8ba",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "웅얼거리다: 낮은 소리로 알아듣기 어렵게 말하는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "웅얼거리다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 입 안에서 맴도는 말소리를 그린다.",
+      "no_relation_rationale": "웅얼거리다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "웅얼거리다: 낮은 소리로 알아듣기 어렵게 말하는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "웅얼거리다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“웅얼거리다”라는 말을 쓰자 알아듣기 어려운 낮은 말소리가 들렸다.",
+          "relation_type": "near",
+          "target_class": "웅얼거리다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "독려",
+      "gloss_sha256": "7cad5764fc417e572e24303699cf2cca2144e47e7d4f77f8825dee8ac85496ff",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "독려: 북돋워 힘쓰게 하는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "독려: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 일하도록 이끄는 말을 짚는다.",
+      "no_relation_rationale": "독려: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "독려: 북돋워 힘쓰게 하는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "독려: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“독려”라는 말을 쓰자 사람을 북돋워 일하게 하는 힘이 드러났다.",
+          "relation_type": "near",
+          "target_class": "독려의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "면모",
+      "gloss_sha256": "d62bcf2d47f3c142e7b8d8d22cb087a4fdec6239be8f4829538d7cb916dd094d",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "면모: 드러나는 성질이나 모습 하나로 읽힌다.",
+      "semantic_rationale": "면모: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 인물의 새로운 일면을 짚는다.",
+      "no_relation_rationale": "면모: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "면모: 드러나는 성질이나 모습 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "면모: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“면모”는 사람의 드러나는 성질을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "면모의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“면모”는 대상의 성질이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "면모의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“면모”는 겉으로 드러난 모습이라는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "면모의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "물정",
+      "gloss_sha256": "a77ec06d93acde5b305f89d33532ff0425c412ab8bac2c6e598191feef1c4a84",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "물정: 세상 돌아가는 사정과 이치 하나로 읽힌다.",
+      "semantic_rationale": "물정: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 세상 경험의 정도를 짚을 때 쓴다.",
+      "no_relation_rationale": "물정: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "물정: 세상 돌아가는 사정과 이치 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "물정: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“물정”이라는 말을 쓰자 세상이 돌아가는 사정이 드러났다.",
+          "relation_type": "near",
+          "target_class": "물정의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "중위",
+      "gloss_sha256": "ebcaae59332d41e982687d79c14659f2d2377761698d4e6d2abdc7b97d2c044f",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "중위: 소위와 대위 사이의 장교 계급 하나로 읽힌다.",
+      "semantic_rationale": "중위: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 군 계급을 짚는다.",
+      "no_relation_rationale": "중위: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "중위: 소위와 대위 사이의 장교 계급 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "중위: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“중위”라는 말을 쓰자 소위와 대위 사이의 계급이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "중위의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "미군",
+      "gloss_sha256": "d0117b4ea247b24c2d94bfa5d378c0cd01501ea706d9e5716a3e1efae76d9d3d",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "미군: 미국의 군대나 그 군인 하나로 읽힌다.",
+      "semantic_rationale": "미군: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 군대의 소속을 국가로 짚는다.",
+      "no_relation_rationale": "미군: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "미군: 미국의 군대나 그 군인 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "미군: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“미군”이라는 말을 쓰자 미국의 군대가 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "미군의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "사탄",
+      "gloss_sha256": "3e322087b45c6515c57b93d310c1a26794b9302a49253872631d4a960bec4b7d",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "사탄: 악을 상징하는 악마 하나로 읽힌다.",
+      "semantic_rationale": "사탄: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 악의 상징을 인물로 세운다.",
+      "no_relation_rationale": "사탄: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "사탄: 악을 상징하는 악마 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "사탄: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“사탄”이라는 말을 쓰자 악을 상징하는 존재가 드러났다.",
+          "relation_type": "near",
+          "target_class": "사탄의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "각하",
+      "gloss_sha256": "bf67a6f0ecf10f87d5335e8746c66a13427684dd48206111716203bc528260f5",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "각하: 높여 부르는 호칭 하나로 읽힌다.",
+      "semantic_rationale": "각하: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 고위직을 높이는 호칭을 짚는다.",
+      "no_relation_rationale": "각하: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "각하: 높여 부르는 호칭 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "각하: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“각하”는 대통령을 높여 부르는 말을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "각하의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“각하”는 고위 관리를 높이는 말이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "각하의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "수하",
+      "gloss_sha256": "bc2ef53796200cad44eb371bbddb017473cc5e350fdfb64599b4a00daf5c7958",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "수하: 지휘 아래에 있는 부하 하나로 읽힌다.",
+      "semantic_rationale": "수하: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 윗사람 곁의 사람을 짚는다.",
+      "no_relation_rationale": "수하: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "수하: 지휘 아래에 있는 부하 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "수하: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“수하”라는 말을 쓰자 누군가의 지휘 아래 있는 사람이 드러났다.",
+          "relation_type": "near",
+          "target_class": "수하의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "포스터",
+      "gloss_sha256": "757f91fe33dbca19c0c6c284b718a48bf344cb08d4fab2757eb318f571b6b5d3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "포스터: 벽에 붙여 보여 주는 인쇄물 하나로 읽힌다.",
+      "semantic_rationale": "포스터: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 벽면의 광고나 안내물을 그린다.",
+      "no_relation_rationale": "포스터: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "포스터: 벽에 붙여 보여 주는 인쇄물 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "포스터: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“포스터”라는 말을 쓰자 벽에 붙은 인쇄물이 눈에 들어왔다.",
+          "relation_type": "near",
+          "target_class": "포스터의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "복숭아",
+      "gloss_sha256": "689fa463cfad17c35c0f691f2e5cfd080858716101e792730f322a9d185e12c9",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "복숭아: 솜털 껍질의 달콤한 과일 하나로 읽힌다.",
+      "semantic_rationale": "복숭아: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 여름 과일의 감각을 그린다.",
+      "no_relation_rationale": "복숭아: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "복숭아: 솜털 껍질의 달콤한 과일 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "복숭아: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“복숭아”라는 말을 쓰자 솜털 껍질과 달콤한 과육이 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "복숭아의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "인수",
+      "gloss_sha256": "43871b4dfcbd715d4815c361f20eff8e494cef59e59424ec9e675e25732d1728",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "인수: 넘겨받음이라는 하나의 행위로 읽힌다.",
+      "semantic_rationale": "인수: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 사업이나 권리를 넘겨받는 일을 짚는다.",
+      "no_relation_rationale": "인수: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "인수: 넘겨받음이라는 하나의 행위로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "인수: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“인수”라는 말을 쓰자 사업을 넘겨받는 일이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "인수의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "사회주의",
+      "gloss_sha256": "933d79554e1210c662d660af7561a71e635f28627a03120dfeb25c9b326588ff",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "사회주의: 공동 소유와 평등을 지향하는 사상 하나로 읽힌다.",
+      "semantic_rationale": "사회주의: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 정치·경제 사상을 짚는다.",
+      "no_relation_rationale": "사회주의: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "사회주의: 공동 소유와 평등을 지향하는 사상 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "사회주의: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“사회주의”라는 말을 쓰자 공동 소유를 지향하는 사상이 드러났다.",
+          "relation_type": "near",
+          "target_class": "사회주의의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "피조물",
+      "gloss_sha256": "eb300011d23660447c9075f5ac32c5d3b8685e66facc1dc3a3a112cecc0a1443",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "피조물: 창조자가 만든 존재 하나로 읽힌다.",
+      "semantic_rationale": "피조물: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 만들어진 존재의 처지를 짚는다.",
+      "no_relation_rationale": "피조물: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "피조물: 창조자가 만든 존재 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "피조물: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“피조물”은 신이 만든 존재를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "피조물의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“피조물”은 창조자가 만들어 낸 생명체라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "피조물의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "화약",
+      "gloss_sha256": "72d81004c06de93f9468b3e737c259034a61108060a89ab6779589ca72f55137",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "화약: 폭발하는 가루 형태의 물질 하나로 읽힌다.",
+      "semantic_rationale": "화약: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 폭발의 재료를 짚는다.",
+      "no_relation_rationale": "화약: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "화약: 폭발하는 가루 형태의 물질 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "화약: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“화약”이라는 말을 쓰자 불을 붙이면 터지는 가루가 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "화약의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "생성",
+      "gloss_sha256": "115cb8b4aa86b2e42eee974f7b02498255b4dc566962a232f13855849f7c8352",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "생성: 새로 생겨남이라는 하나의 변화로 읽힌다.",
+      "semantic_rationale": "생성: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 없던 것이 생기는 순간을 짚는다.",
+      "no_relation_rationale": "생성: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "생성: 새로 생겨남이라는 하나의 변화로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "생성: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“생성”은 없던 것이 새로 생겨나는 변화를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "생성의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“생성”은 만들어지는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "생성의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "걸작",
+      "gloss_sha256": "fe94ba8c78b7cb4340240b1e5a4dd24a87e136b1cdf842ca4de516bb60ce77ae",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "걸작: 뛰어나 훌륭한 작품 하나로 읽힌다.",
+      "semantic_rationale": "걸작: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 작품을 높이 평가하는 말이다.",
+      "no_relation_rationale": "걸작: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "걸작: 뛰어나 훌륭한 작품 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "걸작: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“걸작”이라는 말을 쓰자 뛰어난 작품이라는 평가가 드러났다.",
+          "relation_type": "near",
+          "target_class": "걸작의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "착륙",
+      "gloss_sha256": "ade48052eb579d96984ba14749d530588cc1b572162860a4217a94d7b6317279",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "착륙: 공중에서 내려앉는 하나의 움직임으로 읽힌다.",
+      "semantic_rationale": "착륙: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 비행의 끝을 짚는다.",
+      "no_relation_rationale": "착륙: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "착륙: 공중에서 내려앉는 하나의 움직임으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "착륙: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“착륙”은 비행체가 땅으로 내려앉는 움직임을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "착륙의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“착륙”은 물 위로 내려앉는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "착륙의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "오이",
+      "gloss_sha256": "8dc0919dc890ddbc2700510a2f8641fee3b4b7c4b24bdf53e1bdf115918930b5",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "오이: 길고 초록색인 수분 많은 채소 하나로 읽힌다.",
+      "semantic_rationale": "오이: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 식탁의 시원한 채소를 그린다.",
+      "no_relation_rationale": "오이: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "오이: 길고 초록색인 수분 많은 채소 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "오이: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“오이”라는 말을 쓰자 초록색 채소의 시원한 감각이 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "오이의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "학식",
+      "gloss_sha256": "d48a20d2de337676307f4bfeebf4843bc056d340bb5d092584edddf72499c13a",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "학식: 배워서 쌓은 지식 하나로 읽힌다.",
+      "semantic_rationale": "학식: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 배움의 깊이를 짚는다.",
+      "no_relation_rationale": "학식: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "학식: 배워서 쌓은 지식 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "학식: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“학식”이라는 말을 쓰자 배워서 쌓은 지식이 드러났다.",
+          "relation_type": "near",
+          "target_class": "학식의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "머리통",
+      "gloss_sha256": "a7a884596b723dbbf1b550d883ebdb3b460cb92697927b067075f6397bfe47d3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "머리통: 머리의 둥근 전체 부분 하나로 읽힌다.",
+      "semantic_rationale": "머리통: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 머리의 모양과 크기를 짚는다.",
+      "no_relation_rationale": "머리통: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "머리통: 머리의 둥근 전체 부분 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "머리통: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“머리통”이라는 말을 쓰자 머리의 둥근 모양이 떠올랐다.",
+          "relation_type": "near",
+          "target_class": "머리통의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "상가",
+      "gloss_sha256": "a3d332a7cbedaf713477299d36102b37a3dbb42990aa64bfa7b3532e96234391",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "상가: 가게가 들어선 상업용 건물 하나로 읽힌다.",
+      "semantic_rationale": "상가: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 거리의 가게들을 건물로 짚는다.",
+      "no_relation_rationale": "상가: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "상가: 가게가 들어선 상업용 건물 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "상가: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“상가”라는 말을 쓰자 가게가 들어선 건물이 눈에 들어왔다.",
+          "relation_type": "near",
+          "target_class": "상가의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "통찰",
+      "gloss_sha256": "b021d5d67b053d23d3b4d7ca5896ebf3d88368b05b16b840a09dbd51a3f727b6",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "통찰: 본질을 꿰뚫어 알아차림이라는 하나의 앎으로 읽힌다.",
+      "semantic_rationale": "통찰: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 깊은 이해의 순간을 짚는다.",
+      "no_relation_rationale": "통찰: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "통찰: 본질을 꿰뚫어 알아차림이라는 하나의 앎으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "통찰: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“통찰”은 사물의 본질을 꿰뚫어 아는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "통찰의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“통찰”은 상황의 본질을 알아차리는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "통찰의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "투사",
+      "gloss_sha256": "ca647df30fbaae0944ba29d307f16b56b6db56ac6c44c8e4c89f3f76dd3da5d8",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "투사: 앞장서 싸우는 사람 하나로 읽힌다.",
+      "semantic_rationale": "투사: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 대의를 위해 나선 인물을 짚는다.",
+      "no_relation_rationale": "투사: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "투사: 앞장서 싸우는 사람 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "투사: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“투사”라는 말을 쓰자 대의를 위해 앞장서 싸우는 사람이 드러났다.",
+          "relation_type": "near",
+          "target_class": "투사의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "땋다",
+      "gloss_sha256": "6d0a5723f839dac5fc98d95e43de9f8ff9be73ef8c43faad9b1564804b8d0036",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "땋다: 엇걸어 엮는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "땋다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 머리를 엮는 손놀림을 그린다.",
+      "no_relation_rationale": "땋다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "땋다: 엇걸어 엮는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "땋다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“땋다”는 갈래를 엇걸어 머리카락을 엮는 동작을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "땋다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“땋다”는 끈을 엮는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "땋다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "엄지손가락",
+      "gloss_sha256": "30b3f83eb17c7e26c3d13b38d2735a810a4a92437dd1f3e0bb9627a6740b2bd3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "엄지손가락: 굵고 마주 보는 손가락 하나로 읽힌다.",
+      "semantic_rationale": "엄지손가락: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 손의 특정 부위를 짚는다.",
+      "no_relation_rationale": "엄지손가락: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "엄지손가락: 굵고 마주 보는 손가락 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "엄지손가락: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“엄지손가락”이라는 말을 쓰자 가장 굵은 손가락이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "엄지손가락의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "처사",
+      "gloss_sha256": "eddf421de688afb161831d3a295aa8f3ba9be4a033108c62685f857618530fee",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "처사: 태도와 방식이라는 하나의 대응으로 읽힌다.",
+      "semantic_rationale": "처사: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 상대를 대하는 방식을 평가한다.",
+      "no_relation_rationale": "처사: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "처사: 태도와 방식이라는 하나의 대응으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "처사: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“처사”는 일을 처리하는 태도를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "처사의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“처사”는 사람을 대하는 방식이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "처사의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "화물",
+      "gloss_sha256": "c2986ebd0abe56b4fc58f49949d42689c0b64fa4a22cad2c5baa157ef08793d4",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "화물: 실어 나르는 짐 하나로 읽힌다.",
+      "semantic_rationale": "화물: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 운송되는 짐을 짚는다.",
+      "no_relation_rationale": "화물: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "화물: 실어 나르는 짐 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "화물: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“화물”은 실어 나르는 짐을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "화물의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“화물”은 상품이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "화물의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "주간",
+      "gloss_sha256": "199f6fcddd6c3683cc039bf8be894785be5351072a9503576bda4e345e27c259",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "주간: 일주일 동안의 기간 하나로 읽힌다.",
+      "semantic_rationale": "주간: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 일주일 단위의 시간을 짚는다.",
+      "no_relation_rationale": "주간: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "주간: 일주일 동안의 기간 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "주간: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“주간”이라는 말을 쓰자 일주일 동안의 기간이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "주간의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "슬리퍼",
+      "gloss_sha256": "6958708c830c0d4e3914abc5bd15caddcb6aecc2c6eefdda5347b2103185b777",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "슬리퍼: 편하게 신는 낮은 신발 하나로 읽힌다.",
+      "semantic_rationale": "슬리퍼: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 실내의 가벼운 신발을 그린다.",
+      "no_relation_rationale": "슬리퍼: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "슬리퍼: 편하게 신는 낮은 신발 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "슬리퍼: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“슬리퍼”는 실내에서 편하게 신는 신발을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "슬리퍼의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“슬리퍼”는 뒤축이 낮은 신발이라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "슬리퍼의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "대치",
+      "gloss_sha256": "b04d364f401e67264664a26e7621cdfc71f93b1c66d93e819cc3b45f43d0dc06",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "대치: 맞서 버티는 하나의 상태로 읽힌다.",
+      "semantic_rationale": "대치: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 팽팽한 맞섬을 짚는다.",
+      "no_relation_rationale": "대치: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "대치: 맞서 버티는 하나의 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "대치: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“대치”는 서로 맞서 물러서지 않는 상태를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "대치의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“대치”는 겨루는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "대치의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "구식",
+      "gloss_sha256": "e1d236dd3cfaefd504731491a81eb27a0d720669d9605383d523f4c025a544e2",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "구식: 옛 방식이라는 하나의 상태로 읽힌다.",
+      "semantic_rationale": "구식: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 시대에 뒤진 모습을 짚는다.",
+      "no_relation_rationale": "구식: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "구식: 옛 방식이라는 하나의 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "구식: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“구식”은 시대에 뒤져 옛 방식인 상태를 가리킨다.",
+          "relation_type": "near",
+          "target_class": "구식의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“구식”은 오래된 상태라는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "구식의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "선천",
+      "gloss_sha256": "6f8a9cb5494fa242360dda916c904180a4e8b2acc898fef384be8b29818f50cd",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "선천: 타고난 하나의 성질로 읽힌다.",
+      "semantic_rationale": "선천: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 태어날 때부터의 성질을 짚는다.",
+      "no_relation_rationale": "선천: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "선천: 타고난 하나의 성질로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "선천: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“선천”이라는 말을 쓰자 태어날 때부터 타고난 성질이 드러났다.",
+          "relation_type": "near",
+          "target_class": "선천의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "엎어지다",
+      "gloss_sha256": "e9be7839666c549d3508050ab7a39cf0a1b3f2ba034805b20af62eb1dc55c48d",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "엎어지다: 뒤집혀 쓰러지는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "엎어지다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 넘어지는 몸을 그린다.",
+      "no_relation_rationale": "엎어지다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "엎어지다: 뒤집혀 쓰러지는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "엎어지다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“엎어지다”는 바닥에 뒤집혀 쓰러지는 동작을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "엎어지다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“엎어지다”는 다른 면에 뒤집히는 모습도 담는다.",
+          "relation_type": "near",
+          "target_class": "엎어지다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“엎어지다”는 넘어지는 면도 함께 담는다.",
+          "relation_type": "near",
+          "target_class": "엎어지다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "이글거리다",
+      "gloss_sha256": "c1d4a4b1fd90cb285b90457e20d8239f332d18667001205afca9a947ab5519fe",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "이글거리다: 뜨겁게 빛나는 하나의 모양으로 읽힌다.",
+      "semantic_rationale": "이글거리다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 불이나 눈빛의 열기를 그린다.",
+      "no_relation_rationale": "이글거리다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "이글거리다: 뜨겁게 빛나는 하나의 모양으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "이글거리다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“이글거리다”는 불빛이 뜨겁게 빛나는 모양을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "이글거리다의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“이글거리다”는 눈빛이 강하게 빛나는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "이글거리다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "이웃집",
+      "gloss_sha256": "62f8b2686a7d0e65095b03a1bde72d4d7e6f0b5c0e1bf05c75f51e93659a753c",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "이웃집: 가까이 이웃한 집 하나로 읽힌다.",
+      "semantic_rationale": "이웃집: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 이웃 관계를 집으로 짚는다.",
+      "no_relation_rationale": "이웃집: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "이웃집: 가까이 이웃한 집 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "이웃집: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“이웃집”이라는 말을 쓰자 가까이 이웃한 집이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "이웃집의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "장남",
+      "gloss_sha256": "4fa9e3b3675c74bf85c72457e34ca0acfacd3e64756bb172f9fef9a3a6c8815c",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "장남: 맏이가 되는 아들 하나로 읽힌다.",
+      "semantic_rationale": "장남: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 가족 안의 자리를 짚는다.",
+      "no_relation_rationale": "장남: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "장남: 맏이가 되는 아들 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "장남: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“장남”이라는 말을 쓰자 맏이가 되는 아들이 드러났다.",
+          "relation_type": "near",
+          "target_class": "장남의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "출퇴근",
+      "gloss_sha256": "5e5706e7a8c3c077c7356748aa5505d02030d3f707dfda172c7be812f8a892d3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "출퇴근: 오가며 출근하고 퇴근하는 하나의 일상으로 읽힌다.",
+      "semantic_rationale": "출퇴근: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 일터를 오가는 반복을 짚는다.",
+      "no_relation_rationale": "출퇴근: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "출퇴근: 오가며 출근하고 퇴근하는 하나의 일상으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "출퇴근: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“출퇴근”은 직장을 오가며 출근하고 퇴근하는 일을 가리킨다.",
+          "relation_type": "near",
+          "target_class": "출퇴근의 검토된 핵심 뜻"
+        },
+        {
+          "sentence_frame": "“출퇴근”은 학교를 오가는 면도 담는다.",
+          "relation_type": "near",
+          "target_class": "출퇴근의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "기나길다",
+      "gloss_sha256": "a76a09ae9c6fea2ab68a75aa06f19fda6f50cc4fdc8d38b2ffbec690b2939612",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "기나길다: 매우 길고 오래 이어지는 하나의 상태로 읽힌다.",
+      "semantic_rationale": "기나길다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 오랜 길이를 짚는다.",
+      "no_relation_rationale": "기나길다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "기나길다: 매우 길고 오래 이어지는 하나의 상태로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "기나길다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“기나길다”라는 말을 쓰자 매우 길고 오래 이어지는 느낌이 드러났다.",
+          "relation_type": "near",
+          "target_class": "기나길다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "들이쉬다",
+      "gloss_sha256": "b9d77289be96e743a2f4a739b6c8fa78e2b8326846cb512d2b72a4fee992b920",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "들이쉬다: 숨을 몸 안으로 빨아들이는 하나의 동작으로 읽힌다.",
+      "semantic_rationale": "들이쉬다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 숨의 움직임을 그린다.",
+      "no_relation_rationale": "들이쉬다: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "들이쉬다: 숨을 몸 안으로 빨아들이는 하나의 동작으로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "들이쉬다: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“들이쉬다”라는 말을 쓰자 숨이 몸 안으로 들어오는 동작이 분명해졌다.",
+          "relation_type": "near",
+          "target_class": "들이쉬다의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "유년",
+      "gloss_sha256": "9dcc02b2bad527ea998ce29dafa1ccca85516b92493841ab441bf42e044241d3",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "boundary_rationale": "유년: 어린 시절 하나로 읽힌다.",
+      "semantic_rationale": "유년: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 지난 어린 시절을 짚는다.",
+      "no_relation_rationale": "유년: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "유년: 어린 시절 하나로 읽힌다. 풀이와 의미 경계를 따로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "유년: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "“유년”이라는 말을 쓰자 어린 시절의 빛이 드러났다.",
+          "relation_type": "near",
+          "target_class": "유년의 검토된 핵심 뜻"
+        }
+      ]
+    }
+  ]
+}

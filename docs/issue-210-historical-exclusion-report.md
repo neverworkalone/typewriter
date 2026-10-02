@@ -6,7 +6,7 @@ Generated from the machine inventory at `data/inventory/issue-210-recovery-inven
 
 The current invariant from Issues #207–#209 is: every valid lexical entry within Typewriter's supported scope may serve as a searchable start. Historical roles and decisions remain recorded as history; they do not determine current search eligibility. This report inventories current unresolved candidates and records Issues #219/#220's separately validated dispositions for bounded reserve slices. Issue #221's corpus-derived admissions are audited separately and do not enter the historical M5 recovery pool. Relation counts are not admission quotas.
 
-The audit screened all 1,562 M5 target rows, joined all 100 Issue #204 decisions (90 map to M5 rows; 10 admitted rows are tracked separately), audited 7,387 promotion ledger events, traced 4 corrected M5-3 policy cases, and checked all current reference-only records. The M1–M4 pilot tables and handoffs do not preserve a complete standalone rejected/deferred candidate ledger. No unavailable ephemeral drafts or external raw material were reconstructed.
+The audit screened all 1,562 M5 target rows, joined all 100 Issue #204 decisions (90 map to M5 rows; 10 admitted rows are tracked separately), audited 8,669 promotion ledger events, traced 4 corrected M5-3 policy cases, and checked all current reference-only records. The M1–M4 pilot tables and handoffs do not preserve a complete standalone rejected/deferred candidate ledger. No unavailable ephemeral drafts or external raw material were reconstructed.
 
 ## Counts
 
@@ -16,7 +16,7 @@ Issue #219 result: 20 reviewed; 0 admitted, 10 held, and 10 rejected as composit
 | --- | ---: |
 | Recovery candidate records classified | 584 |
 | Issue #204 records already admitted and searchable | 10 |
-| Current canonical records | 8,727 |
+| Current canonical records | 10,009 |
 | Current non-searchable lexical records | 0 |
 | Current reference-only records, now searchable | 42 |
 | Confirmed active usefulness/generality exclusions (#204) | 0 |
@@ -28,11 +28,11 @@ Issue #219 result: 20 reviewed; 0 admitted, 10 held, and 10 rejected as composit
 | Explicit unresolved sense/POS/context cases | 204 |
 | Additional rationale or lexical-unit holds | 75 |
 | Unsupported lexical categories | 0 |
-| Exact canonical search keys checked | 8,984 |
+| Exact canonical search keys checked | 10,266 |
 
 The 31 historical policy-rejection events include 25 Issue #204 rejects re-reviewed in Issue #211 (24 recovered and searchable, one held for an unresolved sense boundary), two M5-10A2 rejections that later became holds for lexical boundaries, and four M5-3 rejections later corrected and included in M5-7. No Issue #204 row remains an active usefulness/generality exclusion. The two M5-10A2 holds retain their blockers, and the four corrected cases are already searchable. M5's seven “insufficient admission priority” rejections and 20 generic M5-12A rejects remain on hold because their durable rationale does not establish a specific usefulness-only reason or lexical invalidity. The inventory also preserves 11 earlier M5 reject-to-hold transitions; two are the mixed utility cases counted above, while the others retain identity, sense, phrase, or context blockers.
 
-All 8,727 current canonical records resolve directly. Their 8,984 canonical lemma/search-form keys have no missing owner, unexpected owner, or cross-record collision. This includes 42 historical reference-only records (41 entries and 1 expression); all their current lemmas resolve by the same canonical ID.
+All 10,009 current canonical records resolve directly. Their 10,266 canonical lemma/search-form keys have no missing owner, unexpected owner, or cross-record collision. This includes 42 historical reference-only records (41 entries and 1 expression); all their current lemmas resolve by the same canonical ID.
 
 ## New review states
 
@@ -145,7 +145,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | Artifact | SHA-256 |
 | --- | --- |
 | `AGENTS.md` | `3cbd595f472dc6d54e4339cb6392f572a1f9eac21d31e4d7e904b24bbdd8f7b1` |
-| `config/artifact-policy.json` | `d051121e38038895c195566a6ad3f42b47a1de53b3f18cd5b176e77825735e85` |
+| `config/artifact-policy.json` | `b85daf5e9eb97e16af99a7e9dac32c19b6b4450fcd9f4ea9c8f51d8d84cb7f33` |
 | `data/batches/issue-204-pilot-decisions.json` | `f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b` |
 | `data/batches/issue-204-semantic-decisions.json` | `66d96ed2b0c104dab185625ebd5f09ef06b21092c9b84e1f3d1ad0d8b76fd60e` |
 | `data/batches/issue-211-lexical-unit-source.json` | `683ac43752125bdc23de25cf5c3f5c64c406055706609d719bee8f847eb22185` |
@@ -264,6 +264,11 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/issue-223-m9-e-corpus-batch-02.jsonl` | `571c113e2426b2c2f6864f4969ebfbc4dfed32ae4c30452759d6202246d9f176` |
 | `data/canonical/issue-223-m9-e-corpus-batch-03.jsonl` | `e758b145f0dce4118765239fb02fd7d6f10764e1f84ab3ff7883a37022df76b2` |
 | `data/canonical/issue-223-m9-e-corpus-batch-04.jsonl` | `026d99944fc28e2bfced64f17e59a23d20109850c179f6d97444fd4430112935` |
+| `data/canonical/issue-223-m9-e-corpus-batch-05.jsonl` | `ec35ea84a9350539c49c7a169401faa5b10392c933d6af68e0a45c948444332d` |
+| `data/canonical/issue-223-m9-e-corpus-batch-06.jsonl` | `c67f193d1c651d6bd4231fded1ae2fd8fafbbf0ce3949c6dbbf267ded5f44130` |
+| `data/canonical/issue-223-m9-e-corpus-batch-07.jsonl` | `29ce2cac95e204aa1340c196cf95427563fffc90f571df36f46d1ce67c9b59fb` |
+| `data/canonical/issue-223-m9-e-corpus-batch-08.jsonl` | `ea42c62762803a21dcca1d6f1311d9179224386b720692a79eed7373c26544cf` |
+| `data/canonical/issue-223-m9-e-corpus-batch-09.jsonl` | `5de2000f86d429ca77e1023d1eb6fbb970c318cb5b96eeb74d07cc9cdc31813a` |
 | `data/canonical/m5-10-wave-a.jsonl` | `08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed` |
 | `data/canonical/m5-10-wave-b.jsonl` | `575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206` |
 | `data/canonical/m5-10a-wave-a2.jsonl` | `4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8` |
@@ -277,19 +282,19 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-7-recalibration.jsonl` | `a37677f7569e016e5e8f9525b978ec4911ff0c9afb5ba7f65d3c40dae5fc71c1` |
 | `data/canonical/m5-9-expansion.jsonl` | `a47e9322813780efd2eae29b2b5784bcd2948d7c3f7de621174ebee4a35ce4c4` |
 | `data/canonical/pilot.jsonl` | `d45c15164ef6f146ee51d40e265746515120a556b1e2fb65e057ed36781dff1d` |
-| `data/inventory/m5-target-promotions.jsonl` | `791d8ce503d2d3bf555253e53bd6576a76dc4d40d94d6b61fcff668731ed384e` |
+| `data/inventory/m5-target-promotions.jsonl` | `178cefcab05f1d4f5e9f9800fba781f85996d2ccfb7d96f083f3249a72f3755e` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `3c4f297187f30bc1a2cde976540d137e96e630d1c74a2bb33e3a8b898533a3b0` |
-| `data/validation/issue-219-m9-lexical-batch-report.json` | `c0bf993e9b7a4fbded0a8b82f56394b55481ff8cf8d335aa3d152ad027a934c8` |
-| `data/validation/issue-220-m9-b-checkpoint-report.json` | `c4d977b10519b6acb850bc1b223677fdcb78ba346c5d8f2898d2fa6cc5b7703a` |
-| `data/validation/m6-2-inflection-exceptions.json` | `9495ce21c92c1313adf62b806f308a20ec1998f0b29fc7a1e51de9151d391a7a` |
-| `data/validation/m6-3-surface-form-review.json` | `72ab90de8ec3310fd713db92e559edebf9dac4ce9e270e744f3fab27a0476001` |
+| `data/validation/canonical-semantic-decision-source.json` | `c909baa40bc2f0647fa0ba18401cdd66df0246ae74ff67f5068c6e4e5872839a` |
+| `data/validation/issue-219-m9-lexical-batch-report.json` | `b0094b52ec93c850cd9aff4682944d59c07e511c4c7058f58fec127e436f23ee` |
+| `data/validation/issue-220-m9-b-checkpoint-report.json` | `fd1810f47bf3c18d83bbb6b412f33f44639ea3f08777f9ae7dd8e303f12b0c14` |
+| `data/validation/m6-2-inflection-exceptions.json` | `758ba69282f7939ef5ecb884748b29c5c7e420aa521aad0a4900badb17d87583` |
+| `data/validation/m6-3-surface-form-review.json` | `049380e63528ad9b0d5996311b297ce7da995990d9ea042242803d01485e0cbc` |
 | `docs/editorial-model.md` | `2d6e52189d346bec905f715d0637b27f5738fa6d3396311de0873df0125beeff` |
 | `docs/external-material-review-customs-terminology.md` | `ce7395c649ba9d4eecf2ed3362be2f9859116a398aee85534005e1ea624bce2a` |
 | `docs/issue-208-searchable-start-retrospective.md` | `3e5dfd512389b4a505010686c10c32e0cdfdbb328290e1f4f0bc92a8f6aa6621` |
 | `docs/issue-211-bounded-lexical-recovery.md` | `e0a264b879f612b32fd20ebbb3c0a475d324ded5f461d4d0406f27bcb820a294` |
-| `docs/issue-219-m9-a-recovery.md` | `1176e3296301957d244db58aa3e4c65d4f49c40e37efaef6a80fad9d052231f6` |
-| `docs/issue-220-m9-b-checkpoint.md` | `0751ce13718b2280053c1769cfac7ce2930ceaac3e6b59b0bca710b076037727` |
+| `docs/issue-219-m9-a-recovery.md` | `08d4cb72ca232adeb65fb147f74953365f9ed58bf438c1658d58f32993cdd3e1` |
+| `docs/issue-220-m9-b-checkpoint.md` | `105bec0e8c3012de96d2e5c19177eee08043a7dbfebe230ab4cba908bd633734` |
 | `docs/m3-handoff.md` | `215dedb02808c108ba06c9d20258d9fde5c03b3c5a35da556320a8c652ab3b04` |
 | `docs/m4-handoff.md` | `4492845b7a362c70b4ddb7a4c7582f2d37b3e6d2c9a9afa394edb414ed714c49` |
 | `docs/m5-16-final-audit-report.md` | `a60a58a20551d72c0388b8fd99fe5d92b3fd19c3a76cd3701c7d7e8fc82739f8` |
@@ -300,10 +305,10 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `docs/m9-bounded-lexical-batches.md` | `06f1fd2ee398cba59f62a2b347e212d9e921cbdfa14e5cf9931bb22e4a78e70d` |
 | `docs/m9-corpus-production.md` | `6f01915428a299bf186d36ce4e526fed009555e27c74f129e6500704a50f2b88` |
 | `docs/pilot-scope.md` | `9d1d23b63c828838e5b326ee69e080f57a68ffae6e0e31dfe05e99d0865e6881` |
-| `package.json` | `b6ff6de7714879122a94bcb49a7999e00de66982f455e929b83d11d1da37bd8a` |
+| `package.json` | `48040c6472a08e634edd5bf508957761b33991d5b40c32af72d01c846e0fb8c4` |
 | `schema/issue-220-m9-b-checkpoint-report.schema.json` | `ca40281d0863a36e36b6a2d5f3d7886efc0cc136ffddff8117a4a306d27e1710` |
 | `schema/m9-lexical-batch-report.schema.json` | `e2137ba54f1610f11412c8e6ce6da2cafc3f9b8b7a8b51dedb03c93b1db76dcb` |
-| `scripts/batch/authored-semantic-decision-source.mjs` | `e608d8eb7f09059d23b831d4fba8b8425654aebe5e094e7b09c2f486f0efde14` |
+| `scripts/batch/authored-semantic-decision-source.mjs` | `c3af89b27224e2d7cea845712e54fa1b2051a0273cd956bbec86a56118665116` |
 | `scripts/batch/lexical-production.mjs` | `a47c6e7ecb955b2d6e807d3d8fb2998724d0e126990f4b8b70a0680a290ba44e` |
 | `scripts/batch/lexical-selection.mjs` | `4a80f1b9a6391536f46e2faaf53bed87508b649211837471c0545a64a32a1e9c` |
 | `scripts/batch/m5-13-candidate-source.mjs` | `e7fdb25526acf99e42c2f12891e7f74e56b41a93cbfd0036628a1d334566cb69` |
@@ -313,15 +318,15 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `scripts/batch/validate-issue-220.mjs` | `7a439cc11cce8eec6e1811d7c93a69f07e85decd800698c53359dddc4ee776e0` |
 | `scripts/batch/validate-issue-221.mjs` | `f4d45a6820de9050d714ea7f3711dffb2040fd4ec0f25434e9508b14fad3957a` |
 | `scripts/batch/validate-issue-222.mjs` | `c15383dc7d3c3a824de42645a86d8b1b5037a38f39634b5f0e55c17eb0429d82` |
-| `scripts/ci/registry.mjs` | `1dcb8b8f0fd25c65d9e070b850838d58711e83b42d37259add8bbcc50568bf1f` |
-| `scripts/inventory/build-issue-210-recovery-inventory.mjs` | `100d3ad00ac462e06f5563a6135fcb44bd7cbeea5af046f8c1ce46e58876623f` |
-| `scripts/reference/corpus-candidate-review.test.mjs` | `f58f275b66d6de03e5a42009790f944b85cd87d02baa571052e09443ddb9e91e` |
+| `scripts/ci/registry.mjs` | `dc17064e737476636361ef8bf1a52a0b5880a94aad4b7e651890528c7715df92` |
+| `scripts/inventory/build-issue-210-recovery-inventory.mjs` | `05946372f257ada78ef367a35401956055cd6054817733e9f83e928dcd4d69ec` |
+| `scripts/reference/corpus-candidate-review.test.mjs` | `bf7b92b975d417130febac9961e9f3b0a2caf62bfb83b42a3edac38c9cb1c73b` |
 | `scripts/reference/corpus_lemma_pilot.py` | `0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e` |
 | `scripts/reference/run-corpus-lemma-pilot.mjs` | `ace4c261409401c6590dfffadc250df819ebb592b417e2a0fd083a0d4597e4dd` |
 | `scripts/reference/run-corpus-lemma-pilot.test.mjs` | `7498a9de34bd0461ebbfbeee58c8851618d0e2b5e778f0515952df85daf9cb4c` |
 | `scripts/reference/test-corpus-lemma-pilot.py` | `e4afffc2aa377711e209c653245de7685c48176d78a3ef3346fc008690757d15` |
 | `scripts/reference/validate-corpus-candidate-review.mjs` | `7f5cfe1d9b413873d7290eccc1b1ca339627aea51a3ab6fd89cd1033d2ff1f84` |
-| `scripts/validate/corpus-candidate-review.mjs` | `8fe3280a5e8f037bd3848a84e5f03bdb7b4f917323f8b594ba384513cee7c70a` |
+| `scripts/validate/corpus-candidate-review.mjs` | `184b1fa634e20c635715d98c3a581770f97b1cbdfe2a27111936e259b15ac6fb` |
 | `scripts/validate/semantic-audit.mjs` | `0b435919225e39b977b802e8bfb544fb501cfca2442284e46d870e125d33e03b` |
 | `scripts/validate/semantic-decision-row.mjs` | `3019f5ce59c778a6e913f30c49c915508dfbb1792db891f410af86ff6a857d3e` |
 | `tests/issue-211-search.test.mjs` | `0010c76cc0eced37c3ac51d3993c66b4d700a1d5d3dc2872fc0171ced5af2351` |
@@ -335,7 +340,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 - M1–M4 provide a 300-item pilot selection table, canonical pilot records, and historical M3/M4 handoffs, but not a complete durable list of every rejected or deferred candidate. The inventory does not infer omitted lemmas from those missing lists.
 - Historical M5 decision notes such as “insufficient admission priority” are preserved as ambiguous evidence. They remain on hold until candidate-specific lexical grounds can be recovered.
 - Issue #211 re-reviewed all 25 Issue #204 rejects through the shared semantic and admission contracts. Twenty-four now have admitted canonical bodies; one remains held because its current single-sense gloss collapses distinct uses.
-- Issue #220 reviewed two bounded M5-13 reserve batches. The complete Issue #210 historical pool cannot reach 6,000 records even if every remaining candidate/hold/sense-split row is resolved: its calculated ceiling is 9234, short by 0. Issue #221's corpus admissions are part of today's canonical baseline but remain outside that historical pool. Further expansion requires the next approved source workflow, not reconstruction from absent historical material.
+- Issue #220 reviewed two bounded M5-13 reserve batches. The complete Issue #210 historical pool cannot reach 6,000 records even if every remaining candidate/hold/sense-split row is resolved: its calculated ceiling is 10516, short by 0. Issue #221's corpus admissions are part of today's canonical baseline but remain outside that historical pool. Further expansion requires the next approved source workflow, not reconstruction from absent historical material.
 - Current search coverage describes canonical lookup only; it does not claim editorial quality, writer satisfaction, or relation completeness.
 
 ## Reproduction
