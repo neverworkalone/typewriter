@@ -595,7 +595,7 @@ async function stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence) {
   return JSON.parse(await readFile(stagedPath, 'utf8'));
 }
 
-export async function validateIssue223({ verifyLocalCorpusEvidence = true, validatePreviousIssue = true, compareSecondBuild = true } = {}) {
+export async function validateIssue223({ verifyLocalCorpusEvidence = true, validatePreviousIssue = true, compareSecondBuild = true, rebuildDatabase = true } = {}) {
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const batches = await validateCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence });
   const issue223Imports = batches.flatMap(({ importRecords }) => importRecords);
@@ -658,7 +658,9 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
     assert.equal(existing, undefined, `Canonical lemma ${record.lemma} must not have duplicate records (${existing ?? ''}, ${record.id})`);
     duplicateLemmas.set(record.lemma, record.id);
   }
-  const deterministicBuild = await validateDeterministicBuild(issue223Imports, { compareSecondBuild });
+  // Normal CI already builds and validates the shared SQLite artifact once;
+  // rebuilding here is a manual/deep path (REVIEW.md).
+  const deterministicBuild = rebuildDatabase ? await validateDeterministicBuild(issue223Imports, { compareSecondBuild }) : {};
   const previousIssue = validatePreviousIssue ? await validateIssue222({ verifyLocalCorpusEvidence }) : undefined;
   return {
     issue: 223,
@@ -696,8 +698,9 @@ const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === path.r
 if (isMainModule) {
   const verifyLocalCorpusEvidence = !process.argv.includes('--no-local-corpus-evidence');
   const validatePreviousIssue = !process.argv.includes('--skip-issue-222');
-  const compareSecondBuild = !process.argv.includes('--single-build');
-  validateIssue223({ verifyLocalCorpusEvidence, validatePreviousIssue, compareSecondBuild })
+  const compareSecondBuild = true;
+  const rebuildDatabase = !process.argv.includes('--no-build');
+  validateIssue223({ verifyLocalCorpusEvidence, validatePreviousIssue, compareSecondBuild, rebuildDatabase })
     .then((summary) => console.log(JSON.stringify(summary, null, 2)))
     .catch((error) => {
       console.error(error.code ? `${error.code}: ${error.message}` : error.message);
