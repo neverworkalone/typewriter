@@ -5,8 +5,8 @@
   "batch_id": "issue-223-m9-e-corpus-batch-06-20261001",
   "reviewer": "claude-sonnet-5-5-independent-reviewer",
   "review_status": "complete",
-  "generator_proposal_sha256": "eafe350cb5f748097cdd653252bd3a62001bacb956dfc6ca8bf19abfa7e28bae",
-  "run_record_sha256": "ef83ff9a2f0dee3255d8a399fdb64f357322f085a522be29323617081dd9b685",
+  "generator_proposal_sha256": "e43a536c89863cc03d71f9b595485c8d5e0905315798bd3a8b921d0c19a94d87",
+  "run_record_sha256": "136d24cf62359b475a53faab6db009a739d5fd980697f3dcc7dfac724fe02140",
   "review_runs": [
     {
       "run": 1,
@@ -16,8 +16,8 @@
       "last_ordinal": 102,
       "candidate_count": 102,
       "packet_sha256": "d104502719462412776a7fab197b20a81c654631b6dd79a869c67cea907ccf30",
-      "raw_output_sha256": "4d519425e168df1afbdcee95875416002dda6affa19b2455bb732ccdf96d24e8",
-      "proposals_sha256": "da50f6a00e5c2208cecfe55285c82147ef09ddd9c4667760b1b2519bffe0d8af"
+      "raw_output_sha256": "b2f28a3cf49e77bb42e7369cb2e3214bd796d4d66b765e078a82f48414c702f6",
+      "proposals_sha256": "41dd727e2106be3c4f12af3db9acbb2dad90f86e42c0afbcee7907f84d0286cf"
     },
     {
       "run": 2,
@@ -27,8 +27,8 @@
       "last_ordinal": 204,
       "candidate_count": 102,
       "packet_sha256": "d21436c99dbeddc8a26285749cbe3b4462e59ba7997fab701aacbfe8345398c6",
-      "raw_output_sha256": "79e20e8018efe717a9572201ccc3915d3b9a2acc774a814e61fa52550c781e04",
-      "proposals_sha256": "60b2f25354225a641e32f8f8601473e9294a5cf8aef473cdee761213b10aceea"
+      "raw_output_sha256": "d5e9973dcd4bbaf5cf20a9d64b7ca298c0a46f301c37a61ecc5b555ef4214eab",
+      "proposals_sha256": "eaa5316f01745210cfd8cd6fcb23130ada2dff4f6c9f62503fe208f7aade4fdc"
     },
     {
       "run": 3,
@@ -38,8 +38,8 @@
       "last_ordinal": 305,
       "candidate_count": 101,
       "packet_sha256": "26cbbd98463ea2a721577cd9d11a75c01bfb20efd0a7a984bb130774607ea007",
-      "raw_output_sha256": "611b9375d3643766d696ae175b7661bd098b2836dfc22f96eafd242e225aee02",
-      "proposals_sha256": "ba9dc1a1f505741e05aabe029984fe5a2e95bba46a24544bb1267d096a5b18d2"
+      "raw_output_sha256": "cbb8bcacbdaab0b21130ef03e304f20a1b988c06713f268ed1b9f40c391586df",
+      "proposals_sha256": "7d32a4ea9216c1f76703ca609fd8ae47d7592d4ca8a38f5ba6470e48f1a3855b"
     }
   ],
   "reviews": [
@@ -732,6 +732,10 @@
       "topic_analysis": {
         "status": "pass",
         "state": "adnominal",
+        "token_index": 1,
+        "topic": "나",
+        "particle": "는",
+        "predicate": "기름으로",
         "rationale": "풀이의 '나는'은 명사 주제 조각이 아니라 '땅속에서 나는 기름'을 꾸미는 관형어 활용형이다."
       }
     },
@@ -8394,7 +8398,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "맥락 0,1,2 모두 비꼬는 투로 말한다는 한 뜻으로 확인되어 보류 근거가 맥락에는 없지만, 풀이가 제안되지 않아 통과시킬 수 없다."
     },
     {
@@ -9381,7 +9385,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "맥락 0·1·2에서 목마르다는 하나의 독립된 형용사로 확인되어 독립 검토로는 입적 가능으로 보나, 생성기 제안이 hold라 gloss가 없어 통과시킬 수 없다."
     },
     {
@@ -9426,7 +9430,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "맥락 0·1·2의 후손이 기릴, 아버지를 기리는, 선원들을 기리기 위해는 모두 업적을 칭송하고 기억하는 한 뜻이라 독립 검토로는 입적 가능하나, 생성기 제안이 hold라 gloss가 없다."
     },
     {
@@ -10534,7 +10538,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "맥락 0의 놀림, 1의 놀림을 받다, 2의 놀림만 당하던 모두 놀려 대는 일이라는 하나의 명사로 읽혀 독립 검토로는 입적 가능하나, 생성기 제안이 hold라 gloss가 없다."
     },
     {
@@ -12064,7 +12068,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "문맥 0,1,2의 나물 반찬, 나물을 캐러, 나물과 열매는 모두 먹는 풀 하나의 뜻이라 입수 가능해 보이지만 제안이 보류라 풀이 없이는 통과시킬 수 없다."
     },
     {
@@ -12477,7 +12481,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "문맥 0,1,2의 갈구가, 갈구할, 갈구하는은 모두 간절히 바람이라는 한 뜻으로 읽히지만 제안이 보류라 풀이 없이는 통과시킬 수 없다."
     },
     {

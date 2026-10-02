@@ -376,6 +376,11 @@ const OUTCOME_AXES = Object.freeze({
   sense_boundary_check: ['single', 'multiple'],
 });
 const OUTCOME_HOLD_BASES = ['unresolved-identity', 'unresolved-sense'];
+// A non-lexical outcome state: the candidate author held the candidate and
+// proposed no gloss, and the reviewer found no lexical blocker. The candidate
+// stays held (under the author's own basis) until a gloss is proposed and
+// reviewed; it is not evidence of an identity or sense problem.
+export const NO_GLOSS_PROPOSED = 'no-gloss-proposed';
 
 export function assertReviewerOutcomes(outcomes, candidateRows) {
   assert.ok(Array.isArray(outcomes), 'review input must preserve candidate_outcomes for every candidate');
@@ -421,9 +426,30 @@ export function assertReviewerOutcomes(outcomes, candidateRows) {
     }
 
     assert.equal(judgment.disposition, 'hold', `${label}: a reviewer hold cannot be admitted`);
-    assert.ok(OUTCOME_HOLD_BASES.includes(outcome.hold_basis), `${label}: hold needs a closed basis`);
     assert.ok(nonEmpty(outcome.hold_rationale), `${label}: hold needs an evidence-specific rationale`);
     assert.equal(outcome.checked_hit_indices, undefined, `${label}: a hold cannot carry checked_hit_indices`);
+    if (outcome.hold_basis === NO_GLOSS_PROPOSED) {
+      assert.equal(outcome.generator_disposition, 'hold', `${label}: only a proposed hold can lack a proposed gloss`);
+      assert.equal(outcome.generator_agreement, 'disagree', `${label}: a no-gloss hold records that no lexical blocker was found`);
+      assert.deepEqual(
+        [outcome.identity_check, outcome.pos_check, outcome.gloss_check, outcome.sense_boundary_check],
+        ['ok', 'ok', 'n/a', 'single'],
+        `${label}: a no-gloss hold must not record a lexical blocker`,
+      );
+      assert.equal(outcome.directions, undefined, `${label}: only a sense hold carries directions`);
+      return;
+    }
+    assert.ok(OUTCOME_HOLD_BASES.includes(outcome.hold_basis), `${label}: hold needs a closed basis`);
+    // A lexical hold basis must be backed by its own axis, not by a missing gloss.
+    if (outcome.hold_basis === 'unresolved-identity') {
+      assert.ok(outcome.identity_check === 'unresolved' || outcome.pos_check === 'mismatch' || outcome.generator_disposition === 'admit',
+        `${label}: an identity hold needs an unresolved identity or POS axis`);
+    } else {
+      assert.equal(outcome.sense_boundary_check === 'multiple' || outcome.generator_disposition === 'admit', true,
+        `${label}: a sense hold needs a multiple-sense axis`);
+    }
+    assert.equal(outcome.generator_disposition === 'hold' ? outcome.gloss_check : 'n/a', 'n/a',
+      `${label}: a proposed hold carries no gloss to judge`);
     if (outcome.hold_basis === 'unresolved-sense') {
       assert.ok(Array.isArray(outcome.directions) && outcome.directions.length >= 2, `${label}: a sense hold needs two directions`);
       for (const direction of outcome.directions) {

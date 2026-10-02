@@ -5,8 +5,8 @@
   "batch_id": "issue-223-m9-e-corpus-batch-07-20261001",
   "reviewer": "claude-sonnet-5-5-independent-reviewer",
   "review_status": "complete",
-  "generator_proposal_sha256": "307fb0c902acf0a852b95245fa161167363864bc53ebd23f6739d18cc288da97",
-  "run_record_sha256": "89638f622638afbcb5ad48e95d8b1d556189fb8fbf1332423cad871a3ea8ccfd",
+  "generator_proposal_sha256": "2144158aad7dc811ffb21fa69d4e56b8010c025c5b861361fcabe26883330a01",
+  "run_record_sha256": "6aebd9bbad427421a446c1f7b9723fa9ec6a7f324952a9c659784cab2a7e74ed",
   "review_runs": [
     {
       "run": 1,
@@ -16,8 +16,8 @@
       "last_ordinal": 100,
       "candidate_count": 100,
       "packet_sha256": "8dd290b249fd707937399341698c733a30cf8eea08ecc76ee93883d84bd168a9",
-      "raw_output_sha256": "7c050396baa9acdf43fb160281c7a1babec5a0cd455b3c07c6d10c99b99d664a",
-      "proposals_sha256": "bd67d1ca450cd1eb6d7d852dab9f1cc79dbc631a15f86234d931297a2e3f789c"
+      "raw_output_sha256": "aaa390040b512e0364903ecd871ce9ff4cd6daf5be2bfec121d942b424afcbfa",
+      "proposals_sha256": "643254ba90e932179fb0d35d19dd1e5c79add8060ed7b2885cf38a30d6cb729e"
     },
     {
       "run": 2,
@@ -28,7 +28,7 @@
       "candidate_count": 100,
       "packet_sha256": "5d13d3243ee18e14992d0ef1bd8486dcf6bcfd34333b323a2e2254c32ee1683d",
       "raw_output_sha256": "d5c7fae76208a8c56f7603f178f96f71d19c5395b4e0c9891679d4f0c9465be2",
-      "proposals_sha256": "599f1881ee164dcdb141aab2aac175d3570996d244a05f54e9cd410ad23d6a91"
+      "proposals_sha256": "6efbd96e34fdfc839d3ccdde1e926c5c9ab5e9258afd782d5038c1121f7c709e"
     },
     {
       "run": 3,
@@ -38,8 +38,8 @@
       "last_ordinal": 300,
       "candidate_count": 100,
       "packet_sha256": "ed7c2fa328d8d6ee926bb0bcf2e2ad0fd84f0b9166a7a64a54feb2315ebd4f7b",
-      "raw_output_sha256": "da0fe655aa0869ccba394951411faf09f76f8d7db26b9840f73cdaf9c375fae5",
-      "proposals_sha256": "3d4a52087cf8fdea792ba8c0e19181bc023c27a415d62ce8f5b1e12e5ae89e82"
+      "raw_output_sha256": "2250a9c899afed1d32b89a10580e11a658b614a10377613fd0cc13cfd0fed91a",
+      "proposals_sha256": "9dd54fe615b122b00690e340ce7e11b7f760a50562430ce5698b15ec498e11d3"
     },
     {
       "run": 4,
@@ -50,7 +50,7 @@
       "candidate_count": 100,
       "packet_sha256": "9cadf186709813999a00daf6444c07aef458268b0e2aadd5b9889b8a552ca16c",
       "raw_output_sha256": "e476bf1668fb85279e7c3e3a3e51d472f6a041a78205b8ec7da4aa24c86cd634",
-      "proposals_sha256": "7a122599564556d92da1c888c3a0b98a573abc33e4da2aaf0b978b4d2ef8bd0e"
+      "proposals_sha256": "b005e30b61ed490a90b3287acb78f82e7e956603ee8caf17aa8a1db217540d22"
     },
     {
       "run": 5,
@@ -61,7 +61,7 @@
       "candidate_count": 100,
       "packet_sha256": "f095e09c355a3a80fcd26779da06eb8a6f0430269dfd378a2d5a58f1b10cbada",
       "raw_output_sha256": "d2bb3efd37dad756997fccab0630fb8738fb0c573b7f5578be68e3ddd41178fa",
-      "proposals_sha256": "2d782d3f6096a1f86757c2fae0ad5de565f5035ebf23a21167ea568eeeb7bc25"
+      "proposals_sha256": "a9f2af50679684e7fe631cf7978d97246c51ebb8e746cacb6ba60a5f1d6676f0"
     }
   ],
   "reviews": [
@@ -995,6 +995,10 @@
       "topic_analysis": {
         "status": "pass",
         "state": "adnominal",
+        "token_index": 1,
+        "topic": "않",
+        "particle": "은",
+        "predicate": "형편으로",
         "rationale": "표시된 은 조각은 풀이문 속 않은이 형편을 꾸미는 관형 활용이지 명사 주제 조각이 아니다."
       }
     },
@@ -5935,6 +5939,10 @@
       "topic_analysis": {
         "status": "pass",
         "state": "adnominal",
+        "token_index": 0,
+        "topic": "맡",
+        "particle": "은",
+        "predicate": "사명으로",
         "rationale": "표시된 맡은 은 풀이 안에서 사명을 꾸미는 관형어 어미이며 명사에 붙은 주제 조사 조각이 아니다."
       }
     },
@@ -10877,7 +10885,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "문맥 0-2가 모두 몸이 저린 감각 하나로 일관되어 승격 가능해 보이나, 보류 제안이라 통과시킬 수 없다."
     },
     {
@@ -11972,7 +11980,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "문맥 0-2가 모두 외진 장소라는 한 의미로 일관되어 승격 가능해 보이나, 보류 제안이라 통과시킬 수 없다."
     },
     {

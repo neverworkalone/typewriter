@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 
+import { findAmbiguousParticleFragments } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import {
   assertInputBoundToRunRecord,
@@ -16,7 +17,10 @@ import {
 const sha256Bytes = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const BATCH = 'issue-223-m9-e-corpus-batch-06-20261001';
 const GLOSS = '소리나 움직임이 이어지며 이루는 흐름';
-const rows = [{ morphology_proposal: { lemma: '가락' } }, { morphology_proposal: { lemma: '나락' } }];
+const rows = [
+  { morphology_proposal: { lemma: '가락' }, editorial_judgment: { disposition: 'admit' } },
+  { morphology_proposal: { lemma: '나락' }, editorial_judgment: { disposition: 'hold', disposition_basis: 'unresolved-identity' } },
+];
 const glossByLemma = new Map([['가락', GLOSS]]);
 const HEX_A = 'a'.repeat(64);
 const HEX_B = 'b'.repeat(64);
@@ -32,7 +36,7 @@ const holdRaw = {
 };
 const PROPOSALS = [
   { ordinal: 1, lemma: '가락', disposition: 'admit', gloss: GLOSS },
-  { ordinal: 2, lemma: '나락', disposition: 'hold' },
+  { ordinal: 2, lemma: '나락', disposition: 'hold', hold_basis: 'unresolved-identity' },
 ];
 
 // Local, staged raw outputs (never tracked).
@@ -155,6 +159,9 @@ test('reviewed proposal digests must be preserved and consistent with the outcom
   assert.throws(() => bound(rebindRecord(base, (r) => { r.reviewed_proposals[1].lemma = '다락'; })), /different lemma/u);
   assert.throws(() => bound(rebindRecord(base, (r) => { delete r.reviewed_proposals[0].gloss_sha256; })), /gloss digest/u);
   assert.throws(() => bound(rebindRecord(base, (r) => { r.reviewed_proposals[1].gloss_sha256 = HEX_A; })), /carries no gloss digest/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { delete r.reviewed_proposals[1].hold_basis; })), /preserve its hold basis/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.reviewed_proposals[1].hold_basis = 'unresolved-sense'; })), /differs from the reviewed hold proposal/u);
+  assert.throws(() => bound(rebindRecord(base, (r) => { r.reviewed_proposals[0].hold_basis = 'unresolved-sense'; })), /carries no hold basis/u);
   assert.throws(() => bound({ ...base, input: { ...base.input, generator_proposal_sha256: HEX_A } }), /digest of the reviewed proposals/u);
   assert.throws(() => bound(rebindRecord(base, (r) => { r.runs[0].proposals_sha256 = HEX_A; })), /did not review the recorded proposals/u);
   const swapped = structuredClone(base.input);
@@ -219,4 +226,37 @@ test('templated review notes are rejected, specific ones pass', () => {
   // A couple of coincidental repeats are tolerated.
   const mostly = specific.map((r, i) => (i < 2 ? { ...r, boundary_rationale: `${r.lemma}: 같은 문장이다.` } : r));
   assertReviewNotesAreCandidateSpecific(mostly);
+});
+
+test('a same-lemma proposal flip with recomputed hashes is detected against the final candidate review', () => {
+  const base = fixture();
+  // Recorded as an admit although the candidate author held it: the recomputed
+  // digests agree, but the gloss digest and hold basis no longer match.
+  assert.throws(() => bound(rebindRecord(base, (r) => {
+    r.reviewed_proposals[1] = { ordinal: 2, lemma: '나락', disposition: 'admit', gloss_sha256: sha256Json(GLOSS) };
+    r.runs[1].proposals_sha256 = sha256Json(r.reviewed_proposals.slice(1, 2));
+  })), /different proposal than the reviewer was shown/u);
+  // Recorded as a hold although the candidate was admitted: it cannot be admitted by the review.
+  assert.throws(() => bound(rebindRecord(base, (r) => {
+    r.reviewed_proposals[0] = { ordinal: 1, lemma: '가락', disposition: 'hold', hold_basis: 'unresolved-identity' };
+    r.runs[0].proposals_sha256 = sha256Json(r.reviewed_proposals.slice(0, 1));
+  })), /cannot be admitted by the review|different proposal than the reviewer was shown/u);
+});
+
+test('every ambiguous particle span needs the reviewer\'s own bound topic verdict', () => {
+  const gloss = '땅속에서 나는 기름으로 연료로 쓰는 액체.';
+  const withVerdicts = (topic_verdicts) => ({ ...passRaw, topic_verdicts });
+  const fragments = findAmbiguousParticleFragments(gloss);
+  assert.equal(fragments.length, 1);
+  const [fragment] = fragments;
+  const good = { token_index: fragment.token_index, topic: fragment.topic, particle: fragment.particle, predicate: fragment.predicate, state: 'adnominal', rationale: '관형어 활용형이다.' };
+  const review = reviewFromRaw({ lemma: '석유', gloss, raw: withVerdicts([good]) });
+  assert.equal(review.topic_analysis.state, 'adnominal');
+  assert.equal(review.topic_analysis.token_index, fragment.token_index);
+  assert.throws(() => reviewFromRaw({ lemma: '석유', gloss, raw: passRaw }), /one topic verdict per ambiguous particle span/u);
+  assert.throws(() => reviewFromRaw({ lemma: '석유', gloss, raw: withVerdicts([]) }), /one topic verdict/u);
+  assert.throws(() => reviewFromRaw({ lemma: '석유', gloss, raw: withVerdicts([good, good]) }), /one topic verdict/u);
+  assert.throws(() => reviewFromRaw({ lemma: '석유', gloss, raw: withVerdicts([{ ...good, particle: '은' }]) }), /no unique reviewer topic verdict/u);
+  assert.throws(() => reviewFromRaw({ lemma: '석유', gloss, raw: withVerdicts([{ ...good, state: 'ambiguous' }]) }), /cannot back a pass/u);
+  assert.throws(() => reviewFromRaw({ lemma: '석유', gloss, raw: withVerdicts([{ ...good, state: 'noun-topic' }]) }), /topic_pos and evidence_basis/u);
 });

@@ -244,6 +244,16 @@ test('Issue #223 reviewer outcomes reject missing, contradicted, and unbound evi
   rejects('basis differs', mutate((o) => { o[1].hold_basis = 'unresolved-identity'; delete o[1].directions; }), /basis differs/u);
   rejects('directions differ', mutate((o) => { o[1].directions[1].hit_indices = [1]; }), /directions differ/u);
   rejects('hold marked agree', mutate((o) => { o[1].generator_agreement = 'agree'; }), /disagreement/u);
+  // A proposed hold with no gloss is a non-lexical state, never an identity or sense blocker.
+  const noGloss = (o) => Object.assign(o[2], {
+    generator_agreement: 'disagree', identity_check: 'ok', hold_basis: 'no-gloss-proposed', hold_rationale: '풀이가 제안되지 않았다.',
+  });
+  assertReviewerOutcomes(mutate(noGloss), rows);
+  rejects('no-gloss with an unresolved axis', mutate((o) => { noGloss(o); o[2].identity_check = 'unresolved'; }), /must not record a lexical blocker/u);
+  rejects('no-gloss on an admit proposal', mutate((o) => { Object.assign(o[1], { hold_basis: 'no-gloss-proposed', identity_check: 'ok', sense_boundary_check: 'single', gloss_check: 'n/a' }); delete o[1].directions; }), /only a proposed hold can lack a proposed gloss/u);
+  rejects('no-gloss marked agree', mutate((o) => { noGloss(o); o[2].generator_agreement = 'agree'; }), /no lexical blocker was found/u);
+  rejects('identity hold with every axis ok', mutate((o) => { o[2].identity_check = 'ok'; }), /unresolved identity or POS axis/u);
+  rejects('sense hold with a single sense', mutate((o) => { Object.assign(o[2], { hold_basis: 'unresolved-sense', sense_boundary_check: 'single', directions: [{ label: 'A', hit_indices: [0] }, { label: 'B', hit_indices: [1] }] }); }), /multiple-sense axis/u);
   // Contexts must exist among the candidate's bounded contexts, once.
   rejects('checked context out of range', mutate((o) => { o[0].checked_hit_indices = [999]; }), /outside the candidate's 3/u);
   rejects('checked context repeated', mutate((o) => { o[0].checked_hit_indices = [0, 0]; }), /twice/u);

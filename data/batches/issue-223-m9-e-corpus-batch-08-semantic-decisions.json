@@ -9,17 +9,17 @@
   "batch_id": "issue-223-m9-e-corpus-batch-08-20261001",
   "authoring_mode": "agent-authored-decision",
   "source_basis": {
-    "candidate_review_sha256": "328b773e8ca0bc20202034359c317502ae6f9ce6430e916ef3e4ad69bc1c2d27",
+    "candidate_review_sha256": "9d6229785122b3d3bee21bcbd240beb177aee7e24c1f1e6a354e52fc3cdd93c3",
     "candidate_selection_sha256": "9a693624d72a76ef097052795c3d302079627a75f3b124f1d945036c00883712",
     "candidate_evidence_sha256": "aec2f4f0839a51ccf1b63c111a1736c79be364630145be016772eb576d94904a",
     "exclusion_manifest_sha256": "3ef75672123384ae1385042400637a3de27675c5d0190495f76df13892685cdc",
     "source_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
     "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
     "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
-    "semantic_review_input_sha256": "70f8dc359bdb2823fb2f9c83f087de0a9ff90617b3c1bf4908e51c896700a067"
+    "semantic_review_input_sha256": "e55be0bedc76bee357cbe2a4ab18ffa06824cf8c842a4ebe00cd12c5f2c4d11c"
   },
   "provenance": {
-    "generator": "claude-sonnet-5-5-candidate-author",
+    "generator": "claude-sonnet-5-5",
     "generator_version": "issue-223-authored-semantic-review-v1",
     "generation_pass_id": "issue-223-m9-e-corpus-batch-08-authored-generation-20261001-r1",
     "verification_pass_id": "issue-223-m9-e-corpus-batch-08-semantic-verification-20261001-r1",
@@ -25293,5 +25293,5 @@
       }
     }
   ],
-  "artifact_sha256": "2fb82c5f88fedd014e43067797e9482aba9b1c0588fb80630a5a9b76e374fa8b"
+  "artifact_sha256": "aa0bb820a1cce248e2d1e964a2d5e65a68d51a7f751cdedab7e8318015e29d91"
 }

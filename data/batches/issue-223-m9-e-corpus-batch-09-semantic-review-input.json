@@ -5,8 +5,8 @@
   "batch_id": "issue-223-m9-e-corpus-batch-09-20261001",
   "reviewer": "claude-sonnet-5-5-independent-reviewer",
   "review_status": "complete",
-  "generator_proposal_sha256": "2e8f528a3eeafa8bb1478f27fe11fb34c77d883a03ab1ed1fa8d352ec3a4ab9a",
-  "run_record_sha256": "e04605a7c5b6884fc80d218944ef7e4f8d153b752eba861448cc5bce24017b07",
+  "generator_proposal_sha256": "7a2eb55a69ce3842f24676299ec27d3b72955883ed0495976bf6176a79e8a155",
+  "run_record_sha256": "3a391e65742734046114a7f5a010c97e9054d377971805d8cbe810bf33d3e822",
   "review_runs": [
     {
       "run": 1,
@@ -17,7 +17,7 @@
       "candidate_count": 100,
       "packet_sha256": "cffa4d04497b5a1cc2bb7bed22266ee2b68a421be4fde89a74b9175b8457c6a3",
       "raw_output_sha256": "afea6483e0b21c781855f41d3e1420123143a887678b3764ba855c42c3f1c888",
-      "proposals_sha256": "4795360fb010955f3d9339e2a7924eff552911035577cac904bc839aff977355"
+      "proposals_sha256": "275e4d7189be586d9dce1b5f3b3ac59f54110b0383554edeffe86b3b95b67614"
     },
     {
       "run": 2,
@@ -27,8 +27,8 @@
       "last_ordinal": 200,
       "candidate_count": 100,
       "packet_sha256": "fdac951a01662b69b5ec31489d30628b50fa8a91e03be8e42a41acb2832c8656",
-      "raw_output_sha256": "af51ab0347eb4c4e48dfe84694500584724c5392eef6f90d1580d27692a1718a",
-      "proposals_sha256": "f494d9703efe5d0a5424630f9d60b3f91c85fc0a60f849725faa1e10811b1fc5"
+      "raw_output_sha256": "2a1f4cc1a54ab02339d6f998c68b7f779ac7b18ee37380ba70b924754ed04d67",
+      "proposals_sha256": "f77f7c47ea6bf8f5c20f87bb5cce6f2485ec562dcc4d3183013eecb4824d8a6d"
     },
     {
       "run": 3,
@@ -38,8 +38,8 @@
       "last_ordinal": 300,
       "candidate_count": 100,
       "packet_sha256": "7b5982a1c6bb94db1b23c14c27c2b6c4d0325c15bea8e4cdb7cd4dbb8bb7586f",
-      "raw_output_sha256": "2200dcb6e18709082a30235897259cf2375856df67fb9462056c07d5bde788ef",
-      "proposals_sha256": "6d4beda184d3a598d8a1d5b21b87dc13d49b644e9e5047b359448b97ef903df7"
+      "raw_output_sha256": "419e2ae6e3f47d2b75448191a79cb1358515ad75a1802f0e75b087945a8bb440",
+      "proposals_sha256": "2868367042921918405c939abdcf743898c1989e6b43fe4543da938ece386eac"
     }
   ],
   "reviews": [
@@ -8893,7 +8893,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "맥락 0, 1, 2는 바닥과 천장에 붙은 판재라는 한 가지 외래어 쓰임뿐이어서 독립 어휘로 볼 수 있으나, 분석기가 같은 표면에 여러 해석을 붙인 표시가 있어 다른 해석이 배제되었다고 확정하지 못한다."
     },
     {
@@ -10541,7 +10541,7 @@
       "pos_check": "ok",
       "gloss_check": "n/a",
       "sense_boundary_check": "single",
-      "hold_basis": "unresolved-identity",
+      "hold_basis": "no-gloss-proposed",
       "hold_rationale": "맥락 0·1·2는 모두 조직이나 권력 주변의 부정을 뜻하는 같은 쓰임이라 맥락만으로는 다른 낱말이 섞였다는 근거가 없고, 분석기 중의성 표시만 남아 관찰형 검증이 끝나지 않았다."
     },
     {

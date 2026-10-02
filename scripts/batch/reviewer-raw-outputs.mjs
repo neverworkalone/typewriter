@@ -97,10 +97,50 @@ export function reviewFromRaw({ lemma, gloss, raw }) {
       target_class: `${lemma}의 검토된 핵심 뜻`,
     })),
   };
-  if (findAmbiguousParticleFragments(gloss).length > 0) {
-    review.topic_analysis = { status: 'pass', state: 'adnominal', rationale: raw.topic_rationale };
+  const fragments = findAmbiguousParticleFragments(gloss);
+  if (fragments.length > 0) {
+    const analyses = topicAnalysesFromVerdicts(lemma, fragments, raw.topic_verdicts);
+    if (fragments.length === 1) review.topic_analysis = analyses[0];
+    else review.topic_analyses = analyses;
   }
   return review;
+}
+
+// Every ambiguous particle span in an admitted gloss needs the reviewer's own
+// verdict for that span, bound to its surface and token index. A missing,
+// duplicated, mismatched, or unresolved verdict is never filled in: a span the
+// reviewer could not resolve means the candidate must be held instead.
+const PASSING_TOPIC_STATES = ['adnominal', 'noun-topic'];
+export function topicAnalysesFromVerdicts(lemma, fragments, verdicts) {
+  assert.ok(Array.isArray(verdicts) && verdicts.length === fragments.length,
+    `${lemma}: the reviewer must give exactly one topic verdict per ambiguous particle span (${fragments.length})`);
+  return fragments.map((fragment) => {
+    const matches = verdicts.filter((verdict) => verdict?.token_index === fragment.token_index
+      && verdict.topic === fragment.topic
+      && verdict.particle === fragment.particle
+      && verdict.predicate === fragment.predicate);
+    assert.equal(matches.length, 1, `${lemma}: no unique reviewer topic verdict binds the span ${fragment.topic}${fragment.particle} ${fragment.predicate}`);
+    const [verdict] = matches;
+    assert.ok(PASSING_TOPIC_STATES.includes(verdict.state),
+      `${lemma}: a ${verdict.state} topic verdict cannot back a pass; hold the candidate`);
+    assert.ok(nonEmpty(verdict.rationale), `${lemma}: a topic verdict needs the reviewer's rationale`);
+    const analysis = {
+      status: 'pass',
+      state: verdict.state,
+      token_index: fragment.token_index,
+      topic: fragment.topic,
+      particle: fragment.particle,
+      predicate: fragment.predicate,
+      rationale: verdict.rationale,
+    };
+    if (verdict.state === 'noun-topic') {
+      assert.ok(nonEmpty(verdict.topic_pos) && nonEmpty(verdict.evidence_basis),
+        `${lemma}: a noun-topic verdict needs topic_pos and evidence_basis`);
+      analysis.topic_pos = verdict.topic_pos;
+      analysis.evidence_basis = verdict.evidence_basis;
+    }
+    return analysis;
+  });
 }
 
 // Tracked form of the reviewed proposals: digests only, never gloss text.
@@ -109,6 +149,7 @@ export function proposalDigests(proposals) {
     ordinal: proposal.ordinal,
     lemma: proposal.lemma,
     disposition: proposal.disposition,
+    ...(proposal.hold_basis === undefined ? {} : { hold_basis: proposal.hold_basis }),
     ...(proposal.gloss === undefined ? {} : { gloss_sha256: sha256Json(proposal.gloss) }),
   }));
 }
@@ -190,8 +231,18 @@ export function assertInputBoundToRunRecord({
     assert.equal(proposal.ordinal, index + 1, `${lemma}: reviewed proposal ordinal`);
     assert.equal(proposal.lemma, lemma, `${lemma}: reviewed proposal is bound to a different lemma`);
     assert.ok(['admit', 'hold'].includes(proposal.disposition), `${lemma}: reviewed proposal names no disposition`);
-    if (proposal.disposition === 'admit') assert.match(String(proposal.gloss_sha256), HEX_64, `${lemma}: an admit proposal must preserve its gloss digest`);
-    else assert.equal(proposal.gloss_sha256, undefined, `${lemma}: a hold proposal carries no gloss digest`);
+    const finalRow = candidateRows[index].editorial_judgment;
+    if (proposal.disposition === 'admit') {
+      assert.match(String(proposal.gloss_sha256), HEX_64, `${lemma}: an admit proposal must preserve its gloss digest`);
+      assert.equal(proposal.hold_basis, undefined, `${lemma}: an admit proposal carries no hold basis`);
+    } else {
+      assert.equal(proposal.gloss_sha256, undefined, `${lemma}: a hold proposal carries no gloss digest`);
+      // The candidate author's own hold reaches the candidate review unchanged,
+      // so its basis must match the proposal that was reviewed.
+      assert.ok(nonEmpty(proposal.hold_basis), `${lemma}: a hold proposal must preserve its hold basis`);
+      assert.equal(finalRow.disposition, 'hold', `${lemma}: a proposed hold cannot be admitted by the review`);
+      assert.equal(finalRow.disposition_basis, proposal.hold_basis, `${lemma}: the candidate review basis differs from the reviewed hold proposal`);
+    }
   });
   assert.equal(input.generator_proposal_sha256, sha256Json(proposals),
     'review input does not match the digest of the reviewed proposals');
