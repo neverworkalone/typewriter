@@ -13,8 +13,9 @@ required exact-HEAD check status, and prior reviews' **markers/SHAs only**.
 Stage 2 must not read Stage 1 conclusions before its independent analysis.
 Then select one gate:
 
-- **Stage 1:** no valid `+1` for this HEAD -> independent full review; record
-  `+1` only if clean. Never merge.
+- **Stage 1:** no valid `+1` for this HEAD -> independently review the
+  relevant change, using the focused follow-up route in Section 4 when
+  applicable; record `+1` only if clean. Never merge.
 - **Stage 2:** valid `+1`, no valid `+2` for this HEAD -> a **separate** independent
   full review; record `+2` only if clean. Never merge.
 - **Stage 3:** valid, sequential, structured `+1` and `+2` for this HEAD ->
@@ -26,6 +27,45 @@ or a review without adequate evidence is not a valid gate record. Never record
 `+1` and `+2` in the same review run/context. The same GitHub account may
 record them in separate runs; independence is about the reviewer process.
 Do not request or wait for GitHub `APPROVE`.
+
+### Stage 1 evidence budget (review method, not a time limit)
+
+Aim for **3–5 minutes** for a routine Stage 1 review by removing redundant
+reading and repeated exploration. This is a target, **not** a deadline or a
+reason to skip a material risk, pass incomplete evidence, or weaken validation.
+Large or unfamiliar changes may need longer.
+
+1. **Route before reading code.** Decide first-pass versus **same-stage
+   follow-up** using the previous reviewed HEAD and its outcome. A new commit
+   invalidates the gate marker, **not all verified earlier analysis**.
+   On a follow-up, start with `previous-reviewed-SHA..HEAD`, old blockers,
+   their fixes and tests, and new/affected invariants. Widen only if an
+   approach change or uncovered dependency warrants it. Stage 2 remains a
+   separate independent assessment; Stage 1 conclusions must not narrow it.
+2. **Bound the evidence.** Fetch changed **filenames** once; map each material
+   risk to its producer/enforcer/test, then fetch targeted patches and bounded
+   surrounding lines. **Never start with `gh pr diff <number>` without file
+   scope.** For large data PRs, do not fetch all canonical rows or every
+   generated artifact. Read a whole file only if a targeted excerpt cannot
+   resolve the question. Do not reopen unchanged hunks already established.
+3. **No unrelated context.** Do not consult personal or global `MEMORY.md`,
+   agent-memory directories, past session notes, or `AGENTS.md` for PR review.
+   Use current HEAD `REVIEW.md`, active issue, the relevant guides, targeted
+   code and exact-HEAD validation. Do not reconstruct full commit history
+   unless a concrete provenance question requires it.
+4. **One proof per invariant.** Reuse passing exact-HEAD deterministic checks
+   for the mechanical properties they truly cover. For a shared validator
+   change, inspect valid and known-invalid regressions and their CI wiring;
+   do not reread the same full tests or recalculate already validated
+   mechanical datasets. Investigate contradictions or gaps, not possibilities
+   already resolved by evidence.
+5. **Stop promptly.** Once approach, affected invariants, material risks,
+   applicable tests and exact-HEAD CI are resolved, submit the review without
+   another exploratory pass. If a blocker is proven, give its common cause,
+   correction and validation instead of hunting equivalent examples. If
+   essential evidence remains unavailable, **do not issue `+1`**; state the
+   specific uncertainty and what evidence is needed. Never assert success
+   merely to meet the time target.
 
 ## 2. Full-review procedure (stages 1 and 2)
 
@@ -133,9 +173,12 @@ ordinary PRs can use the passing skip gate.
 ## 4. Follow-up after a blocker
 
 Compare the latest HEAD against the stage's previously reviewed HEAD. Read
-previous blocker threads, the fixing commits, regressions, and any newly
-changed areas. Do not reload unchanged hunks, complete history, or the entire
-first-pass review. Recheck affected invariants and exact-HEAD validation.
+previous blocker threads, the **delta**, fixing commits, regressions, and new
+or affected code paths. Recheck the shared invariants reached by the fixes and
+exact-HEAD validation; changed producers or contracts may require expanding to
+their consumers and previously unaffected tests. **Do not perform another
+whole-PR first-pass review solely because the SHA changed.** Old findings are
+not automatically resolved; verify the fix rather than assuming it worked.
 Even after fixes, issue a **new** structured `+1` or `+2` for the new HEAD.
 
 ## 5. Required review record (stages 1 and 2)
