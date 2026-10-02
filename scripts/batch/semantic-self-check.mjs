@@ -91,6 +91,8 @@ export function assertSelfCheckBinding({ input, candidateRows, glossByLemma }) {
 const SELF_CHECK_DISCLAIMERS = [
   '(agent self-check, not independent or human review)',
   '(agent self-check; not independent, separately authored, or human review)',
+  // Structural criterion about relation evidence, not a review-independence claim.
+  'zero relations when no candidate-specific relation is separately supported',
 ];
 
 export function assertSourceClaimsTruthful(source, { selfCheck }) {
