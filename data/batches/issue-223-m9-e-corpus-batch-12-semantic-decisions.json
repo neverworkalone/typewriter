@@ -34,7 +34,7 @@
     "reviewed_candidate_count": 280,
     "review_provenance": "agent-self-check",
     "independent_review": false,
-    "method": "The producing agent checks each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using two authored diagnostic frames (agent self-check, not independent or human review); apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.",
+    "method": "The producing agent checks each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using one authored diagnostic frame per gloss span (agent self-check, not independent or human review); apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.",
     "criteria": [
       "exact source-bound observed candidate and POS; corrected analyzer POS requires bounded paragraph identifiers",
       "no canonical lemma, curated search-form, or generated-surface collision",
@@ -21591,5 +21591,5 @@
       }
     }
   ],
-  "artifact_sha256": "89080067be058aec8b8ad7a1edd8c347c336d8897b3aa46c6b7f147ff2da6bb9"
+  "artifact_sha256": "25500fa69039f200424d432c24c868cd4610cbacaac66b238ec1ed1685edf8d4"
 }

@@ -165,7 +165,7 @@ export function validateSemanticReviewInputBinding({
   assertSourceClaimsTruthful(semanticSource, { selfCheck });
   if (selfCheck) {
     assertSelfCheckEnvelope(input, { ordinal, candidateAuthor });
-    assertDecisionClaimsTruthful({ reviews: input.reviews, decisions: semanticSource.decisions });
+    assertDecisionClaimsTruthful({ reviews: input.reviews, decisions: semanticSource.decisions, outcomes: input.candidate_outcomes });
     // No separate review run took place, so no run record or staged reviewer
     // output may exist to suggest one.
     assert.equal(runRecordBytes ?? null, null, `${batchId} a self-check batch must not carry a reviewer run record`);

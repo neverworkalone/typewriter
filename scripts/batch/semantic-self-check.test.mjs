@@ -145,6 +145,7 @@ test('the canonical source of a self-check batch never claims independent or hum
 test('per-candidate rationales and generated decisions never claim independent, separate, or human review', () => {
   const clean = () => ({
     reviews: [{ lemma: 'a', semantic_rationale: '풀이는 표제어의 검토된 핵심 뜻과 맞는다.', boundary_rationale: 'atomic sense boundary retained.' }],
+    outcomes: [{ lemma: 'b', verdict: 'hold', hold_rationale: '명사 단독 용례가 확인되지 않는다.' }],
     decisions: [{ decision_rationale: '정체성·품사·풀이·의미 경계를 후보 근거에서 검토했다.', sense_reviews: [{ semantic_rationale: 'gloss fits the headword.' }] }],
   });
   assertDecisionClaimsTruthful(clean());
@@ -154,6 +155,9 @@ test('per-candidate rationales and generated decisions never claim independent, 
     'separate claim in a decision rationale': (x) => { x.decisions[0].decision_rationale = 'separately verified'; },
     'nested sense review claim': (x) => { x.decisions[0].sense_reviews[0].semantic_rationale = 'an independent reviewer approved'; },
     'Korean independent review claim': (x) => { x.reviews[0].semantic_rationale = '독립 검토를 마쳤다.'; },
+    'hold rationale claims an external reviewer': (x) => { x.outcomes[0].hold_rationale = 'held after an external reviewer checked it'; },
+    'hold rationale claims another session': (x) => { x.outcomes[0].hold_rationale = 'another Claude session reviewed this hold'; },
+    'hold rationale Korean human review': (x) => { x.outcomes[0].hold_rationale = '사람이 검토하여 보류했다.'; },
     'Korean 인간이 검토 with a particle': (x) => { x.reviews[0].semantic_rationale = '인간이 검토했다.'; },
     'Korean 사람은 검수 with a particle': (x) => { x.decisions[0].decision_rationale = '사람은 검수를 마쳤다.'; },
     'Korean separate reviewer': (x) => { x.reviews[0].boundary_rationale = '별도 리뷰어가 확인했다.'; },
@@ -169,6 +173,14 @@ test('per-candidate rationales and generated decisions never claim independent, 
     mutate(value);
     assert.throws(() => assertDecisionClaimsTruthful(value), /must not claim/u, name);
   }
+});
+
+test('the generated self-check method describes the preserved frame contract, not a fixed frame count', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('./build-issue-223-corpus-batch.mjs', import.meta.url), 'utf8');
+  const method = /const SELF_CHECK_METHOD = '([^']*)'/u.exec(source)[1];
+  assert.match(method, /one authored diagnostic frame per gloss span/u);
+  assert.doesNotMatch(method, /two authored diagnostic frames/u);
 });
 
 test('the shared builder/validator gate fails closed on the review contract by batch', () => {

@@ -144,7 +144,7 @@ const REVIEW_CLAIM_PATTERN = new RegExp([
  * (and kept in the self-check input); none may claim independent, separate, or
  * human review. Every string under `reviews` and `decisions` is scanned.
  */
-export function assertDecisionClaimsTruthful({ reviews, decisions }) {
+export function assertDecisionClaimsTruthful({ reviews, decisions, outcomes = [] }) {
   // Lexical content (glosses, frames, lemmas) may legitimately contain words
   // such as 사람 or 독립; only free-text explanation fields are claim carriers.
   const CLAIM_KEY = /rationale|reason|note|method|basis|criteria|summary|explanation|status/iu;
@@ -161,6 +161,7 @@ export function assertDecisionClaimsTruthful({ reviews, decisions }) {
   };
   visit(reviews, 'reviews', false);
   visit(decisions, 'decisions', false);
+  visit(outcomes, 'candidate_outcomes', false);
 }
 
 /**

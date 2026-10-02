@@ -50,7 +50,7 @@ const WRITER_USE_BY_AXIS = Object.freeze({
 });
 const SCOPE_METHOD = 'Review each bounded proposal against morphology, current canonical and surface coverage, source-bound paragraph identifiers, and local contexts. Admit only a resolved in-scope lexical identity, POS, and one bounded Typewriter-authored meaning; hold evidenced identity, POS, sense, or collision uncertainty. Analyzer counts and writer usefulness do not determine lexical eligibility.';
 const SELF_CHECK_AUTHORING_NOTE = 'Local corpus and pinned morphology establish bounded lexical candidate evidence only. Each included lemma, POS, gloss, and one-sense boundary was checked by the producing AI agent against that evidence (agent self-check; not independent, separately authored, or human review). Diagnostic frames are Typewriter-authored examples, not corpus quotations or measured writer outcomes. No relation quota is applied; empty relation lists are valid.';
-const SELF_CHECK_METHOD = 'The producing agent checks each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using two authored diagnostic frames (agent self-check, not independent or human review); apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.';
+const SELF_CHECK_METHOD = 'The producing agent checks each admitted source-bound identity, POS, current surface ownership, concise Typewriter-authored gloss, and single-sense boundary using one authored diagnostic frame per gloss span (agent self-check, not independent or human review); apply the ordinary shared semantic admission contract. Candidate order and writer-use metadata do not determine lexical eligibility.';
 const AUTHORING_NOTE = 'Local corpus and pinned morphology establish bounded lexical candidate evidence only. Each included lemma, POS, gloss, and one-sense boundary was separately reviewed. Diagnostic frames are Typewriter-authored examples, not corpus quotations or measured writer outcomes. No relation quota is applied; empty relation lists are valid.';
 
 const sha256Bytes = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -843,7 +843,7 @@ export async function buildIssue223CorpusBatch({
   assertReviewContractForBatch(batchOrdinal, selfCheck);
   if (selfCheck) {
     assertSelfCheckEnvelope(semanticInput, { ordinal: batchOrdinal, candidateAuthor });
-    assertDecisionClaimsTruthful({ reviews: semanticInput.reviews, decisions: [] });
+    assertDecisionClaimsTruthful({ reviews: semanticInput.reviews, decisions: [], outcomes: semanticInput.candidate_outcomes });
   } else {
     assertIndependentSemanticReviewer({
       reviewer: semanticInput.reviewer,
