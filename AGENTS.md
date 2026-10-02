@@ -131,19 +131,31 @@ dictionary-grade precision; `near`, `mood`, `scene`, `sensory`, `action`, and
 enrichment remains independent of lexical admission. See
 [`docs/editorial-model.md`](docs/editorial-model.md) for the full contract.
 
-#### Editorial review independence
+#### Editorial semantic QA and review provenance (owner decision, 2026-10-02)
 
-Independent editorial review means independently authored,
-source-bound judgments, not multiple subagents.
+Typewriter requires **source-bound semantic quality assurance**, not a number
+of Claude instances. A different Claude subagent/context or a distinct
+self-assigned reviewer label does **not** establish substantively independent
+judgment or authenticated human editorial approval. Do not spawn subagents
+for dictionary candidate authoring, semantic QA, or M10 optimization.
 
-Spawning separate subagents does not itself establish
-independent review or trust authority.
+For new M10 lexical batches, the main implementation agent may both author
+and check candidate decisions using the bounded source evidence. Record that
+provenance honestly as **agent self-check**, not "independent review", a
+separately authored judgment, or a human decision. Never fabricate historical
+reviews, separate-run outputs, or identities to satisfy a validator.
 
-A producer's self-check must not be represented as
-independent approval. Preserve the required trust boundary.
+Keep explicit identity, POS, gloss-fit and sense-boundary checks, candidate-
+specific reasons and evidence, legitimate fail-closed holds, shared admission,
+canonical integrity, and generalized regressions. Implement the contract
+change in the **shared producer/validator/tests** before accepting batches
+under the new self-check label. Historical B05–B09 review artifacts remain
+historical facts; do not rewrite or relabel them. The PR review process's
+Stage 1/2 independence is a **separate code-review rule** in `REVIEW.md`.
 
-Use additional agents only when necessary for the task,
-not merely to satisfy the word "independent".
+This owner decision prioritizes measured token-efficient operation. Do not
+reinstate subagents to meet an obsolete independence label; obtain a new owner
+decision only if changing the underlying trust model beyond this authorization.
 
 When working before the scale milestones:
 
