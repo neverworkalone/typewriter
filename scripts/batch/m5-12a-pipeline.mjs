@@ -89,6 +89,7 @@ const CURRENT_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canoni
 const BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-12-base-canonical');
 const BASE_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-12-base-inventory.json');
 const BASE_SEED_PATH = path.join(BATCH_DIRECTORY, 'm5-12-base-seed.json');
+const FINAL_DECISION_SOURCE_PATH = path.join(BATCH_DIRECTORY, 'm5-12-final-decision-source.json');
 const CURRENT_SEED_PATH =path.join(INVENTORY_DIRECTORY, 'm5-target-seed.json');
 const CURRENT_PROMOTION_LEDGER_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-promotions.jsonl');
 const DECISION_SOURCE_PATH = path.join(
@@ -135,6 +136,9 @@ export const M5_12A_BASE_INVENTORY_SHA256 =
   'f2a7c36547ca4db4b3dd2bc2b3b5f8962e991aa900b42ffce34533b84e57bc67';
 export const M5_12A_BASE_SEED_SHA256 =
   '1b93e772f400ad81e6b7f0a91efdad8972516395d0445554689224c0cb65b3db';
+// Frozen decision-source bytes at 7179cd6 (M5-12A promoted, before M5-13).
+export const M5_12A_FINAL_DECISION_SOURCE_SHA256 =
+  '875cb35a2ba575003ec4c4ffccd1e3943ac67b4d1558712d4d6bd7da7e14247d';
 export const M5_12A_BASE_DECISION_SOURCE_ID = 'canonical-semantic-decision-source-20260914';
 export const M5_12A_AGENT_REVIEW_MODE = 'agent-generated';
 export const M5_12A_AGENT_PROVENANCE_KIND = 'agent_generated';
@@ -1646,8 +1650,13 @@ export async function buildM512A({
     index + 1,
   ));
   const currentDecisionSourceFile = await readJson(decisionSourcePath, 'canonical semantic decision source');
-  const currentDecisionSource = currentDecisionSourceFile.value;
-  const baseDecisionSource = deriveBaseDecisionSource(currentDecisionSource, inputs.baseCanonical.records);
+  // The pre-M5-12A authority is derived from the frozen M5-12 snapshot, never
+  // from the live source that later batches have extended.
+  const frozenDecisionSourceFile = await readJson(FINAL_DECISION_SOURCE_PATH, 'M5-12 frozen decision source');
+  if (sha256(frozenDecisionSourceFile.bytes) !== M5_12A_FINAL_DECISION_SOURCE_SHA256) {
+    fail('frozen M5-12 decision source drifted from its pinned digest', 'SEMANTIC_DECISION_SOURCE_MISMATCH');
+  }
+  const baseDecisionSource = deriveBaseDecisionSource(frozenDecisionSourceFile.value, inputs.baseCanonical.records);
   const { decisionSource, semanticAudit } = buildProspectiveDecisionSource({
     baseDecisionSource,
     baseRecords,
