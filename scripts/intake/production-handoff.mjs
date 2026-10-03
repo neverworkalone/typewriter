@@ -147,6 +147,19 @@ export function verifyProductionHandoff(handoff, { rawCandidates, batchId, adapt
   return true;
 }
 
+// Authenticates the recorded analysis: re-runs the pinned local analyzer on the
+// current candidates and requires a byte-equal hand-off (entries, outcomes,
+// metadata). Without this, stored outcomes are only self-consistent. `covered`
+// entries are taken as recorded; a forged `covered` can only block, never admit.
+export async function assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates, batchId, analyzer, adapterId = 'unspecified' }) {
+  const coveredLemmas = new Set(handoff.entries.filter((entry) => entry.decision === 'covered').map((entry) => entry.input));
+  const fresh = await buildProductionHandoff({ batchId, rawCandidates, analyzer, coveredLemmas, adapterId });
+  if (!sameJson(fresh, handoff)) {
+    fail('intake hand-off does not match a fresh run of the pinned analyzer on the current candidates', 'INTAKE_HANDOFF_FRESH_ANALYSIS');
+  }
+  return true;
+}
+
 // Binds one authored review (the exact gloss digest and admitted POS) to the
 // exact reviewed hand-off entry. Any change to input, evidence, analyzer, POS,
 // decision or gloss yields a different binding.

@@ -8,6 +8,8 @@ import {
   canonicalRecordsSha256,
   sha256Json,
 } from '../validate/semantic-audit.mjs';
+import { createKiwiAnalyzer } from '../intake/kiwi-client.mjs';
+import { CORPUS_ADAPTER_ID } from '../intake/adapters/corpus-adapter.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import {
   findAmbiguousParticleFragments,
@@ -33,6 +35,7 @@ import {
   SELF_CHECK_PROVENANCE,
 } from './semantic-self-check.mjs';
 import {
+  assertHandoffMatchesFreshAnalysis,
   assertReviewsBoundToHandoff,
   corpusBatchCandidates,
   verifyProductionHandoff,
@@ -643,9 +646,12 @@ function requireArgs(args) {
 // Revalidates the shared-intake hand-off at the real builder boundary: the hand-off
 // must match the current inventory/evidence, and every admitted candidate's
 // authored review must be bound to its hand-off entry, final POS and gloss.
-export function assertBatchIntakeHandoff({ handoffBytes, inventory, evidence, batchId, semanticInput, rows }) {
+export async function assertBatchIntakeHandoff({ handoffBytes, inventory, evidence, batchId, semanticInput, rows, analyzer = createKiwiAnalyzer() }) {
   const handoff = JSON.parse(handoffBytes.toString('utf8'));
-  verifyProductionHandoff(handoff, { rawCandidates: corpusBatchCandidates(inventory, evidence), batchId });
+  const rawCandidates = corpusBatchCandidates(inventory, evidence);
+  verifyProductionHandoff(handoff, { rawCandidates, batchId });
+  // The write boundary re-runs the pinned local analyzer: recorded outcomes are authenticated, not trusted.
+  await assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates, batchId, analyzer, adapterId: CORPUS_ADAPTER_ID });
   const admitted = rows.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
   return assertReviewsBoundToHandoff({
     handoff,
@@ -663,7 +669,7 @@ export function assertBatchIntakeHandoff({ handoffBytes, inventory, evidence, ba
 
 export async function buildIssue223CorpusBatch({
   batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewerRawOutputsPath, reviewOnly = false,
-  intakeHandoffPath,
+  intakeHandoffPath, analyzer,
 }) {
   const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
@@ -922,7 +928,7 @@ export async function buildIssue223CorpusBatch({
   let intakeHandoffBytes = null;
   if (intakeHandoffPath) {
     intakeHandoffBytes = await readFile(path.resolve(ROOT, intakeHandoffPath));
-    assertBatchIntakeHandoff({ handoffBytes: intakeHandoffBytes, inventory, evidence, batchId, semanticInput, rows });
+    await assertBatchIntakeHandoff({ handoffBytes: intakeHandoffBytes, inventory, evidence, batchId, semanticInput, rows, ...(analyzer ? { analyzer } : {}) });
   } else {
     assert.equal(semanticInput.intake_handoff, undefined, 'a review input with an intake integration block requires --intake-handoff');
   }

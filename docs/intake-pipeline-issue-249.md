@@ -136,6 +136,11 @@ Each hand-off entry also stores the bounded, text-free Kiwi outcome
 (`analysis_outcome`: status, input digest, ranked lemma/POS analyses). The
 builder boundary recomputes every analyzer-originated decision from it
 (`judgeOutcome`), so an analysis hold cannot be relabelled `semantic_qa` and
-adapter holds are preserved in every branch. The recorded outcome is the trust
-anchor for the local pinned run: a rewritten outcome is detectable only by
-re-running `production-handoff-cli.mjs build` (deterministic, byte-identical).
+adapter holds are preserved in every branch. The recorded outcome is authenticated at the write boundary:
+`buildIssue223CorpusBatch --intake-handoff` re-runs the pinned local analyzer on
+the current candidates (`assertHandoffMatchesFreshAnalysis`) and requires the
+whole hand-off (entries, outcomes, analyzer metadata) to equal the fresh result,
+so a rewritten outcome, relabelled decision or recomputed binding is rejected
+(`INTAKE_HANDOFF_FRESH_ANALYSIS`). This needs the local kiwipiepy 0.24.0 env at
+build time; the offline tracked validator (`verifyTrackedHandoff`) checks
+consistency only and cannot re-authenticate the analysis.
