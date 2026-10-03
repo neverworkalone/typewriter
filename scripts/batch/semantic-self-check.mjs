@@ -62,7 +62,17 @@ function stemForms(stem, plainEnding, pos) {
   if (syllable === null) return forms;
   const prefix = stem.slice(0, -1);
   // Honorific -(으)시-: 가세요, 가십니다, 가셨다, 읽으세요, 사세요(살다).
-  const honorificBase = syllable.jong === 0 ? stem : (syllable.jong === 8 ? prefix + compose({ ...syllable, jong: 0 }) : stem + '으');
+  const open = prefix + compose({ ...syllable, jong: 0 });
+  const dIrregular = syllable.jong === 7 && D_IRREGULAR.has(stem);
+  const sIrregular = syllable.jong === 19 && S_IRREGULAR.has(stem);
+  const bIrregular = syllable.jong === 17 && !B_REGULAR.has(stem);
+  let honorificBase;
+  if (syllable.jong === 0) honorificBase = stem;
+  else if (syllable.jong === 8) honorificBase = open;
+  else if (dIrregular) honorificBase = prefix + compose({ ...syllable, jong: 8 }) + '으';
+  else if (sIrregular) honorificBase = open + '으';
+  else if (bIrregular) honorificBase = open + '우';
+  else honorificBase = stem + '으';
   forms.push({ surface: honorificBase, follows: HONORIFIC, bare: false });
   const add = (surface, follows, bare = false) => forms.push({ surface, follows, bare });
   const pastVowels = [0, 4, 1, 5]; // ㅏ ㅓ ㅐ ㅔ
