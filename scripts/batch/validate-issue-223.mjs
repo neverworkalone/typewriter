@@ -32,6 +32,7 @@ import { validateLexicalProduction } from './lexical-production.mjs';
 import { productionReviewRows, productionStageEvidence } from './validate-issue-211.mjs';
 import { hasMorphologyBlocker, validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import { assertCompleteRevisionChecksReused, createSharedAdmissionContext } from './shared-admission-context.mjs';
 import {
   buildSemanticAuditFromDecisionSource,
   canonicalRecordsSha256,
@@ -650,6 +651,9 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
     baseRecords: issue223BaseRecords,
     batchDecisionSources,
   });
+  const admissionContext = createSharedAdmissionContext(currentCanonical, semanticAudit, {
+    canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
+  });
   assert.equal(semanticAudit.record_count, currentCanonical.records.length, 'Issue #223 semantic audit covers every canonical record');
   assert.equal(semanticAudit.coverage.record_count, semanticAudit.record_count, 'Issue #223 semantic coverage record count is complete');
   assert.equal(semanticAudit.coverage.sense_count, semanticAudit.sense_count, 'Issue #223 semantic coverage sense count is complete');
@@ -667,6 +671,7 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
       baseRecords,
       prospectiveRecords: currentCanonical.records,
       semanticAudit,
+      canonicalContext: admissionContext,
       stageEvidence: productionStageEvidence({
         candidateSourceBytes: batch.candidateReviewBytes,
         semanticSourceBytes: batch.semanticSourceBytes,
@@ -689,6 +694,8 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
     assert.equal(production.admission?.semantic_audit?.coverage_complete, true, `${batch.batch_id} semantic coverage`);
     return { batch_id: batch.batch_id, blocking_findings: production.admission.audit.blocking_finding_count, semantic_coverage_complete: production.admission.semantic_audit.coverage_complete };
   });
+
+  assertCompleteRevisionChecksReused(admissionContext, productionResults.length);
 
   const currentRecords = currentCanonical.records.map(recordOf);
   const duplicateLemmas = new Map();

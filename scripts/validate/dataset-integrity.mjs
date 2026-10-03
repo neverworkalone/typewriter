@@ -8,6 +8,7 @@ import {
   createCanonicalContext,
   loadCanonicalContext,
 } from './canonical-context.mjs';
+import { isVerifiedImmutable, recordCompleteRevisionCheck } from './immutable-digest.mjs';
 import { auditCanonicalLexicalQuality } from './lexical-quality.mjs';
 import {
   buildCanonicalSemanticAudit,
@@ -71,7 +72,9 @@ function relationKey(relation) {
 }
 
 function indexRecords(recordInfos, context) {
-  const indexes = context?.records === recordInfos
+  // A context only supplies indexes when it actually carries them; a minimal
+  // context (records plus derived manifests) is indexed from the records.
+  const indexes = context?.records === recordInfos && context.indexes
     ? context.indexes
     : createCanonicalContext({ records: recordInfos }).indexes;
 
@@ -293,8 +296,20 @@ export function validateDatasetRecords(
 ) {
   if (context && !context.derived) context.derived = {};
   const indexes = indexRecords(recordInfos, context);
-  validateRoleIdentity(recordInfos);
-  validateRelations(recordInfos, indexes);
+  // Role identity and relation integrity depend only on the complete record set.
+  // When a shared context holds exactly this record array and every record is
+  // verified-immutable, a recorded success cannot have been invalidated.
+  const memo = context?.records === recordInfos && recordInfos.every(isVerifiedImmutable)
+    ? (context.derived.completeRevisionChecks ??= new Set())
+    : undefined;
+  if (!memo?.has('role-identity-and-relations')) {
+    validateRoleIdentity(recordInfos);
+    validateRelations(recordInfos, indexes);
+    memo?.add('role-identity-and-relations');
+    if (memo) recordCompleteRevisionCheck(context, 'role-relations', 'computed');
+  } else {
+    recordCompleteRevisionCheck(context, 'role-relations', 'reused');
+  }
 
   const isDefaultCanonicalDirectory = context?.canonicalDirectory
     && path.resolve(context.canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);

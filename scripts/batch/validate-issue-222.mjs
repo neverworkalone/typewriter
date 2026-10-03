@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
+import { assertCompleteRevisionChecksReused, createSharedAdmissionContext } from './shared-admission-context.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
@@ -830,6 +831,9 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
     baseRecords: allIssue222BaseRecords,
     batchDecisionSources,
   });
+  const admissionContext = createSharedAdmissionContext(currentCanonical, semanticAudit, {
+    canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
+  });
   const reviewRows = productionReviewRows(identities, semanticSource.candidate_records, semanticDecisionSource, {
     semanticReviewSourcePath: 'data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json',
     verificationPassId: semanticSource.provenance.verification_pass_id,
@@ -841,6 +845,7 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
     baseRecords: corpusBatch01BaseRecords,
     prospectiveRecords: currentCanonical.records,
     semanticAudit,
+    canonicalContext: admissionContext,
     stageEvidence: productionStageEvidence({
       candidateSourceBytes: candidateReviewBytes,
       semanticSourceBytes,
@@ -875,6 +880,7 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
       baseRecords: batchBaseRecords,
       prospectiveRecords: currentCanonical.records,
       semanticAudit,
+      canonicalContext: admissionContext,
       stageEvidence: productionStageEvidence({
         candidateSourceBytes: batch.candidateReviewBytes,
         semanticSourceBytes: batch.semanticSourceBytes,
@@ -908,6 +914,7 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
     baseRecords: historicalBaseRecords,
     prospectiveRecords: currentCanonical.records,
     semanticAudit,
+    canonicalContext: admissionContext,
     stageEvidence: productionStageEvidence({
       candidateSourceBytes: historicalCandidateSourceBytes,
       semanticSourceBytes: historicalSemanticSourceBytes,
@@ -929,6 +936,7 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   assert.equal(historicalProduction.admission?.audit?.blocking_finding_count, 0, 'ordinary shared historical lexical admission blockers');
   assert.equal(historicalProduction.admission?.semantic_audit?.coverage_complete, true, 'historical batch has complete prospective semantic coverage');
 
+  assertCompleteRevisionChecksReused(admissionContext, 2 + additionalCorpusProductions.length);
   const deterministicBuild = await validateDeterministicBuild(allImportRecords, currentCanonical.canonicalRevision);
   return {
     issue: 222,

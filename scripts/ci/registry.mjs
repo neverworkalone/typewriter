@@ -135,6 +135,10 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/lexical-quality.test.mjs', 'Test shared lexical quality'),
       testCheck('tests/relation-admission.test.mjs', 'Test relation admission'),
       testCheck('tests/semantic-audit-decision-source.test.mjs', 'Test semantic audit decision source'),
+      testCheck(
+        'tests/shared-admission-context.test.mjs',
+        'Test shared admission context equivalence, tamper rejection, and immutable digest reuse',
+      ),
       testCheck('tests/semantic-corrections.test.mjs', 'Test semantic corrections'),
       testCheck('tests/semantic-decision-source-locality.test.mjs', 'Test semantic decision-source locality'),
       testCheck('tests/lexical-selection.test.mjs', 'Test shared lexical selection'),
