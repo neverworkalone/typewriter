@@ -491,3 +491,18 @@ test('the full-revision binding admits -어서 and rejects trailing junk', () =>
   assert.doesNotThrow(() => binding(build('그는 밥을 먹어서 잠들었다.')));
   assert.throws(() => binding(build('그는 밥을 먹어서말 잠들었다.')), /real conjugated form/u);
 });
+
+test('frame rule covers 러-irregular, ㄹ-drop adnominal, and contracted+auxiliary forms', () => {
+  for (const [frame, lemma, pos] of [
+    ['하늘이 푸르렀다.', '푸르다', 'adjective'],
+    ['낯선 적막이 방 안을 채웠다.', '낯설다', 'adjective'],
+    ['그녀는 슬픔을 견뎌냈다.', '견디다', 'verb'],
+    ['공기가 따뜻해졌다.', '따뜻하다', 'adjective'],
+    ['그가 만든 의자였다.', '만들다', 'verb'],
+  ]) assert.equal(frameUsesLemma(frame, lemma, pos), true, frame);
+  for (const [frame, lemma, pos] of [
+    ['낯선다 적막이었다.', '낯설다', 'adjective'],
+    ['마음이 가볍었다.', '가볍다', 'adjective'],
+    ['그는 듣어서 안다.', '듣다', 'verb'],
+  ]) assert.equal(frameUsesLemma(frame, lemma, pos), false, frame);
+});
