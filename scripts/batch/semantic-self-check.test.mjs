@@ -337,6 +337,12 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('선생님은 열심히 일하세요.', '일하다', 'verb'), true);
   assert.equal(frameUsesLemma('사장님이 일하십니다.', '일하다', 'verb'), true);
   assert.equal(frameUsesLemma('책을 읽으세요.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('씨앗을 묻으세요.', '묻다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님께 물으세요.', '묻다', 'verb'), true);
+  assert.equal(frameUsesLemma('길을 물었다.', '묻다', 'verb'), true);
+  assert.equal(frameUsesLemma('땅에 묻었다.', '묻다', 'verb'), true);
+  assert.equal(frameUsesLemma('먼 길을 걸었다.', '걷다', 'verb'), true);
+  assert.equal(frameUsesLemma('소매를 걷어 올렸다.', '걷다', 'verb'), true);
   assert.equal(frameUsesLemma('선생님이 그 말을 들으세요.', '듣다', 'verb'), true);
   assert.equal(frameUsesLemma('집을 지으세요.', '짓다', 'verb'), true);
   assert.equal(frameUsesLemma('친구를 도우세요.', '돕다', 'verb'), true);
@@ -397,4 +403,23 @@ test('the full-revision binding admits irregular honorific forms and rejects the
   assert.doesNotThrow(() => binding(build('선생님이 그 말을 들으세요.')));
   assert.doesNotThrow(() => binding(build('아이가 그 말을 들었다.')));
   assert.throws(() => binding(build('선생님이 그 말을 듣으세요.')), /real conjugated form/u);
+});
+
+test('the full-revision binding admits both senses of a dual-conjugation verb', () => {
+  const build = (frame) => {
+    const f = fixture();
+    f.candidateRows = [row('묻다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } } : r));
+    f.glossByLemma = new Map([['묻다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '묻다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '묻다', boundary_rationale: '묻다: 첫 용례는 땅을, 둘째 용례는 질문을 가리킨다', semantic_rationale: '묻다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('씨앗을 묻으세요.')));
+  assert.doesNotThrow(() => binding(build('선생님께 물으세요.')));
+  assert.throws(() => binding(build('선생님께 묻세요.')), /real conjugated form/u);
 });

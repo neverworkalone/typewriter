@@ -39,6 +39,9 @@ const CONTRACTED_ENDING = /^(?:서|도|야|요|라|[.,?!”"’']|$)/u;
 // Irregular classes need a lexicon: only these stems alternate (the rest, e.g. 받·닫·믿, 씻·웃·벗, 입·잡, are regular).
 const D_IRREGULAR = new Set(['듣', '걷', '묻', '싣', '깨닫', '긷', '일컫', '붇']);
 const S_IRREGULAR = new Set(['낫', '짓', '잇', '붓', '긋', '젓', '잣']);
+// Stems with both a regular and an irregular sense (묻다 ask/bury, 걷다 walk/fold, 굽다 roast/bend): either form is admitted;
+// choosing the sense is the source-bound review's job, not this form check's.
+const DUAL_CONJUGATION = new Set(['묻', '걷', '굽']);
 const B_REGULAR = new Set(['입', '잡', '접', '좁', '뽑', '씹', '꼽', '집', '업']);
 
 /**
@@ -52,7 +55,8 @@ function stemForms(stem, plainEnding, pos) {
   const last = stem.at(-1);
   const syllable = isSyllable(last) ? decompose(last) : null;
   // An alternating stem never takes a vowel-initial ending uncontracted (돕아, 듣어, 쓰어, 가아 are not forms).
-  const alternating = syllable !== null && (
+  const dual = DUAL_CONJUGATION.has(stem);
+  const alternating = syllable !== null && !dual && (
     (syllable.jong === 7 && D_IRREGULAR.has(stem))
     || (syllable.jong === 19 && S_IRREGULAR.has(stem))
     || (syllable.jong === 17 && !B_REGULAR.has(stem))
@@ -74,6 +78,7 @@ function stemForms(stem, plainEnding, pos) {
   else if (bIrregular) honorificBase = open + '우';
   else honorificBase = stem + '으';
   forms.push({ surface: honorificBase, follows: HONORIFIC, bare: false });
+  if (dual) forms.push({ surface: stem + '으', follows: HONORIFIC, bare: false });
   const add = (surface, follows, bare = false) => forms.push({ surface, follows, bare });
   const pastVowels = [0, 4, 1, 5]; // ㅏ ㅓ ㅐ ㅔ
   if (syllable.jong !== 0) {
