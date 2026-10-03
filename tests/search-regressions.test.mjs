@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
-import { buildDictionary } from '../scripts/build/dictionary.mjs';
+import { openCurrentRevisionDatabasePath } from '../scripts/ci/current-revision-database.mjs';
 import {
   assertValidSearchRegressionCorpus,
   validateSearchRegressionCorpus,
@@ -36,25 +36,13 @@ const fixturePath = path.join(
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
 
 async function openRegressionDatabase(prefix) {
-  const configuredPath = process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
-  if (configuredPath) {
-    return {
-      database: new DatabaseSync(configuredPath, { readOnly: true }),
-      outputDirectory: null,
-    };
-  }
-
-  const outputDirectory = await mkdtemp(path.join(repositoryDirectory, prefix));
-  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
-  await buildDictionary({
-    inputDirectory: path.join(repositoryDirectory, 'data/canonical'),
-    outputPath,
-    checkPilotCompleteness: true,
-    allowDirty: true,
+  const { databasePath, outputDirectory } = await openCurrentRevisionDatabasePath({
+    temporaryRoot: repositoryDirectory,
+    prefix,
     repositoryDirectory,
   });
   return {
-    database: new DatabaseSync(outputPath, { readOnly: true }),
+    database: new DatabaseSync(databasePath, { readOnly: true }),
     outputDirectory,
   };
 }
