@@ -22,6 +22,11 @@ TOP_N = 3
 POS_BY_TAG = {"NNG": "noun", "VV": "verb", "VA": "adjective"}
 
 
+def base_tag(tag: str) -> str:
+    """Kiwi marks irregular/regular variants as VV-I, VA-R, ...; the base tag decides POS."""
+    return str(tag).split("-", 1)[0]
+
+
 def _package_version(name: str) -> str:
     try:
         return package_version(name)
@@ -38,41 +43,46 @@ def run_metadata() -> dict:
     }
 
 
+DERIVATIONAL_SUFFIX_POS = {"XSV": "verb", "XSA": "adjective"}
+
+
 def _proposals(tokens) -> list[dict]:
-    """Lemma/POS proposals for content morphemes of one analysis path."""
+    """Lemma/POS proposals for content morphemes of one analysis path.
+
+    A noun/root followed by a verb/adjective-forming suffix (망각 + 하, 행복 + 하)
+    also yields the derived predicate lemma (망각하다), as Typewriter lemmas do.
+    """
     result = []
+    previous = None
     for token in tokens:
-        pos = POS_BY_TAG.get(str(token.tag))
-        if pos is None:
-            continue
+        tag = base_tag(token.tag)
         form = unicodedata.normalize("NFC", str(token.form))
-        lemma = form + "다" if pos in {"verb", "adjective"} else form
-        result.append({"lemma": lemma, "pos": pos, "form": form})
+        pos = POS_BY_TAG.get(tag)
+        if pos is not None:
+            lemma = form + "다" if pos in {"verb", "adjective"} else form
+            result.append({"lemma": lemma, "pos": pos, "form": form})
+        elif tag in DERIVATIONAL_SUFFIX_POS and previous is not None and previous["tag"] in {"NNG", "XR"}:
+            base = result[-1]["form"] if result and result[-1]["lemma"] == previous["form"] else previous["form"]
+            result.append({"lemma": base + form + "다", "pos": DERIVATIONAL_SUFFIX_POS[tag], "form": base + form})
+        previous = {"tag": tag, "form": form}
     return result
 
 
 def analyze_one(analyzer, text: str) -> dict:
     text = unicodedata.normalize("NFC", text).strip()
     if not text or len(text) > MAX_TEXT_LENGTH:
-        return {"status": "unsupported", "reason": "empty_or_too_long", "proposals": []}
+        return {"status": "unsupported", "reason": "empty_or_too_long", "analyses": []}
     try:
         paths = analyzer.analyze(text, TOP_N)
     except Exception as error:  # explicit machine-readable failure, never silent
-        return {"status": "error", "reason": type(error).__name__, "proposals": []}
+        return {"status": "error", "reason": type(error).__name__, "analyses": []}
     if not paths:
-        return {"status": "unsupported", "reason": "no_analysis", "proposals": []}
+        return {"status": "unsupported", "reason": "no_analysis", "analyses": []}
     analyses = [_proposals(tokens) for tokens, _score in paths]
-    best = analyses[0]
-    if not best:
-        return {"status": "unsupported", "reason": "no_content_morpheme", "proposals": []}
-    distinct = {json.dumps(item, sort_keys=True, ensure_ascii=False) for item in analyses}
-    ambiguous = len(distinct) > 1
-    return {
-        "status": "ambiguous" if ambiguous else "ok",
-        "reason": "multiple_analyses" if ambiguous else "",
-        "proposals": best,
-        "alternatives": [item for item in analyses[1:] if item != best] if ambiguous else [],
-    }
+    if not any(analyses):
+        return {"status": "unsupported", "reason": "no_content_morpheme", "analyses": []}
+    # Ranked top-N proposal lists; the consumer decides what is ambiguous.
+    return {"status": "ok", "reason": "", "analyses": analyses}
 
 
 def analyze_batch(analyzer, requests: list[dict]) -> dict:

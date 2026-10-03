@@ -16,7 +16,7 @@ def tok(form, tag):
 
 class FakeAnalyzer:
     TABLE = {
-        "푸르다": [([tok("푸르", "VA"), tok("다", "EF")], 0.0)],
+        "푸르다": [([tok("푸르", "VA-I"), tok("다", "EF")], 0.0)],
         "바라다": [([tok("바라", "VV")], 0.0), ([tok("바람", "NNG")], -1.0)],
         "물결무늬": [([tok("물결", "NNG"), tok("무늬", "NNG")], 0.0)],
         "조사만": [([tok("만", "JX")], 0.0)],
@@ -37,9 +37,9 @@ class KiwiServiceTest(unittest.TestCase):
         results = self.run_batch(["푸르다", "바라다", "물결무늬", "조사만", "없음", "오류", ""])
         self.assertEqual([r["id"] for r in results], [str(i) for i in range(7)])
         self.assertEqual(results[0]["status"], "ok")
-        self.assertEqual(results[0]["proposals"], [{"lemma": "푸르다", "pos": "adjective", "form": "푸르"}])
-        self.assertEqual(results[1]["status"], "ambiguous")
-        self.assertEqual(len(results[2]["proposals"]), 2)
+        self.assertEqual(results[0]["analyses"][0], [{"lemma": "푸르다", "pos": "adjective", "form": "푸르"}])
+        self.assertEqual(len(results[1]["analyses"]), 2)
+        self.assertEqual(len(results[2]["analyses"][0]), 2)
         self.assertEqual(results[3]["reason"], "no_content_morpheme")
         self.assertEqual(results[4]["reason"], "no_analysis")
         self.assertEqual(results[5]["status"], "error")

@@ -33,7 +33,7 @@ const isSyllable = (char) => char !== undefined && char >= '가' && char <= '힣
 const TAIL = '[\\p{P}~…]*$';
 const complete = (pieces) => new RegExp(`^(?:${pieces})${TAIL}`, 'u');
 const CONNECTIVE = '(?:고|는|며|면|니|가)';
-const AUX = '(?:지(?:다|고|는|며|면|니|가|요|죠|어요|지만)?|졌(?:다|어요|습니다|고|는데)|주(?:다|세요|었다|고|면|어요)|줬(?:다|어요|고)|버(?:렸다|리다|려|리고|렸어요)|놓(?:았다|다|고)|두(?:었다|다|고)|내(?:다|었다|고)|오(?:다|았다|고|는)|보(?:다|았다|고|니|면|세요)|있(?:다|었다|고|는|어요|습니다)|야(?:겠다|한다|지))';
+const AUX = '(?:지(?:다|고|는|며|면|니|가|요|죠|어요|지만)?|졌(?:다|어요|습니다|고|는데)|주(?:다|세요|었다|고|면|어요)|줬(?:다|어요|고)|버(?:렸다|리다|려|리고|렸어요)|놓(?:았다|다|고)|두(?:었다|다|고)|내(?:다|었다|고)|냈(?:다|어요|습니다|고|는데)|오(?:다|았다|고|는)|보(?:다|았다|고|니|면|세요)|있(?:다|었다|고|는|어요|습니다)|야(?:겠다|한다|지))';
 const CLOSE = `(?:다${CONNECTIVE}?|어요|아요|여요|[어아여](?:서|도|야|${AUX})?|지만|지요|지|죠|요|네요|네|는데|는|은|을|던|며|면|니까|니|서|도|자|기|게|러|려|라|으니|으면|으며|으려|습니다|습니까|고(?:서)?)`;
 const HONORIFIC = complete(`시(?:는데|는|고|면|며|니까|니|죠|지요|요|어도|어서|어|지만|지|다${CONNECTIVE}?)|시겠(?:어요|습니다|습니까|죠|지요|네요|지만|지|는데|어|다${CONNECTIVE}?)|세요|십니다|십니까|셨(?:어요|습니다|습니까|죠|고|는데|지만|으나|다${CONNECTIVE}?)|셔서|셔도|신`);
 const END = complete('');
@@ -41,7 +41,7 @@ const STEM_ENDING = complete(`(?:었|았|였|겠)*${CLOSE}`);
 const SHORT_STEM_ENDING = complete(`(?:었|았|겠)*(?:다${CONNECTIVE}?|고|는|은|을|던|며|면|서|니|으니|으면|어요|아요|[어아](?:서|도|야)?|죠|요|습니다|습니까)`);
 const PAST_ENDING = complete(CLOSE);
 const VOWEL_ENDING = complete('(?:었|았)(?:다' + CONNECTIVE + '?|어요|습니다|습니까|죠|지요|고|는데|지만|으나)|어요|아요|어서|아서|어도|아도|[어아](?:' + AUX + ')?|은|으니|으면|으며|으려');
-const CONTRACTED_ENDING = complete('(?:서요?|도|야|요|라)?');
+const CONTRACTED_ENDING = complete(`(?:서요?|도|야|요|라|${AUX})?`);
 const FORMAL_VERB = complete('니다|니까|시다|시오');
 const FORMAL_ADJECTIVE = complete('니다|니까');
 const DROP_L_ENDING = complete(`는|니|니까|신|시(?:[고면며니죠요다어])|오|습니다|십니다`);
@@ -50,6 +50,8 @@ const D_IRREGULAR = new Set(['듣', '걷', '묻', '싣', '깨닫', '긷', '일�
 const S_IRREGULAR = new Set(['낫', '짓', '잇', '붓', '긋', '젓', '잣']);
 // Stems with both a regular and an irregular sense (묻다 ask/bury, 걷다 walk/fold, 굽다 roast/bend): either form is admitted;
 // choosing the sense is the source-bound review's job, not this form check's.
+// 러 irregular: 르-final stems that take -러/-렀 instead of -라/-랐 (푸르렀다, 이르러).
+const RU_IRREGULAR = new Set(['푸르', '이르', '누르', '노르']);
 const DUAL_CONJUGATION = new Set(['묻', '걷', '굽']);
 const B_REGULAR = new Set(['입', '잡', '접', '좁', '뽑', '씹', '꼽', '집', '업']);
 
@@ -98,6 +100,8 @@ function stemForms(stem, plainEnding, pos) {
     if (syllable.jong === 19 && S_IRREGULAR.has(stem)) add(open, VOWEL_ENDING);
     if (syllable.jong === 8) add(open, DROP_L_ENDING);
     if (syllable.jong === 8) add(prefix + compose({ ...syllable, jong: 17 }), formal);
+    // ㄹ-final stems lose ㄹ before -ㄴ: 낯선, 사는 → 산, 만든.
+    if (syllable.jong === 8) add(prefix + compose({ ...syllable, jong: 4 }), pos === 'adjective' ? END : complete('다?'), true);
     if (syllable.jong === 17 && !B_REGULAR.has(stem)) {
       for (const tail of ['워', '와']) add(open + tail, CONTRACTED_ENDING, true);
       for (const tail of ['웠', '왔']) add(open + tail, PAST_ENDING);
@@ -124,6 +128,10 @@ function stemForms(stem, plainEnding, pos) {
       add(prefix + compose({ ...syllable, jung, jong: 0 }), CONTRACTED_ENDING, true);
       add(prefix + compose({ ...syllable, jung, jong: 20 }), PAST_ENDING);
     }
+  }
+  if (RU_IRREGULAR.has(stem)) {
+    add(stem + '러', CONTRACTED_ENDING, true);
+    add(stem + '렀', PAST_ENDING);
   }
   if (last === '르' && prefix.length > 0 && isSyllable(prefix.at(-1))) {
     const before = decompose(prefix.at(-1));

@@ -25,16 +25,24 @@ function bindingFor({ input, lemma, pos, metadata }) {
   return digest(['analysis-binding', input, lemma, pos, analyzerDigest(metadata)]);
 }
 
+// Interpret ranked Kiwi analyses of a citation form. The best analysis must
+// explain the whole input as exactly one lemma (a substring match is not proof).
+// Another analysis claiming the same lemma with a different POS is ambiguity;
+// a noun reading of a verb/adjective-shaped "...다" input is an OOV artifact.
 function interpret(candidate, outcome) {
   if (!outcome) return { hold: 'analysis_missing' };
   if (outcome.status === 'error') return { hold: 'analysis_error' };
-  if (outcome.status === 'unsupported') return { hold: 'analysis_unsupported' };
-  const matching = (outcome.proposals ?? []).filter((proposal) => proposal.lemma === candidate.input);
-  // The whole input must be explained by one lemma; a substring match is not proof.
-  if (outcome.proposals.length !== 1 || matching.length !== 1) return { hold: 'lemma_mismatch' };
-  if (outcome.status === 'ambiguous') return { hold: 'analysis_ambiguous', proposedPos: matching[0].pos };
-  if (candidate.pos && candidate.pos !== matching[0].pos) return { hold: 'pos_mismatch', proposedPos: matching[0].pos };
-  return { proposedPos: matching[0].pos };
+  if (outcome.status !== 'ok') return { hold: 'analysis_unsupported' };
+  const wholeInput = (analysis) => (analysis.length === 1 && analysis[0].lemma === candidate.input ? analysis[0] : null);
+  const [best, ...alternatives] = outcome.analyses;
+  const match = wholeInput(best ?? []);
+  if (!match) return { hold: 'lemma_mismatch' };
+  const rivals = alternatives
+    .map(wholeInput)
+    .filter((rival) => rival && rival.pos !== match.pos && !(rival.pos === 'noun' && candidate.input.endsWith('다')));
+  if (rivals.length) return { hold: 'analysis_ambiguous', proposedPos: match.pos };
+  if (candidate.pos && candidate.pos !== match.pos) return { hold: 'pos_mismatch', proposedPos: match.pos };
+  return { proposedPos: match.pos };
 }
 
 export async function runIntake({ candidates, analyzer, coveredLemmas = new Set(), adapterId = 'unspecified' }) {

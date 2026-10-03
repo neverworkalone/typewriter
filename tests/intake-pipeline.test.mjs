@@ -8,13 +8,14 @@ import { dedupeCandidates, normalizeCandidate, validateCandidate } from '../scri
 import { analysisInputDigest, runIntake, verifyAnalysisBinding } from '../scripts/intake/pipeline.mjs';
 
 const METADATA = { service_version: '1', kiwipiepy_version: 'test', kiwipiepy_model_version: 'test', top_n: 3 };
+const P = (lemma, pos) => ({ lemma, pos, form: lemma });
 const TABLE = {
-  푸르다: { status: 'ok', proposals: [{ lemma: '푸르다', pos: 'adjective', form: '푸르' }] },
-  바람: { status: 'ok', proposals: [{ lemma: '바람', pos: 'noun', form: '바람' }] },
-  바라다: { status: 'ambiguous', proposals: [{ lemma: '바라다', pos: 'verb', form: '바라' }] },
-  물결무늬: { status: 'ok', proposals: [{ lemma: '물결', pos: 'noun', form: '물결' }, { lemma: '무늬', pos: 'noun', form: '무늬' }] },
-  낯선말: { status: 'unsupported', proposals: [] },
-  깨짐이: { status: 'error', proposals: [] },
+  푸르다: { status: 'ok', analyses: [[P('푸르다', 'adjective')], [P('푸르다', 'noun')]] },
+  바람: { status: 'ok', analyses: [[P('바람', 'noun')], [P('바라다', 'verb')]] },
+  바라다: { status: 'ok', analyses: [[P('바라다', 'verb')], [P('바라다', 'adjective')]] },
+  물결무늬: { status: 'ok', analyses: [[P('물결', 'noun'), P('무늬', 'noun')], [P('물결무늬', 'noun')]] },
+  낯선말: { status: 'unsupported', analyses: [] },
+  깨짐이: { status: 'error', analyses: [] },
 };
 const analyzer = async (requests) => ({
   metadata: METADATA,
@@ -96,4 +97,26 @@ test('dedupe merges forms and shared stages never import an adapter', async () =
     const source = await readFile(new URL(`../scripts/intake/${file}`, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /adapters\/|CorpusAdapter|corpus-adapter/);
   }
+});
+
+test('frame verdicts bind to analysis and never let Kiwi alone admit a frame', async () => {
+  const { analyzeFrames, frameDisposition } = await import('../scripts/intake/frame-analysis.mjs');
+  const frames = {
+    '푸른 하늘이었다.': { status: 'ok', analyses: [[P('푸르다', 'adjective')], []] },
+    '사세요.': { status: 'ok', analyses: [[P('사다', 'verb')], [P('살다', 'verb')]] },
+    '가게 앞.': { status: 'ok', analyses: [[P('가게', 'noun')]] },
+  };
+  const frameAnalyzer = async (requests) => ({
+    metadata: METADATA,
+    results: requests.map(({ id, text }) => ({ ...frames[text], id, input_digest: analysisInputDigest(text) })),
+  });
+  const results = await analyzeFrames(frameAnalyzer, [
+    { frame: '푸른 하늘이었다.', lemma: '푸르다', pos: 'adjective' },
+    { frame: '사세요.', lemma: '살다', pos: 'verb' },
+    { frame: '가게 앞.', lemma: '가다', pos: 'verb' },
+  ]);
+  assert.deepEqual(results.map((r) => r.verdict), ['uses', 'ambiguous', 'absent']);
+  assert.equal(frameDisposition(true, 'uses'), 'confirmed');
+  assert.equal(frameDisposition(true, 'ambiguous'), 'manual_check');
+  assert.equal(frameDisposition(false, 'uses'), 'rejected');
 });
