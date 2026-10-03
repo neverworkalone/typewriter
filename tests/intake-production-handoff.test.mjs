@@ -182,3 +182,20 @@ test('an adapter-held candidate re-labelled semantic_qa with recomputed bindings
     (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED',
   );
 });
+
+test('an analyzer-originated hold re-labelled semantic_qa with recomputed bindings is rejected', async () => {
+  const f = await fixture();
+  const forged = structuredClone(f.handoff);
+  const entry = forged.entries.find((item) => item.input === '바라다');
+  assert.equal(entry.decision, 'hold');
+  Object.assign(entry, { decision: 'semantic_qa', holds: [], pos: 'verb', observed_forms: ['바라다'], evidence: f.raw.find((c) => c.input === '바라다').evidence, analysis_binding: qa(f.handoff).analysis_binding });
+  delete entry.proposed_pos;
+  const bytes = Buffer.from(JSON.stringify(forged));
+  const binding = handoffQaBinding(forged, entry, { glossSha256: sha256Json('풀이.'), pos: 'verb' });
+  const run = (hand, buf) => assertBatchIntakeHandoff({ handoffBytes: buf, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('바라다', 'verb', '풀이.', 4)], semanticInput: { intake_handoff: integrationBlock(hand, buf, { bindings: { 바라다: binding } }) } });
+  assert.throws(() => run(forged, bytes), (error) => ['INTAKE_HANDOFF_DECISION', 'INTAKE_HANDOFF_EVIDENCE', 'INTAKE_HANDOFF_ANALYSIS_BINDING'].includes(code(error)));
+  // Even with the outcome rewritten to look clean, an entry that omits it is refused.
+  delete entry.analysis_outcome;
+  const noOutcome = Buffer.from(JSON.stringify(forged));
+  assert.throws(() => run(forged, noOutcome), (error) => code(error) === 'INTAKE_HANDOFF_OUTCOME');
+});

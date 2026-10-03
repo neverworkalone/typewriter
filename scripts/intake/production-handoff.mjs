@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { corpusAdapter } from './adapters/corpus-adapter.mjs';
 import { dedupeCandidates, digest, normalizeCandidate } from './candidate-contract.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
-import { analyzerDigest, assertPinnedAnalyzer, runIntake, verifyAnalysisBinding } from './pipeline.mjs';
+import { analyzerDigest, assertPinnedAnalyzer, judgeOutcome, runIntake, verifyAnalysisBinding } from './pipeline.mjs';
 
 // Production hand-off (issue #251, PR A): the bounded, text-free artifact that
 // carries one batch's source-neutral intake result into the existing shared
@@ -75,6 +75,7 @@ export async function buildProductionHandoff({ batchId, rawCandidates, analyzer,
       holds: decision.holds,
       adapter_ids: decision.adapterIds,
       duplicate_count: decision.duplicateCount,
+      ...(decision.outcome ? { analysis_outcome: decision.outcome } : {}),
       ...(decision.decision === 'semantic_qa'
         ? { pos: decision.pos, observed_forms: decision.observedForms, evidence: decision.evidence, analysis_binding: decision.analysisBinding }
         : { proposed_pos: decision.proposedPos ?? null }),
@@ -119,6 +120,18 @@ export function verifyProductionHandoff(handoff, { rawCandidates, batchId, adapt
     // candidate can never be re-labelled semantic_qa or covered.
     if (candidate.holds.length && (entry.decision !== 'hold' || candidate.holds.some((hold) => !entry.holds.includes(hold)))) {
       fail(`${candidate.input}: adapter hold ${candidate.holds.join(', ')} was not preserved`, 'INTAKE_HANDOFF_HOLD_DROPPED');
+    }
+    // Analyzer-originated decisions are recomputed from the stored, bounded Kiwi
+    // outcome, so an analysis hold cannot be relabelled semantic_qa (or vice versa).
+    if (!candidate.holds.length && entry.decision !== 'covered') {
+      if (!entry.analysis_outcome) fail(`${candidate.input}: hand-off lacks the analysis outcome its decision rests on`, 'INTAKE_HANDOFF_OUTCOME');
+      const judged = judgeOutcome(candidate, entry.analysis_outcome);
+      const expectedDecision = judged.hold ? 'hold' : 'semantic_qa';
+      const expectedHolds = judged.hold ? [judged.hold] : [];
+      if (entry.decision !== expectedDecision || !sameJson(entry.holds, expectedHolds)
+        || (!judged.hold && entry.pos !== judged.proposedPos)) {
+        fail(`${candidate.input}: hand-off decision does not follow from its recorded analysis`, 'INTAKE_HANDOFF_DECISION');
+      }
     }
     if (entry.decision === 'semantic_qa') {
       if (!sameJson(entry.evidence, candidate.evidence) || !sameJson(entry.observed_forms, candidate.observedForms)) {
