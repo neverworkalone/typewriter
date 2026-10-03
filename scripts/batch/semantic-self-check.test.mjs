@@ -351,6 +351,8 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('그는 학교에 갑니다말.', '가다', 'verb'), false);
   assert.equal(frameUsesLemma('선생님이 학교에 가시겠지만 늦을 거예요.', '가다', 'verb'), true);
   assert.equal(frameUsesLemma('선생님이 학교에 가시겠말 늦을 거예요.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 밥을 먹어서 잠들었다.', '먹다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 밥을 먹어서말 잠들었다.', '먹다', 'verb'), false);
   assert.equal(frameUsesLemma('학교에 가세요.', '가다', 'verb'), true);
   assert.equal(frameUsesLemma('교장 선생님이 학교에 가십니다.', '가다', 'verb'), true);
   assert.equal(frameUsesLemma('선생님이 학교에 가셨다.', '가다', 'verb'), true);
@@ -465,8 +467,27 @@ test('the full-revision binding rejects a vowel-stem misconjugation and admits t
   assert.doesNotThrow(() => binding(build('그는 내일도 일하시겠습니다!')));
   assert.doesNotThrow(() => binding(build('그는 내일 일하시겠다고 말했다.')));
   assert.doesNotThrow(() => binding(build('그는 내일 일합니다.')));
+  assert.doesNotThrow(() => binding(build('그는 내일 일해서 쉬었다.')));
   assert.throws(() => binding(build('그는 내일 일합니다말.')), /real conjugated form/u);
   assert.doesNotThrow(() => binding(build('그는 내일 일하시겠지만 쉴 거예요.')));
   assert.throws(() => binding(build('그는 내일도 일하시겠말.')), /real conjugated form/u);
   assert.throws(() => binding(build('그는 종일 일하은 뒤에 쉬었다.')), /real conjugated form/u);
+});
+
+test('the full-revision binding admits -어서 and rejects trailing junk', () => {
+  const build = (frame) => {
+    const f = fixture();
+    f.candidateRows = [row('먹다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } } : r));
+    f.glossByLemma = new Map([['먹다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '먹다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '먹다', boundary_rationale: '먹다: 첫 용례는 밥을, 둘째 용례는 과일을 가리킨다', semantic_rationale: '먹다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('그는 밥을 먹어서 잠들었다.')));
+  assert.throws(() => binding(build('그는 밥을 먹어서말 잠들었다.')), /real conjugated form/u);
 });
