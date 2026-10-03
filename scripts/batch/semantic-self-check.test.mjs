@@ -311,6 +311,16 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('편지를 썼다.', '쓰다', 'verb'), true);
   assert.equal(frameUsesLemma('노래를 불렀다.', '부르다', 'verb'), true);
   assert.equal(frameUsesLemma('그는 멀리 사는 친구를 찾았다.', '살다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 친구를 돕아.', '돕다', 'verb'), false);
+  assert.equal(frameUsesLemma('그 말을 듣어.', '듣다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 친구를 도와.', '돕다', 'verb'), true);
+  assert.equal(frameUsesLemma('그 말을 들어.', '듣다', 'verb'), true);
+  assert.equal(frameUsesLemma('편지를 쓰어.', '쓰다', 'verb'), false);
+  assert.equal(frameUsesLemma('편지를 써.', '쓰다', 'verb'), true);
+  assert.equal(frameUsesLemma('학교에 가아.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('일을 하여.', '하다', 'verb'), false);
+  assert.equal(frameUsesLemma('일을 하여 마쳤다.', '일하다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 일하여 돈을 벌었다.', '일하다', 'verb'), true);
   assert.equal(frameUsesLemma('눈을 감고 잤다.', '가다', 'verb'), false);
   assert.equal(frameUsesLemma('발을 씻었다.', '받다', 'verb'), false);
   assert.equal(frameUsesLemma('손을 씻었다.', '씻다', 'verb'), true);

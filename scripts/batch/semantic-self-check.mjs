@@ -46,11 +46,18 @@ const B_REGULAR = new Set(['입', '잡', '접', '좁', '뽑', '씹', '꼽', '집
  * 발(을) are not forms of 가다/받다).
  */
 function stemForms(stem, plainEnding) {
-  const forms = [{ surface: stem, follows: plainEnding, bare: false }];
   const last = stem.at(-1);
-  if (!isSyllable(last)) return forms;
+  const syllable = isSyllable(last) ? decompose(last) : null;
+  // An alternating stem never takes a vowel-initial ending uncontracted (돕아, 듣어, 쓰어, 가아 are not forms).
+  const alternating = syllable !== null && (
+    (syllable.jong === 7 && D_IRREGULAR.has(stem))
+    || (syllable.jong === 19 && S_IRREGULAR.has(stem))
+    || (syllable.jong === 17 && !B_REGULAR.has(stem))
+    || (syllable.jong === 0 && [0, 4, 18].includes(syllable.jung)));
+  const noVowelEnding = (follows) => ({ test: (rest) => !(last === '하' ? /^(?:아|어|았|었)/u : /^(?:아|어|여|았|었|였|은|으)/u).test(rest) && follows.test(rest) });
+  const forms = [{ surface: stem, follows: alternating ? noVowelEnding(plainEnding) : plainEnding, bare: false }];
+  if (syllable === null) return forms;
   const prefix = stem.slice(0, -1);
-  const syllable = decompose(last);
   const add = (surface, follows, bare = false) => forms.push({ surface, follows, bare });
   const pastVowels = [0, 4, 1, 5]; // ㅏ ㅓ ㅐ ㅔ
   if (syllable.jong !== 0) {

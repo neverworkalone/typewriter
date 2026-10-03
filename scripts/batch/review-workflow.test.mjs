@@ -290,6 +290,7 @@ test('reviewer frames for a verb must be real forms of the lemma, not a stem col
   assert.doesNotThrow(() => validateReviewerOutput(out('가다', '그는 학교에 갔다.'), proposal('가다'), verb('가다'), 1));
   assert.doesNotThrow(() => validateReviewerOutput(out('듣다', '그 말을 들었다.'), proposal('듣다'), verb('듣다'), 1));
   assert.throws(() => validateReviewerOutput(out('가다', '눈을 감고 잤다.'), proposal('가다'), verb('가다'), 1), /citation form/u);
+  assert.throws(() => validateReviewerOutput(out('듣다', '그 말을 듣어.'), proposal('듣다'), verb('듣다'), 1), /citation form/u);
   assert.throws(() => validateReviewerOutput(out('받다', '발을 씻었다.'), proposal('받다'), verb('받다'), 1), /citation form/u);
   assert.throws(() => validateReviewerOutput(out('가다', '그는 가게에서 책을 샀다.'), proposal('가다'), verb('가다'), 1), /citation form/u);
 });
