@@ -9,6 +9,8 @@ import {
   assertPrimaryAuthoringAllowed,
   assertReviewContractForBatch,
   assertSelfCheckBinding,
+  assertVerbFramesGrammatical,
+  frameUsesLemma,
   assertSelfCheckEnvelope,
   assertSourceClaimsTruthful,
   isSelfCheckInput,
@@ -226,4 +228,266 @@ test('the separate-reviewer workflow is refused for self-check batches only', ()
   assertLegacyReviewWorkflowAllowed('issue-223-m9-e-corpus-batch-10-20261002');
   assert.throws(() => assertLegacyReviewWorkflowAllowed('issue-223-m9-e-corpus-batch-11-20261003'), /self-check contract/u);
   assert.throws(() => assertLegacyReviewWorkflowAllowed('bogus'), /unsupported batch id/u);
+});
+
+test('the self-check binding enforces evidence specificity from batch 14 at the builder/validator boundary', () => {
+  const lemmas = ['가나', '다라', '마바'];
+  const specific = {
+    가나: ['문맥 0: 시장 골목의 가게; 문맥 1: 학교 앞의 가게', '뜻이 갈리는 동음이의 용법이 없다', '가나에 들렀다.'],
+    마바: ['문맥 0: 병원 복도의 움직임; 문맥 1: 강가 나루의 움직임', '활용형이 같은 동사 하나로 읽힌다', '마바 걷는 일이다.'],
+  };
+  const build = (batchId, boundary, semantic, frame) => {
+    const f = fixture();
+    f.input.batch_id = batchId;
+    f.input.reviews = ['가나', '마바'].map((lemma) => ({
+      ...review(lemma),
+      boundary_rationale: boundary(lemma),
+      semantic_rationale: semantic(lemma),
+      frames: [{ sentence_frame: frame(lemma) }],
+    }));
+    return f;
+  };
+  const good = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2]);
+  assert.doesNotThrow(() => binding(good));
+  const boiler = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: 문맥 0·문맥 1 모두 같은 뜻으로 맞는다`, (l) => `${l}: 같은 뜻으로 읽힌다`, (l) => specific[l][2]);
+  assert.throws(() => binding(boiler), /(?:repeat|reuse) the same/u);
+  const noContext = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: ${specific[l][0].split(';')[0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2]);
+  assert.throws(() => binding(noContext), /checked context 1/u);
+  const definition = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
+  assert.throws(() => binding(definition), /usage sentence/u);
+  // The boundary itself: batch 14 enforces, batch 13 keeps its original contract, batch 15 enforces.
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0].split(';')[0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2])), /checked context 1/u);
+  assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', (l) => `${l}: ${specific[l][0].split(';')[0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2])));
+  // Earlier self-check batches keep their original contract.
+  const legacy = build('issue-223-m9-e-corpus-batch-13-20261003', (l) => `${l}: ${specific[l][0].replace(/문맥 [0-9]: /gu, '')}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
+  assert.doesNotThrow(() => binding(legacy));
+});
+
+test('verb frames must be grammatical usage sentences; adjectives and legitimate constructions pass', () => {
+  const ok = (lemma, pos, frame) => assertVerbFramesGrammatical([{ lemma, pos, frames: [frame] }]);
+  assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽다 못해 졸았다.'));
+  assert.doesNotThrow(() => ok('먹다', 'verb', '그는 밥을 먹다 말고 일어났다.'));
+  assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽다가 잠들었다.'));
+  assert.doesNotThrow(() => ok('읽다', 'verb', '이렇게 두꺼운 책을 읽다니 놀랍다.'));
+  assert.doesNotThrow(() => ok('미루다', 'verb', '자꾸 할 일을 미루다가는 나중에 걷잡을 수 없이 많아질 거야.'));
+  assert.doesNotThrow(() => ok('미루다', 'verb', '일을 미루다가도 결국 끝냈다.'));
+  assert.doesNotThrow(() => ok('좋다', 'adjective', '이 책은 내용이 정말 좋다.'));
+  assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽었다.'));
+  assert.throws(() => ok('읽다', 'verb', '그는 읽다가 졸았고 읽다 오래 있었다.'), /only before a connective/u);
+  assert.throws(() => ok('읽다', 'verb', '그는 읽다가 졸았고 읽다.'), /bare citation form/u);
+  assert.throws(() => ok('읽다', 'verb', '그는 책을 읽다.'), /bare citation form/u);
+  assert.throws(() => ok('읽다', 'verb', '그는 책을 읽다 오래 졸았다.'), /only before a connective/u);
+  assert.throws(() => ok('깔보다', 'verb', '그는 상대를 깔보다 크게 졌다.'), /only before a connective/u);
+});
+
+test('the self-check binding applies the verb frame rule from batch 13 and leaves earlier batches alone', () => {
+  const lemmas = ['가나', '마바'];
+  const build = (batchId, frame) => {
+    const f = fixture();
+    f.candidateRows = [row('가나'), row('다라'), row('마바')].map((r) => ({ ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } }));
+    f.input.batch_id = batchId;
+    f.input.reviews = lemmas.map((lemma) => ({ ...review(lemma), frames: [{ sentence_frame: frame(lemma) }] }));
+    return f;
+  };
+  const bare = (l) => `그는 ${l}.`;
+  const connective = (l) => `그는 ${l}가 아니라 ${l}가 쓰러졌다.`;
+  const mixed = (l) => `그는 ${l}가 쓰러졌다 ${l} 오래 지냈다.`;
+  assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', connective)));
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', bare)), /bare citation form|connective/u);
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', mixed)), /bare citation form|connective/u);
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-15-20261003', bare)), /bare citation form|connective/u);
+  assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-12-20261003', bare)));
+  // The full-revision boundary also rejects a frame that is not a form of its lemma.
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', (l) => `눈을 감고 잤다.`)), /real conjugated form/u);
+});
+
+test('the shared lemma-in-frame rule admits correctly conjugated verb frames and still rejects unrelated ones', () => {
+  assert.equal(frameUsesLemma('그는 책을 읽었다.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 책을 읽다 못해 졸았다.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('이 책은 정말 좋았다.', '좋다', 'adjective'), true);
+  assert.equal(frameUsesLemma('그는 책을 샀다.', '읽다', 'verb'), false);
+  // Stem collisions are rejected; irregular and contracted conjugations are admitted.
+  assert.equal(frameUsesLemma('그는 가게에서 책을 샀다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 먹이를 주었다.', '먹다', 'verb'), false);
+  assert.equal(frameUsesLemma('그 말을 들었다.', '듣다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 학교에 갔다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('이웃을 도왔다.', '돕다', 'verb'), true);
+  assert.equal(frameUsesLemma('편지를 썼다.', '쓰다', 'verb'), true);
+  assert.equal(frameUsesLemma('노래를 불렀다.', '부르다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 멀리 사는 친구를 찾았다.', '살다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 친구를 돕아.', '돕다', 'verb'), false);
+  assert.equal(frameUsesLemma('그 말을 듣어.', '듣다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 친구를 도와.', '돕다', 'verb'), true);
+  assert.equal(frameUsesLemma('그 말을 들어.', '듣다', 'verb'), true);
+  assert.equal(frameUsesLemma('편지를 쓰어.', '쓰다', 'verb'), false);
+  assert.equal(frameUsesLemma('편지를 써.', '쓰다', 'verb'), true);
+  assert.equal(frameUsesLemma('학교에 가아.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('일을 하여.', '하다', 'verb'), false);
+  assert.equal(frameUsesLemma('일을 하여 마쳤다.', '일하다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 일하여 돈을 벌었다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 학교에 갑니다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 열심히 일합니다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 시골에 삽니다.', '살다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 책을 읽습니다.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('우리 함께 갑시다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 종일 일한 뒤에 쉬었다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 종일 일하은 뒤에 쉬었다.', '일하다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 학교에 가은 뒤에 쉬었다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('선생님은 학교에 가시겠어요?', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠습니다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠습니다!', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠습니다…', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('"선생님이 학교에 가시겠습니다."', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('가세요~', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠말!', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('선생님이 내일 학교에 가시겠다고 말씀하셨다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가셨다는 소식이다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 내일 학교에 가시겠말고 말씀하셨다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠말.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('선생님이 학교에 가세말.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('책을 읽으시겠습니다.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 학교에 갑니다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 학교에 갑니다말.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠지만 늦을 거예요.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠말 늦을 거예요.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 밥을 먹어서 잠들었다.', '먹다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 밥을 먹어서말 잠들었다.', '먹다', 'verb'), false);
+  assert.equal(frameUsesLemma('학교에 가세요.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('교장 선생님이 학교에 가십니다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가셨다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('여기 오세요.', '오다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님은 열심히 일하세요.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('사장님이 일하십니다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('책을 읽으세요.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('씨앗을 묻으세요.', '묻다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님께 물으세요.', '묻다', 'verb'), true);
+  assert.equal(frameUsesLemma('길을 물었다.', '묻다', 'verb'), true);
+  assert.equal(frameUsesLemma('땅에 묻었다.', '묻다', 'verb'), true);
+  assert.equal(frameUsesLemma('먼 길을 걸었다.', '걷다', 'verb'), true);
+  assert.equal(frameUsesLemma('소매를 걷어 올렸다.', '걷다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 그 말을 들으세요.', '듣다', 'verb'), true);
+  assert.equal(frameUsesLemma('집을 지으세요.', '짓다', 'verb'), true);
+  assert.equal(frameUsesLemma('친구를 도우세요.', '돕다', 'verb'), true);
+  assert.equal(frameUsesLemma('그 말을 듣으세요.', '듣다', 'verb'), false);
+  assert.equal(frameUsesLemma('집을 짓으세요.', '짓다', 'verb'), false);
+  assert.equal(frameUsesLemma('친구를 돕으세요.', '돕다', 'verb'), false);
+  assert.equal(frameUsesLemma('할머니가 시골에 사세요.', '살다', 'verb'), true);
+  assert.equal(frameUsesLemma('가세 가게에서 샀다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('꽃이 예쁩니다.', '예쁘다', 'adjective'), true);
+  assert.equal(frameUsesLemma('꽃이 예쁩니까?', '예쁘다', 'adjective'), true);
+  assert.equal(frameUsesLemma('우리 모두 예쁩시다.', '예쁘다', 'adjective'), false);
+  assert.equal(frameUsesLemma('우리 모두 예쁩시오.', '예쁘다', 'adjective'), false);
+  assert.equal(frameUsesLemma('그는 갑옷을 입었다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('눈을 감고 잤다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('발을 씻었다.', '받다', 'verb'), false);
+  assert.equal(frameUsesLemma('손을 씻었다.', '씻다', 'verb'), true);
+  assert.equal(frameUsesLemma('문을 닫았다.', '닫다', 'verb'), true);
+  assert.equal(frameUsesLemma('집을 지었다.', '짓다', 'verb'), true);
+  assert.equal(frameUsesLemma('글을 쓴다.', '쓰다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 일을 했다.', '일하다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 일했다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 책을 읽었다.', '읽다', 'noun'), false);
+});
+
+test('the full-revision binding applies the adjective/verb split of the frame rule', () => {
+  const build = (frame, pos) => {
+    const f = fixture();
+    f.candidateRows = [row('예쁘다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos } } : r));
+    f.glossByLemma = new Map([['예쁘다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '예쁘다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '예쁘다', boundary_rationale: '예쁘다: 첫 용례는 꽃을, 둘째 용례는 사람을 꾸민다', semantic_rationale: '예쁘다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('꽃이 예쁩니다.', 'adjective')));
+  assert.throws(() => binding(build('우리 모두 예쁩시다.', 'adjective')), /real conjugated form/u);
+  assert.doesNotThrow(() => binding(build('우리 모두 예쁩시다.', 'verb')));
+});
+
+test('the full-revision binding admits irregular honorific forms and rejects the regular misconjugation', () => {
+  const build = (frame) => {
+    const f = fixture();
+    f.candidateRows = [row('듣다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } } : r));
+    f.glossByLemma = new Map([['듣다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '듣다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '듣다', boundary_rationale: '듣다: 첫 용례는 소리를, 둘째 용례는 말을 가리킨다', semantic_rationale: '듣다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('선생님이 그 말을 들으시겠어요?')));
+  assert.doesNotThrow(() => binding(build('선생님이 그 말을 들으세요.')));
+  assert.doesNotThrow(() => binding(build('아이가 그 말을 들었다.')));
+  assert.throws(() => binding(build('선생님이 그 말을 듣으세요.')), /real conjugated form/u);
+});
+
+test('the full-revision binding admits both senses of a dual-conjugation verb', () => {
+  const build = (frame) => {
+    const f = fixture();
+    f.candidateRows = [row('묻다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } } : r));
+    f.glossByLemma = new Map([['묻다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '묻다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '묻다', boundary_rationale: '묻다: 첫 용례는 땅을, 둘째 용례는 질문을 가리킨다', semantic_rationale: '묻다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('씨앗을 묻으세요.')));
+  assert.doesNotThrow(() => binding(build('선생님께 물으세요.')));
+  assert.throws(() => binding(build('선생님께 묻세요.')), /real conjugated form/u);
+});
+
+test('the full-revision binding rejects a vowel-stem misconjugation and admits the contracted adnominal form', () => {
+  const build = (frame) => {
+    const f = fixture();
+    f.candidateRows = [row('일하다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } } : r));
+    f.glossByLemma = new Map([['일하다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '일하다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '일하다', boundary_rationale: '일하다: 첫 용례는 공장을, 둘째 용례는 사무실을 가리킨다', semantic_rationale: '일하다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('그는 종일 일한 뒤에 쉬었다.')));
+  assert.doesNotThrow(() => binding(build('그는 내일도 일하시겠습니다.')));
+  assert.doesNotThrow(() => binding(build('그는 내일도 일하시겠습니다!')));
+  assert.doesNotThrow(() => binding(build('그는 내일 일하시겠다고 말했다.')));
+  assert.doesNotThrow(() => binding(build('그는 내일 일합니다.')));
+  assert.doesNotThrow(() => binding(build('그는 내일 일해서 쉬었다.')));
+  assert.throws(() => binding(build('그는 내일 일합니다말.')), /real conjugated form/u);
+  assert.doesNotThrow(() => binding(build('그는 내일 일하시겠지만 쉴 거예요.')));
+  assert.throws(() => binding(build('그는 내일도 일하시겠말.')), /real conjugated form/u);
+  assert.throws(() => binding(build('그는 종일 일하은 뒤에 쉬었다.')), /real conjugated form/u);
+});
+
+test('the full-revision binding admits -어서 and rejects trailing junk', () => {
+  const build = (frame) => {
+    const f = fixture();
+    f.candidateRows = [row('먹다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } } : r));
+    f.glossByLemma = new Map([['먹다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '먹다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '먹다', boundary_rationale: '먹다: 첫 용례는 밥을, 둘째 용례는 과일을 가리킨다', semantic_rationale: '먹다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('그는 밥을 먹어서 잠들었다.')));
+  assert.throws(() => binding(build('그는 밥을 먹어서말 잠들었다.')), /real conjugated form/u);
 });

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  assertAuthoredSemanticReview,
   bindAuthoredParagraphReferences,
   assertIndependentSemanticReviewer,
   assertReviewerChecks,
@@ -328,4 +329,53 @@ test('Issue #223 an admission gate holds a reviewer pass without rewriting it', 
   // An ungated pass may not claim a gate.
   const clean = { ...collided({ disposition: 'admit' }), coverage_status: 'uncovered', typewriter_surface_matches: [] };
   assert.throws(() => assertReviewerOutcomes([outcome({ admission_gate: 'coverage-collision' })], [clean]), /only a gated candidate records/u);
+});
+
+test('the builder admission path accepts a correctly conjugated verb frame and rejects a frame without the lemma', () => {
+  const candidate = { lemma: '읽다', senses: [{ gloss: '글을 눈으로 보다.' }] };
+  const gloss = candidate.senses[0].gloss;
+  const review = (sentence, lemma = '읽다') => ({
+    lemma,
+    gloss_sha256: sha256Json(gloss),
+    gloss_judgment: 'fit',
+    boundary_action: 'retain',
+    boundary_classification: 'atomic',
+    single_sense_boundary_status: 'pass',
+    boundary_rationale: 'r', semantic_rationale: 'r', no_relation_rationale: 'r', decision_rationale: 'r', frame_rationale: 'r',
+    frames: [{ sentence_frame: sentence, relation_type: 'near', target_class: '읽다의 검토된 핵심 뜻' }],
+  });
+  const digest = sha256Json(gloss);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 책을 읽었다.'), candidate, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 책을 읽다 못해 졸았다.'), candidate, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('꽃이 예쁩니다.', '예쁘다'), { ...candidate, lemma: '예쁘다' }, digest, 'adjective'));
+  assert.throws(() => assertAuthoredSemanticReview(review('우리 모두 예쁩시다.', '예쁘다'), { ...candidate, lemma: '예쁘다' }, digest, 'adjective'), /frames must use the lemma/u);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('우리 함께 갑시다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 종일 일한 뒤에 쉬었다.', '일하다'), { ...candidate, lemma: '일하다' }, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 종일 일하은 뒤에 쉬었다.', '일하다'), { ...candidate, lemma: '일하다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠습니다!', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('선생님이 내일 학교에 가시겠다고 말씀하셨다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠말!', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.throws(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.throws(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠말.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠습니다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('씨앗을 묻으세요.', '묻다'), { ...candidate, lemma: '묻다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('선생님께 물으세요.', '묻다'), { ...candidate, lemma: '묻다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('집을 지으세요.', '짓다'), { ...candidate, lemma: '짓다' }, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('집을 짓으세요.', '짓다'), { ...candidate, lemma: '짓다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('학교에 가세요.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('사장님이 일하십니다.', '일하다'), { ...candidate, lemma: '일하다' }, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 학교에 갑니다말.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠지만 늦을 거예요.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 밥을 먹어서 잠들었다.', '먹다'), { ...candidate, lemma: '먹다' }, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 밥을 먹어서말 잠들었다.', '먹다'), { ...candidate, lemma: '먹다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 학교에 갑니다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 열심히 일합니다.', '일하다'), { ...candidate, lemma: '일하다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그 말을 들었다.', '듣다'), { ...candidate, lemma: '듣다' }, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 가게에서 책을 샀다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.throws(() => assertAuthoredSemanticReview(review('눈을 감고 잤다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 친구를 돕아.', '돕다'), { ...candidate, lemma: '돕다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 친구를 도와.', '돕다'), { ...candidate, lemma: '돕다' }, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('발을 씻었다.', '받다'), { ...candidate, lemma: '받다' }, digest, 'verb'), /frames must use the lemma/u);
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 책을 샀다.'), candidate, digest, 'verb'), /frames must use the lemma/u);
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 책을 읽었다.'), candidate, digest, 'noun'), /frames must use the lemma/u);
 });

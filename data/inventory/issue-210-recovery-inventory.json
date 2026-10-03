@@ -4,17 +4,17 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "e8fad92b899e080c37aef19bf3e78966e41ee039addb851f801d47faf91e43f0",
+    "current_canonical_revision": "7647d1cd3a651992573adfffaab4e054848729f6e71e2781a5dd976be905ff8c",
     "source_manifest": [
       {
         "path": "AGENTS.md",
-        "sha256": "7f377af675e658193e31238fad54f83a80b45f3295d9d1928a97aea6e8517f7a",
-        "byte_count": 15377
+        "sha256": "829a6a541c6f6c86e2bddcbc0f81f3bdc826479636878b7a692526d34fc9e259",
+        "byte_count": 17119
       },
       {
         "path": "config/artifact-policy.json",
-        "sha256": "0836facb0bccf48c13a2ad52812626b19120b22a2791a73d311624ea7251882e",
-        "byte_count": 145762
+        "sha256": "ed6622ba4c7c1bcecc74ee0b75c3a23bc3a7442ee9ba96ea1ecca441c2fd8860",
+        "byte_count": 147453
       },
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -647,6 +647,21 @@
         "byte_count": 61905
       },
       {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-13.jsonl",
+        "sha256": "b2258d50716fe0b746fd005f112628ee5cb10ca1a27786111bd678bd008fb5c8",
+        "byte_count": 79423
+      },
+      {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-14.jsonl",
+        "sha256": "15166b8d36d7a4328626b90be731e4ff5c7741a26f83f36123a5e0ce6b3bbc0d",
+        "byte_count": 85200
+      },
+      {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-15.jsonl",
+        "sha256": "6dd866a5cf7ea45815b3c27a8443546bcf20ac02822247840c82fe26f88dbe44",
+        "byte_count": 83382
+      },
+      {
         "path": "data/canonical/m5-10-wave-a.jsonl",
         "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
         "byte_count": 15089
@@ -713,8 +728,8 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "f42bfa7ca7c01769b85d721e34eb05dd2ca1e5df9920360dc50cb0c0c3a237df",
-        "byte_count": 7260255
+        "sha256": "07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a",
+        "byte_count": 8197989
       },
       {
         "path": "data/inventory/m5-target-seed.json",
@@ -723,28 +738,28 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "33c5ac41cde6237415d4aee702d4e4f3119c549660e090c78ee14ea21383cd98",
-        "byte_count": 10355582
+        "sha256": "9b4dcb90e32041321a1c47d010635beb2e13f000e1c36337da44796df736412e",
+        "byte_count": 11434756
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "4124246b172bfd9d7c0cbbf1dcd2b604714de20d327dc8d6872af1316eb12488",
+        "sha256": "40abf5110eab6bf8d89ffb7f215e6956289dd34be0582a7d698aed6208656b7e",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "c5f8e4fd3069140e027f335eba43e0652209d3a4c880306f64855183d1d63d0a",
-        "byte_count": 29641
+        "sha256": "73c9ee46b17715db97cd71e0046540f03aca39586f691d8f0b3b75fd828e32de",
+        "byte_count": 29642
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
-        "sha256": "3cc1a2413074c7844a0709004095006581b66b9aabfcd95692667297f85ffb86",
-        "byte_count": 11410
+        "sha256": "0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7",
+        "byte_count": 12020
       },
       {
         "path": "data/validation/m6-3-surface-form-review.json",
-        "sha256": "09557f3c290d27845add3b1efda64cfd3d380755b24797fa46bc482ca5019e46",
-        "byte_count": 445888
+        "sha256": "061bcf590abcec1da59b39ab47cedc7b39b6264ad9903e72e30e70ace2554df2",
+        "byte_count": 467972
       },
       {
         "path": "docs/editorial-model.md",
@@ -768,13 +783,13 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "127b2904d24737ef544235310fe0312245f8c00bf1590c1d2985e47035ba983f",
+        "sha256": "cab15f2893c804be28d6b0b0d6778a1f3aeba2e1085ffdcf710682a5ab1354b7",
         "byte_count": 6007
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "24a60ad790cf7dfa9576cdc4d175bd98b65e76023a645362b5dceb34ae541a1b",
-        "byte_count": 8777
+        "sha256": "7a6f06d956ff202311f35524942656c119da5ee549480b67ca4fd045d4acb4bd",
+        "byte_count": 8778
       },
       {
         "path": "docs/m3-handoff.md",
@@ -994,7 +1009,7 @@
       "deferred": 252
     },
     "m5_promoted_seed_rows_present_in_canonical": 998,
-    "m5_promotion_ledger_events_audited": 9702,
+    "m5_promotion_ledger_events_audited": 10864,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
     "issue_219_admitted_count": 0,
@@ -1022,7 +1037,7 @@
     "issue_222_historical_held_count": 0,
     "issue_222_historical_rejected_count": 0,
     "issue_222_promotion_events_audited": 2396,
-    "historical_recovery_ceiling_count": 11549,
+    "historical_recovery_ceiling_count": 12711,
     "historical_recovery_shortfall_to_6000": 0,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
@@ -1035,8 +1050,8 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 11042,
-    "exact_search_key_count": 11299,
+    "directly_searchable_canonical_record_count": 12204,
+    "exact_search_key_count": 12461,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
@@ -1069,20 +1084,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 11042,
-    "directly_searchable_record_count": 11042,
+    "canonical_record_count": 12204,
+    "directly_searchable_record_count": 12204,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 11299,
+    "exact_search_key_count": 12461,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 11000,
+      "start": 12162,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 9847,
+      "start/entry": 11009,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
@@ -2011,15 +2026,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11424"
+        ],
+        "all_query_match_ids": [
+          "w11424"
+        ],
         "queries": [
           {
             "query": "기막히다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "기막히다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11424",
+                "lemma": "기막히다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "기막히다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -3164,15 +3196,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11433"
+        ],
+        "all_query_match_ids": [
+          "w11433"
+        ],
         "queries": [
           {
             "query": "허둥대다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "허둥대다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11433",
+                "lemma": "허둥대다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "허둥대다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -3335,15 +3384,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11412"
+        ],
+        "all_query_match_ids": [
+          "w11412"
+        ],
         "queries": [
           {
             "query": "뒷모습",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "뒷모습",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11412",
+                "lemma": "뒷모습",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "뒷모습",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -3678,15 +3744,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11411"
+        ],
+        "all_query_match_ids": [
+          "w11411"
+        ],
         "queries": [
           {
             "query": "불안감",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "불안감",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11411",
+                "lemma": "불안감",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "불안감",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -3776,15 +3859,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11429"
+        ],
+        "all_query_match_ids": [
+          "w11429"
+        ],
         "queries": [
           {
             "query": "상실감",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "상실감",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11429",
+                "lemma": "상실감",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "상실감",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -4021,15 +4121,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11427"
+        ],
+        "all_query_match_ids": [
+          "w11427"
+        ],
         "queries": [
           {
             "query": "샘물",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "샘물",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11427",
+                "lemma": "샘물",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "샘물",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -6272,15 +6389,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11418"
+        ],
+        "all_query_match_ids": [
+          "w11418"
+        ],
         "queries": [
           {
             "query": "무지개",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "무지개",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11418",
+                "lemma": "무지개",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "무지개",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -6517,15 +6651,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11436"
+        ],
+        "all_query_match_ids": [
+          "w11436"
+        ],
         "queries": [
           {
             "query": "초록빛",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "초록빛",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11436",
+                "lemma": "초록빛",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "초록빛",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -6713,15 +6864,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11425"
+        ],
+        "all_query_match_ids": [
+          "w11425"
+        ],
         "queries": [
           {
             "query": "산길",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "산길",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11425",
+                "lemma": "산길",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "산길",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -6811,15 +6979,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11400"
+        ],
+        "all_query_match_ids": [
+          "w11400"
+        ],
         "queries": [
           {
             "query": "시골",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "시골",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11400",
+                "lemma": "시골",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "시골",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -6860,15 +7045,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11407"
+        ],
+        "all_query_match_ids": [
+          "w11407"
+        ],
         "queries": [
           {
             "query": "울타리",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "울타리",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11407",
+                "lemma": "울타리",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "울타리",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -6909,15 +7111,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11409"
+        ],
+        "all_query_match_ids": [
+          "w11409"
+        ],
         "queries": [
           {
             "query": "햇볕",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "햇볕",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11409",
+                "lemma": "햇볕",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "햇볕",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -6970,15 +7189,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11419"
+        ],
+        "all_query_match_ids": [
+          "w11419"
+        ],
         "queries": [
           {
             "query": "홍수",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "홍수",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11419",
+                "lemma": "홍수",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "홍수",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -7081,15 +7317,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11413"
+        ],
+        "all_query_match_ids": [
+          "w11413"
+        ],
         "queries": [
           {
             "query": "내던지다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "내던지다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11413",
+                "lemma": "내던지다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "내던지다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           },
           {
             "query": "내던지",
@@ -7249,15 +7502,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11396"
+        ],
+        "all_query_match_ids": [
+          "w11396"
+        ],
         "queries": [
           {
             "query": "버티다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "버티다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11396",
+                "lemma": "버티다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "버티다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           },
           {
             "query": "버티",
@@ -7596,15 +7866,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12047"
+        ],
+        "all_query_match_ids": [
+          "w12047"
+        ],
         "queries": [
           {
             "query": "건반",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "건반",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12047",
+                "lemma": "건반",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "건반",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -7706,15 +7993,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11398"
+        ],
+        "all_query_match_ids": [
+          "w11398"
+        ],
         "queries": [
           {
             "query": "모자",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "모자",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11398",
+                "lemma": "모자",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "모자",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -7755,15 +8059,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11416"
+        ],
+        "all_query_match_ids": [
+          "w11416"
+        ],
         "queries": [
           {
             "query": "벽돌",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "벽돌",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11416",
+                "lemma": "벽돌",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "벽돌",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -7804,15 +8125,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11414"
+        ],
+        "all_query_match_ids": [
+          "w11414"
+        ],
         "queries": [
           {
             "query": "유리창",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "유리창",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11414",
+                "lemma": "유리창",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "유리창",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -7853,15 +8191,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11437"
+        ],
+        "all_query_match_ids": [
+          "w11437"
+        ],
         "queries": [
           {
             "query": "철사",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "철사",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11437",
+                "lemma": "철사",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "철사",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -7951,15 +8306,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11417"
+        ],
+        "all_query_match_ids": [
+          "w11417"
+        ],
         "queries": [
           {
             "query": "단서",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "단서",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11417",
+                "lemma": "단서",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "단서",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -8000,15 +8372,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11410"
+        ],
+        "all_query_match_ids": [
+          "w11410"
+        ],
         "queries": [
           {
             "query": "연속",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "연속",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11410",
+                "lemma": "연속",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "연속",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -8061,15 +8450,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11405"
+        ],
+        "all_query_match_ids": [
+          "w11405"
+        ],
         "queries": [
           {
             "query": "질서",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "질서",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11405",
+                "lemma": "질서",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "질서",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -13791,15 +14197,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11430"
+        ],
+        "all_query_match_ids": [
+          "w11430"
+        ],
         "queries": [
           {
             "query": "넓이",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "넓이",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11430",
+                "lemma": "넓이",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "넓이",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -13852,15 +14275,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11399"
+        ],
+        "all_query_match_ids": [
+          "w11399"
+        ],
         "queries": [
           {
             "query": "속도",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "속도",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11399",
+                "lemma": "속도",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "속도",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -13913,15 +14353,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11406"
+        ],
+        "all_query_match_ids": [
+          "w11406"
+        ],
         "queries": [
           {
             "query": "호흡",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "호흡",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11406",
+                "lemma": "호흡",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "호흡",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -13974,15 +14431,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11401"
+        ],
+        "all_query_match_ids": [
+          "w11401"
+        ],
         "queries": [
           {
             "query": "농담",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "농담",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11401",
+                "lemma": "농담",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "농담",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -14702,15 +15176,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11403"
+        ],
+        "all_query_match_ids": [
+          "w11403"
+        ],
         "queries": [
           {
             "query": "배경",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "배경",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11403",
+                "lemma": "배경",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "배경",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -15596,15 +16087,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11397"
+        ],
+        "all_query_match_ids": [
+          "w11397"
+        ],
         "queries": [
           {
             "query": "가게",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "가게",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11397",
+                "lemma": "가게",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "가게",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -16328,15 +16836,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11394"
+        ],
+        "all_query_match_ids": [
+          "w11394"
+        ],
         "queries": [
           {
             "query": "뛰다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "뛰다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11394",
+                "lemma": "뛰다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "뛰다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -16450,15 +16975,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11393"
+        ],
+        "all_query_match_ids": [
+          "w11393"
+        ],
         "queries": [
           {
             "query": "받아들이다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "받아들이다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11393",
+                "lemma": "받아들이다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "받아들이다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -16572,15 +17114,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11395"
+        ],
+        "all_query_match_ids": [
+          "w11395"
+        ],
         "queries": [
           {
             "query": "밝히다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "밝히다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11395",
+                "lemma": "밝히다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "밝히다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -16877,15 +17436,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11428"
+        ],
+        "all_query_match_ids": [
+          "w11428"
+        ],
         "queries": [
           {
             "query": "풀어내다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "풀어내다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11428",
+                "lemma": "풀어내다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "풀어내다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -17121,15 +17697,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11402"
+        ],
+        "all_query_match_ids": [
+          "w11402"
+        ],
         "queries": [
           {
             "query": "꿈꾸다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "꿈꾸다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11402",
+                "lemma": "꿈꾸다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "꿈꾸다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -17992,15 +18585,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11421"
+        ],
+        "all_query_match_ids": [
+          "w11421"
+        ],
         "queries": [
           {
             "query": "도시락",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "도시락",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11421",
+                "lemma": "도시락",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "도시락",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -18175,15 +18785,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11422"
+        ],
+        "all_query_match_ids": [
+          "w11422"
+        ],
         "queries": [
           {
             "query": "금고",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "금고",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11422",
+                "lemma": "금고",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "금고",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -18297,15 +18924,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11423"
+        ],
+        "all_query_match_ids": [
+          "w11423"
+        ],
         "queries": [
           {
             "query": "앞치마",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "앞치마",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11423",
+                "lemma": "앞치마",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "앞치마",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -18480,15 +19124,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11415"
+        ],
+        "all_query_match_ids": [
+          "w11415"
+        ],
         "queries": [
           {
             "query": "양말",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "양말",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11415",
+                "lemma": "양말",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "양말",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -21408,15 +22069,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11432"
+        ],
+        "all_query_match_ids": [
+          "w11432"
+        ],
         "queries": [
           {
             "query": "물길",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "물길",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11432",
+                "lemma": "물길",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "물길",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -21469,15 +22147,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11404"
+        ],
+        "all_query_match_ids": [
+          "w11404"
+        ],
         "queries": [
           {
             "query": "시내",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "시내",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11404",
+                "lemma": "시내",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "시내",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -21652,15 +22347,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11431"
+        ],
+        "all_query_match_ids": [
+          "w11431"
+        ],
         "queries": [
           {
             "query": "수로",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "수로",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11431",
+                "lemma": "수로",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "수로",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -21774,15 +22486,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12219"
+        ],
+        "all_query_match_ids": [
+          "w12219"
+        ],
         "queries": [
           {
             "query": "하수구",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "하수구",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12219",
+                "lemma": "하수구",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "하수구",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -24702,15 +25431,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11408"
+        ],
+        "all_query_match_ids": [
+          "w11408"
+        ],
         "queries": [
           {
             "query": "근육",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "근육",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11408",
+                "lemma": "근육",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "근육",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -24763,15 +25509,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11441"
+        ],
+        "all_query_match_ids": [
+          "w11441"
+        ],
         "queries": [
           {
             "query": "힘줄",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "힘줄",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11441",
+                "lemma": "힘줄",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "힘줄",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -24946,15 +25709,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11440"
+        ],
+        "all_query_match_ids": [
+          "w11440"
+        ],
         "queries": [
           {
             "query": "골수",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "골수",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11440",
+                "lemma": "골수",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "골수",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -25068,15 +25848,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11420"
+        ],
+        "all_query_match_ids": [
+          "w11420"
+        ],
         "queries": [
           {
             "query": "혈관",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "혈관",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11420",
+                "lemma": "혈관",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "혈관",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -25495,15 +26292,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11439"
+        ],
+        "all_query_match_ids": [
+          "w11439"
+        ],
         "queries": [
           {
             "query": "핏자국",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "핏자국",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11439",
+                "lemma": "핏자국",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "핏자국",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -25739,15 +26553,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11426"
+        ],
+        "all_query_match_ids": [
+          "w11426"
+        ],
         "queries": [
           {
             "query": "흉터",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "흉터",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11426",
+                "lemma": "흉터",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "흉터",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -25800,15 +26631,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11435"
+        ],
+        "all_query_match_ids": [
+          "w11435"
+        ],
         "queries": [
           {
             "query": "주름살",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "주름살",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11435",
+                "lemma": "주름살",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "주름살",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -30253,15 +31101,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11438"
+        ],
+        "all_query_match_ids": [
+          "w11438"
+        ],
         "queries": [
           {
             "query": "두루마기",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "두루마기",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11438",
+                "lemma": "두루마기",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "두루마기",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -31107,15 +31972,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11627"
+        ],
+        "all_query_match_ids": [
+          "w11627"
+        ],
         "queries": [
           {
             "query": "초롱",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "초롱",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11627",
+                "lemma": "초롱",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "초롱",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -31229,15 +32111,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11434"
+        ],
+        "all_query_match_ids": [
+          "w11434"
+        ],
         "queries": [
           {
             "query": "병풍",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "병풍",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11434",
+                "lemma": "병풍",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "병풍",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -31717,15 +32616,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11877"
+        ],
+        "all_query_match_ids": [
+          "w11877"
+        ],
         "queries": [
           {
             "query": "도토리",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "도토리",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11877",
+                "lemma": "도토리",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "도토리",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -32690,15 +33606,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11379"
+        ],
+        "all_query_match_ids": [
+          "w11379"
+        ],
         "queries": [
           {
             "query": "좋다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "좋다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11379",
+                "lemma": "좋다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "좋다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -33085,15 +34018,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11380"
+        ],
+        "all_query_match_ids": [
+          "w11380"
+        ],
         "queries": [
           {
             "query": "자신",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "자신",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11380",
+                "lemma": "자신",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "자신",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -33268,15 +34218,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11381"
+        ],
+        "all_query_match_ids": [
+          "w11381"
+        ],
         "queries": [
           {
             "query": "시간",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "시간",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11381",
+                "lemma": "시간",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "시간",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -33724,15 +34691,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11382"
+        ],
+        "all_query_match_ids": [
+          "w11382"
+        ],
         "queries": [
           {
             "query": "먹다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "먹다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11382",
+                "lemma": "먹다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "먹다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -34192,15 +35176,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11383"
+        ],
+        "all_query_match_ids": [
+          "w11383"
+        ],
         "queries": [
           {
             "query": "세상",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "세상",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11383",
+                "lemma": "세상",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "세상",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -34767,15 +35768,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11384"
+        ],
+        "all_query_match_ids": [
+          "w11384"
+        ],
         "queries": [
           {
             "query": "사실",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "사실",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11384",
+                "lemma": "사실",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "사실",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -34979,15 +35997,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11385"
+        ],
+        "all_query_match_ids": [
+          "w11385"
+        ],
         "queries": [
           {
             "query": "죽다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "죽다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11385",
+                "lemma": "죽다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "죽다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -35101,15 +36136,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11386"
+        ],
+        "all_query_match_ids": [
+          "w11386"
+        ],
         "queries": [
           {
             "query": "작다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "작다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11386",
+                "lemma": "작다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "작다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -35374,15 +36426,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11387"
+        ],
+        "all_query_match_ids": [
+          "w11387"
+        ],
         "queries": [
           {
             "query": "나가다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "나가다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11387",
+                "lemma": "나가다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "나가다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -35435,15 +36504,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11388"
+        ],
+        "all_query_match_ids": [
+          "w11388"
+        ],
         "queries": [
           {
             "query": "들어오다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "들어오다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11388",
+                "lemma": "들어오다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "들어오다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -36768,15 +37854,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11389"
+        ],
+        "all_query_match_ids": [
+          "w11389"
+        ],
         "queries": [
           {
             "query": "정신",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "정신",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11389",
+                "lemma": "정신",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "정신",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -37009,15 +38112,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11390"
+        ],
+        "all_query_match_ids": [
+          "w11390"
+        ],
         "queries": [
           {
             "query": "들리다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "들리다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11390",
+                "lemma": "들리다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "들리다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -37070,15 +38190,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11391"
+        ],
+        "all_query_match_ids": [
+          "w11391"
+        ],
         "queries": [
           {
             "query": "힘들다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "힘들다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11391",
+                "lemma": "힘들다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "힘들다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -37750,15 +38887,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w11392"
+        ],
+        "all_query_match_ids": [
+          "w11392"
+        ],
         "queries": [
           {
             "query": "존재",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "존재",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w11392",
+                "lemma": "존재",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "존재",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },

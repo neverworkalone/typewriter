@@ -263,3 +263,57 @@ test('the legacy fan-out entrypoints refuse batch 11 and later', async () => {
   await assert.rejects(() => splitRunForAmendment({ batchId: later, directory: 'unused', shard: 1, ordinal: 1 }), /self-check contract/u);
   await assert.rejects(() => mergeAuthors({ batchId: later, directory: 'unused' }), /primary agent/u);
 });
+
+test('self-check evidence gate accepts context-specific passes and rejects templated or definition-only ones', async () => {
+  const { assertSelfCheckEvidenceIsSpecific } = await import('./review-workflow.mjs');
+  const mk = (ordinal, lemma, gloss, sense, frame, use = `${lemma}의 쓰임을 ${ordinal}번째로 점검했다.`) => ({
+    ordinal, lemma, verdict: 'pass', note_hit_checked: [0, 1], sense_note: sense, use_note: use, frames: [frame],
+  });
+  const SCENES = ['시장 골목', '학교 운동장', '병원 복도', '강가 나루', '산속 절간', '공항 대합실', '부엌 아궁이', '극장 로비', '공장 창고', '도서관 열람실', '항구 부두', '들판 논둑'];
+  const proposals = Array.from({ length: 12 }, (_, i) => ({ gloss: `풀이 번호 ${i}.` }));
+  const good = Array.from({ length: 12 }, (_, i) => mk(i + 1, `낱말${i}`, '', `문맥 0: ${SCENES[i]}에서 쓰임; 문맥 1: ${SCENES[(i + 5) % 12]}을 가리킴`, `낱말${i}을 보았다.`, `${SCENES[i]}과 ${SCENES[(i + 7) % 12]}가 같은 뜻으로 읽힌다.`));
+  assert.doesNotThrow(() => assertSelfCheckEvidenceIsSpecific(good, proposals));
+  const templated = good.map((row) => ({ ...row, sense_note: `문맥 0·문맥 1 모두 ${row.lemma}의 풀이 「풀이 번호 ${row.ordinal - 1}」와 맞는다.`, use_note: '같은 뜻으로 읽힌다.' }));
+  assert.throws(() => assertSelfCheckEvidenceIsSpecific(templated, proposals), /repeat the same/u);
+  const missingContext = good.map((row, i) => (i === 0 ? { ...row, sense_note: '문맥 0만 확인했다.' } : row));
+  assert.throws(() => assertSelfCheckEvidenceIsSpecific(missingContext, proposals), /checked context 1/u);
+  const definition = good.map((row, i) => (i === 0 ? { ...row, frames: [`'${row.lemma}'은(는) '풀이'라는 뜻이다.`] } : row));
+  assert.throws(() => assertSelfCheckEvidenceIsSpecific(definition, proposals), /usage sentence/u);
+  const echo = good.map((row, i) => (i === 0 ? { ...row, frames: ['풀이 번호 0이 그대로 쓰였다.'] } : row));
+  assert.throws(() => assertSelfCheckEvidenceIsSpecific(echo, proposals), /usage sentence/u);
+});
+
+test('reviewer frames for a verb must be real forms of the lemma, not a stem collision', () => {
+  const verb = (lemma) => ({ ...candidate('가락'), proposed_lemma: lemma, proposed_pos: 'verb' });
+  const out = (lemma, frame) => ({ ...PASS, lemma, frames: [frame] });
+  const proposal = (lemma) => ({ ordinal: 1, lemma, disposition: 'admit', gloss: ADMIT.gloss });
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '그는 학교에 갔다.'), proposal('가다'), verb('가다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('듣다', '그 말을 들었다.'), proposal('듣다'), verb('듣다'), 1));
+  assert.throws(() => validateReviewerOutput(out('가다', '눈을 감고 잤다.'), proposal('가다'), verb('가다'), 1), /citation form/u);
+  const adj = (lemma) => ({ ...candidate('가락'), proposed_lemma: lemma, proposed_pos: 'adjective' });
+  assert.doesNotThrow(() => validateReviewerOutput(out('예쁘다', '꽃이 예쁩니다.'), proposal('예쁘다'), adj('예쁘다'), 1));
+  assert.throws(() => validateReviewerOutput(out('예쁘다', '우리 모두 예쁩시다.'), proposal('예쁘다'), adj('예쁘다'), 1), /citation form/u);
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '우리 함께 갑시다.'), proposal('가다'), verb('가다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '교장 선생님이 학교에 가십니다.'), proposal('가다'), verb('가다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('일하다', '그는 종일 일한 뒤에 쉬었다.'), proposal('일하다'), verb('일하다'), 1));
+  assert.throws(() => validateReviewerOutput(out('일하다', '그는 종일 일하은 뒤에 쉬었다.'), proposal('일하다'), verb('일하다'), 1), /citation form/u);
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '선생님이 학교에 가시겠습니다!'), proposal('가다'), verb('가다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '선생님이 내일 학교에 가시겠다고 말씀하셨다.'), proposal('가다'), verb('가다'), 1));
+  assert.throws(() => validateReviewerOutput(out('가다', '선생님이 학교에 가시겠말!'), proposal('가다'), verb('가다'), 1), /citation form/u);
+  assert.throws(() => validateReviewerOutput(out('가다', '선생님이 학교에 가시겠.'), proposal('가다'), verb('가다'), 1), /citation form/u);
+  assert.throws(() => validateReviewerOutput(out('가다', '선생님이 학교에 가시겠말.'), proposal('가다'), verb('가다'), 1), /citation form/u);
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '선생님은 학교에 가시겠어요?'), proposal('가다'), verb('가다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('묻다', '씨앗을 묻으세요.'), proposal('묻다'), verb('묻다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('묻다', '선생님께 물으세요.'), proposal('묻다'), verb('묻다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('듣다', '선생님이 그 말을 들으세요.'), proposal('듣다'), verb('듣다'), 1));
+  assert.throws(() => validateReviewerOutput(out('듣다', '그 말을 듣으세요.'), proposal('듣다'), verb('듣다'), 1), /citation form/u);
+  assert.doesNotThrow(() => validateReviewerOutput(out('오다', '여기 오세요.'), proposal('오다'), verb('오다'), 1));
+  assert.throws(() => validateReviewerOutput(out('가다', '그는 학교에 갑니다말.'), proposal('가다'), verb('가다'), 1), /citation form/u);
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '선생님이 학교에 가시겠지만 늦을 거예요.'), proposal('가다'), verb('가다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('먹다', '그는 밥을 먹어서 잠들었다.'), proposal('먹다'), verb('먹다'), 1));
+  assert.throws(() => validateReviewerOutput(out('먹다', '그는 밥을 먹어서말 잠들었다.'), proposal('먹다'), verb('먹다'), 1), /citation form/u);
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '그는 학교에 갑니다.'), proposal('가다'), verb('가다'), 1));
+  assert.throws(() => validateReviewerOutput(out('듣다', '그 말을 듣어.'), proposal('듣다'), verb('듣다'), 1), /citation form/u);
+  assert.throws(() => validateReviewerOutput(out('받다', '발을 씻었다.'), proposal('받다'), verb('받다'), 1), /citation form/u);
+  assert.throws(() => validateReviewerOutput(out('가다', '그는 가게에서 책을 샀다.'), proposal('가다'), verb('가다'), 1), /citation form/u);
+});

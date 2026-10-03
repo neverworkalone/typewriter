@@ -28,6 +28,7 @@ import {
   assertDecisionClaimsTruthful,
   assertReviewContractForBatch,
   assertSelfCheckEnvelope,
+  frameUsesLemma,
   isSelfCheckInput,
   SELF_CHECK_PROVENANCE,
 } from './semantic-self-check.mjs';
@@ -512,7 +513,7 @@ export function assertIndependentSemanticReviewer({ reviewer, candidateAuthor, r
 const RELATION_TYPES = ['direct', 'near', 'mood', 'scene', 'sensory', 'action', 'association'];
 const nonEmpty = (value) => typeof value === 'string' && value.trim().length > 0;
 
-function assertAuthoredSemanticReview(review, candidate, glossDigest) {
+export function assertAuthoredSemanticReview(review, candidate, glossDigest, pos) {
   const label = `${candidate.lemma} semantic review`;
   assert.equal(review.lemma, candidate.lemma, `${label} is bound to its lemma`);
   assert.equal(review.gloss_sha256, glossDigest, `${label} must bind the exact reviewed gloss`);
@@ -525,7 +526,7 @@ function assertAuthoredSemanticReview(review, candidate, glossDigest) {
   ]) assert.ok(nonEmpty(review[field]), `${label} requires authored ${field}`);
   assert.ok(Array.isArray(review.frames) && review.frames.length > 0, `${label} requires authored frames`);
   for (const frame of review.frames) {
-    assert.ok(nonEmpty(frame.sentence_frame) && frame.sentence_frame.includes(candidate.lemma),
+    assert.ok(nonEmpty(frame.sentence_frame) && frameUsesLemma(frame.sentence_frame, candidate.lemma, pos),
       `${label} frames must use the lemma`);
     assert.ok(RELATION_TYPES.includes(frame.relation_type), `${label} frame needs a supported relation type`);
     assert.ok(nonEmpty(frame.target_class), `${label} frame needs a route target class`);
@@ -549,7 +550,7 @@ export function makeSemanticDecision(row, candidate, rank, passId, sourceId, aut
   assert.ok(authoredReview, `${candidate.lemma}: admitted candidate requires an independently authored semantic review`);
   const domainAxes = inspectWriterDomainEvidence(sense.gloss).axes;
   const glossDigest = sha256Json(sense.gloss);
-  assertAuthoredSemanticReview(authoredReview, candidate, glossDigest);
+  assertAuthoredSemanticReview(authoredReview, candidate, glossDigest, row.morphology_proposal?.pos);
   const boundaryDecision = domainAxes.length > 1 ? 'coordinated' : 'atomic';
   const topicFragments = findAmbiguousParticleFragments(sense.gloss);
   const topicAnalysisFor = (fragment) => ({

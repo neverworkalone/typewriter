@@ -22,6 +22,12 @@ import {
   shortCountsPathFor,
   tallyParagraphs,
 } from './short-query-counts.mjs';
+import {
+  buildShortQueryPostings,
+  decodePostings,
+  encodePostings,
+  shortPostingsPathFor,
+} from './short-query-postings.mjs';
 
 let fts5TrigramError;
 try {
@@ -672,4 +678,79 @@ test('bigram tallies count a paragraph once and treat supplementary characters a
   assert.equal(counts.get('😀가'), 1);
   assert.equal(counts.get('가😀'), 1);
   assert.equal(counts.has('가나가'), false);
+});
+
+test('posting codec round-trips ascending rowids, truncates at the limit and rejects malformed blobs', () => {
+  const rowids = [0, 1, 127, 128, 16384, 4_988_969, 4_988_970];
+  const blob = encodePostings(rowids);
+  assert.deepEqual(decodePostings(blob, Infinity, rowids.length), rowids);
+  assert.deepEqual(decodePostings(blob, 3), rowids.slice(0, 3));
+  assert.equal(decodePostings(blob, Infinity, rowids.length + 1), null);
+  assert.equal(decodePostings(Uint8Array.from([0x80]), Infinity), null);
+  assert.throws(() => encodePostings([5, 4]), RangeError);
+});
+
+test('two-character search through postings equals the exact scan for every bigram, limit and threshold', {
+  skip: hasFts5Trigram ? false : fts5TrigramError.message,
+}, async () => {
+  const directory = await makeTemporaryDirectory();
+  const corpusDirectory = await makeCorpus(directory);
+  const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);
+  const database = new DatabaseSync(outputPath, { readOnly: true });
+  const bigrams = new Set(['없는쌍', '쿵쿵']);
+  for (const row of database.prepare('SELECT form FROM paragraphs').all()) {
+    const characters = [...row.form];
+    for (let index = 0; index + 1 < characters.length; index += 1) bigrams.add(characters[index] + characters[index + 1]);
+  }
+  database.close();
+  const queries = [...bigrams].filter((query) => [...query].length === 2);
+  const scanning = createCorpusIndexReader({ databasePath: outputPath, useShortCounts: false, useShortPostings: false });
+  const limits = [1, 2, 3, 100, 200];
+  const expected = queries.map((query) => limits.map((limit) => scanning.search(query, limit)));
+  const oneCharacter = scanning.search(queries[0][0], 5);
+  const threeCharacters = scanning.search(`${queries[0]}${queries[0][0]}`, 5);
+  scanning.close();
+  assert.ok(expected.some((rows) => rows[0].length > 0));
+
+  const withoutSidecar = createCorpusIndexReader({ databasePath: outputPath });
+  assert.deepEqual(queries.map((query) => limits.map((limit) => withoutSidecar.search(query, limit))), expected);
+  withoutSidecar.close();
+
+  // maxCount 1 stores postings only for single-paragraph bigrams, so the
+  // common-bigram scan path and the posting path are both exercised.
+  for (const maxCount of [1, 2, 5000]) {
+    const built = await buildShortQueryPostings({ indexPath: outputPath, maxCount });
+    assert.equal(built.outputPath, shortPostingsPathFor(outputPath));
+    assert.ok(built.distinctBigramCount > 0);
+    const cached = createCorpusIndexReader({ databasePath: outputPath });
+    assert.deepEqual(queries.map((query) => limits.map((limit) => cached.search(query, limit))), expected);
+    assert.deepEqual(cached.search(queries[0][0], 5), oneCharacter);
+    assert.deepEqual(cached.search(`${queries[0]}${queries[0][0]}`, 5), threeCharacters);
+    assert.deepEqual(cached.search('쿵쿵', 5), []);
+    cached.close();
+  }
+
+  // A corrupted or misleading posting list is detected and the exact scan answers.
+  const sidecar = new DatabaseSync(shortPostingsPathFor(outputPath));
+  sidecar.exec('UPDATE short_postings SET rowids = X\'0102\' WHERE rowids IS NOT NULL');
+  sidecar.close();
+  const corrupt = createCorpusIndexReader({ databasePath: outputPath });
+  assert.deepEqual(queries.map((query) => limits.map((limit) => corrupt.search(query, limit))), expected);
+  corrupt.close();
+
+  // Deleting known bigram rows while keeping valid metadata must not turn real matches into empty results.
+  const deleted = new DatabaseSync(shortPostingsPathFor(outputPath));
+  deleted.exec('DELETE FROM short_postings');
+  deleted.close();
+  const missingRows = createCorpusIndexReader({ databasePath: outputPath });
+  assert.deepEqual(queries.map((query) => limits.map((limit) => missingRows.search(query, limit))), expected);
+  missingRows.close();
+
+  // A sidecar built for different rows is ignored.
+  const stale = new DatabaseSync(shortPostingsPathFor(outputPath));
+  stale.exec("UPDATE sidecar_metadata SET value = 'stale' WHERE key = 'index_logical_rows_sha256'");
+  stale.close();
+  const ignored = createCorpusIndexReader({ databasePath: outputPath });
+  assert.deepEqual(queries.map((query) => limits.map((limit) => ignored.search(query, limit))), expected);
+  ignored.close();
 });
