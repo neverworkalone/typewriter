@@ -228,7 +228,7 @@ test('the separate-reviewer workflow is refused for self-check batches only', ()
   assert.throws(() => assertLegacyReviewWorkflowAllowed('bogus'), /unsupported batch id/u);
 });
 
-test('the self-check binding enforces evidence specificity from batch 15 at the builder/validator boundary', () => {
+test('the self-check binding enforces evidence specificity from batch 14 at the builder/validator boundary', () => {
   const lemmas = ['가나', '다라', '마바'];
   const specific = {
     가나: ['문맥 0: 시장 골목의 가게; 문맥 1: 학교 앞의 가게', '뜻이 갈리는 동음이의 용법이 없다', '가나에 들렀다.'],
@@ -254,6 +254,6 @@ test('the self-check binding enforces evidence specificity from batch 15 at the 
   const definition = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
   assert.throws(() => binding(definition), /usage sentence/u);
   // Earlier self-check batches keep their original contract.
-  const legacy = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: ${specific[l][0].replace(/문맥 [0-9]: /gu, '')}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
+  const legacy = build('issue-223-m9-e-corpus-batch-13-20261003', (l) => `${l}: ${specific[l][0].replace(/문맥 [0-9]: /gu, '')}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
   assert.doesNotThrow(() => binding(legacy));
 });

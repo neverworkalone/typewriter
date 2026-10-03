@@ -20,7 +20,7 @@ import { admissionGateFor, assertReviewNotesAreCandidateSpecific } from './revie
 
 export const SELF_CHECK_PROVENANCE = 'agent-self-check';
 export const SELF_CHECK_FIRST_BATCH = 11;
-export const SELF_CHECK_SPECIFIC_FIRST_BATCH = 15;
+export const SELF_CHECK_SPECIFIC_FIRST_BATCH = 14;
 const FRAME_DEFINITION_FORM = /['"「][^'"」]+['"」](?:은|는|은\(는\)|이|가)\s*['"「][^'"」]+['"」]/u;
 const MAX_REPEATED_SELF_CHECK_SHARE = 0.1;
 
