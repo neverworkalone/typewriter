@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import Ajv from 'ajv';
 
-import { buildDictionary } from '../build/dictionary.mjs';
+import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
@@ -259,26 +259,28 @@ async function validateReportSchema(report) {
   assert.equal(validate(report), true, `Issue #219 machine report schema: ${ajv.errorsText(validate.errors)}`);
 }
 
-async function validateDeterministicCurrentBuild() {
+async function validateDeterministicCurrentBuild(canonicalRevision) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-219-determinism-'));
   const snapshots = [];
   try {
-    for (const name of ['first', 'second']) {
-      const outputPath = path.join(temporaryDirectory, `${name}.sqlite`);
-      await buildDictionary({
-        inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
-        outputPath,
-        allowDirty: true,
-        repositoryDirectory: ROOT,
-      });
-      const database = new DatabaseSync(outputPath, { readOnly: true });
+    // Normal CI reuses the one shared current-revision artifact; the independent
+    // two-build proof runs for standalone/deep invocations.
+    const { databasePaths, reusedSharedArtifact } = await prepareCurrentRevisionDatabases({
+      canonicalRevision,
+      temporaryDirectory,
+      repositoryDirectory: ROOT,
+    });
+    for (const databasePath of databasePaths) {
+      const database = new DatabaseSync(databasePath, { readOnly: true });
       try {
         snapshots.push(readLogicalDatabaseSnapshot(database));
       } finally {
         database.close();
       }
     }
-    assert.deepEqual(snapshots[1], snapshots[0], 'repeated current canonical SQLite builds have equal logical contents');
+    if (!reusedSharedArtifact) {
+      assert.deepEqual(snapshots[1], snapshots[0], 'repeated current canonical SQLite builds have equal logical contents');
+    }
     return snapshots[0];
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -471,11 +473,12 @@ export async function validateIssue219({ writeReport = false } = {}) {
     baseRecords: historicalCanonical.records,
     admittedRecords: importRecords,
     units: candidateSource.units,
+    canonicalRevision: currentCanonical.canonicalRevision,
     batchLabel: 'Issue #219',
     temporaryPrefix: 'typewriter-issue-219-search-',
     workflowLemmas: [],
   });
-  const logicalDatabase = await validateDeterministicCurrentBuild();
+  const logicalDatabase = await validateDeterministicCurrentBuild(currentCanonical.canonicalRevision);
 
   const candidateRows = materialized.identities.map((identity) => {
     const record = importRecords.find(({ id }) => id === identity.candidate_record_id);

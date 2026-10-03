@@ -155,9 +155,11 @@ test('records SQLite build events for parent evidence to aggregate', async () =>
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-process-metrics-'));
   const metricsPath = path.join(temporaryDirectory, 'metrics.jsonl');
   const previousMetricsPath = process.env.TYPEWRITER_PROCESS_METRICS_PATH;
+  const previousPhase = process.env.TYPEWRITER_CI_PHASE;
 
   try {
     process.env.TYPEWRITER_PROCESS_METRICS_PATH = metricsPath;
+    delete process.env.TYPEWRITER_CI_PHASE;
     markSQLiteBuild(context, 2);
     const events = (await readFile(metricsPath, 'utf8'))
       .trim()
@@ -169,9 +171,12 @@ test('records SQLite build events for parent evidence to aggregate', async () =>
       count: 2,
       canonical_directory: context.canonicalDirectory,
       canonical_revision: context.canonicalRevision,
+      phase: 'normal',
     }]);
     assert.equal(context.metrics.sqlite_build_count, 2);
   } finally {
+    if (previousPhase === undefined) delete process.env.TYPEWRITER_CI_PHASE;
+    else process.env.TYPEWRITER_CI_PHASE = previousPhase;
     if (previousMetricsPath === undefined) delete process.env.TYPEWRITER_PROCESS_METRICS_PATH;
     else process.env.TYPEWRITER_PROCESS_METRICS_PATH = previousMetricsPath;
     await rm(temporaryDirectory, { recursive: true, force: true });
