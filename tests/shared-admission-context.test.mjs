@@ -9,7 +9,7 @@ import {
   isVerifiedImmutable,
   memoizedDigest,
 } from '../scripts/validate/immutable-digest.mjs';
-import { productionValueSha256 } from '../scripts/batch/lexical-production-state.mjs';
+import { productionSourceBytes, productionValueSha256 } from '../scripts/batch/lexical-production-state.mjs';
 import {
   assertCompleteRevisionChecksReused,
   createSharedAdmissionContext,
@@ -284,4 +284,26 @@ test('a memoized complete-revision success never skips the batch-specific base c
     (error) => error.code === 'SEMANTIC_AUDIT_CORRECTION_REQUIRED',
   );
   assert.ok(shared.semanticAuditCache.completeRevisionStats.coverage.reused >= 1);
+});
+
+test('production source bytes of immutable values are independent copies and match unfrozen serialization', () => {
+  const frozen = { record: '고요하다', senses: [{ id: 's1', gloss: '조용하다.' }] };
+  const unfrozen = structuredClone(frozen);
+  deepFreezeJson(frozen);
+  const expectedBytes = productionSourceBytes(unfrozen);
+  const expectedDigest = productionValueSha256(unfrozen);
+
+  const first = productionSourceBytes(frozen);
+  assert.deepEqual(first, expectedBytes);
+  first[0] ^= 1; // a caller mutates the returned Buffer
+  const second = productionSourceBytes(frozen);
+  assert.notEqual(second, first, 'every call returns its own Buffer');
+  assert.deepEqual(second, expectedBytes, 'a caller cannot change later bytes');
+  assert.equal(productionValueSha256(frozen), expectedDigest);
+  assert.equal(productionValueSha256(frozen), expectedDigest);
+
+  // Arrays of the same frozen subgraph, repeated, stay equivalent to unfrozen input.
+  const list = [frozen, frozen];
+  assert.deepEqual(productionSourceBytes(list), productionSourceBytes([unfrozen, unfrozen]));
+  assert.equal(productionValueSha256(list), productionValueSha256([unfrozen, unfrozen]));
 });

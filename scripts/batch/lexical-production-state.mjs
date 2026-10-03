@@ -261,14 +261,15 @@ function replayStageBytes(stageId, sourceBytes) {
   });
 }
 
-// The serialization of a verified-immutable value is fixed, so its bytes are reused.
-// Callers treat the returned bytes as read-only (they are digested or copied).
+// The serialization of a verified-immutable value is fixed, so it is computed once.
+// A Buffer is mutable even when its source is frozen, so the cache stays private and
+// every caller receives its own independent copy.
 export function productionSourceBytes(value) {
-  return memoizedDigest(
+  return Buffer.from(memoizedDigest(
     'production-source-bytes',
     value,
     () => Buffer.from(`${JSON.stringify(value)}\n`, 'utf8'),
-  );
+  ));
 }
 
 export function productionValueSha256(value) {
