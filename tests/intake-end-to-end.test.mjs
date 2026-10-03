@@ -80,6 +80,8 @@ test('shared admission rejects QA not bound to the hand-off, mismatched audits a
     const changed = await runIntake({ candidates: withHits(hits), analyzer });
     assert.throws(() => admitHandoffs(changed, qa), (error) => error.code === 'QA_HANDOFF_BINDING_MISMATCH');
   }
+  const editedGloss = { 바람: { ...qa.바람, gloss: '다른 뜻으로 바뀐 풀이.' } };
+  assert.throws(() => admitHandoffs(reviewed, editedGloss), (error) => error.code === 'QA_HANDOFF_BINDING_MISMATCH');
   assert.throws(() => admitHandoffs(reviewed, qa, { tamperAudit: true }), (error) => error.code === 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
   assert.throws(() => admitHandoffs(reviewed, qa, { omitAudit: true }), (error) => /semantic audit|SEMANTIC_AUDIT/i.test(`${error.code} ${error.message}`));
   const held = await runIntake({ candidates: corpusAdapter({ candidates: [{ proposed_lemma: '바람', proposed_pos: 'noun', decision_state: 'held', ambiguity_status: 'held_oov_morphology' }] }), analyzer });

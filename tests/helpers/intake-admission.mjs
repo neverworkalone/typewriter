@@ -28,8 +28,8 @@ function context(records) {
 
 // The semantic-QA fixture is bound to the exact hand-off it reviewed: identity
 // key, lemma/POS, evidence references and the analysis binding.
-export function qaBinding(handoff) {
-  return createHash('sha256').update(JSON.stringify(['qa-binding', handoff.key, handoff.lemma, handoff.pos, handoff.evidence ?? [], handoff.analysisBinding])).digest('hex');
+export function qaBinding(handoff, { gloss, disposition = 'included' }) {
+  return createHash('sha256').update(JSON.stringify(['qa-binding', handoff.key, handoff.lemma, handoff.pos, handoff.evidence ?? [], handoff.analysisBinding, disposition, gloss])).digest('hex');
 }
 
 // Simulates the QA step: reads each semantic_qa hand-off and records its gloss
@@ -37,7 +37,7 @@ export function qaBinding(handoff) {
 export function authorQa(run, glosses) {
   return Object.fromEntries(run.decisions
     .filter((entry) => entry.decision === 'semantic_qa' && glosses[entry.lemma])
-    .map((entry) => [entry.lemma, { gloss: glosses[entry.lemma], binding: qaBinding(entry) }]));
+    .map((entry) => [entry.lemma, { gloss: glosses[entry.lemma], binding: qaBinding(entry, { gloss: glosses[entry.lemma] }) }]));
 }
 
 // Admit hand-offs through the shared lexical admission gate. `authored` maps a
@@ -49,7 +49,7 @@ export function admitHandoffs(run, authored, { batchId = 'intake-e2e-fixture', t
     verifyAnalysisBinding(handoff, run.metadata);
     const qa = authored[handoff.lemma];
     if (!qa) continue;
-    if (qa.binding !== qaBinding(handoff)) {
+    if (qa.binding !== qaBinding(handoff, { gloss: qa.gloss })) {
       const error = new Error(`semantic QA for ${handoff.lemma} is not bound to this hand-off's identity and evidence`);
       error.code = 'QA_HANDOFF_BINDING_MISMATCH';
       throw error;
