@@ -8,9 +8,13 @@ import {
   deepFreezeJson,
   isVerifiedImmutable,
   memoizedDigest,
-} from '../scripts/batch/immutable-digest.mjs';
+} from '../scripts/validate/immutable-digest.mjs';
 import { productionValueSha256 } from '../scripts/batch/lexical-production-state.mjs';
-import { createSharedAdmissionContext } from '../scripts/batch/shared-admission-context.mjs';
+import {
+  assertCompleteRevisionChecksReused,
+  createSharedAdmissionContext,
+} from '../scripts/batch/shared-admission-context.mjs';
+import { validateSemanticAuditCoverage } from '../scripts/validate/semantic-audit.mjs';
 import { makeProductionState, makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
 
 const FIXTURE_DIRECTORY = path.resolve('tests/fixtures/lexical-quality/surface-form-canonical');
@@ -232,4 +236,52 @@ test('production digests of frozen values equal digests computed from scratch', 
   assert.equal(productionValueSha256(records), fresh);
   assert.equal(productionValueSha256(records), fresh);
   assert.equal(productionValueSha256([...records].reverse()) === fresh, false);
+});
+
+test('complete-revision judgments are computed once and reused by later batches', () => {
+  const records = fixtureRecords();
+  const audit = makeSemanticAudit(records);
+  const shared = sharedContext(records, audit);
+  for (const batchIndex of [0, 1]) {
+    validateLexicalAddition({
+      ...admissionOptions({ batchIndex, prospectiveRecords: records, semanticAudit: audit }),
+      canonicalContext: shared,
+    });
+  }
+  assertCompleteRevisionChecksReused(shared, 2);
+  const coverage = shared.semanticAuditCache.completeRevisionStats.coverage;
+  assert.equal(coverage.computed, 1, 'semantic coverage is validated once for the revision');
+  assert.ok(coverage.reused >= 1);
+  assert.equal(shared.completeRevisionStats['lexical-audit'].computed, 1);
+  assert.equal(shared.completeRevisionStats['role-relations'].computed, 1);
+
+  // Independent (unshared) validation never records reuse and cannot pass the assertion.
+  const independent = independentContext(records);
+  for (const batchIndex of [0, 1]) {
+    validateLexicalAddition({
+      ...admissionOptions({ batchIndex, prospectiveRecords: records, semanticAudit: audit }),
+      canonicalContext: independent,
+    });
+  }
+  assert.throws(() => assertCompleteRevisionChecksReused(independent, 2), /must be validated once and reused/u);
+});
+
+test('a memoized complete-revision success never skips the batch-specific base check', () => {
+  const records = fixtureRecords();
+  const audit = makeSemanticAudit(records);
+  const shared = sharedContext(records, audit);
+  const options = { requireDecisionSource: true, requireTopicAnalysis: true, hashCache: shared.semanticAuditCache };
+  // First batch: correct base, the complete-revision core is computed and remembered.
+  validateSemanticAuditCoverage(shared.records, audit, { ...options, baseRecords: [records[0]] });
+  // Later batch: a base record that differs from the prospective record without a
+  // reviewed correction must still be rejected although the core is memoized.
+  const alteredBase = [{
+    ...records[1],
+    record: { ...records[1].record, lemma: '다른말하다' },
+  }];
+  assert.throws(
+    () => validateSemanticAuditCoverage(shared.records, audit, { ...options, baseRecords: alteredBase }),
+    (error) => error.code === 'SEMANTIC_AUDIT_CORRECTION_REQUIRED',
+  );
+  assert.ok(shared.semanticAuditCache.completeRevisionStats.coverage.reused >= 1);
 });

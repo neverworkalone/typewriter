@@ -81,3 +81,14 @@ export function memoizedDigest(namespace, value, compute) {
   }
   return compute();
 }
+
+/**
+ * Evidence that complete-revision work was reused instead of repeated: counts per
+ * named check of how often its result was computed versus reused, kept on the
+ * owner (the shared audit cache or the shared canonical context).
+ */
+export function recordCompleteRevisionCheck(owner, name, kind) {
+  owner.completeRevisionStats ??= {};
+  owner.completeRevisionStats[name] ??= { computed: 0, reused: 0 };
+  owner.completeRevisionStats[name][kind] += 1;
+}

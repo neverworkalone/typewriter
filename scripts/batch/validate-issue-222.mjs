@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../build/dictionary.mjs';
-import { createSharedAdmissionContext } from './shared-admission-context.mjs';
+import { assertCompleteRevisionChecksReused, createSharedAdmissionContext } from './shared-admission-context.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
@@ -934,6 +934,7 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   assert.equal(historicalProduction.admission?.audit?.blocking_finding_count, 0, 'ordinary shared historical lexical admission blockers');
   assert.equal(historicalProduction.admission?.semantic_audit?.coverage_complete, true, 'historical batch has complete prospective semantic coverage');
 
+  assertCompleteRevisionChecksReused(admissionContext, 2 + additionalCorpusProductions.length);
   const deterministicBuild = await validateDeterministicBuild(allImportRecords);
   return {
     issue: 222,

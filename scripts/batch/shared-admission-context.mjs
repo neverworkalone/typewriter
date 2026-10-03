@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 import { createCanonicalContext } from '../validate/canonical-context.mjs';
-import { deepFreezeJson } from './immutable-digest.mjs';
+import { deepFreezeJson } from '../validate/immutable-digest.mjs';
 import { createCanonicalAuditCache } from '../validate/semantic-audit.mjs';
 
 /**
@@ -28,4 +28,31 @@ export function createSharedAdmissionContext(canonical, semanticAudit, {
   context.semanticAudit = semanticAudit;
   context.semanticAuditCache = createCanonicalAuditCache(canonical.records);
   return context;
+}
+
+/**
+ * Real-path proof that complete-revision judgments were not repeated: after a
+ * validator ran `batchCount` (>= 2) productions through one shared context, every
+ * base-independent check must have been reused for all but its first batch.
+ * A validator that silently falls back to per-batch recomputation fails here.
+ */
+export function assertCompleteRevisionChecksReused(context, batchCount) {
+  if (batchCount < 2) return;
+  const auditStats = context.semanticAuditCache?.completeRevisionStats ?? {};
+  const contextStats = context.completeRevisionStats ?? {};
+  const required = [
+    ['semantic coverage', auditStats.coverage],
+    ['semantic review core', auditStats['review-core']],
+    ['role/relation integrity', contextStats['role-relations']],
+    ['complete lexical audit', contextStats['lexical-audit']],
+    ['topic evidence', contextStats['topic-evidence']],
+  ];
+  for (const [label, stat] of required) {
+    if (!stat || stat.reused < batchCount - 1) {
+      throw new Error(
+        `complete-revision ${label} must be validated once and reused for the other `
+        + `${batchCount - 1} batch(es); observed ${JSON.stringify(stat ?? null)}`,
+      );
+    }
+  }
 }

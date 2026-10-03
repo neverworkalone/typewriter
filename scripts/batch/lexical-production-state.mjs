@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { deepFreezeJson, memoizedDigest } from './immutable-digest.mjs';
+import { deepFreezeJson, memoizedDigest } from '../validate/immutable-digest.mjs';
 
 export const LEXICAL_PRODUCTION_STATE_CONTRACT_VERSION = 'lexical-production-state-v2';
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';

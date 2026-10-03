@@ -32,7 +32,7 @@ import { validateLexicalProduction } from './lexical-production.mjs';
 import { productionReviewRows, productionStageEvidence } from './validate-issue-211.mjs';
 import { hasMorphologyBlocker, validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
-import { createSharedAdmissionContext } from './shared-admission-context.mjs';
+import { assertCompleteRevisionChecksReused, createSharedAdmissionContext } from './shared-admission-context.mjs';
 import {
   buildSemanticAuditFromDecisionSource,
   canonicalRecordsSha256,
@@ -694,6 +694,8 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
     assert.equal(production.admission?.semantic_audit?.coverage_complete, true, `${batch.batch_id} semantic coverage`);
     return { batch_id: batch.batch_id, blocking_findings: production.admission.audit.blocking_finding_count, semantic_coverage_complete: production.admission.semantic_audit.coverage_complete };
   });
+
+  assertCompleteRevisionChecksReused(admissionContext, productionResults.length);
 
   const currentRecords = currentCanonical.records.map(recordOf);
   const duplicateLemmas = new Map();

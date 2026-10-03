@@ -15,6 +15,7 @@ import {
   inspectWriterDomainEvidence,
   validateTopicAnalysisEvidence,
 } from './lexical-quality.mjs';
+import { isVerifiedImmutable, recordCompleteRevisionCheck } from './immutable-digest.mjs';
 import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 import {
   AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
@@ -238,6 +239,36 @@ function isCanonicalAuditCache(hashCache, recordInfos) {
     hashCache?.[CANONICAL_AUDIT_CACHE_TOKEN] === true
       && hashCache.recordInfos === recordInfos,
   );
+}
+
+/**
+ * Reuse the *successful* result of a base-independent complete-canonical check.
+ * Only valid when the audit cache describes exactly this record array, and both
+ * the validated artifact and every record are verified-immutable (deep-frozen),
+ * so the inputs cannot have changed since the first success. A failed check is
+ * never stored; anything not provably unchanged is validated again.
+ */
+function memoizedCompleteValidation(hashCache, recordInfos, artifact, key, compute) {
+  if (!isCanonicalAuditCache(hashCache, recordInfos)
+    || !isVerifiedImmutable(artifact)
+    || !recordInfos.every(isVerifiedImmutable)) {
+    return compute();
+  }
+  hashCache.completeValidations ??= new WeakMap();
+  let byKey = hashCache.completeValidations.get(artifact);
+  if (!byKey) {
+    byKey = new Map();
+    hashCache.completeValidations.set(artifact, byKey);
+  }
+  const statName = key.split(':')[0];
+  if (byKey.has(key)) {
+    recordCompleteRevisionCheck(hashCache, statName, 'reused');
+    return byKey.get(key);
+  }
+  const result = compute();
+  byKey.set(key, result);
+  recordCompleteRevisionCheck(hashCache, statName, 'computed');
+  return result;
 }
 
 export function cachedSha256Json(value, hashCache) {
@@ -2155,50 +2186,62 @@ export function validateSemanticReviewArtifact(
   const decisionSource = requireDecisionSource
     ? validateDecisionSourceMetadata(artifact, label)
     : artifact.decision_source;
-  validateSemanticReviewPass(recordInfos, artifact, label, { hashCache });
-  const records = recordInfos.map(recordOf);
-  const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
-  const source = requireObject(artifact.source, `${label}.source`);
-  if (source.kind !== 'canonical-jsonl-record-values') fail(`${label}.source.kind is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
-  requireDigest(source.canonical_records_sha256, `${label}.source.canonical_records_sha256`);
-  if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
-    fail(`${label}.source.canonical_records_sha256 does not match the complete canonical input`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
-  }
-  if (artifact.record_count !== records.length) fail(`${label}.record_count does not cover the complete canonical input`, 'SEMANTIC_AUDIT_SCOPE');
-  const expectedSenseCount = records.reduce((sum, record) => sum + record.senses.length, 0);
-  if (artifact.sense_count !== expectedSenseCount) fail(`${label}.sense_count does not cover every canonical sense`, 'SEMANTIC_AUDIT_SCOPE');
-  const auditedRecords = requireArray(artifact.records, `${label}.records`);
-  if (auditedRecords.length !== records.length) fail(`${label}.records must cover every canonical record`, 'SEMANTIC_AUDIT_SCOPE');
-
-  const auditedRecordsMatchCanonicalOrder = auditedRecords.every(
-    (audited, recordIndex) => audited?.record_id === records[recordIndex].id,
-  );
-  const auditedById = auditedRecordsMatchCanonicalOrder
-    ? undefined
-    : new Map();
-  if (auditedById) {
-    const recordIds = new Set();
-    for (const [recordIndex, auditedValue] of auditedRecords.entries()) {
-      const recordLabel = `${label}.records[${recordIndex}]`;
-      const audited = requireObject(auditedValue, recordLabel);
-      if (recordIds.has(audited.record_id)) fail(`${label} contains duplicate record ${audited.record_id}`, 'SEMANTIC_AUDIT_SCOPE');
-      recordIds.add(audited.record_id);
-      auditedById.set(audited.record_id, { audited, recordLabel });
+  // Everything up to the per-record review loop is independent of the batch base;
+  // only the correction diff below depends on `baseRecords`.
+  const core = memoizedCompleteValidation(
+    hashCache,
+    recordInfos,
+    artifact,
+    `review-core:${requireDecisionSource}:${requireTopicAnalysis}`,
+    () => {
+    validateSemanticReviewPass(recordInfos, artifact, label, { hashCache });
+    const records = recordInfos.map(recordOf);
+    const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
+    const source = requireObject(artifact.source, `${label}.source`);
+    if (source.kind !== 'canonical-jsonl-record-values') fail(`${label}.source.kind is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
+    requireDigest(source.canonical_records_sha256, `${label}.source.canonical_records_sha256`);
+    if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
+      fail(`${label}.source.canonical_records_sha256 does not match the complete canonical input`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
     }
-  }
-  for (const [recordIndex, record] of records.entries()) {
-    const recordLabel = `${label}.records[${recordIndex}]`;
-    const auditedEntry = auditedRecordsMatchCanonicalOrder
-      ? { audited: requireObject(auditedRecords[recordIndex], recordLabel), recordLabel }
-      : auditedById.get(record.id);
-    if (!auditedEntry) fail(`${label} is missing record ${record.id}`, 'SEMANTIC_AUDIT_SCOPE');
-    validateSemanticReviewRecord(record, auditedEntry.audited, recordLabel, {
-      decisionSourceId: decisionSource?.source_id,
-      requireDecisionSource,
-      requireTopicAnalysis,
-      hashCache,
-    });
-  }
+    if (artifact.record_count !== records.length) fail(`${label}.record_count does not cover the complete canonical input`, 'SEMANTIC_AUDIT_SCOPE');
+    const expectedSenseCount = records.reduce((sum, record) => sum + record.senses.length, 0);
+    if (artifact.sense_count !== expectedSenseCount) fail(`${label}.sense_count does not cover every canonical sense`, 'SEMANTIC_AUDIT_SCOPE');
+    const auditedRecords = requireArray(artifact.records, `${label}.records`);
+    if (auditedRecords.length !== records.length) fail(`${label}.records must cover every canonical record`, 'SEMANTIC_AUDIT_SCOPE');
+
+    const auditedRecordsMatchCanonicalOrder = auditedRecords.every(
+      (audited, recordIndex) => audited?.record_id === records[recordIndex].id,
+    );
+    const auditedById = auditedRecordsMatchCanonicalOrder
+      ? undefined
+      : new Map();
+    if (auditedById) {
+      const recordIds = new Set();
+      for (const [recordIndex, auditedValue] of auditedRecords.entries()) {
+        const recordLabel = `${label}.records[${recordIndex}]`;
+        const audited = requireObject(auditedValue, recordLabel);
+        if (recordIds.has(audited.record_id)) fail(`${label} contains duplicate record ${audited.record_id}`, 'SEMANTIC_AUDIT_SCOPE');
+        recordIds.add(audited.record_id);
+        auditedById.set(audited.record_id, { audited, recordLabel });
+      }
+    }
+    for (const [recordIndex, record] of records.entries()) {
+      const recordLabel = `${label}.records[${recordIndex}]`;
+      const auditedEntry = auditedRecordsMatchCanonicalOrder
+        ? { audited: requireObject(auditedRecords[recordIndex], recordLabel), recordLabel }
+        : auditedById.get(record.id);
+      if (!auditedEntry) fail(`${label} is missing record ${record.id}`, 'SEMANTIC_AUDIT_SCOPE');
+      validateSemanticReviewRecord(record, auditedEntry.audited, recordLabel, {
+        decisionSourceId: decisionSource?.source_id,
+        requireDecisionSource,
+        requireTopicAnalysis,
+        hashCache,
+      });
+    }
+      return { records, expectedCanonicalDigest, expectedSenseCount };
+    },
+  );
+  const { records, expectedCanonicalDigest, expectedSenseCount } = core;
   const correctedRecordCount = validateSemanticReviewChanges(
     recordInfos,
     baseRecords,
@@ -2353,7 +2396,13 @@ export function validateSemanticAuditCoverage(
     : artifact.decision_source;
   const coverage = requireObject(artifact.coverage, `${label}.coverage`);
   const review = requireObject(artifact.review, `${label}.review`);
-  const coverageResult = validateSemanticCoverageArtifact(recordInfos, coverage, `${label}.coverage`, { hashCache });
+  const coverageResult = memoizedCompleteValidation(
+    hashCache,
+    recordInfos,
+    coverage,
+    'coverage',
+    () => validateSemanticCoverageArtifact(recordInfos, coverage, `${label}.coverage`, { hashCache }),
+  );
   const reviewResult = validateSemanticReviewArtifact(recordInfos, review, {
     baseRecords,
     label: `${label}.review`,

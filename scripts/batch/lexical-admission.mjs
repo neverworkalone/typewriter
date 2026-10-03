@@ -1,3 +1,4 @@
+import { isVerifiedImmutable, recordCompleteRevisionCheck } from '../validate/immutable-digest.mjs';
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import {
   auditCanonicalLexicalQuality,
@@ -33,6 +34,54 @@ function requireBatchId(batchId) {
     throw new Error('lexical admission requires a non-empty batch_id');
   }
   return batchId;
+}
+
+const AUDIT_SCOPE_SENTINEL = '\u0000typewriter-audit-scope\u0000';
+
+function substituteAuditScope(value, scope) {
+  if (typeof value === 'string') return value.split(AUDIT_SCOPE_SENTINEL).join(scope);
+  if (Array.isArray(value)) return value.map((item) => substituteAuditScope(item, scope));
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(
+      ([key, item]) => [key, substituteAuditScope(item, scope)],
+    ));
+  }
+  return value;
+}
+
+// The complete-canonical lexical audit depends only on the record set and the
+// topic projection; the batch scope appears solely as text inside the report.
+// With a shared context over verified-immutable records it is computed once under
+// a sentinel scope and each batch receives the exact report for its own scope.
+// Any blocking finding re-runs the direct audit so the failure is identical.
+function completeLexicalAuditForScope(prospectiveInfos, {
+  scope,
+  topicEvidence,
+  sharedContext,
+  memoKey,
+}) {
+  const direct = () => auditCanonicalLexicalQuality(prospectiveInfos, {
+    scope,
+    throwOnError: true,
+    topicEvidence,
+  });
+  if (!sharedContext || !prospectiveInfos.every(isVerifiedImmutable)) return direct();
+  sharedContext.derived ??= {};
+  sharedContext.derived.admissionLexicalAudit ??= {};
+  let core = sharedContext.derived.admissionLexicalAudit[memoKey];
+  if (!core) {
+    core = auditCanonicalLexicalQuality(prospectiveInfos, {
+      scope: AUDIT_SCOPE_SENTINEL,
+      throwOnError: false,
+      topicEvidence,
+    });
+    sharedContext.derived.admissionLexicalAudit[memoKey] = core;
+    recordCompleteRevisionCheck(sharedContext, 'lexical-audit', 'computed');
+  } else {
+    recordCompleteRevisionCheck(sharedContext, 'lexical-audit', 'reused');
+  }
+  if (core.blocking_finding_count > 0) return direct();
+  return substituteAuditScope(core, scope);
 }
 
 function asRecordInfos(records, source, fallbackPath) {
@@ -241,6 +290,9 @@ function validateLexicalAdditionInternal({
   });
   const topicEvidenceKey = allowReplay ? 'replay' : 'current';
   const memoizedTopicEvidence = sharedContext?.derived?.admissionTopicEvidence?.[topicEvidenceKey];
+  if (sharedContext) {
+    recordCompleteRevisionCheck(sharedContext, 'topic-evidence', memoizedTopicEvidence ? 'reused' : 'computed');
+  }
   const topicEvidence = memoizedTopicEvidence ?? buildSemanticTopicEvidence(prospectiveInfos, semanticAudit, {
     label: `${batchId} semantic audit`,
     requireTopicAnalysis: !allowReplay,
@@ -269,10 +321,11 @@ function validateLexicalAdditionInternal({
   // Keep an explicit audit result at this boundary so callers can bind the
   // exact complete-canonical report into their gate evidence.  The dataset
   // validator has already enforced the same report before returning.
-  const audit = auditCanonicalLexicalQuality(prospectiveInfos, {
+  const audit = completeLexicalAuditForScope(prospectiveInfos, {
     scope: `${batchId}:prospective-canonical`,
-    throwOnError: true,
     topicEvidence,
+    sharedContext,
+    memoKey: topicEvidenceKey,
   });
 
   if (productionRun !== undefined) {
