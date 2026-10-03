@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
-import { admitHandoffs } from './helpers/intake-admission.mjs';
+import { admitHandoffs, authorQa } from './helpers/intake-admission.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { findRecordsBySearchTerm } from '../scripts/build/query.mjs';
 import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.mjs';
@@ -24,13 +24,13 @@ const analyzer = async (requests) => ({
 });
 // Test-fixture glosses stand in for the separate, source-bound semantic QA step.
 // A hand-off without an authored fixture entry is never admitted.
-const AUTHORED = {
+const GLOSSES = {
   푸르다: '풀이나 맑은 하늘처럼 선명하게 맑은 초록이나 파랑을 띠다.',
   바람: '공기가 움직여 느껴지는 흐름.',
 };
 
 async function admitAndSearch(run, query) {
-  const { records, audit } = admitHandoffs(run, AUTHORED);
+  const { records, audit } = admitHandoffs(run, authorQa(run, GLOSSES));
   assert.equal(audit.blocking_finding_count, 0);
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-intake-'));
   const directory = path.join(root, 'canonical');

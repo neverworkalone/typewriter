@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
-import { admitHandoffs } from './helpers/intake-admission.mjs';
+import { admitHandoffs, authorQa } from './helpers/intake-admission.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { findRecordsBySearchTerm } from '../scripts/build/query.mjs';
 import { corpusAdapter } from '../scripts/intake/adapters/corpus-adapter.mjs';
@@ -25,13 +25,13 @@ const analyzer = async (requests) => ({
 });
 // Test-fixture glosses stand in for the separate, source-bound semantic QA step.
 // A hand-off without an authored fixture entry is never admitted.
-const AUTHORED = {
+const GLOSSES = {
   푸르다: '풀이나 맑은 하늘처럼 선명하게 맑은 초록이나 파랑을 띠다.',
   바람: '공기가 움직여 느껴지는 흐름.',
 };
 
 async function admitAndSearch(run, query) {
-  const { records, audit } = admitHandoffs(run, AUTHORED);
+  const { records, audit } = admitHandoffs(run, authorQa(run, GLOSSES));
   assert.equal(audit.blocking_finding_count, 0);
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-intake-'));
   const directory = path.join(root, 'canonical');
@@ -71,10 +71,17 @@ test('adapter holds keep distinct reasons and are never admitted', async () => {
   assert.equal(run.decisions[0].decision, 'hold');
 });
 
-test('shared admission rejects mismatched QA evidence and never admits holds', async () => {
-  const run = await runIntake({ candidates: corpusAdapter({ candidates: [{ proposed_lemma: '바람', proposed_pos: 'noun', decision_state: 'candidate', coverage_status: 'uncovered' }] }), analyzer });
-  assert.throws(() => admitHandoffs(run, AUTHORED, { tamperAudit: true }), (error) => error.code === 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
-  assert.throws(() => admitHandoffs(run, AUTHORED, { omitAudit: true }), (error) => /semantic audit|SEMANTIC_AUDIT/i.test(`${error.code} ${error.message}`));
+test('shared admission rejects QA not bound to the hand-off, mismatched audits and holds', async () => {
+  const withHits = (hits) => corpusAdapter({ candidates: [{ proposed_lemma: '바람', proposed_pos: 'noun', decision_state: 'candidate', coverage_status: 'uncovered', evidence: { representative_hits: hits } }] });
+  const reviewed = await runIntake({ candidates: withHits([{ document_id: 'D.1', paragraph_id: 'D.1.18' }]), analyzer });
+  const qa = authorQa(reviewed, GLOSSES);
+  assert.equal(admitHandoffs(reviewed, qa).records.length, 1);
+  for (const hits of [[], [{ document_id: 'D.2', paragraph_id: 'D.2.5' }]]) {
+    const changed = await runIntake({ candidates: withHits(hits), analyzer });
+    assert.throws(() => admitHandoffs(changed, qa), (error) => error.code === 'QA_HANDOFF_BINDING_MISMATCH');
+  }
+  assert.throws(() => admitHandoffs(reviewed, qa, { tamperAudit: true }), (error) => error.code === 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
+  assert.throws(() => admitHandoffs(reviewed, qa, { omitAudit: true }), (error) => /semantic audit|SEMANTIC_AUDIT/i.test(`${error.code} ${error.message}`));
   const held = await runIntake({ candidates: corpusAdapter({ candidates: [{ proposed_lemma: '바람', proposed_pos: 'noun', decision_state: 'held', ambiguity_status: 'held_oov_morphology' }] }), analyzer });
-  assert.equal(admitHandoffs(held, AUTHORED).records.length, 0);
+  assert.equal(admitHandoffs(held, qa).records.length, 0);
 });
