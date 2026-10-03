@@ -10,6 +10,7 @@ import {
   assertReviewContractForBatch,
   assertSelfCheckBinding,
   assertVerbFramesGrammatical,
+  frameUsesLemma,
   assertSelfCheckEnvelope,
   assertSourceClaimsTruthful,
   isSelfCheckInput,
@@ -292,4 +293,12 @@ test('the self-check binding applies the verb frame rule from batch 13 and leave
   assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', bare)), /bare citation form|connective/u);
   assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-15-20261003', bare)), /bare citation form|connective/u);
   assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-12-20261003', bare)));
+});
+
+test('the shared lemma-in-frame rule admits correctly conjugated verb frames and still rejects unrelated ones', () => {
+  assert.equal(frameUsesLemma('그는 책을 읽었다.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 책을 읽다 못해 졸았다.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('이 책은 정말 좋았다.', '좋다', 'adjective'), true);
+  assert.equal(frameUsesLemma('그는 책을 샀다.', '읽다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 책을 읽었다.', '읽다', 'noun'), false);
 });

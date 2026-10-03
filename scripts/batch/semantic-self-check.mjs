@@ -20,6 +20,22 @@ import { admissionGateFor, assertReviewNotesAreCandidateSpecific } from './revie
 
 export const SELF_CHECK_PROVENANCE = 'agent-self-check';
 export const SELF_CHECK_FIRST_BATCH = 11;
+/**
+ * The shared frame-contains-the-lemma rule. A frame carries the citation form,
+ * or, for a verb/adjective, a conjugated form of its stem (읽었다 for 읽다),
+ * so a correctly inflected usage sentence is admissible. The grammar rule for
+ * a bare citation form stays in assertVerbFramesGrammatical.
+ */
+export function frameUsesLemma(frame, lemma, pos) {
+  if (typeof frame !== 'string') return false;
+  if (frame.includes(lemma)) return true;
+  if ((pos === 'verb' || pos === 'adjective') && lemma.length > 1 && lemma.endsWith('다')) {
+    const stem = lemma.slice(0, -1).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+    return new RegExp(`${stem}[가-힣]`, 'u').test(frame);
+  }
+  return false;
+}
+
 export const SELF_CHECK_FRAME_GRAMMAR_FIRST_BATCH = 13;
 // A verb frame may carry the citation form only where Korean grammar allows it
 // before a connective (-다가, -다니, -다 보니, -다 못해, -다 말고, ...), never

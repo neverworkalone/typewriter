@@ -29,7 +29,7 @@ import { glossFrameSpans } from './build-issue-223-corpus-batch.mjs';
 import { findAmbiguousParticleFragments, validateLexicalRecord } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { packetCandidate, shardRanges } from './make-review-packets.mjs';
-import { assertLegacyReviewWorkflowAllowed, assertNoCorpusPhraseCopy, assertPrimaryAuthoringAllowed, assertSelfCheckPassesSpecific, assertVerbFramesGrammatical, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
+import { assertLegacyReviewWorkflowAllowed, assertNoCorpusPhraseCopy, assertPrimaryAuthoringAllowed, assertSelfCheckPassesSpecific, assertVerbFramesGrammatical, frameUsesLemma, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
 import {
   admissionGateFor,
   outcomeFromRaw,
@@ -317,7 +317,7 @@ export function validateReviewerOutput(output, proposal, candidate, ordinal) {
     assert.ok(Array.isArray(output.frames) && output.frames.length === spans.length,
       `${label}: needs exactly ${spans.length} frame(s), one per gloss span`);
     for (const frame of output.frames) {
-      assert.ok(nonEmpty(frame) && frame.includes(candidate.proposed_lemma),
+      assert.ok(nonEmpty(frame) && frameUsesLemma(frame, candidate.proposed_lemma, proposal.corrected_pos ?? candidate.proposed_pos),
         `${label}: every frame must be a sentence that contains the lemma in citation form`);
     }
   } else {

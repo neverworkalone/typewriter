@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  assertAuthoredSemanticReview,
   bindAuthoredParagraphReferences,
   assertIndependentSemanticReviewer,
   assertReviewerChecks,
@@ -328,4 +329,24 @@ test('Issue #223 an admission gate holds a reviewer pass without rewriting it', 
   // An ungated pass may not claim a gate.
   const clean = { ...collided({ disposition: 'admit' }), coverage_status: 'uncovered', typewriter_surface_matches: [] };
   assert.throws(() => assertReviewerOutcomes([outcome({ admission_gate: 'coverage-collision' })], [clean]), /only a gated candidate records/u);
+});
+
+test('the builder admission path accepts a correctly conjugated verb frame and rejects a frame without the lemma', () => {
+  const candidate = { lemma: '읽다', senses: [{ gloss: '글을 눈으로 보다.' }] };
+  const gloss = candidate.senses[0].gloss;
+  const review = (sentence) => ({
+    lemma: '읽다',
+    gloss_sha256: sha256Json(gloss),
+    gloss_judgment: 'fit',
+    boundary_action: 'retain',
+    boundary_classification: 'atomic',
+    single_sense_boundary_status: 'pass',
+    boundary_rationale: 'r', semantic_rationale: 'r', no_relation_rationale: 'r', decision_rationale: 'r', frame_rationale: 'r',
+    frames: [{ sentence_frame: sentence, relation_type: 'near', target_class: '읽다의 검토된 핵심 뜻' }],
+  });
+  const digest = sha256Json(gloss);
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 책을 읽었다.'), candidate, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 책을 읽다 못해 졸았다.'), candidate, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 책을 샀다.'), candidate, digest, 'verb'), /frames must use the lemma/u);
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 책을 읽었다.'), candidate, digest, 'noun'), /frames must use the lemma/u);
 });
