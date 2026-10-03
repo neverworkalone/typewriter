@@ -227,3 +227,33 @@ test('the separate-reviewer workflow is refused for self-check batches only', ()
   assert.throws(() => assertLegacyReviewWorkflowAllowed('issue-223-m9-e-corpus-batch-11-20261003'), /self-check contract/u);
   assert.throws(() => assertLegacyReviewWorkflowAllowed('bogus'), /unsupported batch id/u);
 });
+
+test('the self-check binding enforces evidence specificity from batch 15 at the builder/validator boundary', () => {
+  const lemmas = ['가나', '다라', '마바'];
+  const specific = {
+    가나: ['문맥 0: 시장 골목의 가게; 문맥 1: 학교 앞의 가게', '뜻이 갈리는 동음이의 용법이 없다', '가나에 들렀다.'],
+    마바: ['문맥 0: 병원 복도의 움직임; 문맥 1: 강가 나루의 움직임', '활용형이 같은 동사 하나로 읽힌다', '마바 걷는 일이다.'],
+  };
+  const build = (batchId, boundary, semantic, frame) => {
+    const f = fixture();
+    f.input.batch_id = batchId;
+    f.input.reviews = ['가나', '마바'].map((lemma) => ({
+      ...review(lemma),
+      boundary_rationale: boundary(lemma),
+      semantic_rationale: semantic(lemma),
+      frames: [{ sentence_frame: frame(lemma) }],
+    }));
+    return f;
+  };
+  const good = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2]);
+  assert.doesNotThrow(() => binding(good));
+  const boiler = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: 문맥 0·문맥 1 모두 같은 뜻으로 맞는다`, (l) => `${l}: 같은 뜻으로 읽힌다`, (l) => specific[l][2]);
+  assert.throws(() => binding(boiler), /(?:repeat|reuse) the same/u);
+  const noContext = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0].split(';')[0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2]);
+  assert.throws(() => binding(noContext), /checked context 1/u);
+  const definition = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
+  assert.throws(() => binding(definition), /usage sentence/u);
+  // Earlier self-check batches keep their original contract.
+  const legacy = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: ${specific[l][0].replace(/문맥 [0-9]: /gu, '')}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
+  assert.doesNotThrow(() => binding(legacy));
+});

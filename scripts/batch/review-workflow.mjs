@@ -29,7 +29,7 @@ import { glossFrameSpans } from './build-issue-223-corpus-batch.mjs';
 import { findAmbiguousParticleFragments, validateLexicalRecord } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { packetCandidate, shardRanges } from './make-review-packets.mjs';
-import { assertLegacyReviewWorkflowAllowed, assertNoCorpusPhraseCopy, assertPrimaryAuthoringAllowed, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
+import { assertLegacyReviewWorkflowAllowed, assertNoCorpusPhraseCopy, assertPrimaryAuthoringAllowed, assertSelfCheckPassesSpecific, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
 import {
   admissionGateFor,
   outcomeFromRaw,
@@ -535,42 +535,16 @@ export async function assertNoCopiedCorpusWording({ absolute, reviews, outcomes 
   }
 }
 
-const FRAME_DEFINITION_FORM = /['"「][^'"」]+['"」](?:은|는|은\(는\)|이|가)\s*['"「][^'"」]+['"」]/u;
-const MAX_REPEATED_SELF_CHECK_SHARE = 0.1;
-
-/**
- * Self-check passes carry the only evidence for a primary-agent admission, so a
- * pass must say what each checked context shows (a note citing every checked
- * context index), its frames must be usage sentences rather than a restated
- * gloss, and the notes may not be one sentence templated over lemma and gloss.
- */
 export function assertSelfCheckEvidenceIsSpecific(rows, proposals) {
-  const groups = { sense_note: new Map(), use_note: new Map() };
-  let passes = 0;
-  for (const row of rows) {
-    if (row.verdict !== 'pass') continue;
-    passes += 1;
-    const gloss = String(proposals[row.ordinal - 1].gloss).replace(/[.\s]+$/u, '');
-    const label = `reviewer output ${row.ordinal} (${row.lemma})`;
-    for (const index of row.note_hit_checked) {
-      assert.ok(String(row.sense_note).includes(`문맥 ${index}`),
-        `${label}: sense_note must state what checked context ${index} shows`);
-    }
-    for (const frame of row.frames) {
-      assert.ok(!frame.includes(gloss) && !FRAME_DEFINITION_FORM.test(frame),
-        `${label}: a frame must be a usage sentence, not a restated definition`);
-    }
-    for (const field of ['sense_note', 'use_note']) {
-      const key = String(row[field]).split(row.lemma).join('§').split(gloss).join('¶')
-        .replace(/문맥 *[0-9]+/gu, '').replace(/[0-9]/gu, '#').replace(/\s+/gu, ' ').trim();
-      groups[field].set(key, (groups[field].get(key) ?? 0) + 1);
-    }
-  }
-  for (const [field, map] of Object.entries(groups)) {
-    const repeated = [...map.values()].filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
-    assert.ok(repeated <= Math.floor(passes * MAX_REPEATED_SELF_CHECK_SHARE),
-      `${repeated} of ${passes} self-check passes repeat the same ${field} text; notes must be specific to each candidate`);
-  }
+  assertSelfCheckPassesSpecific(rows.filter((row) => row.verdict === 'pass').map((row) => ({
+    ordinal: row.ordinal,
+    lemma: row.lemma,
+    gloss: proposals[row.ordinal - 1].gloss,
+    hits: row.note_hit_checked,
+    senseNote: row.sense_note,
+    useNote: row.use_note,
+    frames: row.frames,
+  })));
 }
 
 export async function assembleSelfChecked({ batchId, directory, batchDirectory = 'data/batches', writeTracked = true }) {

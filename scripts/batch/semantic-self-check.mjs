@@ -20,6 +20,44 @@ import { admissionGateFor, assertReviewNotesAreCandidateSpecific } from './revie
 
 export const SELF_CHECK_PROVENANCE = 'agent-self-check';
 export const SELF_CHECK_FIRST_BATCH = 11;
+export const SELF_CHECK_SPECIFIC_FIRST_BATCH = 15;
+const FRAME_DEFINITION_FORM = /['"「][^'"」]+['"」](?:은|는|은\(는\)|이|가)\s*['"「][^'"」]+['"」]/u;
+const MAX_REPEATED_SELF_CHECK_SHARE = 0.1;
+
+/**
+ * Self-check passes are the only evidence for a primary-agent admission, so a
+ * pass must say what each checked context shows (a note citing every checked
+ * context index), its frames must be usage sentences rather than a restated
+ * gloss, and the notes may not be one sentence templated over lemma and gloss.
+ * Shared by self-check assembly, the batch builder and the full-revision
+ * validator. Each row: { ordinal, lemma, gloss, hits, senseNote, useNote, frames }.
+ */
+export function assertSelfCheckPassesSpecific(rows) {
+  const groups = { senseNote: new Map(), useNote: new Map() };
+  for (const row of rows) {
+    const gloss = String(typeof row.gloss === 'string' ? row.gloss : (row.gloss?.text ?? '')).replace(/[.\s]+$/u, '');
+    const label = `${row.lemma}`;
+    for (const index of row.hits) {
+      assert.ok(String(row.senseNote).includes(`문맥 ${index}`),
+        `${label}: sense_note must state what checked context ${index} shows`);
+    }
+    for (const frame of row.frames) {
+      assert.ok(!frame.includes(gloss) && !FRAME_DEFINITION_FORM.test(frame),
+        `${label}: a frame must be a usage sentence, not a restated definition`);
+    }
+    for (const field of ['senseNote', 'useNote']) {
+      const key = String(row[field]).split(row.lemma).join('§').split(gloss).join('¶')
+        .replace(/문맥 *[0-9]+/gu, '').replace(/[0-9]/gu, '#').replace(/\s+/gu, ' ').trim();
+      groups[field].set(key, (groups[field].get(key) ?? 0) + 1);
+    }
+  }
+  for (const [field, map] of Object.entries(groups)) {
+    const repeated = [...map.values()].filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
+    assert.ok(repeated <= Math.floor(rows.length * MAX_REPEATED_SELF_CHECK_SHARE),
+      `${repeated} of ${rows.length} self-check passes repeat the same ${field === 'senseNote' ? 'sense_note' : 'use_note'} text; notes must be specific to each candidate`);
+  }
+}
+
 const SEPARATE_RUN_FIELDS = ['review_runs', 'run_record_sha256', 'generator_proposal_sha256'];
 const CLAIM_PATTERN = /independent|reviewer|human/iu;
 
@@ -77,6 +115,17 @@ export function assertSelfCheckBinding({ input, candidateRows, glossByLemma }) {
   });
   assert.equal(input.reviews.length, passes, 'review rows must exist exactly for the passed candidates');
   assertReviewNotesAreCandidateSpecific(input.reviews);
+  const batchOrdinal = Number(String(input.batch_id).match(/corpus-batch-(\d+)-/u)?.[1]);
+  if (batchOrdinal >= SELF_CHECK_SPECIFIC_FIRST_BATCH) {
+    assertSelfCheckPassesSpecific(input.reviews.map((review) => ({
+      lemma: review.lemma,
+      gloss: glossByLemma.get(review.lemma),
+      hits: review.checked_hit_indices,
+      senseNote: review.boundary_rationale,
+      useNote: review.semantic_rationale,
+      frames: review.frames.map((frame) => frame.sentence_frame),
+    })));
+  }
 }
 
 /**
