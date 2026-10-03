@@ -9,7 +9,6 @@ import {
   sha256Json,
 } from '../validate/semantic-audit.mjs';
 import { createKiwiAnalyzer } from '../intake/kiwi-client.mjs';
-import { CORPUS_ADAPTER_ID } from '../intake/adapters/corpus-adapter.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import {
   findAmbiguousParticleFragments,
@@ -34,12 +33,7 @@ import {
   isSelfCheckInput,
   SELF_CHECK_PROVENANCE,
 } from './semantic-self-check.mjs';
-import {
-  assertHandoffMatchesFreshAnalysis,
-  assertReviewsBoundToHandoff,
-  corpusBatchCandidates,
-  verifyProductionHandoff,
-} from '../intake/production-handoff.mjs';
+import { checkBatchIntakeHandoff } from './intake-handoff-boundary.mjs';
 import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
@@ -643,33 +637,17 @@ function requireArgs(args) {
   return { ...values, 'review-only': values['review-only'] === 'true' };
 }
 
-// Revalidates the shared-intake hand-off at the real builder boundary: the hand-off
-// must match the current inventory/evidence, and every admitted candidate's
-// authored review must be bound to its hand-off entry, final POS and gloss.
-export async function assertBatchIntakeHandoff({ handoffBytes, inventory, evidence, batchId, semanticInput, rows, analyzer = createKiwiAnalyzer() }) {
-  const handoff = JSON.parse(handoffBytes.toString('utf8'));
-  const rawCandidates = corpusBatchCandidates(inventory, evidence);
-  verifyProductionHandoff(handoff, { rawCandidates, batchId });
-  // The write boundary re-runs the pinned local analyzer: recorded outcomes are authenticated, not trusted.
-  await assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates, batchId, analyzer, adapterId: CORPUS_ADAPTER_ID });
-  const admitted = rows.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
-  return assertReviewsBoundToHandoff({
-    handoff,
-    handoffBytes,
-    integration: semanticInput.intake_handoff,
-    admittedRows: admitted.map((row) => ({
-      lemma: row.morphology_proposal.lemma,
-      proposedPos: inventory.candidates[row.candidate_ordinal - 1].proposed_pos,
-      finalPos: row.morphology_proposal.pos,
-      glossSha256: sha256Json(row.editorial_judgment.writer_gloss),
-    })),
-    hitCountByLemma: bindHitCounts(rows),
-  });
+// Production write boundary for the shared-intake hand-off. The analyzer is fixed to
+// the pinned local Kiwi service here and is deliberately not a parameter: a caller
+// cannot substitute an analyzer to authenticate its own hand-off. Tests inject an
+// analyzer only through the write-free `checkBatchIntakeHandoff`.
+export function assertBatchIntakeHandoff(args) {
+  return checkBatchIntakeHandoff({ ...args, analyzer: createKiwiAnalyzer() });
 }
 
 export async function buildIssue223CorpusBatch({
   batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewerRawOutputsPath, reviewOnly = false,
-  intakeHandoffPath, analyzer,
+  intakeHandoffPath,
 }) {
   const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
@@ -928,7 +906,7 @@ export async function buildIssue223CorpusBatch({
   let intakeHandoffBytes = null;
   if (intakeHandoffPath) {
     intakeHandoffBytes = await readFile(path.resolve(ROOT, intakeHandoffPath));
-    await assertBatchIntakeHandoff({ handoffBytes: intakeHandoffBytes, inventory, evidence, batchId, semanticInput, rows, ...(analyzer ? { analyzer } : {}) });
+    await assertBatchIntakeHandoff({ handoffBytes: intakeHandoffBytes, inventory, evidence, batchId, semanticInput, rows });
   } else {
     assert.equal(semanticInput.intake_handoff, undefined, 'a review input with an intake integration block requires --intake-handoff');
   }

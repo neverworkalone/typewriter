@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { assertBatchIntakeHandoff } from '../scripts/batch/build-issue-223-corpus-batch.mjs';
+import { assertBatchIntakeHandoff, buildIssue223CorpusBatch } from '../scripts/batch/build-issue-223-corpus-batch.mjs';
+import { checkBatchIntakeHandoff } from '../scripts/batch/intake-handoff-boundary.mjs';
 import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
@@ -56,7 +57,7 @@ async function fixture() {
   }));
   return { handoff, bytes, raw, semanticInput: { intake_handoff: integrationBlock(handoff, bytes, { bindings }) } };
 }
-const check = (f, overrides = {}) => assertBatchIntakeHandoff({
+const check = (f, overrides = {}) => checkBatchIntakeHandoff({
   analyzer,
   handoffBytes: f.bytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, semanticInput: f.semanticInput, rows: ROWS, ...overrides,
 });
@@ -134,7 +135,7 @@ test('held, covered and unresolved-uncertainty candidates cannot be admitted', a
   const hardEntry = hardHandoff.entries.find((entry) => entry.input === '바라다');
   const hardBinding = handoffQaBinding(hardHandoff, hardEntry, { glossSha256: sha256Json('풀이.'), pos: 'verb' });
   await assert.rejects(
-    () => assertBatchIntakeHandoff({
+    () => checkBatchIntakeHandoff({
       analyzer, handoffBytes: hardBytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('바라다', 'verb', '풀이.', 4)],
       semanticInput: { intake_handoff: integrationBlock(hardHandoff, hardBytes, { bindings: { 바라다: hardBinding } }) },
     }),
@@ -146,7 +147,7 @@ test('held, covered and unresolved-uncertainty candidates cannot be admitted', a
   const coveredEntry = handoffEntryFor(covered, { lemma: '장년', proposedPos: 'noun' });
   const coveredBinding = handoffQaBinding(covered, coveredEntry, { glossSha256: sha256Json('풀이.'), pos: 'noun' });
   await assert.rejects(
-    () => assertBatchIntakeHandoff({
+    () => checkBatchIntakeHandoff({
       analyzer, handoffBytes: coveredBytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('장년', 'noun', '풀이.', 2)],
       semanticInput: { intake_handoff: integrationBlock(covered, coveredBytes, { bindings: { 장년: coveredBinding } }) },
     }),
@@ -179,7 +180,7 @@ test('an adapter-held candidate re-labelled semantic_qa with recomputed bindings
   const row = rowFor('오오', 'noun', '풀이.', 5);
   const binding = handoffQaBinding(forged, entry, { glossSha256: sha256Json('풀이.'), pos: 'noun' });
   await assert.rejects(
-    () => assertBatchIntakeHandoff({ analyzer, handoffBytes: bytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [row], semanticInput: { intake_handoff: integrationBlock(forged, bytes, { bindings: { 오오: binding } }) } }),
+    () => checkBatchIntakeHandoff({ analyzer, handoffBytes: bytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [row], semanticInput: { intake_handoff: integrationBlock(forged, bytes, { bindings: { 오오: binding } }) } }),
     (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED',
   );
 });
@@ -193,7 +194,7 @@ test('an analyzer-originated hold re-labelled semantic_qa with recomputed bindin
   delete entry.proposed_pos;
   const bytes = Buffer.from(JSON.stringify(forged));
   const binding = handoffQaBinding(forged, entry, { glossSha256: sha256Json('풀이.'), pos: 'verb' });
-  const run = (hand, buf) => assertBatchIntakeHandoff({ analyzer, handoffBytes: buf, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('바라다', 'verb', '풀이.', 4)], semanticInput: { intake_handoff: integrationBlock(hand, buf, { bindings: { 바라다: binding } }) } });
+  const run = (hand, buf) => checkBatchIntakeHandoff({ analyzer, handoffBytes: buf, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('바라다', 'verb', '풀이.', 4)], semanticInput: { intake_handoff: integrationBlock(hand, buf, { bindings: { 바라다: binding } }) } });
   await assert.rejects(() => run(forged, bytes), (error) => ['INTAKE_HANDOFF_DECISION', 'INTAKE_HANDOFF_EVIDENCE', 'INTAKE_HANDOFF_ANALYSIS_BINDING'].includes(code(error)));
   // Even with the outcome rewritten to look clean, an entry that omits it is refused.
   delete entry.analysis_outcome;
@@ -210,10 +211,17 @@ test('rewriting the recorded analysis outcome is caught by the fresh pinned-anal
   const cleanEntry = (await buildProductionHandoff({ batchId: BATCH, rawCandidates: f.raw, analyzer: clean })).entries.find((item) => item.input === '바라다');
   Object.assign(entry, { decision: 'semantic_qa', holds: [], pos: 'verb', observed_forms: cleanEntry.observed_forms, evidence: cleanEntry.evidence, analysis_binding: cleanEntry.analysis_binding });
   delete entry.proposed_pos;
-  const run = (buf, input) => assertBatchIntakeHandoff({ analyzer, handoffBytes: buf, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('바라다', 'verb', '풀이.', 4)], semanticInput: input });
+  const run = (buf, input) => checkBatchIntakeHandoff({ analyzer, handoffBytes: buf, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('바라다', 'verb', '풀이.', 4)], semanticInput: input });
   const bytes = Buffer.from(JSON.stringify(forged));
   const binding = handoffQaBinding(forged, entry, { glossSha256: sha256Json('풀이.'), pos: 'verb' });
   // The forged outcome is internally consistent up to the decision; only a fresh run exposes it.
   await assert.rejects(() => run(bytes, { intake_handoff: integrationBlock(forged, bytes, { bindings: { 바라다: binding } }) }),
     (error) => code(error) === 'INTAKE_HANDOFF_FRESH_ANALYSIS');
+});
+
+test('the production write path cannot be given a substitute analyzer', () => {
+  // buildIssue223CorpusBatch takes no analyzer option; the builder's intake check
+  // always overrides any caller-supplied analyzer with the pinned local Kiwi one.
+  assert.doesNotMatch(buildIssue223CorpusBatch.toString().split(') {')[0], /analyzer/u);
+  assert.match(assertBatchIntakeHandoff.toString(), /\.\.\.args, analyzer: createKiwiAnalyzer\(\) \}/u);
 });
