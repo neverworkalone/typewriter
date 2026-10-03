@@ -32,6 +32,7 @@ import { validateLexicalProduction } from './lexical-production.mjs';
 import { productionReviewRows, productionStageEvidence } from './validate-issue-211.mjs';
 import { hasMorphologyBlocker, validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import { createSharedAdmissionContext } from './shared-admission-context.mjs';
 import {
   buildSemanticAuditFromDecisionSource,
   canonicalRecordsSha256,
@@ -650,6 +651,9 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
     baseRecords: issue223BaseRecords,
     batchDecisionSources,
   });
+  const admissionContext = createSharedAdmissionContext(currentCanonical, semanticAudit, {
+    canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
+  });
   assert.equal(semanticAudit.record_count, currentCanonical.records.length, 'Issue #223 semantic audit covers every canonical record');
   assert.equal(semanticAudit.coverage.record_count, semanticAudit.record_count, 'Issue #223 semantic coverage record count is complete');
   assert.equal(semanticAudit.coverage.sense_count, semanticAudit.sense_count, 'Issue #223 semantic coverage sense count is complete');
@@ -667,6 +671,7 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
       baseRecords,
       prospectiveRecords: currentCanonical.records,
       semanticAudit,
+      canonicalContext: admissionContext,
       stageEvidence: productionStageEvidence({
         candidateSourceBytes: batch.candidateReviewBytes,
         semanticSourceBytes: batch.semanticSourceBytes,

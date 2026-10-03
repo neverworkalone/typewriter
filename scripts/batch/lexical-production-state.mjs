@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 
+import { deepFreezeJson, memoizedDigest } from './immutable-digest.mjs';
+
 export const LEXICAL_PRODUCTION_STATE_CONTRACT_VERSION = 'lexical-production-state-v2';
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
 export const LEXICAL_PRODUCTION_STAGE_SOURCE_CONTRACT_VERSION = 'lexical-production-stage-source-v1';
@@ -140,9 +142,30 @@ function transitionDigest({
   }), 'utf8'));
 }
 
+// Stage sources are parsed and re-verified several times per batch. Parsing is a
+// pure function of (stage id, exact bytes), so a successful parse is reused by
+// content digest. The cached payload is deep-frozen (shared, never mutated) and
+// the cache is small: it only needs to span the checks of one batch.
+const STAGE_SOURCE_PARSE_CACHE_LIMIT = 6;
+const stageSourceParseCache = new Map();
+
 function parseStageSource(stageId, sourceBytes, label = `production stage ${stageId}`) {
   const bytes = asBytes(sourceBytes, `${label}.source_bytes`);
   const sourceSha256 = digestBytes(bytes);
+  const cacheKey = `${stageId}:${sourceSha256}`;
+  const cached = stageSourceParseCache.get(cacheKey);
+  if (cached) return { ...cached, bytes };
+  const parsed = parseStageSourceUncached(stageId, bytes, sourceSha256, label);
+  if (deepFreezeJson(parsed.payload)) {
+    stageSourceParseCache.set(cacheKey, parsed);
+    if (stageSourceParseCache.size > STAGE_SOURCE_PARSE_CACHE_LIMIT) {
+      stageSourceParseCache.delete(stageSourceParseCache.keys().next().value);
+    }
+  }
+  return parsed;
+}
+
+function parseStageSourceUncached(stageId, bytes, sourceSha256, label) {
   let envelope;
   try {
     envelope = JSON.parse(bytes.toString('utf8'));
@@ -238,12 +261,18 @@ function replayStageBytes(stageId, sourceBytes) {
   });
 }
 
+// The serialization of a verified-immutable value is fixed, so its bytes are reused.
+// Callers treat the returned bytes as read-only (they are digested or copied).
 export function productionSourceBytes(value) {
-  return Buffer.from(`${JSON.stringify(value)}\n`, 'utf8');
+  return memoizedDigest(
+    'production-source-bytes',
+    value,
+    () => Buffer.from(`${JSON.stringify(value)}\n`, 'utf8'),
+  );
 }
 
 export function productionValueSha256(value) {
-  return digestBytes(productionSourceBytes(value));
+  return memoizedDigest('production-value-sha256', value, () => digestBytes(productionSourceBytes(value)));
 }
 
 function requirePayloadDigest(value, label) {
