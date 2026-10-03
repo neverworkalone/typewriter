@@ -330,6 +330,12 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('그는 시골에 삽니다.', '살다', 'verb'), true);
   assert.equal(frameUsesLemma('그는 책을 읽습니다.', '읽다', 'verb'), true);
   assert.equal(frameUsesLemma('우리 함께 갑시다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 종일 일한 뒤에 쉬었다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 종일 일하은 뒤에 쉬었다.', '일하다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 학교에 가은 뒤에 쉬었다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('선생님은 학교에 가시겠어요?', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가시겠습니다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('책을 읽으시겠습니다.', '읽다', 'verb'), true);
   assert.equal(frameUsesLemma('학교에 가세요.', '가다', 'verb'), true);
   assert.equal(frameUsesLemma('교장 선생님이 학교에 가십니다.', '가다', 'verb'), true);
   assert.equal(frameUsesLemma('선생님이 학교에 가셨다.', '가다', 'verb'), true);
@@ -400,6 +406,7 @@ test('the full-revision binding admits irregular honorific forms and rejects the
     ];
     return f;
   };
+  assert.doesNotThrow(() => binding(build('선생님이 그 말을 들으시겠어요?')));
   assert.doesNotThrow(() => binding(build('선생님이 그 말을 들으세요.')));
   assert.doesNotThrow(() => binding(build('아이가 그 말을 들었다.')));
   assert.throws(() => binding(build('선생님이 그 말을 듣으세요.')), /real conjugated form/u);
@@ -422,4 +429,22 @@ test('the full-revision binding admits both senses of a dual-conjugation verb', 
   assert.doesNotThrow(() => binding(build('씨앗을 묻으세요.')));
   assert.doesNotThrow(() => binding(build('선생님께 물으세요.')));
   assert.throws(() => binding(build('선생님께 묻세요.')), /real conjugated form/u);
+});
+
+test('the full-revision binding rejects a vowel-stem misconjugation and admits the contracted adnominal form', () => {
+  const build = (frame) => {
+    const f = fixture();
+    f.candidateRows = [row('일하다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } } : r));
+    f.glossByLemma = new Map([['일하다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '일하다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '일하다', boundary_rationale: '일하다: 첫 용례는 공장을, 둘째 용례는 사무실을 가리킨다', semantic_rationale: '일하다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('그는 종일 일한 뒤에 쉬었다.')));
+  assert.throws(() => binding(build('그는 종일 일하은 뒤에 쉬었다.')), /real conjugated form/u);
 });

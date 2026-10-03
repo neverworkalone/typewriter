@@ -29,7 +29,7 @@ const compose = ({ cho, jung, jong }) => String.fromCharCode(SYLLABLE_BASE + cho
 const isSyllable = (char) => char !== undefined && char >= '가' && char <= '힣';
 
 const PUNCT = '[.,?!”"’\']';
-const HONORIFIC = /^(?:시[는고면며니죠요다어]|세요|십니[다까]|셨|셔[서도]|신)/u;
+const HONORIFIC = /^(?:시[는고면며니죠요다어]|시겠|세요|십니[다까]|셨|셔[서도]|신)/u;
 const END = new RegExp(`^(?:$|${PUNCT})`, 'u');
 const STEM_ENDING = /^(?:다|고|지|는|은|을|던|며|면|도|자|기|겠|니|나|냐|라|려|러|서|어|아|여|으|네|죠|요|습|었|았|였|[.,?!”"’']|$)/u;
 const SHORT_STEM_ENDING = /^(?:다|고|는|은|을|던|며|면|서|겠|니|으|었|았|어|아|죠|요|습|[.,?!”"’']|$)/u;
@@ -62,7 +62,9 @@ function stemForms(stem, plainEnding, pos) {
     || (syllable.jong === 17 && !B_REGULAR.has(stem))
     || (syllable.jong === 0 && [0, 4, 18].includes(syllable.jung)));
   const noVowelEnding = (follows) => ({ test: (rest) => !(last === '하' ? /^(?:아|어|았|었)/u : /^(?:아|어|여|았|었|였|은|으)/u).test(rest) && follows.test(rest) });
-  const forms = [{ surface: stem, follows: alternating ? noVowelEnding(plainEnding) : plainEnding, bare: false }];
+  // A vowel-final stem takes -ㄴ/-ㄹ as a final consonant (간, 갈), never as a separate 은/을/으 ending (가은, 일하을).
+  const openPlain = syllable !== null && syllable.jong === 0 ? { test: (rest) => !/^(?:은|을|으)/u.test(rest) && plainEnding.test(rest) } : plainEnding;
+  const forms = [{ surface: stem, follows: alternating ? noVowelEnding(openPlain) : openPlain, bare: false }];
   if (syllable === null) return forms;
   const prefix = stem.slice(0, -1);
   // Honorific -(으)시-: 가세요, 가십니다, 가셨다, 읽으세요, 사세요(살다).

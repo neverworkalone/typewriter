@@ -295,6 +295,9 @@ test('reviewer frames for a verb must be real forms of the lemma, not a stem col
   assert.throws(() => validateReviewerOutput(out('예쁘다', '우리 모두 예쁩시다.'), proposal('예쁘다'), adj('예쁘다'), 1), /citation form/u);
   assert.doesNotThrow(() => validateReviewerOutput(out('가다', '우리 함께 갑시다.'), proposal('가다'), verb('가다'), 1));
   assert.doesNotThrow(() => validateReviewerOutput(out('가다', '교장 선생님이 학교에 가십니다.'), proposal('가다'), verb('가다'), 1));
+  assert.doesNotThrow(() => validateReviewerOutput(out('일하다', '그는 종일 일한 뒤에 쉬었다.'), proposal('일하다'), verb('일하다'), 1));
+  assert.throws(() => validateReviewerOutput(out('일하다', '그는 종일 일하은 뒤에 쉬었다.'), proposal('일하다'), verb('일하다'), 1), /citation form/u);
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '선생님은 학교에 가시겠어요?'), proposal('가다'), verb('가다'), 1));
   assert.doesNotThrow(() => validateReviewerOutput(out('묻다', '씨앗을 묻으세요.'), proposal('묻다'), verb('묻다'), 1));
   assert.doesNotThrow(() => validateReviewerOutput(out('묻다', '선생님께 물으세요.'), proposal('묻다'), verb('묻다'), 1));
   assert.doesNotThrow(() => validateReviewerOutput(out('듣다', '선생님이 그 말을 들으세요.'), proposal('듣다'), verb('듣다'), 1));
