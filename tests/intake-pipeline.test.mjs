@@ -1,0 +1,99 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+import { corpusAdapter } from '../scripts/intake/adapters/corpus-adapter.mjs';
+import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.mjs';
+import { dedupeCandidates, normalizeCandidate, validateCandidate } from '../scripts/intake/candidate-contract.mjs';
+import { analysisInputDigest, runIntake, verifyAnalysisBinding } from '../scripts/intake/pipeline.mjs';
+
+const METADATA = { service_version: '1', kiwipiepy_version: 'test', kiwipiepy_model_version: 'test', top_n: 3 };
+const TABLE = {
+  푸르다: { status: 'ok', proposals: [{ lemma: '푸르다', pos: 'adjective', form: '푸르' }] },
+  바람: { status: 'ok', proposals: [{ lemma: '바람', pos: 'noun', form: '바람' }] },
+  바라다: { status: 'ambiguous', proposals: [{ lemma: '바라다', pos: 'verb', form: '바라' }] },
+  물결무늬: { status: 'ok', proposals: [{ lemma: '물결', pos: 'noun', form: '물결' }, { lemma: '무늬', pos: 'noun', form: '무늬' }] },
+  낯선말: { status: 'unsupported', proposals: [] },
+  깨짐이: { status: 'error', proposals: [] },
+};
+const analyzer = async (requests) => ({
+  metadata: METADATA,
+  results: requests.map(({ id, text }) => ({
+    ...(TABLE[text] ?? { status: 'unsupported', proposals: [] }),
+    id,
+    input_digest: analysisInputDigest(text),
+  })),
+});
+const decisionOf = (run, input) => run.decisions.find((decision) => decision.input === input);
+
+test('synthetic adapter runs the whole common path without the corpus adapter', async () => {
+  const run = await runIntake({
+    adapterId: 'synthetic',
+    analyzer,
+    candidates: syntheticAdapter(['푸르다', { word: '바람', pos: 'noun' }, '푸르다', '바라다', '물결무늬', '낯선말', '깨짐이', '없는말', 'abc', { word: '바람', pos: 'verb' }]),
+  });
+  assert.equal(decisionOf(run, '푸르다').decision, 'semantic_qa');
+  assert.equal(decisionOf(run, '푸르다').pos, 'adjective');
+  assert.equal(decisionOf(run, '푸르다').duplicateCount, 2);
+  assert.equal(decisionOf(run, '바라다').holds[0], 'analysis_ambiguous');
+  assert.equal(decisionOf(run, '물결무늬').holds[0], 'lemma_mismatch');
+  assert.equal(decisionOf(run, '낯선말').holds[0], 'analysis_unsupported');
+  assert.equal(decisionOf(run, '깨짐이').holds[0], 'analysis_error');
+  assert.equal(decisionOf(run, '없는말').holds[0], 'analysis_unsupported');
+  assert.equal(decisionOf(run, 'abc').holds[0], 'invalid_input');
+  assert.deepEqual(run.decisions.filter((d) => d.input === '바람').map((d) => [d.pos ?? d.proposedPos, d.decision]).sort(), [['noun', 'semantic_qa'], ['noun', 'hold']].sort());
+});
+
+test('covered lemmas skip analysis; word-only input needs no evidence', async () => {
+  let analyzed = [];
+  const run = await runIntake({
+    candidates: syntheticAdapter(['푸르다', '바람']),
+    coveredLemmas: new Set(['바람']),
+    analyzer: async (requests) => { analyzed = requests.map((r) => r.text); return analyzer(requests); },
+  });
+  assert.deepEqual(analyzed, ['푸르다']);
+  assert.equal(decisionOf(run, '바람').decision, 'covered');
+});
+
+test('corpus adapter maps pilot output to the same contract', async () => {
+  const candidates = corpusAdapter({ candidates: [{ proposed_lemma: '푸르다', proposed_pos: 'adjective', observed_surface_forms: [{ surface: '푸른' }] }] });
+  const run = await runIntake({ candidates, analyzer });
+  const decision = decisionOf(run, '푸르다');
+  assert.equal(decision.decision, 'semantic_qa');
+  assert.deepEqual(decision.observedForms, ['푸른']);
+  assert.equal(validateCandidate(normalizeCandidate(candidates[0])).length, 0);
+});
+
+test('analysis bindings fail on stale analyzer or changed POS', async () => {
+  const run = await runIntake({ candidates: syntheticAdapter(['푸르다']), analyzer });
+  const record = decisionOf(run, '푸르다');
+  assert.equal(verifyAnalysisBinding(record, METADATA), true);
+  assert.throws(() => verifyAnalysisBinding(record, { ...METADATA, kiwipiepy_version: 'newer' }), /Stale/);
+  assert.throws(() => verifyAnalysisBinding({ ...record, pos: 'noun' }, METADATA), /Stale/);
+});
+
+test('stale analysis input digest is held, results are deterministic', async () => {
+  const stale = async (requests) => {
+    const response = await analyzer(requests);
+    response.results[0].input_digest = 'stale';
+    return response;
+  };
+  const run = await runIntake({ candidates: syntheticAdapter(['푸르다']), analyzer: stale });
+  assert.deepEqual(decisionOf(run, '푸르다').holds, ['analysis_stale']);
+  const first = await runIntake({ candidates: syntheticAdapter(['푸르다', '바람']), analyzer });
+  const second = await runIntake({ candidates: syntheticAdapter(['바람', '푸르다']), analyzer });
+  assert.deepEqual(first, second);
+});
+
+test('dedupe merges forms and shared stages never import an adapter', async () => {
+  const merged = dedupeCandidates([
+    normalizeCandidate({ input: '푸르다', pos: 'adjective', observedForms: ['푸른'] }, { adapterId: 'a' }),
+    normalizeCandidate({ input: '푸르다', pos: 'adjective', observedForms: ['푸르게'] }, { adapterId: 'b' }),
+  ]);
+  assert.equal(merged.length, 1);
+  assert.deepEqual(merged[0].observedForms, ['푸르게', '푸른']);
+  for (const file of ['pipeline.mjs', 'candidate-contract.mjs', 'kiwi-client.mjs']) {
+    const source = await readFile(new URL(`../scripts/intake/${file}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /adapters\/|CorpusAdapter|corpus-adapter/);
+  }
+});

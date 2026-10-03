@@ -138,6 +138,7 @@
     "ci:all": "node scripts/ci/run-category.mjs all",
     "ci:deep": "node scripts/ci/run-category.mjs deep",
     "test": "npm run ci:normal",
+    "intake:kiwi:test": "python3 scripts/intake/test_kiwi_service.py",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest"
   },
