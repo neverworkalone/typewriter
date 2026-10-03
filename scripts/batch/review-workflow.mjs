@@ -535,6 +535,44 @@ export async function assertNoCopiedCorpusWording({ absolute, reviews, outcomes 
   }
 }
 
+const FRAME_DEFINITION_FORM = /['"「][^'"」]+['"」](?:은|는|은\(는\)|이|가)\s*['"「][^'"」]+['"」]/u;
+const MAX_REPEATED_SELF_CHECK_SHARE = 0.1;
+
+/**
+ * Self-check passes carry the only evidence for a primary-agent admission, so a
+ * pass must say what each checked context shows (a note citing every checked
+ * context index), its frames must be usage sentences rather than a restated
+ * gloss, and the notes may not be one sentence templated over lemma and gloss.
+ */
+export function assertSelfCheckEvidenceIsSpecific(rows, proposals) {
+  const groups = { sense_note: new Map(), use_note: new Map() };
+  let passes = 0;
+  for (const row of rows) {
+    if (row.verdict !== 'pass') continue;
+    passes += 1;
+    const gloss = String(proposals[row.ordinal - 1].gloss).replace(/[.\s]+$/u, '');
+    const label = `reviewer output ${row.ordinal} (${row.lemma})`;
+    for (const index of row.note_hit_checked) {
+      assert.ok(String(row.sense_note).includes(`문맥 ${index}`),
+        `${label}: sense_note must state what checked context ${index} shows`);
+    }
+    for (const frame of row.frames) {
+      assert.ok(!frame.includes(gloss) && !FRAME_DEFINITION_FORM.test(frame),
+        `${label}: a frame must be a usage sentence, not a restated definition`);
+    }
+    for (const field of ['sense_note', 'use_note']) {
+      const key = String(row[field]).split(row.lemma).join('§').split(gloss).join('¶')
+        .replace(/문맥 *[0-9]+/gu, '').replace(/[0-9]/gu, '#').replace(/\s+/gu, ' ').trim();
+      groups[field].set(key, (groups[field].get(key) ?? 0) + 1);
+    }
+  }
+  for (const [field, map] of Object.entries(groups)) {
+    const repeated = [...map.values()].filter((count) => count > 1).reduce((sum, count) => sum + count, 0);
+    assert.ok(repeated <= Math.floor(passes * MAX_REPEATED_SELF_CHECK_SHARE),
+      `${repeated} of ${passes} self-check passes repeat the same ${field} text; notes must be specific to each candidate`);
+  }
+}
+
 export async function assembleSelfChecked({ batchId, directory, batchDirectory = 'data/batches', writeTracked = true }) {
   const absolute = path.resolve(ROOT, directory);
   const inventory = await readJson(path.join(absolute, 'candidate-inventory.json'));
@@ -557,6 +595,7 @@ export async function assembleSelfChecked({ batchId, directory, batchDirectory =
     flat.push(...rows);
   }
   assert.equal(flat.length, proposals.length, 'the self-check must cover every candidate exactly once');
+  assertSelfCheckEvidenceIsSpecific(flat, proposals);
 
   const finalDecisions = generator.decisions.map((row, index) => finalDecisionRow(row, flat[index]));
   const reviews = [];

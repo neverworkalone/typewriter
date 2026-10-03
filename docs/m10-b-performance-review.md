@@ -39,7 +39,7 @@ Seconds; Active = interval union. Spans bracket tool calls; model-token counts a
 
 Authoring and self-check are separated per chunk (see ledgers, labels `authoring-chunk-NN` / `self-check-chunk-NN`). Chunk durations: authoring B13 62–113 s, B14 55–73 s, B15 34–53 s; self-check B13 72–104 s, B14 28–70 s, B15 5–25 s.
 
-Caveat: the downward trend is confounded. Later batches reused tooling, spec formats and generators, and the B15 self-check pass rows were generated from a template after the contexts had been read, so B15 self-check time (≈ 5 s per chunk) measures tool-call spans, not reading effort. It must not be read as a faster review.
+Caveat: the downward trend is confounded. Later batches reused tooling and spec formats. The first B15 self-check pass was templated (review on PR #248 blocked it); B15 self-check was then rewritten with per-context notes and usage-sentence frames, and a shared gate (`assertSelfCheckEvidenceIsSpecific`) now rejects such passes. The rewrite is not in the B15 ledger spans above (they measure the first pass), so B15 self-check time is understated. B14 notes were also formulaic (not covered by the gate, which applies to newly assembled batches).
 
 ## 3. Rework
 
@@ -67,6 +67,6 @@ Add a lint command that runs the existing `merge-authors` and `self-check-assemb
 
 - Token use and cost: `unavailable` (no machine-readable source in the main session).
 - Span times are not model-compute times; the improvement across B13→B15 mixes learning, templating and tooling.
-- Self-check rows are the same agent re-reading its own decisions; admitted quality is not independently verified, and B15 note text is formulaic.
+- Self-check rows are the same agent re-reading its own decisions; admitted quality is not independently verified. B14 notes are formulaic and were not re-reviewed.
 - Reader memory, fallback-query share and behaviour on a cold OS page cache were not measured; timings come from one machine.
 - GitHub CI behaviour is not yet observed.

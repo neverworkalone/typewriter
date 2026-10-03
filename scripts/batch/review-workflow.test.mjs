@@ -263,3 +263,22 @@ test('the legacy fan-out entrypoints refuse batch 11 and later', async () => {
   await assert.rejects(() => splitRunForAmendment({ batchId: later, directory: 'unused', shard: 1, ordinal: 1 }), /self-check contract/u);
   await assert.rejects(() => mergeAuthors({ batchId: later, directory: 'unused' }), /primary agent/u);
 });
+
+test('self-check evidence gate accepts context-specific passes and rejects templated or definition-only ones', async () => {
+  const { assertSelfCheckEvidenceIsSpecific } = await import('./review-workflow.mjs');
+  const mk = (ordinal, lemma, gloss, sense, frame, use = `${lemma}의 쓰임을 ${ordinal}번째로 점검했다.`) => ({
+    ordinal, lemma, verdict: 'pass', note_hit_checked: [0, 1], sense_note: sense, use_note: use, frames: [frame],
+  });
+  const SCENES = ['시장 골목', '학교 운동장', '병원 복도', '강가 나루', '산속 절간', '공항 대합실', '부엌 아궁이', '극장 로비', '공장 창고', '도서관 열람실', '항구 부두', '들판 논둑'];
+  const proposals = Array.from({ length: 12 }, (_, i) => ({ gloss: `풀이 번호 ${i}.` }));
+  const good = Array.from({ length: 12 }, (_, i) => mk(i + 1, `낱말${i}`, '', `문맥 0: ${SCENES[i]}에서 쓰임; 문맥 1: ${SCENES[(i + 5) % 12]}을 가리킴`, `낱말${i}을 보았다.`, `${SCENES[i]}과 ${SCENES[(i + 7) % 12]}가 같은 뜻으로 읽힌다.`));
+  assert.doesNotThrow(() => assertSelfCheckEvidenceIsSpecific(good, proposals));
+  const templated = good.map((row) => ({ ...row, sense_note: `문맥 0·문맥 1 모두 ${row.lemma}의 풀이 「풀이 번호 ${row.ordinal - 1}」와 맞는다.`, use_note: '같은 뜻으로 읽힌다.' }));
+  assert.throws(() => assertSelfCheckEvidenceIsSpecific(templated, proposals), /repeat the same/u);
+  const missingContext = good.map((row, i) => (i === 0 ? { ...row, sense_note: '문맥 0만 확인했다.' } : row));
+  assert.throws(() => assertSelfCheckEvidenceIsSpecific(missingContext, proposals), /checked context 1/u);
+  const definition = good.map((row, i) => (i === 0 ? { ...row, frames: [`'${row.lemma}'은(는) '풀이'라는 뜻이다.`] } : row));
+  assert.throws(() => assertSelfCheckEvidenceIsSpecific(definition, proposals), /usage sentence/u);
+  const echo = good.map((row, i) => (i === 0 ? { ...row, frames: ['풀이 번호 0이 그대로 쓰였다.'] } : row));
+  assert.throws(() => assertSelfCheckEvidenceIsSpecific(echo, proposals), /usage sentence/u);
+});
