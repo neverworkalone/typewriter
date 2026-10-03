@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../build/dictionary.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
+import { verifyTrackedHandoff } from '../intake/production-handoff.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
   assertIndependentSemanticReviewer,
@@ -524,6 +525,18 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     const reviewerRunRecordPath = path.join(BATCH_DIRECTORY, `${stem}-reviewer-run-record.json`);
     const semanticInputBytes = await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null;
     const selfCheckBatch = semanticInputBytes !== null && isSelfCheckInput(JSON.parse(semanticInputBytes.toString('utf8')));
+    const intakeHandoffPath = path.join(BATCH_DIRECTORY, `${stem}-intake-handoff.json`);
+    const trackedInput = semanticInputBytes ? JSON.parse(semanticInputBytes.toString('utf8')) : null;
+    if (trackedInput?.intake_handoff !== undefined || await fileExists(intakeHandoffPath)) {
+      assert.ok(trackedInput?.intake_handoff && await fileExists(intakeHandoffPath),
+        `${candidateLabel} intake hand-off and its review-input integration block must exist together`);
+      verifyTrackedHandoff({
+        handoffBytes: await readFile(intakeHandoffPath),
+        semanticInput: trackedInput,
+        candidateRows: candidateReview.decisions,
+        batchId: candidateReview.batch_id,
+      });
+    }
     const boundInput = validateSemanticReviewInputBinding({
       semanticSource,
       inputBytes: semanticInputBytes,

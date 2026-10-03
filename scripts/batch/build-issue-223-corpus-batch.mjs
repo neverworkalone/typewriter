@@ -33,6 +33,11 @@ import {
   SELF_CHECK_PROVENANCE,
 } from './semantic-self-check.mjs';
 import {
+  assertReviewsBoundToHandoff,
+  corpusBatchCandidates,
+  verifyProductionHandoff,
+} from '../intake/production-handoff.mjs';
+import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
 } from '../validate/semantic-decision-row.mjs';
@@ -635,8 +640,30 @@ function requireArgs(args) {
   return { ...values, 'review-only': values['review-only'] === 'true' };
 }
 
+// Revalidates the shared-intake hand-off at the real builder boundary: the hand-off
+// must match the current inventory/evidence, and every admitted candidate's
+// authored review must be bound to its hand-off entry, final POS and gloss.
+export function assertBatchIntakeHandoff({ handoffBytes, inventory, evidence, batchId, semanticInput, rows }) {
+  const handoff = JSON.parse(handoffBytes.toString('utf8'));
+  verifyProductionHandoff(handoff, { rawCandidates: corpusBatchCandidates(inventory, evidence), batchId });
+  const admitted = rows.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
+  return assertReviewsBoundToHandoff({
+    handoff,
+    handoffBytes,
+    integration: semanticInput.intake_handoff,
+    admittedRows: admitted.map((row) => ({
+      lemma: row.morphology_proposal.lemma,
+      proposedPos: inventory.candidates[row.candidate_ordinal - 1].proposed_pos,
+      finalPos: row.morphology_proposal.pos,
+      glossSha256: sha256Json(row.editorial_judgment.writer_gloss),
+    })),
+    hitCountByLemma: bindHitCounts(rows),
+  });
+}
+
 export async function buildIssue223CorpusBatch({
   batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewerRawOutputsPath, reviewOnly = false,
+  intakeHandoffPath,
 }) {
   const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
@@ -803,6 +830,7 @@ export async function buildIssue223CorpusBatch({
   const semanticInputPath = path.join(batchDirectory, `${batchStem}-semantic-review-input.json`);
   const reviewerRunRecordPath = path.join(batchDirectory, `${batchStem}-reviewer-run-record.json`);
   const importPath = path.join(canonicalDirectory, `${batchStem}.jsonl`);
+  const intakeHandoffOutPath = path.join(batchDirectory, `${batchStem}-intake-handoff.json`);
   if (reviewOnly) {
     for (const sidecarPath of [semanticPath, importPath]) {
       try {
@@ -887,6 +915,16 @@ export async function buildIssue223CorpusBatch({
       candidateRows: rows,
       glossByLemma,
     });
+  }
+  // Shared source-neutral intake (issue #251). Optional until activation: without a
+  // hand-off the prior workflow runs unchanged. With one, every admitted candidate
+  // must be bound to its reviewed hand-off entry, POS and gloss before any write.
+  let intakeHandoffBytes = null;
+  if (intakeHandoffPath) {
+    intakeHandoffBytes = await readFile(path.resolve(ROOT, intakeHandoffPath));
+    assertBatchIntakeHandoff({ handoffBytes: intakeHandoffBytes, inventory, evidence, batchId, semanticInput, rows });
+  } else {
+    assert.equal(semanticInput.intake_handoff, undefined, 'a review input with an intake integration block requires --intake-handoff');
   }
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
   assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
@@ -1006,6 +1044,7 @@ export async function buildIssue223CorpusBatch({
     writeFile(reviewPath, reviewBytes),
     writeFile(semanticPath, semanticBytes),
     writeFile(semanticInputPath, semanticInputBytes),
+    ...(intakeHandoffBytes ? [writeFile(intakeHandoffOutPath, intakeHandoffBytes)] : []),
     ...(reviewerRunRecordBytes ? [writeFile(reviewerRunRecordPath, reviewerRunRecordBytes)] : []),
     writeFile(importPath, importBytes),
   ]);
@@ -1100,6 +1139,7 @@ if (isMain) {
     authoredDecisionsPath: args['authored-decisions'],
     semanticReviewsPath: args['semantic-reviews'],
     reviewerRawOutputsPath: args['reviewer-raw-outputs'],
+    intakeHandoffPath: args['intake-handoff'],
     reviewOnly: args['review-only'],
   }).then((summary) => {
     console.log(JSON.stringify(summary, null, 2));

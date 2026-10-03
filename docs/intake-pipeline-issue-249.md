@@ -90,3 +90,44 @@ that empty evidence. Peak memory and review/rework
 cost were not measured; no quality-win claim is made beyond the table above.
 
 B05–B10 history and canonical/SQLite/search schema are unchanged.
+
+## Production hand-off (issue #251, PR A)
+
+The real batch route is `scripts/batch/build-issue-223-corpus-batch.mjs`
+(`buildIssue223CorpusBatch`: candidate inventory/evidence + authored decisions +
+self-check review input → candidate review, semantic decisions, canonical
+import). Before this change it never touched `scripts/intake/`; the test helper
+`tests/helpers/intake-admission.mjs` was not production QA.
+
+`scripts/intake/production-handoff.mjs` is the source-neutral production
+hand-off: `CorpusAdapter` (or any adapter) → `runIntake` (normalize, dedupe,
+coverage, bounded pinned Kiwi) → one text-free `*-intake-handoff.json` per batch
+(input digest, analyzer metadata/digest, per-candidate decision, holds,
+`adapter_ids`, bounded evidence references, `analysis_binding`).
+
+- `node scripts/intake/production-handoff-cli.mjs build --batch-id=… --analysis-directory=… --out=…`
+  runs real local Kiwi (`TYPEWRITER_PYTHON` → the pinned kiwipiepy 0.24.0 env).
+- The agent authors the review input as before, then
+  `… bind --handoff=… --review-input=… --analysis-directory=… --authored-decisions=…`
+  writes the `intake_handoff` block (per-admission bindings over hand-off entry,
+  final POS and gloss digest; `resolutions` stay agent-authored).
+- `build-issue-223-corpus-batch.mjs --intake-handoff=…` revalidates, before any
+  write: contract/batch, pinned analyzer, input digest recomputed from the
+  current inventory/evidence (changed input, lemma, POS, removed/reordered
+  evidence, dropped adapter all fail), per-entry analysis bindings, and that
+  every admitted candidate is bound to its entry/POS/gloss. Nothing is
+  auto-admitted: `semantic_qa` still needs the source-bound self-check;
+  reviewable holds (`analysis_ambiguous`, `lemma_mismatch`, `pos_mismatch`,
+  `analysis_unsupported`, `frame_not_verified`) can be admitted only with an
+  explicit resolution citing checked contexts; hard holds (`coverage_collision`,
+  invalid input, missing/stale/errored analysis) and `covered` never. The shared
+  `validateLexicalAddition`, `frameUsesLemma` and semantic-audit gates still run
+  afterwards unchanged; Kiwi stays corroborative.
+- Without `--intake-handoff` the prior workflow runs unchanged (rollback). A
+  review input carrying `intake_handoff` without the flag is rejected.
+- `validate-issue-223.mjs` re-verifies a tracked hand-off offline (no corpus or
+  Kiwi); historical batches carry none and are untouched.
+
+Dry run (no canonical modification): B15's analysis directory through real Kiwi
+gave 500 candidates → 397 covered (already canonical), 78 `semantic_qa`, 13
+`lemma_mismatch`, 12 `analysis_ambiguous`.
