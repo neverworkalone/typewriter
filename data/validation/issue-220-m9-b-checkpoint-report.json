@@ -785,7 +785,7 @@
     "candidate_count": 584,
     "potentially_recoverable_before_count": 545,
     "potentially_recoverable_after_count": 507,
-    "recovery_ceiling": 12314,
+    "recovery_ceiling": 12711,
     "target_count": 6000,
     "shortfall_to_6000": 0,
     "recovered_count": 62,
@@ -829,34 +829,34 @@
     ]
   },
   "current": {
-    "canonical_sha256": "972df156ab869b66698f83ef7a55997d8b4f6d0a364b9894878acde8ea289977",
-    "canonical_record_count": 11807,
-    "canonical_start_count": 11765,
+    "canonical_sha256": "522a1f8ba6a6545bc6d1c28fcd4fdfdba7e2f4e238bcf9149f5efcbd59fcc264",
+    "canonical_record_count": 12204,
+    "canonical_start_count": 12162,
     "reference_only_count": 42,
-    "sense_count": 12069,
+    "sense_count": 12466,
     "relation_count": 487,
-    "canonical_search_form_count": 12064,
-    "searchable_lemma_count": 11807,
+    "canonical_search_form_count": 12461,
+    "searchable_lemma_count": 12204,
     "record_type_counts": {
-      "entry": 10653,
+      "entry": 11050,
       "expression": 1154
     },
     "sense_pos_counts": {
-      "adjective": 514,
+      "adjective": 528,
       "adverb": 12,
       "expression": 1176,
-      "noun": 8834,
-      "verb": 1533
+      "noun": 9187,
+      "verb": 1563
     },
-    "relation_empty_searchable_record_count": 11471,
+    "relation_empty_searchable_record_count": 11868,
     "exact_search_coverage": {
-      "expected_lemma_count": 11807,
-      "covered_lemma_count": 11807,
+      "expected_lemma_count": 12204,
+      "covered_lemma_count": 12204,
       "non_searchable_record_count": 0,
       "non_searchable_records": [],
-      "distinct_search_form_count": 12064,
-      "expected_form_owner_key_count": 12064,
-      "covered_form_owner_key_count": 12064,
+      "distinct_search_form_count": 12461,
+      "expected_form_owner_key_count": 12461,
+      "covered_form_owner_key_count": 12461,
       "missing_form_owner_key_count": 0,
       "unexpected_form_owner_key_count": 0,
       "cross_record_collision_key_count": 0
@@ -893,7 +893,7 @@
     "production_admission": "pass",
     "semantic_audit": "pass",
     "deterministic_sqlite": "pass",
-    "logical_database_digest": "1761a0f652a8403d3f42ae82ea84dd98c1c342ed3b0cd96654a4c87d09df38f9"
+    "logical_database_digest": "2bc7cd3eb4e1656df40d553306629b030f8a550aa06f6194706ec09767efa971"
   },
   "defect_findings": [
     {
@@ -1011,6 +1011,6 @@
   "normal_ci": {
     "command": "npm run ci:normal",
     "result": "pending",
-    "canonical_sha256": "972df156ab869b66698f83ef7a55997d8b4f6d0a364b9894878acde8ea289977"
+    "canonical_sha256": "522a1f8ba6a6545bc6d1c28fcd4fdfdba7e2f4e238bcf9149f5efcbd59fcc264"
   }
 }

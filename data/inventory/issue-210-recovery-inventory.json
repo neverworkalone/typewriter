@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "c8094e60f9425c1dcb25fdb2e2952e8e6ce25adbbfbb7664d3e166953d88a061",
+    "current_canonical_revision": "7647d1cd3a651992573adfffaab4e054848729f6e71e2781a5dd976be905ff8c",
     "source_manifest": [
       {
         "path": "AGENTS.md",
@@ -657,6 +657,11 @@
         "byte_count": 85200
       },
       {
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-15.jsonl",
+        "sha256": "6dd866a5cf7ea45815b3c27a8443546bcf20ac02822247840c82fe26f88dbe44",
+        "byte_count": 83382
+      },
+      {
         "path": "data/canonical/m5-10-wave-a.jsonl",
         "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
         "byte_count": 15089
@@ -723,8 +728,8 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "2a7a69381889301204d2e33072535ecc8646f6e71ac9bacfa06b9e8b75821fb6",
-        "byte_count": 7877610
+        "sha256": "735f6480e9cab1ac100840fc0267f1c7a9e95ff5d539d0bad3710fdb799a72b5",
+        "byte_count": 8197989
       },
       {
         "path": "data/inventory/m5-target-seed.json",
@@ -733,28 +738,28 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "8775152a6ed2a7531d75784bd028a77947184f2eb07f70d3985b81aa64e99974",
-        "byte_count": 11066051
+        "sha256": "cb73d5736016c7c78ae32da1307e5db83159016835405403a03aac166760f4b1",
+        "byte_count": 11434756
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "3f8a0ade95fc6fee2a5eee9741225323f280721afc081aa541fb63071cbf650d",
+        "sha256": "445415131cf22076247bffc8fe4c0e617655cbd84870e7c32647c396a88e7df4",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "697014d2c93792b61cf0f8ecff3e8c9611a9105bcb10a7a4922c0ddc2f7d0094",
+        "sha256": "74f8d76bf67f63fe6ae96befdc9c871059ec26df13616ab787acf080b0a07b3c",
         "byte_count": 29642
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
-        "sha256": "6ea27a81da796936225f80601513ad86adc268028ef47e5c1a6504aea0a18eca",
-        "byte_count": 11654
+        "sha256": "0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7",
+        "byte_count": 12020
       },
       {
         "path": "data/validation/m6-3-surface-form-review.json",
-        "sha256": "09f30fd045a1d0d3a63ffcc2df04fd7d65eea40051c510072f4c1442ccbd1dbc",
-        "byte_count": 460412
+        "sha256": "061bcf590abcec1da59b39ab47cedc7b39b6264ad9903e72e30e70ace2554df2",
+        "byte_count": 467972
       },
       {
         "path": "docs/editorial-model.md",
@@ -778,12 +783,12 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "335b4fc727e90d24d49deb51ec3dc158145f80a404a025a254a585bc45de38ec",
+        "sha256": "86b85e04b39af4de160f370ed751c468c9608d09b336bd55de68cea50a4e3fcb",
         "byte_count": 6007
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "797f52854dc6866a095e964d6ebe88593395772f5bdd867402694398b9d91474",
+        "sha256": "6f8d3557fb461494d7eb9af2f8780ed0b364573e73cc4558bed791da23f3e1ee",
         "byte_count": 8778
       },
       {
@@ -1004,7 +1009,7 @@
       "deferred": 252
     },
     "m5_promoted_seed_rows_present_in_canonical": 998,
-    "m5_promotion_ledger_events_audited": 10467,
+    "m5_promotion_ledger_events_audited": 10864,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
     "issue_219_admitted_count": 0,
@@ -1032,7 +1037,7 @@
     "issue_222_historical_held_count": 0,
     "issue_222_historical_rejected_count": 0,
     "issue_222_promotion_events_audited": 2396,
-    "historical_recovery_ceiling_count": 12314,
+    "historical_recovery_ceiling_count": 12711,
     "historical_recovery_shortfall_to_6000": 0,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
@@ -1045,8 +1050,8 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 11807,
-    "exact_search_key_count": 12064,
+    "directly_searchable_canonical_record_count": 12204,
+    "exact_search_key_count": 12461,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
@@ -1079,20 +1084,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 11807,
-    "directly_searchable_record_count": 11807,
+    "canonical_record_count": 12204,
+    "directly_searchable_record_count": 12204,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 12064,
+    "exact_search_key_count": 12461,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 11765,
+      "start": 12162,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 10612,
+      "start/entry": 11009,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
@@ -22481,15 +22486,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12219"
+        ],
+        "all_query_match_ids": [
+          "w12219"
+        ],
         "queries": [
           {
             "query": "하수구",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "하수구",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12219",
+                "lemma": "하수구",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "하수구",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
