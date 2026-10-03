@@ -20,18 +20,73 @@ import { admissionGateFor, assertReviewNotesAreCandidateSpecific } from './revie
 
 export const SELF_CHECK_PROVENANCE = 'agent-self-check';
 export const SELF_CHECK_FIRST_BATCH = 11;
+const SYLLABLE_BASE = 0xAC00;
+const decompose = (char) => {
+  const code = char.charCodeAt(0) - SYLLABLE_BASE;
+  return { cho: Math.floor(code / 588), jung: Math.floor((code % 588) / 28), jong: code % 28 };
+};
+const compose = ({ cho, jung, jong }) => String.fromCharCode(SYLLABLE_BASE + cho * 588 + jung * 28 + jong);
+const isSyllable = (char) => char !== undefined && char >= '가' && char <= '힣';
+
+// Surface prefixes a verb/adjective stem takes before an ending: the stem
+// itself plus the regular contractions (가+았→갔, 하+였→했, 쓰→써) and the
+// irregular classes ㄷ(듣→들), ㅂ(돕→도와), ㅅ(낫→나), ㄹ(살→사), 르(부르→불러), ㅎ.
+function stemVariants(stem) {
+  const variants = new Set([stem]);
+  const last = stem.at(-1);
+  if (!isSyllable(last)) return variants;
+  const prefix = stem.slice(0, -1);
+  const syllable = decompose(last);
+  if (syllable.jong !== 0) {
+    if (syllable.jong === 7) variants.add(prefix + compose({ ...syllable, jong: 8 }));
+    if ([8, 19, 27].includes(syllable.jong)) variants.add(prefix + compose({ ...syllable, jong: 0 }));
+    if (syllable.jong === 17) {
+      const base = prefix + compose({ ...syllable, jong: 0 });
+      for (const tail of ['우', '와', '워', '웠', '왔']) variants.add(base + tail);
+    }
+    return variants;
+  }
+  for (const jong of [4, 8, 16, 20]) variants.add(prefix + compose({ ...syllable, jong }));
+  const merged = { 8: 9, 13: 14, 20: 6, 11: 10 }[syllable.jung];
+  if (merged !== undefined) for (const jong of [0, 4, 8, 16, 20]) variants.add(prefix + compose({ ...syllable, jung: merged, jong }));
+  if (last === '하') for (const jong of [0, 4, 8, 16, 20]) variants.add(prefix + compose({ ...syllable, jung: 1, jong }));
+  if (last === '르' && prefix.length > 0 && isSyllable(prefix.at(-1))) {
+    const before = decompose(prefix.at(-1));
+    const base = prefix.slice(0, -1) + compose({ ...before, jong: 8 });
+    for (const tail of ['러', '라', '렀', '랐']) variants.add(base + tail);
+  }
+  if (syllable.jung === 18 && last !== '르') {
+    for (const jung of [0, 4]) for (const jong of [0, 20]) variants.add(prefix + compose({ ...syllable, jung, jong }));
+  }
+  return variants;
+}
+
+const ENDING = /^(?:다|고|지|는|은|을|던|며|면|도|자|기|겠|니|나|냐|라|려|러|서|어|아|여|으|네|죠|요|습|었|았|였|[.,?!”"’']|$)/u;
+const SHORT_STEM_ENDING = /^(?:다|고|는|은|을|던|며|면|서|겠|니|으|었|았|어|아|죠|요|습|[.,?!”"’']|$)/u;
+
 /**
  * The shared frame-contains-the-lemma rule. A frame carries the citation form,
- * or, for a verb/adjective, a conjugated form of its stem (읽었다 for 읽다),
- * so a correctly inflected usage sentence is admissible. The grammar rule for
- * a bare citation form stays in assertVerbFramesGrammatical.
+ * or, for a verb/adjective, an eojeol made of the stem (with its regular and
+ * irregular alternations) followed by an ending, so 읽었다, 들었다 (듣다) and
+ * 갔다 (가다) are admissible while 가게 is not a form of 가다. Homographs that
+ * are real conjugations of another word cannot be told apart without an
+ * analyzer; the grammar rule for a bare citation form stays in
+ * assertVerbFramesGrammatical.
  */
 export function frameUsesLemma(frame, lemma, pos) {
   if (typeof frame !== 'string') return false;
   if (frame.includes(lemma)) return true;
-  if ((pos === 'verb' || pos === 'adjective') && lemma.length > 1 && lemma.endsWith('다')) {
-    const stem = lemma.slice(0, -1).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
-    return new RegExp(`${stem}[가-힣]`, 'u').test(frame);
+  if ((pos !== 'verb' && pos !== 'adjective') || lemma.length < 2 || !lemma.endsWith('다')) return false;
+  const stem = lemma.slice(0, -1);
+  const variants = stemVariants(stem);
+  const ending = stem.length === 1 ? SHORT_STEM_ENDING : ENDING;
+  for (const token of frame.split(/[\s,]+/u)) {
+    const word = token.replace(/^[“"‘'(]+/u, '');
+    for (const variant of variants) {
+      if (!word.startsWith(variant)) continue;
+      const rest = word.slice(variant.length);
+      if (rest === '' ? variant !== stem : ending.test(rest)) return true;
+    }
   }
   return false;
 }

@@ -300,5 +300,16 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('그는 책을 읽다 못해 졸았다.', '읽다', 'verb'), true);
   assert.equal(frameUsesLemma('이 책은 정말 좋았다.', '좋다', 'adjective'), true);
   assert.equal(frameUsesLemma('그는 책을 샀다.', '읽다', 'verb'), false);
+  // Stem collisions are rejected; irregular and contracted conjugations are admitted.
+  assert.equal(frameUsesLemma('그는 가게에서 책을 샀다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 먹이를 주었다.', '먹다', 'verb'), false);
+  assert.equal(frameUsesLemma('그 말을 들었다.', '듣다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 학교에 갔다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('이웃을 도왔다.', '돕다', 'verb'), true);
+  assert.equal(frameUsesLemma('편지를 썼다.', '쓰다', 'verb'), true);
+  assert.equal(frameUsesLemma('노래를 불렀다.', '부르다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 멀리 사는 친구를 찾았다.', '살다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 일을 했다.', '일하다', 'verb'), false);
+  assert.equal(frameUsesLemma('그는 일했다.', '일하다', 'verb'), true);
   assert.equal(frameUsesLemma('그는 책을 읽었다.', '읽다', 'noun'), false);
 });

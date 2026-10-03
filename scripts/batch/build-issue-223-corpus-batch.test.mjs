@@ -334,8 +334,8 @@ test('Issue #223 an admission gate holds a reviewer pass without rewriting it', 
 test('the builder admission path accepts a correctly conjugated verb frame and rejects a frame without the lemma', () => {
   const candidate = { lemma: '읽다', senses: [{ gloss: '글을 눈으로 보다.' }] };
   const gloss = candidate.senses[0].gloss;
-  const review = (sentence) => ({
-    lemma: '읽다',
+  const review = (sentence, lemma = '읽다') => ({
+    lemma,
     gloss_sha256: sha256Json(gloss),
     gloss_judgment: 'fit',
     boundary_action: 'retain',
@@ -347,6 +347,8 @@ test('the builder admission path accepts a correctly conjugated verb frame and r
   const digest = sha256Json(gloss);
   assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 책을 읽었다.'), candidate, digest, 'verb'));
   assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 책을 읽다 못해 졸았다.'), candidate, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그 말을 들었다.', '듣다'), { ...candidate, lemma: '듣다' }, digest, 'verb'));
+  assert.throws(() => assertAuthoredSemanticReview(review('그는 가게에서 책을 샀다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
   assert.throws(() => assertAuthoredSemanticReview(review('그는 책을 샀다.'), candidate, digest, 'verb'), /frames must use the lemma/u);
   assert.throws(() => assertAuthoredSemanticReview(review('그는 책을 읽었다.'), candidate, digest, 'noun'), /frames must use the lemma/u);
 });
