@@ -56,7 +56,7 @@ The frozen baseline dictionary produced no exact canonical or generated-surface 
 
 Use 20 candidates as the initial M9 review-slice size: this coherent slice completed candidate-by-candidate fixedness review, shared admission validation, and exact-search validation after the generalized expression rule was added. Review duration was not measured, so 20 is a slice-size calibration, not a throughput estimate. Reassess the size from later defect and workload observations; the size is not an admission quota.
 
-The reviewed batch added 0 searchable starts. The current canonical dataset contains 11000 searchable starts. Issue #219 did not target 6,000 starts or corpus expansion.
+The reviewed batch added 0 searchable starts. The current canonical dataset contains 11366 searchable starts. Issue #219 did not target 6,000 starts or corpus expansion.
 
 ## Reproduction and boundaries
 

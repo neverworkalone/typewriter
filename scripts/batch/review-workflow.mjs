@@ -471,23 +471,29 @@ export async function assembleReviewed({ batchId, directory, batchDirectory = 'd
  */
 export async function selfCheckView({ directory, first, last, width = 110 }) {
   const absolute = path.resolve(ROOT, directory);
-  const manifest = await readJson(path.join(absolute, 'review-packets/review-packet-manifest.json'));
+  // The self-check contract has no separate reviewer packets: the view is built
+  // in memory from the evidence packets and the producing agent's own proposals.
+  const inventory = await readJson(path.join(absolute, 'candidate-inventory.json'));
+  const evidence = await readJson(path.join(absolute, 'candidate-evidence.json'));
+  const generator = await readJson(path.join(absolute, 'authored-decisions.generator.json'));
+  const evidenceCandidates = [];
+  for (const { name } of await numberedFiles(path.join(absolute, 'packets'), 'packet')) {
+    evidenceCandidates.push(...(await readJson(path.join(absolute, 'packets', name))).candidates);
+  }
+  assert.equal(evidenceCandidates.length, generator.decisions.length, 'packets and proposals must cover the same candidates');
   const lines = [];
-  for (const entry of manifest) {
-    if (entry.last_ordinal < first || entry.first_ordinal > last) continue;
-    const packet = await readJson(path.join(absolute, entry.file));
-    for (const candidate of packet.candidates) {
-      if (candidate.ordinal < first || candidate.ordinal > last) continue;
-      const proposal = candidate.proposal.disposition === 'admit'
-        ? `ADMIT ${candidate.proposal.corrected_pos ?? ''} axis=${candidate.proposal.axis} gloss=「${candidate.proposal.gloss}」 frames=${candidate.frames_required}${candidate.topic_spans_requiring_verdict.length ? ` topics=${JSON.stringify(candidate.topic_spans_requiring_verdict)}` : ''}`
-        : `HOLD ${candidate.proposal.hold_basis}`;
-      const gate = candidate.admission_gate_note ? ` GATE` : '';
-      lines.push(`#${candidate.ordinal} ${candidate.lemma} (${candidate.proposed_pos}) forms=${candidate.observed_forms.map((form) => `${form.surface}:${form.count}`).join(',')}${gate} :: ${proposal}`);
-      for (const context of candidate.contexts) {
-        const at = context.observed_form ? context.text.indexOf(context.observed_form) : -1;
-        const text = at < 0 ? context.text.slice(0, width * 2) : context.text.slice(Math.max(0, at - width), at + (context.observed_form?.length ?? 0) + width);
-        lines.push(`  ${context.index}: ${text}`);
-      }
+  for (let ordinal = Math.max(1, first); ordinal <= Math.min(last, evidenceCandidates.length); ordinal += 1) {
+    const row = { ...inventory.candidates[ordinal - 1], ...evidence.candidates[ordinal - 1] };
+    const candidate = reviewerPacketCandidate(evidenceCandidates[ordinal - 1], generator.decisions[ordinal - 1], row);
+    const proposal = candidate.proposal.disposition === 'admit'
+      ? `ADMIT ${candidate.proposal.corrected_pos ?? ''} axis=${candidate.proposal.axis} gloss=「${candidate.proposal.gloss}」 frames=${candidate.frames_required}${candidate.topic_spans_requiring_verdict.length ? ` topics=${JSON.stringify(candidate.topic_spans_requiring_verdict)}` : ''}`
+      : `HOLD ${candidate.proposal.hold_basis}`;
+    const gate = candidate.admission_gate_note ? ` GATE` : '';
+    lines.push(`#${candidate.ordinal} ${candidate.lemma} (${candidate.proposed_pos}) forms=${candidate.observed_forms.map((form) => `${form.surface}:${form.count}`).join(',')}${gate} :: ${proposal}`);
+    for (const context of candidate.contexts) {
+      const at = context.observed_form ? context.text.indexOf(context.observed_form) : -1;
+      const text = at < 0 ? context.text.slice(0, width * 2) : context.text.slice(Math.max(0, at - width), at + (context.observed_form?.length ?? 0) + width);
+      lines.push(`  ${context.index}: ${text}`);
     }
   }
   return lines.join('\n');
