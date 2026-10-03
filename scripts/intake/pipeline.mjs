@@ -33,7 +33,13 @@ function interpret(candidate, outcome) {
   if (!outcome) return { hold: 'analysis_missing' };
   if (outcome.status === 'error') return { hold: 'analysis_error' };
   if (outcome.status !== 'ok') return { hold: 'analysis_unsupported' };
-  const wholeInput = (analysis) => (analysis.length === 1 && analysis[0].lemma === candidate.input ? analysis[0] : null);
+  // Derived predicates (망각 + 하다) also list their base noun; any other extra
+  // morpheme means the input is a multi-morpheme string, not one lemma.
+  const wholeInput = (analysis) => {
+    const hits = analysis.filter((item) => item.lemma === candidate.input);
+    const others = analysis.filter((item) => item.lemma !== candidate.input);
+    return hits.length === 1 && others.every((item) => candidate.input.startsWith(item.lemma)) ? hits[0] : null;
+  };
   const [best, ...alternatives] = outcome.analyses;
   const match = wholeInput(best ?? []);
   if (!match) return { hold: 'lemma_mismatch' };

@@ -63,6 +63,13 @@ export function normalizeCandidate(raw, { adapterId } = {}) {
     .filter((entry) => entry.kind && entry.ref)
     .slice(0, MAX_EVIDENCE_REFERENCES);
 
+  // An adapter may carry a hold it observed in its own context (e.g. ambiguous
+  // surface analyses); shared stages preserve it and never override it.
+  for (const hold of raw?.holds ?? []) {
+    if (HOLD_REASONS.includes(hold)) holds.push(hold);
+    else holds.push('invalid_input');
+  }
+
   return {
     contractVersion: CANDIDATE_CONTRACT_VERSION,
     adapterId: adapterId ?? normalizeText(raw?.adapterId),

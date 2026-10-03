@@ -9,6 +9,8 @@ export function corpusAdapter(pilotSelection) {
     adapterId: CORPUS_ADAPTER_ID,
     input: candidate.proposed_lemma,
     pos: candidate.proposed_pos ?? null,
+    // Context-level ambiguity found by the pilot is kept as a hold.
+    holds: candidate.decision_state === 'held' ? ['analysis_ambiguous'] : [],
     observedForms: (candidate.observed_surface_forms ?? []).map((form) => form.surface),
     evidence: (candidate.observed_surface_forms ?? [])
       .slice(0, 3)

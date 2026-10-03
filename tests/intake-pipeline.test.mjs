@@ -120,3 +120,13 @@ test('frame verdicts bind to analysis and never let Kiwi alone admit a frame', a
   assert.equal(frameDisposition(true, 'ambiguous'), 'manual_check');
   assert.equal(frameDisposition(false, 'uses'), 'rejected');
 });
+
+test('adapter-observed holds survive and skip analysis', async () => {
+  let analyzed = 0;
+  const run = await runIntake({
+    candidates: corpusAdapter({ candidates: [{ proposed_lemma: '푸르다', proposed_pos: 'adjective', decision_state: 'held' }] }),
+    analyzer: async (requests) => { analyzed += requests.length; return analyzer(requests); },
+  });
+  assert.equal(analyzed, 0);
+  assert.deepEqual(decisionOf(run, '푸르다').holds, ['analysis_ambiguous']);
+});
