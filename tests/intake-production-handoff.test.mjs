@@ -4,7 +4,7 @@ import test from 'node:test';
 import { assertBatchIntakeHandoff, buildIssue223CorpusBatch } from '../scripts/batch/build-issue-223-corpus-batch.mjs';
 import { checkBatchIntakeHandoff } from '../scripts/batch/intake-handoff-boundary.mjs';
 import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
-import { CORPUS_ADAPTER_ID } from '../scripts/intake/adapters/corpus-adapter.mjs';
+import { CORPUS_ADAPTER_ID, corpusHolds } from '../scripts/intake/adapters/corpus-adapter.mjs';
 import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import {
@@ -43,6 +43,7 @@ const EVIDENCE = { candidates: INVENTORY.candidates.map((_, index) => ({ evidenc
 
 const rowFor = (lemma, pos, gloss, ordinal) => ({
   candidate_ordinal: ordinal,
+  intake_source_holds: [],
   morphology_proposal: { lemma, pos },
   bounded_provenance: { representative_hits: [hit(1), hit(2)] },
   editorial_judgment: { disposition: 'admit', writer_gloss: gloss },
@@ -263,7 +264,7 @@ test('tracked validation cannot turn an analyzer hold into an analysis-free hold
   const input = { intake_handoff: integrationBlock(forged, bytes, { bindings: { 바라다: binding }, resolutions: { 바라다: { checked_hit_indices: [0], rationale: '문맥 0에서 동사로 쓰인다.' } } }) };
   assert.throws(() => verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: [row], batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_ORIGIN');
   // A genuine adapter-level hold (held ambiguity in the tracked review) with a resolution still passes.
-  const held = { ...row, morphology_proposal: { ...row.morphology_proposal, ambiguity_status: 'held_homograph' } };
+  const held = { ...row, intake_source_holds: ['analysis_ambiguous'], morphology_proposal: { ...row.morphology_proposal, ambiguity_status: 'held_homograph' } };
   assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: [held], batchId: BATCH }), true);
 });
 
@@ -306,10 +307,25 @@ test('tracked validation preserves candidate-review source holds even for a clea
   const row = (ambiguity) => ({ ...rowFor('푸르다', 'adjective', '맑은 초록이나 파랑을 띠다.', 1), coverage_status: 'uncovered', morphology_proposal: { lemma: '푸르다', pos: 'adjective', ambiguity_status: ambiguity } });
   const verify = (candidateRows) => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows, batchId: BATCH });
   // The hand-off is internally consistent and clean, but the tracked review records a held source ambiguity.
-  assert.throws(() => verify([row('held_homograph')]), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
+  assert.throws(() => verify([{ ...row('held_homograph'), intake_source_holds: ['analysis_ambiguous'] }]), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
   const jangnyeon = { ...rowFor('장년', 'noun', '청년과 노년 사이의 나이대.', 2), coverage_status: 'uncovered', morphology_proposal: { lemma: '장년', pos: 'noun', ambiguity_status: 'single_observed_analysis_unverified' } };
   assert.equal(verify([row('single_observed_analysis_unverified'), jangnyeon]), true);
   // Non-admitted rows are covered too: a held row cannot hide behind a semantic_qa entry.
-  const rows = [row('single_observed_analysis_unverified'), { ...jangnyeon, morphology_proposal: { ...jangnyeon.morphology_proposal, ambiguity_status: 'held_homograph' } }];
+  const rows = [row('single_observed_analysis_unverified'), { ...jangnyeon, intake_source_holds: ['analysis_ambiguous'], morphology_proposal: { ...jangnyeon.morphology_proposal, ambiguity_status: 'held_homograph' } }];
   assert.throws(() => verify(rows), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
+});
+
+test('a decision_state-only source hold (no held_* ambiguity) is preserved from the recorded row facts', async () => {
+  const f = await fixture();
+  // corpusHolds() holds a `decision_state: held` candidate even without a concrete held_* reason;
+  // the row records that fact, so the clean-looking semantic_qa entry cannot hide it.
+  const [first, second] = ROWS;
+  const withHold = { ...first, intake_source_holds: corpusHolds({ decision_state: 'held', ambiguity_status: 'single_observed_analysis_unverified', coverage_status: 'uncovered' }) };
+  assert.deepEqual(withHold.intake_source_holds, ['analysis_ambiguous']);
+  const verify = (rows) => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: rows, batchId: BATCH });
+  assert.throws(() => verify([withHold, second]), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
+  // A tracked row that does not record source holds cannot vouch for the hand-off.
+  const { intake_source_holds: _omitted, ...unrecorded } = first;
+  assert.throws(() => verify([unrecorded, second]), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_ORIGIN');
+  assert.equal(verify(ROWS), true);
 });

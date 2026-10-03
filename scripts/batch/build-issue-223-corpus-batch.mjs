@@ -34,6 +34,7 @@ import {
   SELF_CHECK_PROVENANCE,
 } from './semantic-self-check.mjs';
 import { checkBatchIntakeHandoff } from './intake-handoff-boundary.mjs';
+import { corpusHolds } from '../intake/adapters/corpus-adapter.mjs';
 import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
@@ -738,6 +739,11 @@ export async function buildIssue223CorpusBatch({
     );
   });
 
+  if (intakeHandoffPath) {
+    // Source-hold facts are recorded in the candidate review itself (digest-bound into the semantic
+    // source), so offline validation never has to trust the editable hand-off for a hold's origin.
+    rows.forEach((row, index) => { row.intake_source_holds = corpusHolds(inventory.candidates[index]); });
+  }
   const admittedRows = rows.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
   const sourceTemplate = previous.at(-1);
   assert.ok(sourceTemplate, 'Issue #223 corpus batch 01 must exist before generation');

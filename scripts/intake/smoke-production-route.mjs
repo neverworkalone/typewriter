@@ -98,10 +98,22 @@ try {
     return { handoff, summary, tamperedRejection, wroteBeforeAdmission: wroteAnything, trackedValidation: validateTracked() };
   }
 
+  // The review differs from the tracked one only by the per-row `intake_source_holds` fact (and the
+  // artifact digest that covers it); everything else must be identical.
+  const sameReview = async () => {
+    const strip = (review) => ({ ...review, artifact_sha256: undefined, decisions: review.decisions.map(({ intake_source_holds: holds, ...row }) => {
+      if (holds !== undefined && !Array.isArray(holds)) throw new Error('intake_source_holds must be an array');
+      return row;
+    }) });
+    const generated = JSON.parse(await readFile(path.join(temp, `data/batches/${stem}-candidate-review.json`), 'utf8'));
+    return generated.decisions.every((row) => Array.isArray(row.intake_source_holds))
+      && JSON.stringify(strip(generated)) === JSON.stringify(strip(JSON.parse(tracked.review.toString('utf8'))));
+  };
+
   const corpus = await route({ label: 'corpus', sourceAdapter: CORPUS_ADAPTER_ID, analysisDirectory: analysis, authoredPath: path.join(analysis, 'authored-decisions.json'), input: tracked.input });
   const out = (relative) => readFile(path.join(temp, relative));
   const comparison = {
-    candidate_review_identical: Buffer.compare(await out(`data/batches/${stem}-candidate-review.json`), tracked.review) === 0,
+    candidate_review_identical: await sameReview(),
     canonical_import_identical: Buffer.compare(await out(`data/canonical/${stem}.jsonl`), tracked.canonical) === 0,
     semantic_decisions_identical: JSON.stringify(JSON.parse(await out(`data/batches/${stem}-semantic-decisions.json`)).decisions) === JSON.stringify(tracked.semantic.decisions),
     intake_handoff_written: (await readdir(path.join(temp, 'data/batches'))).includes(`${stem}-intake-handoff.json`),
@@ -114,7 +126,7 @@ try {
   await resetBatch();
   const synthetic = await route({ label: 'synthetic', sourceAdapter: SYNTHETIC_ADAPTER_ID, analysisDirectory: analysis, authoredPath: path.join(analysis, 'authored-decisions.json'), input: tracked.input });
   const syntheticComparison = {
-    candidate_review_identical: Buffer.compare(await out(`data/batches/${stem}-candidate-review.json`), tracked.review) === 0,
+    candidate_review_identical: await sameReview(),
     canonical_import_identical: Buffer.compare(await out(`data/canonical/${stem}.jsonl`), tracked.canonical) === 0,
   };
   const syntheticEvidenceInContract = synthetic.handoff.entries.some((entry) => (entry.evidence ?? []).length > 0 || entry.adapter_ids.includes(CORPUS_ADAPTER_ID));

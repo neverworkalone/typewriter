@@ -77,17 +77,45 @@ def _proposals(tokens) -> list[dict]:
     return result
 
 
+STABILITY_ATTEMPTS = 3
+
+
+def _analyses_once(analyzer, text: str):
+    paths = analyzer.analyze(text, TOP_N)
+    return [_proposals(tokens) for tokens, _score in paths]
+
+
+def _stable_analyses(analyzer, text: str):
+    """Return the analyses only when two runs agree (None if they never do).
+
+    kiwipiepy 0.24.0 occasionally returns a corrupted token form (U+FFFD or
+    stray bytes) for a sound input. A corrupted or run-dependent result must not
+    become a hand-off, so each input is analyzed until two runs agree.
+    """
+    seen = []
+    for _ in range(STABILITY_ATTEMPTS):
+        analyses = _analyses_once(analyzer, text)
+        if any("\ufffd" in item["form"] or "\ufffd" in item["lemma"] for path in analyses for item in path):
+            seen.append(None)
+            continue
+        if analyses in seen:
+            return analyses
+        seen.append(analyses)
+    return None
+
+
 def analyze_one(analyzer, text: str) -> dict:
     text = unicodedata.normalize("NFC", text).strip()
     if not text or len(text) > MAX_TEXT_LENGTH:
         return {"status": "unsupported", "reason": "empty_or_too_long", "analyses": []}
     try:
-        paths = analyzer.analyze(text, TOP_N)
+        analyses = _stable_analyses(analyzer, text)
     except Exception as error:  # explicit machine-readable failure, never silent
         return {"status": "error", "reason": type(error).__name__, "analyses": []}
-    if not paths:
+    if analyses is None:
+        return {"status": "error", "reason": "unstable_output", "analyses": []}
+    if not analyses:
         return {"status": "unsupported", "reason": "no_analysis", "analyses": []}
-    analyses = [_proposals(tokens) for tokens, _score in paths]
     if not any(analyses):
         return {"status": "unsupported", "reason": "no_content_morpheme", "analyses": []}
     # Ranked top-N proposal lists; the consumer decides what is ambiguous.

@@ -188,6 +188,17 @@ export function verifyProductionHandoff(handoff, { rawCandidates, batchId, adapt
   return true;
 }
 
+function firstDifference(left, right, where = '$') {
+  if (sameJson(left, right)) return null;
+  if (left && right && typeof left === 'object' && typeof right === 'object') {
+    for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) {
+      const found = firstDifference(left[key], right[key], Array.isArray(left) ? `${where}[${key}]` : `${where}.${key}`);
+      if (found) return found;
+    }
+  }
+  return `${where}: ${JSON.stringify(right)?.slice(0, 80)} -> ${JSON.stringify(left)?.slice(0, 80)}`;
+}
+
 // Authenticates the recorded analysis: re-runs the pinned local analyzer on the
 // current candidates and requires a byte-equal hand-off (entries, outcomes,
 // metadata). Without this, stored outcomes are only self-consistent. `covered`
@@ -196,7 +207,7 @@ export async function assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates
   const coveredLemmas = new Set(handoff.entries.filter((entry) => entry.decision === 'covered').map((entry) => entry.input));
   const fresh = await buildProductionHandoff({ batchId, rawCandidates, analyzer, coveredLemmas, adapterId });
   if (!sameJson(fresh, handoff)) {
-    fail('intake hand-off does not match a fresh run of the pinned analyzer on the current candidates', 'INTAKE_HANDOFF_FRESH_ANALYSIS');
+    fail(`intake hand-off does not match a fresh run of the pinned analyzer on the current candidates (first difference: ${firstDifference(fresh, handoff)})`, 'INTAKE_HANDOFF_FRESH_ANALYSIS');
   }
   return true;
 }
@@ -282,14 +293,13 @@ export function assertReviewsBoundToHandoff({ handoff, handoffBytes, integration
 // Offline re-check of a tracked hand-off against the tracked candidate review and
 // semantic review input (no local corpus or Kiwi needed). Used by the batch
 // validator so a committed hand-off cannot drift from its admissions.
-// Mirrors the CorpusAdapter's hold rule over the tracked candidate-review row
-// (ambiguity held_* or a non-clean coverage state).
+// Source holds are recorded per row by the builder (`intake_source_holds`) when a
+// hand-off is used; a tracked row without them cannot vouch for the hand-off.
 function rowAdapterHolds(row) {
-  const coverage = row.coverage_status ?? row.corpus_evidence?.coverage_status;
-  const holds = [];
-  if (String(row.morphology_proposal?.ambiguity_status ?? '').startsWith('held_')) holds.push('analysis_ambiguous');
-  if (!['uncovered', 'exact_canonical_lemma', undefined].includes(coverage)) holds.push('coverage_collision');
-  return holds;
+  if (!Array.isArray(row.intake_source_holds)) {
+    fail(`${row.morphology_proposal?.lemma}: tracked candidate review lacks intake_source_holds`, 'INTAKE_HANDOFF_HOLD_ORIGIN');
+  }
+  return row.intake_source_holds;
 }
 
 export function verifyTrackedHandoff({ handoffBytes, semanticInput, candidateRows, batchId }) {

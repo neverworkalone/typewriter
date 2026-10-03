@@ -185,3 +185,22 @@ review rows and the reviewer's cited contexts still come from the batch's
 inventory/evidence files; "synthetic" here means the intake contract does not
 depend on the corpus. Feeding the builder from a source with no inventory at all
 is a #251 non-goal.
+
+### Source-hold facts and Kiwi output stability (issue #251)
+
+- When a hand-off is used the builder records each candidate's source holds in
+  its candidate-review row (`intake_source_holds`, from the CorpusAdapter rule
+  including fail-closed `decision_state: held`). The row is digest-bound into the
+  semantic source, so `verifyTrackedHandoff` checks source holds against the
+  tracked row, not the editable hand-off; a row without the field cannot vouch
+  for a hand-off (`INTAKE_HANDOFF_HOLD_ORIGIN`). The real-route smoke compares
+  the review with the tracked B15 one ignoring only this field and its digest.
+- kiwipiepy 0.24.0 occasionally returned a corrupted token form for a sound
+  input (seen once in ~10 smoke runs: `빚어지` came back as replacement bytes), which
+  surfaced as an intermittent `INTAKE_HANDOFF_FRESH_ANALYSIS`. `kiwi_service.py`
+  now accepts an analysis only when two runs agree and contain no U+FFFD; otherwise
+  the outcome is `error` / `unstable_output` (an explicit hold, never a guess).
+  Regressions: `scripts/intake/test_kiwi_service.py`. After the change 8
+  consecutive smoke runs passed and the hand-off for B15 is byte-identical to the
+  earlier deterministic build. The mismatch error now names the first differing
+  path.
