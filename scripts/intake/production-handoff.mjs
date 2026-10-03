@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import { corpusAdapter } from './adapters/corpus-adapter.mjs';
+import { CORPUS_ADAPTER_ID, corpusAdapter } from './adapters/corpus-adapter.mjs';
+import { SYNTHETIC_ADAPTER_ID, syntheticAdapter } from './adapters/synthetic-adapter.mjs';
 import { dedupeCandidates, digest, normalizeCandidate } from './candidate-contract.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { analyzerDigest, assertPinnedAnalyzer, judgeOutcome, runIntake, verifyAnalysisBinding } from './pipeline.mjs';
@@ -49,6 +50,24 @@ export function corpusBatchCandidates(inventory, evidence) {
   });
 }
 
+// Source adapters the batch builder can be fed from. The builder consumes the
+// batch's inventory/evidence files; the adapter named by the hand-off decides how
+// those are read into the common contract. The synthetic adapter reads only the
+// submitted word and POS (no contextual evidence enters the contract); contexts a
+// reviewer cites live in the builder's own bounded `representative_hits`.
+export const BATCH_SOURCE_ADAPTERS = Object.freeze({
+  [CORPUS_ADAPTER_ID]: corpusBatchCandidates,
+  [SYNTHETIC_ADAPTER_ID]: (inventory) => syntheticAdapter(
+    (inventory?.candidates ?? []).map((candidate) => ({ word: candidate.proposed_lemma, pos: candidate.proposed_pos ?? null })),
+  ),
+});
+
+export function batchCandidatesFor(adapterId, inventory, evidence) {
+  const read = BATCH_SOURCE_ADAPTERS[adapterId];
+  if (!read) fail(`unknown batch source adapter ${adapterId}`, 'INTAKE_HANDOFF_ADAPTER');
+  return read(inventory, evidence);
+}
+
 function normalizedAndMerged(rawCandidates, adapterId) {
   const normalized = rawCandidates.map((raw) => normalizeCandidate(raw, { adapterId: raw.adapterId ?? adapterId }));
   return { normalized, merged: dedupeCandidates(normalized) };
@@ -65,6 +84,7 @@ export async function buildProductionHandoff({ batchId, rawCandidates, analyzer,
   return {
     contract_version: PRODUCTION_HANDOFF_CONTRACT,
     batch_id: batchId,
+    source_adapter: adapterId,
     input_digest: handoffInputDigest(rawCandidates, adapterId),
     analyzer_digest: run.analyzerDigest,
     analyzer: run.metadata,

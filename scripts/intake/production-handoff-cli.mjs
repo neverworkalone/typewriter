@@ -13,7 +13,7 @@ import { createKiwiAnalyzer } from './kiwi-client.mjs';
 import { CORPUS_ADAPTER_ID } from './adapters/corpus-adapter.mjs';
 import {
   buildProductionHandoff,
-  corpusBatchCandidates,
+  batchCandidatesFor,
   handoffEntryFor,
   handoffQaBinding,
   integrationBlock,
@@ -45,15 +45,16 @@ async function build() {
   const directory = args['analysis-directory'];
   const inventory = await readJson(path.join(directory, 'candidate-inventory.json'));
   const evidence = await readJson(path.join(directory, 'candidate-evidence.json'));
-  const rawCandidates = corpusBatchCandidates(inventory, evidence);
+  const adapterId = args['source-adapter'] ?? CORPUS_ADAPTER_ID;
+  const rawCandidates = batchCandidatesFor(adapterId, inventory, evidence);
   const handoff = await buildProductionHandoff({
     batchId: args['batch-id'],
     rawCandidates,
     analyzer: createKiwiAnalyzer(),
     coveredLemmas: await canonicalLemmas(),
-    adapterId: CORPUS_ADAPTER_ID,
+    adapterId,
   });
-  verifyProductionHandoff(handoff, { rawCandidates, batchId: args['batch-id'] });
+  verifyProductionHandoff(handoff, { rawCandidates, batchId: args['batch-id'], adapterId });
   await writeFile(path.resolve(ROOT, args.out), `${JSON.stringify(handoff, null, 2)}\n`);
   const counts = {};
   for (const entry of handoff.entries) {

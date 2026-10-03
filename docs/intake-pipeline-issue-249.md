@@ -165,7 +165,21 @@ B15 artifacts (the review input differs only by the `intake_handoff` block).
 Without resolutions the builder correctly refused B15's admitted candidates that
 Kiwi flagged (e.g. `양주`: `INTAKE_HANDOFF_HOLD_UNRESOLVED`); for this equivalence
 smoke the tracked self-check's checked-context citations stand in as the explicit
-resolutions. A corpus-disabled synthetic word list passes the same hand-off
-contract and fresh-analysis authentication (8 `semantic_qa`, 2 `lemma_mismatch`).
-The builder itself still consumes the corpus inventory/evidence form; feeding it
-from other production sources is a #251 non-goal.
+resolutions. The smoke also checks, per adapter, that a tampered binding is
+rejected by the real builder before any batch file is written, and that the
+temp copy then passes `validate-issue-223.mjs` (which includes
+`verifyTrackedHandoff`).
+
+The hand-off names its `source_adapter`; the builder boundary reads the batch
+inputs through that adapter (`BATCH_SOURCE_ADAPTERS`). The same smoke repeats
+the whole route with `--source-adapter=synthetic-word-list`: the contract then
+carries only each candidate's word and POS (no corpus evidence, no adapter-level
+holds). Result for the same 500 inputs: 462 `semantic_qa`, 35 `lemma_mismatch`,
+3 `analysis_ambiguous` (the corpus adapter additionally preserves its own
+context-level holds, hence the different split); the real builder imported the
+same 397 records, with candidate review and canonical import identical to the
+tracked B15 artifacts and the tracked validator passing. Scope note: the builder's
+review rows and the reviewer's cited contexts still come from the batch's
+inventory/evidence files; "synthetic" here means the intake contract does not
+depend on the corpus. Feeding the builder from a source with no inventory at all
+is a #251 non-goal.

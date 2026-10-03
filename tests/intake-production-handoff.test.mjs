@@ -4,10 +4,12 @@ import test from 'node:test';
 import { assertBatchIntakeHandoff, buildIssue223CorpusBatch } from '../scripts/batch/build-issue-223-corpus-batch.mjs';
 import { checkBatchIntakeHandoff } from '../scripts/batch/intake-handoff-boundary.mjs';
 import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
+import { CORPUS_ADAPTER_ID } from '../scripts/intake/adapters/corpus-adapter.mjs';
 import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import {
   assertHandoffMatchesFreshAnalysis,
+  batchCandidatesFor,
   buildProductionHandoff,
   corpusBatchCandidates,
   handoffEntryFor,
@@ -49,7 +51,7 @@ const ROWS = [rowFor('푸르다', 'adjective', '맑은 초록이나 파랑을 �
 
 async function fixture() {
   const raw = corpusBatchCandidates(INVENTORY, EVIDENCE);
-  const handoff = await buildProductionHandoff({ batchId: BATCH, rawCandidates: raw, analyzer });
+  const handoff = await buildProductionHandoff({ batchId: BATCH, rawCandidates: raw, analyzer, adapterId: CORPUS_ADAPTER_ID });
   const bytes = Buffer.from(`${JSON.stringify(handoff, null, 2)}\n`);
   const bindings = Object.fromEntries(ROWS.map((row) => {
     const lemma = row.morphology_proposal.lemma;
@@ -143,7 +145,7 @@ test('held, covered and unresolved-uncertainty candidates cannot be admitted', a
     (error) => ['INTAKE_HANDOFF_HELD', 'INTAKE_HANDOFF_INPUT_DIGEST', 'INTAKE_HANDOFF_DECISION'].includes(code(error)),
   );
   // An admitted candidate with no intake entry, or a covered lemma, is refused.
-  const covered = await buildProductionHandoff({ batchId: BATCH, rawCandidates: corpusBatchCandidates(INVENTORY, EVIDENCE), analyzer, coveredLemmas: new Set(['장년']) });
+  const covered = await buildProductionHandoff({ batchId: BATCH, rawCandidates: corpusBatchCandidates(INVENTORY, EVIDENCE), analyzer, coveredLemmas: new Set(['장년']), adapterId: CORPUS_ADAPTER_ID });
   const coveredBytes = Buffer.from(JSON.stringify(covered));
   const coveredEntry = handoffEntryFor(covered, { lemma: '장년', proposedPos: 'noun' });
   const coveredBinding = handoffQaBinding(covered, coveredEntry, { glossSha256: sha256Json('풀이.'), pos: 'noun' });
@@ -209,7 +211,7 @@ test('rewriting the recorded analysis outcome is caught by the fresh pinned-anal
   const entry = forged.entries.find((item) => item.input === '바라다');
   entry.analysis_outcome.analyses = entry.analysis_outcome.analyses.slice(0, 1);
   const clean = async (requests) => ({ metadata: METADATA, results: requests.map(({ id, text }) => ({ ...(text === '바라다' ? { status: 'ok', analyses: [[P('바라다', 'verb')]] } : TABLE[text] ?? { status: 'unsupported', analyses: [] }), id, input_digest: analysisInputDigest(text) })) });
-  const cleanEntry = (await buildProductionHandoff({ batchId: BATCH, rawCandidates: f.raw, analyzer: clean })).entries.find((item) => item.input === '바라다');
+  const cleanEntry = (await buildProductionHandoff({ batchId: BATCH, rawCandidates: f.raw, analyzer: clean, adapterId: CORPUS_ADAPTER_ID })).entries.find((item) => item.input === '바라다');
   Object.assign(entry, { decision: 'semantic_qa', holds: [], pos: 'verb', observed_forms: cleanEntry.observed_forms, evidence: cleanEntry.evidence, analysis_binding: cleanEntry.analysis_binding });
   delete entry.proposed_pos;
   const run = (buf, input) => checkBatchIntakeHandoff({ analyzer, handoffBytes: buf, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('바라다', 'verb', '풀이.', 4)], semanticInput: input });
@@ -235,10 +237,10 @@ test('batches with nothing to analyze (all covered, all adapter-held) verify and
     { rawCandidates: raw.map((candidate) => ({ ...candidate, holds: ['analysis_ambiguous'] })) },
   ];
   for (const options of cases) {
-    const handoff = await buildProductionHandoff({ batchId: BATCH, analyzer: noKiwi, ...options });
+    const handoff = await buildProductionHandoff({ batchId: BATCH, analyzer: noKiwi, adapterId: CORPUS_ADAPTER_ID, ...options });
     assert.equal(handoff.analyzer, null);
     assert.equal(verifyProductionHandoff(handoff, { rawCandidates: options.rawCandidates, batchId: BATCH }), true);
-    assert.equal(await assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates: options.rawCandidates, batchId: BATCH, analyzer: noKiwi }), true);
+    assert.equal(await assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates: options.rawCandidates, batchId: BATCH, analyzer: noKiwi, adapterId: CORPUS_ADAPTER_ID }), true);
     const bytes = Buffer.from(JSON.stringify(handoff));
     assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: { intake_handoff: integrationBlock(handoff, bytes, { bindings: {} }) }, candidateRows: [], batchId: BATCH }), true);
     // A recorded analyzer without any analysis is inconsistent.
@@ -263,4 +265,22 @@ test('tracked validation cannot turn an analyzer hold into an analysis-free hold
   // A genuine adapter-level hold (held ambiguity in the tracked review) with a resolution still passes.
   const held = { ...row, morphology_proposal: { ...row.morphology_proposal, ambiguity_status: 'held_homograph' } };
   assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: [held], batchId: BATCH }), true);
+});
+
+test('a synthetic-adapter hand-off drives the same builder boundary without any corpus evidence in the contract', async () => {
+  const raw = batchCandidatesFor('synthetic-word-list', INVENTORY, EVIDENCE);
+  assert.ok(raw.every((candidate) => candidate.adapterId === 'synthetic-word-list' && candidate.evidence.length === 0));
+  const handoff = await buildProductionHandoff({ batchId: BATCH, rawCandidates: raw, analyzer, adapterId: 'synthetic-word-list' });
+  const bytes = Buffer.from(JSON.stringify(handoff));
+  const bindings = Object.fromEntries(ROWS.map((row) => {
+    const lemma = row.morphology_proposal.lemma;
+    const entry = handoffEntryFor(handoff, { lemma, proposedPos: row.morphology_proposal.pos });
+    return [lemma, handoffQaBinding(handoff, entry, { glossSha256: sha256Json(row.editorial_judgment.writer_gloss), pos: row.morphology_proposal.pos })];
+  }));
+  const run = (overrides = {}) => checkBatchIntakeHandoff({ analyzer, handoffBytes: bytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: ROWS, semanticInput: { intake_handoff: integrationBlock(handoff, bytes, { bindings }) }, ...overrides });
+  assert.equal(await run(), true);
+  // Held candidates never admit; an unknown source adapter is refused.
+  await assert.rejects(() => run({ rows: [rowFor('물결무늬', 'noun', '풀이.', 3)] }), (error) => ['INTAKE_HANDOFF_QA_BINDING', 'INTAKE_HANDOFF_HOLD_UNRESOLVED'].includes(code(error)));
+  const unknown = Buffer.from(JSON.stringify({ ...handoff, source_adapter: 'other' }));
+  await assert.rejects(() => run({ handoffBytes: unknown }), (error) => code(error) === 'INTAKE_HANDOFF_ADAPTER');
 });

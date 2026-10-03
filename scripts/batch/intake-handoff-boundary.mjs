@@ -1,8 +1,7 @@
-import { CORPUS_ADAPTER_ID } from '../intake/adapters/corpus-adapter.mjs';
 import {
   assertHandoffMatchesFreshAnalysis,
   assertReviewsBoundToHandoff,
-  corpusBatchCandidates,
+  batchCandidatesFor,
   verifyProductionHandoff,
 } from '../intake/production-handoff.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
@@ -14,9 +13,10 @@ import { sha256Json } from '../validate/semantic-audit.mjs';
 // analyzer, and requires each admitted candidate's review to be bound.
 export async function checkBatchIntakeHandoff({ handoffBytes, inventory, evidence, batchId, semanticInput, rows, analyzer }) {
   const handoff = JSON.parse(handoffBytes.toString('utf8'));
-  const rawCandidates = corpusBatchCandidates(inventory, evidence);
-  verifyProductionHandoff(handoff, { rawCandidates, batchId });
-  await assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates, batchId, analyzer, adapterId: CORPUS_ADAPTER_ID });
+  const adapterId = handoff.source_adapter;
+  const rawCandidates = batchCandidatesFor(adapterId, inventory, evidence);
+  verifyProductionHandoff(handoff, { rawCandidates, batchId, adapterId });
+  await assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates, batchId, analyzer, adapterId });
   const admitted = rows.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
   return assertReviewsBoundToHandoff({
     handoff,
