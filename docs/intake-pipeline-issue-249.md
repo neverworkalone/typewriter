@@ -144,3 +144,28 @@ so a rewritten outcome, relabelled decision or recomputed binding is rejected
 (`INTAKE_HANDOFF_FRESH_ANALYSIS`). This needs the local kiwipiepy 0.24.0 env at
 build time; the offline tracked validator (`verifyTrackedHandoff`) checks
 consistency only and cannot re-authenticate the analysis.
+
+### Real-route smoke (not CI)
+
+```bash
+TYPEWRITER_PYTHON=data/reference/venv-kiwi024/bin/python \
+node scripts/intake/smoke-production-route.mjs \
+  --batch-id=issue-223-m9-e-corpus-batch-15-20261003 \
+  --analysis-directory=data/reference/production/issue-247/corpus-batch-15
+```
+
+Needs kiwipiepy 0.24.0 and the ignored local analysis directory. It copies the
+repository to a temp directory in its pre-B15 state (the working tree is never
+written), builds the hand-off with real Kiwi, binds the tracked self-check, and
+runs the real `build-issue-223-corpus-batch.mjs --intake-handoff`. Result for
+B15: 500 candidates → 455 `semantic_qa`, 32 `lemma_mismatch`, 13
+`analysis_ambiguous`; the builder imported 397 records, and the candidate review,
+canonical import and semantic-decision rows are byte/row-identical to the tracked
+B15 artifacts (the review input differs only by the `intake_handoff` block).
+Without resolutions the builder correctly refused B15's admitted candidates that
+Kiwi flagged (e.g. `양주`: `INTAKE_HANDOFF_HOLD_UNRESOLVED`); for this equivalence
+smoke the tracked self-check's checked-context citations stand in as the explicit
+resolutions. A corpus-disabled synthetic word list passes the same hand-off
+contract and fresh-analysis authentication (8 `semantic_qa`, 2 `lemma_mismatch`).
+The builder itself still consumes the corpus inventory/evidence form; feeding it
+from other production sources is a #251 non-goal.
