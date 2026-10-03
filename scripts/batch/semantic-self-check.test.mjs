@@ -293,6 +293,8 @@ test('the self-check binding applies the verb frame rule from batch 13 and leave
   assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', bare)), /bare citation form|connective/u);
   assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-15-20261003', bare)), /bare citation form|connective/u);
   assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-12-20261003', bare)));
+  // The full-revision boundary also rejects a frame that is not a form of its lemma.
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', (l) => `눈을 감고 잤다.`)), /real conjugated form/u);
 });
 
 test('the shared lemma-in-frame rule admits correctly conjugated verb frames and still rejects unrelated ones', () => {
@@ -309,6 +311,12 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('편지를 썼다.', '쓰다', 'verb'), true);
   assert.equal(frameUsesLemma('노래를 불렀다.', '부르다', 'verb'), true);
   assert.equal(frameUsesLemma('그는 멀리 사는 친구를 찾았다.', '살다', 'verb'), true);
+  assert.equal(frameUsesLemma('눈을 감고 잤다.', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('발을 씻었다.', '받다', 'verb'), false);
+  assert.equal(frameUsesLemma('손을 씻었다.', '씻다', 'verb'), true);
+  assert.equal(frameUsesLemma('문을 닫았다.', '닫다', 'verb'), true);
+  assert.equal(frameUsesLemma('집을 지었다.', '짓다', 'verb'), true);
+  assert.equal(frameUsesLemma('글을 쓴다.', '쓰다', 'verb'), true);
   assert.equal(frameUsesLemma('그는 일을 했다.', '일하다', 'verb'), false);
   assert.equal(frameUsesLemma('그는 일했다.', '일하다', 'verb'), true);
   assert.equal(frameUsesLemma('그는 책을 읽었다.', '읽다', 'noun'), false);

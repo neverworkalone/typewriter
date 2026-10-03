@@ -28,41 +28,70 @@ const decompose = (char) => {
 const compose = ({ cho, jung, jong }) => String.fromCharCode(SYLLABLE_BASE + cho * 588 + jung * 28 + jong);
 const isSyllable = (char) => char !== undefined && char >= '가' && char <= '힣';
 
-// Surface prefixes a verb/adjective stem takes before an ending: the stem
-// itself plus the regular contractions (가+았→갔, 하+였→했, 쓰→써) and the
-// irregular classes ㄷ(듣→들), ㅂ(돕→도와), ㅅ(낫→나), ㄹ(살→사), 르(부르→불러), ㅎ.
-function stemVariants(stem) {
-  const variants = new Set([stem]);
+const PUNCT = '[.,?!”"’\']';
+const END = new RegExp(`^(?:$|${PUNCT})`, 'u');
+const STEM_ENDING = /^(?:다|고|지|는|은|을|던|며|면|도|자|기|겠|니|나|냐|라|려|러|서|어|아|여|으|네|죠|요|습|었|았|였|[.,?!”"’']|$)/u;
+const SHORT_STEM_ENDING = /^(?:다|고|는|은|을|던|며|면|서|겠|니|으|었|았|어|아|죠|요|습|[.,?!”"’']|$)/u;
+const PAST_ENDING = /^(?:다|고|지|는|으|어|던|겠|습|을|죠|요|[.,?!”"’']|$)/u;
+const VOWEL_ENDING = /^(?:어|었|아|았|은|으니|으면)/u;
+const CONTRACTED_ENDING = /^(?:서|도|야|요|라|[.,?!”"’']|$)/u;
+// Irregular classes need a lexicon: only these stems alternate (the rest, e.g. 받·닫·믿, 씻·웃·벗, 입·잡, are regular).
+const D_IRREGULAR = new Set(['듣', '걷', '묻', '싣', '깨닫', '긷', '일컫', '붇']);
+const S_IRREGULAR = new Set(['낫', '짓', '잇', '붓', '긋', '젓', '잣']);
+const B_REGULAR = new Set(['입', '잡', '접', '좁', '뽑', '씹', '꼽', '집', '업']);
+
+/**
+ * Surface alternatives a verb/adjective stem takes before an ending, each with
+ * the endings that may follow it (so 간/갔다 are forms of 가다 but 감고 and
+ * 발(을) are not forms of 가다/받다).
+ */
+function stemForms(stem, plainEnding) {
+  const forms = [{ surface: stem, follows: plainEnding, bare: false }];
   const last = stem.at(-1);
-  if (!isSyllable(last)) return variants;
+  if (!isSyllable(last)) return forms;
   const prefix = stem.slice(0, -1);
   const syllable = decompose(last);
+  const add = (surface, follows, bare = false) => forms.push({ surface, follows, bare });
+  const pastVowels = [0, 4, 1, 5]; // ㅏ ㅓ ㅐ ㅔ
   if (syllable.jong !== 0) {
-    if (syllable.jong === 7) variants.add(prefix + compose({ ...syllable, jong: 8 }));
-    if ([8, 19, 27].includes(syllable.jong)) variants.add(prefix + compose({ ...syllable, jong: 0 }));
-    if (syllable.jong === 17) {
-      const base = prefix + compose({ ...syllable, jong: 0 });
-      for (const tail of ['우', '와', '워', '웠', '왔']) variants.add(base + tail);
+    const open = prefix + compose({ ...syllable, jong: 0 });
+    if (syllable.jong === 7 && D_IRREGULAR.has(stem)) add(prefix + compose({ ...syllable, jong: 8 }), VOWEL_ENDING);
+    if (syllable.jong === 19 && S_IRREGULAR.has(stem)) add(open, VOWEL_ENDING);
+    if (syllable.jong === 8) add(open, /^(?:는|니|시|세|오|습|십)/u);
+    if (syllable.jong === 17 && !B_REGULAR.has(stem)) {
+      for (const tail of ['워', '와']) add(open + tail, CONTRACTED_ENDING);
+      for (const tail of ['웠', '왔']) add(open + tail, PAST_ENDING);
+      add(open + '운', END, true);
+      add(open + '우', /^(?:니|면|며|시|세)/u);
     }
-    return variants;
+    return forms;
   }
-  for (const jong of [4, 8, 16, 20]) variants.add(prefix + compose({ ...syllable, jong }));
+  add(prefix + compose({ ...syllable, jong: 4 }), /^(?:다|[.,?!”"’']|$)/u, true);
+  add(prefix + compose({ ...syllable, jong: 8 }), /^(?:까|수|[.,?!”"’']|$)/u, true);
+  if (pastVowels.includes(syllable.jung)) add(prefix + compose({ ...syllable, jong: 20 }), PAST_ENDING);
   const merged = { 8: 9, 13: 14, 20: 6, 11: 10 }[syllable.jung];
-  if (merged !== undefined) for (const jong of [0, 4, 8, 16, 20]) variants.add(prefix + compose({ ...syllable, jung: merged, jong }));
-  if (last === '하') for (const jong of [0, 4, 8, 16, 20]) variants.add(prefix + compose({ ...syllable, jung: 1, jong }));
+  if (merged !== undefined) {
+    add(prefix + compose({ ...syllable, jung: merged, jong: 0 }), CONTRACTED_ENDING);
+    add(prefix + compose({ ...syllable, jung: merged, jong: 20 }), PAST_ENDING);
+  }
+  if (last === '하') {
+    add(prefix + compose({ ...syllable, jung: 1, jong: 0 }), CONTRACTED_ENDING);
+    add(prefix + compose({ ...syllable, jung: 1, jong: 20 }), PAST_ENDING);
+  }
+  if (syllable.jung === 18 && last !== '르') {
+    for (const jung of [0, 4]) {
+      add(prefix + compose({ ...syllable, jung, jong: 0 }), CONTRACTED_ENDING);
+      add(prefix + compose({ ...syllable, jung, jong: 20 }), PAST_ENDING);
+    }
+  }
   if (last === '르' && prefix.length > 0 && isSyllable(prefix.at(-1))) {
     const before = decompose(prefix.at(-1));
     const base = prefix.slice(0, -1) + compose({ ...before, jong: 8 });
-    for (const tail of ['러', '라', '렀', '랐']) variants.add(base + tail);
+    for (const tail of ['러', '라']) add(base + tail, CONTRACTED_ENDING);
+    for (const tail of ['렀', '랐']) add(base + tail, PAST_ENDING);
   }
-  if (syllable.jung === 18 && last !== '르') {
-    for (const jung of [0, 4]) for (const jong of [0, 20]) variants.add(prefix + compose({ ...syllable, jung, jong }));
-  }
-  return variants;
+  return forms;
 }
-
-const ENDING = /^(?:다|고|지|는|은|을|던|며|면|도|자|기|겠|니|나|냐|라|려|러|서|어|아|여|으|네|죠|요|습|었|았|였|[.,?!”"’']|$)/u;
-const SHORT_STEM_ENDING = /^(?:다|고|는|은|을|던|며|면|서|겠|니|으|었|았|어|아|죠|요|습|[.,?!”"’']|$)/u;
 
 /**
  * The shared frame-contains-the-lemma rule. A frame carries the citation form,
@@ -78,14 +107,13 @@ export function frameUsesLemma(frame, lemma, pos) {
   if (frame.includes(lemma)) return true;
   if ((pos !== 'verb' && pos !== 'adjective') || lemma.length < 2 || !lemma.endsWith('다')) return false;
   const stem = lemma.slice(0, -1);
-  const variants = stemVariants(stem);
-  const ending = stem.length === 1 ? SHORT_STEM_ENDING : ENDING;
+  const forms = stemForms(stem, stem.length === 1 ? SHORT_STEM_ENDING : STEM_ENDING);
   for (const token of frame.split(/[\s,]+/u)) {
     const word = token.replace(/^[“"‘'(]+/u, '');
-    for (const variant of variants) {
-      if (!word.startsWith(variant)) continue;
-      const rest = word.slice(variant.length);
-      if (rest === '' ? variant !== stem : ending.test(rest)) return true;
+    for (const { surface, follows, bare } of forms) {
+      if (!word.startsWith(surface)) continue;
+      const rest = word.slice(surface.length);
+      if (rest === '' ? bare : follows.test(rest)) return true;
     }
   }
   return false;
@@ -213,6 +241,12 @@ export function assertSelfCheckBinding({ input, candidateRows, glossByLemma }) {
   const batchOrdinal = Number(String(input.batch_id).match(/corpus-batch-(\d+)-/u)?.[1]);
   if (batchOrdinal >= SELF_CHECK_FRAME_GRAMMAR_FIRST_BATCH) {
     const posByLemma = new Map(candidateRows.map((row) => [row.morphology_proposal.lemma, row.morphology_proposal.pos]));
+    for (const review of input.reviews) {
+      for (const frame of review.frames) {
+        assert.ok(frameUsesLemma(frame.sentence_frame, review.lemma, posByLemma.get(review.lemma)),
+          `${review.lemma}: every frame must use the lemma in citation form or as a real conjugated form`);
+      }
+    }
     assertVerbFramesGrammatical(input.reviews.map((review) => ({
       lemma: review.lemma,
       pos: posByLemma.get(review.lemma),
