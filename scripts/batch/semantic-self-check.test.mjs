@@ -341,3 +341,22 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('그는 일했다.', '일하다', 'verb'), true);
   assert.equal(frameUsesLemma('그는 책을 읽었다.', '읽다', 'noun'), false);
 });
+
+test('the full-revision binding applies the adjective/verb split of the frame rule', () => {
+  const build = (frame, pos) => {
+    const f = fixture();
+    f.candidateRows = [row('예쁘다'), row('다라'), row('마바')].map((r, i) => (i === 0
+      ? { ...r, morphology_proposal: { ...r.morphology_proposal, pos } } : r));
+    f.glossByLemma = new Map([['예쁘다', GLOSS], ['다라', GLOSS], ['마바', GLOSS]]);
+    f.input.batch_id = 'issue-223-m9-e-corpus-batch-13-20261003';
+    f.input.candidate_outcomes = [outcome(1, '예쁘다', 'pass'), outcome(2, '다라', 'hold'), outcome(3, '마바', 'pass')];
+    f.input.reviews = [
+      { ...review('가나'), lemma: '예쁘다', boundary_rationale: '예쁘다: 첫 용례는 꽃을, 둘째 용례는 사람을 꾸민다', semantic_rationale: '예쁘다: 풀이의 핵심어가 두 용례 모두에서 확인된다', frames: [{ sentence_frame: frame }] },
+      { ...review('마바'), frames: [{ sentence_frame: '그는 마바 걷다 못해 쉬었다.' }] },
+    ];
+    return f;
+  };
+  assert.doesNotThrow(() => binding(build('꽃이 예쁩니다.', 'adjective')));
+  assert.throws(() => binding(build('우리 모두 예쁩시다.', 'adjective')), /real conjugated form/u);
+  assert.doesNotThrow(() => binding(build('우리 모두 예쁩시다.', 'verb')));
+});
