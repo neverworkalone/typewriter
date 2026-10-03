@@ -29,6 +29,7 @@ const compose = ({ cho, jung, jong }) => String.fromCharCode(SYLLABLE_BASE + cho
 const isSyllable = (char) => char !== undefined && char >= '가' && char <= '힣';
 
 const PUNCT = '[.,?!”"’\']';
+const HONORIFIC = /^(?:시[는고면며니죠요다어]|세요|십니[다까]|셨|셔[서도]|신)/u;
 const END = new RegExp(`^(?:$|${PUNCT})`, 'u');
 const STEM_ENDING = /^(?:다|고|지|는|은|을|던|며|면|도|자|기|겠|니|나|냐|라|려|러|서|어|아|여|으|네|죠|요|습|었|았|였|[.,?!”"’']|$)/u;
 const SHORT_STEM_ENDING = /^(?:다|고|는|은|을|던|며|면|서|겠|니|으|었|았|어|아|죠|요|습|[.,?!”"’']|$)/u;
@@ -60,6 +61,9 @@ function stemForms(stem, plainEnding, pos) {
   const forms = [{ surface: stem, follows: alternating ? noVowelEnding(plainEnding) : plainEnding, bare: false }];
   if (syllable === null) return forms;
   const prefix = stem.slice(0, -1);
+  // Honorific -(으)시-: 가세요, 가십니다, 가셨다, 읽으세요, 사세요(살다).
+  const honorificBase = syllable.jong === 0 ? stem : (syllable.jong === 8 ? prefix + compose({ ...syllable, jong: 0 }) : stem + '으');
+  forms.push({ surface: honorificBase, follows: HONORIFIC, bare: false });
   const add = (surface, follows, bare = false) => forms.push({ surface, follows, bare });
   const pastVowels = [0, 4, 1, 5]; // ㅏ ㅓ ㅐ ㅔ
   if (syllable.jong !== 0) {
@@ -148,7 +152,7 @@ export function assertVerbFramesGrammatical(rows) {
       if (tails.length === 0) continue;
       assert.ok(!tails.some((tail) => SENTENCE_END.test(tail)),
         `${lemma}: a verb frame must not end the sentence with the bare citation form`);
-      assert.ok(tails.some((tail) => VERB_CITATION_CONTINUATION.test(tail)),
+      assert.ok(tails.every((tail) => VERB_CITATION_CONTINUATION.test(tail)),
         `${lemma}: a verb frame must use the citation form only before a connective such as -다가, -다니, -다 보니, -다 못해, -다 말고`);
     }
   }

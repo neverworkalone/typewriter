@@ -273,6 +273,8 @@ test('verb frames must be grammatical usage sentences; adjectives and legitimate
   assert.doesNotThrow(() => ok('미루다', 'verb', '일을 미루다가도 결국 끝냈다.'));
   assert.doesNotThrow(() => ok('좋다', 'adjective', '이 책은 내용이 정말 좋다.'));
   assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽었다.'));
+  assert.throws(() => ok('읽다', 'verb', '그는 읽다가 졸았고 읽다 오래 있었다.'), /only before a connective/u);
+  assert.throws(() => ok('읽다', 'verb', '그는 읽다가 졸았고 읽다.'), /bare citation form/u);
   assert.throws(() => ok('읽다', 'verb', '그는 책을 읽다.'), /bare citation form/u);
   assert.throws(() => ok('읽다', 'verb', '그는 책을 읽다 오래 졸았다.'), /only before a connective/u);
   assert.throws(() => ok('깔보다', 'verb', '그는 상대를 깔보다 크게 졌다.'), /only before a connective/u);
@@ -288,9 +290,11 @@ test('the self-check binding applies the verb frame rule from batch 13 and leave
     return f;
   };
   const bare = (l) => `그는 ${l}.`;
-  const connective = (l) => `그는 ${l}가 아니라 ${l}다가 쓰러졌다.`;
+  const connective = (l) => `그는 ${l}가 아니라 ${l}가 쓰러졌다.`;
+  const mixed = (l) => `그는 ${l}가 쓰러졌다 ${l} 오래 지냈다.`;
   assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', connective)));
   assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', bare)), /bare citation form|connective/u);
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', mixed)), /bare citation form|connective/u);
   assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-15-20261003', bare)), /bare citation form|connective/u);
   assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-12-20261003', bare)));
   // The full-revision boundary also rejects a frame that is not a form of its lemma.
@@ -326,6 +330,15 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('그는 시골에 삽니다.', '살다', 'verb'), true);
   assert.equal(frameUsesLemma('그는 책을 읽습니다.', '읽다', 'verb'), true);
   assert.equal(frameUsesLemma('우리 함께 갑시다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('학교에 가세요.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('교장 선생님이 학교에 가십니다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가셨다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('여기 오세요.', '오다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님은 열심히 일하세요.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('사장님이 일하십니다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('책을 읽으세요.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('할머니가 시골에 사세요.', '살다', 'verb'), true);
+  assert.equal(frameUsesLemma('가세 가게에서 샀다.', '가다', 'verb'), false);
   assert.equal(frameUsesLemma('꽃이 예쁩니다.', '예쁘다', 'adjective'), true);
   assert.equal(frameUsesLemma('꽃이 예쁩니까?', '예쁘다', 'adjective'), true);
   assert.equal(frameUsesLemma('우리 모두 예쁩시다.', '예쁘다', 'adjective'), false);
