@@ -131,3 +131,11 @@ coverage, bounded pinned Kiwi) → one text-free `*-intake-handoff.json` per bat
 Dry run (no canonical modification): B15's analysis directory through real Kiwi
 gave 500 candidates → 397 covered (already canonical), 78 `semantic_qa`, 13
 `lemma_mismatch`, 12 `analysis_ambiguous`.
+
+Each hand-off entry also stores the bounded, text-free Kiwi outcome
+(`analysis_outcome`: status, input digest, ranked lemma/POS analyses). The
+builder boundary recomputes every analyzer-originated decision from it
+(`judgeOutcome`), so an analysis hold cannot be relabelled `semantic_qa` and
+adapter holds are preserved in every branch. The recorded outcome is the trust
+anchor for the local pinned run: a rewritten outcome is detectable only by
+re-running `production-handoff-cli.mjs build` (deterministic, byte-identical).

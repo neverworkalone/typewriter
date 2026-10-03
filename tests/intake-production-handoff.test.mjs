@@ -137,7 +137,7 @@ test('held, covered and unresolved-uncertainty candidates cannot be admitted', a
       handoffBytes: hardBytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [rowFor('바라다', 'verb', '풀이.', 4)],
       semanticInput: { intake_handoff: integrationBlock(hardHandoff, hardBytes, { bindings: { 바라다: hardBinding } }) },
     }),
-    (error) => ['INTAKE_HANDOFF_HELD', 'INTAKE_HANDOFF_INPUT_DIGEST'].includes(code(error)),
+    (error) => ['INTAKE_HANDOFF_HELD', 'INTAKE_HANDOFF_INPUT_DIGEST', 'INTAKE_HANDOFF_DECISION'].includes(code(error)),
   );
   // An admitted candidate with no intake entry, or a covered lemma, is refused.
   const covered = await buildProductionHandoff({ batchId: BATCH, rawCandidates: corpusBatchCandidates(INVENTORY, EVIDENCE), analyzer, coveredLemmas: new Set(['장년']) });
