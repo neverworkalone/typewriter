@@ -29,7 +29,7 @@ const compose = ({ cho, jung, jong }) => String.fromCharCode(SYLLABLE_BASE + cho
 const isSyllable = (char) => char !== undefined && char >= '가' && char <= '힣';
 
 const PUNCT = '[.,?!”"’\']';
-const HONORIFIC = /^(?:시[는고면며니죠요다어]|시겠|세요|십니[다까]|셨|셔[서도]|신)/u;
+const HONORIFIC = /^(?:시(?:는데|는|고|면|며|니까|니|죠|지요|요|다|어도|어서|어|지만|지)|시겠(?:어요|습니다|습니까|죠|지요|다|네요|지|는데|어)|세요|십니다|십니까|셨(?:다|어요|습니다|습니까|죠|고|는데|지만|으나)|셔서|셔도|신)[.,?!”"’']*$/u;
 const END = new RegExp(`^(?:$|${PUNCT})`, 'u');
 const STEM_ENDING = /^(?:다|고|지|는|은|을|던|며|면|도|자|기|겠|니|나|냐|라|려|러|서|어|아|여|으|네|죠|요|습|었|았|였|[.,?!”"’']|$)/u;
 const SHORT_STEM_ENDING = /^(?:다|고|는|은|을|던|며|면|서|겠|니|으|었|았|어|아|죠|요|습|[.,?!”"’']|$)/u;
