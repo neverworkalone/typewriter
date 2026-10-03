@@ -115,16 +115,18 @@ export function verifyProductionHandoff(handoff, { rawCandidates, batchId, adapt
     const entry = byKey.get(candidate.key);
     if (!entry) fail(`intake hand-off is missing candidate ${candidate.input}`, 'INTAKE_HANDOFF_COVERAGE');
     if (!sameJson(entry.adapter_ids, candidate.adapterIds)) fail(`${candidate.input}: contributing adapters changed`, 'INTAKE_HANDOFF_ADAPTERS');
+    // Adapter-observed holds are preserved by every decision branch: a held
+    // candidate can never be re-labelled semantic_qa or covered.
+    if (candidate.holds.length && (entry.decision !== 'hold' || candidate.holds.some((hold) => !entry.holds.includes(hold)))) {
+      fail(`${candidate.input}: adapter hold ${candidate.holds.join(', ')} was not preserved`, 'INTAKE_HANDOFF_HOLD_DROPPED');
+    }
     if (entry.decision === 'semantic_qa') {
       if (!sameJson(entry.evidence, candidate.evidence) || !sameJson(entry.observed_forms, candidate.observedForms)) {
         fail(`${candidate.input}: evidence references changed since analysis`, 'INTAKE_HANDOFF_EVIDENCE');
       }
       try { verifyAnalysisBinding(entryRunShape(entry), handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYSIS_BINDING'); }
     } else if (entry.decision === 'hold') {
-      // Adapter-observed holds are preserved, never overridden by shared stages.
-      for (const hold of candidate.holds) {
-        if (!entry.holds.includes(hold)) fail(`${candidate.input}: adapter hold ${hold} was dropped`, 'INTAKE_HANDOFF_HOLD_DROPPED');
-      }
+      // Holds are checked above; nothing further to compare.
     } else if (entry.decision !== 'covered') {
       fail(`${candidate.input}: unknown hand-off decision ${entry.decision}`, 'INTAKE_HANDOFF_CONTRACT');
     }

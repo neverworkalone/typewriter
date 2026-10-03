@@ -165,3 +165,20 @@ test('tracked hand-off re-verifies offline against tracked admissions', async ()
   const changed = rows.map((row, index) => (index ? row : { ...row, editorial_judgment: { ...row.editorial_judgment, writer_gloss: '바뀐 풀이.' } }));
   assert.throws(() => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: changed, batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_QA_BINDING');
 });
+
+test('an adapter-held candidate re-labelled semantic_qa with recomputed bindings is rejected at the builder boundary', async () => {
+  const f = await fixture();
+  const forged = structuredClone(f.handoff);
+  const entry = forged.entries.find((item) => item.input === '오오');
+  const source = f.raw.find((candidate) => candidate.input === '오오');
+  Object.assign(entry, { decision: 'semantic_qa', holds: [], pos: 'noun', observed_forms: ['오오'], evidence: [], analysis_binding: qa(f.handoff).analysis_binding });
+  delete entry.proposed_pos;
+  assert.ok(source.holds.includes('analysis_ambiguous'));
+  const bytes = Buffer.from(JSON.stringify(forged));
+  const row = rowFor('오오', 'noun', '풀이.', 5);
+  const binding = handoffQaBinding(forged, entry, { glossSha256: sha256Json('풀이.'), pos: 'noun' });
+  assert.throws(
+    () => assertBatchIntakeHandoff({ handoffBytes: bytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, rows: [row], semanticInput: { intake_handoff: integrationBlock(forged, bytes, { bindings: { 오오: binding } }) } }),
+    (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED',
+  );
+});
