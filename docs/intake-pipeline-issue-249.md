@@ -75,7 +75,11 @@ fixture gloss are admitted, holds never are) → real
 `CorpusAdapter` and once from the synthetic adapter alone, whose module has no
 corpus reference. The fixture glosses stand in for the source-bound QA step;
 authoring new canonical words is outside this issue. Adapter holds keep their
-original cause (`analysis_ambiguous` vs `coverage_collision`). Peak memory and review/rework
+original cause (`analysis_ambiguous` vs `coverage_collision`). The fixture QA is
+bound to the hand-off key, lemma/POS, evidence references and analysis binding
+(`QA_HANDOFF_BINDING_MISMATCH` on any change, checked before the SQLite build);
+a word-only hand-off has empty evidence and is admitted only with QA bound to
+that empty evidence. Peak memory and review/rework
 cost were not measured; no quality-win claim is made beyond the table above.
 
 B05–B10 history and canonical/SQLite/search schema are unchanged.

@@ -59,3 +59,13 @@ test('synthetic adapter reaches search with no corpus module in the import graph
   assert.deepEqual(found, ['바람']);
 });
 
+
+test('word-only hand-offs (no evidence) are admitted only with QA bound to empty evidence', async () => {
+  const run = await runIntake({ candidates: syntheticAdapter(['바람']), analyzer });
+  const [handoff] = run.decisions;
+  assert.deepEqual(handoff.evidence, []);
+  const qa = authorQa(run, GLOSSES);
+  assert.equal(admitHandoffs(run, qa).records.length, 1);
+  const withEvidence = { ...run, decisions: [{ ...handoff, evidence: [{ kind: 'corpus-paragraph', ref: 'D.1#D.1.1' }] }] };
+  assert.throws(() => admitHandoffs(withEvidence, qa), (error) => error.code === 'QA_HANDOFF_BINDING_MISMATCH');
+});
