@@ -284,10 +284,12 @@ export function assertReviewsBoundToHandoff({ handoff, handoffBytes, integration
 // validator so a committed hand-off cannot drift from its admissions.
 // Mirrors the CorpusAdapter's hold rule over the tracked candidate-review row
 // (ambiguity held_* or a non-clean coverage state).
-function rowHasAdapterHold(row) {
+function rowAdapterHolds(row) {
   const coverage = row.coverage_status ?? row.corpus_evidence?.coverage_status;
-  return String(row.morphology_proposal?.ambiguity_status ?? '').startsWith('held_')
-    || !['uncovered', 'exact_canonical_lemma', undefined].includes(coverage);
+  const holds = [];
+  if (String(row.morphology_proposal?.ambiguity_status ?? '').startsWith('held_')) holds.push('analysis_ambiguous');
+  if (!['uncovered', 'exact_canonical_lemma', undefined].includes(coverage)) holds.push('coverage_collision');
+  return holds;
 }
 
 export function verifyTrackedHandoff({ handoffBytes, semanticInput, candidateRows, batchId }) {
@@ -302,6 +304,13 @@ export function verifyTrackedHandoff({ handoffBytes, semanticInput, candidateRow
     if (entry.decision === 'semantic_qa') {
       try { verifyAnalysisBinding(entryRunShape(entry), handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYSIS_BINDING'); }
     }
+    // Source holds recorded in the tracked candidate review are independent of the
+    // (editable) hand-off: every one must survive in the entry, whatever its decision.
+    const sourceRow = rowByLemma.get(entry.input);
+    const sourceHolds = sourceRow ? rowAdapterHolds(sourceRow) : [];
+    if (sourceHolds.length && (entry.decision !== 'hold' || sourceHolds.some((hold) => !entry.holds.includes(hold)))) {
+      fail(`${entry.input}: candidate-review hold ${sourceHolds.join(', ')} was not preserved by the hand-off`, 'INTAKE_HANDOFF_HOLD_DROPPED');
+    }
     if (entry.decision === 'covered') continue;
     // Only admissions depend on a hold's origin; non-admitted holds fail closed anyway.
     const row = rowByLemma.get(entry.input);
@@ -312,7 +321,7 @@ export function verifyTrackedHandoff({ handoffBytes, semanticInput, candidateRow
     // candidate review; everything else is recomputed from its recorded outcome.
     if (entry.analysis_outcome || entry.decision === 'semantic_qa') {
       assertDecisionFollowsOutcome(entry, { input, pos: pos || null, holds: [] });
-    } else if (!row || !rowHasAdapterHold(row)) {
+    } else if (!row || !rowAdapterHolds(row).length) {
       fail(`${entry.input}: a hand-off hold without recorded analysis must correspond to an adapter-level hold in the candidate review`, 'INTAKE_HANDOFF_HOLD_ORIGIN');
     }
   }

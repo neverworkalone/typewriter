@@ -300,3 +300,16 @@ test('choosing the synthetic adapter cannot drop a hold recorded in the batch in
   delete target.proposed_pos;
   assert.throws(() => verifyProductionHandoff(forged, { rawCandidates: raw, batchId: BATCH, adapterId: 'synthetic-word-list' }), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
 });
+
+test('tracked validation preserves candidate-review source holds even for a clean-looking semantic_qa entry', async () => {
+  const f = await fixture();
+  const row = (ambiguity) => ({ ...rowFor('푸르다', 'adjective', '맑은 초록이나 파랑을 띠다.', 1), coverage_status: 'uncovered', morphology_proposal: { lemma: '푸르다', pos: 'adjective', ambiguity_status: ambiguity } });
+  const verify = (candidateRows) => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows, batchId: BATCH });
+  // The hand-off is internally consistent and clean, but the tracked review records a held source ambiguity.
+  assert.throws(() => verify([row('held_homograph')]), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
+  const jangnyeon = { ...rowFor('장년', 'noun', '청년과 노년 사이의 나이대.', 2), coverage_status: 'uncovered', morphology_proposal: { lemma: '장년', pos: 'noun', ambiguity_status: 'single_observed_analysis_unverified' } };
+  assert.equal(verify([row('single_observed_analysis_unverified'), jangnyeon]), true);
+  // Non-admitted rows are covered too: a held row cannot hide behind a semantic_qa entry.
+  const rows = [row('single_observed_analysis_unverified'), { ...jangnyeon, morphology_proposal: { ...jangnyeon.morphology_proposal, ambiguity_status: 'held_homograph' } }];
+  assert.throws(() => verify(rows), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
+});
