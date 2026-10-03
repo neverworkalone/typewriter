@@ -54,6 +54,13 @@ Frame grammar: a later review found 83 verb diagnostic frames (B13 24, B14 34, B
 
 Local invocations observed in ledgers: `ci:fast` B13 ×2 (first failed on a dirty worktree), B14 ×1, B15 ×1 (all passing, 21–24 s); `batch:issue-223:check` ×3 (54–65 s). `ci:normal` at the 12,204 checkpoint (commit `7d3990a`) failed once, 227.1 s: `tests/artifact-policy.test.mjs` rejected the two `data/timing/m10-b-short-search-comparison-*.json` files as unclassified. Fixed by registering that pattern in `config/artifact-policy.json`; the rerun at the policy-fix commit passed in 283.7 s (ledger label `ci-normal-rerun-after-policy-fix`). GitHub CI invocations: `unavailable` at report time (branch not yet pushed).
 
+## Known issues (deferred)
+
+- The verb/adjective diagnostic-frame check (`frameUsesLemma`, `assertVerbFramesGrammatical` in `scripts/batch/semantic-self-check.mjs`) is a rule-based, hand-enumerated model of Korean conjugation. Review rounds kept finding valid forms it rejects or invalid forms it admits (honorific, irregular, dual-sense stems, connective and auxiliary endings). It is not a general grammar check and more counter-examples are likely.
+- Planned follow-up: move lemma/POS/inflection attribution to a morphological-analyzer boundary (Kiwi, see #249) with an explicit `unknown / needs source-bound QA` outcome, instead of extending the pattern list.
+- B14/B15 self-check notes were rewritten per context from contexts already read in the same session, not freshly re-read; B13–B15 admissions remain `independent_review: false`.
+- B13/B14/B15 ledger spans do not cover the rework passes.
+
 ## 5. Bottlenecks (ranked, measured)
 
 1. Authoring + self-check turns: 1,045 s of 1,729 s wall in B13, 708 of 1,030 in B14, 390 of 879 in B15.
