@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { CORPUS_ADAPTER_ID, corpusAdapter } from './adapters/corpus-adapter.mjs';
+import { CORPUS_ADAPTER_ID, corpusAdapter, corpusHolds } from './adapters/corpus-adapter.mjs';
 import { SYNTHETIC_ADAPTER_ID, syntheticAdapter } from './adapters/synthetic-adapter.mjs';
 import { dedupeCandidates, digest, normalizeCandidate } from './candidate-contract.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
@@ -58,14 +58,24 @@ export function corpusBatchCandidates(inventory, evidence) {
 export const BATCH_SOURCE_ADAPTERS = Object.freeze({
   [CORPUS_ADAPTER_ID]: corpusBatchCandidates,
   [SYNTHETIC_ADAPTER_ID]: (inventory) => syntheticAdapter(
-    (inventory?.candidates ?? []).map((candidate) => ({ word: candidate.proposed_lemma, pos: candidate.proposed_pos ?? null })),
+    // Holds recorded in the batch inventory are facts about the candidate, not about the
+    // adapter that reads it: choosing another adapter can never drop them.
+    (inventory?.candidates ?? []).map((candidate) => ({ word: candidate.proposed_lemma, pos: candidate.proposed_pos ?? null, holds: corpusHolds(candidate) })),
   ),
 });
 
 export function batchCandidatesFor(adapterId, inventory, evidence) {
   const read = BATCH_SOURCE_ADAPTERS[adapterId];
   if (!read) fail(`unknown batch source adapter ${adapterId}`, 'INTAKE_HANDOFF_ADAPTER');
-  return read(inventory, evidence);
+  const candidates = read(inventory, evidence);
+  // Whatever adapter the hand-off names, the inventory's own holds must survive.
+  (inventory?.candidates ?? []).forEach((source, index) => {
+    const have = new Set(normalizeCandidate(candidates[index], { adapterId }).holds);
+    for (const hold of corpusHolds(source)) {
+      if (!have.has(hold)) fail(`${source.proposed_lemma}: batch inventory hold ${hold} was dropped by adapter ${adapterId}`, 'INTAKE_HANDOFF_HOLD_DROPPED');
+    }
+  });
+  return candidates;
 }
 
 function normalizedAndMerged(rawCandidates, adapterId) {

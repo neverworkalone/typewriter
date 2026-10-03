@@ -6,7 +6,7 @@ export const CORPUS_ADAPTER_ID = 'written-corpus-2025';
 
 // Preserve the pilot's own reason for holding: morphology ambiguity and a
 // coverage collision are different defects. Unknown held causes fail closed.
-function corpusHolds(candidate) {
+export function corpusHolds(candidate) {
   if (candidate.decision_state !== 'held') return [];
   const holds = [];
   if (String(candidate.ambiguity_status ?? '').startsWith('held_')) holds.push('analysis_ambiguous');

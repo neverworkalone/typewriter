@@ -173,12 +173,14 @@ temp copy then passes `validate-issue-223.mjs` (which includes
 The hand-off names its `source_adapter`; the builder boundary reads the batch
 inputs through that adapter (`BATCH_SOURCE_ADAPTERS`). The same smoke repeats
 the whole route with `--source-adapter=synthetic-word-list`: the contract then
-carries only each candidate's word and POS (no corpus evidence, no adapter-level
-holds). Result for the same 500 inputs: 462 `semantic_qa`, 35 `lemma_mismatch`,
-3 `analysis_ambiguous` (the corpus adapter additionally preserves its own
-context-level holds, hence the different split); the real builder imported the
-same 397 records, with candidate review and canonical import identical to the
-tracked B15 artifacts and the tracked validator passing. Scope note: the builder's
+carries each candidate's word, POS and the holds recorded in the batch inventory
+(those are facts about the candidate, so naming another adapter can never drop
+them; `batchCandidatesFor` fails with `INTAKE_HANDOFF_HOLD_DROPPED` otherwise),
+but no corpus evidence. For the same 500 inputs both adapters now give the same
+decisions: 455 `semantic_qa`, 32 `lemma_mismatch`, 13 `analysis_ambiguous`; the
+real builder imported the same 397 records, with candidate review and canonical
+import identical to the tracked B15 artifacts and the tracked validator passing.
+Scope note: the builder's
 review rows and the reviewer's cited contexts still come from the batch's
 inventory/evidence files; "synthetic" here means the intake contract does not
 depend on the corpus. Feeding the builder from a source with no inventory at all

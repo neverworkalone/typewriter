@@ -284,3 +284,19 @@ test('a synthetic-adapter hand-off drives the same builder boundary without any 
   const unknown = Buffer.from(JSON.stringify({ ...handoff, source_adapter: 'other' }));
   await assert.rejects(() => run({ handoffBytes: unknown }), (error) => code(error) === 'INTAKE_HANDOFF_ADAPTER');
 });
+
+test('choosing the synthetic adapter cannot drop a hold recorded in the batch inventory', async () => {
+  const raw = batchCandidatesFor('synthetic-word-list', INVENTORY, EVIDENCE);
+  const held = raw.find((candidate) => candidate.input === '오오');
+  assert.ok(held.holds.includes('analysis_ambiguous'));
+  const handoff = await buildProductionHandoff({ batchId: BATCH, rawCandidates: raw, analyzer, adapterId: 'synthetic-word-list' });
+  const entry = handoff.entries.find((item) => item.input === '오오');
+  assert.equal(entry.decision, 'hold');
+  assert.ok(entry.holds.includes('analysis_ambiguous'));
+  // Relabelling that hold as semantic_qa in a synthetic-adapter hand-off is refused like the corpus case.
+  const forged = structuredClone(handoff);
+  const target = forged.entries.find((item) => item.input === '오오');
+  Object.assign(target, { decision: 'semantic_qa', holds: [], pos: 'noun', observed_forms: [], evidence: [], analysis_binding: qa(handoff).analysis_binding });
+  delete target.proposed_pos;
+  assert.throws(() => verifyProductionHandoff(forged, { rawCandidates: raw, batchId: BATCH, adapterId: 'synthetic-word-list' }), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
+});

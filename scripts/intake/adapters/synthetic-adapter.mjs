@@ -8,5 +8,6 @@ export function syntheticAdapter(entries) {
     input: typeof entry === 'string' ? entry : entry.word,
     pos: typeof entry === 'string' ? null : entry.pos ?? null,
     evidence: [],
+    ...(typeof entry === 'object' && entry.holds?.length ? { holds: entry.holds } : {}),
   }));
 }
