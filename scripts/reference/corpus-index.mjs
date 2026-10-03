@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
 
 import { openShortQueryCounts, SHORT_QUERY_LENGTH } from './short-query-counts.mjs';
+import { openShortQueryPostings } from './short-query-postings.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -814,7 +815,7 @@ export function countCorpusMatches({
 }
 
 /** Keep one read-only SQLite connection open while collecting evidence for a bounded candidate batch. */
-export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH, useShortCounts = true } = {}) {
+export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH, useShortCounts = true, useShortPostings = true } = {}) {
   const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
   const statements = new Map();
   let closed = false;
@@ -822,6 +823,11 @@ export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH, use
   // sidecar when one exists; otherwise the exact scan below runs, so the
   // result never depends on whether the sidecar was built.
   const shortCounts = useShortCounts ? openShortQueryCounts({ indexPath: databasePath, indexDatabase: database }) : null;
+
+  // Two-character literal search is answered from a digest-bound bigram posting
+  // sidecar for rare bigrams; common bigrams, a missing/stale/corrupt sidecar and
+  // any posting/verification disagreement use the exact ordered scan.
+  const shortPostings = useShortPostings ? openShortQueryPostings({ indexPath: databasePath, indexDatabase: database }) : null;
 
   const statement = (key, sql) => {
     if (!statements.has(key)) statements.set(key, database.prepare(sql));
@@ -837,16 +843,7 @@ export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH, use
       const useFts = validateCorpusQuery(query);
       const effectiveLimit = validateSearchLimit(limit);
       if (query.length === 0) return [];
-      const sql = `
-        WITH bounded_paragraphs AS (
-          SELECT p.paragraph_rowid
-          FROM paragraphs AS p
-          ${useFts ? 'JOIN paragraph_fts ON paragraph_fts.rowid = p.paragraph_rowid' : ''}
-          WHERE ${useFts ? 'paragraph_fts MATCH ? AND instr(p.form, ?) > 0' : 'instr(p.form, ?) > 0'}
-          ORDER BY p.paragraph_rowid
-          LIMIT ?
-        )
-        SELECT
+      const resultColumns = `
           p.paragraph_rowid,
           d.document_rowid,
           sf.source_path,
@@ -866,12 +863,44 @@ export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH, use
           d.document_date,
           p.paragraph_id,
           p.ordinal AS paragraph_ordinal,
-          p.form
+          p.form`;
+      const resultJoins = `
         FROM bounded_paragraphs AS bounded
         JOIN paragraphs AS p ON p.paragraph_rowid = bounded.paragraph_rowid
         JOIN documents AS d ON d.document_rowid = p.document_rowid
         JOIN source_files AS sf ON sf.source_path = d.source_path
-        ORDER BY bounded.paragraph_rowid
+        ORDER BY bounded.paragraph_rowid`;
+      if (shortPostings && [...query].length === SHORT_QUERY_LENGTH) {
+        const posted = shortPostings.lookup(query, effectiveLimit);
+        if (posted && posted.rowids.length === 0) return [];
+        if (posted) {
+          const rows = statement('search:posting', `
+            WITH bounded_paragraphs AS (
+              SELECT p.paragraph_rowid
+              FROM paragraphs AS p
+              WHERE p.paragraph_rowid IN (SELECT value FROM json_each(?)) AND instr(p.form, ?) > 0
+              ORDER BY p.paragraph_rowid
+              LIMIT ?
+            )
+            SELECT ${resultColumns}
+            ${resultJoins}
+          `).all(JSON.stringify(posted.rowids), query, effectiveLimit);
+          // Every posted rowid must verify as a literal match; any disagreement
+          // means the sidecar is untrustworthy, so the exact scan answers.
+          if (rows.length === posted.rowids.length) return rows;
+        }
+      }
+      const sql = `
+        WITH bounded_paragraphs AS (
+          SELECT p.paragraph_rowid
+          FROM paragraphs AS p
+          ${useFts ? 'JOIN paragraph_fts ON paragraph_fts.rowid = p.paragraph_rowid' : ''}
+          WHERE ${useFts ? 'paragraph_fts MATCH ? AND instr(p.form, ?) > 0' : 'instr(p.form, ?) > 0'}
+          ORDER BY p.paragraph_rowid
+          LIMIT ?
+        )
+        SELECT ${resultColumns}
+        ${resultJoins}
       `;
       const parameters = corpusMatchParameters(query, useFts);
       parameters.push(effectiveLimit);
@@ -902,6 +931,7 @@ export function createCorpusIndexReader({ databasePath = DEFAULT_INDEX_PATH, use
       if (closed) return;
       closed = true;
       shortCounts?.close();
+      shortPostings?.close();
       database.close();
     },
   };

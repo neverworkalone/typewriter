@@ -1,0 +1,53 @@
+{
+  "workload": "two-character observed surface forms of the candidate inventory, first five per candidate, inventory order",
+  "index_digest_note": "same index file for every run",
+  "limit": 100,
+  "query_count": 125,
+  "distinct_query_count": 125,
+  "queries_digest": "b0c01ebdd82965ff3720cfcedfcf4ac499fe2f98cb90142fe90c98fe6a47cd73",
+  "results_digest": "56c9ce4bd8315f3324bac9788ee1e8912c5e37de4af03b42bb142ba49cc85906",
+  "empty_result_queries": 0,
+  "limit_reached_queries": 124,
+  "old_scan_total_ms": [
+    34151
+  ],
+  "old_scan_ms_per_query": 273,
+  "new_cold_first_pass_total_ms": 786,
+  "new_warm_total_ms": [
+    702,
+    707,
+    706
+  ],
+  "slowest_new_queries_ms": [
+    {
+      "position": 0,
+      "ms": 194.7
+    },
+    {
+      "position": 86,
+      "ms": 60.79
+    },
+    {
+      "position": 20,
+      "ms": 60.26
+    },
+    {
+      "position": 49,
+      "ms": 44.85
+    },
+    {
+      "position": 53,
+      "ms": 37.87
+    }
+  ],
+  "result_mismatches": 0,
+  "omitted_paragraphs": 0,
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "darwin-arm64",
+    "os_release": "25.6.0",
+    "cpu": "Apple M1 Pro",
+    "cpu_count": 8,
+    "memory_gib": 16
+  }
+}
