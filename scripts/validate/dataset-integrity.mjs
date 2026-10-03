@@ -71,7 +71,9 @@ function relationKey(relation) {
 }
 
 function indexRecords(recordInfos, context) {
-  const indexes = context?.records === recordInfos
+  // A context only supplies indexes when it actually carries them; a minimal
+  // context (records plus derived manifests) is indexed from the records.
+  const indexes = context?.records === recordInfos && context.indexes
     ? context.indexes
     : createCanonicalContext({ records: recordInfos }).indexes;
 
