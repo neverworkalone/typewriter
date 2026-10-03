@@ -45,6 +45,13 @@ const SCENARIOS = {
     fast: [sharedBuild],
     rest: [shell('delete ledger', 'rm "$TYPEWRITER_PROCESS_METRICS_PATH"')],
   },
+  'mislabeled-as-deep': { fast: [sharedBuild], rest: [child('current-build-as-deep')] },
+  'nested-normal': { fast: [sharedBuild], rest: [child('nested-current-build')] },
+  'nested-deep': {
+    fast: [sharedBuild],
+    rest: [child('noop')],
+    deep: [child('nested-current-build', { independentCurrentRevisionBuilds: true })],
+  },
   'deep-independent': {
     fast: [sharedBuild],
     rest: [child('noop')],

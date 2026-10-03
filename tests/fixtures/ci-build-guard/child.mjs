@@ -18,9 +18,24 @@ const modes = {
   'current-build': [CURRENT_FIXTURE],
   'current-twice': [CURRENT_FIXTURE, CURRENT_FIXTURE],
 };
+const declaredModes = new Set([...Object.keys(modes), 'nested-current-build', 'current-build-as-deep']);
 
 const [mode] = process.argv.slice(2);
-if (!(mode in modes)) {
+if (mode === 'nested-current-build') {
+  // A validator that shells out to another node process which builds (nested path).
+  const { spawnSync } = await import('node:child_process');
+  const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), 'current-build'], {
+    stdio: 'inherit',
+    env: process.env,
+  });
+  process.exit(result.status ?? 1);
+}
+if (mode === 'current-build-as-deep') {
+  // A process that labels its own normal-phase build as deep.
+  process.env.TYPEWRITER_CI_PHASE = 'deep';
+  modes['current-build-as-deep'] = [CURRENT_FIXTURE];
+}
+if (!declaredModes.has(mode)) {
   console.error(`unknown mode ${mode}`);
   process.exit(2);
 }

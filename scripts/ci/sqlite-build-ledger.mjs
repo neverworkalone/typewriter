@@ -131,6 +131,21 @@ export function assertChildEvidenceAdvanced(before, after, commandLabel) {
   }
 }
 
+// Ground truth for the phase of a build is the phase the runner was executing when
+// the event was appended, not the label a process wrote about itself. A process
+// that labels a normal-phase build `deep` (or drops the label) must not escape the
+// normal one-build limit, so any mismatch is a failure.
+export function assertBuildEventsMatchPhase(events, expectedPhase, commandLabel) {
+  for (const event of events) {
+    if (event.type === 'sqlite-build' && event.phase !== expectedPhase) {
+      fail(
+        `${commandLabel}: a SQLite build was recorded as phase ${event.phase} (pid ${event.pid}) `
+        + `while the runner was in the ${expectedPhase} phase`,
+      );
+    }
+  }
+}
+
 export function assertNoChildCurrentRevisionBuild(summary, commandLabel) {
   if (summary.child_current_revision_sqlite_build_count > 0) {
     fail(

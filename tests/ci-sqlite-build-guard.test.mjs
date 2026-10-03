@@ -5,6 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  assertBuildEventsMatchPhase,
   assertChildEvidenceAdvanced,
   assertNoChildCurrentRevisionBuild,
   assertSingleCurrentRevisionBuild,
@@ -245,6 +246,8 @@ const FAILURES = [
   ['two-child-builds', /2 child build\(s\)/u],
   ['child-without-parent', /child process built the exact current canonical revision/u],
   ['hook-omitted', /no child process metrics were recorded/u],
+  ['mislabeled-as-deep', /recorded as phase deep .* while the runner was in the normal phase/u],
+  ['nested-normal', /child process built the exact current canonical revision/u],
   ['malformed-ledger', /not valid JSON/u],
   ['deleted-ledger', /ledger is unreadable/u],
 ];
@@ -264,6 +267,24 @@ test('real all run: independent deep rebuilds are allowed and normal stays one-b
   assert.equal(final.child_current_revision_sqlite_build_count, 0);
   assert.equal(final.deep_current_revision_sqlite_build_count, 2);
   assert.equal(final.all_sqlite_build_count, 3);
+});
+
+test('real all run: a nested validator build in the deep phase is allowed', () => {
+  const result = runFixture('nested-deep', 'all');
+  assert.equal(result.status, 0, result.stderr);
+  const final = result.evidence.at(-1).metrics;
+  assert.equal(final.current_revision_sqlite_build_count, 1);
+  assert.equal(final.deep_current_revision_sqlite_build_count, 1);
+  assert.equal(final.child_current_revision_sqlite_build_count, 0);
+});
+
+test('phase of a build event must match the phase the runner executes', () => {
+  const event = { type: 'sqlite-build', pid: 7, count: 1, canonical_directory: '/c', canonical_revision: REVISION };
+  assertBuildEventsMatchPhase([{ ...event, phase: 'normal' }], 'normal', 'cmd');
+  assertBuildEventsMatchPhase([{ ...event, phase: 'deep' }], 'deep', 'cmd');
+  assertBuildEventsMatchPhase([{ type: 'process', pid: 7, peak_rss_kb: 1 }], 'normal', 'cmd');
+  assert.throws(() => assertBuildEventsMatchPhase([{ ...event, phase: 'deep' }], 'normal', 'cmd'), /phase deep/u);
+  assert.throws(() => assertBuildEventsMatchPhase([{ ...event, phase: 'normal' }], 'deep', 'cmd'), /phase normal/u);
 });
 
 test('registry: deep owns the independent two-build proofs and normal never does', () => {

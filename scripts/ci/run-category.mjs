@@ -30,6 +30,7 @@ import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 import { validateM515 } from '../batch/validate-m5-15.mjs';
 import { validateFrozenM6QualityAuditSnapshot } from '../validate/m6-4-quality-audit.mjs';
 import {
+  assertBuildEventsMatchPhase,
   assertChildEvidenceAdvanced,
   assertNoChildCurrentRevisionBuild,
   assertSingleCurrentRevisionBuild,
@@ -140,21 +141,26 @@ function measureLedger(context) {
   if (!context.processMetrics?.path) {
     return undefined;
   }
-  return summarizeBuildLedger(readBuildLedger(context.processMetrics.path), {
-    canonicalRevision: context.canonicalContext.canonicalRevision,
-    parentPid: process.pid,
-  });
+  const events = readBuildLedger(context.processMetrics.path);
+  return {
+    events,
+    summary: summarizeBuildLedger(events, {
+      canonicalRevision: context.canonicalContext.canonicalRevision,
+      parentPid: process.pid,
+    }),
+  };
 }
 
 async function runCommand({ executable, args }, context = {}, check = {}) {
   const commandLabel = check.label ?? formatCommand({ executable, args });
+  const phase = context.phase ?? process.env[CI_PHASE_ENV] ?? NORMAL_PHASE;
   const ledgerBefore = measureLedger(context);
   await new Promise((resolve, reject) => {
     const childEnvironment = { ...process.env };
     delete childEnvironment.NODE_TEST_CONTEXT;
     // Nested runners (e.g. the M5-12A prospective preflight) pass a context without
     // a phase; they inherit the phase of the process that is running them.
-    childEnvironment[CI_PHASE_ENV] = context.phase ?? process.env[CI_PHASE_ENV] ?? NORMAL_PHASE;
+    childEnvironment[CI_PHASE_ENV] = phase;
     if (context.processMetrics?.path) {
       childEnvironment.TYPEWRITER_PROCESS_METRICS_PATH = context.processMetrics.path;
       const metricsModule = path.join(REPOSITORY_DIRECTORY, 'scripts/ci/record-process-metrics.mjs');
@@ -194,9 +200,14 @@ async function runCommand({ executable, args }, context = {}, check = {}) {
     // Fail closed: an unreadable ledger or a command that registered no child
     // process cannot be reported as "zero child builds".
     const ledgerAfter = measureLedger(context);
-    assertChildEvidenceAdvanced(ledgerBefore, ledgerAfter, commandLabel);
-    if ((context.phase ?? NORMAL_PHASE) === NORMAL_PHASE) {
-      assertNoChildCurrentRevisionBuild(ledgerAfter, commandLabel);
+    assertBuildEventsMatchPhase(
+      ledgerAfter.events.slice(ledgerBefore.events.length),
+      phase,
+      commandLabel,
+    );
+    assertChildEvidenceAdvanced(ledgerBefore.summary, ledgerAfter.summary, commandLabel);
+    if (phase === NORMAL_PHASE) {
+      assertNoChildCurrentRevisionBuild(ledgerAfter.summary, commandLabel);
     }
   }
 }
