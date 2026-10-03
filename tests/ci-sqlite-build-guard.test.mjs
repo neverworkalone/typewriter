@@ -17,6 +17,7 @@ import {
   SharedDatabaseError,
 } from '../scripts/ci/current-revision-database.mjs';
 import { CI_CATEGORIES, CI_NORMAL_CATEGORY_ORDER } from '../scripts/ci/registry.mjs';
+import { runChecks } from '../scripts/ci/run-category.mjs';
 
 const REVISION = 'a'.repeat(64);
 const OTHER_REVISION = 'b'.repeat(64);
@@ -174,6 +175,31 @@ test('a shared artifact of another revision fails closed unless the run targets 
     });
     assert.deepEqual(reused, { databasePaths: [sharedPath], reusedSharedArtifact: true });
   } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('a nested runner without a phase inherits the phase of its process', async () => {
+  const { mkdtemp, readFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-phase-test-'));
+  const previous = process.env.TYPEWRITER_CI_PHASE;
+  try {
+    for (const phase of ['deep', 'normal']) {
+      const out = path.join(directory, `${phase}.txt`);
+      process.env.TYPEWRITER_CI_PHASE = phase;
+      await runChecks([{
+        label: `report phase ${phase}`,
+        command: () => ({
+          executable: process.execPath,
+          args: ['-e', 'require("fs").writeFileSync(process.argv[1], process.env.TYPEWRITER_CI_PHASE)', out],
+        }),
+      }], {}, { log: () => {} });
+      assert.equal(await readFile(out, 'utf8'), phase);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.TYPEWRITER_CI_PHASE;
+    else process.env.TYPEWRITER_CI_PHASE = previous;
     await rm(directory, { recursive: true, force: true });
   }
 });

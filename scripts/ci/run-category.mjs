@@ -152,7 +152,9 @@ async function runCommand({ executable, args }, context = {}, check = {}) {
   await new Promise((resolve, reject) => {
     const childEnvironment = { ...process.env };
     delete childEnvironment.NODE_TEST_CONTEXT;
-    childEnvironment[CI_PHASE_ENV] = context.phase ?? NORMAL_PHASE;
+    // Nested runners (e.g. the M5-12A prospective preflight) pass a context without
+    // a phase; they inherit the phase of the process that is running them.
+    childEnvironment[CI_PHASE_ENV] = context.phase ?? process.env[CI_PHASE_ENV] ?? NORMAL_PHASE;
     if (context.processMetrics?.path) {
       childEnvironment.TYPEWRITER_PROCESS_METRICS_PATH = context.processMetrics.path;
       const metricsModule = path.join(REPOSITORY_DIRECTORY, 'scripts/ci/record-process-metrics.mjs');
