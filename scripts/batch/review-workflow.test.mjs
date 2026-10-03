@@ -290,6 +290,10 @@ test('reviewer frames for a verb must be real forms of the lemma, not a stem col
   assert.doesNotThrow(() => validateReviewerOutput(out('가다', '그는 학교에 갔다.'), proposal('가다'), verb('가다'), 1));
   assert.doesNotThrow(() => validateReviewerOutput(out('듣다', '그 말을 들었다.'), proposal('듣다'), verb('듣다'), 1));
   assert.throws(() => validateReviewerOutput(out('가다', '눈을 감고 잤다.'), proposal('가다'), verb('가다'), 1), /citation form/u);
+  const adj = (lemma) => ({ ...candidate('가락'), proposed_lemma: lemma, proposed_pos: 'adjective' });
+  assert.doesNotThrow(() => validateReviewerOutput(out('예쁘다', '꽃이 예쁩니다.'), proposal('예쁘다'), adj('예쁘다'), 1));
+  assert.throws(() => validateReviewerOutput(out('예쁘다', '우리 모두 예쁩시다.'), proposal('예쁘다'), adj('예쁘다'), 1), /citation form/u);
+  assert.doesNotThrow(() => validateReviewerOutput(out('가다', '우리 함께 갑시다.'), proposal('가다'), verb('가다'), 1));
   assert.doesNotThrow(() => validateReviewerOutput(out('가다', '그는 학교에 갑니다.'), proposal('가다'), verb('가다'), 1));
   assert.throws(() => validateReviewerOutput(out('듣다', '그 말을 듣어.'), proposal('듣다'), verb('듣다'), 1), /citation form/u);
   assert.throws(() => validateReviewerOutput(out('받다', '발을 씻었다.'), proposal('받다'), verb('받다'), 1), /citation form/u);

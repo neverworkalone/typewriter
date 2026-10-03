@@ -45,7 +45,9 @@ const B_REGULAR = new Set(['입', '잡', '접', '좁', '뽑', '씹', '꼽', '집
  * the endings that may follow it (so 간/갔다 are forms of 가다 but 감고 and
  * 발(을) are not forms of 가다/받다).
  */
-function stemForms(stem, plainEnding) {
+function stemForms(stem, plainEnding, pos) {
+  // -ㅂ시다/-ㅂ시오 (propositive/imperative) attach to verbs only; a formal declarative/interrogative suits both.
+  const formal = pos === 'adjective' ? /^(?:니다|니까)/u : /^(?:니다|니까|시다|시오)/u;
   const last = stem.at(-1);
   const syllable = isSyllable(last) ? decompose(last) : null;
   // An alternating stem never takes a vowel-initial ending uncontracted (돕아, 듣어, 쓰어, 가아 are not forms).
@@ -65,7 +67,7 @@ function stemForms(stem, plainEnding) {
     if (syllable.jong === 7 && D_IRREGULAR.has(stem)) add(prefix + compose({ ...syllable, jong: 8 }), VOWEL_ENDING);
     if (syllable.jong === 19 && S_IRREGULAR.has(stem)) add(open, VOWEL_ENDING);
     if (syllable.jong === 8) add(open, /^(?:는|니|시|세|오|습|십)/u);
-    if (syllable.jong === 8) add(prefix + compose({ ...syllable, jong: 17 }), /^(?:니다|니까|시다|시오)/u);
+    if (syllable.jong === 8) add(prefix + compose({ ...syllable, jong: 17 }), formal);
     if (syllable.jong === 17 && !B_REGULAR.has(stem)) {
       for (const tail of ['워', '와']) add(open + tail, CONTRACTED_ENDING);
       for (const tail of ['웠', '왔']) add(open + tail, PAST_ENDING);
@@ -75,7 +77,7 @@ function stemForms(stem, plainEnding) {
     return forms;
   }
   add(prefix + compose({ ...syllable, jong: 4 }), /^(?:다|[.,?!”"’']|$)/u, true);
-  add(prefix + compose({ ...syllable, jong: 17 }), /^(?:니다|니까|시다|시오)/u);
+  add(prefix + compose({ ...syllable, jong: 17 }), formal);
   add(prefix + compose({ ...syllable, jong: 8 }), /^(?:까|수|[.,?!”"’']|$)/u, true);
   if (pastVowels.includes(syllable.jung)) add(prefix + compose({ ...syllable, jong: 20 }), PAST_ENDING);
   const merged = { 8: 9, 13: 14, 20: 6, 11: 10 }[syllable.jung];
@@ -116,7 +118,7 @@ export function frameUsesLemma(frame, lemma, pos) {
   if (frame.includes(lemma)) return true;
   if ((pos !== 'verb' && pos !== 'adjective') || lemma.length < 2 || !lemma.endsWith('다')) return false;
   const stem = lemma.slice(0, -1);
-  const forms = stemForms(stem, stem.length === 1 ? SHORT_STEM_ENDING : STEM_ENDING);
+  const forms = stemForms(stem, stem.length === 1 ? SHORT_STEM_ENDING : STEM_ENDING, pos);
   for (const token of frame.split(/[\s,]+/u)) {
     const word = token.replace(/^[“"‘'(]+/u, '');
     for (const { surface, follows, bare } of forms) {
