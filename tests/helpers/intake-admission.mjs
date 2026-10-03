@@ -29,7 +29,7 @@ function context(records) {
 // lemma to the separately authored fixture gloss that stands in for the
 // source-bound QA step; hand-offs without one, or with a hold, are not admitted.
 // `tamperAudit` lets a test prove a mismatched QA artifact is rejected.
-export function admitHandoffs(run, authored, { batchId = 'intake-e2e-fixture', tamperAudit = false } = {}) {
+export function admitHandoffs(run, authored, { batchId = 'intake-e2e-fixture', tamperAudit = false, omitAudit = false } = {}) {
   const records = [];
   for (const handoff of run.decisions.filter((entry) => entry.decision === 'semantic_qa')) {
     verifyAnalysisBinding(handoff, run.metadata);
@@ -39,7 +39,7 @@ export function admitHandoffs(run, authored, { batchId = 'intake-e2e-fixture', t
     records.push({ id, record_type: 'entry', role: 'start', candidate_id: id, lemma: handoff.lemma, search_forms: [handoff.lemma], senses: [{ id: `${id}-s1`, pos: handoff.pos, gloss }] });
   }
   const infos = records.map((record) => ({ record, source: 'intake-handoff' }));
-  const auditInfos = tamperAudit ? [{ record: { ...records[0], lemma: '다른말', search_forms: ['다른말'] }, source: 'intake-handoff' }] : infos;
+  const auditInfos = omitAudit ? [] : tamperAudit ? [{ record: { ...records[0], lemma: '다른말', search_forms: ['다른말'] }, source: 'intake-handoff' }] : infos;
   const semanticAudit = makeSemanticAudit(auditInfos);
   const production = makeProductionState({ batchId, candidateRecords: records, reviewedRecords: infos, prospectiveRecords: infos, semanticAudit });
   const result = validateLexicalAddition({

@@ -74,6 +74,7 @@ test('adapter holds keep distinct reasons and are never admitted', async () => {
 test('shared admission rejects mismatched QA evidence and never admits holds', async () => {
   const run = await runIntake({ candidates: corpusAdapter({ candidates: [{ proposed_lemma: '바람', proposed_pos: 'noun', decision_state: 'candidate', coverage_status: 'uncovered' }] }), analyzer });
   assert.throws(() => admitHandoffs(run, AUTHORED, { tamperAudit: true }), (error) => error.code === 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
+  assert.throws(() => admitHandoffs(run, AUTHORED, { omitAudit: true }), (error) => /semantic audit|SEMANTIC_AUDIT/i.test(`${error.code} ${error.message}`));
   const held = await runIntake({ candidates: corpusAdapter({ candidates: [{ proposed_lemma: '바람', proposed_pos: 'noun', decision_state: 'held', ambiguity_status: 'held_oov_morphology' }] }), analyzer });
   assert.equal(admitHandoffs(held, AUTHORED).records.length, 0);
 });
