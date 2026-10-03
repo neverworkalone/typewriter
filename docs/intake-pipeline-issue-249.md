@@ -2,7 +2,7 @@
 
 Delivers A (contract, `CorpusAdapter`, synthetic adapter), B (one local Kiwi
 batch API; shared frame route; real-Kiwi fixes) and C (local pilot and
-comparison). Everything below was measured with pinned `kiwipiepy==0.24.0`.
+comparison). Everything below was measured with pinned `kiwipiepy==0.24.0`; the service and pipeline fail on any other version.
 
 ## Layout (`scripts/intake/`)
 

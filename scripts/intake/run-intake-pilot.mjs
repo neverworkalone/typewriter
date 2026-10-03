@@ -38,7 +38,7 @@ const analyzer = createKiwiAnalyzer();
 const coveredLemmas = await canonicalLemmas();
 const report = {};
 
-const selection = JSON.parse(await readFile(path.join(OUTPUT, '../issue-201/candidate-selection.json'), 'utf8'));
+const selection = JSON.parse(await readFile(path.join(OUTPUT, '../issue-201/pilot-inventory.json'), 'utf8'));
 let started = performance.now();
 const corpusRun = await runIntake({ candidates: corpusAdapter(selection), analyzer, coveredLemmas });
 report.corpusPath = summarize(corpusRun, Math.round(performance.now() - started));
