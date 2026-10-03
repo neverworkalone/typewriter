@@ -6,7 +6,7 @@ Corpus-text-free: counts, durations and method notes only. Raw ledgers are `data
 
 - Canonical records: 12,204 (11,042 after M10-A). B13 +366, B14 +399, B15 +397. Each batch: 500 candidates; admitted/held = 366/134, 399/101, 397/103.
 - All three batches use the agent self-check contract (`independent_review: false`). A self-check is not independent approval. No subagents or other models were used.
-- M10-C is not opened. The raw `ci:normal` result and its rerun are recorded under "CI accounting".
+- M10-C is not opened. `ci:normal` failed once (policy classification), then passed on rerun; see "CI accounting".
 
 ## 1. Two-character context search (shared reader)
 
@@ -50,7 +50,7 @@ Caveat: the downward trend is confounded. Later batches reused tooling, spec for
 
 ## 4. CI accounting
 
-Local invocations observed in ledgers: `ci:fast` B13 ×2 (first failed on a dirty worktree), B14 ×1, B15 ×1 (all passing, 21–24 s); `batch:issue-223:check` ×3 (54–65 s). `ci:normal` at the 12,204 checkpoint (commit `7d3990a`) failed once, 227.1 s: `tests/artifact-policy.test.mjs` rejected the two `data/timing/m10-b-short-search-comparison-*.json` files as unclassified. Fixed by registering that pattern in `config/artifact-policy.json`; the rerun result is appended below. GitHub CI invocations: `unavailable` at report time (branch not yet pushed).
+Local invocations observed in ledgers: `ci:fast` B13 ×2 (first failed on a dirty worktree), B14 ×1, B15 ×1 (all passing, 21–24 s); `batch:issue-223:check` ×3 (54–65 s). `ci:normal` at the 12,204 checkpoint (commit `7d3990a`) failed once, 227.1 s: `tests/artifact-policy.test.mjs` rejected the two `data/timing/m10-b-short-search-comparison-*.json` files as unclassified. Fixed by registering that pattern in `config/artifact-policy.json`; the rerun at the policy-fix commit passed in 283.7 s (ledger label `ci-normal-rerun-after-policy-fix`). GitHub CI invocations: `unavailable` at report time (branch not yet pushed).
 
 ## 5. Bottlenecks (ranked, measured)
 
