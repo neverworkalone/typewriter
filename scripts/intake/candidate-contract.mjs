@@ -25,6 +25,18 @@ const KOREAN_WORD = /^[가-힣]+$/u;
 const MAX_EVIDENCE_REFERENCES = 5;
 const MAX_OBSERVED_FORMS = 8;
 
+const evidenceKey = (entry) => `${entry.kind}\u0000${entry.ref}\u0000${entry.text ?? ''}`;
+
+// Order-independent bound: dedupe, total-order sort, then cap. The top-N of a
+// union equals the top-N of each side's top-N, so merging stays deterministic.
+export function boundEvidence(entries) {
+  const unique = new Map(entries.map((entry) => [evidenceKey(entry), entry]));
+  return [...unique.entries()]
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([, entry]) => entry)
+    .slice(0, MAX_EVIDENCE_REFERENCES);
+}
+
 export function normalizeText(value) {
   return typeof value === 'string' ? value.normalize('NFC').trim() : '';
 }
@@ -55,14 +67,11 @@ export function normalizeCandidate(raw, { adapterId } = {}) {
   const observedForms = [...new Set((raw?.observedForms ?? []).map(normalizeText).filter(Boolean))]
     .sort()
     .slice(0, MAX_OBSERVED_FORMS);
-  const evidence = (raw?.evidence ?? [])
-    .map((entry) => ({
-      kind: normalizeText(entry?.kind),
-      ref: normalizeText(entry?.ref),
-      ...(normalizeText(entry?.text) ? { text: normalizeText(entry.text) } : {}),
-    }))
-    .filter((entry) => entry.kind && entry.ref)
-    .slice(0, MAX_EVIDENCE_REFERENCES);
+  const evidence = boundEvidence((raw?.evidence ?? []).map((entry) => ({
+    kind: normalizeText(entry?.kind),
+    ref: normalizeText(entry?.ref),
+    ...(normalizeText(entry?.text) ? { text: normalizeText(entry.text) } : {}),
+  })).filter((entry) => entry.kind && entry.ref));
 
   // An adapter may carry a hold it observed in its own context (e.g. ambiguous
   // surface analyses); shared stages preserve it and never override it.
@@ -98,20 +107,23 @@ export function validateCandidate(candidate) {
   return errors;
 }
 
-// Merge duplicates by key: union of forms/evidence, sorted deterministically.
+// Merge duplicates by key: union of forms/evidence/sources, independent of
+// input order. A merged candidate lists every contributing adapter.
 export function dedupeCandidates(candidates) {
   const merged = new Map();
   for (const candidate of candidates) {
     const existing = merged.get(candidate.key);
     if (!existing) {
-      merged.set(candidate.key, { ...candidate, duplicateCount: 1 });
+      const { adapterId, ...rest } = candidate;
+      merged.set(candidate.key, { ...rest, adapterIds: [adapterId], duplicateCount: 1 });
       continue;
     }
     existing.duplicateCount += 1;
+    existing.adapterIds = [...new Set([...existing.adapterIds, candidate.adapterId])].sort();
     existing.observedForms = [...new Set([...existing.observedForms, ...candidate.observedForms])]
       .sort()
       .slice(0, MAX_OBSERVED_FORMS);
-    existing.evidence = [...existing.evidence, ...candidate.evidence].slice(0, MAX_EVIDENCE_REFERENCES);
+    existing.evidence = boundEvidence([...existing.evidence, ...candidate.evidence]);
     existing.holds = [...new Set([...existing.holds, ...candidate.holds])].sort();
   }
   return [...merged.values()].sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));

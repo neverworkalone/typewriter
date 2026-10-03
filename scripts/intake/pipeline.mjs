@@ -11,9 +11,16 @@ import {
 //   contract → dedupe → Kiwi analysis → coverage → QA hand-off / HOLD.
 // This module must not import or reference any adapter.
 
+export const PINNED_RUN = Object.freeze({ service_version: '1', top_n: 3 });
 export const PINNED_ANALYZER = Object.freeze({ kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0' });
 
 export function assertPinnedAnalyzer(metadata) {
+  if (metadata === null || typeof metadata !== 'object') {
+    throw new Error('Analyzer metadata is required to verify the pinned analyzer');
+  }
+  for (const [key, expected] of Object.entries(PINNED_RUN)) {
+    if (metadata[key] !== expected) throw new Error(`Analyzer ${key} ${metadata[key] ?? 'missing'} does not match supported ${expected}`);
+  }
   for (const [key, expected] of Object.entries(PINNED_ANALYZER)) {
     if (metadata?.[key] !== expected) {
       throw new Error(`Analyzer ${key} ${metadata?.[key] ?? 'unknown'} does not match pinned ${expected}`);
@@ -72,11 +79,12 @@ export async function runIntake({ candidates, analyzer, coveredLemmas = new Set(
   const analysis = analyzable.length
     ? await analyzer(analyzable.map((candidate) => ({ id: candidate.key, text: candidate.input })))
     : { metadata: null, results: [] };
-  if (analysis.metadata) assertPinnedAnalyzer(analysis.metadata);
+  // A real analysis request always needs verifiable, pinned run metadata.
+  if (analyzable.length > 0) assertPinnedAnalyzer(analysis.metadata);
   const outcomes = new Map(analysis.results.map((outcome) => [outcome.id, outcome]));
 
   const decisions = unique.map((candidate) => {
-    const base = { key: candidate.key, input: candidate.input, adapterId: candidate.adapterId, duplicateCount: candidate.duplicateCount };
+    const base = { key: candidate.key, input: candidate.input, adapterIds: candidate.adapterIds, duplicateCount: candidate.duplicateCount };
     if (candidate.holds.length) return { ...base, decision: 'hold', holds: candidate.holds };
     if (coveredLemmas.has(candidate.input)) return { ...base, decision: 'covered', holds: [] };
     const outcome = outcomes.get(candidate.key);
@@ -102,6 +110,7 @@ export async function runIntake({ candidates, analyzer, coveredLemmas = new Set(
 // Downstream admission re-verifies a hand-off against the analysis run that
 // produced it; stale or mismatched bindings fail loudly (no regex fallback).
 export function verifyAnalysisBinding(record, metadata) {
+  assertPinnedAnalyzer(metadata);
   const expected = bindingFor({ input: record.lemma, lemma: record.lemma, pos: record.pos, metadata });
   if (record.analysisBinding !== expected) {
     throw new Error(`Stale or mismatched analysis binding for ${record.lemma}/${record.pos}`);

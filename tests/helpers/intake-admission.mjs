@@ -29,7 +29,7 @@ function context(records) {
 // The semantic-QA fixture is bound to the exact hand-off it reviewed: identity
 // key, lemma/POS, evidence references and the analysis binding.
 export function qaBinding(handoff, { gloss, disposition = 'included' }) {
-  return createHash('sha256').update(JSON.stringify(['qa-binding', handoff.key, handoff.lemma, handoff.pos, handoff.evidence ?? [], handoff.analysisBinding, disposition, gloss])).digest('hex');
+  return createHash('sha256').update(JSON.stringify(['qa-binding', handoff.key, handoff.lemma, handoff.pos, handoff.adapterIds ?? [], handoff.evidence ?? [], handoff.analysisBinding, disposition, gloss])).digest('hex');
 }
 
 // Simulates the QA step: reads each semantic_qa hand-off and records its gloss

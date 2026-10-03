@@ -69,7 +69,7 @@ test('analysis bindings fail on stale analyzer or changed POS', async () => {
   const run = await runIntake({ candidates: syntheticAdapter(['푸르다']), analyzer });
   const record = decisionOf(run, '푸르다');
   assert.equal(verifyAnalysisBinding(record, METADATA), true);
-  assert.throws(() => verifyAnalysisBinding(record, { ...METADATA, kiwipiepy_version: 'newer' }), /Stale/);
+  assert.throws(() => verifyAnalysisBinding(record, { ...METADATA, kiwipiepy_version: 'newer' }), /pinned/);
   assert.throws(() => verifyAnalysisBinding({ ...record, pos: 'noun' }, METADATA), /Stale/);
 });
 
@@ -155,4 +155,33 @@ test('missing analysis digest, unpinned analyzer and corpus locations are enforc
   const [row] = corpusAdapter({ candidates: [{ proposed_lemma: '푸르다', evidence: { representative_hits: [{ document_id: 'D.1', paragraph_id: 'D.1.18', context: 'text' }] } }] });
   assert.deepEqual(row.evidence[0], { kind: 'corpus-paragraph', ref: 'D.1#D.1.18' });
   assert.equal(normalizeCandidate(row).evidence[0].ref, 'D.1#D.1.18');
+});
+
+test('missing or unsupported analyzer metadata never yields a hand-off or a valid binding', async () => {
+  const withMetadata = (metadata) => async (requests) => ({ ...(await analyzer(requests)), metadata });
+  for (const metadata of [null, undefined, {}, { ...METADATA, kiwipiepy_model_version: undefined }, { ...METADATA, service_version: '2' }, { ...METADATA, top_n: 5 }, { ...METADATA, kiwipiepy_version: 'unavailable' }]) {
+    await assert.rejects(runIntake({ candidates: syntheticAdapter(['푸르다']), analyzer: withMetadata(metadata) }), /Analyzer/);
+    assert.throws(() => verifyAnalysisBinding({ lemma: '푸르다', pos: 'adjective', analysisBinding: 'x' }, metadata), /Analyzer/);
+  }
+  const ok = await runIntake({ candidates: syntheticAdapter(['푸르다']), analyzer: withMetadata(METADATA) });
+  assert.equal(verifyAnalysisBinding(decisionOf(ok, '푸르다'), METADATA), true);
+  // No analysis requested (everything covered): no metadata is needed or fabricated.
+  const none = await runIntake({ candidates: syntheticAdapter(['푸르다']), analyzer: withMetadata(null), coveredLemmas: new Set(['푸르다']) });
+  assert.equal(decisionOf(none, '푸르다').decision, 'covered');
+});
+
+test('duplicate merging is independent of input order and keeps every source', async () => {
+  const hits = (prefix, count) => Array.from({ length: count }, (_, index) => ({ kind: 'corpus-paragraph', ref: `${prefix}#${index}` }));
+  const corpus = { adapterId: 'written-corpus-2025', input: '푸르다', pos: 'adjective', observedForms: ['푸른'], evidence: hits('D.2', 4) };
+  const other = { adapterId: 'other-source', input: '푸르다', pos: 'adjective', observedForms: ['푸르게'], evidence: [...hits('D.1', 4), { kind: 'corpus-paragraph', ref: 'D.2#0' }] };
+  const forward = await runIntake({ candidates: [corpus, other], analyzer });
+  const reverse = await runIntake({ candidates: [other, corpus], analyzer });
+  assert.deepEqual(forward, reverse);
+  const handoff = decisionOf(forward, '푸르다');
+  assert.deepEqual(handoff.adapterIds, ['other-source', 'written-corpus-2025']);
+  assert.equal(handoff.evidence.length, 5);
+  assert.deepEqual(handoff.evidence.map((entry) => entry.ref), ['D.1#0', 'D.1#1', 'D.1#2', 'D.1#3', 'D.2#0']);
+  assert.equal(handoff.duplicateCount, 2);
+  const single = normalizeCandidate({ ...corpus, evidence: [...hits('D.2', 4), ...hits('D.1', 4)].reverse() }, { adapterId: 'x' });
+  assert.deepEqual(single.evidence.map((entry) => entry.ref), ['D.1#0', 'D.1#1', 'D.1#2', 'D.1#3', 'D.2#0']);
 });

@@ -25,6 +25,13 @@ comparison). Everything below was measured with pinned `kiwipiepy==0.24.0`; the 
 - Source is not a canonical word attribute; only bounded evidence references
   (≤5) cross the boundary. Removing the corpus adapter leaves the pipeline usable.
 
+Whenever an analysis is requested, the run metadata is mandatory and must match
+the pinned service/model/version/`top_n` (`null`, `{}`, a missing field or an
+unsupported value rejects the run, and `verifyAnalysisBinding` rejects the same
+metadata). Merging duplicate candidates is input-order independent: evidence is
+deduplicated, totally ordered and capped at five after the merge, and a merged
+candidate lists every contributing `adapterIds` instead of the first source.
+
 ## Frame validity: one shared rule, Kiwi as corroboration (B)
 
 `frameUsesLemma` (`scripts/batch/semantic-self-check.mjs`) is already the single

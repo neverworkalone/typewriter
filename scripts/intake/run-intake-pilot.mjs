@@ -68,7 +68,7 @@ started = performance.now();
 const syntheticRun = await runIntake({ candidates: syntheticAdapter(SYNTHETIC), analyzer, coveredLemmas: new Set() });
 report.syntheticCorpusDisabledPath = {
   ...summarize(syntheticRun, Math.round(performance.now() - started)),
-  decisions: syntheticRun.decisions.map(({ key, adapterId, analysisBinding, ...rest }) => rest),
+  decisions: syntheticRun.decisions.map(({ key, adapterIds, analysisBinding, ...rest }) => rest),
 };
 
 await mkdir(OUTPUT, { recursive: true });
