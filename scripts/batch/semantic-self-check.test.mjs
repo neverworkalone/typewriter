@@ -340,6 +340,9 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('"선생님이 학교에 가시겠습니다."', '가다', 'verb'), true);
   assert.equal(frameUsesLemma('가세요~', '가다', 'verb'), true);
   assert.equal(frameUsesLemma('선생님이 학교에 가시겠말!', '가다', 'verb'), false);
+  assert.equal(frameUsesLemma('선생님이 내일 학교에 가시겠다고 말씀하셨다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 학교에 가셨다는 소식이다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('선생님이 내일 학교에 가시겠말고 말씀하셨다.', '가다', 'verb'), false);
   assert.equal(frameUsesLemma('선생님이 학교에 가시겠.', '가다', 'verb'), false);
   assert.equal(frameUsesLemma('선생님이 학교에 가시겠말.', '가다', 'verb'), false);
   assert.equal(frameUsesLemma('선생님이 학교에 가세말.', '가다', 'verb'), false);
@@ -456,6 +459,7 @@ test('the full-revision binding rejects a vowel-stem misconjugation and admits t
   assert.doesNotThrow(() => binding(build('그는 종일 일한 뒤에 쉬었다.')));
   assert.doesNotThrow(() => binding(build('그는 내일도 일하시겠습니다.')));
   assert.doesNotThrow(() => binding(build('그는 내일도 일하시겠습니다!')));
+  assert.doesNotThrow(() => binding(build('그는 내일 일하시겠다고 말했다.')));
   assert.throws(() => binding(build('그는 내일도 일하시겠말.')), /real conjugated form/u);
   assert.throws(() => binding(build('그는 종일 일하은 뒤에 쉬었다.')), /real conjugated form/u);
 });

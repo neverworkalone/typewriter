@@ -353,6 +353,7 @@ test('the builder admission path accepts a correctly conjugated verb frame and r
   assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 종일 일한 뒤에 쉬었다.', '일하다'), { ...candidate, lemma: '일하다' }, digest, 'verb'));
   assert.throws(() => assertAuthoredSemanticReview(review('그는 종일 일하은 뒤에 쉬었다.', '일하다'), { ...candidate, lemma: '일하다' }, digest, 'verb'), /frames must use the lemma/u);
   assert.doesNotThrow(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠습니다!', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('선생님이 내일 학교에 가시겠다고 말씀하셨다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
   assert.throws(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠말!', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
   assert.throws(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
   assert.throws(() => assertAuthoredSemanticReview(review('선생님이 학교에 가시겠말.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
