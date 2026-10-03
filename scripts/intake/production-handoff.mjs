@@ -104,6 +104,17 @@ function checkAnalyzerRecord(handoff) {
   }
 }
 
+function assertDecisionFollowsOutcome(entry, candidate) {
+  if (!entry.analysis_outcome) fail(`${candidate.input}: hand-off lacks the analysis outcome its decision rests on`, 'INTAKE_HANDOFF_OUTCOME');
+  const judged = judgeOutcome(candidate, entry.analysis_outcome);
+  const expectedDecision = judged.hold ? 'hold' : 'semantic_qa';
+  const expectedHolds = judged.hold ? [judged.hold] : [];
+  if (entry.decision !== expectedDecision || !sameJson(entry.holds, expectedHolds)
+    || (!judged.hold && entry.pos !== judged.proposedPos)) {
+    fail(`${candidate.input}: hand-off decision does not follow from its recorded analysis`, 'INTAKE_HANDOFF_DECISION');
+  }
+}
+
 // Revalidates a hand-off against the batch inputs at the trust boundary: pinned
 // analyzer, per-entry analysis bindings, and exact agreement with what the
 // shared contract stages derive from the current inventory/evidence (so changed
@@ -132,16 +143,7 @@ export function verifyProductionHandoff(handoff, { rawCandidates, batchId, adapt
     }
     // Analyzer-originated decisions are recomputed from the stored, bounded Kiwi
     // outcome, so an analysis hold cannot be relabelled semantic_qa (or vice versa).
-    if (!candidate.holds.length && entry.decision !== 'covered') {
-      if (!entry.analysis_outcome) fail(`${candidate.input}: hand-off lacks the analysis outcome its decision rests on`, 'INTAKE_HANDOFF_OUTCOME');
-      const judged = judgeOutcome(candidate, entry.analysis_outcome);
-      const expectedDecision = judged.hold ? 'hold' : 'semantic_qa';
-      const expectedHolds = judged.hold ? [judged.hold] : [];
-      if (entry.decision !== expectedDecision || !sameJson(entry.holds, expectedHolds)
-        || (!judged.hold && entry.pos !== judged.proposedPos)) {
-        fail(`${candidate.input}: hand-off decision does not follow from its recorded analysis`, 'INTAKE_HANDOFF_DECISION');
-      }
-    }
+    if (!candidate.holds.length && entry.decision !== 'covered') assertDecisionFollowsOutcome(entry, candidate);
     if (entry.decision === 'semantic_qa') {
       if (!sameJson(entry.evidence, candidate.evidence) || !sameJson(entry.observed_forms, candidate.observedForms)) {
         fail(`${candidate.input}: evidence references changed since analysis`, 'INTAKE_HANDOFF_EVIDENCE');
@@ -250,17 +252,40 @@ export function assertReviewsBoundToHandoff({ handoff, handoffBytes, integration
 // Offline re-check of a tracked hand-off against the tracked candidate review and
 // semantic review input (no local corpus or Kiwi needed). Used by the batch
 // validator so a committed hand-off cannot drift from its admissions.
+// Mirrors the CorpusAdapter's hold rule over the tracked candidate-review row
+// (ambiguity held_* or a non-clean coverage state).
+function rowHasAdapterHold(row) {
+  const coverage = row.coverage_status ?? row.corpus_evidence?.coverage_status;
+  return String(row.morphology_proposal?.ambiguity_status ?? '').startsWith('held_')
+    || !['uncovered', 'exact_canonical_lemma', undefined].includes(coverage);
+}
+
 export function verifyTrackedHandoff({ handoffBytes, semanticInput, candidateRows, batchId }) {
   const handoff = JSON.parse(handoffBytes.toString('utf8'));
   if (handoff?.contract_version !== PRODUCTION_HANDOFF_CONTRACT || handoff.batch_id !== batchId) {
     fail('tracked intake hand-off has the wrong contract or batch', 'INTAKE_HANDOFF_CONTRACT');
   }
   checkAnalyzerRecord(handoff);
-  for (const entry of handoff.entries) {
-    if (entry.decision !== 'semantic_qa') continue;
-    try { verifyAnalysisBinding(entryRunShape(entry), handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYSIS_BINDING'); }
-  }
   const admitted = candidateRows.filter((row) => row.editorial_judgment.disposition === 'admit');
+  const rowByLemma = new Map(candidateRows.map((row) => [row.morphology_proposal.lemma, row]));
+  for (const entry of handoff.entries) {
+    if (entry.decision === 'semantic_qa') {
+      try { verifyAnalysisBinding(entryRunShape(entry), handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYSIS_BINDING'); }
+    }
+    if (entry.decision === 'covered') continue;
+    // Only admissions depend on a hold's origin; non-admitted holds fail closed anyway.
+    const row = rowByLemma.get(entry.input);
+    if (entry.decision === 'hold' && !(row && admitted.includes(row))) continue;
+    const [input, pos = ''] = entry.key.split('\u0000');
+    // The hold's origin is not read from the (editable) hand-off alone: an entry that
+    // records no analysis must correspond to an adapter-level hold in the tracked
+    // candidate review; everything else is recomputed from its recorded outcome.
+    if (entry.analysis_outcome || entry.decision === 'semantic_qa') {
+      assertDecisionFollowsOutcome(entry, { input, pos: pos || null, holds: [] });
+    } else if (!row || !rowHasAdapterHold(row)) {
+      fail(`${entry.input}: a hand-off hold without recorded analysis must correspond to an adapter-level hold in the candidate review`, 'INTAKE_HANDOFF_HOLD_ORIGIN');
+    }
+  }
   return assertReviewsBoundToHandoff({
     handoff,
     handoffBytes,

@@ -245,3 +245,22 @@ test('batches with nothing to analyze (all covered, all adapter-held) verify and
     assert.throws(() => verifyProductionHandoff({ ...handoff, analyzer: METADATA }, { rawCandidates: options.rawCandidates, batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_ANALYZER');
   }
 });
+
+test('tracked validation cannot turn an analyzer hold into an analysis-free hold', async () => {
+  const f = await fixture();
+  const forged = structuredClone(f.handoff);
+  const entry = forged.entries.find((item) => item.input === '바라다');
+  assert.ok(entry.analysis_outcome);
+  delete entry.analysis_outcome;
+  forged.entries = forged.entries.filter((item) => !item.analysis_outcome);
+  forged.analyzer = null;
+  forged.analyzer_digest = null;
+  const bytes = Buffer.from(JSON.stringify(forged));
+  const row = { ...rowFor('바라다', 'verb', '풀이.', 4), coverage_status: 'uncovered', morphology_proposal: { lemma: '바라다', pos: 'verb', ambiguity_status: 'single_observed_analysis_unverified' } };
+  const binding = handoffQaBinding(forged, entry, { glossSha256: sha256Json('풀이.'), pos: 'verb' });
+  const input = { intake_handoff: integrationBlock(forged, bytes, { bindings: { 바라다: binding }, resolutions: { 바라다: { checked_hit_indices: [0], rationale: '문맥 0에서 동사로 쓰인다.' } } }) };
+  assert.throws(() => verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: [row], batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_ORIGIN');
+  // A genuine adapter-level hold (held ambiguity in the tracked review) with a resolution still passes.
+  const held = { ...row, morphology_proposal: { ...row.morphology_proposal, ambiguity_status: 'held_homograph' } };
+  assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: [held], batchId: BATCH }), true);
+});
