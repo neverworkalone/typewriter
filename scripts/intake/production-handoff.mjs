@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { CORPUS_ADAPTER_ID, corpusAdapter, corpusHolds } from './adapters/corpus-adapter.mjs';
 import { SYNTHETIC_ADAPTER_ID, syntheticAdapter } from './adapters/synthetic-adapter.mjs';
-import { dedupeCandidates, digest, normalizeCandidate } from './candidate-contract.mjs';
+import { candidateKey, dedupeCandidates, digest, normalizeCandidate } from './candidate-contract.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { analyzerDigest, assertPinnedAnalyzer, judgeOutcome, runIntake, verifyAnalysisBinding } from './pipeline.mjs';
 
@@ -310,6 +310,17 @@ export function verifyTrackedHandoff({ handoffBytes, semanticInput, candidateRow
   checkAnalyzerRecord(handoff);
   const admitted = candidateRows.filter((row) => row.editorial_judgment.disposition === 'admit');
   const rowByLemma = new Map(candidateRows.map((row) => [row.morphology_proposal.lemma, row]));
+  // One-to-one identity coverage: the tracked review and the hand-off describe exactly the same
+  // candidates, so a non-admitted entry (e.g. a hold) cannot be dropped and the SHA re-linked.
+  const rowKeys = candidateRows.map((row) => candidateKey({
+    input: row.morphology_proposal.lemma,
+    pos: row.editorial_judgment?.pos_correction?.analyzer_mapped_pos ?? row.morphology_proposal.pos,
+  }));
+  const entryKeys = handoff.entries.map((entry) => entry.key);
+  if (new Set(entryKeys).size !== entryKeys.length || new Set(rowKeys).size !== rowKeys.length
+    || entryKeys.length !== rowKeys.length || entryKeys.some((key) => !rowKeys.includes(key))) {
+    fail('tracked intake hand-off and candidate review do not cover exactly the same candidates', 'INTAKE_HANDOFF_COVERAGE');
+  }
   for (const entry of handoff.entries) {
     if (entry.decision === 'semantic_qa') {
       try { verifyAnalysisBinding(entryRunShape(entry), handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYSIS_BINDING'); }

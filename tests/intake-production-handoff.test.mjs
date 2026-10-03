@@ -66,6 +66,16 @@ const check = (f, overrides = {}) => checkBatchIntakeHandoff({
   handoffBytes: f.bytes, inventory: INVENTORY, evidence: EVIDENCE, batchId: BATCH, semanticInput: f.semanticInput, rows: ROWS, ...overrides,
 });
 const code = (error) => error.code;
+// Tracked candidate review for the whole inventory: given admitted rows plus hold rows for the rest.
+const holdRow = (candidate, ordinal) => ({
+  candidate_ordinal: ordinal,
+  intake_source_holds: corpusHolds(candidate),
+  coverage_status: candidate.coverage_status,
+  morphology_proposal: { lemma: candidate.proposed_lemma, pos: candidate.proposed_pos, ambiguity_status: candidate.ambiguity_status },
+  bounded_provenance: { representative_hits: [] },
+  editorial_judgment: { disposition: 'hold' },
+});
+const full = (admitted) => INVENTORY.candidates.map((candidate, index) => admitted.find((row) => row.morphology_proposal.lemma === candidate.proposed_lemma) ?? holdRow(candidate, index + 1));
 const qa = (handoff) => handoff.entries.find((entry) => entry.input === '푸르다');
 
 test('hand-off preserves adapter holds and routes uncertain analysis to QA/hold, never auto-admits', async () => {
@@ -167,9 +177,9 @@ test('an integration block without --intake-handoff is not silently ignored by t
 test('tracked hand-off re-verifies offline against tracked admissions', async () => {
   const f = await fixture();
   const rows = ROWS.map((row) => ({ ...row, editorial_judgment: { ...row.editorial_judgment } }));
-  assert.equal(verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: rows, batchId: BATCH }), true);
+  assert.equal(verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: full(rows), batchId: BATCH }), true);
   const changed = rows.map((row, index) => (index ? row : { ...row, editorial_judgment: { ...row.editorial_judgment, writer_gloss: '바뀐 풀이.' } }));
-  assert.throws(() => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: changed, batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_QA_BINDING');
+  assert.throws(() => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: full(changed), batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_QA_BINDING');
 });
 
 test('an adapter-held candidate re-labelled semantic_qa with recomputed bindings is rejected at the builder boundary', async () => {
@@ -243,7 +253,7 @@ test('batches with nothing to analyze (all covered, all adapter-held) verify and
     assert.equal(verifyProductionHandoff(handoff, { rawCandidates: options.rawCandidates, batchId: BATCH }), true);
     assert.equal(await assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates: options.rawCandidates, batchId: BATCH, analyzer: noKiwi, adapterId: CORPUS_ADAPTER_ID }), true);
     const bytes = Buffer.from(JSON.stringify(handoff));
-    assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: { intake_handoff: integrationBlock(handoff, bytes, { bindings: {} }) }, candidateRows: [], batchId: BATCH }), true);
+    assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: { intake_handoff: integrationBlock(handoff, bytes, { bindings: {} }) }, candidateRows: full([]), batchId: BATCH }), true);
     // A recorded analyzer without any analysis is inconsistent.
     assert.throws(() => verifyProductionHandoff({ ...handoff, analyzer: METADATA }, { rawCandidates: options.rawCandidates, batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_ANALYZER');
   }
@@ -255,17 +265,14 @@ test('tracked validation cannot turn an analyzer hold into an analysis-free hold
   const entry = forged.entries.find((item) => item.input === '바라다');
   assert.ok(entry.analysis_outcome);
   delete entry.analysis_outcome;
-  forged.entries = forged.entries.filter((item) => !item.analysis_outcome);
-  forged.analyzer = null;
-  forged.analyzer_digest = null;
   const bytes = Buffer.from(JSON.stringify(forged));
   const row = { ...rowFor('바라다', 'verb', '풀이.', 4), coverage_status: 'uncovered', morphology_proposal: { lemma: '바라다', pos: 'verb', ambiguity_status: 'single_observed_analysis_unverified' } };
   const binding = handoffQaBinding(forged, entry, { glossSha256: sha256Json('풀이.'), pos: 'verb' });
   const input = { intake_handoff: integrationBlock(forged, bytes, { bindings: { 바라다: binding }, resolutions: { 바라다: { checked_hit_indices: [0], rationale: '문맥 0에서 동사로 쓰인다.' } } }) };
-  assert.throws(() => verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: [row], batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_ORIGIN');
+  assert.throws(() => verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: full([row]), batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_ORIGIN');
   // A genuine adapter-level hold (held ambiguity in the tracked review) with a resolution still passes.
   const held = { ...row, intake_source_holds: ['analysis_ambiguous'], morphology_proposal: { ...row.morphology_proposal, ambiguity_status: 'held_homograph' } };
-  assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: [held], batchId: BATCH }), true);
+  assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: input, candidateRows: full([held]), batchId: BATCH }), true);
 });
 
 test('a synthetic-adapter hand-off drives the same builder boundary without any corpus evidence in the contract', async () => {
@@ -305,7 +312,7 @@ test('choosing the synthetic adapter cannot drop a hold recorded in the batch in
 test('tracked validation preserves candidate-review source holds even for a clean-looking semantic_qa entry', async () => {
   const f = await fixture();
   const row = (ambiguity) => ({ ...rowFor('푸르다', 'adjective', '맑은 초록이나 파랑을 띠다.', 1), coverage_status: 'uncovered', morphology_proposal: { lemma: '푸르다', pos: 'adjective', ambiguity_status: ambiguity } });
-  const verify = (candidateRows) => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows, batchId: BATCH });
+  const verify = (candidateRows) => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: full(candidateRows), batchId: BATCH });
   // The hand-off is internally consistent and clean, but the tracked review records a held source ambiguity.
   assert.throws(() => verify([{ ...row('held_homograph'), intake_source_holds: ['analysis_ambiguous'] }]), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
   const jangnyeon = { ...rowFor('장년', 'noun', '청년과 노년 사이의 나이대.', 2), coverage_status: 'uncovered', morphology_proposal: { lemma: '장년', pos: 'noun', ambiguity_status: 'single_observed_analysis_unverified' } };
@@ -322,10 +329,30 @@ test('a decision_state-only source hold (no held_* ambiguity) is preserved from 
   const [first, second] = ROWS;
   const withHold = { ...first, intake_source_holds: corpusHolds({ decision_state: 'held', ambiguity_status: 'single_observed_analysis_unverified', coverage_status: 'uncovered' }) };
   assert.deepEqual(withHold.intake_source_holds, ['analysis_ambiguous']);
-  const verify = (rows) => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: rows, batchId: BATCH });
+  const verify = (rows) => verifyTrackedHandoff({ handoffBytes: f.bytes, semanticInput: f.semanticInput, candidateRows: full(rows), batchId: BATCH });
   assert.throws(() => verify([withHold, second]), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_DROPPED');
   // A tracked row that does not record source holds cannot vouch for the hand-off.
   const { intake_source_holds: _omitted, ...unrecorded } = first;
   assert.throws(() => verify([unrecorded, second]), (error) => code(error) === 'INTAKE_HANDOFF_HOLD_ORIGIN');
   assert.equal(verify(ROWS), true);
+});
+
+test('tracked validation requires one-to-one candidate coverage between hand-off and candidate review', async () => {
+  const f = await fixture();
+  const verify = (handoff, rows = full(ROWS)) => {
+    const bytes = Buffer.from(JSON.stringify(handoff));
+    const semanticInput = { intake_handoff: integrationBlock(handoff, bytes, { bindings: f.semanticInput.intake_handoff.bindings }) };
+    return verifyTrackedHandoff({ handoffBytes: bytes, semanticInput, candidateRows: rows, batchId: BATCH });
+  };
+  // Positive: the full hand-off with a held candidate (오오) verifies.
+  assert.equal(verify(f.handoff), true);
+  // Negative: drop the non-admitted hold entry and re-link the hand-off SHA.
+  const dropped = structuredClone(f.handoff);
+  dropped.entries = dropped.entries.filter((entry) => entry.input !== '오오');
+  assert.throws(() => verify(dropped), (error) => code(error) === 'INTAKE_HANDOFF_COVERAGE');
+  // Negative: an extra entry, or a review row with no entry, is equally refused.
+  const extra = structuredClone(f.handoff);
+  extra.entries.push({ ...extra.entries[0], key: '없음\u0000noun', input: '없음' });
+  assert.throws(() => verify(extra), (error) => code(error) === 'INTAKE_HANDOFF_COVERAGE');
+  assert.throws(() => verify(f.handoff, full(ROWS).slice(1)), (error) => code(error) === 'INTAKE_HANDOFF_COVERAGE');
 });
