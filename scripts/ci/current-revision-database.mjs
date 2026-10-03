@@ -37,8 +37,9 @@ async function readSharedDatabaseRevision(databasePath) {
  * Inside a CI run the runner publishes one shared artifact built once from the
  * current canonical revision (TYPEWRITER_SHARED_DICTIONARY_PATH). Validators
  * reuse it after binding it to `canonicalRevision`, which the caller computed
- * from the canonical bytes it read itself; a mismatch fails closed and never
- * falls back to another build. Standalone (manual) runs have no shared artifact
+ * from the canonical bytes it read itself; a mismatch fails closed (it never
+ * silently falls back to another build; only a run that targets another canonical
+ * opts into `onRevisionMismatch: 'build'`). Standalone (manual) runs have no shared artifact
  * and build `independentBuilds` databases so the two-build reproducibility proof
  * stays available outside normal CI.
  */
@@ -49,24 +50,30 @@ export async function prepareCurrentRevisionDatabases({
   independentBuilds = 2,
   checkPilotCompleteness = false,
   sharedDatabasePath = process.env.TYPEWRITER_SHARED_DICTIONARY_PATH,
+  // 'throw' (default) fails closed when the shared artifact is for another
+  // revision; 'build' is only for runs whose subject is a different canonical.
+  onRevisionMismatch = 'throw',
+  build = buildDictionary,
 }) {
   if (typeof canonicalRevision !== 'string' || canonicalRevision.length === 0) {
     throw new SharedDatabaseError('A canonical revision is required to bind the SQLite artifact');
   }
   if (sharedDatabasePath) {
     const revision = await readSharedDatabaseRevision(sharedDatabasePath);
-    if (revision !== canonicalRevision) {
+    if (revision === canonicalRevision) {
+      return { databasePaths: [sharedDatabasePath], reusedSharedArtifact: true };
+    }
+    if (onRevisionMismatch !== 'build') {
       throw new SharedDatabaseError(
         'Shared SQLite artifact canonical_revision does not match the canonical revision '
         + 'read by this validator',
       );
     }
-    return { databasePaths: [sharedDatabasePath], reusedSharedArtifact: true };
   }
   const databasePaths = [];
   for (const name of ['first', 'second'].slice(0, independentBuilds)) {
     const outputPath = path.join(temporaryDirectory, `${name}.sqlite`);
-    await buildDictionary({
+    await build({
       inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
       outputPath,
       checkPilotCompleteness,
@@ -92,12 +99,19 @@ export async function openCurrentRevisionDatabasePath({
 }) {
   const { canonicalRevision } = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const outputDirectory = await mkdtemp(path.join(temporaryRoot, prefix));
+  // A run that deliberately targets another canonical (prospective preflight sets
+  // TYPEWRITER_CANONICAL_DIRECTORY and shares that run's database) still checks the
+  // current repository canonical here, so it builds its own current-revision database.
+  const overrideDirectory = process.env.TYPEWRITER_CANONICAL_DIRECTORY;
+  const targetsOtherCanonical = Boolean(overrideDirectory)
+    && path.resolve(overrideDirectory) !== path.resolve(DEFAULT_CANONICAL_DIRECTORY);
   const { databasePaths, reusedSharedArtifact } = await prepareCurrentRevisionDatabases({
     canonicalRevision,
     temporaryDirectory: outputDirectory,
     repositoryDirectory,
     independentBuilds: 1,
     checkPilotCompleteness: true,
+    onRevisionMismatch: targetsOtherCanonical ? 'build' : 'throw',
   });
   if (reusedSharedArtifact) {
     await rm(outputDirectory, { recursive: true, force: true });

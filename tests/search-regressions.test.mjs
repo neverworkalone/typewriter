@@ -36,6 +36,15 @@ const fixturePath = path.join(
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
 
 async function openRegressionDatabase(prefix) {
+  // The runner (and the M5-12A prospective preflight) publish the database this
+  // run is about; an explicit database is the established contract of this test.
+  const configuredPath = process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
+  if (configuredPath) {
+    return {
+      database: new DatabaseSync(configuredPath, { readOnly: true }),
+      outputDirectory: null,
+    };
+  }
   const { databasePath, outputDirectory } = await openCurrentRevisionDatabasePath({
     temporaryRoot: repositoryDirectory,
     prefix,

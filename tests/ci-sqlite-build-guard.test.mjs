@@ -137,6 +137,47 @@ test('shared artifact reuse is bound to the revision the validator read from can
   );
 });
 
+test('a shared artifact of another revision fails closed unless the run targets another canonical', async () => {
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { DatabaseSync } = await import('node:sqlite');
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-shared-revision-test-'));
+  try {
+    const sharedPath = path.join(directory, 'shared.sqlite');
+    const database = new DatabaseSync(sharedPath);
+    database.exec('CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT)');
+    database.prepare('INSERT INTO metadata VALUES (?, ?)').run('canonical_revision', OTHER_REVISION);
+    database.close();
+    const common = {
+      canonicalRevision: REVISION,
+      temporaryDirectory: directory,
+      repositoryDirectory: directory,
+      sharedDatabasePath: sharedPath,
+    };
+    await assert.rejects(prepareCurrentRevisionDatabases(common), /does not match/u);
+    const built = [];
+    const result = await prepareCurrentRevisionDatabases({
+      ...common,
+      independentBuilds: 1,
+      onRevisionMismatch: 'build',
+      build: async ({ outputPath }) => { built.push(outputPath); },
+    });
+    assert.equal(result.reusedSharedArtifact, false);
+    assert.equal(built.length, 1);
+    const matching = new DatabaseSync(sharedPath);
+    matching.prepare('UPDATE metadata SET value = ?').run(REVISION);
+    matching.close();
+    const reused = await prepareCurrentRevisionDatabases({
+      ...common,
+      onRevisionMismatch: 'build',
+      build: async () => { throw new Error('must reuse the matching shared artifact'); },
+    });
+    assert.deepEqual(reused, { databasePaths: [sharedPath], reusedSharedArtifact: true });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 function runFixture(scenario, level = 'normal') {
   const env = { ...process.env, TYPEWRITER_ALLOW_DIRTY: 'true' };
   for (const key of [
