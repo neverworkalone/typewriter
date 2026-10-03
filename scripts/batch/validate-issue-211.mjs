@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
+import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
 import {
   findRecordsByExactTerm,
@@ -389,6 +390,7 @@ export async function validateExactSearch({
   baseRecords,
   admittedRecords,
   units,
+  canonicalRevision,
   batchLabel = 'Issue #211',
   temporaryPrefix = 'typewriter-issue-211-',
   workflowLemmas = ['사람', '없다'],
@@ -396,7 +398,6 @@ export async function validateExactSearch({
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), temporaryPrefix));
   const baseDirectory = path.join(temporaryDirectory, 'base-canonical');
   const baseDatabasePath = path.join(temporaryDirectory, 'base.sqlite');
-  const currentDatabasePath = path.join(temporaryDirectory, 'current.sqlite');
   const baselineResultIdsByLemma = new Map();
   await import('node:fs/promises').then(({ mkdir }) => mkdir(baseDirectory, { recursive: true }));
   await writeFile(path.join(baseDirectory, 'base.jsonl'), jsonlBytes(baseRecords.map(recordOf)));
@@ -409,11 +410,13 @@ export async function validateExactSearch({
       allowDirty: true,
       repositoryDirectory: REPOSITORY_DIRECTORY,
     });
-    await buildDictionary({
-      inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
-      outputPath: currentDatabasePath,
-      allowDirty: true,
+    // The pre-admission base is a different isolated revision and is built here;
+    // the current revision reuses the shared artifact in CI (one build otherwise).
+    const { databasePaths: [currentDatabasePath] } = await prepareCurrentRevisionDatabases({
+      canonicalRevision,
+      temporaryDirectory,
       repositoryDirectory: REPOSITORY_DIRECTORY,
+      independentBuilds: 1,
     });
     baseDatabase = new DatabaseSync(baseDatabasePath, { readOnly: true });
     currentDatabase = new DatabaseSync(currentDatabasePath, { readOnly: true });
@@ -702,6 +705,7 @@ export async function validateIssue211({ writeReport = false } = {}) {
     baseRecords,
     admittedRecords: importRecords,
     units: candidateSource.units,
+    canonicalRevision: currentCanonical.canonicalRevision,
   });
   const renderedReport = renderReport({
     semanticSource,

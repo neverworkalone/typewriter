@@ -1,6 +1,5 @@
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CI_CATEGORIES,
   CI_ALL_CATEGORY_ORDER,
+  CI_DEEP_CATEGORY_ORDER,
   CI_LEVEL_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
@@ -29,8 +29,21 @@ import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 import { validateM515 } from '../batch/validate-m5-15.mjs';
 import { validateFrozenM6QualityAuditSnapshot } from '../validate/m6-4-quality-audit.mjs';
+import {
+  assertBuildEventsMatchPhase,
+  assertChildEvidenceAdvanced,
+  assertNoChildCurrentRevisionBuild,
+  assertSingleCurrentRevisionBuild,
+  buildCountEvidence,
+  CI_PHASE_ENV,
+  DEEP_PHASE,
+  NORMAL_PHASE,
+  readBuildLedger,
+  summarizeBuildLedger,
+} from './sqlite-build-ledger.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
+const CI_DEEP_PHASE_CATEGORIES = new Set(CI_DEEP_CATEGORY_ORDER);
 
 const HISTORICAL_INPUT_SOURCES = Object.freeze({
   waveA2Reviewed: 'data/canonical/m5-10a-wave-a2.jsonl',
@@ -45,64 +58,41 @@ function formatCommand({ executable, args }) {
     .join(' ');
 }
 
-function updateChildProcessMetrics(processMetrics) {
-  if (!processMetrics?.path) {
-    return;
-  }
-
-  let contents;
-  try {
-    contents = readFileSync(processMetrics.path, 'utf8');
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return;
-    }
-    throw error;
-  }
-
-  let peakRssKb = 0;
-  let processCount = 0;
-  let sqliteBuildCount = 0;
-  let currentRevisionSqliteBuildCount = 0;
-  for (const line of contents.split('\n')) {
-    if (!line) {
-      continue;
-    }
-    const metrics = JSON.parse(line);
-    if (metrics.type === 'sqlite-build') {
-      const count = metrics.count ?? 1;
-      sqliteBuildCount += count;
-      if (metrics.canonical_revision === processMetrics.canonicalRevision) {
-        currentRevisionSqliteBuildCount += count;
-      }
-      continue;
-    }
-    processCount += 1;
-    peakRssKb = Math.max(peakRssKb, metrics.peak_rss_kb ?? 0);
-  }
-  processMetrics.childProcessCount = processCount;
-  processMetrics.childPeakRssKb = peakRssKb;
-  processMetrics.childSqliteBuildCount = sqliteBuildCount;
-  processMetrics.childCurrentRevisionSqliteBuildCount = currentRevisionSqliteBuildCount;
+function ledgerSummary(session) {
+  return summarizeBuildLedger(readBuildLedger(session.processMetrics.path), {
+    canonicalRevision: session.canonicalContext.canonicalRevision,
+    parentPid: process.pid,
+  });
 }
 
-function processMemorySummary(processMetrics) {
+function processMemorySummary(summary) {
   const resourceUsage = process.resourceUsage?.();
   const parentPeakRssBytes = Number.isFinite(resourceUsage?.maxRSS)
     ? resourceUsage.maxRSS * 1024
     : process.memoryUsage().rss;
-  const childPeakRssBytes = (processMetrics?.childPeakRssKb ?? 0) * 1024;
+  const childPeakRssBytes = (summary?.peak_rss_kb ?? 0) * 1024;
   const peakRssBytes = Math.max(parentPeakRssBytes, childPeakRssBytes);
   return {
     peak_rss_bytes: peakRssBytes,
     peak_rss_mb: Math.round((peakRssBytes / (1024 * 1024)) * 100) / 100,
     parent_peak_rss_mb: Math.round((parentPeakRssBytes / (1024 * 1024)) * 100) / 100,
     child_peak_rss_mb: Math.round((childPeakRssBytes / (1024 * 1024)) * 100) / 100,
-    child_process_count: processMetrics?.childProcessCount ?? 0,
-    child_sqlite_build_count: processMetrics?.childSqliteBuildCount ?? 0,
-    child_current_revision_sqlite_build_count:
-      processMetrics?.childCurrentRevisionSqliteBuildCount ?? 0,
+    child_process_count: summary?.process_count ?? 0,
   };
+}
+
+// The normal-level invariant applies to every run whose categories include the
+// whole fast prefix (fast, normal, all). Single-category and deep-only runs are
+// diagnostic and are not normal merge gates.
+function enforcesNormalBuildInvariant(requestedCategory) {
+  return ['fast', 'normal', 'all'].includes(requestedCategory);
+}
+
+function assertNormalBuildInvariant(session, stage) {
+  assertSingleCurrentRevisionBuild(ledgerSummary(session), {
+    stage,
+    parentContextBuildCount: session.canonicalContext.metrics.sqlite_build_count ?? 0,
+  });
 }
 
 function printEvidence({
@@ -110,14 +100,11 @@ function printEvidence({
   level,
   categoryNames,
   startedAt,
-  canonicalContext,
-  processMetrics,
+  session,
 }) {
-  const summary = contextSummary(canonicalContext);
-  const parentSqliteBuildCount = summary.metrics.sqlite_build_count ?? 0;
-  const childSqliteBuildCount = processMetrics?.childSqliteBuildCount ?? 0;
-  const currentRevisionSqliteBuildCount = parentSqliteBuildCount
-    + (processMetrics?.childCurrentRevisionSqliteBuildCount ?? 0);
+  const summary = contextSummary(session.canonicalContext);
+  const ledger = ledgerSummary(session);
+  const { sqlite_build_count: sqliteBuildCount, ...contextMetrics } = summary.metrics;
   console.log(`\n=== ${level} evidence ===`);
   console.log(JSON.stringify({
     contract_version: contractVersion,
@@ -127,32 +114,53 @@ function printEvidence({
     canonical_revision: summary.canonical_revision,
     record_count: summary.recordCount,
     metrics: {
-      ...summary.metrics,
-      sqlite_build_count: currentRevisionSqliteBuildCount,
-      current_revision_sqlite_build_count: currentRevisionSqliteBuildCount,
-      child_sqlite_build_count: childSqliteBuildCount,
-      all_sqlite_build_count: parentSqliteBuildCount + childSqliteBuildCount,
+      ...contextMetrics,
+      // The shared context only counts builds made through that one object, so it
+      // is reported under an explicit name; the scoped, ledger-derived counters
+      // below are authoritative and cover parent, child and deep builds.
+      parent_context_sqlite_build_count: sqliteBuildCount ?? 0,
+      ...buildCountEvidence(ledger),
     },
     context_transport: {
       serialize_count: summary.metrics.canonical_context_serialize_count ?? 0,
       deserialize_count: summary.metrics.canonical_context_deserialize_count ?? 0,
       rehydrate_count: summary.metrics.canonical_context_rehydrate_count ?? 0,
     },
-    process_memory: processMemorySummary(processMetrics),
+    process_memory: processMemorySummary(ledger),
   }, null, 2));
 }
 
-function isFastPrefix(categoryNames, completedCategoryCount) {
-  return completedCategoryCount >= CI_LEVEL_CATEGORY_ORDER.fast.length
-    && CI_LEVEL_CATEGORY_ORDER.fast.every(
+function isFastPrefix(categoryNames, completedCategoryCount, fastOrder = CI_LEVEL_CATEGORY_ORDER.fast) {
+  return completedCategoryCount >= fastOrder.length
+    && fastOrder.every(
       (categoryName, index) => categoryNames[index] === categoryName,
     );
 }
 
-async function runCommand({ executable, args }, context = {}) {
-  return new Promise((resolve, reject) => {
+function measureLedger(context) {
+  if (!context.processMetrics?.path) {
+    return undefined;
+  }
+  const events = readBuildLedger(context.processMetrics.path);
+  return {
+    events,
+    summary: summarizeBuildLedger(events, {
+      canonicalRevision: context.canonicalContext.canonicalRevision,
+      parentPid: process.pid,
+    }),
+  };
+}
+
+async function runCommand({ executable, args }, context = {}, check = {}) {
+  const commandLabel = check.label ?? formatCommand({ executable, args });
+  const phase = context.phase ?? process.env[CI_PHASE_ENV] ?? NORMAL_PHASE;
+  const ledgerBefore = measureLedger(context);
+  await new Promise((resolve, reject) => {
     const childEnvironment = { ...process.env };
     delete childEnvironment.NODE_TEST_CONTEXT;
+    // Nested runners (e.g. the M5-12A prospective preflight) pass a context without
+    // a phase; they inherit the phase of the process that is running them.
+    childEnvironment[CI_PHASE_ENV] = phase;
     if (context.processMetrics?.path) {
       childEnvironment.TYPEWRITER_PROCESS_METRICS_PATH = context.processMetrics.path;
       const metricsModule = path.join(REPOSITORY_DIRECTORY, 'scripts/ci/record-process-metrics.mjs');
@@ -161,9 +169,13 @@ async function runCommand({ executable, args }, context = {}) {
         `--import=${metricsModule}`,
       ].filter(Boolean).join(' ');
     }
-    if (context.sharedDictionaryPath) {
+    if (context.sharedDictionaryPath && !check.independentCurrentRevisionBuilds) {
       childEnvironment.TYPEWRITER_SHARED_DICTIONARY_PATH = context.sharedDictionaryPath;
       childEnvironment.TYPEWRITER_SEARCH_REGRESSION_DATABASE = context.sharedDictionaryPath;
+    } else if (check.independentCurrentRevisionBuilds) {
+      // Deep/manual reproducibility proofs build independently by design.
+      delete childEnvironment.TYPEWRITER_SHARED_DICTIONARY_PATH;
+      delete childEnvironment.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
     }
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
@@ -175,16 +187,29 @@ async function runCommand({ executable, args }, context = {}) {
     child.once('error', reject);
     child.once('exit', (code, signal) => {
       if (code === 0) {
-        updateChildProcessMetrics(context.processMetrics);
         resolve();
         return;
       }
-      updateChildProcessMetrics(context.processMetrics);
       reject(new Error(
         `${executable} exited with ${signal ? `signal ${signal}` : `status ${code}`}`,
       ));
     });
   });
+
+  if (ledgerBefore) {
+    // Fail closed: an unreadable ledger or a command that registered no child
+    // process cannot be reported as "zero child builds".
+    const ledgerAfter = measureLedger(context);
+    assertBuildEventsMatchPhase(
+      ledgerAfter.events.slice(ledgerBefore.events.length),
+      phase,
+      commandLabel,
+    );
+    assertChildEvidenceAdvanced(ledgerBefore.summary, ledgerAfter.summary, commandLabel);
+    if (phase === NORMAL_PHASE) {
+      assertNoChildCurrentRevisionBuild(ledgerAfter.summary, commandLabel);
+    }
+  }
 }
 
 export async function runChecks(
@@ -206,7 +231,7 @@ export async function runChecks(
     if (check.inProcess) {
       await runInProcessCheck(check.inProcess, context);
     } else {
-      await execute(command, context);
+      await execute(command, context, check);
     }
     if (check.oncePerCanonicalSession && context?.completedChecks) {
       context.completedChecks.add(check.oncePerCanonicalSession);
@@ -232,8 +257,7 @@ export async function materializeHistoricalInputs(tempDirectory) {
   return historicalInputs;
 }
 
-async function createCanonicalSession() {
-  const temporaryDirectory = await createTemporaryDirectory();
+async function prepareCurrentCanonicalContext() {
   const canonicalContext = await loadCanonicalContext({ contextPath: null });
   const { artifact: semanticAudit, decisionSource } = await buildCanonicalSemanticAudit({
     canonicalContext,
@@ -253,18 +277,26 @@ async function createCanonicalSession() {
       throwOnError: false,
     },
   );
+  return canonicalContext;
+}
+
+export async function createCanonicalSession({
+  prepareContext = prepareCurrentCanonicalContext,
+} = {}) {
+  const temporaryDirectory = await createTemporaryDirectory();
+  const canonicalContext = await prepareContext();
+  const metricsPath = path.join(temporaryDirectory, 'child-process-metrics.jsonl');
+  await writeFile(metricsPath, '', 'utf8');
+  // The runner itself appends to the same ledger as its spawned commands so
+  // parent and child builds are counted from one set of events.
+  process.env.TYPEWRITER_PROCESS_METRICS_PATH = metricsPath;
+  process.env[CI_PHASE_ENV] = NORMAL_PHASE;
   return {
     canonicalContext,
     completedChecks: new Set(),
     temporaryDirectory,
-    processMetrics: {
-      path: path.join(temporaryDirectory, 'child-process-metrics.jsonl'),
-      childPeakRssKb: 0,
-      childProcessCount: 0,
-      canonicalRevision: canonicalContext.canonicalRevision,
-      childSqliteBuildCount: 0,
-      childCurrentRevisionSqliteBuildCount: 0,
-    },
+    phase: NORMAL_PHASE,
+    processMetrics: { path: metricsPath },
     sharedDictionaryPath: undefined,
     normalizedModel: undefined,
   };
@@ -279,7 +311,7 @@ async function ensureSharedDictionary(session) {
   const summary = await buildDictionary({
     inputDirectory: session.canonicalContext.canonicalDirectory,
     outputPath,
-    checkPilotCompleteness: true,
+    checkPilotCompleteness: session.checkPilotCompleteness ?? true,
     repositoryDirectory: REPOSITORY_DIRECTORY,
     allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
     canonicalContext: session.canonicalContext,
@@ -457,18 +489,22 @@ async function contextForCategory(categoryName, sharedCanonicalSession) {
   };
 }
 
-async function runCategory(categoryName, sharedCanonicalSession) {
-  const category = CI_CATEGORIES[categoryName];
+async function runCategory(categoryName, sharedCanonicalSession, categories = CI_CATEGORIES) {
+  const category = categories[categoryName];
   const {
     context,
     ownsCanonicalSession,
   } = await contextForCategory(categoryName, sharedCanonicalSession);
 
+  const phase = CI_DEEP_PHASE_CATEGORIES.has(categoryName) ? DEEP_PHASE : NORMAL_PHASE;
+  context.phase = phase;
+  process.env[CI_PHASE_ENV] = phase;
   try {
     console.log(`\n=== ${category.label} [${categoryName}] ===`);
     await runChecks(category.checks, context);
     console.log(`\n=== ${categoryName} passed ===`);
   } finally {
+    process.env[CI_PHASE_ENV] = NORMAL_PHASE;
     if (sharedCanonicalSession) {
       sharedCanonicalSession.sharedDictionaryPath = context.sharedDictionaryPath;
       sharedCanonicalSession.normalizedModel = context.normalizedModel;
@@ -488,14 +524,75 @@ function printUsage() {
   console.error(`Categories: ${CI_ALL_CATEGORY_ORDER.join(', ')}`);
 }
 
-async function main() {
-  const [requestedCategory] = process.argv.slice(2);
+export async function runLevel(requestedCategory, {
+  categories = CI_CATEGORIES,
+  levels = CI_LEVEL_CATEGORY_ORDER,
+  createSession = createCanonicalSession,
+} = {}) {
+  const categoryNames = levels[requestedCategory] ?? [requestedCategory];
+  const enforceNormalInvariant = enforcesNormalBuildInvariant(requestedCategory);
+  const startedAt = performance.now();
+  const session = await createSession();
+  try {
+    let fastCheckpointPrinted = requestedCategory === 'fast';
+    for (const [index, categoryName] of categoryNames.entries()) {
+      await runCategory(categoryName, session, categories);
+      const completed = index + 1;
+      if (!fastCheckpointPrinted && isFastPrefix(categoryNames, completed, levels.fast)) {
+        // Fast includes the one shared build; the normal continuation must
+        // reuse it, so the invariant is already exact at this checkpoint.
+        if (enforceNormalInvariant) {
+          assertNormalBuildInvariant(session, 'fast checkpoint');
+        }
+        printEvidence({
+          contractVersion: 'ci-run-checkpoint-v1',
+          level: 'fast',
+          categoryNames: levels.fast,
+          startedAt,
+          session,
+        });
+        fastCheckpointPrinted = true;
+      }
+      const nextIsDeep = CI_DEEP_PHASE_CATEGORIES.has(categoryNames[completed])
+        && !CI_DEEP_PHASE_CATEGORIES.has(categoryName);
+      if (enforceNormalInvariant && nextIsDeep) {
+        // `all` must prove the normal phase on its own before deep phases may
+        // add independent builds.
+        assertNormalBuildInvariant(session, 'normal phase completion');
+      }
+    }
+    if (enforceNormalInvariant) {
+      assertNormalBuildInvariant(session, 'final exit');
+    }
+    printEvidence({
+      contractVersion: 'ci-run-evidence-v1',
+      level: requestedCategory,
+      categoryNames,
+      startedAt,
+      session,
+    });
+  } finally {
+    delete process.env.TYPEWRITER_PROCESS_METRICS_PATH;
+    delete process.env[CI_PHASE_ENV];
+    await rm(session.temporaryDirectory, {
+      recursive: true,
+      force: true,
+    });
+  }
+}
+
+export async function runCli(argv, options = {}) {
+  const {
+    categories = CI_CATEGORIES,
+    levels = CI_LEVEL_CATEGORY_ORDER,
+  } = options;
+  const [requestedCategory] = argv;
   if (requestedCategory === '--list') {
-    for (const [levelName, categoryNames] of Object.entries(CI_LEVEL_CATEGORY_ORDER)) {
+    for (const [levelName, categoryNames] of Object.entries(levels)) {
       console.log(`${levelName}: ${categoryNames.join(', ')}`);
     }
     for (const categoryName of CI_ALL_CATEGORY_ORDER) {
-      console.log(`${categoryName}: ${CI_CATEGORIES[categoryName].label}`);
+      console.log(`${categoryName}: ${categories[categoryName].label}`);
     }
     return;
   }
@@ -506,50 +603,18 @@ async function main() {
     return;
   }
 
-  const categoryNames = CI_LEVEL_CATEGORY_ORDER[requestedCategory]
-    ?? [requestedCategory];
-  if (categoryNames.some((categoryName) => !CI_CATEGORIES[categoryName])) {
+  const categoryNames = levels[requestedCategory] ?? [requestedCategory];
+  if (categoryNames.some((categoryName) => !categories[categoryName])) {
     printUsage();
     process.exitCode = 1;
     return;
   }
 
-  const startedAt = performance.now();
-  const sharedCanonicalSession = await createCanonicalSession();
-  try {
-    let fastCheckpointPrinted = requestedCategory === 'fast';
-    for (const [index, categoryName] of categoryNames.entries()) {
-      await runCategory(categoryName, sharedCanonicalSession);
-      if (!fastCheckpointPrinted && isFastPrefix(categoryNames, index + 1)) {
-        printEvidence({
-          contractVersion: 'ci-run-checkpoint-v1',
-          level: 'fast',
-          categoryNames: CI_LEVEL_CATEGORY_ORDER.fast,
-          startedAt,
-          canonicalContext: sharedCanonicalSession.canonicalContext,
-          processMetrics: sharedCanonicalSession.processMetrics,
-        });
-        fastCheckpointPrinted = true;
-      }
-    }
-    printEvidence({
-      contractVersion: 'ci-run-evidence-v1',
-      level: requestedCategory,
-      categoryNames,
-      startedAt,
-      canonicalContext: sharedCanonicalSession.canonicalContext,
-      processMetrics: sharedCanonicalSession.processMetrics,
-    });
-  } finally {
-    await rm(sharedCanonicalSession.temporaryDirectory, {
-      recursive: true,
-      force: true,
-    });
-  }
+  await runLevel(requestedCategory, options);
 }
 
 if (path.resolve(process.argv[1] ?? '') === SCRIPT_PATH) {
-  main().catch((error) => {
+  runCli(process.argv.slice(2)).catch((error) => {
     console.error(`\nCI category failed: ${error.message}`);
     process.exitCode = 1;
   });

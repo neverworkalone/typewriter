@@ -53,6 +53,12 @@ function npmCheck(label, script, args = [], testFiles = []) {
   };
 }
 
+// Deep/manual phase only: the check builds the current revision independently
+// (the runner withholds the shared SQLite artifact) to prove reproducibility.
+function independentBuildProof(check) {
+  return { ...check, independentCurrentRevisionBuilds: true };
+}
+
 function testCheck(file, label = `Run ${file}`) {
   return commandCheck(label, ['--test', file], [file]);
 }
@@ -115,6 +121,10 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
       testCheck('tests/ci-registry.test.mjs', 'Test CI check ownership registry'),
+      testCheck(
+        'tests/ci-sqlite-build-guard.test.mjs',
+        'Test one current-revision SQLite build guard (real runner fault injection)',
+      ),
     ],
   },
 
@@ -310,6 +320,22 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
       inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
       testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+      independentBuildProof(npmCheck(
+        'Prove independent two-build determinism for Issue #219 checkpoint',
+        'batch:issue-219:check',
+      )),
+      independentBuildProof(npmCheck(
+        'Prove independent two-build determinism for Issue #220 checkpoint',
+        'batch:issue-220:check',
+      )),
+      independentBuildProof(npmCheck(
+        'Prove independent two-build determinism for Issue #222 checkpoint report',
+        'batch:issue-222:report:check',
+      )),
+      independentBuildProof(npmCheck(
+        'Prove independent two-build determinism for Issue #223 checkpoint',
+        'batch:issue-223:check:deep',
+      )),
       npmCheck(
         'Run 100K/500K/1M release-shaped performance and scale benchmark',
         'benchmark:release',

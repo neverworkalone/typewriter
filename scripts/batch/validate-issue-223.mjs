@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
-import { buildDictionary } from '../build/dictionary.mjs';
+import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
@@ -577,23 +577,22 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
   return batches;
 }
 
-async function validateDeterministicBuild(admittedRecords, { compareSecondBuild = true } = {}) {
+async function validateDeterministicBuild(admittedRecords, canonicalRevision, { compareSecondBuild = true } = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-223-determinism-'));
   try {
     const snapshots = [];
     let directlySearchable = 0;
-    for (const name of compareSecondBuild ? ['first', 'second'] : ['first']) {
-      const outputPath = path.join(temporaryDirectory, `${name}.sqlite`);
-      await buildDictionary({
-        inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
-        outputPath,
-        allowDirty: true,
-        repositoryDirectory: ROOT,
-      });
-      const database = new DatabaseSync(outputPath, { readOnly: true });
+    const { databasePaths, reusedSharedArtifact } = await prepareCurrentRevisionDatabases({
+      canonicalRevision,
+      temporaryDirectory,
+      repositoryDirectory: ROOT,
+      independentBuilds: compareSecondBuild ? 2 : 1,
+    });
+    for (const [databaseIndex, databasePath] of databasePaths.entries()) {
+      const database = new DatabaseSync(databasePath, { readOnly: true });
       try {
         snapshots.push(stripVolatileDatabaseMetadata(readLogicalDatabaseSnapshot(database)));
-        if (name === 'first') {
+        if (databaseIndex === 0) {
           const query = database.prepare(EXACT_SEARCH_ROWS_SQL);
           for (const record of admittedRecords) {
             const ids = new Set(query.all(record.lemma, record.lemma).map(({ id }) => id));
@@ -607,10 +606,11 @@ async function validateDeterministicBuild(admittedRecords, { compareSecondBuild 
     }
     // Independent two-build reproducibility is a deep/manual validation path
     // (REVIEW.md); normal CI builds once and checks direct search.
-    if (compareSecondBuild) assert.deepEqual(snapshots[0], snapshots[1], 'two SQLite builds must have identical logical contents');
+    const compared = compareSecondBuild && !reusedSharedArtifact;
+    if (compared) assert.deepEqual(snapshots[0], snapshots[1], 'two SQLite builds must have identical logical contents');
     return {
       logical_builds_compared: snapshots.length,
-      ...(compareSecondBuild ? { deterministic_logical_contents: true } : {}),
+      ...(compared ? { deterministic_logical_contents: true } : {}),
       issue_223_records_directly_searchable: directlySearchable,
     };
   } finally {
@@ -706,7 +706,7 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
   }
   // Normal CI already builds and validates the shared SQLite artifact once;
   // rebuilding here is a manual/deep path (REVIEW.md).
-  const deterministicBuild = rebuildDatabase ? await validateDeterministicBuild(issue223Imports, { compareSecondBuild }) : {};
+  const deterministicBuild = rebuildDatabase ? await validateDeterministicBuild(issue223Imports, currentCanonical.canonicalRevision, { compareSecondBuild }) : {};
   const previousIssue = validatePreviousIssue ? await validateIssue222({ verifyLocalCorpusEvidence }) : undefined;
   return {
     issue: 223,

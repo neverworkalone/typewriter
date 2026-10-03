@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
-import { buildDictionary } from '../scripts/build/dictionary.mjs';
+import { openCurrentRevisionDatabasePath } from '../scripts/ci/current-revision-database.mjs';
 import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
@@ -23,24 +23,20 @@ function parseJsonl(bytes) {
 test('Issue #219 held expression stays out of exact search while source terms are pending', async () => {
   const records = parseJsonl(await readFile(IMPORT_PATH));
   assert.deepEqual(records, []);
-  const outputDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-219-search-'));
-  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
+  const { databasePath, outputDirectory } = await openCurrentRevisionDatabasePath({
+    temporaryRoot: os.tmpdir(),
+    prefix: 'typewriter-issue-219-search-',
+    repositoryDirectory: ROOT,
+  });
   let database;
   try {
-    await buildDictionary({
-      inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
-      outputPath,
-      checkPilotCompleteness: true,
-      allowDirty: true,
-      repositoryDirectory: ROOT,
-    });
-    database = new DatabaseSync(outputPath, { readOnly: true });
+    database = new DatabaseSync(databasePath, { readOnly: true });
     assert.deepEqual(findRecordsByExactTerm(database, '컨테이너 야드'), []);
     const response = findRecordsBySearchTerm(database, '컨테이너 야드');
     assert.equal(response.status, 'no-match', 'held candidate exact search status');
     assert.deepEqual(response.matches, []);
   } finally {
     database?.close();
-    await rm(outputDirectory, { recursive: true, force: true });
+    if (outputDirectory) await rm(outputDirectory, { recursive: true, force: true });
   }
 });

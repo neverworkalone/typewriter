@@ -451,7 +451,8 @@ export function markSQLiteBuild(context, count = 1) {
         pid: process.pid,
         count,
         canonical_directory: context.canonicalDirectory,
-        canonical_revision: context.canonicalRevision,
+        canonical_revision: context.canonicalRevision ?? null,
+        phase: process.env.TYPEWRITER_CI_PHASE ?? 'normal',
       })}\n`,
       'utf8',
     );

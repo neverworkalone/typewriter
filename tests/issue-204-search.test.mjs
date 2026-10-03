@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
-import { buildDictionary } from '../scripts/build/dictionary.mjs';
+import { openCurrentRevisionDatabasePath } from '../scripts/ci/current-revision-database.mjs';
 import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
@@ -30,17 +30,13 @@ const admittedStarts = [
 ];
 
 async function openDictionary() {
-  const outputDirectory = await mkdtemp(path.join(repositoryDirectory, 'tmp-issue-204-search-'));
-  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
-  await buildDictionary({
-    inputDirectory: path.join(repositoryDirectory, 'data/canonical'),
-    outputPath,
-    checkPilotCompleteness: true,
-    allowDirty: true,
+  const { databasePath, outputDirectory } = await openCurrentRevisionDatabasePath({
+    temporaryRoot: repositoryDirectory,
+    prefix: 'tmp-issue-204-search-',
     repositoryDirectory,
   });
   return {
-    database: new DatabaseSync(outputPath, { readOnly: true }),
+    database: new DatabaseSync(databasePath, { readOnly: true }),
     outputDirectory,
   };
 }
@@ -92,6 +88,6 @@ test('Issue #204 starts resolve exact lemmas without shadowing other matches', a
     }
   } finally {
     opened.database.close();
-    await rm(opened.outputDirectory, { recursive: true, force: true });
+    if (opened.outputDirectory) await rm(opened.outputDirectory, { recursive: true, force: true });
   }
 });
