@@ -5,10 +5,11 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
+import { admitHandoffs } from './helpers/intake-admission.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { findRecordsBySearchTerm } from '../scripts/build/query.mjs';
 import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.mjs';
-import { analysisInputDigest, runIntake, verifyAnalysisBinding } from '../scripts/intake/pipeline.mjs';
+import { analysisInputDigest, runIntake } from '../scripts/intake/pipeline.mjs';
 
 const METADATA = { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0', top_n: 3 };
 const P = (lemma, pos) => ({ lemma, pos, form: lemma });
@@ -29,19 +30,13 @@ const AUTHORED = {
 };
 
 async function admitAndSearch(run, query) {
+  const { records, audit } = admitHandoffs(run, AUTHORED);
+  assert.equal(audit.blocking_finding_count, 0);
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-intake-'));
   const directory = path.join(root, 'canonical');
   try {
     await mkdir(directory);
-    const lines = [];
-    for (const handoff of run.decisions.filter((entry) => entry.decision === 'semantic_qa')) {
-      verifyAnalysisBinding(handoff, run.metadata);
-      const gloss = AUTHORED[handoff.lemma];
-      if (!gloss) continue;
-      const id = `w9${String(lines.length + 1).padStart(4, '0')}`;
-      lines.push(JSON.stringify({ id, record_type: 'entry', role: 'start', candidate_id: id, lemma: handoff.lemma, search_forms: [handoff.lemma], senses: [{ id: `${id}-s1`, pos: handoff.pos, gloss }] }));
-    }
-    await writeFile(path.join(directory, 'fixture.jsonl'), `${lines.join('\n')}\n`);
+    await writeFile(path.join(directory, 'fixture.jsonl'), `${records.map((record) => JSON.stringify(record)).join('\n')}\n`);
     const outputPath = path.join(root, 'dictionary.sqlite');
     const summary = await buildDictionary({ inputDirectory: directory, outputPath, allowDirty: true });
     const database = new DatabaseSync(outputPath, { readOnly: true });

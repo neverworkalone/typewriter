@@ -66,8 +66,11 @@ non-Hangul input, `lemma_mismatch` for multi-morpheme strings and
 non-words, `pos_mismatch` for a wrong submitted POS, `analysis_ambiguous`).
 
 The pilot hands records off at `semantic_qa`. `tests/intake-end-to-end.test.mjs`
-carries hand-offs through admission (binding verified; only hand-offs with a
-separately authored fixture gloss are admitted, holds never are) → real
+carries hand-offs through the shared `validateLexicalAddition` gate (binding
+verified; production state and semantic-audit coverage built with the existing
+test helpers; a QA artifact that does not match the records is rejected with
+`SEMANTIC_AUDIT_SOURCE_MISMATCH`; only hand-offs with a separately authored
+fixture gloss are admitted, holds never are) → real
 `buildDictionary` → SQLite direct search (`푸른` → `푸르다`), once from the
 `CorpusAdapter` and once from the synthetic adapter alone, whose module has no
 corpus reference. The fixture glosses stand in for the source-bound QA step;
