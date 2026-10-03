@@ -245,14 +245,17 @@ test('the self-check binding enforces evidence specificity from batch 14 at the 
     }));
     return f;
   };
-  const good = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2]);
+  const good = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2]);
   assert.doesNotThrow(() => binding(good));
-  const boiler = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: 문맥 0·문맥 1 모두 같은 뜻으로 맞는다`, (l) => `${l}: 같은 뜻으로 읽힌다`, (l) => specific[l][2]);
+  const boiler = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: 문맥 0·문맥 1 모두 같은 뜻으로 맞는다`, (l) => `${l}: 같은 뜻으로 읽힌다`, (l) => specific[l][2]);
   assert.throws(() => binding(boiler), /(?:repeat|reuse) the same/u);
-  const noContext = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0].split(';')[0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2]);
+  const noContext = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: ${specific[l][0].split(';')[0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2]);
   assert.throws(() => binding(noContext), /checked context 1/u);
-  const definition = build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
+  const definition = build('issue-223-m9-e-corpus-batch-14-20261003', (l) => `${l}: ${specific[l][0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
   assert.throws(() => binding(definition), /usage sentence/u);
+  // The boundary itself: batch 14 enforces, batch 13 keeps its original contract, batch 15 enforces.
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-15-20261003', (l) => `${l}: ${specific[l][0].split(';')[0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2])), /checked context 1/u);
+  assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', (l) => `${l}: ${specific[l][0].split(';')[0]}`, (l) => `${l}: ${specific[l][1]}`, (l) => specific[l][2])));
   // Earlier self-check batches keep their original contract.
   const legacy = build('issue-223-m9-e-corpus-batch-13-20261003', (l) => `${l}: ${specific[l][0].replace(/문맥 [0-9]: /gu, '')}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
   assert.doesNotThrow(() => binding(legacy));
