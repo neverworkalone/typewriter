@@ -25,7 +25,7 @@ export const SELF_CHECK_FRAME_GRAMMAR_FIRST_BATCH = 13;
 // before a connective (-다가, -다니, -다 보니, -다 못해, -다 말고, ...), never
 // as a bare sentence-final predicate; an adjective's plain form is a valid
 // sentence ending and is not restricted.
-const VERB_CITATION_CONTINUATION = /^(?:니|가[\s,]|고|는|며|면|\s*(?:말고|못해|못하|보니|보면))/u;
+const VERB_CITATION_CONTINUATION = /^(?:니|가(?:[\s,]|[는도만])|고|는|며|면|\s*(?:말고|못해|못하|보니|보면))/u;
 const SENTENCE_END = /^[\s.?!"'”’]*$/u;
 
 /** Rows: { lemma, pos, frames }. Frames lacking the lemma are left to the shared containment check. */

@@ -268,6 +268,8 @@ test('verb frames must be grammatical usage sentences; adjectives and legitimate
   assert.doesNotThrow(() => ok('먹다', 'verb', '그는 밥을 먹다 말고 일어났다.'));
   assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽다가 잠들었다.'));
   assert.doesNotThrow(() => ok('읽다', 'verb', '이렇게 두꺼운 책을 읽다니 놀랍다.'));
+  assert.doesNotThrow(() => ok('미루다', 'verb', '자꾸 할 일을 미루다가는 나중에 걷잡을 수 없이 많아질 거야.'));
+  assert.doesNotThrow(() => ok('미루다', 'verb', '일을 미루다가도 결국 끝냈다.'));
   assert.doesNotThrow(() => ok('좋다', 'adjective', '이 책은 내용이 정말 좋다.'));
   assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽었다.'));
   assert.throws(() => ok('읽다', 'verb', '그는 책을 읽다.'), /bare citation form/u);
