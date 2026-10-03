@@ -91,6 +91,19 @@ function entryRunShape(entry) {
   };
 }
 
+// An analysis was requested exactly when some entry carries an outcome. Then the
+// pinned analyzer metadata is mandatory; a batch with nothing to analyze (all
+// covered / all adapter-held) legitimately records no analyzer at all.
+function checkAnalyzerRecord(handoff) {
+  const requested = handoff.entries.some((entry) => entry.analysis_outcome);
+  if (requested) {
+    try { assertPinnedAnalyzer(handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYZER'); }
+    if (handoff.analyzer_digest !== analyzerDigest(handoff.analyzer)) fail('intake hand-off analyzer digest is stale', 'INTAKE_HANDOFF_ANALYZER');
+  } else if ((handoff.analyzer ?? null) !== null || (handoff.analyzer_digest ?? null) !== null) {
+    fail('intake hand-off records an analyzer although no analysis was requested', 'INTAKE_HANDOFF_ANALYZER');
+  }
+}
+
 // Revalidates a hand-off against the batch inputs at the trust boundary: pinned
 // analyzer, per-entry analysis bindings, and exact agreement with what the
 // shared contract stages derive from the current inventory/evidence (so changed
@@ -104,11 +117,7 @@ export function verifyProductionHandoff(handoff, { rawCandidates, batchId, adapt
   if (handoff.input_digest !== handoffInputDigest(rawCandidates, adapterId)) {
     fail('intake hand-off input digest does not match the current candidate inventory and evidence', 'INTAKE_HANDOFF_INPUT_DIGEST');
   }
-  const needsAnalysis = handoff.entries.some((entry) => entry.decision !== 'hold' || !entry.holds?.length);
-  if (needsAnalysis || handoff.analyzer) {
-    try { assertPinnedAnalyzer(handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYZER'); }
-    if (handoff.analyzer_digest !== analyzerDigest(handoff.analyzer)) fail('intake hand-off analyzer digest is stale', 'INTAKE_HANDOFF_ANALYZER');
-  }
+  checkAnalyzerRecord(handoff);
   if (handoff.entries.length !== merged.length) fail('intake hand-off does not cover exactly the current candidates', 'INTAKE_HANDOFF_COVERAGE');
   const byKey = new Map(handoff.entries.map((entry) => [entry.key, entry]));
   if (byKey.size !== handoff.entries.length) fail('intake hand-off has duplicate candidate identities', 'INTAKE_HANDOFF_DUPLICATE');
@@ -246,8 +255,7 @@ export function verifyTrackedHandoff({ handoffBytes, semanticInput, candidateRow
   if (handoff?.contract_version !== PRODUCTION_HANDOFF_CONTRACT || handoff.batch_id !== batchId) {
     fail('tracked intake hand-off has the wrong contract or batch', 'INTAKE_HANDOFF_CONTRACT');
   }
-  try { assertPinnedAnalyzer(handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYZER'); }
-  if (handoff.analyzer_digest !== analyzerDigest(handoff.analyzer)) fail('tracked intake hand-off analyzer digest is stale', 'INTAKE_HANDOFF_ANALYZER');
+  checkAnalyzerRecord(handoff);
   for (const entry of handoff.entries) {
     if (entry.decision !== 'semantic_qa') continue;
     try { verifyAnalysisBinding(entryRunShape(entry), handoff.analyzer); } catch (error) { fail(error.message, 'INTAKE_HANDOFF_ANALYSIS_BINDING'); }

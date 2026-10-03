@@ -7,6 +7,7 @@ import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import {
+  assertHandoffMatchesFreshAnalysis,
   buildProductionHandoff,
   corpusBatchCandidates,
   handoffEntryFor,
@@ -224,4 +225,23 @@ test('the production write path cannot be given a substitute analyzer', () => {
   // always overrides any caller-supplied analyzer with the pinned local Kiwi one.
   assert.doesNotMatch(buildIssue223CorpusBatch.toString().split(') {')[0], /analyzer/u);
   assert.match(assertBatchIntakeHandoff.toString(), /\.\.\.args, analyzer: createKiwiAnalyzer\(\) \}/u);
+});
+
+test('batches with nothing to analyze (all covered, all adapter-held) verify and fresh-check without an analyzer', async () => {
+  const raw = corpusBatchCandidates(INVENTORY, EVIDENCE);
+  const noKiwi = async () => { throw new Error('analyzer must not be called'); };
+  const cases = [
+    { rawCandidates: raw, coveredLemmas: new Set(INVENTORY.candidates.map((c) => c.proposed_lemma)) },
+    { rawCandidates: raw.map((candidate) => ({ ...candidate, holds: ['analysis_ambiguous'] })) },
+  ];
+  for (const options of cases) {
+    const handoff = await buildProductionHandoff({ batchId: BATCH, analyzer: noKiwi, ...options });
+    assert.equal(handoff.analyzer, null);
+    assert.equal(verifyProductionHandoff(handoff, { rawCandidates: options.rawCandidates, batchId: BATCH }), true);
+    assert.equal(await assertHandoffMatchesFreshAnalysis(handoff, { rawCandidates: options.rawCandidates, batchId: BATCH, analyzer: noKiwi }), true);
+    const bytes = Buffer.from(JSON.stringify(handoff));
+    assert.equal(verifyTrackedHandoff({ handoffBytes: bytes, semanticInput: { intake_handoff: integrationBlock(handoff, bytes, { bindings: {} }) }, candidateRows: [], batchId: BATCH }), true);
+    // A recorded analyzer without any analysis is inconsistent.
+    assert.throws(() => verifyProductionHandoff({ ...handoff, analyzer: METADATA }, { rawCandidates: options.rawCandidates, batchId: BATCH }), (error) => code(error) === 'INTAKE_HANDOFF_ANALYZER');
+  }
 });
