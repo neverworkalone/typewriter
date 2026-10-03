@@ -194,8 +194,35 @@ export function renderMarkdown(report) {
   ].join('\n');
 }
 
-async function buildReport() {
-  const validation = await validateIssue222({ verifyLocalCorpusEvidence: false });
+// Normal CI reuses the shared current-revision SQLite artifact, so validateIssue222
+// does not re-run the independent two-build comparison. The committed checkpoint
+// records that historical proof; check mode verifies it is still the schema-pinned
+// value, while deep/manual runs and report regeneration perform the proof again.
+async function resolveDeterminismProof(validation, { checkMode }) {
+  if (validation.deterministic_logical_contents === true) {
+    return validation;
+  }
+  assert.equal(validation.independent_build_proof, 'deferred-to-deep',
+    'Issue #222 validation returned neither a determinism proof nor a deferral');
+  assert.equal(checkMode, true,
+    'Regenerating the Issue #222 report requires the independent two-build proof; run it outside the shared CI artifact');
+  const committed = await readJson(path.relative(ROOT, REPORT_PATH));
+  assert.equal(committed.validation.logical_builds_compared, 2,
+    'committed Issue #222 checkpoint must record the two-build determinism comparison');
+  assert.equal(committed.validation.deterministic_logical_contents, true,
+    'committed Issue #222 checkpoint must record identical logical contents');
+  return {
+    ...validation,
+    logical_builds_compared: committed.validation.logical_builds_compared,
+    deterministic_logical_contents: committed.validation.deterministic_logical_contents,
+  };
+}
+
+async function buildReport({ checkMode = false } = {}) {
+  const validation = await resolveDeterminismProof(
+    await validateIssue222({ verifyLocalCorpusEvidence: false }),
+    { checkMode },
+  );
   const batchDirectory = path.join(ROOT, 'data/batches');
   const corpusReviewNames = (await readdir(batchDirectory))
     .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-candidate-review\.json$/u.test(name))
@@ -544,7 +571,7 @@ async function buildReport() {
 
 export async function main() {
   const checkMode = process.argv.includes('--check');
-  const { report, markdown } = await buildReport();
+  const { report, markdown } = await buildReport({ checkMode });
   const machineReport = `${JSON.stringify(report, null, 2)}\n`;
   if (checkMode) {
     const [storedMachineReport, storedMarkdown] = await Promise.all([

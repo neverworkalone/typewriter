@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
-import { buildDictionary } from '../build/dictionary.mjs';
+import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
@@ -433,23 +433,21 @@ async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCo
   return batches;
 }
 
-async function validateDeterministicBuild(admittedRecords) {
+async function validateDeterministicBuild(admittedRecords, canonicalRevision) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-222-determinism-'));
   try {
     const snapshots = [];
     let directlySearchable = 0;
-    for (const name of ['first', 'second']) {
-      const outputPath = path.join(temporaryDirectory, `${name}.sqlite`);
-      await buildDictionary({
-        inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
-        outputPath,
-        allowDirty: true,
-        repositoryDirectory: ROOT,
-      });
-      const database = new DatabaseSync(outputPath, { readOnly: true });
+    const { databasePaths, reusedSharedArtifact } = await prepareCurrentRevisionDatabases({
+      canonicalRevision,
+      temporaryDirectory,
+      repositoryDirectory: ROOT,
+    });
+    for (const [databaseIndex, databasePath] of databasePaths.entries()) {
+      const database = new DatabaseSync(databasePath, { readOnly: true });
       try {
         snapshots.push(stripVolatileDatabaseMetadata(readLogicalDatabaseSnapshot(database)));
-        if (name === 'first') {
+        if (databaseIndex === 0) {
           const query = database.prepare(EXACT_SEARCH_ROWS_SQL);
           for (const record of admittedRecords) {
             const ids = new Set(query.all(record.lemma, record.lemma).map(({ id }) => id));
@@ -461,10 +459,14 @@ async function validateDeterministicBuild(admittedRecords) {
         database.close();
       }
     }
-    assert.deepEqual(snapshots[0], snapshots[1], 'two SQLite builds must have identical logical contents');
+    // Independent two-build reproducibility is a deep/manual proof; normal CI
+    // reuses the single shared current-revision artifact for direct search.
+    if (!reusedSharedArtifact) {
+      assert.deepEqual(snapshots[0], snapshots[1], 'two SQLite builds must have identical logical contents');
+    }
     return {
-      logical_builds_compared: 2,
-      deterministic_logical_contents: true,
+      logical_builds_compared: snapshots.length,
+      ...(reusedSharedArtifact ? { independent_build_proof: 'deferred-to-deep' } : { deterministic_logical_contents: true }),
       admitted_lemmas_directly_searchable: directlySearchable,
     };
   } finally {
@@ -927,7 +929,7 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   assert.equal(historicalProduction.admission?.audit?.blocking_finding_count, 0, 'ordinary shared historical lexical admission blockers');
   assert.equal(historicalProduction.admission?.semantic_audit?.coverage_complete, true, 'historical batch has complete prospective semantic coverage');
 
-  const deterministicBuild = await validateDeterministicBuild(allImportRecords);
+  const deterministicBuild = await validateDeterministicBuild(allImportRecords, currentCanonical.canonicalRevision);
   return {
     issue: 222,
     source_classes: {

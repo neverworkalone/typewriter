@@ -52,3 +52,40 @@ full-canonical work. Independent two-build reproducibility is deep/manual,
 not a redundant normal gate. If Deep CI or a Deep regression changes, require
 a successful **`Deep CI Gate` on this exact HEAD** (`deep-ci` runs `ci:all`);
 ordinary PRs can use the passing skip gate.
+
+### One current-revision SQLite build in `ci:normal` (enforced invariant)
+
+Every successful `ci:normal` must build SQLite for the **exact current canonical
+revision exactly once** across the whole workflow (parent process, spawned
+commands, nested validators). Counters are derived from one append-only ledger
+(`TYPEWRITER_PROCESS_METRICS_PATH`) written by `markSQLiteBuild` and bound to the
+revision computed from the canonical bytes, never to a caller-provided label:
+
+- `parent_current_revision_sqlite_build_count === 1`
+- `child_current_revision_sqlite_build_count === 0`
+- `current_revision_sqlite_build_count === 1` (normal phase)
+- reported separately and never relaxing the gate:
+  `deep_current_revision_sqlite_build_count`, `other_revision_sqlite_build_count`
+  (isolated fixture/historical revisions), `all_sqlite_build_count`,
+  `parent_context_sqlite_build_count` (the shared context's in-memory counter).
+
+`scripts/ci/run-category.mjs` enforces this for `fast`, `normal` and `all` at the
+fast checkpoint, at normal-phase completion (before deep phases) and at final
+exit, plus per command: a child current-revision build fails the command
+immediately. The guard fails closed: an unreadable or malformed ledger, or a
+command that registered no child process (omitted metrics hook), is a failure,
+never "zero builds". Validators and tests reuse the shared artifact through
+`scripts/ci/current-revision-database.mjs`, which binds it to the revision the
+validator read itself and never falls back to another build. Independent two-build
+reproducibility runs only in the deep phase (checks marked
+`independentCurrentRevisionBuilds`, which receive no shared artifact) or manually.
+
+`tests/ci-sqlite-build-guard.test.mjs` (registered in the `canonical` category)
+proves pass/fail behavior through the real runner on a fixture session: one
+parent build passes (other-revision fixture builds allowed); zero builds, two
+parent builds, parent plus child, two child builds, an omitted hook and a
+malformed/deleted ledger all exit nonzero although every command succeeds; deep
+independent rebuilds are allowed while the normal phase stays one-build.
+Reviewers must block a PR that adds a second exact-current-revision build in
+normal, bypasses or falsifies the guard, or adds a batch-specific full-canonical
+replay instead of reusing the shared validation context.

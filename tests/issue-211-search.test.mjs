@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
-import { buildDictionary } from '../scripts/build/dictionary.mjs';
+import { openCurrentRevisionDatabasePath } from '../scripts/ci/current-revision-database.mjs';
 import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
@@ -45,17 +45,13 @@ const semanticSourcePath = path.join(
 );
 
 async function openDictionary() {
-  const outputDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-211-search-'));
-  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
-  await buildDictionary({
-    inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
-    outputPath,
-    checkPilotCompleteness: true,
-    allowDirty: true,
+  const { databasePath, outputDirectory } = await openCurrentRevisionDatabasePath({
+    temporaryRoot: os.tmpdir(),
+    prefix: 'typewriter-issue-211-search-',
     repositoryDirectory,
   });
   return {
-    database: new DatabaseSync(outputPath, { readOnly: true }),
+    database: new DatabaseSync(databasePath, { readOnly: true }),
     outputDirectory,
   };
 }
@@ -148,7 +144,7 @@ test('Issue #211 admissions resolve exact writer queries without relations', asy
     assert.deepEqual(findRecordsByExactTerm(opened.database, '내다'), [], 'the unresolved-sense candidate remains held');
   } finally {
     opened.database.close();
-    await rm(opened.outputDirectory, { recursive: true, force: true });
+    if (opened.outputDirectory) await rm(opened.outputDirectory, { recursive: true, force: true });
   }
 });
 

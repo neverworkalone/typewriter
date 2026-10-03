@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import Ajv from 'ajv';
 
-import { buildDictionary } from '../build/dictionary.mjs';
+import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
@@ -321,25 +321,23 @@ function logicalDatabaseContentSnapshot(snapshot) {
   };
 }
 
-async function validateDeterministicBuild(currentRecords) {
+async function validateDeterministicBuild(currentRecords, canonicalRevision) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-220-determinism-'));
   const snapshots = [];
   let searchableLemmaCount = 0;
   let searchCoverage;
   let surfaceFormRegressions;
   try {
-    for (const name of ['first', 'second']) {
-      const outputPath = path.join(temporaryDirectory, `${name}.sqlite`);
-      await buildDictionary({
-        inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
-        outputPath,
-        allowDirty: true,
-        repositoryDirectory: ROOT,
-      });
-      const database = new DatabaseSync(outputPath, { readOnly: true });
+    const { databasePaths, reusedSharedArtifact } = await prepareCurrentRevisionDatabases({
+      canonicalRevision,
+      temporaryDirectory,
+      repositoryDirectory: ROOT,
+    });
+    for (const [databaseIndex, databasePath] of databasePaths.entries()) {
+      const database = new DatabaseSync(databasePath, { readOnly: true });
       try {
         const snapshot = readLogicalDatabaseSnapshot(database);
-        if (name === 'first') {
+        if (databaseIndex === 0) {
           const { findRecordsByExactTerm, findRecordsBySearchTerm } = await import('../build/query.mjs');
           const directQuery = database.prepare(EXACT_SEARCH_ROWS_SQL);
           const expectedOwnersByForm = new Map();
@@ -432,7 +430,9 @@ async function validateDeterministicBuild(currentRecords) {
         database.close();
       }
     }
-    assert.deepEqual(snapshots[1], snapshots[0], 'repeated current canonical builds have equal logical contents');
+    if (!reusedSharedArtifact) {
+      assert.deepEqual(snapshots[1], snapshots[0], 'repeated current canonical builds have equal logical contents');
+    }
     return { snapshot: snapshots[0], searchableLemmaCount, searchCoverage, surfaceFormRegressions };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -828,6 +828,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
     baseRecords: historicalCanonical.records,
     admittedRecords: allImports,
     units: allUnits,
+    canonicalRevision: currentCanonical.canonicalRevision,
     batchLabel: 'Issue #220',
     temporaryPrefix: 'typewriter-issue-220-search-',
     workflowLemmas: [],
@@ -837,7 +838,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
     searchableLemmaCount,
     searchCoverage,
     surfaceFormRegressions,
-  } = await validateDeterministicBuild(currentCanonical.records);
+  } = await validateDeterministicBuild(currentCanonical.records, currentCanonical.canonicalRevision);
   assert.equal(searchableLemmaCount, currentRecords.length, 'every current canonical lemma is directly searchable');
 
   const candidates = batchResults.flatMap((batch) => batch.materialized.identities.map((identity) => {
