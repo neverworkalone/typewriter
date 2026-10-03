@@ -19,6 +19,7 @@ class FakeAnalyzer:
         "푸르다": [([tok("푸르", "VA-I"), tok("다", "EF")], 0.0)],
         "바라다": [([tok("바라", "VV")], 0.0), ([tok("바람", "NNG")], -1.0)],
         "물결무늬": [([tok("물결", "NNG"), tok("무늬", "NNG")], 0.0)],
+        "매우": [([tok("매우", "MAG")], 0.0)],
         "조사만": [([tok("만", "JX")], 0.0)],
     }
 
@@ -44,6 +45,16 @@ class KiwiServiceTest(unittest.TestCase):
         self.assertEqual(results[4]["reason"], "no_analysis")
         self.assertEqual(results[5]["status"], "error")
         self.assertEqual(results[6]["status"], "unsupported")
+
+    def test_adverb_and_version_pin(self):
+        self.assertEqual(self.run_batch(["매우"])[0]["analyses"][0][0]["pos"], "adverb")
+        original = service._package_version
+        service._package_version = lambda name: "9.9.9"
+        try:
+            with self.assertRaises(RuntimeError):
+                service.verify_pinned_versions()
+        finally:
+            service._package_version = original
 
     def test_batch_limit_and_metadata(self):
         with self.assertRaises(ValueError):

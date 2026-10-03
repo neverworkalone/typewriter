@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 // Source-neutral candidate contract (issue #249). Adapters produce these;
 // shared stages consume only this shape and never import an adapter.
 export const CANDIDATE_CONTRACT_VERSION = 1;
-export const POS_VALUES = Object.freeze(['noun', 'verb', 'adjective']);
+export const POS_VALUES = Object.freeze(['noun', 'verb', 'adjective', 'adverb']);
 export const HOLD_REASONS = Object.freeze([
   'missing_lemma',
   'unresolved_pos',
@@ -20,7 +20,7 @@ export const HOLD_REASONS = Object.freeze([
   'frame_not_verified',
 ]);
 
-const KOREAN_WORD = /^[가-힣]{2,}$/u;
+const KOREAN_WORD = /^[가-힣]+$/u;
 const MAX_EVIDENCE_REFERENCES = 5;
 const MAX_OBSERVED_FORMS = 8;
 

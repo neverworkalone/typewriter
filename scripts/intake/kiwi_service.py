@@ -19,7 +19,8 @@ SERVICE_VERSION = "1"
 MAX_BATCH_SIZE = 500
 MAX_TEXT_LENGTH = 2000
 TOP_N = 3
-POS_BY_TAG = {"NNG": "noun", "VV": "verb", "VA": "adjective"}
+POS_BY_TAG = {"NNG": "noun", "VV": "verb", "VA": "adjective", "MAG": "adverb"}
+PINNED_VERSIONS = {"kiwipiepy": "0.24.0", "kiwipiepy_model": "0.24.0"}
 
 
 def base_tag(tag: str) -> str:
@@ -40,7 +41,15 @@ def run_metadata() -> dict:
         "kiwipiepy_version": _package_version("kiwipiepy"),
         "kiwipiepy_model_version": _package_version("kiwipiepy_model"),
         "top_n": TOP_N,
+        "pinned": dict(PINNED_VERSIONS),
     }
+
+
+def verify_pinned_versions() -> None:
+    for name, expected in PINNED_VERSIONS.items():
+        actual = _package_version(name)
+        if actual != expected:
+            raise RuntimeError(f"{name} {actual} does not match pinned {expected}")
 
 
 DERIVATIONAL_SUFFIX_POS = {"XSV": "verb", "XSA": "adjective"}
@@ -106,6 +115,11 @@ def main() -> int:
     except ImportError:
         print(json.dumps({"error": "kiwipiepy_not_installed"}))
         return 2
+    try:
+        verify_pinned_versions()
+    except RuntimeError as error:
+        print(json.dumps({"error": f"version_mismatch: {error}"}))
+        return 3
     payload = json.load(sys.stdin)
     response = analyze_batch(Kiwi(), payload["requests"])
     json.dump(response, sys.stdout, ensure_ascii=False, sort_keys=True)

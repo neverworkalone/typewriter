@@ -12,8 +12,13 @@ export function corpusAdapter(pilotSelection) {
     // Context-level ambiguity found by the pilot is kept as a hold.
     holds: candidate.decision_state === 'held' ? ['analysis_ambiguous'] : [],
     observedForms: (candidate.observed_surface_forms ?? []).map((form) => form.surface),
-    evidence: (candidate.observed_surface_forms ?? [])
-      .slice(0, 3)
-      .map((form) => ({ kind: 'corpus-surface', ref: form.surface })),
+    evidence: [
+      // Stable, bounded location ids (no paragraph text) so QA can re-find the hit.
+      ...(candidate.evidence?.representative_hits ?? []).slice(0, 3).map((hit) => ({
+        kind: 'corpus-paragraph',
+        ref: `${hit.document_id}#${hit.paragraph_id}`,
+      })),
+      ...(candidate.observed_surface_forms ?? []).slice(0, 2).map((form) => ({ kind: 'corpus-surface', ref: form.surface })),
+    ].slice(0, 5),
   }));
 }

@@ -129,6 +129,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/semantic-decision-source-locality.test.mjs', 'Test semantic decision-source locality'),
       testCheck('tests/lexical-selection.test.mjs', 'Test shared lexical selection'),
       testCheck('tests/intake-pipeline.test.mjs', 'Test source-agnostic intake pipeline'),
+      testCheck('tests/intake-kiwi-service.test.mjs', 'Test shared Kiwi batch service'),
     ],
   },
 

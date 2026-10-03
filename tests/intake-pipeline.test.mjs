@@ -7,7 +7,7 @@ import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.m
 import { dedupeCandidates, normalizeCandidate, validateCandidate } from '../scripts/intake/candidate-contract.mjs';
 import { analysisInputDigest, runIntake, verifyAnalysisBinding } from '../scripts/intake/pipeline.mjs';
 
-const METADATA = { service_version: '1', kiwipiepy_version: 'test', kiwipiepy_model_version: 'test', top_n: 3 };
+const METADATA = { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0', top_n: 3 };
 const P = (lemma, pos) => ({ lemma, pos, form: lemma });
 const TABLE = {
   푸르다: { status: 'ok', analyses: [[P('푸르다', 'adjective')], [P('푸르다', 'noun')]] },
@@ -129,4 +129,30 @@ test('adapter-observed holds survive and skip analysis', async () => {
   });
   assert.equal(analyzed, 0);
   assert.deepEqual(decisionOf(run, '푸르다').holds, ['analysis_ambiguous']);
+});
+
+test('adverbs and one-syllable words are valid candidates', async () => {
+  const table = { 낫: { status: 'ok', analyses: [[P('낫', 'noun')]] }, 매우: { status: 'ok', analyses: [[P('매우', 'adverb')]] } };
+  const run = await runIntake({
+    candidates: syntheticAdapter([{ word: '낫', pos: 'noun' }, { word: '매우', pos: 'adverb' }, { word: '낫', pos: 'noun' }, 'ab']),
+    analyzer: async (requests) => ({ metadata: METADATA, results: requests.map(({ id, text }) => ({ ...table[text], id, input_digest: analysisInputDigest(text) })) }),
+  });
+  assert.equal(decisionOf(run, '낫').decision, 'semantic_qa');
+  assert.equal(decisionOf(run, '매우').pos, 'adverb');
+  assert.deepEqual(decisionOf(run, 'ab').holds, ['invalid_input']);
+});
+
+test('missing analysis digest, unpinned analyzer and corpus locations are enforced', async () => {
+  const noDigest = async (requests) => {
+    const response = await analyzer(requests);
+    delete response.results[0].input_digest;
+    return response;
+  };
+  const run = await runIntake({ candidates: syntheticAdapter(['푸르다']), analyzer: noDigest });
+  assert.deepEqual(decisionOf(run, '푸르다').holds, ['analysis_stale']);
+  const unpinned = async (requests) => ({ ...(await analyzer(requests)), metadata: { ...METADATA, kiwipiepy_version: 'unavailable' } });
+  await assert.rejects(runIntake({ candidates: syntheticAdapter(['푸르다']), analyzer: unpinned }), /pinned/);
+  const [row] = corpusAdapter({ candidates: [{ proposed_lemma: '푸르다', evidence: { representative_hits: [{ document_id: 'D.1', paragraph_id: 'D.1.18', context: 'text' }] } }] });
+  assert.deepEqual(row.evidence[0], { kind: 'corpus-paragraph', ref: 'D.1#D.1.18' });
+  assert.equal(normalizeCandidate(row).evidence[0].ref, 'D.1#D.1.18');
 });

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { analysisInputDigest, analyzerDigest } from './pipeline.mjs';
+import { analysisInputDigest, analyzerDigest, assertPinnedAnalyzer } from './pipeline.mjs';
 
 // Kiwi-backed "does this frame use lemma/pos" verdict, bound to the exact
 // frame text, lemma, POS and analyzer digest. Kiwi stays a proposal source:
@@ -23,6 +23,7 @@ export function frameBinding({ frame, lemma, pos, metadata }) {
 // items: [{ frame, lemma, pos }] → [{ ...item, verdict, binding }], order preserved.
 export async function analyzeFrames(analyzer, items) {
   const { metadata, results } = await analyzer(items.map((item, index) => ({ id: String(index), text: item.frame })));
+  assertPinnedAnalyzer(metadata);
   const byId = new Map(results.map((outcome) => [outcome.id, outcome]));
   return items.map((item, index) => {
     const outcome = byId.get(String(index));

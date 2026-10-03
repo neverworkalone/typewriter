@@ -11,6 +11,16 @@ import {
 //   contract → dedupe → Kiwi analysis → coverage → QA hand-off / HOLD.
 // This module must not import or reference any adapter.
 
+export const PINNED_ANALYZER = Object.freeze({ kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0' });
+
+export function assertPinnedAnalyzer(metadata) {
+  for (const [key, expected] of Object.entries(PINNED_ANALYZER)) {
+    if (metadata?.[key] !== expected) {
+      throw new Error(`Analyzer ${key} ${metadata?.[key] ?? 'unknown'} does not match pinned ${expected}`);
+    }
+  }
+}
+
 export function analyzerDigest(metadata) {
   return digest([metadata?.service_version, metadata?.kiwipiepy_version, metadata?.kiwipiepy_model_version, metadata?.top_n]);
 }
@@ -62,6 +72,7 @@ export async function runIntake({ candidates, analyzer, coveredLemmas = new Set(
   const analysis = analyzable.length
     ? await analyzer(analyzable.map((candidate) => ({ id: candidate.key, text: candidate.input })))
     : { metadata: null, results: [] };
+  if (analysis.metadata) assertPinnedAnalyzer(analysis.metadata);
   const outcomes = new Map(analysis.results.map((outcome) => [outcome.id, outcome]));
 
   const decisions = unique.map((candidate) => {
@@ -70,7 +81,7 @@ export async function runIntake({ candidates, analyzer, coveredLemmas = new Set(
     if (coveredLemmas.has(candidate.input)) return { ...base, decision: 'covered', holds: [] };
     const outcome = outcomes.get(candidate.key);
     const result = interpret(candidate, outcome);
-    if (outcome && outcome.input_digest !== undefined && outcome.input_digest !== analysisInputDigest(candidate.input)) {
+    if (outcome && outcome.input_digest !== analysisInputDigest(candidate.input)) {
       return { ...base, decision: 'hold', holds: ['analysis_stale'] };
     }
     if (result.hold) return { ...base, decision: 'hold', holds: [result.hold], proposedPos: result.proposedPos ?? null };
