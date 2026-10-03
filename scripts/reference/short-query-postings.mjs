@@ -194,7 +194,7 @@ export async function buildShortQueryPostings({ indexPath, outputPath = shortPos
  * Open the posting sidecar, or return null when absent, stale, built for other
  * rows or unsupported. `lookup(query, limit)` returns `{ rowids }` (the first
  * `limit` matching rowids in ascending order, an exact answer), or null when
- * the scan must run (common bigram, unknown row, or a malformed list).
+ * the scan must run (common bigram, missing row, or a malformed list).
  */
 export function openShortQueryPostings({ indexPath, indexDatabase }) {
   let sidecar;
@@ -220,7 +220,9 @@ export function openShortQueryPostings({ indexPath, indexDatabase }) {
         } catch {
           return null;
         }
-        if (!row) return { rowids: [] };
+        // A missing row is not evidence of zero matches: a damaged sidecar looks
+        // the same, so the exact scan decides.
+        if (!row) return null;
         if (row.rowids === null || row.rowids === undefined) return null;
         // Posting lists are at most POSTING_MAX_COUNT rowids, so the whole list is
         // decoded and checked (count + CRC-32) before its first rows are trusted.

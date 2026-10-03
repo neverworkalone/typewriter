@@ -738,6 +738,14 @@ test('two-character search through postings equals the exact scan for every bigr
   assert.deepEqual(queries.map((query) => limits.map((limit) => corrupt.search(query, limit))), expected);
   corrupt.close();
 
+  // Deleting known bigram rows while keeping valid metadata must not turn real matches into empty results.
+  const deleted = new DatabaseSync(shortPostingsPathFor(outputPath));
+  deleted.exec('DELETE FROM short_postings');
+  deleted.close();
+  const missingRows = createCorpusIndexReader({ databasePath: outputPath });
+  assert.deepEqual(queries.map((query) => limits.map((limit) => missingRows.search(query, limit))), expected);
+  missingRows.close();
+
   // A sidecar built for different rows is ignored.
   const stale = new DatabaseSync(shortPostingsPathFor(outputPath));
   stale.exec("UPDATE sidecar_metadata SET value = 'stale' WHERE key = 'index_logical_rows_sha256'");
