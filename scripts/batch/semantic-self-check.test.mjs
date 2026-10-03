@@ -9,6 +9,7 @@ import {
   assertPrimaryAuthoringAllowed,
   assertReviewContractForBatch,
   assertSelfCheckBinding,
+  assertVerbFramesGrammatical,
   assertSelfCheckEnvelope,
   assertSourceClaimsTruthful,
   isSelfCheckInput,
@@ -259,4 +260,34 @@ test('the self-check binding enforces evidence specificity from batch 14 at the 
   // Earlier self-check batches keep their original contract.
   const legacy = build('issue-223-m9-e-corpus-batch-13-20261003', (l) => `${l}: ${specific[l][0].replace(/문맥 [0-9]: /gu, '')}`, (l) => `${l}: ${specific[l][1]}`, (l) => `'${l}'은(는) '예시 뜻풀이'라는 뜻이다.`);
   assert.doesNotThrow(() => binding(legacy));
+});
+
+test('verb frames must be grammatical usage sentences; adjectives and legitimate constructions pass', () => {
+  const ok = (lemma, pos, frame) => assertVerbFramesGrammatical([{ lemma, pos, frames: [frame] }]);
+  assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽다 못해 졸았다.'));
+  assert.doesNotThrow(() => ok('먹다', 'verb', '그는 밥을 먹다 말고 일어났다.'));
+  assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽다가 잠들었다.'));
+  assert.doesNotThrow(() => ok('읽다', 'verb', '이렇게 두꺼운 책을 읽다니 놀랍다.'));
+  assert.doesNotThrow(() => ok('좋다', 'adjective', '이 책은 내용이 정말 좋다.'));
+  assert.doesNotThrow(() => ok('읽다', 'verb', '그는 책을 읽었다.'));
+  assert.throws(() => ok('읽다', 'verb', '그는 책을 읽다.'), /bare citation form/u);
+  assert.throws(() => ok('읽다', 'verb', '그는 책을 읽다 오래 졸았다.'), /only before a connective/u);
+  assert.throws(() => ok('깔보다', 'verb', '그는 상대를 깔보다 크게 졌다.'), /only before a connective/u);
+});
+
+test('the self-check binding applies the verb frame rule from batch 13 and leaves earlier batches alone', () => {
+  const lemmas = ['가나', '마바'];
+  const build = (batchId, frame) => {
+    const f = fixture();
+    f.candidateRows = [row('가나'), row('다라'), row('마바')].map((r) => ({ ...r, morphology_proposal: { ...r.morphology_proposal, pos: 'verb' } }));
+    f.input.batch_id = batchId;
+    f.input.reviews = lemmas.map((lemma) => ({ ...review(lemma), frames: [{ sentence_frame: frame(lemma) }] }));
+    return f;
+  };
+  const bare = (l) => `그는 ${l}.`;
+  const connective = (l) => `그는 ${l}가 아니라 ${l}다가 쓰러졌다.`;
+  assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', connective)));
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-13-20261003', bare)), /bare citation form|connective/u);
+  assert.throws(() => binding(build('issue-223-m9-e-corpus-batch-15-20261003', bare)), /bare citation form|connective/u);
+  assert.doesNotThrow(() => binding(build('issue-223-m9-e-corpus-batch-12-20261003', bare)));
 });

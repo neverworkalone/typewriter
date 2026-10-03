@@ -16,7 +16,7 @@
     "source_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
     "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
     "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
-    "semantic_review_input_sha256": "38f02b85e18cada15e487c836b5f4cd40fb2fd6a93b1371fed1d10711253f825"
+    "semantic_review_input_sha256": "30c9de4c74fec8d56a7423241eb358d8c12deb72656e02879abbe11e8a51f9c6"
   },
   "provenance": {
     "generator": "claude-sonnet-5-5",
@@ -7326,7 +7326,7 @@
               {
                 "gloss_excerpt": "무엇에 둘러싸이다.",
                 "gloss_start": 0,
-                "sentence_frame": "아이가 이불에 감싸이다 잠들었다.",
+                "sentence_frame": "아이가 이불에 감싸이다가 잠들었다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "감싸이다의 검토된 핵심 뜻"
@@ -7348,7 +7348,7 @@
             "sense_id": "w12152-s1",
             "sense_sha256": "b682656a9142880b0723760f607a9f0b054f541682e6e7c987706b8d19335eae",
             "gloss_sha256": "8f4c073bc90d8a7083180b89f9db0585fa90b6f80148bb00229e3a2eb12411e5",
-            "evidence_sha256": "b1a852e1517562a5298e77a16c38002809f74a0ff0b90b6450834ce56712383d"
+            "evidence_sha256": "fce5e64b9fa638bf934f6b6983cfcbc037d6977df6bd89be536fab01f102db24"
           }
         ]
       }
@@ -7906,7 +7906,7 @@
               {
                 "gloss_excerpt": "숨겨진 것을 짐작하여 맞히다.",
                 "gloss_start": 0,
-                "sentence_frame": "친구가 숨긴 물건을 단번에 알아맞히다.",
+                "sentence_frame": "친구가 숨긴 물건을 단번에 알아맞히다니 놀라웠다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "알아맞히다의 검토된 핵심 뜻"
@@ -7928,7 +7928,7 @@
             "sense_id": "w12162-s1",
             "sense_sha256": "7e678708db5a7499cf997345a5c6cf4c6ac5b7e506045c904cf755c3b2e70e9b",
             "gloss_sha256": "36a0996a5132e1ac1a706c789fb59d705784ec13974d85fd13af9390912100ce",
-            "evidence_sha256": "91bb161c95d266a2c29d0c52d81ce7f8c61bcdb72f878e09d6f8fc0d58f44b5f"
+            "evidence_sha256": "aaaa9344ad0fa6b1f56c064d5ff61aace9377895fcd235bfb33f7a81d4cfad94"
           }
         ]
       }
@@ -8022,7 +8022,7 @@
               {
                 "gloss_excerpt": "곧바로 하지 않고 둘러서 하다.",
                 "gloss_start": 0,
-                "sentence_frame": "그는 마음을 숨기고 말을 에두르다.",
+                "sentence_frame": "그는 마음을 숨기고 말을 에두르다가 오해를 샀다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "에두르다의 검토된 핵심 뜻"
@@ -8044,7 +8044,7 @@
             "sense_id": "w12164-s1",
             "sense_sha256": "3bdcd76a5cc3350c7930114efd74631af9392a4ca447dbafd1af32dbc425861e",
             "gloss_sha256": "a146a10f7fe6d0598cf35ddf6fd0e03ca65145479ce2f5d3fdc27564369551cb",
-            "evidence_sha256": "9b2561610c751b363360b53226d7aef3e1ddba92b45c663c55186e37a6e72920"
+            "evidence_sha256": "1023bbe04df277b689fbd709dc9a80566e92ef5e841edcf0ee6f164b165806fd"
           }
         ]
       }
@@ -9414,7 +9414,7 @@
               {
                 "gloss_excerpt": "가까이 옮겨 앉다.",
                 "gloss_start": 0,
-                "sentence_frame": "아이가 엄마 곁으로 다가앉다.",
+                "sentence_frame": "아이가 엄마 곁으로 다가앉다가 웃었다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "다가앉다의 검토된 핵심 뜻"
@@ -9436,7 +9436,7 @@
             "sense_id": "w12188-s1",
             "sense_sha256": "4ed5091c47403de467ed7dd1f37450234c6912cfe13674b67cbf12d4bf9e30db",
             "gloss_sha256": "0d3681cbfa1145246633e447f5e8c0eb60fa0333dbab5c7daaad4fd81fa28f51",
-            "evidence_sha256": "a2f501c792413c9dece728ad917a6b6567c44b6f0fa28db856068fb0c831ebcc"
+            "evidence_sha256": "6b3bc6afd2e0c5b89d2f94f6782ee39742c2666a4d19836b6551b4595d0863de"
           }
         ]
       }
@@ -9878,7 +9878,7 @@
               {
                 "gloss_excerpt": "모르던 것을 알게 되다.",
                 "gloss_start": 0,
-                "sentence_frame": "아이가 한글을 깨치다 신나서 간판을 읽었다.",
+                "sentence_frame": "아이가 한글을 깨치다 보니 간판을 읽었다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "깨치다의 검토된 핵심 뜻"
@@ -9900,7 +9900,7 @@
             "sense_id": "w12196-s1",
             "sense_sha256": "b7a4909c8f22f29958fa5f2a18205258d4fb789d6828dc025c6874ba4f6b3b2a",
             "gloss_sha256": "6283a1ec41914c176c346add3183ff3dee74c4825dd08013ace8f5a64d777ce4",
-            "evidence_sha256": "c97eee9442f4710ad78dea0441afd7c85bf034578a7b24aff3315257e38098d0"
+            "evidence_sha256": "b3b69ac4718676ee3d9b1fd80698e4c1551e43f8d03c3689d857626d3ae4f1fb"
           }
         ]
       }
@@ -13532,7 +13532,7 @@
               {
                 "gloss_excerpt": "살갗이 붓고 부풀어 오르다.",
                 "gloss_start": 0,
-                "sentence_frame": "벌에 쏘인 손이 퉁퉁 부어오르다.",
+                "sentence_frame": "벌에 쏘인 손이 퉁퉁 부어오르다 보니 반지가 안 빠졌다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "부어오르다의 검토된 핵심 뜻"
@@ -13554,7 +13554,7 @@
             "sense_id": "w12259-s1",
             "sense_sha256": "d8b7c318fb2c649900719c6c16a08dee33fa849a68e1b874c870dbfe400334dc",
             "gloss_sha256": "197ce97a5ac41c94ebf4bbe795646b1035c8c62ee21b55541b61a89defecd17a",
-            "evidence_sha256": "27cbe8d1bd6f9d96340bef84e9f0e8cfff2d7daacf10df811f4efba1dac6580d"
+            "evidence_sha256": "b7e9813592c05f0e499ae7ab7c735644a5efc9e968154e2d59c8d885c99fa5b4"
           }
         ]
       }
@@ -15272,7 +15272,7 @@
               {
                 "gloss_excerpt": "안에서 밖이 보이다.",
                 "gloss_start": 0,
-                "sentence_frame": "창문으로 바다가 내다보이다.",
+                "sentence_frame": "창문으로 바다가 내다보이다니 전망이 좋았다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "내다보이다의 검토된 핵심 뜻"
@@ -15294,7 +15294,7 @@
             "sense_id": "w12289-s1",
             "sense_sha256": "af64568cc8e30004a6b501949c254fdeb80ba9b7403f8e80d858ad87bc345de3",
             "gloss_sha256": "840c59a98d58e91798eef6daaf8d92d17e2f9d96635e514b2228b30ebdcc4c4f",
-            "evidence_sha256": "8ef4a1a9ad225d1491d22c88b10f6c9fd23674106c94d53e177a53249a996241"
+            "evidence_sha256": "d29557725cc7728f9d7ebe57348afcc85d5353259f5de7741f8a9f187af0354f"
           }
         ]
       }
@@ -16258,7 +16258,7 @@
               {
                 "gloss_excerpt": "마음이 상해 틀어지다.",
                 "gloss_start": 0,
-                "sentence_frame": "동생이 말 한마디에 토라지다.",
+                "sentence_frame": "동생이 말 한마디에 토라지다가 금세 풀렸다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "토라지다의 검토된 핵심 뜻"
@@ -16280,7 +16280,7 @@
             "sense_id": "w12306-s1",
             "sense_sha256": "cc6a500fd3d2ed8207c55868b3ab51138b503da3ed7de13ad403ecde954f1371",
             "gloss_sha256": "59ef2eb69a5187933e949d5cbcf485e8cb4089329da0aa24d08307be9298e107",
-            "evidence_sha256": "c562029c84cf74374cb0ea4c3ceaf5d729880188ab88c0d5609cd137e16e5e2e"
+            "evidence_sha256": "8379f81eadecfebe37cdf2474464cccabc6ca6a4713b88c9553a458123cd72b9"
           }
         ]
       }
@@ -16374,7 +16374,7 @@
               {
                 "gloss_excerpt": "몹시 배가 고프다.",
                 "gloss_start": 0,
-                "sentence_frame": "하루를 굶으니 허기지다.",
+                "sentence_frame": "하루를 굶으니 허기지다 못해 어지러웠다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "허기지다의 검토된 핵심 뜻"
@@ -16396,7 +16396,7 @@
             "sense_id": "w12308-s1",
             "sense_sha256": "f30df7aae09e482e706dafc7135cb28592c379cf9f16c64cdf29424bfe1417a9",
             "gloss_sha256": "5a24a574cac4a57be3197347773c544b4f19ad27aa3230789e2d0b89293e0c54",
-            "evidence_sha256": "61bc80f7b62ce310dc4c0dc9e8f455ae14297b7b0866abb03f13fdb4cab6e638"
+            "evidence_sha256": "8b84c3d0880315df463ffb45822b3ec390739fecfd0feccf690ad062c90979ec"
           }
         ]
       }
@@ -16664,7 +16664,7 @@
               {
                 "gloss_excerpt": "돌보지 않고 그냥 두다.",
                 "gloss_start": 0,
-                "sentence_frame": "낡은 가구를 마당에 버려두다.",
+                "sentence_frame": "낡은 가구를 마당에 버려두다가 치웠다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "버려두다의 검토된 핵심 뜻"
@@ -16686,7 +16686,7 @@
             "sense_id": "w12313-s1",
             "sense_sha256": "bb5f4fac70e306ac8bfecf572787451d6afb65a425b100c8f355405415504d74",
             "gloss_sha256": "10c5b9a0bfddcac73849972bf42b754a66ee60d4a1c65dcabcafa20f2db25b32",
-            "evidence_sha256": "32e16675827416d1661286ad9259a6ff4446df96911632012379e078d6e5456c"
+            "evidence_sha256": "1d5f324d998b685d8897af0703eff0ba6a62d44e1bad24da9d67795cd2b07e33"
           }
         ]
       }
@@ -16954,7 +16954,7 @@
               {
                 "gloss_excerpt": "기운이 점점 약해지다.",
                 "gloss_start": 0,
-                "sentence_frame": "병 때문에 기력이 쇠하다.",
+                "sentence_frame": "병 때문에 기력이 쇠하다 보니 걷기도 힘들었다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "쇠하다의 검토된 핵심 뜻"
@@ -16976,7 +16976,7 @@
             "sense_id": "w12318-s1",
             "sense_sha256": "044e72165cacde79583543749958bfe6b44276f8f3764ab216386667ca6a244b",
             "gloss_sha256": "6f169be152655712877f71311bd6198bdd63260cd7a85af411dbf6a4a1124e93",
-            "evidence_sha256": "683fa7f4833d1dcbec6d0c9a1f759cf4772bedc9bd79568ad2436d5a6eb621ad"
+            "evidence_sha256": "ef51b75da9a6ad9f9eb241db8a97fd11289e9dd68aab85e36514e652deaa7c8f"
           }
         ]
       }
@@ -17012,7 +17012,7 @@
               {
                 "gloss_excerpt": "여럿이 어수선하게 움직이며 수군거리다.",
                 "gloss_start": 0,
-                "sentence_frame": "소문에 마을이 술렁거리다.",
+                "sentence_frame": "소문에 마을이 술렁거리다가 가라앉았다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "술렁거리다의 검토된 핵심 뜻"
@@ -17034,7 +17034,7 @@
             "sense_id": "w12319-s1",
             "sense_sha256": "a314dce149a610336ceb50bc33a76cb833f9ed1d1f102b283c9997c366069e7a",
             "gloss_sha256": "b46d155c53f5567bc22396c1346fe33f705a79cfe5a34ed1503af09aae635406",
-            "evidence_sha256": "5f3a60d41355ac3878305fb83af152c5c1493808e6c922b8e396d9a9296d7592"
+            "evidence_sha256": "69fd608444eca2eaaa7af13a8f024b94f5aa41272bf98561f1ccb0160822ec69"
           }
         ]
       }
@@ -17534,7 +17534,7 @@
               {
                 "gloss_excerpt": "어떤 상태로 변해 가다.",
                 "gloss_start": 0,
-                "sentence_frame": "날이 어둑하게 되어가다.",
+                "sentence_frame": "날이 어둑하게 되어가다가 비가 내렸다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "되어가다의 검토된 핵심 뜻"
@@ -17556,7 +17556,7 @@
             "sense_id": "w12328-s1",
             "sense_sha256": "8a59ab3abe2b5a69fc483e10fb8bd069fdae87de4d13ab23c04af8757e8dc2df",
             "gloss_sha256": "4543bf50fc8bf168f7cc1b820f1fa95e82787d71f5e365530a4704c17bcdc0bb",
-            "evidence_sha256": "73b6ad5d9c7353978bff9b9ad2b2af8318e7d9bdab833db2b0dcdb94c6a0b795"
+            "evidence_sha256": "223affb1e67931c2e08b74de15475aa7962812ba18da50b1bf96387b3c368cd9"
           }
         ]
       }
@@ -17592,7 +17592,7 @@
               {
                 "gloss_excerpt": "앞뒤나 위치가 서로 바뀌다.",
                 "gloss_start": 0,
-                "sentence_frame": "두 아이의 이름표가 뒤바뀌다.",
+                "sentence_frame": "두 아이의 이름표가 뒤바뀌다니 큰일이었다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "뒤바뀌다의 검토된 핵심 뜻"
@@ -17614,7 +17614,7 @@
             "sense_id": "w12329-s1",
             "sense_sha256": "4eb65c116b352b2232cf88fe93c3596598c341ff48a03e36ec691f0a8e829aa0",
             "gloss_sha256": "fd1db2c7cf25b447f6b706831e19a3a22ed575645f62949d4fa15400ab3cedfe",
-            "evidence_sha256": "f9c436ac2f7b52a913cbe669dda599ccc4570dedeeca98dbdc6e76334af92ccd"
+            "evidence_sha256": "749f4765e99739c0406d3c84d75a480bddbdaa6f6a13592d555c9e507baa715d"
           }
         ]
       }
@@ -18172,7 +18172,7 @@
               {
                 "gloss_excerpt": "글씨를 거침없이 마구 쓰다.",
                 "gloss_start": 0,
-                "sentence_frame": "그는 쪽지에 이름을 휘갈기다.",
+                "sentence_frame": "그는 쪽지에 이름을 휘갈기다가 펜을 놓았다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "휘갈기다의 검토된 핵심 뜻"
@@ -18194,7 +18194,7 @@
             "sense_id": "w12339-s1",
             "sense_sha256": "2db7848cc4fb61cca819dbf4c8b3cc44ba15b06bad5e5a4f54caf9c05c9ca39c",
             "gloss_sha256": "b6a191539c84eee14403cb630a44d2d1ecab0e5a4557f7bc848cda5d894a3bc1",
-            "evidence_sha256": "580697e1c8518272e60721b9e401895546a1855532535495e3f2cfb2a2c5fec4"
+            "evidence_sha256": "5bdc19b94c241a9db8556636fc12000e287a810655d91dd4d8637a9a29f8d05b"
           }
         ]
       }
@@ -24610,7 +24610,7 @@
               {
                 "gloss_excerpt": "속에서 저절로 생겨나 겉으로 나타나다.",
                 "gloss_start": 0,
-                "sentence_frame": "진심에서 우러나다 눈물이 났다.",
+                "sentence_frame": "진심에서 우러나다 보니 눈물이 났다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "우러나다의 검토된 핵심 뜻"
@@ -24632,7 +24632,7 @@
             "sense_id": "w12450-s1",
             "sense_sha256": "67bc9aa347060888a0a6d114e46be4c96f2efc4b5299918b087290739c41608b",
             "gloss_sha256": "2dc10f8851bf5d98e9e1ce0e343961f7b1534c4a72470b60bbce234571eb0e6b",
-            "evidence_sha256": "9fd254ba8bd2eddfc7ba0cf50c5c3c2156ee848de3285af79d727ec3b5646c20"
+            "evidence_sha256": "0bb0891b38a5779be14e49b2503956051bc5c5bb9c357b93cdc9b2666fb5ae1e"
           }
         ]
       }
@@ -24668,7 +24668,7 @@
               {
                 "gloss_excerpt": "사납게 으르렁거리다.",
                 "gloss_start": 0,
-                "sentence_frame": "개가 낯선 사람에게 으르렁대다.",
+                "sentence_frame": "개가 낯선 사람에게 으르렁대다가 물러섰다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "으르렁대다의 검토된 핵심 뜻"
@@ -24690,7 +24690,7 @@
             "sense_id": "w12451-s1",
             "sense_sha256": "cb94e0ad48848d26f4141a25b6d329a775f1f4db0c9fb8d84a8a907d0ce5eb70",
             "gloss_sha256": "c4dabba08760ef42d12b45045fa88d2e75027500382bd14d1658b45893c72d88",
-            "evidence_sha256": "114104459c0caef7161656829c39781397516fb2e68277a3991d3dc6dd69f022"
+            "evidence_sha256": "78ff6a7ebe07dba41a49b8770984b8df5f12dc8839ce347ed517c3ae3eb9bf90"
           }
         ]
       }
@@ -24900,7 +24900,7 @@
               {
                 "gloss_excerpt": "음료를 조금씩 소리 내며 마시다.",
                 "gloss_start": 0,
-                "sentence_frame": "차를 홀짝이다 책을 읽었다.",
+                "sentence_frame": "차를 홀짝이다가 책을 읽었다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "홀짝이다의 검토된 핵심 뜻"
@@ -24922,7 +24922,7 @@
             "sense_id": "w12455-s1",
             "sense_sha256": "7e5a1c4e683344df0eb8d98560ab0e7e994dcc1a9b8b057f4ab0de71ff4fa7b2",
             "gloss_sha256": "b0bb5d23a9f8f8edf3e31d90685dc208bf2fd1325b860e8ce70cf33f6eca3e42",
-            "evidence_sha256": "5be4fadc295155e61b8c4db99d5d12bcd686ce5645fac9c5e16df85d43dacb3e"
+            "evidence_sha256": "2789f2d042ab454c24f0f20d5927c2e08d27fae90c6714debb7a3d92e7a1609a"
           }
         ]
       }
@@ -25828,7 +25828,7 @@
               {
                 "gloss_excerpt": "잘난 체하며 건방지게 굴다.",
                 "gloss_start": 0,
-                "sentence_frame": "그는 돈을 자랑하며 거들먹거리다.",
+                "sentence_frame": "그는 돈을 자랑하며 거들먹거리다가 비웃음을 샀다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "거들먹거리다의 검토된 핵심 뜻"
@@ -25850,7 +25850,7 @@
             "sense_id": "w12471-s1",
             "sense_sha256": "b5c1d60e1735e152cdd6c4a6fb13a61fd1da5d6ec631820e861487010c5ba876",
             "gloss_sha256": "c3a6f684cc29d32ac3e75eb108284a6c91576385b35c036f90676df9736d79a1",
-            "evidence_sha256": "3f07884ff2282077702f29c051f2426fa809e33b0f65c69ac49a8a813b6a5978"
+            "evidence_sha256": "5675ffca742e6b3b443f8430d58642841b7eb35bdc09c87bf39162cc4412416b"
           }
         ]
       }
@@ -25886,7 +25886,7 @@
               {
                 "gloss_excerpt": "소매나 바짓단을 걷어 올리다.",
                 "gloss_start": 0,
-                "sentence_frame": "그는 소매를 걷어붙이다 일을 시작했다.",
+                "sentence_frame": "그는 소매를 걷어붙이다가 일을 시작했다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "걷어붙이다의 검토된 핵심 뜻"
@@ -25908,7 +25908,7 @@
             "sense_id": "w12472-s1",
             "sense_sha256": "6b3b264e9cd5cd30008b75982158a6ba635d83ebcd71262711aea4695d0b2bee",
             "gloss_sha256": "66c24e4f79b66dd26fc67476551d49a58c58b114a5e7f1ddd10ef9b6264842e0",
-            "evidence_sha256": "0faff6884eb6abcab5fc1e11a96009d65bd982160133475bdd231266866dfa49"
+            "evidence_sha256": "9fbba58731cdf998f279d992bf067945a91b78d8b4231c36ce5f81b08e7ff891"
           }
         ]
       }
@@ -26408,7 +26408,7 @@
               {
                 "gloss_excerpt": "관절이 접질려 어긋나다.",
                 "gloss_start": 0,
-                "sentence_frame": "계단에서 발목을 삐다.",
+                "sentence_frame": "계단에서 발목을 삐다니 불운했다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "삐다의 검토된 핵심 뜻"
@@ -26430,7 +26430,7 @@
             "sense_id": "w12481-s1",
             "sense_sha256": "03e86a3c42654e0b2adaf896c3867d3fd222786980cd11131dfa6d16a42beab5",
             "gloss_sha256": "a2023fa5c623add45712d4d537be4b7d38d1d14794704b09248be6e32167364b",
-            "evidence_sha256": "aa17510fe379c3656c0d3342ba57acc23e48c05d627e15541c94b6c16113c5de"
+            "evidence_sha256": "708c8b45001ba0fa0d609a292cd58c5f5987ac124968d7602ae3f96aeb22b257"
           }
         ]
       }
@@ -27046,7 +27046,7 @@
               {
                 "gloss_excerpt": "소리 내어 크게 웃다.",
                 "gloss_start": 0,
-                "sentence_frame": "아이들이 깔깔대다 숨이 찼다.",
+                "sentence_frame": "아이들이 깔깔대다가 숨이 찼다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "깔깔대다의 검토된 핵심 뜻"
@@ -27068,7 +27068,7 @@
             "sense_id": "w12492-s1",
             "sense_sha256": "d0cf27d1e39cc9b4dd633b97e838db10bc45ae9676da56f09bd926792139493c",
             "gloss_sha256": "e44c600f091ef4d2cc45023f64983b457cd56d837d681af5e38e186763c29702",
-            "evidence_sha256": "5231da9dd639707a28e75731c44e0ced813550ad3648666965cb3cd95a6a4082"
+            "evidence_sha256": "7efbd2896ef0b2f1601b9bb519782ce397a36f96806e2ae0f019fc6efae85ab1"
           }
         ]
       }
@@ -27104,7 +27104,7 @@
               {
                 "gloss_excerpt": "자기 분수를 넘어 욕심을 내다.",
                 "gloss_start": 0,
-                "sentence_frame": "남의 자리를 넘보다.",
+                "sentence_frame": "남의 자리를 넘보다가 들통났다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "넘보다의 검토된 핵심 뜻"
@@ -27126,7 +27126,7 @@
             "sense_id": "w12493-s1",
             "sense_sha256": "3e0a75530e602e704c91fcbc2cb580999e9c8b8f112f1b341a4b69150059dea3",
             "gloss_sha256": "f07d80f0d47f514a1d60a5e088b4d016016b0e29de5fbcf88de416735ef1aa33",
-            "evidence_sha256": "dbbba2a54c2dd3bb6ffc96356334310b71719c9521bdc9a34cda4e598b6000d9"
+            "evidence_sha256": "2b3f8a68420f2a7c9f37bf8a49a9f7d3a0e849a46054b690e0804e1ea8eecc9b"
           }
         ]
       }
@@ -27336,7 +27336,7 @@
               {
                 "gloss_excerpt": "어떤 결과나 상태가 만들어지다.",
                 "gloss_start": 0,
-                "sentence_frame": "오해가 갈등으로 빚어지다.",
+                "sentence_frame": "오해가 갈등으로 빚어지다니 안타까웠다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "빚어지다의 검토된 핵심 뜻"
@@ -27358,7 +27358,7 @@
             "sense_id": "w12497-s1",
             "sense_sha256": "b645b0e63f97ed361d602f689a1dc89be9574f4fd6cf4d07d2e1040354de16aa",
             "gloss_sha256": "43b3ee35b73a06ac0df7f03c3c4136b389f3ce1d47dcc5d6bc2c562f2e8053f5",
-            "evidence_sha256": "fcc8083d68c224bda681a82484b9e4381041bbc4eb2d845294be0d4fa83f545b"
+            "evidence_sha256": "59ae97f3175d5d4c1669d91087624db3cf2ef108042780e12a80177ea13f2784"
           }
         ]
       }
@@ -27568,7 +27568,7 @@
               {
                 "gloss_excerpt": "남의 잘못을 윗사람에게 몰래 알리다.",
                 "gloss_start": 0,
-                "sentence_frame": "동생이 형의 잘못을 일러바치다.",
+                "sentence_frame": "동생이 형의 잘못을 일러바치다가 혼났다.",
                 "writer_route": {
                   "relation_type": "near",
                   "target_class": "일러바치다의 검토된 핵심 뜻"
@@ -27590,7 +27590,7 @@
             "sense_id": "w12501-s1",
             "sense_sha256": "3f9686fd20062121b06243bcb89f2b55bf34705ad18c967f7012828d62dd3ae9",
             "gloss_sha256": "59ae40101c4b2b7f7546922465bdcea059cbcc1f5d158624c06e36b683c886a3",
-            "evidence_sha256": "d9aae3bc089dc107642383f5f9a2111b3c9f679c173807cee92fa0f3f12207f5"
+            "evidence_sha256": "872aa9dbdbb53eca99d783e34e59b04660edcf4ac34dca81375edfcee7de0402"
           }
         ]
       }
@@ -29858,5 +29858,5 @@
       }
     }
   ],
-  "artifact_sha256": "4601596ec27812285856d34c2bd0627985ec068d8bc927606baf0ec9607ed88f"
+  "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9"
 }

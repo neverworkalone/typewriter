@@ -20,6 +20,30 @@ import { admissionGateFor, assertReviewNotesAreCandidateSpecific } from './revie
 
 export const SELF_CHECK_PROVENANCE = 'agent-self-check';
 export const SELF_CHECK_FIRST_BATCH = 11;
+export const SELF_CHECK_FRAME_GRAMMAR_FIRST_BATCH = 13;
+// A verb frame may carry the citation form only where Korean grammar allows it
+// before a connective (-다가, -다니, -다 보니, -다 못해, -다 말고, ...), never
+// as a bare sentence-final predicate; an adjective's plain form is a valid
+// sentence ending and is not restricted.
+const VERB_CITATION_CONTINUATION = /^(?:니|가[\s,]|고|는|며|면|\s*(?:말고|못해|못하|보니|보면))/u;
+const SENTENCE_END = /^[\s.?!"'”’]*$/u;
+
+/** Rows: { lemma, pos, frames }. Frames lacking the lemma are left to the shared containment check. */
+export function assertVerbFramesGrammatical(rows) {
+  for (const { lemma, pos, frames } of rows) {
+    if (pos !== 'verb') continue;
+    for (const frame of frames) {
+      const tails = [];
+      for (let at = frame.indexOf(lemma); at !== -1; at = frame.indexOf(lemma, at + 1)) tails.push(frame.slice(at + lemma.length));
+      if (tails.length === 0) continue;
+      assert.ok(!tails.some((tail) => SENTENCE_END.test(tail)),
+        `${lemma}: a verb frame must not end the sentence with the bare citation form`);
+      assert.ok(tails.some((tail) => VERB_CITATION_CONTINUATION.test(tail)),
+        `${lemma}: a verb frame must use the citation form only before a connective such as -다가, -다니, -다 보니, -다 못해, -다 말고`);
+    }
+  }
+}
+
 export const SELF_CHECK_SPECIFIC_FIRST_BATCH = 14;
 const FRAME_DEFINITION_FORM = /['"「][^'"」]+['"」](?:은|는|은\(는\)|이|가)\s*['"「][^'"」]+['"」]/u;
 const MAX_REPEATED_SELF_CHECK_SHARE = 0.1;
@@ -116,6 +140,14 @@ export function assertSelfCheckBinding({ input, candidateRows, glossByLemma }) {
   assert.equal(input.reviews.length, passes, 'review rows must exist exactly for the passed candidates');
   assertReviewNotesAreCandidateSpecific(input.reviews);
   const batchOrdinal = Number(String(input.batch_id).match(/corpus-batch-(\d+)-/u)?.[1]);
+  if (batchOrdinal >= SELF_CHECK_FRAME_GRAMMAR_FIRST_BATCH) {
+    const posByLemma = new Map(candidateRows.map((row) => [row.morphology_proposal.lemma, row.morphology_proposal.pos]));
+    assertVerbFramesGrammatical(input.reviews.map((review) => ({
+      lemma: review.lemma,
+      pos: posByLemma.get(review.lemma),
+      frames: review.frames.map((frame) => frame.sentence_frame),
+    })));
+  }
   if (batchOrdinal >= SELF_CHECK_SPECIFIC_FIRST_BATCH) {
     assertSelfCheckPassesSpecific(input.reviews.map((review) => ({
       lemma: review.lemma,

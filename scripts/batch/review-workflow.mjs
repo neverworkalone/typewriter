@@ -29,7 +29,7 @@ import { glossFrameSpans } from './build-issue-223-corpus-batch.mjs';
 import { findAmbiguousParticleFragments, validateLexicalRecord } from '../validate/lexical-quality.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { packetCandidate, shardRanges } from './make-review-packets.mjs';
-import { assertLegacyReviewWorkflowAllowed, assertNoCorpusPhraseCopy, assertPrimaryAuthoringAllowed, assertSelfCheckPassesSpecific, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
+import { assertLegacyReviewWorkflowAllowed, assertNoCorpusPhraseCopy, assertPrimaryAuthoringAllowed, assertSelfCheckPassesSpecific, assertVerbFramesGrammatical, SELF_CHECK_PROVENANCE } from './semantic-self-check.mjs';
 import {
   admissionGateFor,
   outcomeFromRaw,
@@ -570,6 +570,11 @@ export async function assembleSelfChecked({ batchId, directory, batchDirectory =
   }
   assert.equal(flat.length, proposals.length, 'the self-check must cover every candidate exactly once');
   assertSelfCheckEvidenceIsSpecific(flat, proposals);
+  assertVerbFramesGrammatical(flat.filter((row) => row.verdict === 'pass').map((row) => ({
+    lemma: row.lemma,
+    pos: generator.decisions[row.ordinal - 1].corrected_pos ?? inventory.candidates[row.ordinal - 1].proposed_pos,
+    frames: row.frames,
+  })));
 
   const finalDecisions = generator.decisions.map((row, index) => finalDecisionRow(row, flat[index]));
   const reviews = [];
