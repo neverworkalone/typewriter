@@ -65,6 +65,7 @@ function stemForms(stem, plainEnding) {
     if (syllable.jong === 7 && D_IRREGULAR.has(stem)) add(prefix + compose({ ...syllable, jong: 8 }), VOWEL_ENDING);
     if (syllable.jong === 19 && S_IRREGULAR.has(stem)) add(open, VOWEL_ENDING);
     if (syllable.jong === 8) add(open, /^(?:는|니|시|세|오|습|십)/u);
+    if (syllable.jong === 8) add(prefix + compose({ ...syllable, jong: 17 }), /^(?:니다|니까|시다|시오)/u);
     if (syllable.jong === 17 && !B_REGULAR.has(stem)) {
       for (const tail of ['워', '와']) add(open + tail, CONTRACTED_ENDING);
       for (const tail of ['웠', '왔']) add(open + tail, PAST_ENDING);
@@ -74,6 +75,7 @@ function stemForms(stem, plainEnding) {
     return forms;
   }
   add(prefix + compose({ ...syllable, jong: 4 }), /^(?:다|[.,?!”"’']|$)/u, true);
+  add(prefix + compose({ ...syllable, jong: 17 }), /^(?:니다|니까|시다|시오)/u);
   add(prefix + compose({ ...syllable, jong: 8 }), /^(?:까|수|[.,?!”"’']|$)/u, true);
   if (pastVowels.includes(syllable.jung)) add(prefix + compose({ ...syllable, jong: 20 }), PAST_ENDING);
   const merged = { 8: 9, 13: 14, 20: 6, 11: 10 }[syllable.jung];

@@ -321,6 +321,11 @@ test('the shared lemma-in-frame rule admits correctly conjugated verb frames and
   assert.equal(frameUsesLemma('일을 하여.', '하다', 'verb'), false);
   assert.equal(frameUsesLemma('일을 하여 마쳤다.', '일하다', 'verb'), false);
   assert.equal(frameUsesLemma('그는 일하여 돈을 벌었다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 학교에 갑니다.', '가다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 열심히 일합니다.', '일하다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 시골에 삽니다.', '살다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 책을 읽습니다.', '읽다', 'verb'), true);
+  assert.equal(frameUsesLemma('그는 갑옷을 입었다.', '가다', 'verb'), false);
   assert.equal(frameUsesLemma('눈을 감고 잤다.', '가다', 'verb'), false);
   assert.equal(frameUsesLemma('발을 씻었다.', '받다', 'verb'), false);
   assert.equal(frameUsesLemma('손을 씻었다.', '씻다', 'verb'), true);

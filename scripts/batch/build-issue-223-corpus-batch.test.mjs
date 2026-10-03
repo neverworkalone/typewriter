@@ -347,6 +347,8 @@ test('the builder admission path accepts a correctly conjugated verb frame and r
   const digest = sha256Json(gloss);
   assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 책을 읽었다.'), candidate, digest, 'verb'));
   assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 책을 읽다 못해 졸았다.'), candidate, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 학교에 갑니다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'));
+  assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그는 열심히 일합니다.', '일하다'), { ...candidate, lemma: '일하다' }, digest, 'verb'));
   assert.doesNotThrow(() => assertAuthoredSemanticReview(review('그 말을 들었다.', '듣다'), { ...candidate, lemma: '듣다' }, digest, 'verb'));
   assert.throws(() => assertAuthoredSemanticReview(review('그는 가게에서 책을 샀다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
   assert.throws(() => assertAuthoredSemanticReview(review('눈을 감고 잤다.', '가다'), { ...candidate, lemma: '가다' }, digest, 'verb'), /frames must use the lemma/u);
