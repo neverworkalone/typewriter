@@ -1,4 +1,4 @@
-// Minimal second adapter: proves the shared stages do not depend on the corpus.
+// Minimal second adapter: proves the shared stages need no other source.
 // Accepts directly submitted words with no contextual evidence.
 export const SYNTHETIC_ADAPTER_ID = 'synthetic-word-list';
 

@@ -65,9 +65,14 @@ and too-short words) reached the same decisions with no corpus code loaded:
 non-Hangul input, `lemma_mismatch` for multi-morpheme strings and
 non-words, `pos_mismatch` for a wrong submitted POS, `analysis_ambiguous`).
 
-The pilot hands records off at `semantic_qa`. Canonical admission, SQLite build
-and direct search are the unchanged existing stages (exercised by `ci:normal`);
-authoring new canonical words is outside this issue. Peak memory and review/rework
+The pilot hands records off at `semantic_qa`. `tests/intake-end-to-end.test.mjs`
+carries hand-offs through admission (binding verified; only hand-offs with a
+separately authored fixture gloss are admitted, holds never are) → real
+`buildDictionary` → SQLite direct search (`푸른` → `푸르다`), once from the
+`CorpusAdapter` and once from the synthetic adapter alone, whose module has no
+corpus reference. The fixture glosses stand in for the source-bound QA step;
+authoring new canonical words is outside this issue. Adapter holds keep their
+original cause (`analysis_ambiguous` vs `coverage_collision`). Peak memory and review/rework
 cost were not measured; no quality-win claim is made beyond the table above.
 
 B05–B10 history and canonical/SQLite/search schema are unchanged.

@@ -10,6 +10,7 @@ export const HOLD_REASONS = Object.freeze([
   'invalid_input',
   'no_evidence',
   'analysis_ambiguous',
+  'coverage_collision',
   'analysis_unsupported',
   'analysis_error',
   'analysis_mismatch',
