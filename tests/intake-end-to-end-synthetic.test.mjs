@@ -7,7 +7,6 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { findRecordsBySearchTerm } from '../scripts/build/query.mjs';
-import { corpusAdapter } from '../scripts/intake/adapters/corpus-adapter.mjs';
 import { syntheticAdapter } from '../scripts/intake/adapters/synthetic-adapter.mjs';
 import { analysisInputDigest, runIntake, verifyAnalysisBinding } from '../scripts/intake/pipeline.mjs';
 
@@ -56,22 +55,12 @@ async function admitAndSearch(run, query) {
   }
 }
 
-test('corpus adapter → intake → admission fixture → SQLite → direct search', async () => {
-  const candidates = corpusAdapter({ candidates: [
-    { proposed_lemma: '푸르다', proposed_pos: 'adjective', decision_state: 'candidate', coverage_status: 'uncovered', observed_surface_forms: [{ surface: '푸른' }] },
-    { proposed_lemma: '물결무늬', proposed_pos: 'noun', decision_state: 'candidate', coverage_status: 'uncovered' },
-  ] });
-  const run = await runIntake({ candidates, analyzer });
-  const { summary, found } = await admitAndSearch(run, '푸른');
-  assert.equal(summary.recordCount, 1);
-  assert.deepEqual(found, ['푸르다']);
+test('synthetic adapter reaches search with no corpus module in the import graph', async () => {
+  const source = await readFile(new URL('../scripts/intake/adapters/synthetic-adapter.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /corpus/i);
+  const run = await runIntake({ candidates: syntheticAdapter(['푸르다', '바람', '물결무늬']), analyzer });
+  const { summary, found } = await admitAndSearch(run, '바람');
+  assert.equal(summary.recordCount, 2);
+  assert.deepEqual(found, ['바람']);
 });
 
-test('adapter holds keep distinct reasons and are never admitted', async () => {
-  const [row] = corpusAdapter({ candidates: [{ proposed_lemma: '푸르다', proposed_pos: 'adjective', decision_state: 'held', ambiguity_status: 'single_observed_analysis_unverified', coverage_status: 'surface_collision' }] });
-  assert.deepEqual(row.holds, ['coverage_collision']);
-  const [morph] = corpusAdapter({ candidates: [{ proposed_lemma: '푸르다', decision_state: 'held', ambiguity_status: 'held_oov_morphology', coverage_status: 'uncovered' }] });
-  assert.deepEqual(morph.holds, ['analysis_ambiguous']);
-  const run = await runIntake({ candidates: [row], analyzer });
-  assert.equal(run.decisions[0].decision, 'hold');
-});
