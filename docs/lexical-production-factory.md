@@ -163,7 +163,7 @@ every content digest, so changing `created → complete` never invalidates it.
 | 3 | agent | The successful claimant creates the tracking Issue; its GitHub-generated number `N` is unique in the repository. The issue body names the ref, base SHA and, for rework, the rejected PR. | If the ref exists without an issue, see *interrupted claim* below. |
 | 4 | agent | Work on branch `<agent>/stage2/<N>-C…` (rework: `<agent>/stage2/<N>-C…-rK`), e.g. `claude/stage2/260-C000001`, `codex/stage2/261-C000002`. `<agent>` is `claude` or `codex` (the only supported agents today). | The branch name is a label, never a lock. |
 | 5 | agent | Open the Stage 2 result PR (§5). Issue links the PR. | Existing PR for the branch is reused. |
-| 6 | merge | On merge the claim ref is deleted by the merger; the issue is closed with the PR. | Orphan cleanup below. |
+| 6 | agent | After the PR is merged and confirmed on `master`, the agent deletes the claim ref; the issue closes with the PR. The agent never merges. | Orphan cleanup below. |
 
 The owner launches as many agents as the token budget allows. Each agent follows
 this same queue and does not inspect, coordinate with or count other agents, and
@@ -197,8 +197,8 @@ exclusivity mechanism: not issue titles, not branch names, not the GitHub login
   issue is closed and no PR is open) may be deleted by any agent.
 - *Rework claim:* for a `rejected` review batch the ref is `stage2-claims/C…`
   again; the existing issue is reused and extended rather than duplicated.
-- *Cleanup:* refs are removed after merge of the result PR (success) or on
-  owner-recorded abandonment.
+- *Cleanup:* the agent removes its ref after it confirms the result PR merged, or
+  on owner-recorded abandonment.
 
 ## 4. Stage 2 — Full lexical authoring/QA (many agents, parallel)
 
@@ -257,58 +257,68 @@ snapshot (digest recorded), using temporary/resolved ids where final `w…` ids
 are not yet allocated, and binds the evidence and snapshot digests to the result.
 Final ids are allocated by Stage 3.
 
-### 4.3 One invocation is a series of batches (session loop)
+### 4.3 One invocation is a serial series of batches (session loop)
 
-The operator starts an independently launched Claude or Codex primary agent with
-a simple instruction such as **"Stage 2 진행해"**. Unlike Stage 1 and Stage 3,
-which the owner may scope with a dedicated execution Issue, Stage 2 **creates its
-own tracking Issue for every batch it claims** and keeps going through successive
-batches without a new operator instruction or a pre-created Issue per batch.
+The operator starts an independently launched Claude or Codex primary agent once
+with an instruction such as **"Stage 2 진행해"**. Unlike Stage 1 and Stage 3, which
+the owner may scope with an execution Issue, Stage 2 **creates its own tracking
+Issue for each batch it claims** and repeats the Issue → branch → PR cycle without
+another operator instruction.
 
-Sequential loop inside one session:
+**A single Stage 2 agent has exactly one active batch and one open result PR at a
+time.** Parallelism exists only *between* separately owner-launched agents, never
+between batches inside one agent.
 
-1. **Read the queue now** (never a cached list): prefer a review manifest
-   `rejected` (rework), otherwise an eligible candidate manifest `created`.
+Loop inside one session:
+
+1. **Read the merged `master` queue now** (never a cached list): prefer a review
+   manifest `rejected` (rework), otherwise an unclaimed candidate manifest
+   `created`.
 2. **Claim first:** atomically create the batch ref `stage2-claims/C…` before any
-   Issue. If another agent won, skip and try another batch; do not coordinate with
-   or count other workers.
+   Issue. If another agent won, select another batch; no coordination with, or
+   awareness of, other workers.
 3. **New batch:** create a fresh tracking Issue, then a fresh branch
    `<agent>/stage2/<issue>-<batch>` (`claude` or `codex`, the actual agent).
-   **Rework:** reuse or reopen the existing Issue and history (no duplicate
-   issue) and use a distinct later branch `…-rK`.
-4. **Do the whole batch:** the full PR-ready authoring and QA of §4.1; submit its
-   own validated result PR with the manifest transitions of §5.2. No canonical
-   JSONL. Normal review and CI gates apply; the agent never reviews or merges its
-   own PR.
-5. **Continue immediately** with the next available batch on a new branch; do not
-   stop because a PR was submitted and do not wait for Stage 3. The earlier claim
-   stays reserved until its PR is merged or otherwise resolved. Keep worktree/PR
-   isolation, track unfinished PRs, and handle actionable review feedback for each
-   PR on its own branch without touching another batch's artifacts.
-6. **Stop** when no eligible unclaimed work remains (report; no busy polling), the
-   owner stops the session, or a blocking shared/systemic failure prevents safe
-   continuation. A recoverable lexical problem in one batch is handled or
-   recorded under the normal Stage 2 process and does not stop other eligible
-   batches.
+   **Rework:** reuse or reopen the existing Issue and history (no duplicate issue)
+   and use a distinct later branch `…-rK`.
+4. **Do the whole batch:** the full PR-ready authoring and QA of §4.1, then submit
+   one result PR carrying candidate `created → complete` and review `ready` (or
+   `rejected → ready` for rework) together (§5.2). No canonical JSONL.
+5. **Wait for that PR to merge.** Opening the PR or marking it ready for review
+   does **not** permit starting another batch. While pending, the agent handles CI
+   and reviewer feedback, pushing fixes to the **same branch**. It never reviews or
+   merges its own PR. A PR that is blocked or closed unmerged is **not silently
+   bypassed**: the agent resolves the blocker or reports an irrecoverable stop and
+   does not take a new batch.
+6. **Only after confirming the merge on `master`:** delete the prior claim ref
+   (§3.1), refresh `master` and return to step 1. Every batch has its own Issue,
+   branch and merged result PR. The agent does **not** wait for Stage 3 admission
+   of the batch it just completed, only for its own Stage 2 PR.
+7. **Stop** when no eligible work remains (report; no busy polling), the owner
+   stops the session, or a systemic/irrecoverable error prevents safe progress.
 
-The owner chooses how many such agents to launch from the token budget; none
-needs worker-count awareness, tokens, orchestration or helper agents. Single-claim
-atomicity is preserved. Stage 1 keeps filling the queue and Stage 3 admits ready
-batches serially.
+The owner chooses how many agents to launch from the token budget; none needs
+worker-count awareness, tokens, orchestration or helper agents, and the atomic
+claim keeps concurrent agents on different batches. Stage 1 keeps filling the
+queue and Stage 3 admits ready batches serially.
 
-**Worked example (one session, one agent):**
+**Worked example (one agent session; Issue and PR numbers are illustrative):**
 
-| Step | Batch | Issue | Branch | PR | Note |
-| --- | --- | --- | --- | --- | --- |
-| 1 | `C000001` | #260 (new) | `claude/stage2/260-C000001` | #270 | claim ref first, then issue; full Stage 2; result PR submitted |
-| 2 | `C000002` | #261 (new) | `claude/stage2/261-C000002` | #271 | starts at once, without waiting for #270 to merge or for Stage 3 |
-| 3 | `C000003` | #262 (new) | `claude/stage2/262-C000003` | #272 | again new issue, branch and PR |
-| — | `C000001` | #260 | same branch | #270 | review feedback on #270 is fixed on its own branch between batches |
-| — | `C000004` | — | — | — | claim lost to another agent ⇒ skipped; if nothing is left, report and stop |
+```text
+refresh master → claim stage2-claims/C000001 → Issue #260 → claude/stage2/260-C000001
+  → full Stage 2 → result PR #270 → CI/review feedback fixed on the same branch
+  → #270 MERGED, confirmed on master → delete claim ref C000001
+refresh master → claim stage2-claims/C000002 → Issue #261 → claude/stage2/261-C000002
+  → result PR #271 → feedback on the same branch → #271 MERGED, confirmed
+refresh master → claim stage2-claims/C000003 → Issue #262 → claude/stage2/262-C000003
+  → result PR #272 → … → merged → queue empty ⇒ report and stop
+```
 
-If Stage 3 later rejects `C000001` (review `rejected`, `rejected_pr` set), the
-same or another Stage 2 session picks it up first: Issue #260 is reused, the branch
-is `claude/stage2/260-C000001-r2`, and a new result PR returns the review to `ready`.
+At no point is `C000002` claimed while #270 is open. If a claim attempt loses, the
+agent selects another batch from the refreshed queue. If Stage 3 later rejects
+`C000001` (`rejected_pr` set), the next iteration of any Stage 2 agent picks it
+first: Issue #260 is reused, branch `claude/stage2/260-C000001-r2`, and a new
+result PR returns the review to `ready`.
 
 ## 5. Stage 2 result PR
 
@@ -658,11 +668,14 @@ This is the input to a **later implementation issue**; none of it is done here.
   preflight before any canonical change. Each yields exactly one traceable
   attempt, no duplicate admission, and a populated `rejected_pr`.
 - Session loop pilot: one Stage 2 invocation, with no second owner instruction,
-  processes **two consecutive available batches** (separate claim refs, Issues,
-  branches and result PRs), then, while PR 1 is still open, applies actionable
-  review feedback on PR 1's branch without changing batch 2's artifacts; with no
-  eligible batch left it reports and stops without polling. A lost claim is
-  skipped, not retried against the same batch.
+  completes at least **two consecutive batches only after each prior result PR is
+  merged**. Verify: reviewer-requested fixes are made on the first PR's own branch
+  while it is pending; no second claim ref, Issue or branch exists before the first
+  merge is confirmed on `master`; a closed-unmerged or blocked PR stops the agent
+  (reported) instead of being bypassed; the claim ref is deleted after the merge;
+  an empty queue produces a report and stop without polling. A lost claim selects
+  another batch. Two separately launched agents proceed on different batches in
+  parallel.
 - Stage 2 equivalence: a fixture batch produced through the factory yields the
   same canonical records and validator results as the current builder.
 - Stage 3: success path; stale-master id reassignment; lexical conflict →
