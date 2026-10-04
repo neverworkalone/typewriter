@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -58,22 +58,17 @@ test('a normal B16 builds through the real CLIs and builder, and its artifacts p
     delete stripped.decisions[0].intake_source_holds;
     assert.throws(() => check({ candidateReview: stripped }), (error) => error.code === 'INTAKE_HANDOFF_HOLD_ORIGIN');
 
-    // Data-level gate on the produced tree: the B16 import is a validated batch; anything else is refused.
-    const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
-    const batchFiles = (await readdir(path.join(temp, 'data/canonical'))).filter((name) => /^issue-223-m9-e-corpus-batch-\d+\.jsonl$/u.test(name));
-    const importsOf = async (names) => (await Promise.all(names.map(async (name) => (await readFile(path.join(temp, 'data/canonical', name), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line))))).flat();
-    const before = await readCanonicalRecords(path.join(temp, 'data/canonical'));
-    const b16Records = await importsOf([`${STEM}.jsonl`]);
-    const imports = await importsOf(batchFiles);
-    const baseline = makeBaseline({ canonicalRecords: before.records, batchImportRecords: imports, throughBatch: 16 });
-    const gate = (records, batchRecords) => assertCanonicalOnlyFromReviewedBatches({ canonicalRecords: records, batchImportRecords: batchRecords, baseline });
-    assert.equal(gate(before.records, imports), true);
-    assert.ok(b16Records.length === 2 && imports.some((record) => record.id === b16Records[0].id));
-    const injected = { id: 'w99999', record_type: 'entry', role: 'start', candidate_id: 'w99999', lemma: '시험삼음말', search_forms: ['시험삼음말'], senses: [{ id: 'w99999-s1', pos: 'noun', gloss: '시험으로 끼워 넣은 말.' }] };
-    assert.throws(() => gate([...before.records, injected], imports), (error) => error.code === 'CANONICAL_RECORD_OUTSIDE_REVIEWED_BATCH');
-    await writeFile(path.join(temp, 'data/canonical/zz-anything.jsonl'), `${JSON.stringify(injected)}\n`);
-    const afterFile = await readCanonicalRecords(path.join(temp, 'data/canonical'));
-    assert.throws(() => gate(afterFile.records, imports), (error) => error.code === 'CANONICAL_RECORD_OUTSIDE_REVIEWED_BATCH');
+    // Data-level gate on a SMALL synthetic baseline plus the really produced B16 import (2 records):
+    // no complete-canonical re-read. The full-data baseline check runs once in batch:issue-223:check.
+    const b16Records = (await readFile(path.join(temp, 'data/canonical', `${STEM}.jsonl`), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line));
+    assert.equal(b16Records.length, 2);
+    const historical = [{ id: 'w0001', record_type: 'entry' }, { id: 'w0002', record_type: 'entry' }];
+    const baseline = makeBaseline({ canonicalRecords: [...historical, ...b16Records], batchImportRecords: b16Records, throughBatch: 16 });
+    const gate = (canonicalRecords) => assertCanonicalOnlyFromReviewedBatches({ canonicalRecords, batchImportRecords: b16Records, baseline });
+    assert.equal(gate([...historical, ...b16Records]), true);
+    const injected = { id: 'w99999', record_type: 'entry' };
+    assert.throws(() => gate([...historical, ...b16Records, injected]), (error) => error.code === 'CANONICAL_RECORD_OUTSIDE_REVIEWED_BATCH');
+    assert.throws(() => gate([historical[0], ...b16Records]), (error) => error.code === 'CANONICAL_RECORD_OUTSIDE_REVIEWED_BATCH');
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

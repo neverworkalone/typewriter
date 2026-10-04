@@ -255,8 +255,9 @@ on small inputs and, in a temp tree, runs the real hand-off CLI (`build`, `bind`
 the real batch builder for a small B16 (two synthetic candidates `소년기`/`청년기` whose
 corpus counts are synthetic test data, plus B15's real held `호시탐탐`;
 `tests/fixtures/validator-b16`), then applies the shared checks to the produced
-artifacts (missing/tampered hand-off, stripped source holds, injected canonical
-records). Only the Kiwi model is replaced, by a deterministic stand-in `kiwipiepy`
+artifacts (missing/tampered hand-off, stripped source holds) and the baseline gate on a
+small synthetic baseline plus the produced B16 import (no complete-canonical re-read in
+the test; the real builder's own single read in the temp tree is part of the run). Only the Kiwi model is replaced, by a deterministic stand-in `kiwipiepy`
 on `PYTHONPATH`; version pin, stability retries, binding and fresh-analysis
 comparison run unchanged.
 

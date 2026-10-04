@@ -92,16 +92,6 @@ test('data-level gate: a canonical record outside a validated batch import is re
   assert.throws(() => assertCanonicalOnlyFromReviewedBatches({ canonicalRecords: historical, batchImportRecords: [], baseline: { ...baseline, contract_version: 'x' } }));
 });
 
-test('the committed baseline matches current canonical data through the real corpus batch imports', async () => {
-  const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
-  const baseline = JSON.parse(await readFile('data/validation/canonical-non-batch-baseline.json', 'utf8'));
-  const current = await readCanonicalRecords('data/canonical');
-  const files = (await readdir('data/canonical')).filter((name) => /^issue-223-m9-e-corpus-batch-\d+\.jsonl$/u.test(name));
-  const imports = [];
-  for (const name of files) imports.push(...(await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line)));
-  assert.equal(assertCanonicalOnlyFromReviewedBatches({ canonicalRecords: current.records, batchImportRecords: imports, baseline }), true);
-});
-
 test('the canonical non-batch baseline is classified as durable tracked evidence', async () => {
   const policy = JSON.parse(await readFile('config/artifact-policy.json', 'utf8'));
   const listed = JSON.stringify(policy);
