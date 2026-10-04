@@ -1,5 +1,5 @@
 import { REVIEWABLE_HOLDS, verifyProductionHandoff } from '../intake/production-handoff.mjs';
-import { toRawCandidate } from './identity-adapter.mjs';
+import { intakeCandidates, toRawCandidate } from './identity-adapter.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { decisionSenseReviews, validateAuthoredDecisionDisposition, validateDistinctSenseSemanticRationales, validateSenseReviews } from '../batch/authored-semantic-decision-source.mjs';
 import { SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION, validateAuthoredSemanticReviewBinding } from '../validate/semantic-decision-row.mjs';
@@ -93,7 +93,7 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
   const handoff = parse(handoffText, 'intake-handoff.json', errors);
   if (handoff) {
     try {
-      verifyProductionHandoff(handoff, { rawCandidates: candidates.map(toRawCandidate), batchId, adapterId });
+      verifyProductionHandoff(handoff, { rawCandidates: intakeCandidates(candidates).map(toRawCandidate), batchId, adapterId });
     } catch (error) {
       errors.push(`intake-handoff.json: ${error.message}`);
     }
@@ -104,6 +104,13 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
       const entry = entryByKey.get(`${candidate.input}\u0000${candidate.pos}`);
       if (!entry) { errors.push(`decision ${row.source_candidate_id}: no hand-off entry for its input+POS`); continue; }
       if (!ADMITTED.has(row.disposition)) continue;
+      // A usage that carries its own Stage 1 hold needs an explicit, candidate-specific resolution.
+      if (candidate.holds.length && (typeof row.hold_resolution !== 'string' || !row.hold_resolution)) {
+        errors.push(`decision ${row.source_candidate_id}: Stage 1 hold ${candidate.holds.join(', ')} requires a hold_resolution`);
+      }
+      if (candidate.holds.some((hold) => !REVIEWABLE_HOLDS.includes(hold))) {
+        errors.push(`decision ${row.source_candidate_id}: Stage 1 hold ${candidate.holds.join(', ')} cannot be admitted`);
+      }
       if (row.reviewed_record?.lemma !== candidate.input) errors.push(`decision ${row.source_candidate_id}: reviewed lemma differs from the candidate input`);
       const resolvable = entry.decision === 'hold' && entry.holds.every((hold) => REVIEWABLE_HOLDS.includes(hold));
       if (entry.decision === 'semantic_qa') continue;

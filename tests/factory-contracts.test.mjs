@@ -16,7 +16,7 @@ import {
   validateReviewManifest,
 } from '../scripts/factory/contract.mjs';
 import { partitionByWriterSupport, validateDecisionRow } from '../scripts/factory/handoff.mjs';
-import { buildCanonicalIndex, classifyAgainstCanonical, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
+import { buildCanonicalIndex, classifyAgainstCanonical, intakeCandidates, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { validateCandidateTransition, validateLinkedTransition, validateReviewTransition } from '../scripts/factory/transitions.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { validateReviewArtifacts } from '../scripts/factory/artifacts.mjs';
@@ -170,6 +170,34 @@ test('identity adapter keeps same-lemma/POS usages separate and never drops exis
   assert.equal(analyzed.filter((text) => text === '짠하다').length, 1, 'analysis is shared, identities are not');
   assert.equal(classifyAgainstCanonical(record(1), INDEX).route, 'new_sense_on_existing_entry');
   await assert.rejects(runFactoryIntake({ candidates: [record(1), record(1)], analyzer, canonicalIndex: INDEX }), /distinct candidate_id/);
+});
+
+test('a held usage never holds its same lemma/POS siblings, in intake or in the hand-off', async () => {
+  const analyzed = [];
+  const analyzerSpy = async (requests) => {
+    analyzed.push(...requests.map((request) => request.text));
+    return analyzer(requests);
+  };
+  const candidates = [record(1, { holds: ['analysis_ambiguous'] }), record(2), record(3, { input: '걷다', pos: 'adjective', holds: ['analysis_ambiguous'] })];
+  const { results } = await runFactoryIntake({ candidates, analyzer: analyzerSpy, canonicalIndex: INDEX });
+  assert.deepEqual(results.map((r) => [r.decision, r.holds]), [['hold', ['analysis_ambiguous']], ['semantic_qa', []], ['hold', ['analysis_ambiguous']]]);
+  assert.deepEqual(analyzed, ['짠하다'], 'the healthy usage is analyzed independently; a key with only held usages is not');
+
+  // Hand-off and artifact validation follow the same isolation: the healthy usage is admissible.
+  const rows = [record(1, { holds: ['analysis_ambiguous'] }), record(2)];
+  const handoff = await buildProductionHandoff({ batchId: 'C000001', rawCandidates: intakeCandidates(rows).map(toRawCandidate), analyzer, adapterId: 'corpus-adapter' });
+  const decisions = [{ ...held(1) }, included(2)];
+  const fixture = { batchId: 'C000001', adapterId: 'corpus-adapter', candidates: rows, decisions, handoffText: JSON.stringify(handoff) };
+  const semanticFor = (rowsIn) => JSON.stringify(semantic(rowsIn));
+  assert.deepEqual(validateReviewArtifacts({ ...fixture, semanticDecisionsText: semanticFor(decisions) }), []);
+  // Admitting the held usage itself needs an explicit candidate-specific resolution.
+  const admittedHeld = [included(1), included(2)];
+  assert.ok(validateReviewArtifacts({ ...fixture, decisions: admittedHeld, semanticDecisionsText: semanticFor(admittedHeld) }).some((e) => e.includes('requires a hold_resolution')));
+  const resolved = [{ ...included(1), hold_resolution: 'C000001-0001 re-read: reading is unambiguous in context.' }, included(2)];
+  assert.deepEqual(validateReviewArtifacts({ ...fixture, decisions: resolved, semanticDecisionsText: semanticFor(resolved) }), []);
+  const hard = [record(1, { holds: ['analysis_error'] }), record(2)];
+  const hardHandoff = await buildProductionHandoff({ batchId: 'C000001', rawCandidates: intakeCandidates(hard).map(toRawCandidate), analyzer, adapterId: 'corpus-adapter' });
+  assert.ok(validateReviewArtifacts({ ...fixture, candidates: hard, handoffText: JSON.stringify(hardHandoff), decisions: resolved, semanticDecisionsText: semanticFor(resolved) }).some((e) => e.includes('cannot be admitted')));
 });
 
 test('typed handoff validates the three target kinds against canonical and partitions by writer support', () => {

@@ -42,21 +42,33 @@ export const toRawCandidate = (candidate) => ({
   holds: candidate.holds,
 });
 
+const keyOf = (candidate) => `${candidate.input}\u0000${candidate.pos}`;
+
+// What the legacy intake/hand-off sees. It merges same input+POS and unions their holds, so a
+// held usage would hold every sibling. Held usages are therefore kept out of a key that also has
+// a non-held usage (they stay explicit factory decisions); a key whose usages are all held is
+// kept whole so the hold remains visible. Hold isolation is per candidate, analysis is shared.
+export function intakeCandidates(candidates) {
+  const hasUnheld = new Set(candidates.filter((candidate) => (candidate.holds ?? []).length === 0).map(keyOf));
+  return candidates.filter((candidate) => (candidate.holds ?? []).length === 0 || !hasUnheld.has(keyOf(candidate)));
+}
+
 export async function runFactoryIntake({ candidates, analyzer, canonicalIndex, adapterId = 'factory' }) {
   const ids = new Set(candidates.map((candidate) => candidate.candidate_id));
   if (ids.size !== candidates.length) throw new Error('factory candidates must have distinct candidate_id values');
   // runIntake merges same input+POS before analysis, so Kiwi runs once per key while
   // every `C…` identity is fanned back out below.
   const run = await runIntake({
-    candidates: candidates.map(toRawCandidate),
+    candidates: intakeCandidates(candidates).map(toRawCandidate),
     analyzer,
     adapterId,
   });
   const byKey = new Map(run.decisions.map((decision) => [decision.key, decision]));
   const results = candidates.map((candidate) => {
-    const shared = byKey.get(`${candidate.input}\u0000${candidate.pos}`);
-    const own = candidate.holds ?? [];
-    const holds = [...new Set([...own, ...(shared?.holds ?? [])])].sort();
+    const own = [...new Set(candidate.holds ?? [])].sort();
+    // A candidate's own holds are never inherited by, or inherited from, another usage.
+    const shared = own.length === 0 ? byKey.get(keyOf(candidate)) : undefined;
+    const holds = own.length ? own : shared.holds;
     return {
       source_candidate_id: candidate.candidate_id,
       input: candidate.input,
