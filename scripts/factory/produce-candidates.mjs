@@ -5,6 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_PROVIDER_ORDER, createKiwiProvider } from './analyzer-providers.mjs';
+import { createKhaiiiProvider } from './khaiii-provider.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
 import { parseJsonl } from './contract.mjs';
 import { validateFactoryRepository, loadCanonicalEntries } from './validate.mjs';
@@ -24,7 +25,10 @@ import {
 
 // Providers selectable by `--providers`; adding one is a registry entry (docs/lexical-factory-contracts.md).
 // Unknown ids fail closed. Local-only: no provider may send candidates or corpus text to a network.
-export const PROVIDER_REGISTRY = Object.freeze({ kiwi: ({ python }) => createKiwiProvider({ python }) });
+export const PROVIDER_REGISTRY = Object.freeze({
+  kiwi: ({ python }) => createKiwiProvider({ python }),
+  khaiii: () => createKhaiiiProvider(), // lazy: nothing runs until Stage 1 asks it about an unresolved surface
+});
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DEFAULT_BASE_REF = 'origin/master';
