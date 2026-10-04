@@ -239,6 +239,17 @@ test('artifact policy classifies projections before they can become tracked data
   );
   assert.deepEqual(stage1Batch.generated, []);
   assert.deepEqual(stage1Batch.unclassified, []);
+  // Only the two named files per batch are durable; anything else fails closed.
+  const strayStage1 = classifyTrackedArtifacts(
+    [
+      'data/candidates/C000001/raw-corpus.txt',
+      'data/candidates/C000001/context-dump.jsonl',
+      'data/candidates/C000001/nested/candidates.jsonl',
+      'data/candidates/stray.json',
+    ],
+    options,
+  );
+  assert.equal(strayStage1.unclassified.length, 4);
 
   await assert.doesNotReject(validateArtifactPolicy());
   await assert.rejects(
