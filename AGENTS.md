@@ -251,6 +251,43 @@ When a defect represents a general lexical rule:
 Do not fix a recurring lexical defect by adding another batch- or word-specific
 test when a repository-wide invariant can express the rule.
 
+## Lexical production factory — agent role boundaries
+
+The factory design is specified only in
+[`docs/lexical-production-factory.md`](docs/lexical-production-factory.md)
+(state machines, claim/recovery, rejection, validation). It is a design until
+implemented; follow it for the stage the owner assigns. *Factory Stage 1/2/3*
+are distinct from the PR-review gates in `REVIEW.md`.
+
+- **Stage 1 — Discovery (serial):** use the existing pinned Kiwi/corpus
+  extraction to propose dictionary-form lemmas and POS; preserve observed forms,
+  provenance and ambiguity; submit candidate batches as separate PRs, independent
+  of downstream stages. Do not finalize senses/glosses, do Stage 2 authoring, or
+  change canonical JSONL.
+- **Stage 2 — Authoring and QA (independent batches):** select eligible work,
+  prioritizing rejected reviews, and exclusively claim **one** batch through the
+  documented GitHub ref/issue protocol. Perform the full existing PR-ready
+  lexical authoring, source-bound semantic QA, validation and regression process
+  and produce ready review artifacts. Do not edit canonical JSONL or turn Stage 3
+  into an editorial repair pass.
+- **Stage 3 — Admission (serial):** take a committed `ready` review that has no
+  live Stage 3 attempt; check against current master, allocate IDs
+  deterministically, open the canonical admission PR, and send lexical/content/
+  evidence blockers back through the documented rejection process. Fix systemic
+  factory defects in the shared pipeline instead of rejecting unchanged batches.
+  Do not write or repair glosses or sense boundaries.
+- **Only the assigned stage:** never silently take over another stage. Do not
+  initiate reviews or merge your own PRs.
+- **Concurrency is owner-controlled.** The owner decides how many independent
+  primary-agent sessions to launch. No agent decides, requests, monitors,
+  coordinates or limits the number of other agents or waits for them. Each Stage 2
+  agent follows the same selection and atomic-claim protocol on its own batch;
+  claim exclusivity, not agent awareness, provides parallel safety.
+- **No delegation remains:** a Stage 2 agent works in its own assigned context and
+  must not launch subagents, other-model CLIs or additional primary-agent
+  sessions for lexical authoring or QA. The owner manually launching several
+  independent Stage 2 agents is not prohibited.
+
 ## Validation
 
 Run the validation appropriate to the changed surface.

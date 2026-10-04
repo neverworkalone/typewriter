@@ -541,6 +541,10 @@ without rewriting or breaking baseline/digest gates is unverified.
   QA (AGENTS.md). A "parallel Stage 2 agent" is a separate primary agent session
   assigned by the owner, not a subagent spawned by another.
 - Implementation agents do not initiate PR review or merge.
+- Worker count is chosen manually by the owner. No agent decides, requests,
+  monitors or limits the number of other agents; correctness comes from claim
+  exclusivity (§3, §6.0) and must hold identically with one, two or ten Stage 2
+  agents. Root [`AGENTS.md`](../AGENTS.md) carries the short role-boundary entry point.
 
 ## 12. Verification still needed and implementation test plan
 
