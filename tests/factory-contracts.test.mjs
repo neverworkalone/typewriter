@@ -225,6 +225,7 @@ function semanticRow(decision, over = {}) {
     sense_reviews: record.senses.map((sense) => ({
       sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
       boundary_rationale: `${id} ${sense.id}: bounded single meaning.`, semantic_rationale: `${id} ${sense.id}: denotes ${sense.gloss}`,
+      relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: `${id} ${sense.id}: no authored relation tuple.`,
     })),
     ...over,
   };
@@ -247,6 +248,27 @@ async function reviewFixture(decisionRows) {
 }
 const included = (n) => ({ source_candidate_id: `C000001-000${n}`, disposition: 'included', target: { kind: 'new_entry' }, reviewed_record: { lemma: '짠하다', senses: [{ pos: 'adjective', gloss: 'g' }] } });
 const held = (n) => ({ source_candidate_id: `C000001-000${n}`, disposition: 'held', reason: 'unclear' });
+
+const withGloss = (gloss) => ({ ...included(1), reviewed_record: { lemma: '짠하다', senses: [{ pos: 'adjective', gloss }] } });
+
+test('per-sense semantic contract: writer-domain boundary decision and review_basis are enforced', async () => {
+  const check = async (decision, senseOver) => {
+    const base = await reviewFixture([decision, held(2)]);
+    const row = semanticRow(decision);
+    const patched = { ...row, sense_reviews: [{ ...row.sense_reviews[0], ...senseOver }] };
+    patched.review_binding = authorSemanticReviewBinding(patched, reviewedCandidateRecord(decision));
+    return validateReviewArtifacts({ ...base, decisions: [decision, held(2)], semanticDecisionsText: JSON.stringify(semantic([decision, held(2)], { decisions: [patched] })) });
+  };
+  // 몸 + 마음 gloss spans two writer domains, so an `atomic` boundary decision does not bind it.
+  const multi = withGloss('몸이나 마음이 몹시 괴롭고 아픈 상태.');
+  assert.ok((await check(multi, {})).some((e) => e.includes('boundary_decision does not bind the reviewed gloss domains')));
+  assert.deepEqual(await check(multi, { boundary_decision: 'coordinated', boundary_rationale: 'C000001-0001 C000001-0001-s1: body and mind coordinated.' }), []);
+  // A gloss with an ambiguous particle span needs source-bound topic-analysis review_basis.
+  const fragment = withGloss('장면에서 관찰자에게 가장 가까이 드러나는 부분.');
+  assert.ok((await check(fragment, {})).some((e) => /topic_analysis|review_basis/.test(e)));
+  // Relation evidence must stay source-bound.
+  assert.ok((await check(withGloss('g'), { relation_decision: 'has-relations' })).some((e) => e.includes('relation evidence')));
+});
 
 test('review artifacts are validated by content and bound to candidates, not only by digest', async () => {
   const good = await reviewFixture([included(1), held(2)]);

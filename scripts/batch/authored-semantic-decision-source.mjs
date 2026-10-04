@@ -236,65 +236,11 @@ export function validateDistinctSenseSemanticRationales(candidate, senseReviews)
   return true;
 }
 
-function validateDecisionRow(row, {
-  identity,
-  candidate,
-  decisionSourceId,
-  reviewPassCandidates,
-  config,
-  legacyDispositionSource = false,
-} = {}) {
-  const label = `decision ${identity.inventory_id}`;
-  requireObject(row, label, config);
-  if (row.inventory_id !== identity.inventory_id || row.candidate_record_id !== candidate.id) {
-    fail(`${label} is not source-bound`, 'DECISION_SOURCE_BINDING', config);
-  }
-  if (row.candidate_record_sha256 !== sha256Json(candidate)) {
-    fail(`${label}.candidate_record_sha256 does not bind the candidate`, 'DECISION_SOURCE_BINDING', config);
-  }
-  if (!DECISIONS.has(row.decision)) fail(`${label}.decision is unsupported`, 'DECISION_SOURCE_VALUE', config);
-  if (!legacyDispositionSource) validateAuthoredDecisionDisposition(row, label, config);
-  validateExpressionLexicalUnitReview(row, identity, candidate, label, config);
-  if (!Number.isInteger(row.rank) || row.rank < 1 || row.rank > config.selectionCount) {
-    fail(`${label}.rank must be within the complete candidate pool`, 'DECISION_SOURCE_VALUE', config);
-  }
-  if (Object.hasOwn(row, 'score')) {
-    fail(`${label}.score is a derived ranking proxy; selection must use source-bound axis coverage`, 'DECISION_SOURCE_VALUE', config);
-  }
-  if (row.selection_axis !== identity.axis) {
-    fail(`${label}.selection_axis does not match the source-bound candidate axis`, 'DECISION_SOURCE_BINDING', config);
-  }
-  requireString(row.decision_rationale, `${label}.decision_rationale`, config);
-  if (!row.decision_rationale.includes(identity.inventory_id)
-    || !row.decision_rationale.includes(candidate.id)) {
-    fail(`${label}.decision_rationale must cite the inventory and candidate identity`, 'DECISION_SOURCE_BINDING', config);
-  }
-  if (!reviewPassCandidates.get(row.review_pass_id)?.has(candidate.id)) {
-    fail(`${label}.review_pass_id is not authorized for this candidate`, 'DECISION_SOURCE_PROVENANCE', config);
-  }
-  if (!GLOSS_JUDGMENTS.has(row.gloss_judgment)) fail(`${label}.gloss_judgment is unsupported`, 'DECISION_SOURCE_VALUE', config);
-  const expectedJudgment = {
-    included: 'fit',
-    corrected: 'fit',
-    held: 'needs-context',
-    rejected: 'reject',
-  }[row.decision];
-  if (row.gloss_judgment !== expectedJudgment) {
-    fail(`${label}.gloss_judgment contradicts its authored decision`, 'DECISION_SOURCE_COHERENCE', config);
-  }
-  const senseReviews = decisionSenseReviews(candidate, row, label, config);
-  try {
-    validateDistinctSenseSemanticRationales(candidate, senseReviews);
-  } catch (error) {
-    fail(`${label} semantic evidence failed: ${error.message}`, 'DECISION_SOURCE_BINDING', config);
-  }
-  if (!legacyDispositionSource) {
-    try {
-      validateAuthoredSemanticReviewBinding(row, candidate);
-    } catch (error) {
-      fail(`${label} semantic evidence binding failed: ${error.message}`, 'DECISION_SOURCE_BINDING', config);
-    }
-  }
+// Per-sense source-bound review contract (boundary, writer-domain, topic-analysis `review_basis`,
+// relation evidence). Independent of selection rank/capacity so factory reviews can reuse it.
+export function validateSenseReviews({
+  row, candidate, senseReviews, label, inventoryId, decisionSourceId, config,
+}) {
   for (const [senseIndex, senseReview] of senseReviews.entries()) {
     const senseLabel = `${label}.sense_reviews[${senseIndex}]`;
     const sense = candidate.senses[senseIndex];
@@ -355,11 +301,75 @@ function validateDecisionRow(row, {
       fail(`${senseLabel} relation evidence is not source-bound`, 'DECISION_SOURCE_BINDING', config);
     }
     requireString(senseReview.no_relation_rationale, `${senseLabel}.no_relation_rationale`, config);
-    if (!senseReview.no_relation_rationale.includes(identity.inventory_id)
+    if (!senseReview.no_relation_rationale.includes(inventoryId)
       || !senseReview.no_relation_rationale.includes(sense.id)) {
       fail(`${senseLabel}.no_relation_rationale must cite the source-bound sense`, 'DECISION_SOURCE_BINDING', config);
     }
   }
+}
+
+function validateDecisionRow(row, {
+  identity,
+  candidate,
+  decisionSourceId,
+  reviewPassCandidates,
+  config,
+  legacyDispositionSource = false,
+} = {}) {
+  const label = `decision ${identity.inventory_id}`;
+  requireObject(row, label, config);
+  if (row.inventory_id !== identity.inventory_id || row.candidate_record_id !== candidate.id) {
+    fail(`${label} is not source-bound`, 'DECISION_SOURCE_BINDING', config);
+  }
+  if (row.candidate_record_sha256 !== sha256Json(candidate)) {
+    fail(`${label}.candidate_record_sha256 does not bind the candidate`, 'DECISION_SOURCE_BINDING', config);
+  }
+  if (!DECISIONS.has(row.decision)) fail(`${label}.decision is unsupported`, 'DECISION_SOURCE_VALUE', config);
+  if (!legacyDispositionSource) validateAuthoredDecisionDisposition(row, label, config);
+  validateExpressionLexicalUnitReview(row, identity, candidate, label, config);
+  if (!Number.isInteger(row.rank) || row.rank < 1 || row.rank > config.selectionCount) {
+    fail(`${label}.rank must be within the complete candidate pool`, 'DECISION_SOURCE_VALUE', config);
+  }
+  if (Object.hasOwn(row, 'score')) {
+    fail(`${label}.score is a derived ranking proxy; selection must use source-bound axis coverage`, 'DECISION_SOURCE_VALUE', config);
+  }
+  if (row.selection_axis !== identity.axis) {
+    fail(`${label}.selection_axis does not match the source-bound candidate axis`, 'DECISION_SOURCE_BINDING', config);
+  }
+  requireString(row.decision_rationale, `${label}.decision_rationale`, config);
+  if (!row.decision_rationale.includes(identity.inventory_id)
+    || !row.decision_rationale.includes(candidate.id)) {
+    fail(`${label}.decision_rationale must cite the inventory and candidate identity`, 'DECISION_SOURCE_BINDING', config);
+  }
+  if (!reviewPassCandidates.get(row.review_pass_id)?.has(candidate.id)) {
+    fail(`${label}.review_pass_id is not authorized for this candidate`, 'DECISION_SOURCE_PROVENANCE', config);
+  }
+  if (!GLOSS_JUDGMENTS.has(row.gloss_judgment)) fail(`${label}.gloss_judgment is unsupported`, 'DECISION_SOURCE_VALUE', config);
+  const expectedJudgment = {
+    included: 'fit',
+    corrected: 'fit',
+    held: 'needs-context',
+    rejected: 'reject',
+  }[row.decision];
+  if (row.gloss_judgment !== expectedJudgment) {
+    fail(`${label}.gloss_judgment contradicts its authored decision`, 'DECISION_SOURCE_COHERENCE', config);
+  }
+  const senseReviews = decisionSenseReviews(candidate, row, label, config);
+  try {
+    validateDistinctSenseSemanticRationales(candidate, senseReviews);
+  } catch (error) {
+    fail(`${label} semantic evidence failed: ${error.message}`, 'DECISION_SOURCE_BINDING', config);
+  }
+  if (!legacyDispositionSource) {
+    try {
+      validateAuthoredSemanticReviewBinding(row, candidate);
+    } catch (error) {
+      fail(`${label} semantic evidence binding failed: ${error.message}`, 'DECISION_SOURCE_BINDING', config);
+    }
+  }
+  validateSenseReviews({
+    row, candidate, senseReviews, label, inventoryId: identity.inventory_id, decisionSourceId, config,
+  });
   return row;
 }
 
