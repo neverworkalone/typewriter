@@ -141,7 +141,7 @@ export function validateLemmaCandidateRecord(record, { batchId, ordinal, ensembl
     } else if (surfaceOf.has(observation.form_id) && analysis.input_digest !== analysisInputDigest(surfaceOf.get(observation.form_id))) {
       errors.push(`${here}: analysis.input_digest does not bind the observed form`);
     }
-    if (ensemble) errors.push(...validateEnsembleObservation(observation.ensemble, here, { decisionIds: ensemble.decisionIds }));
+    if (ensemble) errors.push(...validateEnsembleObservation(observation.ensemble, here, { decisionIds: ensemble.decisionIds, holds: Array.isArray(observation.holds) ? observation.holds : [] }));
     if (!Array.isArray(observation.holds) || observation.holds.some((hold) => !HOLD_REASONS.includes(hold) || UNRESOLVED_HOLDS.includes(hold))
       || JSON.stringify([...new Set(observation.holds)].sort()) !== JSON.stringify(observation.holds)) {
       errors.push(`${here}: holds must be sorted known hold reasons (unresolved-analysis reasons belong to unresolved_observations)`);

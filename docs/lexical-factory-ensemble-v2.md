@@ -113,7 +113,7 @@ Procedure (all local, no remote API, no network):
    ignored corpus index after the corpus permission record is checked; the eojeol must align as an exact,
    whitespace-delimited form, never a substring/prefix).
 2. The primary agent reads the pack and writes `data/reference/<run>/proposals.json`
-   (`{agent, proposals: [{observation_digest, outcome, lemma?, pos?, reason_code?}]}`), outcome
+   (`{agent, proposals: [{observation_digest, outcome, lemma?, pos?, reason_code?}]}`; `agent` is **required** — the actual authoring agent, e.g. `claude` or `codex` — and is never defaulted), outcome
    `context_confirmed` (names an analyzer hypothesis), `context_reassigned` (a reading no analyzer proposed) or
    `truth_unknown`.
 3. `--context-proposals …` re-verifies every proposal against the live source and records the text-free decision.

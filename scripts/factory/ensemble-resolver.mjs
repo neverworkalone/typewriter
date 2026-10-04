@@ -32,6 +32,17 @@ export const ASSIGNING_CATEGORIES = Object.freeze(['concordant', 'supported_alte
 // Extractor holds that no morphological or contextual verdict may clear or bypass.
 export const NON_BYPASSABLE_EXTRACTOR_HOLDS = Object.freeze(['coverage_collision', 'no_evidence']);
 
+// Fallback is attempted only for a morphologically unassignable observation that has a located
+// source paragraph and no extractor hold a verdict may not bypass. The extractor's own
+// `analysis_ambiguous` is the one hold this authorized review path may judge (it stays on the
+// observation for Stage 2). One shared predicate: the producer, validators and A/B metrics all use it.
+export function fallbackBlockers(entry) {
+  const blockers = [];
+  for (const hold of entry.extractor_holds ?? []) if (hold !== 'analysis_ambiguous') blockers.push(hold);
+  if (entry.evidence?.kind !== 'corpus-paragraph' || !/^[^#\s]+#[^#\s]+$/u.test(String(entry.evidence?.ref))) blockers.push('no_located_source');
+  return [...new Set(blockers)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
 export class EnsembleError extends Error {
   constructor(errors) {
     super(`Ensemble resolver: ${errors.join('; ')}`);
@@ -314,7 +325,7 @@ export function validateReasons(reasons, at) {
 }
 
 // Per-observation record inside a v2 candidate row (ensemble policy only).
-export function validateEnsembleObservation(record, at, { decisionIds = new Set() } = {}) {
+export function validateEnsembleObservation(record, at, { decisionIds = new Set(), holds = [] } = {}) {
   const errors = [];
   const allowed = ['category', 'reasons', 'alternatives', 'trace_digest', 'resolution', 'context_decision'];
   if (!isObject(record) || Object.keys(record).some((key) => !allowed.includes(key))) return [`${at}: ensemble must be {category, reasons, alternatives, trace_digest, resolution[, context_decision]}`];
@@ -326,6 +337,14 @@ export function validateEnsembleObservation(record, at, { decisionIds = new Set(
   else if (record.resolution === 'ensemble') {
     if (!ASSIGNING_CATEGORIES.includes(record.category)) errors.push(`${at}: only a concordant or supported_alternative observation is assigned by morphology alone`);
     if (record.context_decision !== undefined) errors.push(`${at}: an ensemble resolution must not name a context decision`);
+    // The shared contract itself guarantees the uncertainty survives: a supported alternative must
+    // record its rival hypothesis AND keep the reviewable hold; a concordant one records no rival.
+    if (record.category === 'supported_alternative') {
+      if (!Array.isArray(record.alternatives) || record.alternatives.length === 0) errors.push(`${at}: a supported_alternative must record its non-empty rival hypotheses`);
+      if (!holds.includes('analysis_ambiguous')) errors.push(`${at}: a supported_alternative must keep a reviewable analysis_ambiguous hold`);
+    } else if (record.category === 'concordant' && Array.isArray(record.alternatives) && record.alternatives.length) {
+      errors.push(`${at}: a concordant observation records no rival hypothesis`);
+    }
   } else {
     if (ASSIGNING_CATEGORIES.includes(record.category)) errors.push(`${at}: a context resolution recovers only a morphologically unassignable observation, not an assignable one`);
     if (!decisionIds.has(record.context_decision)) errors.push(`${at}: ensemble.context_decision must name a recorded confirmed/reassigned context decision`);
@@ -371,7 +390,8 @@ export function ensembleCohortMetrics({ observations, decisions, run, contextOut
     needs_verification: unresolved.length,
     held_observations: decisions.filter((decision) => ASSIGNING_CATEGORIES.includes(decision.category) && decision.holds.length).length,
     fallback: {
-      eligible: unresolved.filter((decision) => !decision.extractor_holds.some((hold) => NON_BYPASSABLE_EXTRACTOR_HOLDS.includes(hold))).length,
+      eligible: decisions.filter((decision, index) => !ASSIGNING_CATEGORIES.includes(decision.category)
+        && fallbackBlockers({ extractor_holds: decision.extractor_holds, evidence: observations[index].ref }).length === 0).length,
       attempted: contextOutcomes.length,
       evidence_resolved: contextResolved,
       still_unresolved: unresolved.length - contextResolved,

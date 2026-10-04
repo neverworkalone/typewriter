@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { providerDescriptor } from '../scripts/factory/analyzer-providers.mjs';
 import { expectedAnalyzerDigest, sha256Hex, validateCandidateBatch } from '../scripts/factory/contract.mjs';
-import { alignedInContext, contextSourceDigest, decisionSha256, verifyDecisionsAgainstSource } from '../scripts/factory/context-fallback.mjs';
+import { alignedInContext, alignedOffset, contextSourceDigest, decisionSha256, verifyDecisionsAgainstSource } from '../scripts/factory/context-fallback.mjs';
 import {
   ENSEMBLE_POLICY,
   classifyObservation,
@@ -225,7 +225,7 @@ test('10: context supports a DIFFERENT lemma/POS → the vote is not accepted; r
   const first = await produce(fallbackEvidence, triple(FALLBACK));
   const [entry] = queueOf(first);
   const result = await produce(fallbackEvidence, triple(FALLBACK), {
-    contextProposals: [proposal(entry, { outcome: 'context_reassigned', lemma: '갈', pos: 'adverb' })], contextSource: source(),
+    contextProposals: [proposal(entry, { outcome: 'context_reassigned', lemma: '갈', pos: 'adverb' })], contextAgent: 'claude', contextSource: source(),
   });
   const reassigned = result.rows.find((row) => row.input === '갈');
   assert.ok(reassigned, 'the contextual result forms its own lemma candidate');
@@ -234,15 +234,15 @@ test('10: context supports a DIFFERENT lemma/POS → the vote is not accepted; r
   assert.equal(result.manifest.context_fallback.decisions[0].outcome, 'context_reassigned');
   assert.deepEqual(validateCandidateBatch({ manifest: result.manifest, candidatesText: result.candidatesText }), []);
   // A "confirmed" outcome may only name an analyzer hypothesis, a "reassigned" one may not.
-  await assert.rejects(() => produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'context_confirmed', lemma: '갈', pos: 'adverb' })], contextSource: source() }), /must name an analyzer hypothesis/);
-  await assert.rejects(() => produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'context_reassigned', lemma: '가다', pos: 'verb' })], contextSource: source() }), /use context_confirmed/);
+  await assert.rejects(() => produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'context_confirmed', lemma: '갈', pos: 'adverb' })], contextAgent: 'claude', contextSource: source() }), /must name an analyzer hypothesis/);
+  await assert.rejects(() => produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'context_reassigned', lemma: '가다', pos: 'verb' })], contextAgent: 'claude', contextSource: source() }), /use context_confirmed/);
 });
 
 test('11: absent/denied/weakly aligned/conflicting context keeps every hypothesis in the verification queue, uncounted', async () => {
   const first = await produce(fallbackEvidence, triple(FALLBACK));
   const [entry] = queueOf(first);
   const run = (table, extra = {}, outcome = { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' }) => produce(fallbackEvidence, triple(FALLBACK), {
-    contextProposals: [proposal(entry, outcome)], contextSource: table, ...extra,
+    contextProposals: [proposal(entry, outcome)], contextSource: table, contextAgent: 'claude', ...extra,
   });
   const cases = [
     ['no_source', source({})],
@@ -267,7 +267,7 @@ test('11: absent/denied/weakly aligned/conflicting context keeps every hypothesi
 test('12: recorded decisions replay deterministically without raw paragraphs; tampering and changed context fail closed', async () => {
   const first = await produce(fallbackEvidence, triple(FALLBACK));
   const [entry] = queueOf(first);
-  const recorded = await produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })], contextSource: source() });
+  const recorded = await produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })], contextAgent: 'claude', contextSource: source() });
   const decisions = recorded.manifest.context_fallback.decisions;
   const replay = await produce(fallbackEvidence, triple(FALLBACK), { contextReplay: decisions }); // no contextSource: normal CI loads no paragraph
   assert.equal(replay.candidatesText, recorded.candidatesText);
@@ -306,21 +306,21 @@ test('fallback is not a bypass: blocked holds, missing source reference and assi
   assert.deepEqual(queue.map((entry) => entry.verification.blocked_by).sort(), [['coverage_collision'], ['no_evidence', 'no_located_source']].sort());
   const blockedEntry = queue.find((entry) => entry.extractor_holds.includes('coverage_collision'));
   await assert.rejects(() => produce(evidence, triple({ k, h: hh, m: mm }), {
-    contextProposals: [proposal(blockedEntry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })], contextSource: source({ 'd1#p1': { status: 'ok', text: '갈 길' } }),
+    contextProposals: [proposal(blockedEntry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })], contextAgent: 'claude', contextSource: source({ 'd1#p1': { status: 'ok', text: '갈 길' } }),
   }), /not allowed|not bypassable/);
   // An assignable observation has no queue entry, so a proposal for it is refused.
   const clear = first.rows.find((row) => row.input === '짠하다').observations[0];
   assert.equal(clear.ensemble.resolution, 'ensemble');
   await assert.rejects(() => produce(evidence, triple({ k, h: hh, m: mm }), {
-    contextProposals: [{ observation_digest: HEX, outcome: 'context_confirmed', lemma: '짠하다', pos: 'adjective' }], contextSource: source(),
+    contextProposals: [{ observation_digest: HEX, outcome: 'context_confirmed', lemma: '짠하다', pos: 'adjective' }], contextAgent: 'claude', contextSource: source(),
   }), /not an unresolved observation/);
 });
 
 test('6: validator rejects forged, omitted or inconsistent ensemble traces and wrong digests', async () => {
   const first = await produce(fallbackEvidence, triple(FALLBACK));
   const [entry] = queueOf(first);
-  const recovered = await produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })], contextSource: source() });
-  const unknown = await produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'truth_unknown', reason_code: 'no_source' })], contextSource: source() });
+  const recovered = await produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })], contextAgent: 'claude', contextSource: source() });
+  const unknown = await produce(fallbackEvidence, triple(FALLBACK), { contextProposals: [proposal(entry, { outcome: 'truth_unknown', reason_code: 'no_source' })], contextAgent: 'claude', contextSource: source() });
   const check = (base, mutate) => {
     const manifest = structuredClone(base.manifest);
     const rows = base.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
@@ -493,4 +493,71 @@ test('analyzer digest and provider descriptors bind the ensemble policy and exac
   assert.equal(result.manifest.analyzer_digest, expectedAnalyzerDigest(result.manifest));
   assert.notEqual(result.manifest.analyzer_digest, expectedAnalyzerDigest({ ...result.manifest, resolution_policy: 'provider-resolution-v1' }));
   assert.notEqual(result.manifest.analyzer_digest, expectedAnalyzerDigest({ ...result.manifest, analyzer_providers: result.manifest.analyzer_providers.slice(0, 2) }));
+});
+
+test('review fix: pack windows come from the exact aligned eojeol, not an earlier substring', async () => {
+  assert.deepEqual(alignedOffset('가방을 들고 가 보았다', '가'), { start: 7, end: 8 });
+  assert.equal(alignedOffset('가방만 있었다', '가'), null);
+  assert.deepEqual(alignedOffset('그는 "갈" 길', '갈'), { start: 4, end: 5 });
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-pack-'));
+  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
+  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  const padding = '아주 긴 앞부분 '.repeat(30);
+  const text = `갈대 ${padding}그는 천천히 갈 길을 정했다.`;
+  await runStage1(['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--context-review-pack', 'data/reference/run/pack.json'],
+    { root, providers: triple(FALLBACK), permission: async () => {}, log: () => {}, contextSource: source({ 'd3#p1': { status: 'ok', text } }) });
+  const [item] = JSON.parse(await readFile(path.join(root, 'data/reference/run/pack.json'), 'utf8'));
+  assert.equal(item.aligned, true);
+  assert.ok(item.context.includes('천천히 갈 길'), 'the window shows the aligned token, not 갈대 at the start');
+  assert.equal(item.context.includes('갈대'), false);
+});
+
+test('review fix: fallback eligibility in metrics uses the shared blocker predicate', async () => {
+  const ok1 = p('짠하다', 'adjective', '짠하');
+  const k = { 갈: [p('갈', 'noun')], 낯: [p('낯', 'noun')], 짠한: [ok1] };
+  const hh = { 갈: [p('갈다', 'verb', '갈')], 낯: [p('낯다', 'verb', '낯')], 짠한: [ok1] };
+  const mm = { 갈: [p('가다', 'verb', '가')], 낯: [p('낮다', 'verb', '낮')], 짠한: [ok1] };
+  const evidence = [
+    cand('짠하다', 'adjective', [h('d0', '짠한')]),
+    cand('가다', 'verb', [h('d1', '갈')]), // eligible
+    cand('가다', 'verb', [h('d2', '갈')], { coverage_status: 'covered_elsewhere' }), // blocked: coverage
+    cand('낮다', 'verb', [h('d3', '낯')], { coverage_status: 'other_hold' }), // blocked: any other hold
+    cand('갈다', 'verb', []), // no located source
+  ];
+  const result = await produce(evidence, triple({ k, h: hh, m: mm }));
+  assert.equal(result.summary.ensemble.fallback.eligible, 1);
+  assert.ok(result.summary.ensemble.needs_verification >= 4);
+});
+
+test('review fix: shared contract guarantees supported_alternative keeps rivals and its reviewable hold', async () => {
+  const k = { 걸어: [p('걸다', 'verb', '걸'), p('걷다', 'verb', '걷')] };
+  const hh = { 걸어: [p('걷다', 'verb', '걷')] };
+  const base = await produce([cand('걷다', 'verb', [h('d1', '걸어')])], triple({ k, h: hh, m: hh }));
+  assert.equal(base.rows[0].observations[0].ensemble.category, 'supported_alternative');
+  const bad = (mutate) => {
+    const rows = base.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
+    mutate(rows[0].observations[0]);
+    const text = `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`;
+    return validateCandidateBatch({ manifest: { ...base.manifest, candidates_sha256: sha256Hex(text) }, candidatesText: text }).join('\n');
+  };
+  assert.match(bad((o) => { o.ensemble.alternatives = []; }), /non-empty rival hypotheses/);
+  assert.match(bad((o) => { o.holds = []; }), /analysis_ambiguous hold/);
+  assert.match(bad((o) => { o.ensemble.category = 'concordant'; }), /records no rival|review does not match|trace_sha256/);
+});
+
+test('review fix: the authoring agent must be stated explicitly, never defaulted', async () => {
+  const first = await produce(fallbackEvidence, triple(FALLBACK));
+  const [entry] = queueOf(first);
+  const proposals = [proposal(entry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })];
+  await assert.rejects(() => produce(fallbackEvidence, triple(FALLBACK), { contextProposals: proposals, contextSource: source() }), /authoring agent must be stated explicitly/);
+  await assert.rejects(() => produce(fallbackEvidence, triple(FALLBACK), { contextProposals: proposals, contextSource: source(), contextAgent: 'Claude Opus!' }), /explicitly/);
+  const codex = await produce(fallbackEvidence, triple(FALLBACK), { contextProposals: proposals, contextSource: source(), contextAgent: 'codex' });
+  assert.deepEqual(codex.manifest.context_fallback.decisions[0].author, { kind: 'agent-self-check', agent: 'codex' });
+  // The CLI proposals file must carry `agent`.
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-agent-'));
+  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
+  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  await writeFile(path.join(root, 'data/reference/run/proposals.json'), JSON.stringify({ proposals }));
+  await assert.rejects(() => runStage1(['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--dry-run', '--context-proposals', 'data/reference/run/proposals.json'],
+    { root, providers: triple(FALLBACK), permission: async () => {}, log: () => {}, contextSource: source() }), /authoring agent must be stated explicitly/);
 });

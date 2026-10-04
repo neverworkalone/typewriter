@@ -310,7 +310,7 @@ export async function buildLemmaGroups({ observations, analyzer, providers = [cr
 // observation goes to the auditable verification queue with all competing hypotheses and is never
 // counted as a headword. A clear sibling form never inherits an ambiguous sibling's state.
 export async function buildEnsembleGroups({
-  observations, providers, contextProposals = null, contextReplay = null, contextSource = null, snapshot = '', contextAgent = 'claude',
+  observations, providers, contextProposals = null, contextReplay = null, contextSource = null, snapshot = '', contextAgent = null,
 }) {
   let run;
   try {
@@ -662,7 +662,7 @@ export async function produceCandidateBatch({
   producedLemmas = new Set(), searchFormSupport = new Map(),
   // `provider-resolution-v1` (conditional fallback, default order [kiwi]) stays the explicit compatibility/A-B baseline of
   // the library; the production CLI selects the all-three ensemble by default (docs/lexical-factory-ensemble-v2.md).
-  policy = RESOLUTION_POLICY, contextProposals = null, contextReplay = null, contextSource = null, contextAgent = 'claude',
+  policy = RESOLUTION_POLICY, contextProposals = null, contextReplay = null, contextSource = null, contextAgent = null,
 }) {
   if (!isBatchId(batchId)) throw new Stage1Error(['batchId must match C000000']);
   if (!/^T\d{6}$/u.test(String(taskId))) throw new Stage1Error(['taskId must match T000000']);

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_PROVIDER_ORDER, RESOLUTION_POLICY, createKiwiProvider } from './analyzer-providers.mjs';
 import { ENSEMBLE_POLICY, ENSEMBLE_PROVIDER_ORDER } from './ensemble-resolver.mjs';
-import { alignedInContext, fallbackBlockers } from './context-fallback.mjs';
+import { alignedInContext, alignedOffset, fallbackBlockers } from './context-fallback.mjs';
 import { createCorpusContextSource } from './corpus-context-source.mjs';
 import { createKhaiiiProvider } from './khaiii-provider.mjs';
 import { createMecabProvider } from './mecab-provider.mjs';
@@ -174,8 +174,8 @@ async function buildContextReviewPack({ queue, contextSource }) {
       item.source_status = found?.status ?? 'absent';
       if (found?.status === 'ok') {
         item.aligned = alignedInContext(found.text, entry.surface);
-        const at = found.text.indexOf(entry.surface);
-        item.context = at < 0 ? null : found.text.slice(Math.max(0, at - 120), at + entry.surface.length + 120);
+        const aligned = alignedOffset(found.text, entry.surface);
+        item.context = aligned === null ? null : found.text.slice(Math.max(0, aligned.start - 120), aligned.end + 120);
       }
     }
     items.push(item);
@@ -206,11 +206,11 @@ export async function runStage1(argv, {
   if (ownSource) source = createCorpusContextSource({ permission });
   let contextProposals = null;
   let contextReplay = null;
-  let contextAgent = 'claude';
+  let contextAgent = null;
   if (options.contextProposals) {
     const file = await readJson(ignoredOutputPath(root, options.contextProposals, '--context-proposals'), 'context proposals');
     contextProposals = file.proposals;
-    contextAgent = file.agent ?? contextAgent;
+    contextAgent = file.agent ?? null; // required: recordContextDecisions refuses a missing author
     if (!Array.isArray(contextProposals)) throw new Stage1Error(['context proposals file must be {agent, proposals: []}']);
   }
   if (options.contextReplay) {

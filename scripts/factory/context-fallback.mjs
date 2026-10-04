@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 
 import { POS_VALUES, digest } from '../intake/candidate-contract.mjs';
-import { NON_BYPASSABLE_EXTRACTOR_HOLDS } from './ensemble-resolver.mjs';
+import { fallbackBlockers } from './ensemble-resolver.mjs';
+
+export { fallbackBlockers };
 
 // Contextual fallback (issue #285 §2A): the M9-style local source-context review for observations
 // whose lemma/POS the three pinned Providers could not reliably assign. It is a RECOVERY path for
@@ -36,27 +38,27 @@ export class ContextFallbackError extends Error {
   }
 }
 
-// Fallback is attempted only for a morphologically unassignable observation that has a located
-// source paragraph and no extractor hold a verdict may not bypass (coverage, evidence/rights, …).
-// The extractor's own `analysis_ambiguous` is the one hold this authorized review path may judge,
-// and even then it stays on the observation for Stage 2.
-export function fallbackBlockers(entry) {
-  const blockers = [];
-  for (const hold of entry.extractor_holds ?? []) {
-    if (NON_BYPASSABLE_EXTRACTOR_HOLDS.includes(hold)) blockers.push(hold);
-    else if (hold !== 'analysis_ambiguous') blockers.push(hold);
-  }
-  if (entry.evidence?.kind !== 'corpus-paragraph' || !/^[^#\s]+#[^#\s]+$/u.test(String(entry.evidence?.ref))) blockers.push('no_located_source');
-  return [...new Set(blockers)].sort(compare);
-}
 export const fallbackEligible = (entry) => fallbackBlockers(entry).length === 0;
 
 // Exact, whitespace-delimited eojeol alignment with the observed form (edge punctuation ignored).
 // A substring or prefix of a larger word is not alignment.
 export function alignedInContext(text, surface) {
-  if (typeof text !== 'string') return false;
-  const edge = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
-  return text.normalize('NFC').split(/\s+/u).some((token) => token.replace(edge, '') === surface.normalize('NFC'));
+  return alignedOffset(text, surface) !== null;
+}
+
+// Offset of the FIRST whitespace-delimited eojeol that equals the surface (edge punctuation
+// ignored), in the original text — so a review window is built from the exact aligned token and
+// never from an earlier substring (가 inside 가방). Null when no eojeol aligns.
+export function alignedOffset(text, surface) {
+  if (typeof text !== 'string') return null;
+  const wanted = surface.normalize('NFC');
+  for (const match of text.matchAll(/\S+/gu)) {
+    const token = match[0].normalize('NFC');
+    const lead = token.match(/^[^\p{L}\p{N}]*/u)[0].length;
+    const core = token.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    if (core === wanted) return { start: match.index + lead, end: match.index + lead + core.length };
+  }
+  return null;
 }
 
 // Binds the source snapshot, exact document/paragraph ids, a digest of the paragraph (not its text)
@@ -77,6 +79,9 @@ const hypothesisKey = (entry) => `${entry.lemma}\u0000${entry.pos}`;
 // guess. `agent` is the honest authoring agent label (self-check, not independent review).
 export async function recordContextDecisions({ proposals, queue, contextSource, snapshot, agent }) {
   const errors = [];
+  if (typeof agent !== 'string' || !/^[a-z][a-z0-9_-]{0,31}$/u.test(agent)) {
+    throw new ContextFallbackError(['the authoring agent must be stated explicitly (e.g. "claude" or "codex"); provenance is never defaulted']);
+  }
   const byDigest = new Map(queue.map((entry) => [entry.observation_digest, entry]));
   const decisions = [];
   const seen = new Set();
