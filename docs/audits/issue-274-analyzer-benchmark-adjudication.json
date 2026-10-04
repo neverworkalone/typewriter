@@ -1,0 +1,792 @@
+{
+ "contract": "analyzer-benchmark-adjudication-v1",
+ "method": "AI self-check by the assigned primary agent against the authorized local original context, made blind to every analyzer output (except that the outputs of six rows (0034, 0170, 0171, 0321, 0384, 0462) were viewed after their truth had already been decided); not an independent or human adjudication",
+ "sample_seed": "issue-274-v1",
+ "decisions": [
+  {
+   "candidate_id": "C000001-0423",
+   "status": "verified",
+   "truth": {
+    "lemma": "뒤지다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0253",
+   "status": "verified",
+   "truth": {
+    "lemma": "나오다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0421",
+   "status": "verified",
+   "truth": {
+    "lemma": "뒤지다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0445",
+   "status": "verified",
+   "truth": {
+    "lemma": "떨어지다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0274",
+   "status": "verified",
+   "truth": {
+    "lemma": "내다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0272",
+   "status": "verified",
+   "truth": {
+    "lemma": "내다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0194",
+   "status": "verified",
+   "truth": {
+    "lemma": "기울이다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0015",
+   "status": "verified",
+   "truth": {
+    "lemma": "가라앉다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0188",
+   "status": "verified",
+   "truth": {
+    "lemma": "기술",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0281",
+   "status": "verified",
+   "truth": {
+    "lemma": "넘다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0170",
+   "status": "verified",
+   "truth": {
+    "lemma": "그리고",
+    "pos": "conjunction"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0243",
+   "status": "verified",
+   "truth": {
+    "lemma": "나리",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0477",
+   "status": "verified",
+   "truth": {
+    "lemma": "말다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0289",
+   "status": "verified",
+   "truth": {
+    "lemma": "놀다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0171",
+   "status": "verified",
+   "truth": {
+    "lemma": "그렇다",
+    "pos": "adjective"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0321",
+   "status": "verified",
+   "truth": {
+    "lemma": "다른",
+    "pos": "determiner"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0472",
+   "status": "verified",
+   "truth": {
+    "lemma": "만일",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0213",
+   "status": "verified",
+   "truth": {
+    "lemma": "깔다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0034",
+   "status": "verified",
+   "truth": {
+    "lemma": "가장하다",
+    "pos": "verb",
+    "root": {
+     "lemma": "가장",
+     "pos": "noun"
+    }
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0242",
+   "status": "verified",
+   "truth": {
+    "lemma": "나리",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0325",
+   "status": "verified",
+   "truth": {
+    "lemma": "다양하다",
+    "pos": "adjective",
+    "root": {
+     "lemma": "다양",
+     "pos": "noun"
+    }
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0384",
+   "status": "verified",
+   "truth": {
+    "lemma": "대체하다",
+    "pos": "verb",
+    "root": {
+     "lemma": "대체",
+     "pos": "noun"
+    }
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0006",
+   "status": "verified",
+   "truth": {
+    "lemma": "가지",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0045",
+   "status": "verified",
+   "truth": {
+    "lemma": "가하다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0349",
+   "status": "verified",
+   "truth": {
+    "lemma": "단순하다",
+    "pos": "adjective",
+    "root": {
+     "lemma": "단순",
+     "pos": "noun"
+    }
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0077",
+   "status": "verified",
+   "truth": {
+    "lemma": "거대하다",
+    "pos": "adjective",
+    "root": {
+     "lemma": "거대",
+     "pos": "noun"
+    }
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0462",
+   "status": "verified",
+   "truth": {
+    "lemma": "마시다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0323",
+   "status": "verified",
+   "truth": {
+    "lemma": "다양하다",
+    "pos": "adjective",
+    "root": {
+     "lemma": "다양",
+     "pos": "noun"
+    }
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0067",
+   "status": "verified",
+   "truth": {
+    "lemma": "개선하다",
+    "pos": "verb",
+    "root": {
+     "lemma": "개선",
+     "pos": "noun"
+    }
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0484",
+   "status": "verified",
+   "truth": {
+    "lemma": "망치다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0106",
+   "status": "verified",
+   "truth": {
+    "lemma": "계시다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0424",
+   "status": "verified",
+   "truth": {
+    "lemma": "드리다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0476",
+   "status": "verified",
+   "truth": {
+    "lemma": "말다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0396",
+   "status": "verified",
+   "truth": {
+    "lemma": "돌다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0372",
+   "status": "verified",
+   "truth": {
+    "lemma": "대다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0002",
+   "status": "truth_unknown",
+   "reason_code": "pos_boundary_noun_vs_adverb"
+  },
+  {
+   "candidate_id": "C000001-0214",
+   "status": "verified",
+   "truth": {
+    "lemma": "까다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0358",
+   "status": "verified",
+   "truth": {
+    "lemma": "담그다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0227",
+   "status": "verified",
+   "truth": {
+    "lemma": "꾸다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0271",
+   "status": "verified",
+   "truth": {
+    "lemma": "남다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0026",
+   "status": "verified",
+   "truth": {
+    "lemma": "가문",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0043",
+   "status": "verified",
+   "truth": {
+    "lemma": "가하다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0230",
+   "status": "verified",
+   "truth": {
+    "lemma": "꾸미다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0033",
+   "status": "verified",
+   "truth": {
+    "lemma": "가장",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0376",
+   "status": "verified",
+   "truth": {
+    "lemma": "대리",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0343",
+   "status": "verified",
+   "truth": {
+    "lemma": "다하다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0041",
+   "status": "verified",
+   "truth": {
+    "lemma": "가지다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0105",
+   "status": "verified",
+   "truth": {
+    "lemma": "계시다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0435",
+   "status": "verified",
+   "truth": {
+    "lemma": "들이켜다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0469",
+   "status": "truth_unknown",
+   "reason_code": "pos_boundary_noun_vs_adverb"
+  },
+  {
+   "candidate_id": "C000001-0118",
+   "status": "verified",
+   "truth": {
+    "lemma": "고하다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0232",
+   "status": "verified",
+   "truth": {
+    "lemma": "꾸미다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0107",
+   "status": "verified",
+   "truth": {
+    "lemma": "고이다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0383",
+   "status": "verified",
+   "truth": {
+    "lemma": "대체",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0157",
+   "status": "verified",
+   "truth": {
+    "lemma": "권하다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0168",
+   "status": "verified",
+   "truth": {
+    "lemma": "그르다",
+    "pos": "adjective"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0031",
+   "status": "verified",
+   "truth": {
+    "lemma": "가다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0150",
+   "status": "verified",
+   "truth": {
+    "lemma": "구하다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0234",
+   "status": "verified",
+   "truth": {
+    "lemma": "끄다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0481",
+   "status": "verified",
+   "truth": {
+    "lemma": "맛보다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0442",
+   "status": "verified",
+   "truth": {
+    "lemma": "떨다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_rejected"
+  },
+  {
+   "candidate_id": "C000001-0040",
+   "status": "verified",
+   "truth": {
+    "lemma": "가지다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0229",
+   "status": "verified",
+   "truth": {
+    "lemma": "꾸다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0104",
+   "status": "verified",
+   "truth": {
+    "lemma": "계시다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0108",
+   "status": "verified",
+   "truth": {
+    "lemma": "고이다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0187",
+   "status": "verified",
+   "truth": {
+    "lemma": "기술",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0191",
+   "status": "verified",
+   "truth": {
+    "lemma": "기운",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0471",
+   "status": "verified",
+   "truth": {
+    "lemma": "만약",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0411",
+   "status": "verified",
+   "truth": {
+    "lemma": "동지",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0483",
+   "status": "verified",
+   "truth": {
+    "lemma": "맛보다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0313",
+   "status": "verified",
+   "truth": {
+    "lemma": "느낌",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0058",
+   "status": "verified",
+   "truth": {
+    "lemma": "감기",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0466",
+   "status": "verified",
+   "truth": {
+    "lemma": "만남",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0267",
+   "status": "verified",
+   "truth": {
+    "lemma": "낡다",
+    "pos": "adjective"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0101",
+   "status": "verified",
+   "truth": {
+    "lemma": "계기",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0404",
+   "status": "verified",
+   "truth": {
+    "lemma": "돌리다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0402",
+   "status": "verified",
+   "truth": {
+    "lemma": "돌다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0097",
+   "status": "verified",
+   "truth": {
+    "lemma": "걸리다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0392",
+   "status": "verified",
+   "truth": {
+    "lemma": "데리다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0181",
+   "status": "verified",
+   "truth": {
+    "lemma": "기쁘다",
+    "pos": "adjective"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0431",
+   "status": "verified",
+   "truth": {
+    "lemma": "들이다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0044",
+   "status": "verified",
+   "truth": {
+    "lemma": "가하다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0398",
+   "status": "verified",
+   "truth": {
+    "lemma": "독서",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0184",
+   "status": "verified",
+   "truth": {
+    "lemma": "기사",
+    "pos": "noun"
+   },
+   "reason_code": "proposed_confirmed"
+  },
+  {
+   "candidate_id": "C000001-0335",
+   "status": "verified",
+   "truth": {
+    "lemma": "다투다",
+    "pos": "verb"
+   },
+   "reason_code": "proposed_confirmed"
+  }
+ ]
+}

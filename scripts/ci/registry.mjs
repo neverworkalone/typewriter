@@ -156,6 +156,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/factory-analyzer-providers.test.mjs', 'Test factory Stage 1 analyzer provider boundary and fallback'),
       testCheck('tests/factory-khaiii-provider.test.mjs', 'Test pinned Khaiii provider contract, lazy fallback and native smoke (synthetic; native skipped without the release; no Docker)'),
       testCheck('tests/factory-mecab-provider.test.mjs', 'Test pinned MeCab-ko provider contract, three-way fallback and real runtime smoke (synthetic; real runtime skipped without the pinned venv)'),
+      testCheck('tests/factory-analyzer-benchmark.test.mjs', 'Test fixed-cohort analyzer benchmark: fail-closed cohort, hold arithmetic, best-only never certainty, and committed #274 artifacts (synthetic; real baseline commit skipped when unavailable)'),
       testCheck('tests/factory-stage2-worker.test.mjs', 'Test Stage 2 atomic claims, merge-gated session loop, and cleanup'),
     ],
   },
