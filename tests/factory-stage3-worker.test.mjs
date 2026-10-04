@@ -14,7 +14,7 @@ import {
   releaseStage3Claim,
   runStage3Session,
 } from '../scripts/factory/stage3-worker.mjs';
-import { parseArguments } from '../scripts/factory/run-stage3-worker.mjs';
+import { parseArguments, runStage3Cli } from '../scripts/factory/run-stage3-worker.mjs';
 
 const digest = 'a'.repeat(64);
 const baseRecord = {
@@ -307,6 +307,67 @@ test('resume command requires one explicit batch and attempt', () => {
   assert.throws(() => parseArguments(['--resume-batch', 'C000019']), /supplied together/u);
   assert.throws(() => parseArguments(['--resume-batch', 'C000019', '--attempt', '0']), /positive integer/u);
 });
+
+for (const { label, remoteBranchExists } of [
+  { label: 'missing starter branch', remoteBranchExists: false },
+  { label: 'pushed starter branch without a PR', remoteBranchExists: true },
+]) {
+  test(`resume recovery preflights a newly opened Draft when the ${label}`, async () => {
+    const events = [];
+    const batchId = 'C000001';
+    const attempt = 1;
+    const claimRef = `refs/heads/stage3-claims/${batchId}-a${attempt}`;
+    const snapshot = {
+      headSha: 'master-sha', validated: true,
+      candidates: [{ batchId, manifest: { status: 'complete' }, rows: [{ candidate_id: 'C000001-0001' }], files: ['candidate.json'] }],
+      reviews: [{ batchId, manifest: { status: 'ready', attempt }, decisions: [{ source_candidate_id: 'C000001-0001' }], files: ['review.json'] }],
+      canonicalEntries: [],
+    };
+    const git = {
+      async fetchMaster() { events.push('fetch-master'); },
+      resolveRef() { return 'master-sha'; },
+      originRemote() { return 'https://github.com/o/r.git'; },
+      async remoteBranchExists(branch) { events.push(`remote-branch:${branch}`); return remoteBranchExists; },
+      async refreshBranch(branch) { events.push(`refresh:${branch}`); },
+      rebaseOnMaster() { events.push('rebase'); },
+      async pushRebasedBranch(branch) { events.push(`push-rebased:${branch}`); },
+    };
+    const github = {
+      async getBranchHead(branch) { assert.equal(branch, 'master'); return 'master-sha'; },
+      async listStage3ClaimRefs() { return [claimRef]; },
+      async listPullRequests(state) { assert.equal(state, 'all'); return []; },
+    };
+    const callbacks = {
+      async waitForMerge(claim) { events.push(`wait:${claim.prNumber}`); return { status: 'stopped-by-primary' }; },
+      close() { events.push('close-callbacks'); },
+    };
+    const result = await runStage3Cli(['--resume-batch', batchId, '--attempt', String(attempt)], {
+      env: { GH_TOKEN: 'fixture-token' },
+      makeGit: () => git,
+      makeGithub: () => github,
+      loadSnapshot: async () => snapshot,
+      createDraft: async ({ claim, existingStarter }) => {
+        events.push(`draft:${existingStarter}`);
+        return { ...claim, prNumber: 101, prUrl: 'https://example.test/101', prState: 'draft' };
+      },
+      processAttempt: async ({ claim }) => { events.push(`preflight:${claim.prNumber}`); return { ...claim, prState: 'admission' }; },
+      callbacks,
+      log: () => {},
+    });
+    assert.equal(result.status, 'stopped-by-primary');
+    assert.ok(events.includes(`remote-branch:codex/stage3/${batchId}-a${attempt}`));
+    assert.ok(events.includes(`draft:${remoteBranchExists}`));
+    assert.ok(events.indexOf(`preflight:101`) > events.findIndex((event) => event.startsWith('draft:')));
+    assert.ok(events.includes('wait:101'));
+    if (remoteBranchExists) {
+      assert.ok(events.indexOf(`refresh:codex/stage3/${batchId}-a${attempt}`) < events.indexOf('rebase'));
+      assert.ok(events.indexOf('rebase') < events.indexOf(`push-rebased:codex/stage3/${batchId}-a${attempt}`));
+      assert.ok(events.indexOf(`push-rebased:codex/stage3/${batchId}-a${attempt}`) < events.indexOf('draft:true'));
+    } else {
+      assert.equal(events.includes('rebase'), false);
+    }
+  });
+}
 
 test('serial session waits for the current PR merge before claiming the next batch', async () => {
   const events = [];

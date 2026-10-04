@@ -89,7 +89,10 @@ function claimFromSnapshot(snapshot, { batchId, attempt, agent, branchName, base
   };
 }
 
-async function resumeStage3Cli({ options, github, git, root, snapshot, loadSnapshot, interactive, log }) {
+async function resumeStage3Cli({
+  options, github, git, root, snapshot, loadSnapshot, interactive, log,
+  createDraft = createStage3Draft, processAttempt = processStage3Attempt,
+}) {
   const { resumeBatch: batchId, resumeAttempt: attempt, agent } = options;
   const recovered = await recoverStage3Attempt({
     github, git, root, agent, batchId, attempt, log,
@@ -118,7 +121,7 @@ async function resumeStage3Cli({ options, github, git, root, snapshot, loadSnaps
       await git.pushRebasedBranch(recovered.branchName);
       claim.baseSha = git.resolveRef('origin/master');
     }
-    claim = await createStage3Draft({
+    claim = await createDraft({
       github, git, claim, existingStarter: recovered.status === 'restore-draft', log,
     });
   } else if (recovered.status === 'create-rejection' && recovered.prNumber) {
@@ -132,7 +135,12 @@ async function resumeStage3Cli({ options, github, git, root, snapshot, loadSnaps
 
   if (recovered.status === 'resume-admission' && recovered.draft) {
     await git.refreshBranch(recovered.branchName);
-    claim = await processStage3Attempt({ github, git, root, claim, log });
+    claim = await processAttempt({ github, git, root, claim, log });
+  } else if (['restore-starter', 'restore-draft'].includes(recovered.status)) {
+    // A recovered starter is only a checkpoint before preflight. Whether recovery had to
+    // recreate the branch or found its remote starter, the newly opened Draft must enter
+    // the same canonical preflight/admission-or-rejection path as a fresh attempt.
+    claim = await processAttempt({ github, git, root, claim, log });
   } else if (recovered.status === 'create-rejection' && !recovered.prNumber) {
     claim = await createRejectionStatusPullRequest({
       github, git, root,
@@ -202,6 +210,7 @@ export async function runStage3Cli(argv, {
   root = ROOT, env = process.env, log = console.log,
   makeGit = createStage3GitRepository, makeGithub = createGitHubClient,
   loadSnapshot = loadFactorySnapshot, callbacks,
+  createDraft = createStage3Draft, processAttempt = processStage3Attempt,
 } = {}) {
   const options = parseArguments(argv);
   if (options.help) { log(HELP); return { status: 'help' }; }
@@ -217,7 +226,10 @@ export async function runStage3Cli(argv, {
       ? callbacks || { waitForMerge: async () => { throw new Stage3WorkerError('dry-run cannot wait for a PR'); } }
       : callbacks || createInteractiveStage3Callbacks({ github, input: process.stdin, output: process.stdout });
     try {
-      return await resumeStage3Cli({ options, github, git, root, snapshot, loadSnapshot, interactive, log });
+      return await resumeStage3Cli({
+        options, github, git, root, snapshot, loadSnapshot, interactive, log,
+        createDraft, processAttempt,
+      });
     } finally {
       interactive.close?.();
     }
