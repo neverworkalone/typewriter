@@ -1,4 +1,5 @@
 import { runIntake } from '../intake/pipeline.mjs';
+import { isLemmaRow } from './lemma-contract.mjs';
 
 // Adapter between factory candidates (one `C…` id per usage) and the legacy shared
 // intake, which keys by input+POS, merges same-key candidates and drops every
@@ -34,6 +35,49 @@ export function classifyAgainstCanonical(candidate, canonicalIndex) {
   return { route: 'new_sense_on_existing_entry', existingEntryIds: sameLemmaPos.map((entry) => entry.id) };
 }
 
+// Legacy (input+POS) views of factory rows, for the shared intake and its hand-off. A v1 row is its
+// own view. A lemma-centered v2 row yields one view per observation, so a hold stays attached to
+// the observation that earned it and the shared intake still merges per input+POS for analysis.
+export function candidateViews(rows) {
+  return rows.flatMap((row) => {
+    if (!isLemmaRow(row)) return [{ ...row, source_candidate_id: row.candidate_id }];
+    const surfaceOf = new Map(row.forms.map((form) => [form.form_id, form.surface]));
+    return row.observations.map((observation) => ({
+      candidate_id: observation.observation_id,
+      source_candidate_id: row.candidate_id,
+      input: row.input,
+      pos: observation.pos,
+      group_id: observation.group_id,
+      observedForms: [surfaceOf.get(observation.form_id)],
+      evidence: [observation.evidence],
+      holds: observation.holds,
+    }));
+  });
+}
+
+// Support of observed surface forms by the generated search forms (rows of the shared surface-form
+// projection) and by the citation form itself: Map<record id, Set<form>>.
+export function buildSearchFormSupport(projectionRows) {
+  const support = new Map();
+  for (const { record_id: id, form } of projectionRows) support.set(id, (support.get(id) ?? new Set()).add(form));
+  return support;
+}
+
+const formSupported = (lemma, surface, entryIds, support) => surface === lemma || entryIds.some((id) => support.get(id)?.has(surface));
+
+// Canonical comparison of a lemma candidate (issue #275), per POS hypothesis and per observed form.
+// Stage 1 never concludes that a meaning is already covered from spelling or POS: every lemma stays
+// a Stage 2 candidate, and `new_sense_on_existing_entry` means "possible new sense", not "covered".
+// An unsupported form of an existing lemma is reported for the separate search/morphology
+// coverage route (`unsupported_forms`); it never creates a canonical lexical entry.
+export function classifyLemmaCandidate(row, canonicalIndex, support = new Map()) {
+  const routes = row.pos_hypotheses.map((pos) => ({ pos, ...classifyAgainstCanonical({ input: row.input, pos }, canonicalIndex) }));
+  const entryIds = [...new Set(routes.flatMap((route) => route.existingEntryIds))];
+  const unsupportedForms = entryIds.length === 0 ? []
+    : row.forms.map((form) => form.surface).filter((surface) => !formSupported(row.input, surface, entryIds, support));
+  return { routes, unsupported_forms: unsupportedForms };
+}
+
 export const toRawCandidate = (candidate) => ({
   input: candidate.input,
   pos: candidate.pos,
@@ -53,7 +97,8 @@ export function intakeCandidates(candidates) {
   return candidates.filter((candidate) => (candidate.holds ?? []).length === 0 || !hasUnheld.has(keyOf(candidate)));
 }
 
-export async function runFactoryIntake({ candidates, analyzer, canonicalIndex, adapterId = 'factory' }) {
+export async function runFactoryIntake({ candidates: rows, analyzer, canonicalIndex, adapterId = 'factory' }) {
+  const candidates = candidateViews(rows);
   const ids = new Set(candidates.map((candidate) => candidate.candidate_id));
   if (ids.size !== candidates.length) throw new Error('factory candidates must have distinct candidate_id values');
   // runIntake merges same input+POS before analysis, so Kiwi runs once per key while
@@ -70,7 +115,8 @@ export async function runFactoryIntake({ candidates, analyzer, canonicalIndex, a
     const shared = own.length === 0 ? byKey.get(keyOf(candidate)) : undefined;
     const holds = own.length ? own : shared.holds;
     return {
-      source_candidate_id: candidate.candidate_id,
+      source_candidate_id: candidate.source_candidate_id,
+      ...(candidate.source_candidate_id === candidate.candidate_id ? {} : { observation_id: candidate.candidate_id, group_id: candidate.group_id }),
       input: candidate.input,
       ...classifyAgainstCanonical(candidate, canonicalIndex),
       decision: holds.length ? 'hold' : shared.decision,

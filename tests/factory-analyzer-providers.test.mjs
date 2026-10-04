@@ -50,13 +50,18 @@ const produce = (candidates, providers, over = {}) => produceCandidateBatch({
   evidence: evidence(candidates), providers, canonicalEntries: [], canonicalDigest: HEX, batchId: 'C000001', taskId: 'T000001', ...over,
 });
 const rowOf = (result, lemma) => result.rows.find((row) => row.input === lemma);
+// Holds are per observation in the lemma-centered contract; these are the lemma's distinct ones.
+const holdsOf = (result, lemma) => [...new Set(rowOf(result, lemma).observations.flatMap((observation) => observation.holds))].sort();
+const unresolvedOf = (result) => result.manifest.unresolved_observations.map((entry) => [entry.surface, entry.holds]);
+const FILLER = cand('걸음', 'noun', [hit('dz', 'pz', '걸음')]);
+const fillerTable = { 걸음: [path('걸음', 'noun')] };
 
 const GOOD = path('짠하다', 'adjective');
 
 test('default order is exactly [kiwi]: manifest keeps the pre-provider shape and key order', async () => {
   const result = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [kiwi({ 짠한: [GOOD] })]);
-  assert.deepEqual(Object.keys(result.manifest), ['contract', 'task_id', 'batch_id', 'candidate_count', 'source_adapter', 'source_snapshot',
-    'canonical_snapshot_digest', 'extractor_version', 'analyzer_version', 'analyzer_digest', 'proposal_contract', 'source_evidence_sha256', 'candidates_sha256', 'status']);
+  assert.equal(result.manifest.contract, 'lexical-factory-candidate-manifest-v2');
+  assert.ok(!('analyzer_providers' in result.manifest) && !('resolution_policy' in result.manifest), 'the default order adds no provider fields');
   assert.deepEqual(result.summary.providerOrder, ['kiwi']);
   assert.equal(result.manifest.analyzer_digest, expectedAnalyzerDigest(result.manifest));
   // The legacy `analyzer` argument is the same default order.
@@ -70,7 +75,7 @@ test('Provider A resolves a candidate: provider B is never called', async () => 
   const first = spyKiwi({ 짠한: [GOOD] });
   const second = fakeProvider('fakeb', { 짠한: [GOOD] });
   const result = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [first, second]);
-  assert.deepEqual(rowOf(result, '짠하다').holds, []);
+  assert.deepEqual(holdsOf(result, '짠하다'), []);
   assert.equal(second.calls.length, 0);
   assert.equal(result.manifest.analyzer_providers.length, 2);
 });
@@ -81,50 +86,50 @@ test('Provider A unresolved: B is invoked for that candidate only and its readin
   const result = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]), cand('낯설다', 'adjective', [hit('d2', 'p1', '낯선')])], [first, second]);
   assert.deepEqual(first.calls, [['낯선', '짠한']]);
   assert.deepEqual(second.calls, [['낯선']], 'B only receives the surface A could not settle');
-  assert.deepEqual(rowOf(result, '낯설다').holds, []);
+  assert.deepEqual(holdsOf(result, '낯설다'), []);
   assert.deepEqual(result.attemptLog.filter((entry) => entry.provider_id === 'fakeb').map((entry) => [entry.state, entry.fallback]), [['resolved', false]]);
   assert.ok(result.attemptLog.every((entry) => /^[0-9a-f]{64}$/u.test(entry.input_digest) && !('surface' in entry)), 'attempt log is text-free');
   assert.deepEqual(result.summary.providerAttempts, { kiwi: { attempts: 2, resolved: 1, fell_through: 1 }, fakeb: { attempts: 1, resolved: 1, fell_through: 0 } });
 });
 
 test('B still uncertain keeps the per-row hold; every provider hold is retained', async () => {
-  const first = spyKiwi({});
   const second = fakeProvider('fakeb', { 낯선: (id) => ({ id, input_digest: analysisInputDigest('낯선'), status: 'error', analyses: [] }) });
-  const result = await produce([cand('낯설다', 'adjective', [hit('d2', 'p1', '낯선')])], [first, second]);
-  assert.deepEqual(rowOf(result, '낯설다').holds, ['analysis_error', 'analysis_unsupported']);
+  const result = await produce([cand('낯설다', 'adjective', [hit('d2', 'p1', '낯선')]), FILLER], [spyKiwi(fillerTable), second]);
+  assert.deepEqual(result.rows.map((row) => row.input), ['걸음'], 'no provider settled 낯선: it is not a headword');
+  assert.deepEqual(unresolvedOf(result), [['낯선', ['analysis_error', 'analysis_unsupported']]]);
 });
 
 test('an upstream hard hold is never cleared by a later provider', async () => {
   const result = await produce([
     cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')], { ambiguity_status: 'held_pos', coverage_status: 'covered_elsewhere' }),
     cand('걸음', 'noun', [])], [spyKiwi({ 짠한: [GOOD] }), fakeProvider('fakeb', { 짠한: [GOOD], 걸음: [path('걸음', 'noun')] })]);
-  assert.deepEqual(rowOf(result, '짠하다').holds, ['analysis_ambiguous', 'coverage_collision']);
-  assert.ok(rowOf(result, '걸음').holds.includes('no_evidence'));
+  assert.deepEqual(holdsOf(result, '짠하다'), ['analysis_ambiguous', 'coverage_collision']);
+  assert.ok(holdsOf(result, '걸음').includes('no_evidence'));
 });
 
 test('a lemma/POS mismatch is final: a fallback provider is not asked to override it', async () => {
   const second = fakeProvider('fakeb', { 걸어: [path('걷다', 'verb')] });
   const result = await produce([cand('걷다', 'verb', [hit('d1', 'p1', '걸어')])], [spyKiwi({ 걸어: [path('걸다', 'verb')] }), second]);
-  assert.deepEqual(rowOf(result, '걸다').holds, ['lemma_mismatch']);
+  assert.deepEqual(holdsOf(result, '걸다'), ['lemma_mismatch']);
   assert.equal(second.calls.length, 0);
 });
 
 test('best-only provider output is never automatically certain', async () => {
   const bestOnly = (table) => fakeProvider('fakea', table, { n_best: false });
-  const alone = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [bestOnly({ 짠한: [GOOD] }), spyKiwi({})]);
-  assert.deepEqual(rowOf(alone, '짠하다').holds, ['analysis_ambiguous', 'analysis_unsupported'], 'best-only + unsupported stays held');
+  const alone = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]), FILLER], [bestOnly({ ...fillerTable, 짠한: [GOOD] }), spyKiwi({ ...fillerTable })]);
+  assert.deepEqual(unresolvedOf(alone), [['짠한', ['analysis_unsupported']]], 'best-only + unsupported is never certain and stays unresolved');
   const agree = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [bestOnly({ 짠한: [GOOD] }), bestOnlyKiwi({ 짠한: [GOOD] })]);
-  assert.deepEqual(rowOf(agree, '짠하다').holds, ['analysis_ambiguous'], 'two single-best readers do not prove a rival absent');
+  assert.deepEqual(holdsOf(agree, '짠하다'), ['analysis_ambiguous'], 'two single-best readers do not prove a rival absent');
   const confirmed = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [bestOnly({ 짠한: [GOOD] }), spyKiwi({ 짠한: [GOOD] })]);
-  assert.deepEqual(rowOf(confirmed, '짠하다').holds, [], 'an N-best reader confirming the same lemma/POS settles it');
+  assert.deepEqual(holdsOf(confirmed, '짠하다'), [], 'an N-best reader confirming the same lemma/POS settles it');
 });
 
 test('disagreement between a best-only reading and a later provider keeps a mismatch hold', async () => {
   // No extractor POS hint, so the two clean readings can genuinely differ.
   const result = await produce([cand('짠하다', null, [hit('d1', 'p1', '짠한')])],
     [fakeProvider('fakea', { 짠한: [GOOD] }, { n_best: false }), spyKiwi({ 짠한: [path('짠하다', 'verb')] })]);
-  const row = result.rows[0];
-  assert.deepEqual([row.input, row.pos, row.holds], ['짠하다', 'adjective', ['analysis_ambiguous', 'analysis_mismatch']]);
+  const [row] = result.rows;
+  assert.deepEqual([row.input, row.pos_hypotheses, holdsOf(result, '짠하다')], ['짠하다', ['adjective'], ['analysis_ambiguous', 'analysis_mismatch']]);
 });
 
 test('malformed, stale and missing provider results become explicit holds', async () => {
@@ -133,12 +138,13 @@ test('malformed, stale and missing provider results become explicit holds', asyn
   const missing = () => null;
   const cases = [[stale, 'analysis_stale'], [malformed, 'analysis_error'], [missing, 'analysis_missing']];
   for (const [factory, hold] of cases) {
-    const result = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [kiwi({ 짠한: factory })]);
-    assert.deepEqual(result.rows[0].holds, [hold]);
+    const result = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]), FILLER], [kiwi({ ...fillerTable, 짠한: factory })]);
+    assert.deepEqual(unresolvedOf(result), [['짠한', [hold]]]);
+    assert.deepEqual(result.rows.map((row) => row.input), ['걸음']);
   }
   // A malformed result from the first provider may still be settled by the next.
   const settled = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [kiwi({ 짠한: malformed }), fakeProvider('fakeb', { 짠한: [GOOD] })]);
-  assert.deepEqual(settled.rows[0].holds, []);
+  assert.deepEqual(holdsOf(settled, '짠하다'), []);
 });
 
 test('duplicate result ids never produce a certain result, whatever the order', async () => {
@@ -148,11 +154,13 @@ test('duplicate result ids never produce a certain result, whatever the order', 
   for (const pair of [[good, bad], [bad, good], [good, rival], [rival, good], [good, good]]) {
     const dup = { ...spyKiwi({}), analyze: async (requests) => ({ metadata: KIWI_METADATA,
       results: requests.flatMap(({ id, text }) => pair.map((make) => make(id, text))) }) };
-    const first = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [dup]);
-    assert.deepEqual(first.rows[0].holds, ['analysis_error']);
+    const dupWithFiller = { ...dup, analyze: async (requests) => ({ metadata: KIWI_METADATA,
+      results: requests.flatMap(({ id, text }) => (text === '걸음' ? [{ id, input_digest: analysisInputDigest(text), status: 'ok', analyses: [path('걸음', 'noun')] }] : pair.map((make) => make(id, text)))) }) };
+    const first = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]), FILLER], [dupWithFiller]);
+    assert.deepEqual(unresolvedOf(first), [['짠한', ['analysis_error']]]);
     const second = fakeProvider('fakeb', { 짠한: [GOOD] });
     const settled = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [dup, second]);
-    assert.deepEqual(settled.rows[0].holds, [], 'only a later well-formed provider may settle it');
+    assert.deepEqual(holdsOf(settled, '짠하다'), [], 'only a later well-formed provider may settle it');
     assert.equal(second.calls.length, 1);
   }
 });

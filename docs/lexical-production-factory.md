@@ -10,6 +10,15 @@ can follow it without chat history.
 > the Stage 1/2/3 PR reviewer gates of root [`REVIEW.md`](../REVIEW.md), which
 > still apply unchanged to every PR the factory opens.
 
+> **Amendment (issue #275, owner decision).** A dictionary word/candidate is always a
+> **citation-form lemma (표제어)**. Observed inflected forms belong to that lemma as
+> evidence and search-form opportunities; they are not independent lexical candidates
+> merely because they occurred in another paragraph. A Stage 1 batch therefore targets
+> **~500 distinct headwords, not 500 usage rows**: **"500" counts unique lemmas, not
+> usages.** §2 below is normative for the lemma-centered (v2) contract; the per-usage
+> (v1) shapes in §2.1/§2.2 are **historical** and remain valid only for already-created
+> batches such as the C000001 comparison cohort.
+
 The three parts of this document are kept separate:
 
 | Label | Meaning | Where |
@@ -53,21 +62,60 @@ schema. The factory is a work-organization layer around the existing contracts.
 
 **Policy**
 
-- A task targets **10,000 distinguishable lexical candidate occurrences / usage
-  possibilities**, not 10,000 unique input strings. A typical batch is about 500
-  candidates and is flexible. One issue/task, serial batch PRs. Stage 1 never
-  waits for Stage 2 or 3.
-- Stage 1 detects (a) lemmas missing from canonical, (b) a new POS for an
-  existing lemma, (c) a possible new sense of an existing lemma/POS, and (d)
-  uncertain distinguishable uses. It must **not prematurely reject** a possible
-  new sense. Repeated usage that is true repetition of the same evidence is
-  deduplicated; a distinguishable use is not.
+- A task targets **10,000 distinct citation-form lemmas (표제어)**, produced in
+  serial batches of about **500 distinct headwords** (flexible; hard maximum 1,000).
+  Neither source hits, usage rows, observed inflected forms nor POS hypotheses count
+  toward that number: a lemma is counted once however many inflections, contexts
+  or POS possibilities it has. If fewer than 500 defensible lemmas exist, the batch
+  reports the actual count (or source exhaustion); there is no filler, no
+  unverified lemma guess and no artificial split. One issue/task, serial batch PRs.
+  Stage 1 never waits for Stage 2 or 3.
+- **Primary candidate identity is one normalized citation-form lemma**
+  (`C<batch>-<NNNN>` is independent of the lemma's spelling but is allocated once per
+  lemma). Under it are nested, individually referenceable: the lemma's **POS
+  hypotheses**, **observed forms** (e.g. 가는, 가서, 갈 are forms *of* 가다),
+  prospective **usage groups** (sense opportunities) and individual
+  **observations** (bounded, text-free source references with their own analysis
+  record and holds). Homographs, POS alternatives and independently evidenced
+  meaning directions are never collapsed merely because their spelling is the same.
+- Stage 1 detects (a) lemmas missing from canonical, (b) a new POS for an existing
+  lemma, (c) a possible new sense of an existing lemma/POS, and (d) uncertain
+  observations. It must **not prematurely reject** a possible new sense, and
+  grouping observations under a lemma never discards a different contextual
+  meaning: each evidence-backed usage group is carried to Stage 2 for independent
+  adjudication. Identical repeated source evidence is deduplicated; a different
+  reference of the same form is a separate observation.
+- **Canonical comparison before the Stage 2 queue** (per lemma, per POS hypothesis):
+  1. new lemma → lexical candidate;
+  2. existing lemma with an evidence-backed possible new POS or sense → lexical
+     candidate, never automatically `covered` from lemma/POS equality;
+  3. existing meaning whose observed form is not supported by the generated-surface /
+     exact / search-form mapping → the **search/morphology coverage improvement**
+     route (`unsupported_forms`), never a fabricated lexical entry; supported forms
+     are not added redundantly;
+  4. **proven** same lemma/POS/sense with supported search forms and no new
+     evidence-backed possibility → excluded as a duplicate with an auditable reason.
+     Stage 1 holds no meaning data and **never asserts semantic identity from
+     spelling, POS or morphology**; this exclusion is the validated Stage 2
+     group disposition `covered` (§5.1), which must cite an existing canonical sense
+     and is checked against the canonical snapshot and the search-form projection;
+  5. unresolved lemma/POS analysis → **fail closed**: the observation is preserved
+     (reference and holds) in the manifest's `unresolved_observations` for
+     verification, is not attached to a guessed headword and is not counted among the
+     resolved headwords.
+- **Holds are per observation.** One ambiguous surface never holds the clear
+  surfaces of the same lemma and never invalidates the lemma. An initial
+  `analysis_ambiguous` is a request for further verification, not a final
+  editorial rejection. Morphological analysis is consumed through the pinned
+  analyzer boundary; the candidate shape does not depend on any provider's result
+  structure, N-best confidence or capabilities (provider comparison belongs to
+  #272–#274).
 - Stage 1 reuses the existing Kiwi-based corpus extractor to discover headwords
   and POS candidates (the `reference:corpus:candidates` extractor of
   [`docs/m9-corpus-production.md`](m9-corpus-production.md), pinned
   `kiwipiepy==0.24.0`, and the shared intake in `scripts/intake/`). Inflected
-  forms are restored to the base form where possible (`observedForms` keeps the
-  surface forms). When the morphological analysis is uncertain or admits several
+  forms are restored to the base form where possible (the lemma candidate keeps
+  every observed surface form, `forms`, and its per-observation evidence). When the morphological analysis is uncertain or admits several
   readings, Stage 1 records that as `holds` (e.g. `analysis_ambiguous`,
   `lemma_mismatch`, `pos_mismatch`) together with the candidate rather than
   guessing. Kiwi output is only a candidate proposal; the final semantic and POS
@@ -87,7 +135,12 @@ schema. The factory is a work-organization layer around the existing contracts.
   merged**. Only the explicitly declared operational `status` field of the
   manifest may change afterwards (§7).
 
-### 2.1 Illustrative candidate manifest (v1)
+### 2.1 Candidate manifest, per-usage v1 (historical)
+
+> Historical (superseded by §2.3 for new batches): kept to describe merged v1
+> batches, e.g. the C000001 comparison cohort. v1 rows are one per usage possibility.
+> They are **not** the active candidate unit.
+
 
 ```json
 {
@@ -107,7 +160,7 @@ schema. The factory is a work-organization layer around the existing contracts.
 `candidates_sha256` covers only `candidates.jsonl`. `status` is excluded from
 every content digest, so changing `created → complete` never invalidates it.
 
-### 2.2 Illustrative candidate record (v1)
+### 2.2 Candidate record, per-usage v1 (historical)
 
 ```json
 {
@@ -122,7 +175,8 @@ every content digest, so changing `created → complete` never invalidates it.
 ```
 
 - `candidate_id` is `C<batch>-<ordinal>` and **independent of lemma, POS and
-  sense**. Two candidates for the same lemma/POS have two different ids.
+  sense**. In v1 two candidates for the same lemma/POS have two different ids (in v2
+  there is exactly one candidate per lemma).
 - `usage_hint` is a provisional distinguishing note for Stage 2. It is **not** an
   accepted gloss and must never be copied into canonical data unreviewed.
 - `evidence` is bounded, text-free, at most five references (the existing
@@ -130,6 +184,76 @@ every content digest, so changing `created → complete` never invalidates it.
 - `holds` uses the existing reasons in `HOLD_REASONS`
   (`scripts/intake/candidate-contract.mjs`); a hold is fail-closed information
   for Stage 2, not a Stage 1 rejection of a sense.
+
+### 2.3 Candidate contract, lemma-centered v2 (active, issue #275)
+
+`data/candidates/C…/{manifest.json,candidates.jsonl}` only. Manifest
+`contract: lexical-factory-candidate-manifest-v2`, `lemma_policy:
+distinct-citation-lemma-v1`; the v1 manifest fields are kept (`task_id`, `batch_id`,
+`source_*`, `canonical_snapshot_digest`, `analyzer_*`, `proposal_contract`,
+`source_evidence_sha256`, `candidates_sha256`, `status`) with these differences:
+
+- `candidate_count` = **distinct lemmas** = rows; `observation_count` = total
+  distinct observations behind them;
+- `selection: {bound, eligible_lemma_count, deferred_lemma_count}` — the bound is a
+  lemma count, deterministic lemma order, `eligible = candidates + deferred`;
+- `unresolved_observations: [{surface, evidence, holds}]` — observations with no
+  reliable lemma/POS (`analysis_missing|stale|error|unsupported`), preserved for
+  verification and not counted as headwords.
+
+**Before (v1, 3 candidates for one lemma) → after (v2, 1 candidate):**
+
+```json
+{"candidate_id":"C000001-0007","input":"가다","pos":"verb","usage_hint":"…","observedForms":["가는"],"evidence":[{"kind":"corpus-paragraph","ref":"d1#p1"}],"holds":[]}
+{"candidate_id":"C000001-0008","input":"가다","pos":"verb","usage_hint":"…","observedForms":["가서"],"evidence":[{"kind":"corpus-paragraph","ref":"d2#p4"}],"holds":["analysis_ambiguous"]}
+{"candidate_id":"C000001-0009","input":"가다","pos":"verb","usage_hint":"…","observedForms":["갈"],"evidence":[{"kind":"corpus-paragraph","ref":"d3#p9"}],"holds":[]}
+```
+
+```json
+{
+  "candidate_id": "C000002-0001",
+  "input": "가다",
+  "pos_hypotheses": ["verb"],
+  "forms": [
+    {"form_id": "C000002-0001.f01", "surface": "가는"},
+    {"form_id": "C000002-0001.f02", "surface": "가서"},
+    {"form_id": "C000002-0001.f03", "surface": "갈"}
+  ],
+  "usage_groups": [{"group_id": "C000002-0001.g01", "pos": "verb", "basis": "pos-default"}],
+  "observations": [
+    {"observation_id": "C000002-0001.o01", "form_id": "C000002-0001.f01", "group_id": "C000002-0001.g01", "pos": "verb",
+     "evidence": {"kind": "corpus-paragraph", "ref": "d1#p1"}, "analysis": {"status": "ok", "input_digest": "<sha256 of the analyzed surface>"}, "holds": []},
+    {"observation_id": "C000002-0001.o02", "form_id": "C000002-0001.f02", "group_id": "C000002-0001.g01", "pos": "verb",
+     "evidence": {"kind": "corpus-paragraph", "ref": "d2#p4"}, "analysis": {"status": "ok", "input_digest": "…"}, "holds": ["analysis_ambiguous"]},
+    {"observation_id": "C000002-0001.o03", "form_id": "C000002-0001.f03", "group_id": "C000002-0001.g01", "pos": "verb",
+     "evidence": {"kind": "corpus-paragraph", "ref": "d3#p9"}, "analysis": {"status": "ok", "input_digest": "…"}, "holds": []}
+  ],
+  "observation_total": 3,
+  "observation_digest": "<sha256 of the sorted full observation keys>"
+}
+```
+
+Rules: rows are ordered by lemma and a lemma appears once per batch **and never again in
+any later batch** (v1 headwords included); every observed form and every usage group
+keeps at least one observation; observations are capped at 64 per lemma by a
+deterministic selection that first covers every form and group (a lemma that cannot be
+covered within the cap fails the run), and `observation_total` + `observation_digest`
+bind the omitted remainder to the locally recoverable, text-free evidence; an optional
+text-free `usage_group` token on an extractor hit opens a separate usage group
+(`basis: corpus-hint`). **The current extractor (`safeEvidenceHit`) emits no such token**, so
+real runs yield one default group per POS and Stage 1 gives no sense signal; independently
+evidenced sense directions are therefore adjudicated by Stage 2, which may split a group by
+observation (§5.1) instead of relying on Stage 1 to guess them.
+
+**Operator note: "500" now counts unique lemmas, not usages.** The run summary reports
+separately: unique lemmas, observed forms, POS hypotheses, usage groups, observations
+(total/retained), held observations and lemmas, holds by reason, unresolved
+observations, deferred lemmas and lemmas skipped as already produced.
+
+**Compatibility.** v1 manifests/rows, their IDs and digests are validated unchanged and
+a merged batch may not change contract (an unauthorized v1 → v2 migration fails). The
+PR #270 / `C000001` 500-usage cohort stays the immutable comparison input of #274. v2
+applies to batches created after this contract; nothing is migrated.
 
 ## 3. Work claiming and dispatch (GitHub only)
 
@@ -364,6 +488,24 @@ Illustrative decision row (one per candidate, no omissions):
 }
 ```
 
+For lemma-centered (v2) candidates the row also carries `group_decisions`: exactly one
+entry per usage group, in order, with a candidate-specific `reason`, so no sense
+opportunity disappears silently. A group is `included` (with `sense_indexes` naming the
+reviewed senses of the same POS; every reviewed sense must be claimed; a
+`hold_resolution` is required exactly when that group's own observations carry holds),
+`covered` (proof of an existing canonical sense of the same lemma/POS **and** every
+observed form already a supported search form), `search_coverage` (meaning already
+canonical, `forms` = exactly the unsupported observed forms; the search/morphology
+route, not a lexical entry), `rejected` or `deferred`. An admitted candidate needs at
+least one included group; a rejected/held/deferred one none.
+
+A group may be **split**: several entries with the same `group_id`, each naming the
+`observation_ids` it judges. The entries of a group must partition its observations
+exactly, so every distinguishable evidence-backed sense opportunity inside a group gets
+its own disposition, reason, `hold_resolution` / sense claims and (for `covered` /
+`search_coverage`) its own search-form proof. A group with a single entry and no
+`observation_ids` covers all of its observations.
+
 `disposition` takes the existing meanings: included / corrected / held /
 rejected / deferred. `target.kind` is `new_entry`, `new_pos_on_existing_lemma`
 or `new_sense_on_existing_entry` (the last two carry the existing canonical `id`
@@ -578,7 +720,10 @@ Verified against `master` (3a7c452) rather than assumed.
 
 ### 10.1 Collisions the implementation must design around
 
-1. **`candidateKey` collapses distinct usages.** Two candidates with the same
+1. **`candidateKey` collapses distinct usages.** (Issue #275: v2 candidates are one
+   per lemma, so the per-usage identity below is historical v1; usages are carried
+   as nested usage groups and observations under the lemma candidate, and the shared
+   intake receives per-observation views.) Two candidates with the same
    `input` and `pos` but different usages share a key and `dedupeCandidates`
    merges them into one. The factory treats them as separate identities
    (`C…-0001`, `C…-0002`). A safe route is needed: either an adapter that keeps
@@ -642,7 +787,8 @@ This is the input to a **later implementation issue**; none of it is done here.
 
 **Test and validation plan (implementation issue)**
 
-- Identity regression: two same-lemma/POS different-usage candidates stay two
+- Identity regression (v1, historical; v2 equivalents are in `tests/factory-lemma.test.mjs`
+  and `tests/factory-stage1.test.mjs`): two same-lemma/POS different-usage candidates stay two
   decisions, and a candidate for a new sense of an already-canonical lemma is not
   dropped as `covered` but routed to Stage 2 and admitted only with a sense-level
   decision.

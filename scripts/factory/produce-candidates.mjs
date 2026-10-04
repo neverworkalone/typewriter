@@ -7,17 +7,18 @@ import { fileURLToPath } from 'node:url';
 import { DEFAULT_PROVIDER_ORDER, createKiwiProvider } from './analyzer-providers.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
 import { parseJsonl } from './contract.mjs';
+import { loadSearchFormSupport } from './search-form-support.mjs';
 import { validateFactoryRepository, loadCanonicalEntries } from './validate.mjs';
 import {
   DEFAULT_MAX_CANDIDATES,
   Stage1Error,
   allocateBatchId,
-  usageKeyOfRow,
   canonicalSnapshotDigest,
   produceCandidateBatch,
 } from './stage1.mjs';
 
 // Factory Stage 1 entry point (issue #264): one serial task, one bounded candidate batch per run.
+// Since issue #275 the bound (`--max-candidates`, default 500) counts distinct citation-form lemmas.
 //   npm run factory:stage1 -- --evidence data/reference/<run>/candidate-evidence.json --task-id T000001
 // Input is the text-free output of `npm run reference:corpus:candidates`. Output is
 // data/candidates/C…/{manifest.json,candidates.jsonl} with status `created`; nothing else is written.
@@ -81,13 +82,13 @@ async function knownBatchIds(root, baseRef) {
   return [...ids];
 }
 
-// Usages already produced by any existing batch, locally and on the merged base, so a rerun
-// only yields unprocessed usages.
-async function producedUsageKeys(root, baseRef) {
+// Lemmas already produced by any existing batch (v1 usage rows and v2 lemma rows alike), locally and
+// on the merged base, so a rerun only yields unprocessed headwords.
+async function producedLemmas(root, baseRef) {
   const keys = new Set();
   const add = (text, label) => {
     const errors = [];
-    for (const row of parseJsonl(text, label, errors)) keys.add(usageKeyOfRow(row));
+    for (const row of parseJsonl(text, label, errors)) keys.add(row.input);
     if (errors.length) throw new Stage1Error(errors);
   };
   try {
@@ -134,7 +135,8 @@ export async function runStage1(argv, {
     batchId,
     taskId: options.taskId,
     maxCandidates: options.maxCandidates,
-    producedUsageKeys: await producedUsageKeys(root, options.baseRef),
+    producedLemmas: await producedLemmas(root, options.baseRef),
+    searchFormSupport: await loadSearchFormSupport(canonicalEntries),
   });
   if (options.attemptLog) {
     // Text-free (input digests only); kept in the ignored data/reference tree, never in a batch.

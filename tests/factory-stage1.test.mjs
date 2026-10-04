@@ -5,7 +5,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { expectedAnalyzerDigest, sha256Hex, validateCandidateBatch } from '../scripts/factory/contract.mjs';
-import { buildCanonicalIndex, classifyAgainstCanonical, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
+import { buildCanonicalIndex, buildSearchFormSupport, classifyLemmaCandidate, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
+import { MAX_OBSERVATIONS_PER_CANDIDATE } from '../scripts/factory/lemma-contract.mjs';
 import { runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { Stage1Error, allocateBatchId, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
@@ -15,17 +16,23 @@ const METADATA = { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_
 const HEX = 'a'.repeat(64);
 
 // Synthetic stand-in for kiwi_service: surface → ranked proposal paths.
+const P = (lemma, pos, form = lemma) => ({ lemma, pos, form });
 const ANALYSES = {
-  짠한: [[{ lemma: '짠하다', pos: 'adjective', form: '짠하' }]],
-  짠해서: [[{ lemma: '짠하다', pos: 'adjective', form: '짠하' }]],
-  걸음: [[{ lemma: '걸음', pos: 'noun', form: '걸음' }]],
-  걸어: [[{ lemma: '걷다', pos: 'verb', form: '걷' }]],
-  바람물결: [[{ lemma: '바람', pos: 'noun', form: '바람' }, { lemma: '물결', pos: 'noun', form: '물결' }]],
-  집집: [[{ lemma: '집', pos: 'noun', form: '집' }, { lemma: '집', pos: 'noun', form: '집' }]],
-  사랑한: [[{ lemma: '사', pos: 'noun', form: '사' }, { lemma: '사랑하다', pos: 'verb', form: '사랑하' }]],
-  사하다형: [[{ lemma: '사', pos: 'noun', form: '사' }, { lemma: '사', pos: 'noun', form: '사' }, { lemma: '사하다', pos: 'verb', form: '사하', derived_from: '사', derived_from_index: 1 }]],
-  망각한: [[{ lemma: '망각', pos: 'noun', form: '망각' }, { lemma: '망각하다', pos: 'verb', form: '망각하', derived_from: '망각', derived_from_index: 0 }]],
-  나는: [[{ lemma: '나', pos: 'noun', form: '나' }], [{ lemma: '날다', pos: 'verb', form: '날' }]],
+  짠한: [[P('짠하다', 'adjective', '짠하')]],
+  짠해서: [[P('짠하다', 'adjective', '짠하')]],
+  걸음: [[P('걸음', 'noun')]],
+  걸어: [[P('걷다', 'verb', '걷')]],
+  가는: [[P('가다', 'verb', '가')]],
+  가서: [[P('가다', 'verb', '가')]],
+  갈: [[P('가다', 'verb', '가')]],
+  다시: [[P('다시', 'adverb')]],
+  다신: [[P('다시', 'noun')]],
+  바람물결: [[P('바람', 'noun'), P('물결', 'noun')]],
+  집집: [[P('집', 'noun'), P('집', 'noun')]],
+  사랑한: [[P('사', 'noun'), P('사랑하다', 'verb', '사랑하')]],
+  사하다형: [[P('사', 'noun'), P('사', 'noun'), { ...P('사하다', 'verb', '사하'), derived_from: '사', derived_from_index: 1 }]],
+  망각한: [[P('망각', 'noun'), { ...P('망각하다', 'verb', '망각하'), derived_from: '망각', derived_from_index: 0 }]],
+  나는: [[P('나', 'noun')], [P('날다', 'verb', '날')]],
 };
 const syntheticAnalyzer = (analyses = ANALYSES, metadata = METADATA) => async (requests) => ({
   metadata,
@@ -55,51 +62,173 @@ const CANONICAL = [
   { id: 'w2', record_type: 'entry', lemma: '걷다', senses: [{ id: 'w2-s1', pos: 'noun', gloss: 'g' }] },
 ];
 const produce = (evidence, over = {}) => produceCandidateBatch({
-  evidence, analyzer: syntheticAnalyzer(), canonicalEntries: CANONICAL, canonicalDigest: HEX, batchId: 'C000001', taskId: 'T000001', ...over,
+  evidence, analyzer: syntheticAnalyzer(), canonicalEntries: CANONICAL, canonicalDigest: HEX, batchId: 'C000002', taskId: 'T000001', ...over,
 });
 
-test('inflected observed forms resolve to the dictionary lemma/POS, keep surfaces, and record pinned versions', async () => {
-  const { manifest, rows, candidatesText } = await produce(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한'), hit('d1', 'p2', '짠해서')])]));
-  assert.equal(rows.length, 2);
-  assert.deepEqual(rows.map((row) => [row.candidate_id, row.input, row.pos, row.observedForms, row.holds]), [
-    ['C000001-0001', '짠하다', 'adjective', ['짠한'], []],
-    ['C000001-0002', '짠하다', 'adjective', ['짠해서'], []],
+test('one lemma observed as several inflected forms is ONE candidate with attributable forms and observations', async () => {
+  const { manifest, rows, candidatesText } = await produce(evidenceDoc([
+    cand('가다', 'verb', [hit('d1', 'p1', '가는'), hit('d2', 'p4', '가서'), hit('d3', 'p9', '갈')]),
+  ]));
+  assert.equal(rows.length, 1);
+  const [row] = rows;
+  assert.equal(row.candidate_id, 'C000002-0001');
+  assert.equal(row.input, '가다');
+  assert.deepEqual(row.pos_hypotheses, ['verb']);
+  assert.deepEqual(row.forms, [
+    { form_id: 'C000002-0001.f01', surface: '가는' }, { form_id: 'C000002-0001.f02', surface: '가서' }, { form_id: 'C000002-0001.f03', surface: '갈' },
   ]);
+  assert.equal(row.observations.length, 3);
+  assert.deepEqual(row.observations.map((o) => [o.observation_id, o.form_id, o.evidence.ref]), [
+    ['C000002-0001.o01', 'C000002-0001.f01', 'd1#p1'], ['C000002-0001.o02', 'C000002-0001.f02', 'd2#p4'], ['C000002-0001.o03', 'C000002-0001.f03', 'd3#p9'],
+  ]);
+  assert.equal(row.observation_total, 3);
+  assert.equal(manifest.contract, 'lexical-factory-candidate-manifest-v2');
+  assert.equal(manifest.candidate_count, 1, 'candidate_count counts distinct lemmas');
+  assert.equal(manifest.observation_count, 3);
   assert.equal(manifest.analyzer_version, 'kiwipiepy==0.24.0');
-  assert.equal(manifest.extractor_version, 'ex-1');
   assert.equal(manifest.source_snapshot, `corpus:${HEX}:${'b'.repeat(64)}`);
   assert.equal(manifest.status, 'created');
   assert.deepEqual(validateCandidateBatch({ manifest, candidatesText }), []);
   assert.ok(!candidatesText.includes('context'));
 });
 
-test('ambiguous analysis stays an explicit hold; distinct usages of one lemma/POS stay separate; true repeats merge', async () => {
-  const { rows, summary } = await produce(evidenceDoc([
-    cand('나', 'noun', [hit('d2', 'p1', '나는')]),
-    cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), hit('d3', 'p1', '걸음'), hit('d3', 'p2', '걸음')]),
-  ]));
-  const ambiguous = rows.find((row) => row.input === '나');
-  assert.ok(ambiguous.holds.includes('analysis_ambiguous'));
-  const steps = rows.filter((row) => row.input === '걸음');
-  assert.equal(steps.length, 2, 'two distinct paragraph usages stay two rows; the repeated one merges');
-  assert.equal(summary.repeatsMerged, 1);
-  assert.deepEqual(steps.map((row) => row.holds), [[], []], 'a sibling hold is never inherited');
+test('the bound and accounting count distinct lemmas, never usages; metrics are reported separately', async () => {
+  const hits = Array.from({ length: 6 }, (_, i) => hit('d1', `p${i}`, i % 2 ? '가는' : '가서'));
+  const { rows, manifest, summary } = await produce(evidenceDoc([
+    cand('가다', 'verb', hits),
+    cand('짠하다', 'adjective', [hit('d2', 'p1', '짠한'), hit('d2', 'p2', '짠해서')]),
+    cand('걸음', 'noun', [hit('d3', 'p1', '걸음')]),
+  ]), { maxCandidates: 2 });
+  assert.deepEqual(rows.map((row) => row.input), ['가다', '걸음'], 'deterministic lemma order; 9 observations never fill a 2-lemma bound');
+  assert.equal(manifest.candidate_count, 2);
+  assert.deepEqual(manifest.selection, { bound: 2, eligible_lemma_count: 3, deferred_lemma_count: 1 });
+  assert.deepEqual(summary.deferredLemmas, ['짠하다']);
+  assert.equal(summary.metrics.unique_lemmas, 2);
+  assert.equal(summary.metrics.observations_total, 7);
+  assert.equal(summary.metrics.observed_forms, 3);
+  assert.equal(summary.metrics.pos_hypotheses, 2);
+  assert.equal(summary.metrics.usage_groups, 2);
+  assert.equal(summary.metrics.repeated_evidence_merged, 0);
+  await assert.rejects(() => produce(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는')])]), { maxCandidates: 0 }), /max candidates/);
+  await assert.rejects(() => produce(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는')])]), { maxCandidates: 1001 }), /max candidates/);
 });
 
-test('existing canonical lemma, new POS and new sense are not dropped as covered', async () => {
-  const { rows, summary } = await produce(evidenceDoc([
-    cand('걸음', 'noun', [hit('d3', 'p1', '걸음')], { coverage_status: 'exact_canonical_lemma' }),
-    cand('걷다', 'verb', [hit('d4', 'p1', '걸어')], { coverage_status: 'exact_canonical_lemma' }),
-    cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]),
+test('two evidence-backed sense directions of one lemma/POS stay two usage groups of ONE candidate', async () => {
+  const { rows, manifest, candidatesText } = await produce(evidenceDoc([
+    cand('가다', 'verb', [hit('d1', 'p1', '가는', { usage_group: 'move' }), hit('d2', 'p1', '가서', { usage_group: 'move' }), hit('d3', 'p1', '갈', { usage_group: 'pass' })]),
   ]));
-  assert.equal(rows.length, 3);
-  const index = buildCanonicalIndex(CANONICAL);
-  assert.deepEqual(rows.map((row) => classifyAgainstCanonical(row, index).route),
-    ['new_pos_on_existing_lemma', 'new_sense_on_existing_entry', 'new_entry']);
-  assert.deepEqual(summary.routes, { new_entry: 1, new_pos_on_existing_lemma: 1, new_sense_on_existing_entry: 1, held: 0 });
-  // The batch feeds the shared factory identity adapter with one decision per C… id.
-  const run = await runFactoryIntake({ candidates: rows, analyzer: syntheticAnalyzer({ ...ANALYSES, 걸음: ANALYSES.걸음, 걷다: [[{ lemma: '걷다', pos: 'verb', form: '걷' }]], 짠하다: ANALYSES.짠한 }), canonicalIndex: index });
-  assert.deepEqual(run.results.map((result) => result.source_candidate_id), rows.map((row) => row.candidate_id));
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].usage_groups, [
+    { group_id: 'C000002-0001.g01', pos: 'verb', basis: 'corpus-hint', hint: 'move' },
+    { group_id: 'C000002-0001.g02', pos: 'verb', basis: 'corpus-hint', hint: 'pass' },
+  ]);
+  assert.deepEqual(rows[0].observations.map((o) => o.group_id), ['C000002-0001.g01', 'C000002-0001.g01', 'C000002-0001.g02']);
+  assert.deepEqual(validateCandidateBatch({ manifest, candidatesText }), []);
+  await assert.rejects(() => produce(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는', { usage_group: 'Free Text!' })])])), /usage_group/);
+});
+
+test('noun and verb POS hypotheses of one lemma count once and each POS route stays reviewable', async () => {
+  const { rows, summary } = await produce(evidenceDoc([
+    cand('다시', 'adverb', [hit('d1', 'p1', '다시')]),
+    cand('다시', 'noun', [hit('d2', 'p1', '다신')]),
+  ]));
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].pos_hypotheses, ['adverb', 'noun']);
+  assert.deepEqual(rows[0].usage_groups.map((g) => [g.group_id, g.pos]), [['C000002-0001.g01', 'adverb'], ['C000002-0001.g02', 'noun']]);
+  assert.equal(summary.metrics.unique_lemmas, 1);
+  assert.equal(summary.metrics.pos_hypotheses, 2);
+  assert.equal(summary.routes.new_entry, 2, 'one route per POS hypothesis');
+});
+
+test('an ambiguous surface holds only its own observation; sibling forms and the lemma stay clear', async () => {
+  const analyses = { ...ANALYSES, 갈: [[P('가다', 'verb', '가')], [P('갈다', 'verb', '갈')]] };
+  const { rows } = await produceCandidateBatch({
+    evidence: evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는'), hit('d2', 'p1', '갈')])]),
+    analyzer: syntheticAnalyzer(analyses), canonicalEntries: CANONICAL, canonicalDigest: HEX, batchId: 'C000002', taskId: 'T000001',
+  });
+  assert.equal(rows.length, 1);
+  const bySurface = Object.fromEntries(rows[0].observations.map((o) => [rows[0].forms.find((f) => f.form_id === o.form_id).surface, o.holds]));
+  assert.deepEqual(bySurface, { 가는: [], 갈: ['analysis_ambiguous'] });
+});
+
+test('distinct references of one form stay traceable; identical repeats merge; no text is stored', async () => {
+  const { rows, summary } = await produce(evidenceDoc([
+    cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), hit('d3', 'p1', '걸음'), hit('d3', 'p2', '걸음')]),
+  ]));
+  assert.deepEqual(rows[0].observations.map((o) => o.evidence.ref), ['d3#p1', 'd3#p2']);
+  assert.equal(rows[0].observation_total, 2);
+  assert.equal(summary.metrics.repeated_evidence_merged, 1);
+});
+
+test('over-cap evidence is bounded but can never erase a form or a usage group; the rest is digest-bound', async () => {
+  const many = Array.from({ length: 80 }, (_, i) => hit('d1', `p${String(i).padStart(3, '0')}`, '가는', { usage_group: 'move' }));
+  const tail = [hit('d9', 'p1', '갈', { usage_group: 'pass' })];
+  const { rows, manifest, candidatesText } = await produce(evidenceDoc([cand('가다', 'verb', [...many, ...tail])]));
+  const [row] = rows;
+  assert.equal(row.observations.length, MAX_OBSERVATIONS_PER_CANDIDATE);
+  assert.equal(row.observation_total, 81);
+  assert.ok(row.observations.some((o) => o.group_id === 'C000002-0001.g02'), 'the later sense group survives the cap');
+  assert.ok(row.forms.every((form) => row.observations.some((o) => o.form_id === form.form_id)));
+  assert.deepEqual(validateCandidateBatch({ manifest, candidatesText }), []);
+  const same = await produce(evidenceDoc([cand('가다', 'verb', [...many, ...tail])]));
+  assert.equal(same.rows[0].observation_digest, row.observation_digest);
+  const fewer = await produce(evidenceDoc([cand('가다', 'verb', [...many.slice(1), ...tail])]));
+  assert.notEqual(fewer.rows[0].observation_digest, row.observation_digest, 'an omitted observation still changes the digest');
+});
+
+test('analysis without a reliable lemma/POS is preserved for verification, never counted as a headword', async () => {
+  const { rows, manifest, summary } = await produce(evidenceDoc([
+    cand('낯설다', 'adjective', [hit('d5', 'p1', '낯선')]),
+    cand('걸음', 'noun', [hit('d3', 'p1', '걸음')]),
+  ]));
+  assert.deepEqual(rows.map((row) => row.input), ['걸음']);
+  assert.deepEqual(manifest.unresolved_observations, [{ surface: '낯선', evidence: { kind: 'corpus-paragraph', ref: 'd5#p1' }, holds: ['analysis_unsupported'] }]);
+  assert.equal(summary.metrics.unique_lemmas, 1);
+  assert.equal(summary.metrics.unresolved_observations, 1);
+  await assert.rejects(() => produce(evidenceDoc([cand('낯설다', 'adjective', [hit('d5', 'p1', '낯선')])])), /no unprocessed lemmas/);
+});
+
+test('a candidate without a located paragraph is held on its surface observation', async () => {
+  const { rows } = await produce(evidenceDoc([cand('걸음', 'noun', [])]));
+  assert.deepEqual(rows[0].observations.map((o) => [o.evidence.kind, o.holds]), [['corpus-surface', ['no_evidence']]]);
+});
+
+test('canonical comparison: new lemma, new POS, possible new sense, and unsupported search forms are routed, never auto-covered', async () => {
+  const entries = [
+    ...CANONICAL,
+    { id: 'w3', record_type: 'entry', lemma: '가다', senses: [{ id: 'w3-s1', pos: 'verb', gloss: 'g' }] },
+  ];
+  const { rows, summary } = await produce(evidenceDoc([
+    cand('가다', 'verb', [hit('d1', 'p1', '가는'), hit('d2', 'p1', '가서')]),
+    cand('걸음', 'verb', [hit('d3', 'p1', '걸음')], { coverage_status: 'exact_canonical_lemma' }),
+    cand('짠하다', 'adjective', [hit('d4', 'p1', '짠한')]),
+  ]), {
+    canonicalEntries: entries,
+    searchFormSupport: buildSearchFormSupport([{ record_id: 'w3', sense_id: 'w3-s1', form: '가는', rule_id: 'r' }]),
+    analyzer: syntheticAnalyzer({ ...ANALYSES, 걸음: [[P('걸음', 'verb')]] }),
+  });
+  assert.equal(rows.length, 3, 'nothing is dropped as covered at Stage 1');
+  assert.deepEqual(summary.routes, {
+    new_entry: 1, new_pos_on_existing_lemma: 1, new_sense_on_existing_entry: 1,
+    lemmas_with_unsupported_forms: 1, unsupported_forms: 1, lemmas_with_holds: 0,
+  });
+  const index = buildCanonicalIndex(entries);
+  const support = buildSearchFormSupport([{ record_id: 'w3', sense_id: 'w3-s1', form: '가는', rule_id: 'r' }]);
+  const go = classifyLemmaCandidate(rows.find((row) => row.input === '가다'), index, support);
+  assert.deepEqual(go.routes.map((r) => [r.pos, r.route]), [['verb', 'new_sense_on_existing_entry']]);
+  assert.deepEqual(go.unsupported_forms, ['가서'], 'the supported form is not re-added; only 가서 needs the search coverage route');
+  assert.deepEqual(classifyLemmaCandidate(rows.find((row) => row.input === '짠하다'), index, support).unsupported_forms, [], 'a new lemma has no search-form gap');
+});
+
+test('the lemma batch feeds the shared factory identity adapter; each observation keeps its own hold', async () => {
+  const { rows } = await produce(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는'), hit('d2', 'p1', '가서')])]));
+  rows[0].observations[1].holds = ['analysis_ambiguous'];
+  const table = { 가다: { status: 'ok', analyses: [[P('가다', 'verb')]] } };
+  const analyzer = async (requests) => ({ metadata: { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0', top_n: 3 }, results: requests.map(({ id, text }) => ({ ...table[text], id, input_digest: analysisInputDigest(text) })) });
+  const { results } = await runFactoryIntake({ candidates: rows, analyzer, canonicalIndex: buildCanonicalIndex(CANONICAL) });
+  assert.deepEqual(results.map((r) => [r.source_candidate_id, r.observation_id, r.decision]), [
+    ['C000002-0001', 'C000002-0001.o01', 'semantic_qa'], ['C000002-0001', 'C000002-0001.o02', 'hold'],
+  ]);
 });
 
 test('replay is byte-identical and independent of evidence order', async () => {
@@ -109,7 +238,7 @@ test('replay is byte-identical and independent of evidence order', async () => {
   const shuffled = await produce(evidenceDoc([...candidates].reverse()));
   assert.equal(first.candidatesText, second.candidatesText);
   assert.equal(first.manifest.candidates_sha256, shuffled.manifest.candidates_sha256);
-  assert.deepEqual(first.rows.map((row) => row.candidate_id), ['C000001-0001', 'C000001-0002']);
+  assert.deepEqual(first.rows.map((row) => [row.candidate_id, row.input]), [['C000002-0001', '걸음'], ['C000002-0002', '짠하다']]);
 });
 
 test('fails closed on raw text, malformed evidence, incompatible analyzer and unrepresentable analysis', async () => {
@@ -123,7 +252,6 @@ test('fails closed on raw text, malformed evidence, incompatible analyzer and un
   await rejects(evidenceDoc([{ ...good[0], evidence: {} }]), 'representative_hits');
   await assert.rejects(() => produce(evidenceDoc(good), { analyzer: syntheticAnalyzer(ANALYSES, { ...METADATA, kiwipiepy_version: '0.25.0' }) }), /does not match pinned/);
   await rejects(evidenceDoc([{ ...good[0], proposed_lemma: 'abc' }]), 'Korean word');
-  // No hint and no analysis: nothing may be guessed.
   await assert.rejects(() => produce(evidenceDoc([{ ...good[0], proposed_pos: 'particle' }])), /proposed_pos/);
 });
 
@@ -134,28 +262,7 @@ test('an analyzer without the derivation-root proposal contract is refused and t
   await assert.rejects(() => produce(evidence, { analyzer: syntheticAnalyzer(ANALYSES, { ...METADATA, proposal_contract: 'other' }) }), /proposal_contract other/);
   const { manifest } = await produce(evidence);
   assert.equal(manifest.proposal_contract, 'derivation-root-v1');
-  const legacyDigest = (await import('../scripts/intake/pipeline.mjs')).analyzerDigest(METADATA);
   assert.equal(manifest.analyzer_digest, expectedAnalyzerDigest(manifest));
-  assert.notEqual(manifest.analyzer_digest, legacyDigest, 'the manifest digest binds the proposal contract');
-});
-
-test('an unsupported analysis keeps the extractor hint and an explicit hold instead of a guess', async () => {
-  const { rows } = await produce(evidenceDoc([cand('낯설다', 'adjective', [hit('d5', 'p1', '낯선')])]));
-  assert.deepEqual(rows[0].holds, ['analysis_unsupported']);
-  assert.equal(rows[0].input, '낯설다');
-});
-
-test('a candidate without a located paragraph is held, and bounded batches never split a lemma', async () => {
-  const none = await produce(evidenceDoc([cand('짠하다', 'adjective', [])]));
-  assert.deepEqual(none.rows[0].holds, ['no_evidence', 'analysis_unsupported'].sort().filter((h) => none.rows[0].holds.includes(h)));
-  assert.ok(none.rows[0].holds.includes('no_evidence'));
-  const bounded = await produce(evidenceDoc([
-    cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), hit('d3', 'p2', '걸음')]),
-    cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한'), hit('d1', 'p2', '짠해서')]),
-  ]), { maxCandidates: 3 });
-  assert.equal(bounded.rows.length, 2);
-  assert.deepEqual(bounded.summary.deferredLemmas, ['짠하다']);
-  await assert.rejects(() => produce(evidenceDoc([cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), hit('d3', 'p2', '걸음')])]), { maxCandidates: 1 }), /above the batch bound/);
 });
 
 test('batch ids are serial and collision-free', () => {
@@ -163,12 +270,13 @@ test('batch ids are serial and collision-free', () => {
   assert.equal(allocateBatchId(['C000001', 'C000007', 'junk']), 'C000008');
 });
 
-test('CLI writes an immutable, valid batch under data/candidates and nothing else; replays to the next id', async () => {
+test('CLI writes an immutable, valid lemma batch and nothing else; reruns only yield unproduced lemmas', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
   await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
   await mkdir(path.join(root, 'data/canonical'), { recursive: true });
   await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
-  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])])));
+  const writeEvidence = (candidates) => writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(candidates)));
+  await writeEvidence([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])]);
   const deps = { root, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
   const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none'];
 
@@ -181,24 +289,16 @@ test('CLI writes an immutable, valid batch under data/candidates and nothing els
   assert.deepEqual(await readdir(path.join(root, 'data')).then((names) => names.sort()), ['candidates', 'canonical', 'reference']);
   assert.equal(await readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'utf8'), first.candidatesText);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
-  // Same evidence again: every usage is already produced, so nothing is regenerated.
-  await assert.rejects(() => runStage1(args, deps), /no unprocessed usages/);
+  // Same evidence again: its lemma is already produced, so nothing is regenerated.
+  await assert.rejects(() => runStage1(args, deps), /no unprocessed lemmas/);
   assert.deepEqual((await readdir(path.join(root, 'data/candidates'))).sort(), ['C000001']);
-  // New evidence adds one usage: only that unprocessed usage becomes the next serial batch.
-  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'),
-    JSON.stringify(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한'), hit('d1', 'p2', '짠해서')])])));
+  // New evidence adds one more lemma and more evidence for a produced one: only the new headword is produced.
+  await writeEvidence([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한'), hit('d1', 'p2', '짠해서')]), cand('걸음', 'noun', [hit('d3', 'p1', '걸음')])]);
   const next = await runStage1(args, deps);
   assert.equal(next.manifest.batch_id, 'C000002');
-  assert.deepEqual(next.rows.map((row) => [row.candidate_id, row.evidence[0].ref]), [['C000002-0001', 'd1#p2']]);
-  assert.equal(next.summary.skippedProduced, 1);
+  assert.deepEqual(next.rows.map((row) => [row.candidate_id, row.input]), [['C000002-0001', '걸음']]);
+  assert.equal(next.summary.skippedProducedLemmas, 1);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
-  // A hand-copied batch repeating a produced usage is rejected globally by the shared validator.
-  const copy = path.join(root, 'data/candidates/C000003');
-  await mkdir(copy);
-  const text = first.candidatesText.replaceAll('C000001-', 'C000003-');
-  await writeFile(path.join(copy, 'candidates.jsonl'), text);
-  await writeFile(path.join(copy, 'manifest.json'), JSON.stringify({ ...first.manifest, batch_id: 'C000003', candidates_sha256: sha256Hex(text) }));
-  assert.ok((await validateFactoryRepository({ root })).some((error) => error.includes('repeats the usage of C000001-0001')));
 });
 
 test('CLI fails closed without permission, outside data/reference, on bad arguments and on a missing evidence file', async () => {
@@ -224,7 +324,7 @@ test('a multi-morpheme surface not explained by the proposed lemma is held; deri
     cand('사랑하다', 'verb', [hit('d9', 'p1', '사랑한')]),
     cand('사하다', 'verb', [hit('d10', 'p1', '사하다형')]),
   ]));
-  const by = Object.fromEntries(rows.map((row) => [row.input, row.holds]));
+  const by = Object.fromEntries(rows.map((row) => [row.input, row.observations.flatMap((o) => o.holds)]));
   assert.deepEqual(by.바람, ['lemma_mismatch']);
   assert.deepEqual(by.망각하다, []);
   assert.deepEqual(by.짠하다, []);
