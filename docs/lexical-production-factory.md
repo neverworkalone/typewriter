@@ -240,8 +240,10 @@ deterministic selection that first covers every form and group (a lemma that can
 covered within the cap fails the run), and `observation_total` + `observation_digest`
 bind the omitted remainder to the locally recoverable, text-free evidence; an optional
 text-free `usage_group` token on an extractor hit opens a separate usage group
-(`basis: corpus-hint`) so independently evidenced sense directions stay separately
-adjudicable. No usage group is created from POS alone beyond one default group per POS.
+(`basis: corpus-hint`). **The current extractor (`safeEvidenceHit`) emits no such token**, so
+real runs yield one default group per POS and Stage 1 gives no sense signal; independently
+evidenced sense directions are therefore adjudicated by Stage 2, which may split a group by
+observation (§5.1) instead of relying on Stage 1 to guess them.
 
 **Operator note: "500" now counts unique lemmas, not usages.** The run summary reports
 separately: unique lemmas, observed forms, POS hypotheses, usage groups, observations
@@ -496,6 +498,13 @@ observed form already a supported search form), `search_coverage` (meaning alrea
 canonical, `forms` = exactly the unsupported observed forms; the search/morphology
 route, not a lexical entry), `rejected` or `deferred`. An admitted candidate needs at
 least one included group; a rejected/held/deferred one none.
+
+A group may be **split**: several entries with the same `group_id`, each naming the
+`observation_ids` it judges. The entries of a group must partition its observations
+exactly, so every distinguishable evidence-backed sense opportunity inside a group gets
+its own disposition, reason, `hold_resolution` / sense claims and (for `covered` /
+`search_coverage`) its own search-form proof. A group with a single entry and no
+`observation_ids` covers all of its observations.
 
 `disposition` takes the existing meanings: included / corrected / held /
 rejected / deferred. `target.kind` is `new_entry`, `new_pos_on_existing_lemma`

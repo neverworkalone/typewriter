@@ -61,8 +61,8 @@ policy, the before/after data shape and the operator note: **"500" counts unique
   or v2) is not produced again and a later batch repeating one fails the shared validator.
   `data/candidates/C…/` may hold exactly `manifest.json` and `candidates.jsonl` (also enforced for v1),
   and `data/candidates/` only batch directories.
-- **Stage 2.** A v2 decision row keeps one row per `C…` id and adds `group_decisions` (one entry per
-  usage group, see design §5.1). `validateLemmaDecision` binds `included` groups to reviewed senses of
+- **Stage 2.** A v2 decision row keeps one row per `C…` id and adds `group_decisions` (entries per
+  usage group; a group may be split by `observation_ids` into independently judged sense opportunities, see design §5.1). The real extractor emits no `usage_group`, so this split is how Stage 2 separates senses. `validateLemmaDecision` binds `included` groups to reviewed senses of
   the same POS, per-group `hold_resolution`s, and the canonical proofs of `covered`/`search_coverage`
   (checked while the review is `ready`). The shared intake and hand-off receive per-observation views
   (`candidateViews`), so a hand-off entry per lemma+POS still exists and holds stay isolated.

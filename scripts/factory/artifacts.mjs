@@ -1,6 +1,7 @@
 import { REVIEWABLE_HOLDS, verifyProductionHandoff } from '../intake/production-handoff.mjs';
 import { candidateViews, intakeCandidates, toRawCandidate } from './identity-adapter.mjs';
 import { isLemmaRow } from './lemma-contract.mjs';
+import { resolveGroupEntries } from './lemma-decisions.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { decisionSenseReviews, validateAuthoredDecisionDisposition, validateDistinctSenseSemanticRationales, validateSenseReviews } from '../batch/authored-semantic-decision-source.mjs';
 import { SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION, validateAuthoredSemanticReviewBinding } from '../validate/semantic-decision-row.mjs';
@@ -140,15 +141,16 @@ function validateLemmaHandoffEntries(row, candidate, entryByKey) {
   }
   if (!ADMITTED.has(row.disposition)) return errors;
   if (row.reviewed_record?.lemma !== candidate.input) errors.push(`decision ${row.source_candidate_id}: reviewed lemma differs from the candidate input`);
-  for (const [index, group] of candidate.usage_groups.entries()) {
-    if (row.group_decisions?.[index]?.disposition !== 'included') continue;
-    const members = candidate.observations.filter((observation) => observation.group_id === group.group_id);
+  // Group entries are already validated by validateLemmaDecision; only the judged observations matter here.
+  const { entries } = resolveGroupEntries(row, candidate);
+  for (const { entry, group, members } of entries) {
+    if (entry.disposition !== 'included') continue;
     if (members.every((observation) => observation.holds.length)) continue;
-    const entry = entryByKey.get(`${candidate.input}\u0000${group.pos}`);
-    if (!entry || entry.decision === 'semantic_qa') continue;
-    const resolvable = entry.decision === 'hold' && entry.holds.every((hold) => REVIEWABLE_HOLDS.includes(hold));
-    const resolution = row.group_decisions[index].hold_resolution;
-    if (!resolvable) errors.push(`decision ${row.source_candidate_id} group ${group.group_id}: hand-off ${entry.decision} (${(entry.holds ?? []).join(', ')}) cannot be admitted`);
+    const handoffEntry = entryByKey.get(`${candidate.input}\u0000${group.pos}`);
+    if (!handoffEntry || handoffEntry.decision === 'semantic_qa') continue;
+    const resolvable = handoffEntry.decision === 'hold' && handoffEntry.holds.every((hold) => REVIEWABLE_HOLDS.includes(hold));
+    const resolution = entry.hold_resolution;
+    if (!resolvable) errors.push(`decision ${row.source_candidate_id} group ${group.group_id}: hand-off ${handoffEntry.decision} (${(handoffEntry.holds ?? []).join(', ')}) cannot be admitted`);
     else if (typeof resolution !== 'string' || !resolution) errors.push(`decision ${row.source_candidate_id} group ${group.group_id}: reviewable hold requires a hold_resolution`);
   }
   return errors;

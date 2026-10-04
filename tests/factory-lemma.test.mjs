@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { buildTextFreeCandidateEvidence } from '../scripts/reference/run-corpus-lemma-pilot.mjs';
 import { validateReviewArtifacts, reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import {
   CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, REVIEW_MANIFEST_CONTRACT, expectedAnalyzerDigest, sha256Hex, validateCandidateBatch,
@@ -209,7 +210,7 @@ test('every usage group needs one auditable disposition; sense opportunities can
   assert.deepEqual(run(goDecision()), []);
   const has = (errors, fragment) => assert.ok(errors.some((e) => e.includes(fragment)), `${fragment}: ${errors.join(' | ')}`);
   const groups = goDecision().group_decisions;
-  has(run(goDecision({ group_decisions: [groups[0]] })), 'exactly one entry per usage group');
+  has(run(goDecision({ group_decisions: [groups[0]] })), 'entries for every usage group');
   has(run(goDecision({ group_decisions: undefined })), 'must account for every usage group');
   has(run(goDecision({ group_decisions: [groups[0], { ...groups[1], disposition: 'rejected', sense_indexes: undefined, reason: '' }] })), 'candidate-specific reason');
   // The second group is dropped as rejected, so the second reviewed sense is unclaimed.
@@ -353,7 +354,7 @@ test('registered validator accepts a lemma batch Stage 2 transition and refuses 
   await write('data/reviews/C000002/manifest.json', JSON.stringify({ ...review, decisions_sha256: sha256Hex(broken) }));
   const failed = run();
   assert.notEqual(failed.status, 0);
-  assert.match(failed.stderr, /exactly one entry per usage group/);
+  assert.match(failed.stderr, /entries for every usage group/);
   await write('data/reviews/C000002/decisions.jsonl', decisionsText);
   await write('data/reviews/C000002/manifest.json', JSON.stringify(review));
   assert.equal(run().status, 0, run().stderr);
@@ -365,4 +366,57 @@ test('registered validator accepts a lemma batch Stage 2 transition and refuses 
   const result = run();
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /contract migration/);
+});
+
+// The real extractor's safe-evidence path carries no `usage_group`: two sense opportunities of one
+// lemma/POS arrive as ONE pos-default group, and Stage 2 must still adjudicate them separately.
+test('real safe-evidence output: two sense opportunities in one group get independent dispositions', async () => {
+  const rawHit = (paragraph, surface) => ({
+    source_path: 'source.json', corpus_id: 'corpus-1', document_id: 'document-1', document_ordinal: 1, paragraph_id: paragraph,
+    paragraph_ordinal: 1, source_category: 'literature', source_year: '2025', matched_surface_form: surface, context: 'RAW CORPUS CONTENT',
+  });
+  const inventory = {
+    ...evidenceDoc([]), orchestration: {}, analysis_cache: {}, evidence_collection: {}, selection: {}, yield: {}, typewriter_surface: {},
+    candidates: [{
+      proposed_lemma: '가다', proposed_pos: 'verb', coverage_status: 'uncovered', ambiguity_status: 'clear',
+      observed_surface_forms: [{ surface: '가는' }, { surface: '가서' }], observed_morpheme_spans: [], typewriter_surface_matches: [],
+      evidence: { representative_hits: [rawHit('p1', '가는'), rawHit('p2', '가서')] },
+    }],
+  };
+  const safe = buildTextFreeCandidateEvidence(inventory);
+  assert.ok(!JSON.stringify(safe).includes('RAW CORPUS CONTENT'));
+  const { rows, manifest, candidatesText } = await batchOf(safe);
+  assert.deepEqual(validateCandidateBatch({ manifest, candidatesText }), []);
+  const [go] = rows;
+  assert.equal(go.usage_groups.length, 1, 'the extractor gives Stage 1 no sense signal');
+  assert.deepEqual(go.observations.map((o) => o.observation_id), ['C000002-0001.o01', 'C000002-0001.o02']);
+
+  const [g1] = go.usage_groups;
+  const decision = (groupDecisions, over = {}) => ({
+    source_candidate_id: go.candidate_id, disposition: 'included', target: { kind: 'new_sense_on_existing_entry', entry_id: 'w3', context_sense_id: 'w3-s1' },
+    reviewed_record: { lemma: '가다', senses: [{ pos: 'verb', gloss: '다른 곳으로 옮겨 가다.' }] }, group_decisions: groupDecisions, ...over,
+  });
+  const split = [
+    { group_id: g1.group_id, observation_ids: ['C000002-0001.o01'], disposition: 'included', reason: '이동의 뜻이 분명하다.', sense_indexes: [0] },
+    { group_id: g1.group_id, observation_ids: ['C000002-0001.o02'], disposition: 'rejected', reason: '이 근거는 관용적 쓰임이라 별도 뜻으로 두지 않는다.' },
+  ];
+  assert.deepEqual(validateLemmaDecision(decision(split), go, { canonicalIndex: INDEX }), []);
+  const has = (groupDecisions, fragment, over) => assert.ok(
+    validateLemmaDecision(decision(groupDecisions, over), go, { canonicalIndex: INDEX }).some((e) => e.includes(fragment)), fragment,
+  );
+  has([split[0]], 'not judged by any entry');
+  has([split[0], { ...split[1], observation_ids: ['C000002-0001.o01'] }], 'more than one entry');
+  has([split[0], { ...split[1], observation_ids: ['C000002-0001.o09'] }], 'must name observations of this group');
+  has([split[0], { ...split[1], observation_ids: undefined }], 'non-empty, unique observation_ids');
+  has([{ ...split[0], observation_ids: undefined }, split[1]], 'non-empty, unique observation_ids');
+  // Each opportunity is judged on its own evidence: only the second entry's forms need search support.
+  const covered = (id, existing) => ({ group_id: g1.group_id, observation_ids: [id], disposition: 'covered', reason: '기존 뜻과 같다.', existing_entry_id: 'w3', existing_sense_id: 'w3-s1', ...existing });
+  const support = buildSearchFormSupport([{ record_id: 'w3', sense_id: 'w3-s1', form: '가는', rule_id: 'r' }]);
+  const rejected = { source_candidate_id: go.candidate_id, disposition: 'rejected', reason: '기존 항목이 포괄한다.' };
+  assert.ok(validateLemmaDecision({ ...rejected, group_decisions: [covered('C000002-0001.o01'), covered('C000002-0001.o02')] }, go, { canonicalIndex: INDEX, support })
+    .some((e) => e.includes('forms 가서 are not supported')));
+  assert.deepEqual(validateLemmaDecision({ ...rejected, group_decisions: [covered('C000002-0001.o01'), { ...covered('C000002-0001.o02'), disposition: 'search_coverage', forms: ['가서'] }] }, go, { canonicalIndex: INDEX, support }), []);
+
+  const artifacts = await artifactsFor(rows, [decision(split)]);
+  assert.deepEqual(validateReviewArtifacts({ ...artifacts, candidates: rows.slice(0, 1) }).filter((e) => !e.includes('semantic-decisions')), []);
 });
