@@ -71,9 +71,17 @@ def _proposals(tokens) -> list[dict]:
             lemma = form + "다" if pos in {"verb", "adjective"} else form
             result.append({"lemma": lemma, "pos": pos, "form": form})
         elif tag in DERIVATIONAL_SUFFIX_POS and previous is not None and previous["tag"] in {"NNG", "XR"}:
-            base = result[-1]["form"] if result and result[-1]["lemma"] == previous["form"] else previous["form"]
-            # `derived_from` keeps the analyzer's own root→suffix link so consumers need not infer it.
-            result.append({"lemma": base + form + "다", "pos": DERIVATIONAL_SUFFIX_POS[tag], "form": base + form, "derived_from": base})
+            root_index = len(result) - 1 if previous["tag"] == "NNG" and result and result[-1]["lemma"] == previous["form"] else None
+            base = result[root_index]["form"] if root_index is not None else previous["form"]
+            # `derived_from` / `derived_from_index` keep the analyzer's own root→suffix link: the root
+            # text and the position of its noun proposal in this path (None for a non-noun XR root).
+            result.append({
+                "lemma": base + form + "다",
+                "pos": DERIVATIONAL_SUFFIX_POS[tag],
+                "form": base + form,
+                "derived_from": base,
+                "derived_from_index": root_index,
+            })
         previous = {"tag": tag, "form": form}
     return result
 

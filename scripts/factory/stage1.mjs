@@ -116,10 +116,12 @@ export function resolveSurface(surface, hint, outcome) {
   if (!chosen) return { holds: ['analysis_ambiguous'], lemma: hint?.input ?? best[0].lemma, pos: hint?.pos ?? best[0].pos };
   const holds = [];
   // The chosen reading must explain the whole surface: another content morpheme of the same path
-  // is acceptable only as the root the analyzer itself recorded for the chosen derived predicate
-  // (`derived_from`, from an XSV/XSA suffix after NNG/XR). A string prefix proves nothing.
-  const derivedBase = (item) => item.pos === 'noun' && typeof chosen.derived_from === 'string'
-    && chosen.derived_from === item.form && best.indexOf(item) < best.indexOf(chosen);
+  // is acceptable only as the one root occurrence the analyzer linked to the chosen derived
+  // predicate (`derived_from_index`, from an XSV/XSA suffix after NNG). A same-spelled extra
+  // morpheme or a string prefix proves nothing.
+  const root = Number.isInteger(chosen.derived_from_index) ? best[chosen.derived_from_index] : undefined;
+  const derivedBase = (item) => item === root && item.pos === 'noun' && item.form === chosen.derived_from
+    && chosen.derived_from_index < best.indexOf(chosen);
   if (best.some((item) => item !== chosen && !derivedBase(item))) holds.push('lemma_mismatch');
   else if (hint?.input && chosen.lemma !== hint.input) holds.push('lemma_mismatch');
   else if (hint?.pos && chosen.pos !== hint.pos) holds.push('pos_mismatch');
