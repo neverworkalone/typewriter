@@ -101,3 +101,11 @@ test('the committed baseline matches current canonical data through the real cor
   for (const name of files) imports.push(...(await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line)));
   assert.equal(assertCanonicalOnlyFromReviewedBatches({ canonicalRecords: current.records, batchImportRecords: imports, baseline }), true);
 });
+
+test('the canonical non-batch baseline is classified as durable tracked evidence', async () => {
+  const policy = JSON.parse(await readFile('config/artifact-policy.json', 'utf8'));
+  const listed = JSON.stringify(policy);
+  assert.ok(listed.includes('data/validation/canonical-non-batch-baseline.json'), 'the baseline must be listed in config/artifact-policy.json');
+  const { validateArtifactPolicy } = await import('../scripts/validate/artifact-policy.mjs');
+  assert.equal(typeof validateArtifactPolicy, 'function');
+});
