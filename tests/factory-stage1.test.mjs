@@ -158,6 +158,17 @@ test('a candidate without a located paragraph is held, and bounded batches never
   await assert.rejects(() => produce(evidenceDoc([cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), hit('d3', 'p2', '걸음')])]), { maxCandidates: 1 }), /above the batch bound/);
 });
 
+test('a lemma group that does not fit is deferred whole while later smaller groups still fill the bound', async () => {
+  const filled = await produce(evidenceDoc([
+    cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), hit('d3', 'p2', '걸음')]),
+    cand('나', 'noun', [hit('d2', 'p1', '나는'), hit('d2', 'p2', '나는')]),
+    cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]),
+  ]), { maxCandidates: 3 });
+  assert.equal(filled.rows.length, 3);
+  assert.deepEqual(filled.summary.deferredLemmas, ['나']);
+  assert.deepEqual(filled.rows.map((row) => row.input), ['걸음', '걸음', '짠하다']);
+});
+
 test('batch ids are serial and collision-free', () => {
   assert.equal(allocateBatchId([]), 'C000001');
   assert.equal(allocateBatchId(['C000001', 'C000007', 'junk']), 'C000008');

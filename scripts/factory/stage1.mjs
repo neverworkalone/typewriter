@@ -173,14 +173,16 @@ export function buildCandidateRows({ usages, batchId, maxCandidates = DEFAULT_MA
   const fresh = usages.filter((usage) => !producedUsageKeys.has(keyOf(usage)));
   if (fresh.length === 0) throw new Stage1Error(['no unprocessed usages: every usage in the evidence is already in an existing candidate batch (source exhausted)']);
   const ordered = [...fresh].sort((a, b) => compare(a.input, b.input) || compare(a.pos, b.pos) || compare(a.ref.kind, b.ref.kind) || compare(a.ref.ref, b.ref.ref));
-  // Whole lemma groups only, so a lemma's usages never split across batches.
+  // Whole lemma groups only, so a lemma's usages never split across batches. First fit: a group
+  // that does not fit is deferred and later, smaller groups may still fill the batch, so a bound
+  // can be reached exactly without splitting a lemma. Deferred lemmas are picked up by later runs.
   const groups = new Map();
   for (const usage of ordered) groups.set(usage.input, [...(groups.get(usage.input) ?? []), usage]);
   const selected = [];
   const deferredLemmas = [];
   for (const [lemma, group] of groups) {
     if (group.length > maxCandidates) throw new Stage1Error([`lemma ${lemma} alone has ${group.length} usages, above the batch bound ${maxCandidates}`]);
-    if (deferredLemmas.length === 0 && selected.length + group.length <= maxCandidates) selected.push(...group);
+    if (selected.length + group.length <= maxCandidates) selected.push(...group);
     else deferredLemmas.push(lemma);
   }
   const rows = selected.map((usage, index) => {
