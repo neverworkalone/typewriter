@@ -242,13 +242,27 @@ is a #251 non-goal.
   `ci:normal`. Real kiwipiepy, the corpus index and the local analysis directory stay
   out of CI: use the real-route smoke above (pinned kiwipiepy 0.24.0, `TYPEWRITER_PYTHON`).
 
-`tests/validator-b16-positive.test.mjs` (normal CI) is the positive validator
-fixture: in a temp tree it runs the real hand-off CLI (`build`, `bind`), the real
-batch builder with `--intake-handoff` (refused without it) and the real
-`validate-issue-223.mjs` for a small B16 (two synthetic candidates `소년기`/`청년기`
-whose corpus counts are synthetic test data, plus B15's real held `호시탐탐`;
-`tests/fixtures/validator-b16`). Only the Kiwi model is replaced, by a
-deterministic stand-in `kiwipiepy` placed on `PYTHONPATH` (CI has no model); the
-pinned version check, stability retries, binding and fresh-analysis comparison all
-run unchanged. It then removes or tampers the tracked hand-off and expects the
-validator to fail.
+### B16 boundary tests and the single shared canonical context (#253)
+
+`ci:normal` keeps one complete-revision context, so no registered test starts a
+second complete-canonical validator. The boundary logic is therefore extracted from
+`validateCorpusBatches` into shared functions that both the validator and the tests
+call: `classifyCandidateReview` (review-only recognised and restricted to B05 before
+any early continue), `assertCanonicalImportsReviewed` and `verifyBatchIntakeArtifacts`
+(policy, hand-off/integration-block pairing, offline hand-off verification), plus the
+baseline gate. `tests/intake-batch-boundary.test.mjs` (normal CI, ~2 s) exercises them
+on small inputs and, in a temp tree, runs the real hand-off CLI (`build`, `bind`) and
+the real batch builder for a small B16 (two synthetic candidates `소년기`/`청년기` whose
+corpus counts are synthetic test data, plus B15's real held `호시탐탐`;
+`tests/fixtures/validator-b16`), then applies the shared checks to the produced
+artifacts (missing/tampered hand-off, stripped source holds, injected canonical
+records). Only the Kiwi model is replaced, by a deterministic stand-in `kiwipiepy`
+on `PYTHONPATH`; version pin, stability retries, binding and fresh-analysis
+comparison run unchanged.
+
+The complete end-to-end run of the real `validate-issue-223.mjs` (normal B16 passes;
+hand-off removed/tampered, B16+ review-only, an unrelated-name canonical record and
+an unreviewed B16 import fail) is the manual integration
+`npm run intake:validator:integration` (~50 s, six full-validator runs). It is not
+part of CI because each run re-reads all canonical data; the per-PR normal run already
+executes the real validator once via `batch:issue-223:check`.

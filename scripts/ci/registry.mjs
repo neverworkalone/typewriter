@@ -210,8 +210,7 @@ export const CI_CATEGORIES = Object.freeze({
         'Test Issue #223 committed-artifact cross-file regressions',
         ['--test', 'scripts/batch/issue-223-tracked-artifacts.test.mjs'],
       ),
-      testCheck('tests/validator-b16-positive.test.mjs', 'Test a normal B16 (real hand-off, builder, tracked validator with a deterministic kiwipiepy stand-in) passes and its bypasses fail'),
-      testCheck('tests/validate-issue-223-boundary.test.mjs', 'Test the real Issue #223 validator boundary: B16+ review-only, direct canonical insertion and orphan imports fail'),
+      testCheck('tests/intake-batch-boundary.test.mjs', 'Test B16+ review-only, canonical-import review, intake artifact verification and a real builder run (no complete-canonical validator rerun)'),
       npmCheck('Validate Issue #223 committed M9-E checkpoint artifacts', 'batch:issue-223:check'),
       commandCheck(
         'Test Issue #223 source-bound paragraph references',

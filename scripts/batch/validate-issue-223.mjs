@@ -301,6 +301,44 @@ function stripVolatileDatabaseMetadata(snapshot) {
 
 // The builder only produces a review-only artifact for owner-directed B05; a later batch
 // must not use that status to skip the mandatory hand-off and semantic validation.
+// First thing done with every tracked candidate review (before any early continue):
+// the review-only status is recognised and restricted to B05.
+export function classifyCandidateReview(candidateReview) {
+  const reviewOnly = candidateReview.canonical_import_status === 'owner-deferred-review-only';
+  const { ordinal } = parseIssue223BatchId(candidateReview.batch_id);
+  assertReviewOnlyAllowed(ordinal, reviewOnly);
+  assert.ok(candidateReview.canonical_import_status === undefined || reviewOnly,
+    `${candidateReview.batch_id} has an unsupported canonical import status`);
+  return { ordinal, reviewOnly };
+}
+
+// A canonical import file of a batch that must carry the intake hand-off needs a reviewed candidate review.
+export function assertCanonicalImportsReviewed(canonicalNames, reviewNames) {
+  for (const name of canonicalNames) {
+    const match = /^issue-223-m9-e-corpus-batch-(\d+)(?:-\d{8})?\.jsonl$/u.exec(name);
+    if (match && requiresIntakeHandoff(Number(match[1]))) {
+      const stem = name.replace(/\.jsonl$/u, '');
+      assert.ok(reviewNames.includes(`${stem}-candidate-review.json`),
+        `${name} is a canonical import without a reviewed ${stem}-candidate-review.json`);
+    }
+  }
+  return true;
+}
+
+// Tracked intake artifacts of one batch: policy (mandatory from the activation batch), pairing of
+// the hand-off file with the review-input integration block, and offline hand-off verification.
+export function verifyBatchIntakeArtifacts({ candidateReview, semanticInputBytes, handoffBytes, label }) {
+  const trackedInput = semanticInputBytes ? JSON.parse(semanticInputBytes.toString('utf8')) : null;
+  const { ordinal } = parseIssue223BatchId(candidateReview.batch_id);
+  assertIntakeHandoffPolicy({ batchOrdinal: ordinal, hasHandoff: Boolean(trackedInput?.intake_handoff) && Boolean(handoffBytes), label });
+  if (trackedInput?.intake_handoff !== undefined || handoffBytes) {
+    assert.ok(trackedInput?.intake_handoff && handoffBytes,
+      `${label} intake hand-off and its review-input integration block must exist together`);
+    verifyTrackedHandoff({ handoffBytes, semanticInput: trackedInput, candidateRows: candidateReview.decisions, batchId: candidateReview.batch_id });
+  }
+  return true;
+}
+
 export function assertReviewOnlyAllowed(batchOrdinal, reviewOnly) {
   if (reviewOnly) assert.equal(batchOrdinal, 5, 'only B05 is an owner-directed review-only batch; later batches cannot skip semantic and intake validation');
   return true;
@@ -312,16 +350,8 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     .filter((name) => /^issue-223-m9-e-corpus-batch-\d+-candidate-review\.json$/u.test(name))
     .sort((left, right) => Number(/batch-(\d+)/u.exec(left)?.[1]) - Number(/batch-(\d+)/u.exec(right)?.[1]));
   assert.ok(names.length > 0, 'Issue #223 needs at least one corpus candidate review');
-  // A canonical import for a batch that must carry the intake hand-off cannot exist without a
-  // reviewed batch (no direct insertion of an unreviewed canonical file).
-  for (const name of await readdir(path.join(ROOT, 'data/canonical'))) {
-    const match = /^issue-223-m9-e-corpus-batch-(\d+)(?:-\d{8})?\.jsonl$/u.exec(name);
-    if (match && requiresIntakeHandoff(Number(match[1]))) {
-      const stem = name.replace(/\.jsonl$/u, '');
-      assert.ok(names.includes(`${stem}-candidate-review.json`),
-        `${name} is a canonical import without a reviewed ${stem}-candidate-review.json`);
-    }
-  }
+  // A canonical import for a batch that must carry the intake hand-off cannot exist without a reviewed batch.
+  assertCanonicalImportsReviewed(await readdir(path.join(ROOT, 'data/canonical')), names);
   const batches = [];
   const seenInventoryIds = new Set();
   const seenCandidateIds = new Set();
@@ -337,10 +367,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     const importPath = path.join(ROOT, 'data/canonical', `${stem}.jsonl`);
     const candidateBytes = await readFile(candidatePath);
     const candidateReview = JSON.parse(candidateBytes.toString('utf8'));
-    const reviewOnly = candidateReview.canonical_import_status === 'owner-deferred-review-only';
-    assertReviewOnlyAllowed(parseIssue223BatchId(candidateReview.batch_id).ordinal, reviewOnly);
-    assert.ok(candidateReview.canonical_import_status === undefined || reviewOnly,
-      `${candidateReview.batch_id} has an unsupported canonical import status`);
+    const { reviewOnly } = classifyCandidateReview(candidateReview);
     const [semanticBytes, importBytes] = reviewOnly
       ? [null, null]
       : await Promise.all([readFile(semanticPath), readFile(importPath)]);
@@ -546,22 +573,12 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     const semanticInputBytes = await fileExists(semanticInputPath) ? await readFile(semanticInputPath) : null;
     const selfCheckBatch = semanticInputBytes !== null && isSelfCheckInput(JSON.parse(semanticInputBytes.toString('utf8')));
     const intakeHandoffPath = path.join(BATCH_DIRECTORY, `${stem}-intake-handoff.json`);
-    const trackedInput = semanticInputBytes ? JSON.parse(semanticInputBytes.toString('utf8')) : null;
-    assertIntakeHandoffPolicy({
-      batchOrdinal: parseIssue223BatchId(candidateReview.batch_id).ordinal,
-      hasHandoff: Boolean(trackedInput?.intake_handoff) && await fileExists(intakeHandoffPath),
+    verifyBatchIntakeArtifacts({
+      candidateReview,
+      semanticInputBytes,
+      handoffBytes: await fileExists(intakeHandoffPath) ? await readFile(intakeHandoffPath) : null,
       label: candidateLabel,
     });
-    if (trackedInput?.intake_handoff !== undefined || await fileExists(intakeHandoffPath)) {
-      assert.ok(trackedInput?.intake_handoff && await fileExists(intakeHandoffPath),
-        `${candidateLabel} intake hand-off and its review-input integration block must exist together`);
-      verifyTrackedHandoff({
-        handoffBytes: await readFile(intakeHandoffPath),
-        semanticInput: trackedInput,
-        candidateRows: candidateReview.decisions,
-        batchId: candidateReview.batch_id,
-      });
-    }
     const boundInput = validateSemanticReviewInputBinding({
       semanticSource,
       inputBytes: semanticInputBytes,
