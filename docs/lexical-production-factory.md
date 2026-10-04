@@ -772,12 +772,15 @@ allowlist, complete factory transitions, reproducible SQLite build, exact direct
 search and the one-current-revision-build invariant. Stage 3 does not alter Deep
 CI.
 
-A real GitHub end-to-end attempt requires a merged ready Stage 2 review. If the
-master queue has none, the worker's read-only dry run reports an empty queue; the
-actual claim → Draft PR → rejection/merge lifecycle remains an operator-run
-integration check once a ready review exists. Recovery is explicitly invoked
-with `--resume-batch C000001 --attempt 1`; the worker never adopts an ambiguous
-live claim based on a login or token identity.
+Owner override for Issue #266 (2026-10-04): validate the real GitHub claim/ref →
+starter push → Draft → lexical rejection → status-PR merge lifecycle later in
+an actual pilot. This lifecycle validation is **TBD for this implementation
+PR**; it was not executed, and no passing integration result is claimed. Do not
+replace it with fake or mocked tests. Synthetic tests may cover local behavior,
+but they do not establish real GitHub control-plane lifecycle evidence. The
+current master queue's empty dry-run result is operational context only.
+Recovery is explicitly invoked with `--resume-batch C000001 --attempt 1`; the
+worker never adopts an ambiguous live claim based on a login or token identity.
 
 ## Related documents
 
