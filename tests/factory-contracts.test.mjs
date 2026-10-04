@@ -113,7 +113,7 @@ test('legal candidate and review transitions pass; unsupported ones fail', () =>
   const created = candidateBatch().manifest;
   const complete = { ...created, status: 'complete' };
   const ready = reviewManifest();
-  const done = { ...ready, status: 'complete' };
+  const done = { ...ready, status: 'complete', admission: { contract: 'lexical-factory-admission-v1' } };
   const rejected = { ...ready, status: 'rejected', rejected_pr: 17, history: [{ attempt: 1, rejected_pr: 17 }] };
   const rework = { ...ready, attempt: 2, decisions_sha256: HEX('d2'), history: rejected.history };
 

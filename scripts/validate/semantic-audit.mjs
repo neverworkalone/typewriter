@@ -1883,7 +1883,7 @@ function validateSemanticReviewSense(
   );
 }
 
-function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache } = {}) {
+function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache, factoryAdmissions = [] } = {}) {
   const pass = requireObject(artifact.review_pass, `${label}.review_pass`);
   requireString(pass.id, `${label}.review_pass.id`);
   if (pass.status !== 'complete') fail(`${label}.review_pass.status must be complete`, 'SEMANTIC_AUDIT_INCOMPLETE');
@@ -1962,9 +1962,18 @@ function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache } 
   for (const [recordId, recordHistory] of correctionsByRecord.entries()) {
     const record = recordsById.get(recordId);
     const lastCorrection = recordHistory.at(-1);
-    if (lastCorrection.after_record_sha256 !== cachedSha256Json(record, hashCache)) {
+    let expectedCurrentDigest = lastCorrection.after_record_sha256;
+    for (const event of factoryAdmissions) {
+      for (const change of event.changes ?? []) {
+        if (change.entry_id === recordId && change.operation === 'append_senses'
+          && change.before_sha256 === expectedCurrentDigest) {
+          expectedCurrentDigest = change.after_sha256;
+        }
+      }
+    }
+    if (expectedCurrentDigest !== cachedSha256Json(record, hashCache)) {
       fail(
-        `${label}.review_pass.correction_history for ${recordId} is not bound to the repaired canonical record`,
+        `${label}.review_pass.correction_history and source-bound Stage 3 admission history for ${recordId} do not bind the current canonical record`,
         'SEMANTIC_AUDIT_CONTENT_MISMATCH',
       );
     }
@@ -2174,6 +2183,7 @@ export function validateSemanticReviewArtifact(
     requireDecisionSource = true,
     requireTopicAnalysis = true,
     hashCache,
+    factoryAdmissions = [],
   } = {},
 ) {
   requireObject(artifact, label);
@@ -2194,7 +2204,7 @@ export function validateSemanticReviewArtifact(
     artifact,
     `review-core:${requireDecisionSource}:${requireTopicAnalysis}`,
     () => {
-    validateSemanticReviewPass(recordInfos, artifact, label, { hashCache });
+    validateSemanticReviewPass(recordInfos, artifact, label, { hashCache, factoryAdmissions });
     const records = recordInfos.map(recordOf);
     const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
     const source = requireObject(artifact.source, `${label}.source`);
@@ -2304,6 +2314,7 @@ export function validateSemanticDecisionSource(
   if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
     fail(`${label}.source.canonical_records_sha256 does not match the complete canonical input`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
   }
+  const factoryAdmissions = validateFactoryAdmissionLedger(decisionSource, recordInfos, label);
   const authoredReview = requireObject(decisionSource.authored_review, `${label}.authored_review`);
   requireDigest(decisionSource.authored_review_sha256, `${label}.authored_review_sha256`);
   if (decisionSource.authored_review_sha256 !== cachedSha256Json(authoredReview, hashCache)) {
@@ -2319,6 +2330,7 @@ export function validateSemanticDecisionSource(
       baseRecords,
       label: `${label}.authored_review`,
       hashCache,
+      factoryAdmissions,
     });
     return authoredReview;
   }
@@ -2349,7 +2361,7 @@ export function validateSemanticDecisionSource(
       );
     },
   });
-  validateSemanticReviewPass(recordInfos, materializedReview, authoredReviewLabel, { hashCache });
+  validateSemanticReviewPass(recordInfos, materializedReview, authoredReviewLabel, { hashCache, factoryAdmissions });
   validateSemanticReviewChanges(
     recordInfos,
     baseRecords,
@@ -2358,6 +2370,88 @@ export function validateSemanticDecisionSource(
     { hashCache },
   );
   return materializedReview;
+}
+
+function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
+  if (decisionSource.factory_admissions === undefined) return [];
+  const events = requireArray(decisionSource.factory_admissions, `${label}.factory_admissions`);
+  const canonicalById = new Map(recordInfos.map((recordInfo) => {
+    const record = recordOf(recordInfo);
+    return [record.id, record];
+  }));
+  const reviewById = new Map((decisionSource.authored_review?.records ?? []).map((row) => [row.record_id, row]));
+  const eventKeys = new Set();
+  const latestChangeByRecord = new Map();
+  for (const [eventIndex, event] of events.entries()) {
+    const eventLabel = `${label}.factory_admissions[${eventIndex}]`;
+    requireObject(event, eventLabel);
+    requireString(event.batch_id, `${eventLabel}.batch_id`);
+    if (!/^C\d{6}$/u.test(event.batch_id) || !Number.isInteger(event.attempt) || event.attempt < 1) {
+      fail(`${eventLabel} needs a valid batch and attempt`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    }
+    const eventKey = `${event.batch_id}-a${event.attempt}`;
+    if (eventKeys.has(eventKey)) fail(`${eventLabel} duplicates Stage 3 attempt ${eventKey}`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    eventKeys.add(eventKey);
+    requireDigest(event.semantic_decisions_sha256, `${eventLabel}.semantic_decisions_sha256`);
+    requireDigest(event.sha256, `${eventLabel}.sha256`);
+    const eventWithoutDigest = { ...event };
+    delete eventWithoutDigest.sha256;
+    if (event.sha256 !== sha256Json(eventWithoutDigest)) fail(`${eventLabel}.sha256 does not bind its Stage 3 admission event`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    const entries = requireArray(event.entries, `${eventLabel}.entries`);
+    const mappings = new Map();
+    for (const [entryIndex, entry] of entries.entries()) {
+      const entryLabel = `${eventLabel}.entries[${entryIndex}]`;
+      requireObject(entry, entryLabel);
+      requireString(entry.source_candidate_id, `${entryLabel}.source_candidate_id`);
+      requireString(entry.record_id, `${entryLabel}.record_id`);
+      const senseIds = requireArray(entry.sense_ids, `${entryLabel}.sense_ids`);
+      if (!/^C\d{6}-\d{4}$/u.test(entry.source_candidate_id) || !/^[wr]\d{3,}$/u.test(entry.record_id)
+        || senseIds.length === 0 || senseIds.some((senseId) => typeof senseId !== 'string')) {
+        fail(`${entryLabel} has an invalid candidate-to-canonical mapping`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      if (mappings.has(entry.source_candidate_id)) fail(`${eventLabel} repeats ${entry.source_candidate_id}`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      mappings.set(entry.source_candidate_id, entry);
+    }
+    const changes = requireArray(event.changes, `${eventLabel}.changes`);
+    if (changes.length === 0) fail(`${eventLabel}.changes must record at least one canonical record`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    const seenRecords = new Set();
+    for (const [changeIndex, change] of changes.entries()) {
+      const changeLabel = `${eventLabel}.changes[${changeIndex}]`;
+      requireObject(change, changeLabel);
+      requireString(change.entry_id, `${changeLabel}.entry_id`);
+      if (!['create', 'append_senses'].includes(change.operation)) fail(`${changeLabel}.operation is unsupported`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      if (seenRecords.has(change.entry_id)) fail(`${eventLabel} repeats canonical record ${change.entry_id}`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      seenRecords.add(change.entry_id);
+      if (change.operation === 'create' ? change.before_sha256 !== null : !SHA256_PATTERN.test(change.before_sha256 ?? '')) {
+        fail(`${changeLabel}.before_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      requireDigest(change.after_sha256, `${changeLabel}.after_sha256`);
+      if (change.operation === 'create' ? change.previous_semantic_review_sha256 !== null : !SHA256_PATTERN.test(change.previous_semantic_review_sha256 ?? '')) {
+        fail(`${changeLabel}.previous_semantic_review_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      requireDigest(change.semantic_review_sha256, `${changeLabel}.semantic_review_sha256`);
+      const mappingSources = requireArray(change.source_candidate_ids, `${changeLabel}.source_candidate_ids`);
+      if (mappingSources.length === 0 || mappingSources.some((sourceCandidateId) => mappings.get(sourceCandidateId)?.record_id !== change.entry_id)) {
+        fail(`${changeLabel}.source_candidate_ids do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      const previous = latestChangeByRecord.get(change.entry_id);
+      if (previous && (change.operation !== 'append_senses' || change.before_sha256 !== previous.after_sha256
+        || change.previous_semantic_review_sha256 !== previous.semantic_review_sha256)) {
+        fail(`${changeLabel} does not continue the previous Stage 3 record and semantic review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      latestChangeByRecord.set(change.entry_id, change);
+    }
+    if (entries.some((entry) => !seenRecords.has(entry.record_id))) fail(`${eventLabel} has a candidate mapping without a canonical change`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+  }
+  for (const [recordId, change] of latestChangeByRecord) {
+    const record = canonicalById.get(recordId);
+    const review = reviewById.get(recordId);
+    if (!record || !review) fail(`${label}.factory_admissions latest change for ${recordId} has no canonical record or semantic review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    if (cachedSha256Json(record) !== change.after_sha256 || sha256Json(review) !== change.semantic_review_sha256) {
+      fail(`${label}.factory_admissions latest change for ${recordId} does not bind the current canonical record and review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    }
+  }
+  return events;
 }
 
 /**

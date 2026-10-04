@@ -537,9 +537,14 @@ while a `rejected` status-only PR is open, so `ready` alone cannot tell a fresh
 batch from one being worked on. Each Stage 3 attempt therefore has a durable,
 crash-safe record:
 
-- **Attempt claim ref** `stage3-claims/C…-aN`, `N` = the review manifest's
-  `attempt` on `master`. Created atomically (422 ⇒ another invocation owns that
-  attempt). It is the only lock; the PR is linked to it by name (below).
+- **Global lock and attempt claim.** Before selecting any batch, a worker checks
+  for `stage3-active`, any `stage3-claims/C…-aN` ref, or any open Stage 3 PR. It
+  stops if any exists. To start work, it atomically creates the singleton ref
+  `stage3-active`, pointing to a unique Git commit whose message records the
+  batch, attempt, master SHA and random owner token; it then creates the
+  per-attempt ref `stage3-claims/C…-aN`. A competing invocation that loses the
+  singleton-ref race stops without falling through to another ready batch. The
+  PR is linked to the per-attempt ref by name (below).
 - **Step 0: the admission PR is opened first, as a draft**, immediately after the
   claim, before preflight. GitHub cannot create a PR whose head has no commit
   ahead of base, so the branch `<agent>/stage3/C…-aN` (`claude` or `codex`) is created from `master` with one
@@ -553,9 +558,11 @@ crash-safe record:
   attempt's traceable identifier and is what `rejected_pr` always cites,
   including when preflight fails before any canonical change exists (the draft is
   then closed, never merged).
-- **Selection rule.** Stage 3 skips a `ready` batch if `stage3-claims/C…-aN`
-  exists for the current `attempt`, or if any open PR (admission or
-  rejection status-only) references that batch.
+- **Selection rule.** Stage 3 starts no batch while the global lock, any
+  per-attempt claim ref, or any open admission or rejection status PR exists.
+  A claim collision or concurrent global-lock winner ends that invocation;
+  it never advances to another batch. This makes serial admission global across
+  separate worker processes, not just sequential within one session.
 - **Idempotent recovery of an interrupted attempt** (resolved *before* any fresh
   admission; usernames never distinguish sessions, so state is read from the
   claim ref, the branch and PRs, never from "who am I"): (a) open admission PR
@@ -563,14 +570,18 @@ crash-safe record:
   await that PR, do not re-admit; (c) admission PR closed and no rejection PR ⇒
   create the rejection status-only PR citing it; (d) claim ref but no PR ⇒ look
   for a branch `*/stage3/C…-aN` and its PR, else recreate the draft from the
-  starter commit. Because ownership is not inferred, a *concurrent* second session
-  that finds a live claim does nothing and moves on; only a claim that is
-  evidently abandoned is resumed, as directed by the owner (the same manual rule
-  as §3.1). Duplicate admission is prevented by the claim ref plus the PR linkage,
-  not by session identity.
-- **Release.** The claim ref is deleted when the admission PR merges
-  (`complete`) or when the rejection status-only PR merges (`rejected`; the next
-  attempt number gets a new ref).
+  starter commit. A second session that finds a live global lock does nothing.
+  Recovery requires the explicit batch and attempt and the matching lock owner;
+  a lock without its attempt ref can recreate that ref under the same lock. A
+  lock for another attempt, a second claim, or an unrelated open Stage 3 PR fails
+  closed. Duplicate admission is prevented by the singleton ref plus the PR
+  linkage, not by session identity.
+- **Release.** Only after the admission PR merges (`complete`) or the rejection
+  status-only PR merges (`rejected`) and that exact state is verified on current
+  `master`, delete the attempt claim and then the matching global lock. If the
+  process crashes between those deletions, the remaining lock identifies the
+  merged attempt so explicit recovery can finish cleanup. The next attempt gets
+  a new per-attempt ref.
 
 ### 6.1 Successful path
 
@@ -702,48 +713,31 @@ its `stage2-claims/C…` ref (§3). Systemic rejections do not enter the queue.
 | 7 | The admission allocator emits colliding ids for several batches. | Systemic: halt, fix allocator, add a regression, resume the unchanged batches (§6.3). |
 | 8 | Assignee leaves. | Transfer by comment, keep ref/branch; stale rules in §3.1. |
 
-## 10. Current repository mapping and verified mismatches
+## 10. Current repository mapping and compatibility decisions
 
-Verified against `master` (3a7c452) rather than assumed.
+The factory has two candidate contracts: historical v1 usage rows remain
+immutable, while new v2 batches group a lemma's forms, observations and usage
+groups under one `C…-NNNN` candidate. Stage 3 consumes either version through
+the shared review decisions and hand-off.
 
-| Factory concept | Current repository state |
+| Factory concept | Current implementation |
 | --- | --- |
-| Candidate contract | `scripts/intake/candidate-contract.mjs`, v1: fields `input`, `pos`, `observedForms`, `evidence` (≤5), `holds`, `key`. No `candidate_id`, no `usage_hint`. |
-| Identity | `candidateKey({input,pos}) = input + "\0" + (pos ?? "")`. |
-| De-duplication | `dedupeCandidates` **merges everything with the same key**, unioning forms/evidence/adapters. |
-| Coverage | `scripts/intake/pipeline.mjs`: `runIntake({coveredLemmas})` treats **exact lemma** membership as `covered` (decision `covered`, never analyzed or handed off). |
-| Hand-off | `production-handoff.mjs` writes one text-free `*-intake-handoff.json` per batch; entries keyed by `candidateKey`. Mandatory from corpus batch 16 (`INTAKE_HANDOFF_FIRST_BATCH`). |
-| Batch builder | `scripts/batch/build-issue-223-corpus-batch.mjs` is the only declared canonical writer (`production-entrypoints.mjs`); ids are `issue-223-m9-e-corpus-batch-NN-YYYYMMDD`; internal review-row ids `${batchId}-candidate-NNNN`; canonical ids `w` + next number. |
-| Tracked batch artifacts | `data/batches/<batch>-candidate-review.json`, `-semantic-decisions.json` (`lexical-semantic-decision-source-v4`), `-semantic-review-input.json`, plus `data/canonical/<batch>.jsonl`. |
-| Canonical gate | `data/validation/canonical-non-batch-baseline.json` + `CANONICAL_RECORD_OUTSIDE_REVIEWED_BATCH` in `validate-issue-223.mjs`; entrypoint tripwire test. |
-| Canonical `candidate_id` | Present on canonical entries and equals the entry `id` (`w12144`). Uniqueness enforced in `scripts/validate/canonical-context.mjs`. |
+| Candidate identity and producer | `scripts/factory/stage1.mjs`; v2 candidates are lemma-centered and carry text-free usage groups and observations. Historical v1 batches stay valid. |
+| Stage 2 review contract | `scripts/factory/contract.mjs`, `artifacts.mjs`, `lemma-decisions.mjs`, `handoff.mjs` and `stage2-worker.mjs`; review digests bind candidate, decisions, semantic decisions and hand-off. |
+| Stage 3 allocator and writer | `scripts/factory/admission.mjs`; deterministic `w…`/sense IDs, reference remapping, new entries, and append-only new POS/sense support for existing records. Canonical `candidate_id` remains the `w…` record id. |
+| Attempt protocol | `scripts/factory/stage3-worker.mjs`, `github-client.mjs` and `run-stage3-worker.mjs`; singleton global lock, atomic per-attempt ref, metadata starter commit, Draft PR before preflight, serial wait, explicit attempt recovery and merge-gated ref release. |
+| Complete semantic authority | `scripts/factory/semantic-authority.mjs` extends `canonical-semantic-decision-source.json` only from the source-bound Stage 2 decision digest; its admission ledger binds each canonical and compact semantic-review change. |
+| Admission baseline and search/build gates | `scripts/batch/validate-issue-223.mjs`, `canonical-batch-baseline.mjs`, `production-entrypoints.mjs` and the registered Stage 3 CI test. Stage 3-created records remain subject to the complete-canonical audit, baseline and one-build check. |
 
-### 10.1 Collisions the implementation must design around
+Resolved compatibility choices:
 
-1. **`candidateKey` collapses distinct usages.** (Issue #275: v2 candidates are one
-   per lemma, so the per-usage identity below is historical v1; usages are carried
-   as nested usage groups and observations under the lemma candidate, and the shared
-   intake receives per-observation views.) Two candidates with the same
-   `input` and `pos` but different usages share a key and `dedupeCandidates`
-   merges them into one. The factory treats them as separate identities
-   (`C…-0001`, `C…-0002`). A safe route is needed: either an adapter that keeps
-   `candidate_id` as the unit and uses `candidateKey` only to look up shared
-   analysis, or a new factory identity layered on top. The shared contract must
-   not be silently changed for B05–B16 history.
-2. **Exact-lemma coverage hides new POS and new senses.** A candidate whose lemma
-   is already canonical becomes `covered` and is dropped. The factory needs the
-   opposite for "new POS on an existing lemma" and "new sense of an existing
-   lemma/POS". Coverage must become POS/sense-aware for factory candidates (the
-   key `lemma+POS`, then a sense-level decision made in Stage 2) without turning
-   genuine duplicates into admissions.
-3. **`C…` vs `w…` vs `candidate_id`.** Three id spaces exist: factory
-   `C000001-0001`, canonical `w…` ids and the canonical `candidate_id` field.
-   They must stay separate (§7.4).
-
-A **third open point**: the current canonical import expresses new *entries*
-(`record_type: "entry"`, one lemma per record). Whether the existing import,
-validators and build can add a sense (or POS) to an already-canonical entry
-without rewriting or breaking baseline/digest gates is unverified.
+1. Historical `candidateKey` and corpus-batch behavior are unchanged. New v2
+   candidates preserve a lemma's usage groups instead of collapsing them into
+   separate candidate identities.
+2. Stage 1 routes existing lemmas to explicit new-POS or new-sense decisions;
+   Stage 3 appends reviewed senses without changing existing canonical identity.
+3. `source_candidate_id` stays in the review admission mapping. Canonical
+   `candidate_id` remains the `w…` record id.
 
 ## 11. Compliance constraints
 
@@ -762,73 +756,31 @@ without rewriting or breaking baseline/digest gates is unverified.
   exclusivity (§3, §6.0) and must hold identically with one, two or ten Stage 2
   agents. Root [`AGENTS.md`](../AGENTS.md) carries the short role-boundary entry point.
 
-## 12. Verification still needed and implementation test plan
+## 12. Stage 3 implementation checks
 
-This is the input to a **later implementation issue**; none of it is done here.
+Issue #266 implements the Stage 3 lifecycle and synthetic fault tests. The
+registered suite covers deterministic allocation and relation remapping, new
+entry/POS/sense writes, latest-master lexical conflicts, global lock races
+across different ready batches, fail-closed claim/open-PR blocking, no fallback
+after a claim collision, the actual-number rejection payload, starter removal
+before the ready transition, interrupted-attempt recovery, serial merge gating
+and merge-gated attempt/global-lock release.
 
-**Open compatibility checks**
+The complete repository checks remain authoritative: one `ci:normal` execution
+includes the `ci:fast` checkpoint and validates the shared lexical/semantic
+contract, canonical baseline and writer allowlist, complete factory transitions,
+reproducible SQLite build, exact direct search and the one-current-revision-build
+invariant. Stage 3 does not alter Deep CI.
 
-1. Can `buildIssue223CorpusBatch` / `lexical-production` consume factory
-   candidates (`candidate_id`-keyed) without the `candidateKey` merge, and how
-   are its fixed `issue-223-m9-e-corpus-batch-NN-DATE` ids replaced by `C…` batch
-   ids? Adapter boundary or generalized contract?
-2. How does a `new_sense_on_existing_entry` / `new_pos_on_existing_lemma`
-   disposition appear in the canonical import, in `canonical-batch-baseline`,
-   in `validateLexicalAddition`, and in the build?
-3. Which existing tracked artifacts become `data/reviews/C…/` files and which
-   stay under `data/batches/`; the digest and baseline gates that key on file
-   names must be re-examined.
-4. Where `source_candidate_id` lives in canonical or in a side ledger without
-   reusing `candidate_id`; effect on the build's metadata and search output.
-5. Atomic ref creation and stale-claim thresholds via the GitHub API from the
-   agents' actual tooling.
-6. How `production-entrypoints.mjs` and the non-batch baseline account for a
-   Stage 3 writer.
-
-**Test and validation plan (implementation issue)**
-
-- Identity regression (v1, historical; v2 equivalents are in `tests/factory-lemma.test.mjs`
-  and `tests/factory-stage1.test.mjs`): two same-lemma/POS different-usage candidates stay two
-  decisions, and a candidate for a new sense of an already-canonical lemma is not
-  dropped as `covered` but routed to Stage 2 and admitted only with a sense-level
-  decision.
-- Manifest state-machine validator: all legal transitions in §7 pass; every
-  other (`created→ready`, `complete→rejected`, `rejected` without `rejected_pr`,
-  digest drift in immutable files, status mutation changing a content digest)
-  fails.
-- Claim protocol with a fake GitHub: concurrent creation of one claim ref
-  (exactly one winner, losers select another batch); ref-without-issue (no other
-  agent creates an issue or works the batch, the ref is preserved); branch naming
-  `<agent>/stage2/<issue>-C…` for `claude`/`codex` only; rework reuse of the
-  issue; orphan cleanup. Agents sharing one GitHub login must be indistinguishable
-  to the protocol.
-- If automatic adoption is ever added: race/fault injection with one orphan ref
-  and two simultaneous adopters; exactly one proceeds.
-- Real-GitHub (not fake) integration test: a brand-new Stage 3 claim opens its
-  draft PR from the starter commit *before* any canonical data exists; also
-  record whether an empty commit would be accepted. Then exercise immediate
-  preflight failure → draft closed → status-only PR with `rejected_pr` citing that
-  real PR.
-- Stage 3 in-flight guard with fault injection (two sessions, same login): restart after the admission PR
-  is opened; restart while the rejection status-only PR is pending; failure at
-  preflight before any canonical change. Each yields exactly one traceable
-  attempt, no duplicate admission, and a populated `rejected_pr`.
-- Session loop pilot: one Stage 2 invocation, with no second owner instruction,
-  completes at least **two consecutive batches only after each prior result PR is
-  merged**. Verify: reviewer-requested fixes are made on the first PR's own branch
-  while it is pending; no second claim ref, Issue or branch exists before the first
-  merge is confirmed on `master`; a closed-unmerged or blocked PR stops the agent
-  (reported) instead of being bypassed; the claim ref is deleted after the merge;
-  an empty queue produces a report and stop without polling. A lost claim selects
-  another batch. Two separately launched agents proceed on different batches in
-  parallel.
-- Stage 2 equivalence: a fixture batch produced through the factory yields the
-  same canonical records and validator results as the current builder.
-- Stage 3: success path; stale-master id reassignment; lexical conflict →
-  `rejected` with `rejected_pr`; allocator collision → halt, not rejection.
-- Coverage: no dropped or phantom candidate between candidates → decisions →
-  canonical; `ci:fast` / `ci:normal` stay green with one complete-revision
-  context; the entrypoint tripwire accepts only the declared writers.
+Owner override for Issue #266 (2026-10-04): validate the real GitHub claim/ref →
+starter push → Draft → lexical rejection → status-PR merge lifecycle later in
+an actual pilot. This lifecycle validation is **TBD for this implementation
+PR**; it was not executed, and no passing integration result is claimed. Do not
+replace it with fake or mocked tests. Synthetic tests may cover local behavior,
+but they do not establish real GitHub control-plane lifecycle evidence. The
+current master queue's empty dry-run result is operational context only.
+Recovery is explicitly invoked with `--resume-batch C000001 --attempt 1`; the
+worker never adopts an ambiguous live claim based on a login or token identity.
 
 ## Related documents
 

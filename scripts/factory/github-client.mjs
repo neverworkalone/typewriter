@@ -90,6 +90,68 @@ export function createGitHubClient({
     async listClaimRefs() {
       return allPages('repos/' + repoPath + '/git/matching-refs/heads/stage2-claims/');
     },
+    async listStage3ClaimRefs() {
+      return allPages('repos/' + repoPath + '/git/matching-refs/heads/stage3-claims/');
+    },
+    async getStage3ActiveLock() {
+      let ref;
+      try {
+        ref = await request('GET', 'repos/' + repoPath + '/git/ref/heads/stage3-active');
+      } catch (error) {
+        if (error instanceof GitHubApiError && error.status === 404) return null;
+        throw error;
+      }
+      const sha = ref.data.object?.sha;
+      if (!sha) throw new Error('GitHub Stage 3 active lock has no object SHA');
+      const commit = await request('GET', 'repos/' + repoPath + '/git/commits/' + encodeURIComponent(sha));
+      const message = commit.data.message || '';
+      const batchId = message.match(/^batch_id=(C\d{6})$/mu)?.[1];
+      const attempt = Number(message.match(/^attempt=(\d+)$/mu)?.[1]);
+      const baseSha = message.match(/^base_sha=([0-9a-f]{40,64})$/mu)?.[1];
+      const ownerToken = message.match(/^owner=([a-f0-9-]{16,})$/mu)?.[1];
+      if (!batchId || !Number.isInteger(attempt) || attempt < 1 || !baseSha || !ownerToken) {
+        throw new Error('GitHub Stage 3 active lock metadata is malformed; preserve it for owner-directed recovery');
+      }
+      return { ref: 'refs/heads/stage3-active', sha, batchId, attempt, baseSha, ownerToken };
+    },
+    async createStage3ActiveLock({ batchId, attempt, baseSha, ownerToken }) {
+      if (!/^C\d{6}$/u.test(batchId || '') || !Number.isInteger(attempt) || attempt < 1
+        || !/^[0-9a-f]{40,64}$/u.test(baseSha || '') || !/^[a-f0-9-]{16,}$/u.test(ownerToken || '')) {
+        throw new Error('invalid Stage 3 active lock metadata');
+      }
+      const base = await request('GET', 'repos/' + repoPath + '/git/commits/' + encodeURIComponent(baseSha));
+      const tree = base.data.tree?.sha;
+      if (!tree) throw new Error('GitHub base commit has no tree for the Stage 3 active lock');
+      const message = [
+        'Typewriter Stage 3 active lock',
+        '',
+        'batch_id=' + batchId,
+        'attempt=' + attempt,
+        'base_sha=' + baseSha,
+        'owner=' + ownerToken,
+      ].join('\n');
+      const commit = await request('POST', 'repos/' + repoPath + '/git/commits', {
+        message, tree, parents: [baseSha],
+      });
+      const sha = commit.data.sha;
+      if (!sha) throw new Error('GitHub did not return a Stage 3 active lock commit SHA');
+      try {
+        await request('POST', 'repos/' + repoPath + '/git/refs', {
+          ref: 'refs/heads/stage3-active', sha,
+        });
+        return { ref: 'refs/heads/stage3-active', sha, batchId, attempt, baseSha, ownerToken };
+      } catch (error) {
+        if (error instanceof GitHubApiError && error.status === 422
+          && error.response?.message === 'Reference already exists') return false;
+        throw error;
+      }
+    },
+    async deleteStage3ActiveLock(expectedSha) {
+      const current = await this.getStage3ActiveLock();
+      if (!current || current.sha !== expectedSha) return false;
+      await request('DELETE', 'repos/' + repoPath + '/git/refs/heads/stage3-active');
+      return true;
+    },
     async createClaimRef(batchId, sha) {
       const ref = 'refs/heads/stage2-claims/' + batchId;
       try {
@@ -103,6 +165,23 @@ export function createGitHubClient({
     },
     async deleteClaimRef(batchId) {
       await request('DELETE', 'repos/' + repoPath + '/git/refs/heads/stage2-claims/' + encodeURIComponent(batchId));
+    },
+    async createStage3ClaimRef(batchId, attempt, sha) {
+      const ref = 'refs/heads/stage3-claims/' + batchId + '-a' + attempt;
+      try {
+        await request('POST', 'repos/' + repoPath + '/git/refs', { ref, sha });
+        return true;
+      } catch (error) {
+        if (error instanceof GitHubApiError && error.status === 422
+          && error.response?.message === 'Reference already exists') return false;
+        throw error;
+      }
+    },
+    async deleteStage3ClaimRef(batchId, attempt) {
+      await request('DELETE', 'repos/' + repoPath + '/git/refs/heads/stage3-claims/' + encodeURIComponent(batchId + '-a' + attempt));
+    },
+    async deleteBranch(branchName) {
+      await request('DELETE', 'repos/' + repoPath + '/git/refs/heads/' + branchName.split('/').map(encodeURIComponent).join('/'));
     },
     async findIssuesForClaim(claimRef) {
       const issues = await allPages('repos/' + repoPath + '/issues?state=all&per_page=100');
@@ -123,6 +202,35 @@ export function createGitHubClient({
     async getPullRequest(prNumber) {
       const result = await request('GET', 'repos/' + repoPath + '/pulls/' + prNumber);
       return result.data;
+    },
+    async listPullRequests(state = 'open') {
+      if (!['open', 'closed', 'all'].includes(state)) throw new Error('pull request state must be open, closed, or all');
+      return allPages('repos/' + repoPath + '/pulls?state=' + state + '&per_page=100');
+    },
+    async createPullRequest({ title, body, head, base = 'master', draft = false }) {
+      const result = await request('POST', 'repos/' + repoPath + '/pulls', { title, body, head, base, draft });
+      return result.data;
+    },
+    async closePullRequest(prNumber) {
+      const result = await request('PATCH', 'repos/' + repoPath + '/pulls/' + prNumber, { state: 'closed' });
+      return result.data;
+    },
+    async updatePullRequestBody(prNumber, body) {
+      const result = await request('PATCH', 'repos/' + repoPath + '/pulls/' + prNumber, { body });
+      return result.data;
+    },
+    async markPullRequestReady(prNumber) {
+      const pull = await request('GET', 'repos/' + repoPath + '/pulls/' + prNumber);
+      const nodeId = pull.data.node_id;
+      if (!nodeId) throw new Error('GitHub pull request has no GraphQL node id');
+      const result = await request('POST', 'graphql', {
+        query: 'mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { number isDraft } } }',
+        variables: { id: nodeId },
+      });
+      if (result.data?.errors?.length || result.data?.data?.markPullRequestReadyForReview?.pullRequest?.isDraft !== false) {
+        throw new Error('GitHub did not mark pull request #' + prNumber + ' ready for review');
+      }
+      return result.data.data.markPullRequestReadyForReview.pullRequest;
     },
     async getPullRequestSnapshot(prNumber) {
       const pullResult = await request('GET', 'repos/' + repoPath + '/pulls/' + prNumber);

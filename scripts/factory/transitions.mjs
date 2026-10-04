@@ -7,6 +7,9 @@ import { MUTABLE_MANIFEST_FIELDS } from './contract.mjs';
 const withoutMutable = (manifest) => Object.fromEntries(
   Object.entries(manifest).filter(([key]) => !MUTABLE_MANIFEST_FIELDS.includes(key)),
 );
+const withoutAdmission = (manifest) => Object.fromEntries(
+  Object.entries(manifest).filter(([key]) => key !== 'admission'),
+);
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
 // No `held` transition: it requires owner authorization, which has no verifiable contract yet,
@@ -44,7 +47,9 @@ export function validateReviewTransition(before, after) {
     case 'ready → complete':
       if (after.attempt !== before.attempt) errors.push('admission must not change attempt');
       if (!same(before.history, after.history)) errors.push('admission must not change history');
-      if (!same(withoutMutable(before), withoutMutable(after))) errors.push('admission must not change review content');
+      if (before.admission !== undefined) errors.push('ready review must not already carry an admission mapping');
+      if (!after.admission || after.admission.contract !== 'lexical-factory-admission-v1') errors.push('completion must add a Stage 3 admission mapping');
+      if (!same(withoutAdmission(withoutMutable(before)), withoutAdmission(withoutMutable(after)))) errors.push('admission must not change Stage 2 review content');
       break;
     case 'ready → rejected':
       if (after.attempt !== before.attempt) errors.push('rejection must not change attempt');

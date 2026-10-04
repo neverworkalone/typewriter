@@ -4,6 +4,7 @@
 // appear silently.
 export const ACTIVE_PRODUCTION_ENTRYPOINTS = Object.freeze({
   'scripts/batch/build-issue-223-corpus-batch.mjs': 'Corpus batch builder (B05+). Batches from INTAKE_HANDOFF_FIRST_BATCH require the shared intake hand-off.',
+  'scripts/factory/admission.mjs': 'Lexical Factory Stage 3 canonical writer; accepts only a source-bound ready review, writes deterministic entry/sense mappings, and records its admission provenance.',
 });
 
 // Historical, batch-specific pipelines. Each writes a fixed, already-completed

@@ -2,7 +2,7 @@ import { REVIEWABLE_HOLDS, verifyProductionHandoff } from '../intake/production-
 import { candidateViews, intakeCandidates, toRawCandidate } from './identity-adapter.mjs';
 import { isLemmaRow } from './lemma-contract.mjs';
 import { resolveGroupEntries } from './lemma-decisions.mjs';
-import { sha256Json } from '../validate/semantic-audit.mjs';
+import { inspectSenseBoundaryPairs, sha256Json } from '../validate/semantic-audit.mjs';
 import { decisionSenseReviews, validateAuthoredDecisionDisposition, validateDistinctSenseSemanticRationales, validateSenseReviews } from '../batch/authored-semantic-decision-source.mjs';
 import { SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION, validateAuthoredSemanticReviewBinding } from '../validate/semantic-decision-row.mjs';
 
@@ -80,7 +80,9 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
         const rowById = new Map(semantic.decisions.map((row) => [row.source_candidate_id, row]));
         for (const decision of admitted) {
           if (typeof decision.reviewed_record?.lemma !== 'string' || !Array.isArray(decision.reviewed_record.senses)) continue;
-          validateSemanticRow(rowById.get(decision.source_candidate_id), decision, batchId, errors);
+          const row = rowById.get(decision.source_candidate_id);
+          validateSemanticRow(row, decision, batchId, errors);
+          validateFactoryBoundaryPairs(row, decision, errors);
         }
       }
     }
@@ -128,6 +130,42 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
     }
   }
   return errors;
+}
+
+function validateFactoryBoundaryPairs(row, decision, errors) {
+  const senses = decision.reviewed_record?.senses ?? [];
+  const pairs = row?.boundary_pairs;
+  const label = `semantic decision ${decision.source_candidate_id}`;
+  if (senses.length < 2) {
+    if (pairs !== undefined && (!Array.isArray(pairs) || pairs.length !== 0)) errors.push(`${label}: boundary_pairs must be empty for a one-sense candidate`);
+    return;
+  }
+  if (!Array.isArray(pairs)) {
+    errors.push(`${label}: multi-sense admissions require source-bound boundary_pairs`);
+    return;
+  }
+  const sourceRecord = {
+    id: decision.source_candidate_id,
+    lemma: decision.reviewed_record.lemma,
+    senses: senses.map((sense, index) => ({ ...sense, id: `${decision.source_candidate_id}-s${index + 1}` })),
+  };
+  const expected = new Map(inspectSenseBoundaryPairs(sourceRecord).map((pair) => [`${pair.left_sense_id}:${pair.right_sense_id}`, pair]));
+  const seen = new Set();
+  if (pairs.length !== expected.size) errors.push(`${label}: boundary_pairs must cover every reviewed sense pair`);
+  for (const [index, pair] of pairs.entries()) {
+    const pairLabel = `${label} boundary_pairs[${index}]`;
+    const key = `${pair?.left_sense_id}:${pair?.right_sense_id}`;
+    const mechanical = expected.get(key);
+    if (!mechanical || seen.has(key)) { errors.push(`${pairLabel}: pair identity is missing, reversed, or duplicated`); continue; }
+    seen.add(key);
+    const left = sourceRecord.senses.find(({ id }) => id === pair.left_sense_id);
+    const right = sourceRecord.senses.find(({ id }) => id === pair.right_sense_id);
+    if (pair.relationship !== mechanical.relationship || pair.decision !== 'retain') errors.push(`${pairLabel}: an admitted pair must retain the mechanically classified ${mechanical.relationship} relationship`);
+    if (pair.left_gloss_sha256 !== sha256Json(left.gloss) || pair.right_gloss_sha256 !== sha256Json(right.gloss)) errors.push(`${pairLabel}: gloss digests do not bind the reviewed pair`);
+    for (const field of ['evidence_basis', 'distinguishing_feature', 'rationale']) {
+      if (typeof pair[field] !== 'string' || !pair[field].trim() || !pair[field].includes(decision.source_candidate_id)) errors.push(`${pairLabel}: ${field} must be candidate-specific authored evidence`);
+    }
+  }
 }
 
 // Hand-off binding of a lemma-centered decision: every POS hypothesis has a hand-off entry, and an

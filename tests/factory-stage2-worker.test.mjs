@@ -187,6 +187,56 @@ test('GitHub claim creation is an atomic REST ref operation and 422 is a lost ra
   await assert.rejects(github.createClaimRef('C000001', SHA), /Validation Failed/u);
 });
 
+test('Stage 3 global lock uses a unique Git commit and a singleton atomic ref', async () => {
+  const calls = [];
+  const lockSha = 'b'.repeat(40);
+  const ownerToken = 'deafbeef-0000-4000-8000-000000000001';
+  let existing = false;
+  const github = createGitHubClient({
+    repositoryFullName: 'neverworkalone/typewriter',
+    token: 'test-token',
+    fetchImpl: async (url, init) => {
+      const parsed = new URL(url);
+      calls.push({ path: parsed.pathname, method: init.method, body: init.body ? JSON.parse(init.body) : null });
+      if (parsed.pathname.endsWith('/git/commits/' + SHA)) {
+        return new Response(JSON.stringify({ sha: SHA, tree: { sha: 'c'.repeat(40) } }), { status: 200 });
+      }
+      if (parsed.pathname.endsWith('/git/commits') && init.method === 'POST') {
+        return new Response(JSON.stringify({ sha: lockSha }), { status: 201 });
+      }
+      if (parsed.pathname.endsWith('/git/refs') && init.method === 'POST') {
+        existing = true;
+        return new Response(JSON.stringify({ message: 'Reference already exists' }), { status: 422 });
+      }
+      if (parsed.pathname.endsWith('/git/ref/heads/stage3-active')) {
+        return new Response(JSON.stringify({ object: { sha: lockSha } }), { status: 200 });
+      }
+      if (parsed.pathname.endsWith('/git/commits/' + lockSha)) {
+        return new Response(JSON.stringify({ message: [
+          'Typewriter Stage 3 active lock', '', 'batch_id=C000001', 'attempt=2',
+          'base_sha=' + SHA, 'owner=' + ownerToken,
+        ].join('\n') }), { status: 200 });
+      }
+      if (parsed.pathname.endsWith('/git/refs/heads/stage3-active') && init.method === 'DELETE') {
+        return new Response(null, { status: 204 });
+      }
+      return new Response(JSON.stringify({ message: 'unexpected route' }), { status: 500 });
+    },
+  });
+  const claim = { batchId: 'C000001', attempt: 2, baseSha: SHA, ownerToken };
+  assert.equal(await github.createStage3ActiveLock(claim), false);
+  assert.equal(existing, true);
+  assert.equal(calls[1].body.message.includes('owner=' + ownerToken), true);
+  assert.deepEqual(calls[2].body, { ref: 'refs/heads/stage3-active', sha: lockSha });
+  const activeLock = await github.getStage3ActiveLock();
+  assert.deepEqual(activeLock, {
+    ref: 'refs/heads/stage3-active', sha: lockSha, batchId: 'C000001', attempt: 2,
+    baseSha: SHA, ownerToken,
+  });
+  assert.equal(await github.deleteStage3ActiveLock('wrong-sha'), false);
+  assert.equal(await github.deleteStage3ActiveLock(lockSha), true);
+});
+
 test('GitHub PR snapshots include reviews, inline and conversation comments, and exact-head CI', async () => {
   const requested = [];
   const github = createGitHubClient({

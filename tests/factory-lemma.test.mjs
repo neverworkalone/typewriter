@@ -17,7 +17,7 @@ import { validateCandidateTransition } from '../scripts/factory/transitions.mjs'
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { buildProductionHandoff } from '../scripts/intake/production-handoff.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
-import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
+import { inspectSenseBoundaryPairs, sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 
 const HEX = 'a'.repeat(64);
@@ -258,6 +258,19 @@ function semanticRow(decision) {
       boundary_rationale: `${id} ${sense.id}: bounded single meaning.`, semantic_rationale: `${id} ${sense.id}: denotes ${sense.gloss}`,
       relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: `${id} ${sense.id}: no authored relation tuple.`,
     })),
+    boundary_pairs: inspectSenseBoundaryPairs(record).map((pair) => {
+      const left = record.senses.find(({ id: senseId }) => senseId === pair.left_sense_id);
+      const right = record.senses.find(({ id: senseId }) => senseId === pair.right_sense_id);
+      return {
+        ...pair,
+        decision: 'retain',
+        left_gloss_sha256: sha256Json(left.gloss),
+        right_gloss_sha256: sha256Json(right.gloss),
+        evidence_basis: `${id}: source-bound comparison of both authored senses.`,
+        distinguishing_feature: `${id}: the reviewed glosses distinguish these senses.`,
+        rationale: `${id}: retain the mechanically classified ${pair.relationship} pair.`,
+      };
+    }),
   };
   row.review_binding = authorSemanticReviewBinding(row, record);
   return row;
