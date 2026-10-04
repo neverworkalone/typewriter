@@ -41,6 +41,13 @@ class FakeTagger:
         "먹어보다": out(tok("먹", "VV"), tok("어", "EC"), tok("보", "VX"), tok("다", "EC")),
         "먹": out(tok("먹", "VV")),
         "이다": out(tok("이", "VCP"), tok("다", "EC")),
+        "사과이다": out(tok("사과", "NNG"), tok("이", "VCP"), tok("다", "EC")),
+        "사과였다": out(tok("사과", "NNG"), tok("였", "VCP+EP", "Inflect", "VCP", "EP", "이/VCP/*+었/EP/*"), tok("다", "EC")),
+        "사과아니다": out(tok("사과", "NNG"), tok("아니", "VCN"), tok("다", "EC")),
+        "사과이다부호": out(tok("사과", "NNG"), tok("이", "ZZZ"), tok("다", "EC")),
+        "사과가": out(tok("사과", "NNG"), tok("가", "JKS")),
+        "먹었다.": out(tok("먹", "VV"), tok("었", "EP"), tok("다", "EF"), tok(".", "SF")),
+        "사과이다만": out(tok("사과", "NNG"), tok("이", "VCP"), tok("다", "EF"), tok("만", "JX")),
         "서울에": out(tok("서울", "NNP"), tok("에", "JKB")),
         "합성": out(tok("합성", "NNG+JX")),
         "깨짐": "깨짐\tbroken\nEOS\n",
@@ -93,8 +100,19 @@ class MecabServiceTest(unittest.TestCase):
         for text in ["춥다", "ㅋㅋㅋ", "asdfgh", "먹어보다", "서울에"]:
             self.assertEqual(one(text)["status"], "unsupported", text)
             self.assertEqual(one(text)["analyses"], [], text)
-        self.assertEqual(one("이다")["reason"], "no_content_morpheme")
+        self.assertEqual(one("이다")["reason"], "unmapped_content_morpheme")
         self.assertEqual(one("합성")["reason"], "unexpandable_composite_tag")
+
+    def test_unexplained_copula_or_unknown_tags_are_never_silently_dropped(self):
+        # Before the functional-tag allowlist these returned ok with the bare noun (사과/noun).
+        for text in ["사과이다", "사과였다", "사과아니다", "사과이다부호", "사과이다만"]:
+            self.assertEqual((one(text)["status"], one(text)["reason"], one(text)["analyses"]), ("unsupported", "unmapped_content_morpheme", []), text)
+        self.assertEqual(lemmas("사과가"), [["사과/noun"]], "particles stay harmless")
+        self.assertEqual(lemmas("먹었다."), [["먹다/verb"]], "endings and punctuation stay harmless")
+        for tag in ["JKS", "JX", "EP", "EF", "EC", "ETM", "SF", "SE", "SSO", "SY"]:
+            self.assertTrue(service.FUNCTIONAL_TAG.match(tag), tag)
+        for tag in ["VCP", "VCN", "ZZZ", "NNP", "SL", "SH", "SN"]:
+            self.assertFalse(service.FUNCTIONAL_TAG.match(tag), tag)
 
     def test_invalid_input_and_malformed_output_fail_safe(self):
         self.assertEqual(one("   ")["reason"], "empty_or_too_long")

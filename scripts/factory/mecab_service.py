@@ -32,6 +32,10 @@ DERIVATIONAL_SUFFIX_POS = {"XSV": "verb", "XSA": "adjective"}
 # Content-bearing morphemes this service does not map; a path containing one is only partly
 # explained, so the surface is reported unsupported rather than as a clean single proposal.
 UNMAPPED_CONTENT_TAGS = {"NNP", "NP", "NR", "MM", "MAJ", "IC", "SL", "SH", "SN", "XPN", "XSN", "VX", "NNB", "UNKNOWN"}
+# Only these tags may be skipped as non-content: particles (J*), endings (E*) and punctuation/symbols
+# (SF, SE, SS*, SP, SO, SW...). Anything else, e.g. the copulas VCP/VCN, an unmapped content tag or a
+# tag this service has never seen, makes the path only partly explained rather than silently dropped.
+FUNCTIONAL_TAG = re.compile(r"^(J[A-Z]*|E[A-Z]*|SF|SE|SSO|SSC|SC|SY|SO|SP|SW)$")
 HANGUL = re.compile(r"^[가-힣]+$")
 EXPRESSION_PART = re.compile(r"^(?P<form>.+)/(?P<tag>[A-Z]+)/(?P<detail>.*)$")
 
@@ -146,8 +150,11 @@ def proposals(parts):
             if previous[1] == "NNG" and result and result[-1]["form"] == base:
                 result.pop()
             result.append({"lemma": base + form + "다", "pos": DERIVATIONAL_SUFFIX_POS[tag], "form": base + form})
-        elif tag == "XR" and (following is None or following[1] not in DERIVATIONAL_SUFFIX_POS):
-            return None, "unmapped_content_morpheme"  # a root is content only through a following XSV/XSA
+        elif tag == "XR":
+            if following is None or following[1] not in DERIVATIONAL_SUFFIX_POS:
+                return None, "unmapped_content_morpheme"  # a root is content only through a following XSV/XSA
+        elif not FUNCTIONAL_TAG.match(tag):
+            return None, "unmapped_content_morpheme"
     if any(not HANGUL.match(item["form"]) for item in result):
         return None, "unmapped_content_morpheme"
     return result, ""

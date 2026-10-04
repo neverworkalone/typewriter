@@ -91,6 +91,15 @@ test('three providers in both orders: deterministic, lazy, one call per eligible
   assert.equal(rowOf(a.result, '낯설다'), undefined);
 });
 
+test('an unexplained copula path is unsupported and a noun hint cannot turn it into a clean analysis', async () => {
+  const raw = (id, text) => ({ id, input_digest: analysisInputDigest(text), status: 'unsupported', reason: 'unmapped_content_morpheme', analyses: [] });
+  const provider = mecab({ 사과이다: raw });
+  const result = await produce([FILLER, cand('사과', 'noun', '사과이다', 'd2')], [kiwi({ ...fillerTable, 사과이다: [[item('사과', 'noun')], [item('사과이다', 'noun')]] }), provider]);
+  assert.deepEqual(provider.calls, [['사과이다']]);
+  assert.equal(mecabLog(result)[0].outcome, 'unsupported');
+  assert.equal(rowOf(result, '사과'), undefined);
+});
+
 test('ineligible holds (non-analysis, editorial, evidence) never reach MeCab; holds stay per observation', async () => {
   const mismatch = mecab({ 낯선: [[item('낯설다', 'adjective')]], 낯설어: [[item('낯설다', 'adjective')]] });
   const result = await produce([FILLER, cand('낯설다', 'adjective', '낯선', 'd2'), { ...cand('흐르다', 'verb', '흘러', 'd3'), ambiguity_status: 'ambiguous' }],
@@ -172,7 +181,7 @@ const realSkip = process.platform === 'darwin' && process.arch === 'arm64' && ex
 
 test('REAL pinned MeCab-ko 1.0.2 + mecab-ko-dic 1.0.0 macOS arm64 smoke', { skip: realSkip }, async () => {
   const analyze = createMecabAnalyzer({ python: venvPython });
-  const surfaces = ['먹었다', '걸어', '도와', '망각했다', '행복한', '아름다웠던', '천천히', '꽃잎이', '아버지가방에들어가신다', '춥다', 'ㅋㅋㅋ', 'asdfgh', '먹어보다', '두 단어', '   '];
+  const surfaces = ['먹었다', '걸어', '도와', '망각했다', '행복한', '아름다웠던', '천천히', '꽃잎이', '아버지가방에들어가신다', '춥다', 'ㅋㅋㅋ', 'asdfgh', '먹어보다', '사과이다', '사과였다', '먹었다.', '두 단어', '   '];
   const { metadata, results } = await analyze(surfaces.map((text) => ({ id: text, text })));
   assertPinnedMecab(metadata);
   assert.deepEqual(results.map((result) => result.id), surfaces, 'results keep request order');
@@ -187,7 +196,8 @@ test('REAL pinned MeCab-ko 1.0.2 + mecab-ko-dic 1.0.0 macOS arm64 smoke', { skip
   assert.deepEqual(lemmas('천천히'), ['천천히/adverb']);
   assert.deepEqual(lemmas('꽃잎이'), ['꽃잎/noun']);
   assert.deepEqual(lemmas('아버지가방에들어가신다'), ['아버지/noun', '방/noun', '들어가다/verb']);
-  for (const id of ['춥다', 'ㅋㅋㅋ', 'asdfgh', '먹어보다', '두 단어', '   ']) assert.equal(byId[id].status, 'unsupported', id);
+  assert.deepEqual(lemmas('먹었다.'), ['먹다/verb']);
+  for (const id of ['춥다', 'ㅋㅋㅋ', 'asdfgh', '먹어보다', '사과이다', '사과였다', '두 단어', '   ']) assert.equal(byId[id].status, 'unsupported', id);
   assert.ok(results.every((result) => result.analyses.length <= 1 && result.analyses.flat().every((entry) => !('derived_from' in entry) && !('derived_from_index' in entry))));
   // End to end through the shared policy: MeCab alone never clears; the unsupported/ambiguous state stays explicit.
   const result = await produce([FILLER, cand('먹다', 'verb', '먹었다')], [kiwi(fillerTable), createMecabProvider({ analyze })]);
