@@ -537,9 +537,14 @@ while a `rejected` status-only PR is open, so `ready` alone cannot tell a fresh
 batch from one being worked on. Each Stage 3 attempt therefore has a durable,
 crash-safe record:
 
-- **Attempt claim ref** `stage3-claims/C…-aN`, `N` = the review manifest's
-  `attempt` on `master`. Created atomically (422 ⇒ another invocation owns that
-  attempt). It is the only lock; the PR is linked to it by name (below).
+- **Global lock and attempt claim.** Before selecting any batch, a worker checks
+  for `stage3-active`, any `stage3-claims/C…-aN` ref, or any open Stage 3 PR. It
+  stops if any exists. To start work, it atomically creates the singleton ref
+  `stage3-active`, pointing to a unique Git commit whose message records the
+  batch, attempt, master SHA and random owner token; it then creates the
+  per-attempt ref `stage3-claims/C…-aN`. A competing invocation that loses the
+  singleton-ref race stops without falling through to another ready batch. The
+  PR is linked to the per-attempt ref by name (below).
 - **Step 0: the admission PR is opened first, as a draft**, immediately after the
   claim, before preflight. GitHub cannot create a PR whose head has no commit
   ahead of base, so the branch `<agent>/stage3/C…-aN` (`claude` or `codex`) is created from `master` with one
@@ -553,9 +558,11 @@ crash-safe record:
   attempt's traceable identifier and is what `rejected_pr` always cites,
   including when preflight fails before any canonical change exists (the draft is
   then closed, never merged).
-- **Selection rule.** Stage 3 skips a `ready` batch if `stage3-claims/C…-aN`
-  exists for the current `attempt`, or if any open PR (admission or
-  rejection status-only) references that batch.
+- **Selection rule.** Stage 3 starts no batch while the global lock, any
+  per-attempt claim ref, or any open admission or rejection status PR exists.
+  A claim collision or concurrent global-lock winner ends that invocation;
+  it never advances to another batch. This makes serial admission global across
+  separate worker processes, not just sequential within one session.
 - **Idempotent recovery of an interrupted attempt** (resolved *before* any fresh
   admission; usernames never distinguish sessions, so state is read from the
   claim ref, the branch and PRs, never from "who am I"): (a) open admission PR
@@ -563,14 +570,18 @@ crash-safe record:
   await that PR, do not re-admit; (c) admission PR closed and no rejection PR ⇒
   create the rejection status-only PR citing it; (d) claim ref but no PR ⇒ look
   for a branch `*/stage3/C…-aN` and its PR, else recreate the draft from the
-  starter commit. Because ownership is not inferred, a *concurrent* second session
-  that finds a live claim does nothing and moves on; only a claim that is
-  evidently abandoned is resumed, as directed by the owner (the same manual rule
-  as §3.1). Duplicate admission is prevented by the claim ref plus the PR linkage,
-  not by session identity.
-- **Release.** The claim ref is deleted when the admission PR merges
-  (`complete`) or when the rejection status-only PR merges (`rejected`; the next
-  attempt number gets a new ref).
+  starter commit. A second session that finds a live global lock does nothing.
+  Recovery requires the explicit batch and attempt and the matching lock owner;
+  a lock without its attempt ref can recreate that ref under the same lock. A
+  lock for another attempt, a second claim, or an unrelated open Stage 3 PR fails
+  closed. Duplicate admission is prevented by the singleton ref plus the PR
+  linkage, not by session identity.
+- **Release.** Only after the admission PR merges (`complete`) or the rejection
+  status-only PR merges (`rejected`) and that exact state is verified on current
+  `master`, delete the attempt claim and then the matching global lock. If the
+  process crashes between those deletions, the remaining lock identifies the
+  merged attempt so explicit recovery can finish cleanup. The next attempt gets
+  a new per-attempt ref.
 
 ### 6.1 Successful path
 
@@ -714,7 +725,7 @@ the shared review decisions and hand-off.
 | Candidate identity and producer | `scripts/factory/stage1.mjs`; v2 candidates are lemma-centered and carry text-free usage groups and observations. Historical v1 batches stay valid. |
 | Stage 2 review contract | `scripts/factory/contract.mjs`, `artifacts.mjs`, `lemma-decisions.mjs`, `handoff.mjs` and `stage2-worker.mjs`; review digests bind candidate, decisions, semantic decisions and hand-off. |
 | Stage 3 allocator and writer | `scripts/factory/admission.mjs`; deterministic `w…`/sense IDs, reference remapping, new entries, and append-only new POS/sense support for existing records. Canonical `candidate_id` remains the `w…` record id. |
-| Attempt protocol | `scripts/factory/stage3-worker.mjs` and `run-stage3-worker.mjs`; atomic claim ref, metadata starter commit, Draft PR before preflight, serial wait, explicit attempt recovery and merge-gated claim release. |
+| Attempt protocol | `scripts/factory/stage3-worker.mjs`, `github-client.mjs` and `run-stage3-worker.mjs`; singleton global lock, atomic per-attempt ref, metadata starter commit, Draft PR before preflight, serial wait, explicit attempt recovery and merge-gated ref release. |
 | Complete semantic authority | `scripts/factory/semantic-authority.mjs` extends `canonical-semantic-decision-source.json` only from the source-bound Stage 2 decision digest; its admission ledger binds each canonical and compact semantic-review change. |
 | Admission baseline and search/build gates | `scripts/batch/validate-issue-223.mjs`, `canonical-batch-baseline.mjs`, `production-entrypoints.mjs` and the registered Stage 3 CI test. Stage 3-created records remain subject to the complete-canonical audit, baseline and one-build check. |
 
@@ -749,9 +760,11 @@ Resolved compatibility choices:
 
 Issue #266 implements the Stage 3 lifecycle and synthetic fault tests. The
 registered suite covers deterministic allocation and relation remapping, new
-entry/POS/sense writes, latest-master lexical conflicts, atomic same-login claim
-races, the actual-number rejection payload, starter removal before the ready
-transition, interrupted-attempt recovery, serial merge gating and claim release.
+entry/POS/sense writes, latest-master lexical conflicts, global lock races
+across different ready batches, fail-closed claim/open-PR blocking, no fallback
+after a claim collision, the actual-number rejection payload, starter removal
+before the ready transition, interrupted-attempt recovery, serial merge gating
+and merge-gated attempt/global-lock release.
 
 The complete repository checks remain authoritative: `ci:fast` and `ci:normal`
 validate the shared lexical/semantic contract, canonical baseline and writer

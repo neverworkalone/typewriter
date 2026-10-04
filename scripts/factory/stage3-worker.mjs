@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -138,6 +139,20 @@ export function eligibleStage3Batches(snapshot, claimRefs = [], openPullRequests
   }).sort(naturalOrder);
 }
 
+function isStage3PullRequest(pr) {
+  const head = pr.head?.ref ?? '';
+  const body = pr.body ?? '';
+  return head.includes('/stage3/') || head.includes('/stage3-status/')
+    || body.includes('Claim ref: ' + CLAIM_PREFIX)
+    || body.includes('Stage 3 attempt: C');
+}
+
+export function hasStage3Activity({ activeLock, claimRefs = [], openPullRequests = [] } = {}) {
+  return Boolean(activeLock)
+    || claimRefs.some((value) => String(typeof value === 'string' ? value : value.ref ?? '').startsWith(CLAIM_PREFIX))
+    || openPullRequests.map((value) => value.pullRequest ?? value).some((pr) => pr.state !== 'closed' && isStage3PullRequest(pr));
+}
+
 async function currentMaster({ github, git, loadSnapshot }) {
   await git.fetchMaster();
   let remoteSha = await github.getBranchHead(MASTER);
@@ -186,37 +201,63 @@ export async function createStage3Draft({ github, git, claim, existingStarter = 
 }
 
 export async function claimNextStage3Batch({
-  github, git, agent = 'codex', loadSnapshot = loadFactorySnapshot, log = () => {},
+  github, git, agent = 'codex', loadSnapshot = loadFactorySnapshot, log = () => {}, ownerToken = randomUUID,
 } = {}) {
   const { headSha, snapshot } = await currentMaster({ github, git, loadSnapshot });
-  const [claimRefs, openPullRequests] = await Promise.all([github.listStage3ClaimRefs(), github.listPullRequests('open')]);
-  const candidates = eligibleStage3Batches(snapshot, claimRefs, openPullRequests);
-  for (const candidate of candidates) {
-    const { batchId, attempt } = candidate;
-    const claimRef = claimRefFor(batchId, attempt);
-    if (!await github.createStage3ClaimRef(batchId, attempt, headSha)) {
-      log(`claim raced for ${batchId}-a${attempt}; trying the next ready review`);
-      claimRefs.push({ ref: claimRef });
-      continue;
-    }
-    const claim = {
-      batchId, attempt, claimRef, baseSha: headSha, agent,
-      branchName: branchNameFor(agent, batchId, attempt),
-      rejectionBranchName: rejectionBranchName(agent, batchId, attempt),
-      candidates: candidate.candidate.rows,
-      candidateManifest: candidate.candidate.manifest,
-      candidateFiles: candidate.candidate.files,
-      reviewManifest: candidate.manifest,
-      decisions: candidate.decisions,
-      decisionsText: candidate.decisionsText,
-      semanticDecisionsText: candidate.semanticDecisionsText,
-      handoffText: candidate.handoffText,
-      reviewFiles: candidate.files,
-      canonicalEntries: snapshot.canonicalEntries,
-    };
-    return createStage3Draft({ github, git, claim, log });
+  const [claimRefs, openPullRequests, activeLock] = await Promise.all([
+    github.listStage3ClaimRefs(), github.listPullRequests('open'), github.getStage3ActiveLock(),
+  ]);
+  if (hasStage3Activity({ activeLock, claimRefs, openPullRequests })) {
+    log(activeLock
+      ? `Stage 3 is globally locked by ${activeLock.batchId}-a${activeLock.attempt}; waiting for explicit recovery or merge.`
+      : 'Stage 3 has a claim or open attempt without a matching global lock; preserving state for explicit recovery.');
+    return null;
   }
-  return null;
+  const candidates = eligibleStage3Batches(snapshot, claimRefs, openPullRequests);
+  const candidate = candidates[0];
+  if (!candidate) return null;
+  const { batchId, attempt } = candidate;
+  const claimRef = claimRefFor(batchId, attempt);
+  let lock;
+  try {
+    lock = await github.createStage3ActiveLock({ batchId, attempt, baseSha: headSha, ownerToken: ownerToken() });
+  } catch (error) {
+    throw new Stage3WorkerError(`Stage 3 global lock acquisition for ${batchId}-a${attempt} has an uncertain outcome; inspect refs before continuing: ${error.message}`, {
+      batchId, attempt, claimCreated: true,
+    });
+  }
+  if (!lock) {
+    log('another Stage 3 session acquired the global lock; this session will not select another batch.');
+    return null;
+  }
+  try {
+    if (!await github.createStage3ClaimRef(batchId, attempt, headSha)) {
+      throw new Stage3WorkerError(`Stage 3 global lock belongs to ${batchId}-a${attempt}, but its batch claim already exists; preserve both refs for explicit recovery`, {
+        batchId, attempt, claimCreated: true,
+      });
+    }
+  } catch (error) {
+    if (error instanceof Stage3WorkerError) throw error;
+    throw new Stage3WorkerError(`Stage 3 global lock for ${batchId}-a${attempt} remains held; batch-claim creation has an uncertain outcome: ${error.message}`, {
+      batchId, attempt, claimCreated: true,
+    });
+  }
+  const claim = {
+    batchId, attempt, claimRef, baseSha: headSha, agent, activeLock: lock,
+    branchName: branchNameFor(agent, batchId, attempt),
+    rejectionBranchName: rejectionBranchName(agent, batchId, attempt),
+    candidates: candidate.candidate.rows,
+    candidateManifest: candidate.candidate.manifest,
+    candidateFiles: candidate.candidate.files,
+    reviewManifest: candidate.manifest,
+    decisions: candidate.decisions,
+    decisionsText: candidate.decisionsText,
+    semanticDecisionsText: candidate.semanticDecisionsText,
+    handoffText: candidate.handoffText,
+    reviewFiles: candidate.files,
+    canonicalEntries: snapshot.canonicalEntries,
+  };
+  return createStage3Draft({ github, git, claim, log });
 }
 
 function canonicalRecordLocations(git, headSha) {
@@ -400,24 +441,37 @@ export async function processStage3Attempt({
   }
 }
 
-export async function recoverStage3Attempt({ github, git, agent = 'codex', batchId, attempt, createRejection = createRejectionStatusPullRequest, root, log = () => {} } = {}) {
+export async function recoverStage3Attempt({ github, git, agent = 'codex', batchId, attempt, log = () => {} } = {}) {
   const claimRef = claimRefFor(batchId, attempt);
-  const claimRefs = await github.listStage3ClaimRefs();
-  if (!claimRefs.some((ref) => (typeof ref === 'string' ? ref : ref.ref) === claimRef)) throw new Stage3WorkerError(`${claimRef} does not exist; no Stage 3 attempt is active`);
-  const allPulls = await github.listPullRequests('all');
-  const matches = allPulls.filter((pr) => (pr.body ?? '').includes(claimRef)
+  const [claimRefs, activeLock, allPulls] = await Promise.all([
+    github.listStage3ClaimRefs(), github.getStage3ActiveLock(), github.listPullRequests('all'),
+  ]);
+  const hasClaim = claimRefs.some((ref) => (typeof ref === 'string' ? ref : ref.ref) === claimRef);
+  if (!activeLock || activeLock.batchId !== batchId || activeLock.attempt !== attempt) {
+    throw new Stage3WorkerError(`${claimRef} does not own the global Stage 3 lock; preserve all refs for owner-directed recovery`, { batchId, attempt, claimCreated: hasClaim });
+  }
+  const otherClaims = claimRefs.filter((ref) => {
+    const name = (typeof ref === 'string' ? ref : ref.ref) || '';
+    return name.startsWith(CLAIM_PREFIX) && name !== claimRef;
+  });
+  if (otherClaims.length) throw new Stage3WorkerError(`${claimRef} owns the global lock but other Stage 3 claim refs exist; preserve the ambiguity`, { batchId, attempt, claimCreated: true });
+  if (!hasClaim) log(`${claimRef} is missing while its global lock remains; recovery will recreate the claim under that lock.`);
+  const allStage3Pulls = allPulls.filter(isStage3PullRequest);
+  const matches = allStage3Pulls.filter((pr) => (pr.body ?? '').includes(claimRef)
     || pr.head?.ref?.endsWith(`/stage3/${batchId}-a${attempt}`)
     || pr.head?.ref?.endsWith(`/stage3-status/${batchId}-a${attempt}`));
+  const foreignOpen = allStage3Pulls.find((pr) => pr.state === 'open' && !matches.includes(pr));
+  if (foreignOpen) throw new Stage3WorkerError(`${claimRef} owns the global lock while unrelated Stage 3 PR #${foreignOpen.number} is also open; preserve both attempts`, { batchId, attempt, claimCreated: true, prNumber: foreignOpen.number });
   const admission = matches.find((pr) => pr.head?.ref?.endsWith(`/stage3/${batchId}-a${attempt}`));
   const rejection = matches.find((pr) => pr.head?.ref?.endsWith(`/stage3-status/${batchId}-a${attempt}`));
   if (matches.filter((pr) => pr.state === 'open').length > 1) throw new Stage3WorkerError(`${claimRef} has multiple open PRs; owner-directed recovery must resolve the ambiguity`, { batchId, attempt, claimCreated: true });
   if (admission?.state === 'open') {
     if (rejection?.state === 'open') throw new Stage3WorkerError(`${claimRef} has both an admission and rejection PR open`, { batchId, attempt, claimCreated: true });
-    return { status: 'resume-admission', batchId, attempt, claimRef, branchName: admission.head.ref,
-      baseSha: admission.base?.sha, prNumber: admission.number, draft: admission.draft === true, prState: 'admission' };
+    return { status: 'resume-admission', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: admission.head.ref,
+      baseSha: admission.base?.sha || activeLock.baseSha, prNumber: admission.number, draft: admission.draft === true, prState: 'admission' };
   }
   if (rejection?.state === 'open') return {
-    status: 'await-rejection', batchId, attempt, claimRef, branchName: rejection.head.ref,
+    status: 'await-rejection', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: rejection.head.ref,
     prNumber: rejection.number, admissionPr: admission?.number, prState: 'rejection-status',
   };
   if (rejection && !rejection.merged && rejection.state === 'closed') {
@@ -429,20 +483,21 @@ export async function recoverStage3Attempt({ github, git, agent = 'codex', batch
         batchId, attempt, claimCreated: true, prNumber: admission.number,
       });
     }
-    const claim = { batchId, attempt, claimRef, agent, rejectionBranchName: rejectionBranchName(agent, batchId, attempt) };
-    const result = await createRejection({ github, git, root, claim, admissionPr: admission.number, log });
-    return { status: 'create-rejection', ...claim, admissionPr: admission.number, ...result };
+    return {
+      status: 'create-rejection', batchId, attempt, claimRef, agent, activeLock, claimMissing: !hasClaim,
+      rejectionBranchName: rejectionBranchName(agent, batchId, attempt), admissionPr: admission.number,
+    };
   }
-  if (admission?.merged) return { status: 'admission-merged', batchId, attempt, claimRef, branchName: admission.head.ref, prNumber: admission.number, prState: 'admission' };
+  if (admission?.merged) return { status: 'admission-merged', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: admission.head.ref, prNumber: admission.number, prState: 'admission' };
   if (rejection?.merged) return {
-    status: 'rejection-merged', batchId, attempt, claimRef, branchName: rejection.head.ref,
+    status: 'rejection-merged', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: rejection.head.ref,
     prNumber: rejection.number, admissionPr: admission?.number, prState: 'rejection-status',
   };
   const branchName = branchNameFor(agent, batchId, attempt);
   if (typeof git.remoteBranchExists === 'function' && await git.remoteBranchExists(branchName)) {
-    return { status: 'restore-draft', batchId, attempt, claimRef, branchName, prNumber: null, prState: 'starter' };
+    return { status: 'restore-draft', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, baseSha: activeLock.baseSha, branchName, prNumber: null, prState: 'starter' };
   }
-  return { status: 'restore-starter', batchId, attempt, claimRef, branchName, prNumber: null, prState: 'starter' };
+  return { status: 'restore-starter', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, baseSha: activeLock.baseSha, branchName, prNumber: null, prState: 'starter' };
 }
 
 export async function releaseStage3Claim({ github, git, claim, pullRequest, outcome, loadSnapshot = loadFactorySnapshot } = {}) {
@@ -467,11 +522,20 @@ export async function releaseStage3Claim({ github, git, claim, pullRequest, outc
       throw new Stage3WorkerError('master does not contain this merged canonical admission; preserving claim', { ...claim, claimCreated: true });
     }
   }
+  const activeLock = await github.getStage3ActiveLock();
+  if (!activeLock || activeLock.batchId !== claim.batchId || activeLock.attempt !== claim.attempt
+    || (claim.activeLock?.sha && activeLock.sha !== claim.activeLock.sha)) {
+    throw new Stage3WorkerError('the Stage 3 global lock no longer belongs to this merged attempt; preserving refs', { ...claim, claimCreated: true });
+  }
   if (typeof git.remoteBranchExists === 'function' && await git.remoteBranchExists(claim.branchName)) {
     await git.deleteBranch?.(claim.branchName);
   }
   await git.deleteLocalBranch?.(claim.branchName);
-  await github.deleteStage3ClaimRef(claim.batchId, claim.attempt);
+  const claimRefExists = (await github.listStage3ClaimRefs()).some((ref) => (typeof ref === 'string' ? ref : ref.ref) === claim.claimRef);
+  if (claimRefExists) await github.deleteStage3ClaimRef(claim.batchId, claim.attempt);
+  if (!await github.deleteStage3ActiveLock(activeLock.sha)) {
+    throw new Stage3WorkerError('Stage 3 result is merged, but the matching global lock could not be safely released', { ...claim, claimCreated: true });
+  }
   return true;
 }
 

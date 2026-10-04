@@ -94,7 +94,7 @@ test('eligibility excludes claimed batches and open admission or rejection statu
   assert.equal(eligibleStage3Batches(snapshot, [], [{ head: { ref: 'claude/stage3-status/C000001-a2' } }]).length, 0);
 });
 
-test('atomic claim race picks another ready batch and opens metadata Draft PR before preflight', async () => {
+test('a batch claim conflict does not fall through to a different ready review', async () => {
   const events = [];
   const snapshot = {
     validated: true,
@@ -105,6 +105,11 @@ test('atomic claim race picks another ready batch and opens metadata Draft PR be
     async getBranchHead() { return 'head'; },
     async listStage3ClaimRefs() { return []; },
     async listPullRequests() { return []; },
+    async getStage3ActiveLock() { return null; },
+    async createStage3ActiveLock({ batchId, attempt, baseSha, ownerToken }) {
+      events.push(`lock:${batchId}`);
+      return { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId, attempt, baseSha, ownerToken };
+    },
     async createStage3ClaimRef(batchId) { events.push(`claim:${batchId}`); return batchId !== 'C000001'; },
     async createPullRequest(payload) { events.push(`draft:${payload.draft}`); assert.match(payload.body, /Stage 3 attempt: C000002-a1/u); return { number: 52, html_url: 'https://example.test/52' }; },
   };
@@ -113,45 +118,78 @@ test('atomic claim race picks another ready batch and opens metadata Draft PR be
     createBranch(name) { events.push(`branch:${name}`); },
     async writeStarterAndPush({ batchId }) { events.push(`starter:${batchId}`); },
   };
-  const claim = await claimNextStage3Batch({ github, git, loadSnapshot: async () => snapshot, log: () => {} });
-  assert.equal(claim.batchId, 'C000002');
-  assert.equal(claim.prNumber, 52);
-  assert.deepEqual(events.slice(0, 4), [
-    'claim:C000001', 'claim:C000002', 'branch:codex/stage3/C000002-a1', 'starter:C000002',
-  ]);
-  assert.equal(events[4], 'draft:true');
+  await assert.rejects(() => claimNextStage3Batch({ github, git, loadSnapshot: async () => snapshot, log: () => {}, ownerToken: () => 'owner-token-0001' }), /claim already exists/u);
+  assert.deepEqual(events, ['lock:C000001', 'claim:C000001']);
 });
 
-test('two same-login sessions racing one ready batch create exactly one claim and starter PR', async () => {
-  const events = [];
+test('a claim or open Stage 3 PR blocks every other ready batch', async () => {
   const snapshot = {
     validated: true,
-    candidates: [{ batchId: 'C000001', manifest: { status: 'complete' }, rows: [], files: [] }],
-    reviews: [{ batchId: 'C000001', manifest: { status: 'ready', attempt: 1 }, decisions: [], files: [] }],
+    candidates: ['C000001', 'C000002'].map((batchId) => ({ batchId, manifest: { status: 'complete' } })),
+    reviews: ['C000001', 'C000002'].map((batchId) => ({ batchId, manifest: { status: 'ready', attempt: 1 } })),
   };
+  const makeGit = () => ({ async fetchMaster() {}, resolveRef() { return 'head'; } });
+  const cases = [
+    { claimRefs: ['refs/heads/stage3-claims/C000001-a1'], pulls: [] },
+    { claimRefs: [], pulls: [{ state: 'open', body: 'Stage 3 attempt: C000001-a1', head: { ref: 'codex/stage3/C000001-a1' } }] },
+    { claimRefs: [], pulls: [{ state: 'open', body: 'Stage 3 attempt: C000001-a1', head: { ref: 'claude/stage3-status/C000001-a1' } }] },
+    { claimRefs: [], pulls: [], activeLock: { batchId: 'C000001', attempt: 1, sha: 'lock-sha' } },
+  ];
+  for (const scenario of cases) {
+    let lockCreates = 0;
+    const github = {
+      async getBranchHead() { return 'head'; },
+      async listStage3ClaimRefs() { return scenario.claimRefs; },
+      async listPullRequests() { return scenario.pulls; },
+      async getStage3ActiveLock() { return scenario.activeLock || null; },
+      async createStage3ActiveLock() { lockCreates += 1; return { sha: 'unexpected' }; },
+    };
+    const result = await claimNextStage3Batch({ github, git: makeGit(), loadSnapshot: async () => snapshot, log: () => {} });
+    assert.equal(result, null);
+    assert.equal(lockCreates, 0);
+  }
+});
+
+test('concurrent sessions selecting different ready batches produce exactly one global active attempt', async () => {
+  const events = [];
+  const snapshotFor = (batchId) => ({
+    validated: true,
+    candidates: [{ batchId, manifest: { status: 'complete' }, rows: [], files: [] }],
+    reviews: [{ batchId, manifest: { status: 'ready', attempt: 1 }, decisions: [], files: [] }],
+    canonicalEntries: [],
+  });
   let listings = 0;
   let openListingBarrier;
   const bothListed = new Promise((resolve) => { openListingBarrier = resolve; });
-  let claimed = false;
+  let activeLock = null;
   const github = {
     async getBranchHead() { return 'head'; },
     async listStage3ClaimRefs() { listings += 1; if (listings === 2) openListingBarrier(); await bothListed; return []; },
     async listPullRequests() { return []; },
-    async createStage3ClaimRef() { if (claimed) return false; claimed = true; events.push('claim'); return true; },
-    async createPullRequest() { events.push('draft'); return { number: 53, html_url: 'https://example.test/53' }; },
+    async getStage3ActiveLock() { return null; },
+    async createStage3ActiveLock(value) {
+      if (activeLock) return false;
+      activeLock = { ref: 'refs/heads/stage3-active', sha: `lock-${value.batchId}`, ...value };
+      events.push(`lock:${value.batchId}`);
+      return activeLock;
+    },
+    async createStage3ClaimRef(batchId) { events.push(`claim:${batchId}`); return true; },
+    async createPullRequest(payload) { events.push(`draft:${payload.body.match(/C\d{6}-a1/u)?.[0]}`); return { number: 53, html_url: 'https://example.test/53' }; },
   };
-  const git = {
+  const makeGit = () => ({
     async fetchMaster() {}, resolveRef() { return 'head'; }, originRemote() { return 'https://github.com/o/r.git'; },
-    createBranch() { events.push('branch'); },
-    async writeStarterAndPush() { events.push('starter'); },
-  };
+    createBranch(name) { events.push(`branch:${name}`); },
+    async writeStarterAndPush({ batchId }) { events.push(`starter:${batchId}`); },
+  });
   const results = await Promise.all([
-    claimNextStage3Batch({ github, git, loadSnapshot: async () => snapshot, log: () => {} }),
-    claimNextStage3Batch({ github, git, loadSnapshot: async () => snapshot, log: () => {} }),
+    claimNextStage3Batch({ github, git: makeGit(), loadSnapshot: async () => snapshotFor('C000001'), log: () => {}, ownerToken: () => 'owner-token-0001' }),
+    claimNextStage3Batch({ github, git: makeGit(), loadSnapshot: async () => snapshotFor('C000002'), log: () => {}, ownerToken: () => 'owner-token-0002' }),
   ]);
   assert.equal(results.filter(Boolean).length, 1);
-  assert.deepEqual(events.sort(), ['branch', 'claim', 'draft', 'starter']);
-  assert.equal(eligibleStage3Batches(snapshot, ['refs/heads/stage3-claims/C000001-a1']).length, 0);
+  assert.equal(events.filter((event) => event.startsWith('lock:')).length, 1);
+  assert.equal(events.filter((event) => event.startsWith('claim:')).length, 1);
+  assert.equal(events.filter((event) => event.startsWith('draft:')).length, 1);
+  assert.equal(new Set(events.filter((event) => event.startsWith('lock:') || event.startsWith('claim:')).map((event) => event.split(':')[1])).size, 1);
 });
 
 test('Draft PR exists before lexical preflight failure, then creates a separate rejection PR with actual number', async () => {
@@ -195,8 +233,10 @@ test('Draft PR exists before lexical preflight failure, then creates a separate 
 
 test('recovery reuses an open admission PR and creates status only when it is missing', async () => {
   const claimRef = 'refs/heads/stage3-claims/C000001-a1';
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId: 'C000001', attempt: 1, baseSha: 'head', ownerToken: 'owner-token-0001' };
   const github = {
     async listStage3ClaimRefs() { return [{ ref: claimRef }]; },
+    async getStage3ActiveLock() { return activeLock; },
     async listPullRequests() { return [
     { number: 91, state: 'open', merged: false, body: `Claim ref: ${claimRef}`, head: { ref: 'codex/stage3/C000001-a1' } },
     ]; },
@@ -227,13 +267,69 @@ test('recovery reuses an open admission PR and creates status only when it is mi
     createRejection: async ({ admissionPr }) => { createCalls.push(admissionPr); return { prNumber: 93 }; },
   });
   assert.equal(result.status, 'create-rejection');
-  assert.deepEqual(createCalls, [92]);
+  assert.equal(result.admissionPr, 92);
+  assert.deepEqual(createCalls, []);
   await assert.rejects(() => recoverStage3Attempt({
     github: { ...github, async listPullRequests() { return [
       { number: 95, state: 'closed', merged: false, body: `Claim ref: ${claimRef}`, head: { ref: 'codex/stage3/C000001-a1' } },
     ]; } },
     git: {}, batchId: 'C000001', attempt: 1,
   }), /without a recorded lexical-rejection disposition/u);
+});
+
+test('an owned global lock recovers a crash before the per-batch claim was written', async () => {
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId: 'C000001', attempt: 1, baseSha: 'base-sha', ownerToken: 'owner-token-0001' };
+  const recovered = await recoverStage3Attempt({
+    github: {
+      async listStage3ClaimRefs() { return []; },
+      async getStage3ActiveLock() { return activeLock; },
+      async listPullRequests() { return []; },
+    },
+    git: { async remoteBranchExists() { return false; } },
+    batchId: 'C000001', attempt: 1,
+    log: () => {},
+  });
+  assert.equal(recovered.status, 'restore-starter');
+  assert.equal(recovered.claimMissing, true);
+  assert.equal(recovered.baseSha, 'base-sha');
+  assert.equal(recovered.activeLock.sha, 'lock-sha');
+});
+
+test('resume restores a missing per-batch ref under the existing global lock before opening a Draft', async () => {
+  const events = [];
+  const batchId = 'C000001';
+  const attempt = 1;
+  const claimRef = `refs/heads/stage3-claims/${batchId}-a${attempt}`;
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId, attempt, baseSha: 'master-sha', ownerToken: 'owner-token-0001' };
+  const snapshot = {
+    headSha: 'master-sha', validated: true,
+    candidates: [{ batchId, manifest: { status: 'complete' }, rows: [], files: [] }],
+    reviews: [{ batchId, manifest: { status: 'ready', attempt }, decisions: [], files: [] }],
+    canonicalEntries: [],
+  };
+  const github = {
+    async getBranchHead() { return 'master-sha'; },
+    async listStage3ClaimRefs() { events.push('list-claims'); return []; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listPullRequests() { return []; },
+    async createStage3ClaimRef(batch, n, sha) { events.push(`restore-claim:${batch}-a${n}:${sha}`); return true; },
+  };
+  const git = {
+    async fetchMaster() {}, resolveRef() { return 'master-sha'; }, originRemote() { return 'https://github.com/o/r.git'; },
+    async remoteBranchExists() { return false; },
+  };
+  const result = await runStage3Cli(['--resume-batch', batchId, '--attempt', String(attempt)], {
+    env: { GH_TOKEN: 'fixture-token' }, makeGit: () => git, makeGithub: () => github,
+    loadSnapshot: async () => snapshot,
+    createDraft: async ({ claim }) => { events.push('draft'); return { ...claim, prNumber: 102, prState: 'draft' }; },
+    processAttempt: async ({ claim }) => { events.push('preflight'); return { ...claim, prState: 'admission' }; },
+    callbacks: { async waitForMerge() { return { status: 'stopped-by-primary' }; }, close() {} },
+    log: () => {},
+  });
+  assert.equal(result.status, 'stopped-by-primary');
+  assert.ok(events.indexOf(`restore-claim:${batchId}-a${attempt}:master-sha`) < events.indexOf('draft'));
+  assert.ok(events.indexOf('draft') < events.indexOf('preflight'));
+  assert.equal(events.includes('delete-active-lock'), false);
 });
 
 test('successful admission removes the starter before commit and ready transition', async () => {
@@ -335,6 +431,7 @@ for (const { label, remoteBranchExists } of [
     const github = {
       async getBranchHead(branch) { assert.equal(branch, 'master'); return 'master-sha'; },
       async listStage3ClaimRefs() { return [claimRef]; },
+      async getStage3ActiveLock() { return { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId, attempt, baseSha: 'master-sha', ownerToken: 'owner-token-0001' }; },
       async listPullRequests(state) { assert.equal(state, 'all'); return []; },
     };
     const callbacks = {
@@ -386,15 +483,74 @@ test('serial session waits for the current PR merge before claiming the next bat
 });
 
 test('release requires the claimed admission PR to be merged and its state on master', async () => {
-  let deleted = false;
-  const claim = { batchId: 'C000001', attempt: 1, claimRef: 'refs/heads/stage3-claims/C000001-a1', branchName: 'codex/stage3/C000001-a1', prState: 'admission' };
+  const deleted = [];
+  let merged = false;
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId: 'C000001', attempt: 1, baseSha: 'head', ownerToken: 'owner-token-0001' };
+  const claim = { batchId: 'C000001', attempt: 1, claimRef: 'refs/heads/stage3-claims/C000001-a1', branchName: 'codex/stage3/C000001-a1', prState: 'admission', activeLock };
   const github = {
-    async getPullRequest() { return { number: 100, merged: true, base: { ref: 'master' }, head: { ref: claim.branchName } }; },
+    async getPullRequest() { return { number: 100, merged, base: { ref: 'master' }, head: { ref: claim.branchName } }; },
     async getBranchHead() { return 'master-sha'; },
-    async deleteStage3ClaimRef() { deleted = true; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listStage3ClaimRefs() { return [{ ref: claim.claimRef }]; },
+    async deleteStage3ClaimRef() { deleted.push('claim'); },
+    async deleteStage3ActiveLock(sha) { assert.equal(sha, activeLock.sha); deleted.push('global'); return true; },
   };
   const git = { async fetchMaster() {}, resolveRef() { return 'master-sha'; } };
+  assert.equal(await releaseStage3Claim({ github, git, claim, pullRequest: { number: 100 } }), false);
+  assert.deepEqual(deleted, []);
+  merged = true;
   const released = await releaseStage3Claim({ github, git, claim, pullRequest: { number: 100 }, loadSnapshot: async () => ({ reviews: [{ batchId: 'C000001', manifest: { status: 'complete', attempt: 1, admission: { admission_pr: 100 } } }] }) });
   assert.equal(released, true);
-  assert.equal(deleted, true);
+  assert.deepEqual(deleted, ['claim', 'global']);
+});
+
+test('recovery after a merged PR tolerates a deleted attempt ref and releases only its matching lock', async () => {
+  const claimRef = 'refs/heads/stage3-claims/C000001-a1';
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId: 'C000001', attempt: 1, baseSha: 'head', ownerToken: 'owner-token-0001' };
+  const pull = { number: 101, state: 'closed', merged: true, body: `Claim ref: ${claimRef}`, base: { ref: 'master' }, head: { ref: 'codex/stage3/C000001-a1' } };
+  let deletedLock = false;
+  const github = {
+    async listStage3ClaimRefs() { return []; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listPullRequests() { return [pull]; },
+    async getPullRequest() { return pull; },
+    async getBranchHead() { return 'master-sha'; },
+    async deleteStage3ActiveLock(sha) { assert.equal(sha, activeLock.sha); deletedLock = true; return true; },
+  };
+  const git = { async fetchMaster() {}, resolveRef() { return 'master-sha'; } };
+  const recovered = await recoverStage3Attempt({ github, git, batchId: 'C000001', attempt: 1 });
+  assert.equal(recovered.status, 'admission-merged');
+  assert.equal(recovered.claimMissing, true);
+  assert.equal(await releaseStage3Claim({
+    github, git, claim: recovered, pullRequest: { number: 101 },
+    loadSnapshot: async () => ({ reviews: [{ batchId: 'C000001', manifest: { status: 'complete', attempt: 1, admission: { admission_pr: 101 } } }] }),
+  }), true);
+  assert.equal(deletedLock, true);
+});
+
+test('rejection status keeps the global lock until its real status PR is merged', async () => {
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId: 'C000001', attempt: 1, baseSha: 'head', ownerToken: 'owner-token-0001' };
+  const claim = {
+    batchId: 'C000001', attempt: 1, claimRef: 'refs/heads/stage3-claims/C000001-a1',
+    branchName: 'codex/stage3-status/C000001-a1', prState: 'rejection-status', admissionPr: 75, activeLock,
+  };
+  let merged = false;
+  const released = [];
+  const github = {
+    async getPullRequest() { return { number: 102, merged, base: { ref: 'master' }, head: { ref: claim.branchName } }; },
+    async getBranchHead() { return 'master-sha'; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listStage3ClaimRefs() { return [{ ref: claim.claimRef }]; },
+    async deleteStage3ClaimRef() { released.push('claim'); },
+    async deleteStage3ActiveLock() { released.push('global'); return true; },
+  };
+  const git = { async fetchMaster() {}, resolveRef() { return 'master-sha'; } };
+  assert.equal(await releaseStage3Claim({ github, git, claim, pullRequest: { number: 102 } }), false);
+  assert.deepEqual(released, []);
+  merged = true;
+  assert.equal(await releaseStage3Claim({
+    github, git, claim, pullRequest: { number: 102 }, outcome: { status: 'rejected' },
+    loadSnapshot: async () => ({ reviews: [{ batchId: 'C000001', manifest: { status: 'rejected', attempt: 1, rejected_pr: 75 } }] }),
+  }), true);
+  assert.deepEqual(released, ['claim', 'global']);
 });

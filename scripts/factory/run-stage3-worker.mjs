@@ -11,6 +11,7 @@ import {
   createStage3Draft,
   createStage3GitRepository,
   eligibleStage3Batches,
+  hasStage3Activity,
   processStage3Attempt,
   createRejectionStatusPullRequest,
   recoverStage3Attempt,
@@ -59,20 +60,20 @@ export const HELP = [
   'Usage: npm run factory:stage3 -- --agent codex|claude [--repo owner/name] [--dry-run]',
   '       npm run factory:stage3 -- --agent codex|claude --resume-batch C000001 --attempt 1',
   '',
-  'Each attempt claims one ready review, commits an attempt marker, and opens a real Draft PR before preflight.',
+  'A singleton GitHub lock makes all worker sessions serial; each attempt claims one ready review, commits an attempt marker, and opens a real Draft PR before preflight.',
   'The worker revalidates against latest master, prepares canonical JSONL, and marks that same PR ready only after the required gates pass.',
   'A lexical conflict closes the admission PR and opens a status-only rejected PR that cites its actual number.',
   'Interrupted attempts are resumed only when the exact batch and attempt are supplied with --resume-batch and --attempt.',
 ].join('\n');
 
-function claimFromSnapshot(snapshot, { batchId, attempt, agent, branchName, baseSha, prNumber, prState, admissionPr }) {
+function claimFromSnapshot(snapshot, { batchId, attempt, agent, branchName, baseSha, prNumber, prState, admissionPr, activeLock }) {
   const review = snapshot.reviews.find((entry) => entry.batchId === batchId);
   const candidate = snapshot.candidates.find((entry) => entry.batchId === batchId);
   if (!review || !candidate || review.manifest.attempt !== attempt || review.manifest.status !== 'ready') {
     throw new Stage3WorkerError(`${batchId}-a${attempt} cannot resume against the current master factory snapshot`);
   }
   return {
-    batchId, attempt, agent, branchName, prNumber, prState, admissionPr,
+    batchId, attempt, agent, branchName, prNumber, prState, admissionPr, activeLock,
     claimRef: `refs/heads/stage3-claims/${batchId}-a${attempt}`,
     baseSha: baseSha || snapshot.headSha,
     rejectionBranchName: `${agent}/stage3-status/${batchId}-a${attempt}`,
@@ -95,13 +96,20 @@ async function resumeStage3Cli({
 }) {
   const { resumeBatch: batchId, resumeAttempt: attempt, agent } = options;
   const recovered = await recoverStage3Attempt({
-    github, git, root, agent, batchId, attempt, log,
-    ...(options.dryRun ? { createRejection: async ({ admissionPr }) => ({ admissionPr }) } : {}),
+    github, git, agent, batchId, attempt, log,
   });
   if (options.dryRun) {
     const result = { status: 'recovery-dry-run', ...recovered };
     log(JSON.stringify(result));
     return result;
+  }
+
+  if (recovered.claimMissing && recovered.status !== 'admission-merged' && recovered.status !== 'rejection-merged') {
+    const created = await github.createStage3ClaimRef(batchId, attempt, recovered.baseSha || recovered.activeLock.baseSha);
+    if (!created && !(await github.listStage3ClaimRefs()).some((ref) => (typeof ref === 'string' ? ref : ref.ref) === recovered.claimRef)) {
+      throw new Stage3WorkerError(`${recovered.claimRef} could not be restored under its matching global lock`, { batchId, attempt, claimCreated: true });
+    }
+    log(`Restored ${recovered.claimRef} under the owned Stage 3 global lock.`);
   }
   if (recovered.status === 'admission-merged' || recovered.status === 'rejection-merged') {
     const released = await releaseStage3Claim({
@@ -234,8 +242,11 @@ export async function runStage3Cli(argv, {
       interactive.close?.();
     }
   }
-  const [claimRefs, openPullRequests] = await Promise.all([github.listStage3ClaimRefs(), github.listPullRequests('open')]);
-  const candidate = eligibleStage3Batches(snapshot, claimRefs, openPullRequests)[0];
+  const [claimRefs, openPullRequests, activeLock] = await Promise.all([
+    github.listStage3ClaimRefs(), github.listPullRequests('open'), github.getStage3ActiveLock(),
+  ]);
+  const candidate = hasStage3Activity({ activeLock, claimRefs, openPullRequests })
+    ? null : eligibleStage3Batches(snapshot, claimRefs, openPullRequests)[0];
   if (options.dryRun) {
     const result = candidate
       ? { status: 'dry-run', batchId: candidate.batchId, attempt: candidate.attempt, baseSha: headSha }
