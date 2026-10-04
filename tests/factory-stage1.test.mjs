@@ -22,7 +22,8 @@ const ANALYSES = {
   걸어: [[{ lemma: '걷다', pos: 'verb', form: '걷' }]],
   바람물결: [[{ lemma: '바람', pos: 'noun', form: '바람' }, { lemma: '물결', pos: 'noun', form: '물결' }]],
   집집: [[{ lemma: '집', pos: 'noun', form: '집' }, { lemma: '집', pos: 'noun', form: '집' }]],
-  망각한: [[{ lemma: '망각', pos: 'noun', form: '망각' }, { lemma: '망각하다', pos: 'verb', form: '망각하' }]],
+  사랑한: [[{ lemma: '사', pos: 'noun', form: '사' }, { lemma: '사랑하다', pos: 'verb', form: '사랑하' }]],
+  망각한: [[{ lemma: '망각', pos: 'noun', form: '망각' }, { lemma: '망각하다', pos: 'verb', form: '망각하', derived_from: '망각' }]],
   나는: [[{ lemma: '나', pos: 'noun', form: '나' }], [{ lemma: '날다', pos: 'verb', form: '날' }]],
 };
 const syntheticAnalyzer = (analyses = ANALYSES, metadata = METADATA) => async (requests) => ({
@@ -191,10 +192,12 @@ test('a multi-morpheme surface not explained by the proposed lemma is held; deri
     cand('망각하다', 'verb', [hit('d7', 'p1', '망각한')]),
     cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]),
     cand('집', 'noun', [hit('d8', 'p1', '집집')]),
+    cand('사랑하다', 'verb', [hit('d9', 'p1', '사랑한')]),
   ]));
   const by = Object.fromEntries(rows.map((row) => [row.input, row.holds]));
   assert.deepEqual(by.바람, ['lemma_mismatch']);
   assert.deepEqual(by.망각하다, []);
   assert.deepEqual(by.짠하다, []);
+  assert.deepEqual(by.사랑하다, ['lemma_mismatch'], 'a prefix noun without the analyzer-recorded derivation link is held');
   assert.deepEqual(by.집, ['lemma_mismatch'], 'a repeated/prefix non-derived morpheme is not an explained surface');
 });

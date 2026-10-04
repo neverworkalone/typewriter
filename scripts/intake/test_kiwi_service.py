@@ -19,6 +19,7 @@ class FakeAnalyzer:
         "푸르다": [([tok("푸르", "VA-I"), tok("다", "EF")], 0.0)],
         "바라다": [([tok("바라", "VV")], 0.0), ([tok("바람", "NNG")], -1.0)],
         "물결무늬": [([tok("물결", "NNG"), tok("무늬", "NNG")], 0.0)],
+        "망각한": [([tok("망각", "NNG"), tok("하", "XSV"), tok("ᆫ", "ETM")], 0.0)],
         "매우": [([tok("매우", "MAG")], 0.0)],
         "조사만": [([tok("만", "JX")], 0.0)],
     }
@@ -65,6 +66,13 @@ class KiwiServiceTest(unittest.TestCase):
     def run_batch(self, texts):
         requests = [{"id": str(i), "text": t} for i, t in enumerate(texts)]
         return service.analyze_batch(FakeAnalyzer(), requests)["results"]
+
+    def test_derived_predicate_records_its_analyzer_root(self):
+        outcome = service.analyze_one(FakeAnalyzer(), "망각한")
+        self.assertEqual(outcome["analyses"][0], [
+            {"lemma": "망각", "pos": "noun", "form": "망각"},
+            {"lemma": "망각하다", "pos": "verb", "form": "망각하", "derived_from": "망각"},
+        ])
 
     def test_statuses_are_explicit_and_ordered(self):
         results = self.run_batch(["푸르다", "바라다", "물결무늬", "조사만", "없음", "오류", ""])
