@@ -188,8 +188,15 @@ export async function resolveWithProviders({ observations, providers }) {
       throw new Stage1Error([`analyzer proposal_contract ${response.metadata.proposal_contract ?? 'missing'} is not ${REQUIRED_PROPOSAL_CONTRACT}`]);
     }
     metadataByProvider.set(provider.id, response.metadata);
-    const raw = new Map((Array.isArray(response.results) ? response.results : []).map((outcome) => [outcome?.id, outcome]));
-    const normalized = new Map(requests.map((request) => [request.id, normalizeProviderResult(provider, request, raw.get(request.id))]));
+    const list = Array.isArray(response.results) ? response.results : [];
+    const raw = new Map(list.map((outcome) => [outcome?.id, outcome]));
+    // More than one result for a requested id is malformed and order-dependent: never trust either.
+    const duplicated = new Set(list.map((outcome) => outcome?.id).filter((id, at, ids) => ids.indexOf(id) !== at));
+    const normalized = new Map(requests.map((request) => {
+      const result = normalizeProviderResult(provider, request, raw.get(request.id));
+      return [request.id, duplicated.has(request.id)
+        ? { ...result, outcome: 'error', analyses: [], diagnostics: { reason: 'duplicate_result_id' } } : result];
+    }));
     const next = [];
     for (const index of pending) {
       const observation = observations[index];

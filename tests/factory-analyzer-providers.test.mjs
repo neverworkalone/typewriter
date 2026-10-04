@@ -141,6 +141,22 @@ test('malformed, stale and missing provider results become explicit holds', asyn
   assert.deepEqual(settled.rows[0].holds, []);
 });
 
+test('duplicate result ids never produce a certain result, whatever the order', async () => {
+  const good = (id, text) => ({ id, input_digest: analysisInputDigest(text), status: 'ok', analyses: [GOOD] });
+  const bad = (id, text) => ({ id, input_digest: analysisInputDigest(text), status: 'error', analyses: [] });
+  const rival = (id, text) => ({ id, input_digest: analysisInputDigest(text), status: 'ok', analyses: [path('짠', 'noun')] });
+  for (const pair of [[good, bad], [bad, good], [good, rival], [rival, good], [good, good]]) {
+    const dup = { ...spyKiwi({}), analyze: async (requests) => ({ metadata: KIWI_METADATA,
+      results: requests.flatMap(({ id, text }) => pair.map((make) => make(id, text))) }) };
+    const first = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [dup]);
+    assert.deepEqual(first.rows[0].holds, ['analysis_error']);
+    const second = fakeProvider('fakeb', { 짠한: [GOOD] });
+    const settled = await produce([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])], [dup, second]);
+    assert.deepEqual(settled.rows[0].holds, [], 'only a later well-formed provider may settle it');
+    assert.equal(second.calls.length, 1);
+  }
+});
+
 test('an unavailable provider or incompatible metadata fails the run closed', async () => {
   const down = { ...fakeProvider('fakeb', {}), analyze: async () => { throw new Error('not installed'); } };
   await assert.rejects(() => produce([cand('낯설다', 'adjective', [hit('d2', 'p1', '낯선')])], [spyKiwi({}), down]), /fakeb failed closed: not installed/);
