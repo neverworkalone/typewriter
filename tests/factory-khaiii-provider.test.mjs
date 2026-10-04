@@ -11,7 +11,7 @@ import { FILLER, HEX, cand, fillerTable, holdsOf, item, khaiii, kiwi, produce, r
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 
 // Normal CI runs this file only. It never probes, runs or builds Docker; the Docker runtime is
-// covered by the manual tests/factory-khaiii-docker.test.mjs (npm run test:khaiii:docker).
+// covered by the manual tests/manual/khaiii-docker.test.mjs (npm run test:khaiii:docker).
 
 test('Khaiii service regressions (synthetic Khaiii API; not proof the official binary ran)', () => {
   const result = spawnSync(process.env.TYPEWRITER_PYTHON || 'python3', ['scripts/factory/test_khaiii_service.py'], { encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
@@ -146,11 +146,11 @@ const forbidden = new RegExp(['image\\W+inspect', 'spawnSync\\(\\s*dock' + 'er',
 test('normal CI never discovers, probes or runs the Docker runtime', () => {
   const registry = readFileSync('scripts/ci/registry.mjs', 'utf8');
   const scripts = JSON.parse(readFileSync('package.json', 'utf8')).scripts;
-  assert.ok(!registry.includes('khaiii-docker'), 'the manual Docker test is not registered in any CI category');
+  assert.ok(!registry.includes('manual/khaiii-docker'), 'the manual Docker test is not registered in any CI category');
   for (const [name, command] of Object.entries(scripts)) {
-    if (name.startsWith('ci:') || name === 'test' || name.startsWith('test:unit')) assert.ok(!command.includes('khaiii-docker'), `${name} must not run the Docker test`);
+    if (name.startsWith('ci:') || name === 'test' || name.startsWith('test:unit')) assert.ok(!command.includes('manual/khaiii-docker'), `${name} must not run the Docker test`);
   }
-  assert.equal(scripts['test:khaiii:docker'], 'node --test tests/factory-khaiii-docker.test.mjs');
+  assert.equal(scripts['test:khaiii:docker'], 'node --test tests/manual/khaiii-docker.test.mjs');
   for (const file of ['tests/factory-khaiii-provider.test.mjs', 'tests/support/khaiii-fixtures.mjs']) {
     const source = readFileSync(file, 'utf8');
     assert.ok(!forbidden.test(source), `${file} must not touch the Docker CLI or image`);

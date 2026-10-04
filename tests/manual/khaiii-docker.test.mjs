@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
-import { DEFAULT_KHAIII_IMAGE, createKhaiiiAnalyzer, defaultNativeRoot } from '../scripts/factory/khaiii-provider.mjs';
+import { DEFAULT_KHAIII_IMAGE, createKhaiiiAnalyzer, defaultNativeRoot } from '../../scripts/factory/khaiii-provider.mjs';
 import { existsSync } from 'node:fs';
-import { realSmoke } from './support/khaiii-fixtures.mjs';
+import { realSmoke } from '../support/khaiii-fixtures.mjs';
 
 // MANUAL Docker-runtime tests (npm run test:khaiii:docker). Deliberately not in scripts/ci/registry.mjs:
 // no CI category (ci:fast, ci:normal, ci:all) discovers, probes, builds or runs Docker.

@@ -38,7 +38,7 @@ the Stage 1 run closed. `TYPEWRITER_KHAIII_IMAGE` / `TYPEWRITER_DOCKER` override
 
 ## Verification and skip protocol
 
-Manual only: `npm run test:khaiii:docker` (runs `tests/factory-khaiii-docker.test.mjs`). It is not
+Manual only: `npm run test:khaiii:docker` (runs `tests/manual/khaiii-docker.test.mjs`). It is not
 registered in any CI category, so `ci:fast`, `ci:normal` and `ci:all` never discover, probe, build or
 run Docker. The test is **skipped with a reason** when the image is absent; no synthetic result may be
 cited as proof that the official binary ran. If the image cannot be built, report the obstacle; do
