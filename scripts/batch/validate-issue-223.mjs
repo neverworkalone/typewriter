@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import { assertCanonicalOnlyFromReviewedBatches } from './canonical-batch-baseline.mjs';
+import { runCli as validateFactoryCli } from '../factory/validate.mjs';
 import { assertIntakeHandoffPolicy, requiresIntakeHandoff, verifyTrackedHandoff } from '../intake/production-handoff.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
@@ -628,12 +629,40 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       semanticPath: `data/batches/${path.basename(semanticPath)}`,
     });
   }
+  const stage3Imports = await loadStage3CanonicalImports(currentCanonical);
   assertCanonicalOnlyFromReviewedBatches({
     canonicalRecords: currentCanonical.records,
-    batchImportRecords: batches.flatMap((batch) => batch.importRecords),
+    batchImportRecords: [...batches.flatMap((batch) => batch.importRecords), ...stage3Imports],
     baseline: JSON.parse(await readFile(path.join(ROOT, 'data/validation/canonical-non-batch-baseline.json'), 'utf8')),
   });
+  batches.stage3Imports = stage3Imports;
   return batches;
+}
+
+async function loadStage3CanonicalImports(currentCanonical) {
+  const reviewDirectory = path.join(ROOT, 'data/reviews');
+  let batchNames = [];
+  try { batchNames = await readdir(reviewDirectory); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (batchNames.length === 0) return [];
+  const factoryErrors = await validateFactoryCli({ root: ROOT, ref: 'origin/master' });
+  assert.deepEqual(factoryErrors, [], 'Stage 3 admission records must satisfy the shared factory transition and source validators');
+  const canonicalById = new Map(currentCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
+  const admitted = [];
+  for (const batchId of batchNames.filter((name) => /^C\d{6}$/u.test(name)).sort()) {
+    const manifestPath = path.join(reviewDirectory, batchId, 'manifest.json');
+    let manifest;
+    try { manifest = JSON.parse(await readFile(manifestPath, 'utf8')); }
+    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    if (manifest.status !== 'complete') continue;
+    for (const change of manifest.admission?.changes ?? []) {
+      if (change.operation !== 'create') continue;
+      const record = canonicalById.get(change.entry_id);
+      assert.ok(record, `${batchId} Stage 3 created record ${change.entry_id} must exist in canonical data`);
+      admitted.push(record);
+    }
+  }
+  return admitted;
 }
 
 async function validateDeterministicBuild(admittedRecords, canonicalRevision, { compareSecondBuild = true } = {}) {
@@ -697,7 +726,7 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
   const semanticQaArtifactPath = path.join(BATCH_DIRECTORY, 'issue-223-b01-b04-semantic-qa.json');
   const semanticQaArtifact = JSON.parse(await readFile(semanticQaArtifactPath, 'utf8'));
   const semanticQaCoverage = validateIssue223SemanticQaArtifact(semanticQaArtifact, batches);
-  const issue223Imports = batches.flatMap(({ importRecords }) => importRecords);
+  const issue223Imports = [...batches.flatMap(({ importRecords }) => importRecords), ...(batches.stage3Imports ?? [])];
   const issue223ImportIds = new Set(issue223Imports.map(({ id }) => id));
   assert.equal(issue223ImportIds.size, issue223Imports.length, 'Issue #223 canonical record IDs are unique');
   const rootDecisionSource = await readSemanticDecisionSourceArtifact(ROOT_SEMANTIC_SOURCE_PATH);

@@ -183,6 +183,13 @@ export function validateReviewManifest(manifest, { candidateManifest, decisionsT
   } else if (manifest.rejected_pr !== undefined) {
     errors.push('review manifest: rejected_pr is only valid while status is rejected');
   }
+  if (manifest.status === 'complete') {
+    if (!manifest.admission || manifest.admission.contract !== 'lexical-factory-admission-v1') {
+      errors.push('review manifest: complete requires a Stage 3 admission mapping');
+    }
+  } else if (manifest.admission !== undefined) {
+    errors.push('review manifest: admission mapping is only valid while status is complete');
+  }
   if (candidateManifest) {
     if (candidateManifest.batch_id !== manifest.batch_id) errors.push('review manifest: batch_id differs from candidate manifest');
     if (candidateManifest.candidates_sha256 !== manifest.candidates_sha256) errors.push('review manifest: candidates_sha256 differs from candidate manifest');

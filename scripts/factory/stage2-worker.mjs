@@ -41,7 +41,7 @@ export function createGitRepository({ root = process.cwd() } = {}) {
       return gitRun(root, ['rev-parse', ref + '^{commit}']);
     },
     listFiles(ref) {
-      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', 'data/candidates', 'data/reviews', 'data/canonical']);
+      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', 'data/candidates', 'data/reviews', 'data/canonical', 'data/validation/canonical-semantic-decision-source.json']);
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
     show(ref, file) {
@@ -113,6 +113,8 @@ export async function loadFactorySnapshot({ git, headSha }) {
 
   const sourceFiles = new Map();
   const canonicalEntries = [];
+  const semanticAuthorityPath = 'data/validation/canonical-semantic-decision-source.json';
+  if (files.includes(semanticAuthorityPath)) sourceFiles.set(semanticAuthorityPath, git.show(headSha, semanticAuthorityPath));
   for (const [batchId, paths] of candidateFiles) {
     if (paths.size !== 2 || !paths.has('manifest.json') || !paths.has('candidates.jsonl')) {
       throw new Stage2WorkerError(batchId + ' has an incomplete candidate artifact set');
@@ -126,7 +128,11 @@ export async function loadFactorySnapshot({ git, headSha }) {
     }
     for (const file of paths.values()) sourceFiles.set(file, git.show(headSha, file));
   }
-  for (const file of canonicalPaths.sort()) canonicalEntries.push(...parseCanonicalEntries(git.show(headSha, file), file));
+  for (const file of canonicalPaths.sort()) {
+    const text = git.show(headSha, file);
+    sourceFiles.set(file, text);
+    canonicalEntries.push(...parseCanonicalEntries(text, file));
+  }
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-stage2-master-'));
   try {
@@ -142,17 +148,30 @@ export async function loadFactorySnapshot({ git, headSha }) {
   }
 
   const candidates = [];
+  const candidatesByBatch = new Map();
   for (const [batchId, paths] of candidateFiles) {
     const manifest = parseJson(sourceFiles.get(paths.get('manifest.json')), batchId + '/manifest.json');
     const candidatesText = sourceFiles.get(paths.get('candidates.jsonl'));
     const errors = [];
     const rows = parseJsonl(candidatesText, batchId + '/candidates.jsonl', errors);
     if (errors.length) throw new Stage2WorkerError(errors.join('\n'));
-    candidates.push({ batchId, manifest, candidatesText, rows });
+    const candidate = { batchId, manifest, candidatesText, rows, files: Object.fromEntries(paths) };
+    candidates.push(candidate);
+    candidatesByBatch.set(batchId, candidate);
   }
   const reviews = [];
   for (const [batchId, paths] of reviewFiles) {
-    reviews.push({ batchId, manifest: parseJson(sourceFiles.get(paths.get('manifest.json')), batchId + '/manifest.json') });
+    const manifest = parseJson(sourceFiles.get(paths.get('manifest.json')), batchId + '/manifest.json');
+    const decisionsText = sourceFiles.get(paths.get('decisions.jsonl'));
+    const errors = [];
+    const decisions = parseJsonl(decisionsText, batchId + '/decisions.jsonl', errors);
+    if (errors.length) throw new Stage2WorkerError(errors.join('\n'));
+    reviews.push({
+      batchId, manifest, decisions, decisionsText,
+      semanticDecisionsText: sourceFiles.get(paths.get('semantic-decisions.json')),
+      handoffText: sourceFiles.get(paths.get('intake-handoff.json')),
+      files: Object.fromEntries(paths), candidate: candidatesByBatch.get(batchId),
+    });
   }
   return { headSha, candidates, reviews, canonicalEntries, validated: true };
 }
