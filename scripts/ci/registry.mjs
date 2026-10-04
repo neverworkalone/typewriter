@@ -152,6 +152,7 @@ export const CI_CATEGORIES = Object.freeze({
       commandCheck('Validate factory candidate/review batch contracts', ['scripts/factory/validate.mjs'], []),
       testCheck('tests/factory-contracts.test.mjs', 'Test factory contracts, state machines, identity adapter, and typed handoff'),
       testCheck('tests/factory-stage1.test.mjs', 'Test factory Stage 1 Kiwi-backed candidate batch producer'),
+      testCheck('tests/factory-analyzer-providers.test.mjs', 'Test factory Stage 1 analyzer provider boundary and fallback'),
     ],
   },
 
