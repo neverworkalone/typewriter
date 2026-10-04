@@ -167,14 +167,25 @@ every content digest, so changing `created → complete` never invalidates it.
 
 **Recovery rules (policy):**
 
-- *Single-owner invariant.* At any instant the owner of a batch is the `owner`
-  in the **head commit of `stage2-claims/C…`**. Only that owner creates the
+- *Ownership identity is a run token, not a GitHub account.* Independently
+  launched agents share GitHub authentication, username and Git identity, so none
+  of those can identify an owner. Each worker invocation generates an opaque,
+  unique `worker_token` (random, at least 128 bits) **scoped to the batch it
+  claims**, writes it to the claim-record commit as `owner`, and persists it
+  locally (an untracked per-claim recovery file in the agent's own workspace)
+  so that its own crash recovery can present it. A worker is the owner **only if
+  the token it holds equals the `owner` in the ref head**; the GitHub user is
+  authentication only. A fresh session without the token is never the owner and
+  can acquire ownership only through the exclusive transfer below (after the
+  stale threshold, or owner-directed). The same rule governs Stage 3 claims.
+- *Single-owner invariant.* At any instant the owner of a batch is the token
+  recorded as `owner` in the **head commit of `stage2-claims/C…`**. Only that owner creates the
   issue, branch or result PR. An observer that merely sees a claim never creates
   the issue.
 - *Exclusive transfer (the only way to adopt a stale or orphan claim).* A worker
   W that finds a claim past the stale threshold (below) takes over by creating a
   new claim-record commit **whose parent is the observed ref head**
-  (`claim_seq` + 1, `owner: W`, `previous_owner`, observed head SHA) and updating
+  (`claim_seq` + 1, `owner: <W's new worker_token>`, `previous_owner`, observed head SHA) and updating
   the ref **without force** (`PATCH /git/refs/…` with `force: false`). The update
   succeeds only as a fast-forward from the observed head. Two simultaneous
   adopters build sibling commits on the same parent; GitHub accepts exactly one
@@ -340,11 +351,19 @@ crash-safe record:
   `attempt` on `master`. Created atomically (422 ⇒ another invocation owns that
   attempt). Its head commit records `owner`, base SHA and the PR number once known.
 - **Step 0: the admission PR is opened first, as a draft**, immediately after the
-  claim, before preflight. The draft PR number is the attempt's traceable
-  identifier and is what `rejected_pr` will always cite — including when preflight
-  fails before any canonical change is produced (the draft then carries no
-  canonical diff and is closed, not merged). This is why `rejected_pr` is always
-  populatable.
+  claim, before preflight. GitHub cannot create a PR whose head has no commit
+  ahead of base, so the branch `stage3/C…-aN` is created from `master` with one
+  **starter commit** that adds only the metadata file
+  `data/reviews/C…/attempt-aN.json` (`{batch_id, attempt, claim_ref, worker
+  token digest}`; no canonical data, no invalid records). The draft PR opens on
+  that diff. The marker is reversible: a successful admission PR removes it
+  before it is marked ready for review; a closed attempt discards it with the
+  branch. An *empty* commit is not assumed to work (reported as "No commits
+  between" by GitHub tooling); using it instead requires the real-GitHub
+  integration test in §12 to show it is accepted. The draft PR number is the
+  attempt's traceable identifier and is what `rejected_pr` always cites,
+  including when preflight fails before any canonical change exists (the draft is
+  then closed, never merged).
 - **Selection rule.** Stage 3 skips a `ready` batch if `stage3-claims/C…-aN`
   exists for the current `attempt`, or if any open PR (admission or
   rejection status-only) references that batch.
@@ -354,7 +373,8 @@ crash-safe record:
   re-admit; (c) admission PR closed and no rejection PR ⇒ create the rejection
   status-only PR citing it; (d) claim ref but no PR ⇒ the owner re-creates the
   draft PR (looked up first by the branch name `stage3/C…-aN`), then resumes.
-  Takeover of a stale Stage 3 claim uses the same non-force CAS as §3.1.
+  Takeover of a stale Stage 3 claim uses the same non-force CAS and worker-token
+  ownership as §3.1 (a restart only resumes if it holds the recorded token).
 - **Release.** The claim ref is deleted when the admission PR merges
   (`complete`) or when the rejection status-only PR merges (`rejected`; the next
   attempt number gets a new ref).
@@ -583,6 +603,15 @@ This is the input to a **later implementation issue**; none of it is done here.
   **race/fault injection with one orphan ref and two simultaneous adopters:
   exactly one proceeds, the other defers, one issue, no duplicate work**;
   ref-without-issue recovery; stale and orphan handling; rework reuse.
+- Same-account ownership: two independent workers authenticated as the **same
+  GitHub user** attempt orphan recovery, active-claim recovery and transfer; only
+  the holder of the recorded `worker_token` or the CAS winner proceeds, and
+  exactly one issue and one result PR exist. Same for a Stage 3 claim.
+- Real-GitHub (not fake) integration test: a brand-new Stage 3 claim opens its
+  draft PR from the starter commit *before* any canonical data exists; also
+  record whether an empty commit would be accepted. Then exercise immediate
+  preflight failure → draft closed → status-only PR with `rejected_pr` citing that
+  real PR.
 - Stage 3 in-flight guard with fault injection: restart after the admission PR
   is opened; restart while the rejection status-only PR is pending; failure at
   preflight before any canonical change. Each yields exactly one traceable
