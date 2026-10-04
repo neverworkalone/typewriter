@@ -13,6 +13,7 @@ It is a library plus a repository validator; it creates no batches, claims or ag
 | `scripts/factory/identity-adapter.mjs` | Keeps one decision per `C…` id on top of the legacy `input+POS` intake; routes to `new_entry`, `new_pos_on_existing_lemma`, `new_sense_on_existing_entry` |
 | `scripts/factory/handoff.mjs` | Typed decision rows and canonical-compatibility checks; writer-support partition |
 | `scripts/factory/artifacts.mjs` | Content validation of a review's `semantic-decisions.json` and `intake-handoff.json`: existing contract ids, existing `verifyProductionHandoff`, one semantic decision per admitted candidate, reviewed lemma/hold-resolution bound to the candidate and hand-off entry |
+| `scripts/factory/ensemble-resolver.mjs`, `context-fallback.mjs`, `corpus-context-source.mjs` | Ensemble Resolver v2 (three-Provider adjudication, review priority, text-free decision traces) and the M9-style local contextual fallback with its decision record (issue #285; [`lexical-factory-ensemble-v2.md`](lexical-factory-ensemble-v2.md)) |
 | `scripts/factory/stage1.mjs`, `produce-candidates.mjs` | Stage 1 producer (see below) |
 | `scripts/factory/validate.mjs` | Repository validator run by `ci:fast`. It always compares with the merge-base of `origin/master` (override `FACTORY_BASE_REF`; unresolved base fails closed, only `none` skips): candidate transitions are checked with or without a review, and deleted merged batches/reviews fail |
 
@@ -140,3 +141,14 @@ Optional Provider `mecab`, selected only by `--providers kiwi,mecab`, `kiwi,khai
 - **Capabilities**: `n_best: false, derivation: false`. MeCab exposes `parseNBest`, but on the real dictionary `parse` and `parseNBest(1)` choose different equal-cost paths for the same input (걸어: 걷다 vs 걸다), so N-best is not a dependable signal and only `parse` is used. By the common policy its clean reading is `needs_verification`; agreement among engines is review evidence, not independent ground truth.
 - **Normalization** (from the dictionary's own columns): `NNG→noun`, `MAG→adverb`, `VV/VA` stems get `다` only when an ending follows; `Inflect`/`Preanalysis` tokens are expanded through the expression column, so irregular stems come from the lexicon (걸어→걷다, 도와→돕다, 아름다운→아름답다). `NNG/XR` + `XSV/XSA` is one derived predicate (망각했다→망각하다, 행복한→행복하다) with no `derived_from*`. `NNP/NNB/VX/XSN/SL/UNKNOWN`, non-Hangul forms, bare stems, unexpandable composite tags, multi-word and empty input are `unsupported`; extra content morphemes in one path keep the shared `lemma_mismatch` hold.
 - **Evidence**: normal CI runs `tests/factory-mecab-provider.test.mjs` (synthetic contract tests and the REAL smoke, which is skipped with the reason where the pinned venv is absent). Real-runtime accuracy relative to Kiwi/Khaiii is not assumed; the fixed-cohort benchmark is #274.
+
+## Ensemble Resolver v2 (issue #285)
+
+New v2 batches default to `provider-resolution-v2-ensemble`: Kiwi, Khaiii and MeCab-ko all analyze every
+unique surface; per-observation `concordant | supported_alternative | conflicted | unsupported_or_unknown`
+adjudication, an auditable unresolved verification queue and an optional text-free contextual-fallback
+decision record are part of the v2 manifest (`ensemble`, `context_fallback`) and rows (`observations[].ensemble`,
+`review`), enforced by `validateCandidateBatch`. `provider-resolution-v1` (Kiwi-only/conditional) is an explicit
+`--policy v1` compatibility and A/B baseline and validates unchanged. The CLI's `--providers` option under the
+ensemble must be exactly `kiwi,khaiii,mecab`. See [`lexical-factory-ensemble-v2.md`](lexical-factory-ensemble-v2.md)
+for categories, reason codes, the queue gate, the fallback procedure and honest measurement.

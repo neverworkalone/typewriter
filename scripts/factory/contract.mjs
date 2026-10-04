@@ -4,6 +4,9 @@ import { HOLD_REASONS, POS_VALUES, digest } from '../intake/candidate-contract.m
 import { PINNED_RUN, analyzerDigest } from '../intake/pipeline.mjs';
 import { LEMMA_CANDIDATE_MANIFEST_CONTRACT, validateLemmaCandidateBatch } from './lemma-contract.mjs';
 import { RESOLUTION_POLICY, createKiwiProvider, providerDescriptor } from './analyzer-providers.mjs';
+import { ENSEMBLE_POLICY, ENSEMBLE_PROVIDER_ORDER } from './ensemble-resolver.mjs';
+import { KHAIII_RUNTIMES, createKhaiiiProvider } from './khaiii-provider.mjs';
+import { createMecabProvider } from './mecab-provider.mjs';
 
 // Lexical production factory contracts (issue #263, design: docs/lexical-production-factory.md).
 // This file holds the per-usage v1 candidate contract (historical, e.g. the C000001 comparison
@@ -38,6 +41,7 @@ export function validateProviderFields(manifest) {
   if (manifest.analyzer_providers === undefined && manifest.resolution_policy === undefined) return [];
   const errors = [];
   const list = manifest.analyzer_providers;
+  if (manifest.resolution_policy === ENSEMBLE_POLICY) return validateEnsembleProviders(list);
   if (!Array.isArray(list) || list.length < 2) return ['candidate manifest: analyzer_providers must list at least two ordered providers (omit it for the default kiwi order)'];
   const ids = list.map((entry) => entry?.provider_id);
   if (list.some((entry) => !isPlainObject(entry) || Object.keys(entry).sort().join() !== 'identity_digest,provider_id'
@@ -46,6 +50,22 @@ export function validateProviderFields(manifest) {
   const kiwi = providerDescriptor(createKiwiProvider());
   if (!list.some((entry) => entry?.provider_id === 'kiwi' && entry.identity_digest === kiwi.identity_digest)) errors.push('candidate manifest: analyzer_providers must include the pinned kiwi provider');
   if (manifest.resolution_policy !== RESOLUTION_POLICY) errors.push(`candidate manifest: resolution_policy must be ${RESOLUTION_POLICY}`);
+  return errors;
+}
+
+// The ensemble policy (issue #285) runs ALL three pinned providers on every eligible surface, in a
+// fixed order: a manifest that omits, reorders, duplicates or replaces one provider cannot validate.
+function validateEnsembleProviders(list) {
+  const ids = Array.isArray(list) ? list.map((entry) => entry?.provider_id) : [];
+  if (JSON.stringify(ids) !== JSON.stringify(ENSEMBLE_PROVIDER_ORDER)) return [`candidate manifest: the ensemble policy requires analyzer_providers exactly ${ENSEMBLE_PROVIDER_ORDER.join(',')} in that order`];
+  const errors = [];
+  if (list.some((entry) => !isPlainObject(entry) || Object.keys(entry).sort().join() !== 'identity_digest,provider_id' || !isSha256(entry.identity_digest))) errors.push('candidate manifest: analyzer_providers entries need provider_id and sha256 identity_digest only');
+  const pinned = {
+    kiwi: [providerDescriptor(createKiwiProvider()).identity_digest],
+    khaiii: KHAIII_RUNTIMES.map((runtime) => providerDescriptor(createKhaiiiProvider({ runtime, analyze: async () => ({}) })).identity_digest),
+    mecab: [providerDescriptor(createMecabProvider({ analyze: async () => ({}) })).identity_digest],
+  };
+  list.forEach((entry) => { if (!pinned[entry.provider_id].includes(entry.identity_digest)) errors.push(`candidate manifest: ${entry.provider_id} identity_digest is not the pinned ${entry.provider_id} provider`); });
   return errors;
 }
 

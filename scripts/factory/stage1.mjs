@@ -14,6 +14,26 @@ import {
   toLegacyOutcome,
 } from './analyzer-providers.mjs';
 import { digest } from '../intake/candidate-contract.mjs';
+import {
+  ASSIGNING_CATEGORIES,
+  ENSEMBLE_CONTRACT,
+  ENSEMBLE_POLICY,
+  EnsembleError,
+  decideObservations,
+  ensembleCohortMetrics,
+  ensembleTraceSha256,
+  reviewSummary,
+  runEnsembleProviders,
+} from './ensemble-resolver.mjs';
+import {
+  CONTEXT_CONTRACT,
+  ContextFallbackError,
+  RESOLVING_OUTCOMES,
+  contextDecisionsSha256,
+  fallbackBlockers,
+  recordContextDecisions,
+  replayContextDecisions,
+} from './context-fallback.mjs';
 import { candidateIdFor, expectedAnalyzerDigest, isBatchId, sha256Hex, validateCandidateBatch } from './contract.mjs';
 import { buildCanonicalIndex, classifyLemmaCandidate } from './identity-adapter.mjs';
 import {
@@ -284,13 +304,120 @@ export async function buildLemmaGroups({ observations, analyzer, providers = [cr
   return { lemmas, unresolved: [...unresolved.values()].sort((a, b) => compare(a.surface, b.surface) || compare(a.evidence.ref, b.evidence.ref)), repeatsMerged, metadataByProvider, attemptLog };
 }
 
+// Ensemble grouping (issue #285). Kiwi, Khaiii and MeCab all analyze every unique surface; each
+// observation is adjudicated by the pure ensemble core. Only concordant / supported_alternative
+// observations (or an evidence-bound, replayed context decision) join a lemma; every other
+// observation goes to the auditable verification queue with all competing hypotheses and is never
+// counted as a headword. A clear sibling form never inherits an ambiguous sibling's state.
+export async function buildEnsembleGroups({
+  observations, providers, contextProposals = null, contextReplay = null, contextSource = null, snapshot = '', contextAgent = 'claude',
+}) {
+  let run;
+  try {
+    run = await runEnsembleProviders({ observations, providers });
+  } catch (error) {
+    if (error instanceof EnsembleError) throw new Stage1Error(error.errors);
+    throw error;
+  }
+  const decisions = decideObservations({ observations, run });
+  const queueByDigest = new Map();
+  observations.forEach((observation, index) => {
+    const decision = decisions[index];
+    if (ASSIGNING_CATEGORIES.includes(decision.category)) return;
+    if (queueByDigest.has(decision.observation_digest)) return;
+    queueByDigest.set(decision.observation_digest, {
+      surface: observation.surface, evidence: observation.ref, holds: decision.holds, category: decision.category, reasons: decision.reasons,
+      hypotheses: decision.hypotheses, extractor_hint: { lemma: observation.hint?.input ?? null, pos: observation.hint?.pos ?? null },
+      extractor_holds: decision.extractor_holds, observation_digest: decision.observation_digest, trace_digest: decision.trace_digest,
+    });
+  });
+  const queueDraft = [...queueByDigest.values()];
+
+  let contextRecords = [];
+  let replayed;
+  try {
+    if (contextProposals) {
+      if (!contextSource) throw new ContextFallbackError(['context proposals need a local context source']);
+      contextRecords = await recordContextDecisions({ proposals: contextProposals, queue: queueDraft, contextSource, snapshot, agent: contextAgent });
+    } else if (contextReplay) {
+      contextRecords = contextReplay;
+    }
+    replayed = replayContextDecisions({ decisions: contextRecords, queue: queueDraft });
+  } catch (error) {
+    if (error instanceof ContextFallbackError) throw new Stage1Error(error.errors);
+    throw error;
+  }
+
+  const lemmas = new Map();
+  const queue = [];
+  let repeatsMerged = 0;
+  const addToLemma = ({ lemma, pos, observation, holds, ensemble }) => {
+    const group = observation.group ?? '';
+    const entry = lemmas.get(lemma) ?? new Map();
+    const key = observationKey(pos, group, observation.surface, observation.ref);
+    const known = entry.get(key);
+    if (known) {
+      repeatsMerged += 1;
+      for (const hold of holds) known.holds.add(hold);
+    } else {
+      entry.set(key, { key, pos, group, surface: observation.surface, evidence: observation.ref, digest: analysisInputDigest(observation.surface), holds: new Set(holds), ensemble });
+    }
+    lemmas.set(lemma, entry);
+  };
+  const sameReading = (a, b) => a.lemma === b.lemma && a.pos === b.pos;
+  const queued = new Set();
+  observations.forEach((observation, index) => {
+    const decision = decisions[index];
+    const base = { category: decision.category, reasons: decision.reasons, trace_digest: decision.trace_digest };
+    if (ASSIGNING_CATEGORIES.includes(decision.category)) {
+      if (!KOREAN_WORD.test(decision.assigned.lemma) || !POS_VALUES.includes(decision.assigned.pos)) {
+        throw new Stage1Error([`cannot represent ${observation.surface}: no dictionary-form lemma/POS from the ensemble`]);
+      }
+      const holds = [...observation.holds, ...decision.holds].filter((hold) => !UNRESOLVED_HOLDS.includes(hold));
+      addToLemma({ lemma: decision.assigned.lemma, pos: decision.assigned.pos, observation, holds,
+        ensemble: { ...base, alternatives: decision.rivals, resolution: 'ensemble' } });
+      return;
+    }
+    const recovered = replayed.resolved.get(decision.observation_digest);
+    if (recovered) {
+      // A contextual recovery never clears an extractor hold and always stays reviewable.
+      const holds = [...new Set([...observation.holds.filter((hold) => !UNRESOLVED_HOLDS.includes(hold)), 'analysis_ambiguous'])];
+      addToLemma({ lemma: recovered.lemma, pos: recovered.pos, observation, holds,
+        ensemble: { ...base, alternatives: decision.hypotheses.filter((entry) => !sameReading(entry, recovered)), resolution: 'context', context_decision: recovered.decision_id } });
+      return;
+    }
+    queued.add(decision.observation_digest);
+  });
+  for (const draft of queueDraft) {
+    if (!queued.has(draft.observation_digest)) continue;
+    const unknown = replayed.unknown.get(draft.observation_digest);
+    const blockers = fallbackBlockers(draft);
+    queue.push({
+      ...draft,
+      verification: unknown ? { state: 'truth_unknown', decision_id: unknown.decision_id }
+        : blockers.length ? { state: 'blocked', blocked_by: blockers } : { state: 'needs_verification' },
+    });
+  }
+  queue.sort((a, b) => compare(a.surface, b.surface) || compare(a.evidence.ref, b.evidence.ref) || compare(String(a.extractor_hint.lemma), String(b.extractor_hint.lemma))
+    || compare(String(a.extractor_hint.pos), String(b.extractor_hint.pos)));
+  queue.forEach((entry, index) => { entry.queue_id = `U${String(index + 1).padStart(4, '0')}`; });
+  const orderedQueue = queue.map((entry) => ({ queue_id: entry.queue_id, surface: entry.surface, evidence: entry.evidence, holds: entry.holds, category: entry.category,
+    reasons: entry.reasons, hypotheses: entry.hypotheses, extractor_hint: entry.extractor_hint, extractor_holds: entry.extractor_holds,
+    observation_digest: entry.observation_digest, trace_digest: entry.trace_digest, verification: entry.verification }));
+  return { lemmas, unresolved: orderedQueue, repeatsMerged, metadataByProvider: run.metadataByProvider, run, decisions, contextRecords,
+    attemptLog: ENSEMBLE_LOG(run) };
+}
+
+const ENSEMBLE_LOG = (run) => [...run.byProvider].flatMap(([id, results]) => [...results].map(([surface, result]) => ({
+  provider_id: id, input_digest: analysisInputDigest(surface), outcome: result.outcome, state: 'analyzed', holds: [], fallback: false })));
+
 const compareObservation = (a, b) => compare(a.pos, b.pos) || compare(a.group, b.group) || compare(a.surface, b.surface)
   || compare(a.evidence.kind, b.evidence.kind) || compare(a.evidence.ref, b.evidence.ref);
 
 // One lemma → one candidate row. A bounded, deterministic selection keeps at least one observation
 // for every observed form and every usage group (so no distinct sense opportunity or form is erased);
 // the digest and total bind the omitted remainder to the locally recoverable evidence.
-export function buildLemmaRow({ lemma, observations: entry, candidateId }) {
+export function buildLemmaRow({ lemma, observations: entry, candidateId, ensemble = false }) {
   const all = [...entry.values()].sort(compareObservation);
   const posHypotheses = [...new Set(all.map((item) => item.pos))].sort(compare);
   const groupKeys = [...new Set(all.map((item) => `${item.pos}\u0000${item.group}`))].sort(compare);
@@ -322,23 +449,26 @@ export function buildLemmaRow({ lemma, observations: entry, candidateId }) {
     chosen.add(item);
   }
   const retained = all.filter((item) => chosen.has(item));
+  const observationRecords = retained.map((item, index) => ({
+    observation_id: observationIdFor(candidateId, index + 1),
+    form_id: formOf.get(item.surface),
+    group_id: groupOf.get(`${item.pos}\u0000${item.group}`),
+    pos: item.pos,
+    evidence: item.evidence,
+    analysis: { status: 'ok', input_digest: item.digest },
+    holds: [...item.holds].filter((hold) => HOLD_REASONS.includes(hold)).sort(compare),
+    ...(ensemble ? { ensemble: item.ensemble } : {}),
+  }));
   return {
     candidate_id: candidateId,
     input: lemma,
     pos_hypotheses: posHypotheses,
     forms,
     usage_groups: groups,
-    observations: retained.map((item, index) => ({
-      observation_id: observationIdFor(candidateId, index + 1),
-      form_id: formOf.get(item.surface),
-      group_id: groupOf.get(`${item.pos}\u0000${item.group}`),
-      pos: item.pos,
-      evidence: item.evidence,
-      analysis: { status: 'ok', input_digest: item.digest },
-      holds: [...item.holds].filter((hold) => HOLD_REASONS.includes(hold)).sort(compare),
-    })),
+    observations: observationRecords,
     observation_total: all.length,
     observation_digest: observationSetDigest(all.map((item) => item.key)),
+    ...(ensemble ? { review: reviewSummary(observationRecords, all.length) } : {}),
   };
 }
 
@@ -431,10 +561,108 @@ export const batchMetrics = (rows, { unresolved, repeatsMerged }) => {
   };
 };
 
+// Manifest blocks of an ensemble batch: the trace digest binds the three provider identities, every
+// observation's text-free trace, the unresolved queue and the recorded context decisions.
+function ensembleManifestFields({ grouped, rows, providers }) {
+  const contextDecisionsDigest = contextDecisionsSha256(grouped.contextRecords);
+  const categories = { concordant: 0, supported_alternative: 0, conflicted: 0, unsupported_or_unknown: 0 };
+  for (const row of rows) for (const observation of row.observations) categories[observation.ensemble.category] += 1;
+  for (const entry of grouped.unresolved) categories[entry.category] += 1;
+  return {
+    ensemble: {
+      contract: ENSEMBLE_CONTRACT,
+      counts: { observations: rows.reduce((sum, row) => sum + row.observation_total, 0) + grouped.unresolved.length, categories, queue: grouped.unresolved.length },
+      trace_sha256: ensembleTraceSha256({
+        providers,
+        observationTraceDigests: rows.flatMap((row) => row.observations.map((observation) => observation.ensemble.trace_digest)),
+        queueTraceDigests: grouped.unresolved.map((entry) => entry.trace_digest),
+        contextDecisionsSha256: contextDecisionsDigest,
+      }),
+    },
+    context_fallback: { contract: CONTEXT_CONTRACT, decisions: grouped.contextRecords, decisions_sha256: contextDecisionsDigest },
+  };
+}
+
+const groupedMetrics = (grouped, observations) => {
+  let assigned = 0;
+  let held = 0;
+  let heldLemmas = 0;
+  let pos = 0;
+  for (const entry of grouped.lemmas.values()) {
+    let lemmaHeld = false;
+    const kinds = new Set();
+    for (const item of entry.values()) {
+      assigned += 1;
+      kinds.add(`${item.pos}\u0000${item.group}`);
+      if (item.holds.size) { held += 1; lemmaHeld = true; }
+    }
+    pos += kinds.size;
+    if (lemmaHeld) heldLemmas += 1;
+  }
+  return {
+    original_observations: observations.length,
+    unique_surfaces: new Set(observations.map((observation) => observation.surface)).size,
+    unique_lemmas: grouped.lemmas.size,
+    distinct_pos_group_opportunities: pos,
+    assigned_observations: assigned + grouped.repeatsMerged,
+    assigned_without_holds: assigned + grouped.repeatsMerged - held,
+    held_observations: held,
+    held_lemmas: heldLemmas,
+    unresolved_observations: grouped.unresolved.length,
+  };
+};
+
+// Same-cohort A/B measurement (issue #285 §3): legacy Kiwi-only vs the three-Provider ensemble vs
+// ensemble + recorded contextual fallback, on the SAME observations. It reports what the cohort can
+// show; `verified_*` stay `not_established` without an independently adjudicated set, an unknown item
+// is never counted as correct, and the lemma denominator counts distinct lemmas, not observations.
+export async function compareResolutionPolicies({ observations, kiwiProvider, ensembleProviders, context = null, independentlyAdjudicated = null, sourceLemmas = null }) {
+  const timed = async (work) => { const started = performance.now(); const result = await work(); return [result, Math.round(performance.now() - started)]; };
+  const [baseline, baselineMs] = await timed(() => buildLemmaGroups({ observations, providers: [kiwiProvider] }));
+  const [ensemble, ensembleMs] = await timed(() => buildEnsembleGroups({ observations, providers: ensembleProviders }));
+  const report = {
+    cohort: { original_observations: observations.length, unique_surfaces: new Set(observations.map((observation) => observation.surface)).size },
+    kiwi_only: { ...groupedMetrics(baseline, observations), provider_surface_calls: summarizeAttempts(baseline.attemptLog), ms: baselineMs },
+    three_provider_only: {
+      ...groupedMetrics(ensemble, observations),
+      ...ensembleCohortMetrics({ observations, decisions: ensemble.decisions, run: ensemble.run, independentlyAdjudicated }),
+      ms: ensembleMs,
+    },
+    notes: [
+      'accuracy is not established without an independently adjudicated set; model votes and AI self-checks are not verified accuracy',
+      'words the upstream extractor never proposed are an extractor recall limitation and are not credited to the ensemble',
+    ],
+  };
+  if (sourceLemmas) {
+    // Lemmas present in an independently known source set but never proposed by the upstream extractor
+    // are an extractor RECALL limitation: the ensemble only analyzes proposed observations, so it can
+    // neither discover nor be credited with them.
+    const reached = new Set(observations.map((observation) => observation.hint?.input).filter(Boolean));
+    const missed = sourceLemmas.filter((lemma) => !reached.has(lemma)).sort(compare);
+    report.extractor_recall = {
+      source_lemmas: sourceLemmas.length,
+      reached_by_extractor: sourceLemmas.length - missed.length,
+      not_extracted: missed,
+      credited_to_ensemble: missed.filter((lemma) => ensemble.lemmas.has(lemma)).length,
+    };
+  }
+  if (context) {
+    const withContext = await buildEnsembleGroups({ observations, providers: ensembleProviders, ...context });
+    report.three_provider_plus_context = {
+      ...groupedMetrics(withContext, observations),
+      ...ensembleCohortMetrics({ observations, decisions: withContext.decisions, run: withContext.run, contextOutcomes: withContext.contextRecords, independentlyAdjudicated }),
+    };
+  }
+  return report;
+}
+
 // Pure producer: evidence + analyzer + canonical → v2 manifest and candidates.jsonl text.
 export async function produceCandidateBatch({
   evidence, analyzer, providers, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES,
   producedLemmas = new Set(), searchFormSupport = new Map(),
+  // `provider-resolution-v1` (conditional fallback, default order [kiwi]) stays the explicit compatibility/A-B baseline of
+  // the library; the production CLI selects the all-three ensemble by default (docs/lexical-factory-ensemble-v2.md).
+  policy = RESOLUTION_POLICY, contextProposals = null, contextReplay = null, contextSource = null, contextAgent = 'claude',
 }) {
   if (!isBatchId(batchId)) throw new Stage1Error(['batchId must match C000000']);
   if (!/^T\d{6}$/u.test(String(taskId))) throw new Stage1Error(['taskId must match T000000']);
@@ -446,17 +674,23 @@ export async function produceCandidateBatch({
   // The manifest still anchors on the pinned Kiwi (analyzer_version/analyzer_digest); Khaiii-only
   // runs are for a successor issue, so Kiwi must be somewhere in the order.
   if (!ids.includes('kiwi')) throw new Stage1Error(['analyzer provider order must include the pinned kiwi provider']);
-  const grouped = await buildLemmaGroups({ observations, providers: ordered });
+  if (![RESOLUTION_POLICY, ENSEMBLE_POLICY].includes(policy)) throw new Stage1Error([`unknown resolution policy ${policy}`]);
+  const ensemble = policy === ENSEMBLE_POLICY;
+  if (!ensemble && (contextProposals || contextReplay)) throw new Stage1Error([`a contextual fallback decision is only valid under ${ENSEMBLE_POLICY}`]);
+  const grouped = ensemble
+    ? await buildEnsembleGroups({ observations, providers: ordered, contextProposals, contextReplay, contextSource, snapshot: source.source_snapshot, contextAgent })
+    : await buildLemmaGroups({ observations, providers: ordered });
   const { attemptLog } = grouped;
   if (grouped.unresolved.length > MAX_UNRESOLVED_OBSERVATIONS) {
     throw new Stage1Error([`${grouped.unresolved.length} observations have no reliable lemma/POS, above the bound ${MAX_UNRESOLVED_OBSERVATIONS}; split the evidence run`]);
   }
   const { selected, deferred, skippedProduced } = selectLemmas({ lemmas: grouped.lemmas, maxCandidates, producedLemmas });
-  const rows = selected.map((lemma, index) => buildLemmaRow({ lemma, observations: grouped.lemmas.get(lemma), candidateId: candidateIdFor(batchId, index + 1) }));
+  const rows = selected.map((lemma, index) => buildLemmaRow({ lemma, observations: grouped.lemmas.get(lemma), candidateId: candidateIdFor(batchId, index + 1), ensemble }));
   const candidatesText = serializeCandidates(rows);
   // Default [kiwi] omits the provider fields: byte-identical to the pre-provider manifest.
-  const providerFields = ids.length === 1 ? {} : { analyzer_providers: ordered.map(providerDescriptor), resolution_policy: RESOLUTION_POLICY };
+  const providerFields = ids.length === 1 && !ensemble ? {} : { analyzer_providers: ordered.map(providerDescriptor), resolution_policy: policy };
   const anchor = { analyzer_version: `kiwipiepy==${PINNED_ANALYZER.kiwipiepy_version}`, proposal_contract: REQUIRED_PROPOSAL_CONTRACT, ...providerFields };
+  const ensembleFields = ensemble ? ensembleManifestFields({ grouped, rows, providers: providerFields.analyzer_providers }) : {};
   const manifest = {
     contract: LEMMA_CANDIDATE_MANIFEST_CONTRACT,
     lemma_policy: LEMMA_POLICY,
@@ -474,6 +708,7 @@ export async function produceCandidateBatch({
     analyzer_digest: expectedAnalyzerDigest(anchor),
     proposal_contract: REQUIRED_PROPOSAL_CONTRACT,
     ...providerFields,
+    ...ensembleFields,
     source_evidence_sha256: createHash('sha256').update(JSON.stringify(evidence)).digest('hex'),
     candidates_sha256: sha256Hex(candidatesText),
     status: 'created',
@@ -485,9 +720,12 @@ export async function produceCandidateBatch({
     attemptLog,
     candidatesText,
     rows,
+    ensemble: ensemble ? { decisions: grouped.decisions, run: grouped.run } : null,
     summary: {
+      effectivePolicy: policy,
       providerOrder: ids,
-      providerAttempts: summarizeAttempts(attemptLog),
+      providerAttempts: ensemble ? grouped.run.calls : summarizeAttempts(attemptLog),
+      ...(ensemble ? { ensemble: ensembleCohortMetrics({ observations, decisions: grouped.decisions, run: grouped.run, contextOutcomes: grouped.contextRecords }) } : {}),
       candidates: rows.length,
       deferredLemmas: deferred,
       skippedProducedLemmas: skippedProduced,

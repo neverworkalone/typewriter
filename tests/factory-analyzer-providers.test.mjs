@@ -200,8 +200,8 @@ test('ordered replay is deterministic; provider, model, order and policy change 
   assert.match(bad({ analyzer_providers: a.manifest.analyzer_providers.filter((p) => p.provider_id !== 'kiwi').concat(a.manifest.analyzer_providers.filter((p) => p.provider_id !== 'kiwi')) }), /repeat|pinned kiwi/);
 });
 
-test('CLI provider selection defaults to kiwi and fails closed on unknown, repeated or unwritable choices', async () => {
-  const base = ['--evidence', 'data/reference/x/e.json', '--task-id', 'T000001'];
+test('CLI provider selection (explicit v1 baseline policy) defaults to kiwi and fails closed on unknown, repeated or unwritable choices', async () => {
+  const base = ['--evidence', 'data/reference/x/e.json', '--task-id', 'T000001', '--policy', 'provider-resolution-v1'];
   assert.deepEqual(parseArguments(base).providers, ['kiwi']);
   assert.deepEqual(parseArguments([...base, '--providers', 'kiwi']).providers, ['kiwi']);
   assert.deepEqual(parseArguments([...base, '--providers', 'kiwi,khaiii']).providers, ['kiwi', 'khaiii']);
