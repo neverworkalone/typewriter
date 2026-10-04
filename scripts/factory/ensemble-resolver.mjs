@@ -92,6 +92,13 @@ export async function runEnsembleProviders({ observations, providers, now = () =
     if (returned.some((id) => !wanted.has(id))) problems.push('results for surfaces that were not requested');
     if (surfaces.some((surface) => !returned.includes(surface))) problems.push('missing results for requested surfaces');
     const raw = new Map(list.map((outcome) => [outcome?.id, outcome]));
+    // A well-formed explicit `unsupported`/`error`/`ambiguous` is data; an unknown status, a
+    // self-contradicting response (`ok` without analyses, a refusal that carries analyses) or a
+    // non-object entry is a broken Provider contract and fails the whole production run.
+    for (const entry of list) {
+      const problem = rawContractProblem(entry);
+      if (problem) problems.push(problem);
+    }
     const normalized = new Map(requests.map((request) => [request.id, normalizeProviderResult(provider, request, raw.get(request.id))]));
     for (const result of normalized.values()) {
       if (result.outcome === 'stale') problems.push('result input digest does not bind its surface');
@@ -103,6 +110,15 @@ export async function runEnsembleProviders({ observations, providers, now = () =
     calls[provider.id] = { surfaces: surfaces.length, observations: observations.length, ms: Math.round(now() - started) };
   }
   return { surfaces, byProvider, metadataByProvider, calls };
+}
+
+const RAW_STATUSES = ['ok', 'error', 'unsupported', 'ambiguous'];
+function rawContractProblem(entry) {
+  if (!isObject(entry)) return 'a non-object result entry';
+  if (!RAW_STATUSES.includes(entry.status)) return `invalid result status ${JSON.stringify(entry.status)}`;
+  const analyses = entry.analyses;
+  if (entry.status === 'ok') return Array.isArray(analyses) && analyses.length > 0 ? null : 'status ok without usable analyses';
+  return analyses === undefined || (Array.isArray(analyses) && analyses.length === 0) ? null : `status ${entry.status} that carries analyses`;
 }
 
 // --- 2. Per-observation adjudication -----------------------------------------------------------
@@ -281,20 +297,32 @@ export function decideObservations({ observations, run }) {
 
 // --- 3. Review priority and per-row summary ---------------------------------------------------
 
-// Review ORDER only (never lexical admission or approval; AGENTS.md: usefulness must not admit/hold).
-// `verify_first`: a rival reading or any hold remains; `high`: two or more independent source
-// observations all concordant and hold-free; `standard`: otherwise.
-export function reviewSummary(observations, observationTotal) {
+// Computed over EVERY observation of the lemma (retained or omitted by the bounded selection), then
+// stored beside the bounded row, so a hold or category that the 64-observation bound omitted still
+// drives priority, accounting and the trace identity. Review ORDER only (never lexical admission:
+// AGENTS.md — usefulness must not admit, hold or reject). `verify_first`: a rival reading, a hold or
+// an unresolved category exists; `high`: two or more independent source observations, all
+// concordant and hold-free; `standard`: otherwise. `trace_sha256` commits to all trace digests.
+const isHeld = (record) => record.holds.length > 0 || record.ensemble.resolution === 'context';
+export const priorityOf = ({ categories, held }, total) => (categories.concordant !== total || held > 0 ? 'verify_first' : total >= 2 ? 'high' : 'standard');
+export const observationSetTraceDigest = (digests) => digest(['ensemble-observation-set', digests]);
+export function reviewSummary(records) {
   const categories = { concordant: 0, supported_alternative: 0, conflicted: 0, unsupported_or_unknown: 0 };
   let held = 0;
-  for (const observation of observations) {
-    categories[observation.ensemble.category] += 1;
-    if (observation.holds.length || observation.ensemble.resolution === 'context') held += 1;
+  for (const record of records) {
+    categories[record.ensemble.category] += 1;
+    if (isHeld(record)) held += 1;
   }
-  const priority = categories.supported_alternative || held || categories.conflicted || categories.unsupported_or_unknown ? 'verify_first'
-    : observationTotal >= 2 ? 'high' : 'standard';
-  return { priority, categories: Object.fromEntries(Object.entries(categories).filter(([, count]) => count > 0)) };
+  return {
+    priority: priorityOf({ categories, held }, records.length),
+    categories: Object.fromEntries(Object.entries(categories).filter(([, count]) => count > 0)),
+    held,
+    trace_sha256: observationSetTraceDigest(records.map((record) => record.ensemble.trace_digest)),
+  };
 }
+// Retention preference when the bound omits observations: reviewable ones (holds, rivals,
+// context recoveries) are kept before plain concordant ones.
+export const needsReviewFirst = (record) => isHeld(record) || record.ensemble.category !== 'concordant';
 
 // --- 4. Shared validators (called by lemma-contract) -----------------------------------------
 
@@ -353,9 +381,21 @@ export function validateEnsembleObservation(record, at, { decisionIds = new Set(
 }
 
 export function validateReviewField(review, observations, observationTotal, at) {
-  if (!isObject(review) || Object.keys(review).sort().join() !== 'categories,priority' || !PRIORITIES.includes(review.priority)) return [`${at}: review must be {priority, categories}`];
-  const expected = reviewSummary(observations, observationTotal);
-  return JSON.stringify(expected) === JSON.stringify(review) ? [] : [`${at}: review does not match its observations' ensemble categories`];
+  if (!isObject(review) || Object.keys(review).sort().join() !== 'categories,held,priority,trace_sha256' || !PRIORITIES.includes(review.priority)
+    || !isObject(review.categories) || !Number.isInteger(review.held) || review.held < 0 || !SHA256.test(String(review.trace_sha256))) return [`${at}: review must be {priority, categories, held, trace_sha256}`];
+  const errors = [];
+  const entries = Object.entries(review.categories);
+  if (entries.some(([key, count]) => !CATEGORIES.includes(key) || !Number.isInteger(count) || count < 1)
+    || JSON.stringify(entries.map(([key]) => key)) !== JSON.stringify(CATEGORIES.filter((key) => review.categories[key]))) errors.push(`${at}: review.categories must list non-zero known categories in order`);
+  const full = { concordant: 0, supported_alternative: 0, conflicted: 0, unsupported_or_unknown: 0, ...review.categories };
+  if (Object.values(full).reduce((sum, count) => sum + count, 0) !== observationTotal) errors.push(`${at}: review.categories must account for every one of the ${observationTotal} observations, including omitted ones`);
+  if (review.held > observationTotal) errors.push(`${at}: review.held exceeds the observation total`);
+  if (review.priority !== priorityOf({ categories: full, held: review.held }, observationTotal)) errors.push(`${at}: review.priority does not follow from the full observation categories and holds`);
+  const retained = reviewSummary(observations);
+  for (const category of CATEGORIES) if ((retained.categories[category] ?? 0) > full[category]) errors.push(`${at}: retained ${category} observations exceed the recorded total`);
+  if (retained.held > review.held) errors.push(`${at}: retained held observations exceed review.held`);
+  if (observations.length === observationTotal && JSON.stringify(retained) !== JSON.stringify(review)) errors.push(`${at}: review does not match its observations' ensemble categories, holds and traces`);
+  return errors;
 }
 
 // Manifest `ensemble` block and the digest that binds the providers, every observation's trace and

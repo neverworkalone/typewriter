@@ -31,7 +31,9 @@ Every provider receives the **same sorted, deduplicated surface set** of the com
 whether another provider already looked resolved. Deduplication is per provider only; each result is mapped
 back to every original observation (evidence id and usage group preserved). A missing/stale/crashing
 provider, wrong pinned identity/metadata, wrong `proposal_contract`, duplicate or missing or unrequested
-result ids, a result for a stale digest, or malformed analyses **fail the whole production run closed**.
+result ids, a result for a stale digest, malformed analyses, an unknown `status`, or a self-contradicting
+response (`ok` without analyses, a refusal carrying analyses) **fail the whole production run closed**; only a
+well-formed explicit `unsupported`/`error`/`ambiguous` is data (hold/queue). v1 normalization is unchanged.
 There is no fake fallback success.
 
 ## Per-observation categories
@@ -62,10 +64,13 @@ sibling does not hide the ambiguous form: it is kept (assigned with a hold, or i
 
 ### Review priority
 
-Each row carries `review: {priority, categories}` (recomputed and enforced by the validator):
+Each row carries `review: {priority, categories, held, trace_sha256}`, computed over **every** observation of the
+lemma — including those the 64-observation bound omits — and recomputed/enforced by the validator:
 `verify_first` (a rival reading, a hold or an unresolved category exists), `high` (two or more independent
-source observations, all concordant and hold-free), `standard`. It orders Stage 2 review effort only; per
-`AGENTS.md`, usefulness never admits, holds or rejects a lexical entry.
+source observations, all concordant and hold-free), `standard`. `categories`/`held` account for the full
+`observation_total`; `trace_sha256` commits to all observation trace digests. When the bound omits observations,
+reviewable ones (holds, rivals, context recoveries) are retained before plain concordant ones. It orders Stage 2
+review effort only; per `AGENTS.md`, usefulness never admits, holds or rejects a lexical entry.
 
 ## Artifacts (still exactly `manifest.json` + `candidates.jsonl`, #284)
 

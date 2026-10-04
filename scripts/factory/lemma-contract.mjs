@@ -297,7 +297,7 @@ function validateEnsembleBindings(manifest, rows) {
   const errors = [];
   const decisions = manifest.context_fallback.decisions;
   const providers = manifest.analyzer_providers;
-  const observationDigests = rows.flatMap((row) => row.observations.map((observation) => observation.ensemble.trace_digest));
+  const observationDigests = rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest)]);
   const queueDigests = manifest.unresolved_observations.map((entry) => entry.trace_digest);
   if (ensembleTraceSha256({ providers, observationTraceDigests: observationDigests, queueTraceDigests: queueDigests, contextDecisionsSha256: manifest.context_fallback.decisions_sha256 }) !== manifest.ensemble.trace_sha256) {
     errors.push('candidate manifest: ensemble.trace_sha256 does not bind the providers, observation traces, queue and context decisions');
@@ -305,13 +305,13 @@ function validateEnsembleBindings(manifest, rows) {
   const retained = rows.reduce((sum, row) => sum + row.observations.length, 0);
   const recomputed = {};
   for (const category of CATEGORIES) recomputed[category] = 0;
-  for (const row of rows) for (const observation of row.observations) recomputed[observation.ensemble.category] += 1;
+  for (const row of rows) for (const [category, count] of Object.entries(row.review.categories)) recomputed[category] += count;
   for (const entry of manifest.unresolved_observations) recomputed[entry.category] += 1;
   const counts = manifest.ensemble.counts;
   if (!isPlainObject(counts) || counts.queue !== manifest.unresolved_observations.length) errors.push('candidate manifest: ensemble.counts.queue must equal the unresolved queue length');
   else if (counts.observations !== manifest.observation_count + manifest.unresolved_observations.length || JSON.stringify(counts.categories) !== JSON.stringify(Object.fromEntries(CATEGORIES.map((category) => [category, counts.categories?.[category]])))) {
     errors.push('candidate manifest: ensemble.counts does not match the manifest observation accounting');
-  } else if (retained === manifest.observation_count && CATEGORIES.some((category) => recomputed[category] !== counts.categories[category])) {
+  } else if (CATEGORIES.some((category) => recomputed[category] !== counts.categories[category])) {
     errors.push('candidate manifest: ensemble.counts.categories does not match the rows and the unresolved queue');
   }
   const byId = new Map(decisions.map((decision) => [decision.decision_id, decision]));

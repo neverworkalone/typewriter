@@ -339,7 +339,7 @@ test('6: validator rejects forged, omitted or inconsistent ensemble traces and w
   assert.match(check(first, (manifest) => { manifest.resolution_policy = 'provider-resolution-v1'; }), /analyzer_digest must bind|ensemble and context_fallback exist only/);
   // Traces and categories.
   assert.match(check(first, (manifest) => { manifest.ensemble.trace_sha256 = HEX; }), /trace_sha256 does not bind/);
-  assert.match(check(first, (manifest, rows) => { rows[0].observations[0].ensemble.trace_digest = HEX; }), /trace_sha256 does not bind/);
+  assert.match(check(first, (manifest, rows) => { rows[0].observations[0].ensemble.trace_digest = HEX; }), /trace_sha256 does not bind|review does not match/);
   assert.match(check(first, (manifest) => { manifest.unresolved_observations[0].trace_digest = HEX; }), /trace_sha256 does not bind/);
   assert.match(check(first, (manifest, rows) => { rows[0].observations[0].ensemble.category = 'conflicted'; }), /only a concordant or supported_alternative|does not match its observations/);
   assert.match(check(first, (manifest, rows) => { rows[0].review.priority = 'high'; }), /review does not match/);
@@ -560,4 +560,70 @@ test('review fix: the authoring agent must be stated explicitly, never defaulted
   await writeFile(path.join(root, 'data/reference/run/proposals.json'), JSON.stringify({ proposals }));
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--dry-run', '--context-proposals', 'data/reference/run/proposals.json'],
     { root, providers: triple(FALLBACK), permission: async () => {}, log: () => {}, contextSource: source() }), /authoring agent must be stated explicitly/);
+});
+
+test('review fix: a malformed Provider response fails the whole ensemble run closed; an explicit unsupported stays data', async () => {
+  const good = { 가는: [p('가다', 'verb', '가')], 짠한: [p('짠하다', 'adjective', '짠하')] };
+  const evidence = [cand('가다', 'verb', [h('d1', '가는')]), cand('짠하다', 'adjective', [h('d2', '짠한')])];
+  const withMecab = (mutate) => {
+    const inner = mecab(good);
+    return { ...inner, analyze: async (requests) => { const response = await inner.analyze(requests); return { ...response, results: response.results.map((row, index) => (index === 0 ? mutate(row) : row)) }; } };
+  };
+  const run = (mutate) => produce(evidence, [kiwi(good), khaiii(good), withMecab(mutate)]);
+  await assert.rejects(() => run((row) => ({ ...row, status: 'bogus' })), /invalid result status "bogus"/);
+  await assert.rejects(() => run((row) => ({ ...row, status: 'ok', analyses: [] })), /status ok without usable analyses/);
+  await assert.rejects(() => run((row) => { const { analyses, ...rest } = row; return { ...rest, status: 'ok' }; }), /status ok without usable analyses/);
+  await assert.rejects(() => run((row) => ({ ...row, status: 'unsupported', analyses: [[{ lemma: '가다', pos: 'verb', form: '가' }]] })), /status unsupported that carries analyses/);
+  await assert.rejects(() => run(() => null), /non-object result entry|missing results/);
+  // The other, valid lemma is not produced as a partial batch.
+  const explicit = await run((row) => ({ ...row, status: 'unsupported', analyses: [] }));
+  assert.deepEqual(explicit.rows.map((row) => row.input), ['짠하다']);
+  assert.deepEqual(explicit.manifest.unresolved_observations.map((entry) => [entry.surface, entry.category, entry.reasons]), [['가는', 'unsupported_or_unknown', ['mecab_unusable']]]);
+  const explicitError = await run((row) => ({ ...row, status: 'error', analyses: [] }));
+  assert.equal(explicitError.manifest.unresolved_observations[0].holds[0], 'analysis_error');
+});
+
+const bigEvidence = (count, { heldTail = false, allHeld = false } = {}) => [
+  cand('가다', 'verb', Array.from({ length: count - (heldTail ? 1 : 0) }, (_, i) => h(`d${String(i).padStart(3, '0')}`, '가는')), allHeld ? { ambiguity_status: 'held_extractor' } : {}),
+  ...(heldTail ? [cand('가다', 'verb', [h('z999', '가는')], { ambiguity_status: 'held_extractor' })] : []),
+];
+const GADA = { 가는: [p('가다', 'verb', '가')] };
+
+test('review fix: observations beyond the 64 bound keep their hold, category accounting and trace identity', async () => {
+  const clean = await produce(bigEvidence(65), triple({ k: GADA, h: GADA, m: GADA }));
+  assert.equal(clean.rows[0].observation_total, 65);
+  assert.equal(clean.rows[0].observations.length, 64);
+  assert.deepEqual([clean.rows[0].review.priority, clean.rows[0].review.categories, clean.rows[0].review.held], ['high', { concordant: 65 }, 0]);
+  assert.equal(clean.manifest.ensemble.counts.observations, 65);
+  assert.deepEqual(clean.manifest.ensemble.counts.categories.concordant, 65, 'the category totals explain ALL observations, not the retained 64');
+  // One held observation among 65: preferred for retention, priority is verify_first, accounting complete.
+  const tail = await produce(bigEvidence(65, { heldTail: true }), triple({ k: GADA, h: GADA, m: GADA }));
+  const row = tail.rows[0];
+  assert.equal(row.observation_total, 65);
+  assert.equal(row.observations.length, 64);
+  assert.deepEqual([row.review.priority, row.review.held, row.review.categories], ['verify_first', 1, { concordant: 65 }]);
+  assert.ok(row.observations.some((o) => o.holds.includes('analysis_ambiguous')), 'the only held observation is retained before plain concordant ones');
+  assert.notEqual(row.review.trace_sha256, clean.rows[0].review.trace_sha256, 'the hold changes the full-set trace commitment');
+  assert.notEqual(tail.manifest.ensemble.trace_sha256, clean.manifest.ensemble.trace_sha256);
+  assert.deepEqual(validateCandidateBatch({ manifest: tail.manifest, candidatesText: tail.candidatesText }), []);
+  // More held observations than the bound: the omitted holds are still counted and drive priority.
+  const many = await produce(bigEvidence(70, { allHeld: true }), triple({ k: GADA, h: GADA, m: GADA }));
+  assert.equal(many.rows[0].observations.length, 64);
+  assert.deepEqual([many.rows[0].review.held, many.rows[0].review.priority], [70, 'verify_first']);
+  assert.deepEqual(validateCandidateBatch({ manifest: many.manifest, candidatesText: many.candidatesText }), []);
+  // Known-invalid: hiding the hold, mis-accounting categories or editing the commitment is rejected.
+  const check = (base, mutate) => {
+    const manifest = structuredClone(base.manifest);
+    const rows = base.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
+    mutate(rows[0], manifest);
+    const text = `${rows.map((entry) => JSON.stringify(entry)).join('\n')}\n`;
+    manifest.candidates_sha256 = sha256Hex(text);
+    return validateCandidateBatch({ manifest, candidatesText: text }).join('\n');
+  };
+  assert.match(check(tail, (r) => { r.review = { ...r.review, held: 0, priority: 'high' }; }), /retained held observations exceed review.held/);
+  assert.match(check(tail, (r) => { r.review.categories = { concordant: 64 }; }), /account for every one of the 65 observations/);
+  assert.match(check(tail, (r) => { r.review.categories = { concordant: 60, conflicted: 5 }; }), /priority|trace_sha256|retained/);
+  assert.match(check(tail, (r) => { r.review.trace_sha256 = HEX; }), /trace_sha256 does not bind/);
+  assert.match(check(tail, (r, m) => { m.ensemble.counts.categories.concordant = 64; }), /does not match/);
+  assert.match(check(many, (r) => { r.review.priority = 'high'; }), /review.priority does not follow/);
 });
