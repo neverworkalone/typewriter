@@ -1,0 +1,348 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { createGitHubClient, repositoryFromRemote } from '../scripts/factory/github-client.mjs';
+import { CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, expectedAnalyzerDigest, sha256Hex } from '../scripts/factory/contract.mjs';
+import {
+  Stage2WorkerError,
+  claimNextStage2Batch,
+  eligibleBatches,
+  loadFactorySnapshot,
+  releaseClaimAfterMerge,
+  runStage2Session,
+  waitForPullRequestMerge,
+} from '../scripts/factory/stage2-worker.mjs';
+
+const SHA = 'a'.repeat(40);
+const DIGEST = (value) => sha256Hex(value);
+const record = (batchId, ref) => ({
+  candidate_id: batchId + '-0001',
+  input: '짠하다',
+  pos: 'adjective',
+  usage_hint: 'a provisional usage',
+  observedForms: ['짠한'],
+  evidence: [{ kind: 'corpus-paragraph', ref }],
+  holds: [],
+});
+const jsonl = (rows) => rows.map((row) => JSON.stringify(row)).join('\n') + '\n';
+
+function candidateArtifacts(batchId, { status = 'created', ref = batchId } = {}) {
+  const candidatesText = jsonl([record(batchId, ref)]);
+  const manifest = {
+    contract: CANDIDATE_MANIFEST_CONTRACT,
+    task_id: 'T000001',
+    batch_id: batchId,
+    candidate_count: 1,
+    source_adapter: 'corpus-adapter',
+    source_snapshot: 'snapshot-' + batchId,
+    canonical_snapshot_digest: DIGEST('canonical'),
+    extractor_version: 'test',
+    analyzer_version: 'kiwipiepy==0.24.0',
+    proposal_contract: PROPOSAL_CONTRACT,
+    analyzer_digest: expectedAnalyzerDigest({ analyzer_version: 'kiwipiepy==0.24.0', proposal_contract: PROPOSAL_CONTRACT }),
+    source_evidence_sha256: DIGEST('evidence-' + batchId),
+    candidates_sha256: sha256Hex(candidatesText),
+    status,
+  };
+  return { manifest, candidatesText };
+}
+
+function snapshotGit(batches) {
+  const files = new Map();
+  for (const [batchId, artifacts] of Object.entries(batches)) {
+    files.set('data/candidates/' + batchId + '/manifest.json', JSON.stringify(artifacts.manifest) + '\n');
+    files.set('data/candidates/' + batchId + '/candidates.jsonl', artifacts.candidatesText);
+  }
+  return {
+    files,
+    async fetchMaster() {},
+    resolveRef() { return SHA; },
+    listFiles() { return [...files.keys()]; },
+    show(_ref, file) {
+      if (!files.has(file)) throw new Error('missing ' + file);
+      return files.get(file);
+    },
+    createBranch(branchName, baseSha) {
+      this.branches.push({ branchName, baseSha });
+    },
+    branches: [],
+    originRemote() { return 'https://github.com/neverworkalone/typewriter.git'; },
+  };
+}
+
+class FakeGitHub {
+  constructor({ raceInitialReads = false } = {}) {
+    this.refs = new Map();
+    this.issues = [];
+    this.pullRequests = new Map();
+    this.events = [];
+    this.nextIssue = 300;
+    this.claimAttempts = [];
+    this.deletedClaims = [];
+    this.raceInitialReads = raceInitialReads;
+    this.listCalls = 0;
+    this.releaseListBarrier = null;
+    this.listBarrier = new Promise((resolve) => { this.releaseListBarrier = resolve; });
+  }
+
+  async getBranchHead() { return SHA; }
+  async listClaimRefs() {
+    this.listCalls += 1;
+    if (this.raceInitialReads && this.listCalls <= 2) {
+      if (this.listCalls === 2) this.releaseListBarrier();
+      await this.listBarrier;
+      return [];
+    }
+    return [...this.refs.keys()].map((ref) => ({ ref }));
+  }
+  async createClaimRef(batchId, sha) {
+    const ref = 'refs/heads/stage2-claims/' + batchId;
+    if (this.refs.has(ref)) {
+      this.claimAttempts.push({ batchId, won: false });
+      this.events.push('claim-lost:' + batchId);
+      return false;
+    }
+    this.refs.set(ref, sha);
+    this.claimAttempts.push({ batchId, won: true });
+    this.events.push('claim-won:' + batchId);
+    return true;
+  }
+  async findIssuesForClaim(claimRef) { return this.issues.filter((issue) => issue.body.includes(claimRef)); }
+  async createIssue(issue) {
+    const created = { ...issue, number: this.nextIssue++, state: 'open' };
+    this.issues.push(created);
+    this.events.push('issue:' + created.number + ':' + issue.body.match(/C\d{6}/u)?.[0]);
+    return created;
+  }
+  async updateIssue(number, update) {
+    const issue = this.issues.find((item) => item.number === number);
+    Object.assign(issue, update);
+    this.events.push('issue-state:' + number + ':' + update.state);
+    return issue;
+  }
+  async addIssueComment(number, comment) {
+    this.events.push('issue-comment:' + number);
+    this.issues.find((item) => item.number === number).comments = [
+      ...(this.issues.find((item) => item.number === number).comments || []), comment,
+    ];
+  }
+  async deleteClaimRef(batchId) {
+    this.deletedClaims.push(batchId);
+    this.refs.delete('refs/heads/stage2-claims/' + batchId);
+  }
+  async getPullRequest(number) {
+    const result = this.pullRequests.get(number);
+    if (Array.isArray(result)) {
+      const next = result.length > 1 ? result.shift() : result[0];
+      this.events.push('pr:' + number + ':' + next.state + ':' + (next.merged ? 'merged' : 'pending'));
+      return next;
+    }
+    this.events.push('pr:' + number + ':' + result.state + ':' + (result.merged ? 'merged' : 'pending'));
+    return result;
+  }
+}
+
+const runClaim = (github, git, options = {}) => claimNextStage2Batch({
+  github, git, agent: 'codex', loadSnapshot: options.loadSnapshot || loadFactorySnapshot, log: () => {},
+});
+
+test('GitHub claim creation is an atomic REST ref operation and 422 is a lost race', async () => {
+  const calls = [];
+  let responseMessage = 'Reference already exists';
+  const github = createGitHubClient({
+    repositoryFullName: 'neverworkalone/typewriter',
+    token: 'test-token',
+    fetchImpl: async (url, init) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ message: responseMessage }), {
+        status: 422, headers: { 'content-type': 'application/json' },
+      });
+    },
+  });
+  assert.equal(await github.createClaimRef('C000001', SHA), false);
+  assert.equal(calls[0].url, 'https://api.github.com/repos/neverworkalone/typewriter/git/refs');
+  assert.equal(calls[0].init.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { ref: 'refs/heads/stage2-claims/C000001', sha: SHA });
+  assert.equal(calls[0].init.headers.Authorization, 'Bearer test-token');
+  assert.equal(repositoryFromRemote('git@github.com:neverworkalone/typewriter.git'), 'neverworkalone/typewriter');
+  responseMessage = 'Validation Failed';
+  await assert.rejects(github.createClaimRef('C000001', SHA), /Validation Failed/u);
+});
+
+test('GitHub PR snapshots include reviews, inline and conversation comments, and exact-head CI', async () => {
+  const requested = [];
+  const github = createGitHubClient({
+    repositoryFullName: 'neverworkalone/typewriter',
+    token: 'test-token',
+    fetchImpl: async (url) => {
+      const parsed = new URL(url);
+      requested.push(parsed.pathname);
+      let data = {};
+      if (parsed.pathname.endsWith('/pulls/91')) data = { number: 91, state: 'open', head: { sha: SHA } };
+      else if (parsed.pathname.endsWith('/reviews')) data = [{ id: 1, state: 'CHANGES_REQUESTED' }];
+      else if (parsed.pathname.endsWith('/pulls/91/comments')) data = [{ id: 2, body: 'inline' }];
+      else if (parsed.pathname.endsWith('/issues/91/comments')) data = [{ id: 3, body: 'conversation' }];
+      else if (parsed.pathname.endsWith('/status')) data = { state: 'failure', statuses: [] };
+      else if (parsed.pathname.endsWith('/check-runs')) data = { check_runs: [{ name: 'ci:normal', conclusion: 'failure' }] };
+      return new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+  });
+  const snapshot = await github.getPullRequestSnapshot(91);
+  assert.equal(snapshot.pullRequest.number, 91);
+  assert.equal(snapshot.reviews[0].state, 'CHANGES_REQUESTED');
+  assert.equal(snapshot.inlineComments[0].body, 'inline');
+  assert.equal(snapshot.conversationComments[0].body, 'conversation');
+  assert.equal(snapshot.combinedStatus.state, 'failure');
+  assert.equal(snapshot.checkRuns[0].name, 'ci:normal');
+  assert.equal(requested.length, 6);
+});
+
+test('two concurrent workers get one C000001 winner and the loser atomically falls back to C000002', async () => {
+  const gitA = snapshotGit({ C000001: candidateArtifacts('C000001'), C000002: candidateArtifacts('C000002') });
+  const gitB = snapshotGit({ C000001: candidateArtifacts('C000001'), C000002: candidateArtifacts('C000002') });
+  const github = new FakeGitHub({ raceInitialReads: true });
+  const [first, second] = await Promise.all([runClaim(github, gitA), runClaim(github, gitB)]);
+
+  assert.deepEqual([first.batchId, second.batchId].sort(), ['C000001', 'C000002']);
+  assert.equal(github.claimAttempts.filter((entry) => entry.batchId === 'C000001' && entry.won).length, 1);
+  assert.equal(github.claimAttempts.filter((entry) => entry.batchId === 'C000001' && !entry.won).length, 1);
+  assert.equal(github.issues.filter((issue) => issue.body.includes('C000001')).length, 1);
+  assert.equal(github.issues.filter((issue) => issue.body.includes('C000002')).length, 1);
+  assert.equal(gitA.branches.length + gitB.branches.length, 2);
+  assert.ok([...gitA.branches, ...gitB.branches].every((branch) => branch.baseSha === SHA));
+});
+
+test('a claim ref with no Issue remains untouched and cannot create an Issue or branch', async () => {
+  const git = snapshotGit({ C000001: candidateArtifacts('C000001') });
+  const github = new FakeGitHub();
+  github.refs.set('refs/heads/stage2-claims/C000001', SHA);
+  const result = await runClaim(github, git);
+  assert.equal(result, null);
+  assert.equal(github.refs.has('refs/heads/stage2-claims/C000001'), true);
+  assert.equal(github.issues.length, 0);
+  assert.equal(git.branches.length, 0);
+});
+
+test('invalid merged candidate manifests fail closed before any claim or Issue', async () => {
+  const invalid = candidateArtifacts('C000001');
+  invalid.manifest.status = 'claimed';
+  const git = snapshotGit({ C000001: invalid });
+  const github = new FakeGitHub();
+  await assert.rejects(runClaim(github, git), Stage2WorkerError);
+  assert.equal(github.claimAttempts.length, 0);
+  assert.equal(github.issues.length, 0);
+  assert.equal(git.branches.length, 0);
+});
+
+test('rejected reviews take priority, reuse their Issue, reopen it, and use a new rework branch', async () => {
+  const created = candidateArtifacts('C000002');
+  const complete = candidateArtifacts('C000001', { status: 'complete' });
+  const snapshot = {
+    headSha: SHA,
+    validated: true,
+    candidates: [
+      { batchId: 'C000002', manifest: created.manifest, candidatesText: created.candidatesText, rows: [record('C000002', 'C000002')] },
+      { batchId: 'C000001', manifest: complete.manifest, candidatesText: complete.candidatesText, rows: [record('C000001', 'C000001')] },
+    ],
+    reviews: [{ batchId: 'C000001', manifest: { status: 'rejected', attempt: 1, rejected_pr: 77 } }],
+  };
+  assert.deepEqual(eligibleBatches(snapshot).map((entry) => entry.batchId), ['C000001', 'C000002']);
+  const git = snapshotGit({});
+  const github = new FakeGitHub();
+  github.issues.push({
+    number: 42, state: 'closed',
+    body: 'Claim ref: refs/heads/stage2-claims/C000001',
+  });
+  const claim = await runClaim(github, git, { loadSnapshot: async () => snapshot });
+  assert.equal(claim.batchId, 'C000001');
+  assert.equal(claim.attempt, 2);
+  assert.equal(claim.issueNumber, 42);
+  assert.equal(claim.rejectedPr, 77);
+  assert.equal(claim.branchName, 'codex/stage2/42-C000001-r2');
+  assert.equal(github.issues.length, 1);
+  assert.equal(github.issues[0].state, 'open');
+  assert.match(github.issues[0].comments[0], /attempt 2/u);
+  assert.equal(git.branches[0].baseSha, SHA);
+});
+
+test('claim cleanup stays merge-gated and also requires the result state on current master', async () => {
+  const github = new FakeGitHub();
+  const git = snapshotGit({});
+  const claim = { batchId: 'C000001', attempt: 1, branchName: 'codex/stage2/42-C000001' };
+  github.pullRequests.set(91, { number: 91, state: 'open', merged: false, base: { ref: 'master' }, head: { ref: claim.branchName } });
+  const loadSnapshot = async () => ({
+    candidates: [{ batchId: 'C000001', manifest: { status: 'complete' } }],
+    reviews: [{ batchId: 'C000001', manifest: { status: 'ready', attempt: 1 } }],
+  });
+  assert.equal(await releaseClaimAfterMerge({ github, git, claim, prNumber: 91, loadSnapshot }), false);
+  assert.deepEqual(github.deletedClaims, []);
+
+  github.pullRequests.set(91, { number: 91, state: 'closed', merged: true, base: { ref: 'master' }, head: { ref: claim.branchName } });
+  await assert.rejects(releaseClaimAfterMerge({
+    github, git, claim, prNumber: 91,
+    loadSnapshot: async () => ({ candidates: [{ batchId: 'C000001', manifest: { status: 'created' } }], reviews: [] }),
+  }), /does not contain this merged Stage 2 result/u);
+  assert.deepEqual(github.deletedClaims, []);
+  assert.equal(await releaseClaimAfterMerge({ github, git, claim, prNumber: 91, loadSnapshot }), true);
+  assert.deepEqual(github.deletedClaims, ['C000001']);
+});
+
+test('one session fixes the same open PR, waits for each merge, and stops at an empty queue', async () => {
+  const github = new FakeGitHub();
+  const events = github.events;
+  github.pullRequests.set(91, [
+    { number: 91, state: 'open', merged: false, ci: 'failure', review: 'changes_requested' },
+    { number: 91, state: 'open', merged: false, ci: 'success', review: 'changes_requested' },
+    { number: 91, state: 'closed', merged: true },
+  ]);
+  github.pullRequests.set(92, { number: 92, state: 'closed', merged: true });
+  const claims = [
+    { batchId: 'C000001', issueNumber: 42, branchName: 'codex/stage2/42-C000001' },
+    { batchId: 'C000002', issueNumber: 43, branchName: 'codex/stage2/43-C000002' },
+  ];
+  let claimIndex = 0;
+  const complete = await runStage2Session({
+    claimNext: async () => {
+      events.push('claim-next');
+      return claims[claimIndex++] || null;
+    },
+    startResultPr: async (claim) => {
+      events.push('start:' + claim.batchId + ':' + claim.branchName);
+      return { number: claim.batchId === 'C000001' ? 91 : 92 };
+    },
+    waitForMerge: async (claim, pr) => waitForPullRequestMerge({
+      github, prNumber: pr.number, sleep: async (duration) => events.push('wait:' + duration),
+      onPending: async (pullRequest) => {
+        events.push('pending:' + claim.branchName + ':' + pullRequest.ci + ':' + pullRequest.review);
+      },
+    }),
+    releaseClaim: async (claim, pr, outcome) => {
+      assert.equal(outcome.status, 'merged');
+      events.push('release:' + claim.batchId + ':' + pr.number);
+      return true;
+    },
+    report: (message) => events.push('report:' + message),
+  });
+  assert.equal(complete.length, 2);
+  assert.equal(events.filter((event) => event === 'claim-next').length, 3);
+  const mergeFirst = events.indexOf('pr:91:closed:merged');
+  const releaseFirst = events.indexOf('release:C000001:91');
+  const startSecond = events.indexOf('start:C000002:codex/stage2/43-C000002');
+  assert.ok(events.includes('pending:codex/stage2/42-C000001:failure:changes_requested'));
+  assert.ok(events.includes('pending:codex/stage2/42-C000001:success:changes_requested'));
+  assert.ok(events.includes('wait:300000'));
+  assert.ok(mergeFirst < releaseFirst && releaseFirst < startSecond);
+  assert.ok(events.some((event) => event.startsWith('report:No unclaimed')));
+  assert.equal(events.filter((event) => event.startsWith('wait:')).length, 2);
+});
+
+test('closed unmerged result PR stops the session before a second claim', async () => {
+  let claims = 0;
+  await assert.rejects(runStage2Session({
+    claimNext: async () => (claims++ === 0 ? { batchId: 'C000001', issueNumber: 42 } : null),
+    startResultPr: async () => ({ number: 91 }),
+    waitForMerge: async () => ({ status: 'closed-unmerged' }),
+    releaseClaim: async () => true,
+  }), /stopping without claiming another batch/u);
+  assert.equal(claims, 1);
+});
