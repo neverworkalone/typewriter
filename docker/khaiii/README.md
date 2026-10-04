@@ -38,8 +38,8 @@ the Stage 1 run closed. `TYPEWRITER_KHAIII_IMAGE` / `TYPEWRITER_DOCKER` override
 
 ## Verification and skip protocol
 
-`node --test tests/factory-khaiii-provider.test.mjs` runs synthetic fixtures always and the
-**REAL pinned Khaiii v0.4 container smoke** only when the image exists. Where the image is absent the
-real test is reported as *skipped* with that reason; no synthetic result may be cited as proof that
-the official binary ran. If the image cannot be built, report the obstacle; do not substitute an
-unpinned fork.
+Manual only: `npm run test:khaiii:docker` (runs `tests/factory-khaiii-docker.test.mjs`). It is not
+registered in any CI category, so `ci:fast`, `ci:normal` and `ci:all` never discover, probe, build or
+run Docker. The test is **skipped with a reason** when the image is absent; no synthetic result may be
+cited as proof that the official binary ran. If the image cannot be built, report the obstacle; do
+not substitute an unpinned fork.
