@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
+import { assertCanonicalOnlyFromReviewedBatches } from './canonical-batch-baseline.mjs';
 import { assertIntakeHandoffPolicy, requiresIntakeHandoff, verifyTrackedHandoff } from '../intake/production-handoff.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
@@ -602,6 +603,11 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
       semanticPath: `data/batches/${path.basename(semanticPath)}`,
     });
   }
+  assertCanonicalOnlyFromReviewedBatches({
+    canonicalRecords: currentCanonical.records,
+    batchImportRecords: batches.flatMap((batch) => batch.importRecords),
+    baseline: JSON.parse(await readFile(path.join(ROOT, 'data/validation/canonical-non-batch-baseline.json'), 'utf8')),
+  });
   return batches;
 }
 

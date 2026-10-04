@@ -217,10 +217,17 @@ is a #251 non-goal.
   rejected, so a canonical file cannot be inserted directly. B05–B15 stay
   historical and carry no hand-off; their evidence is untouched. Rollback: raise
   the constant (it is the single switch) — it is *not* silently bypassable per batch.
-- **No undeclared writers.** `scripts/batch/production-entrypoints.mjs` declares the
+- **Data-level gate (authoritative).** `data/validation/canonical-non-batch-baseline.json`
+  freezes the id set of every canonical record outside the validated corpus batch
+  imports (7,521 records through B15). `validate-issue-223.mjs` fails
+  (`CANONICAL_RECORD_OUTSIDE_REVIEWED_BATCH`) when the non-batch set differs, so a
+  record inserted by any script, file name or path variable that does not belong to a
+  reviewed batch (with its hand-off from B16) is rejected. Changing the baseline is an
+  explicit reviewed edit; new records never need it, because they enter as batches.
+- **No undeclared writers (tripwire).** `scripts/batch/production-entrypoints.mjs` declares the
   only scripts that may write canonical records: the active corpus batch builder and
   the fixed, completed M5 pipelines (historical; constant output paths, no batch id).
-  `tests/production-entrypoints.test.mjs` scans `scripts/` and fails on any other writer.
+  `tests/production-entrypoints.test.mjs` scans `scripts/` (direct, import-path and path-variable writes; temp copies ignored) and fails on any other writer. This static scan is best-effort; the data-level gate above is what actually enforces the invariant.
 - **Regressions at the shared boundary** (`tests/intake-production-handoff.test.mjs`,
   `tests/intake-production-e2e.test.mjs`): wrong/missing analyzer versions and
   digests, changed input/lemma/POS/gloss, removed/reordered evidence, dropped adapter
