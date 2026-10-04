@@ -72,6 +72,7 @@ when their terms allow it. Raw source text and unreviewed drafts do not belong i
 canonical data.
 
 See the [editorial model](docs/editorial-model.md), [lexical quality pipeline](docs/lexical-quality-pipeline.md),
+[lexical production factory design](docs/lexical-production-factory.md),
 [data policy](docs/data-policy.md), and [repository structure](docs/repository-structure.md).
 
 ## Development
