@@ -111,15 +111,22 @@ test('stratified sample is deterministic, bounded, and puts each row in exactly 
 });
 
 test('truth labels: best-only is never certainty; unsupported and unknown stay separate', () => {
-  const decision = { status: 'verified', truth: { lemma: '가장하다', pos: 'verb', root: { lemma: '가장', pos: 'noun' } } };
-  assert.equal(verifiedLabel({ outcome: 'success', best: '가장/noun+가장하다/verb' }, decision), 'verified_correct');
-  assert.equal(verifiedLabel({ outcome: 'success', best: '가/noun+장/adverb' }, decision), 'verified_wrong');
+  const truth = { lemma: '가장하다', pos: 'verb', root: { lemma: '가장', pos: 'noun' } };
+  const decision = { status: 'ai_self_check', truth };
+  assert.equal(verifiedLabel({ outcome: 'success', best: '가장/noun+가장하다/verb' }, decision), 'self_check_correct', 'a self-check is never promoted to verified');
+  assert.equal(verifiedLabel({ outcome: 'success', best: '가/noun+장/adverb' }, decision), 'self_check_wrong');
+  const provenance = { adjudicator_role: 'independent_reviewer', independent: true, analyzer_blind: true, evidence_access: 'authorized_original_context' };
+  assert.equal(verifiedLabel({ outcome: 'success', best: '가장/noun' }, { status: 'verified', truth, provenance }), 'verified_correct');
   assert.equal(verifiedLabel({ outcome: 'unsupported', best: '' }, decision), 'unsupported');
   assert.equal(verifiedLabel({ outcome: 'success', best: '' }, decision), 'unsupported', 'a path with no content morpheme explains nothing');
   assert.equal(verifiedLabel({ outcome: 'success', best: '가장/noun' }, { status: 'truth_unknown' }), 'truth_unknown');
   assert.equal(verifiedLabel({ outcome: 'success', best: '가장/noun' }, undefined), 'truth_unknown');
   const sample = [{ candidate_id: 'a' }, { candidate_id: 'b' }];
-  validateAdjudication([{ candidate_id: 'a', status: 'truth_unknown' }, { candidate_id: 'b', status: 'verified', truth: { lemma: 'x', pos: 'noun' } }], sample);
+  validateAdjudication([{ candidate_id: 'a', status: 'truth_unknown' }, { candidate_id: 'b', status: 'ai_self_check', truth: { lemma: 'x', pos: 'noun' } }], sample);
+  const claimed = [{ candidate_id: 'a', status: 'truth_unknown' }, { candidate_id: 'b', status: 'verified', truth: { lemma: 'x', pos: 'noun' } }];
+  reject(() => validateAdjudication(claimed, sample), /verified requires independent, analyzer-blind provenance/u);
+  reject(() => validateAdjudication([claimed[0], { ...claimed[1], provenance: { adjudicator_role: 'primary_agent', independent: true, analyzer_blind: true, evidence_access: 'authorized_original_context' } }], sample), /verified requires/u);
+  validateAdjudication([claimed[0], { ...claimed[1], provenance: { adjudicator_role: 'human_editor', independent: true, analyzer_blind: true, evidence_access: 'authorized_original_context' } }], sample);
   reject(() => validateAdjudication([{ candidate_id: 'a', status: 'truth_unknown' }], sample), /sampled but not adjudicated/u);
   reject(() => validateAdjudication([{ candidate_id: 'a', status: 'truth_unknown' }, { candidate_id: 'b', status: 'truth_unknown', truth: { lemma: 'x', pos: 'noun' } }], sample), /must not carry a truth/u);
   reject(() => validateAdjudication([{ candidate_id: 'z', status: 'truth_unknown' }, { candidate_id: 'a', status: 'truth_unknown' }, { candidate_id: 'b', status: 'truth_unknown' }], sample), /not in the predeclared sample/u);
@@ -193,10 +200,28 @@ test('committed adjudication matches the predeclared sample and the report is cu
   assert.equal(outcomes.sample.seed, SAMPLE_SEED);
   assert.deepEqual(selectSample(outcomes.rows.map((row) => ({ candidate_id: row.id, stratum: row.stratum }))).sample, outcomes.sample.sample, 'the sample is reproducible from the rows');
   assert.match(adjudication.method, /AI self-check/u);
+  assert.ok(adjudication.decisions.every((decision) => decision.status !== 'verified'), 'no independent adjudication exists, so nothing is verified');
   const summary = buildSummary(outcomes, adjudication);
+  assert.equal(summary.adjudication.independently_verified, 0);
+  assert.equal(summary.adjudication.ai_self_check + summary.adjudication.truth_unknown, 85);
+  for (const id of PROVIDER_IDS) {
+    const counts = summary.adjudication.providers[id];
+    assert.equal(counts.verified_correct + counts.verified_wrong, 0, 'self-check records never enter verified statistics');
+    assert.equal(counts.verified_precision, null);
+    assert.ok(counts.self_check_correct + counts.self_check_wrong > 0);
+  }
+  assert.equal(summary.hypothetical_agreement_rule.proposal_independently_verified, 0);
   assert.equal(readFileSync('docs/audits/issue-274-analyzer-benchmark.md', 'utf8'), renderReport(summary, outcomes), 'run: node scripts/factory/benchmark-analyzers.mjs report');
   assert.equal(summary.baseline.analysis_ambiguous_rows, 434);
   assert.equal(summary.order_gain_vs_kiwi_only.every((entry) => entry.apparent_resolved_gain === 0), true);
+});
+
+test('stored baseline snapshot verifies from its own bytes (always runs; no dependence on the PR #270 branch)', () => {
+  const text = (name) => readFileSync(`docs/audits/issue-274-baseline/${name}`, 'utf8');
+  const rows = verifyBaseline({ manifestText: text('manifest.json'), candidatesText: text('candidates.jsonl') });
+  assert.equal(rows.length, 500);
+  assert.deepEqual(rows.map((row) => row.candidate_id), outcomes.rows.map((row) => row.id));
+  assert.deepEqual(rows.map((row) => row.holds), outcomes.rows.map((row) => row.holds));
 });
 
 test('real baseline bytes from the recorded commit verify (skipped when the commit is not local)', (context) => {

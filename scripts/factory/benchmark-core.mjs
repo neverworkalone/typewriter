@@ -257,7 +257,10 @@ export function wilson(successes, total, z = 1.959964) {
 
 // ---------- adjudication → verified labels ----------
 
-const TRUTH_STATUS = Object.freeze(['verified', 'truth_unknown']);
+// `verified` is reserved for an independent, evidence-bound, analyzer-blind adjudication and must carry
+// that provenance. An AI self-check is recorded as `ai_self_check` and is never promoted to `verified`.
+const TRUTH_STATUS = Object.freeze(['verified', 'ai_self_check', 'truth_unknown']);
+const PROVENANCE_ROLES = Object.freeze(['human_editor', 'independent_reviewer']);
 export function validateAdjudication(decisions, sample) {
   const errors = [];
   const wanted = new Set(sample.map((entry) => entry.candidate_id));
@@ -267,7 +270,12 @@ export function validateAdjudication(decisions, sample) {
     if (seen.has(decision.candidate_id)) errors.push(`${decision.candidate_id}: decided twice`);
     seen.add(decision.candidate_id);
     if (!TRUTH_STATUS.includes(decision.status)) errors.push(`${decision.candidate_id}: status must be one of ${TRUTH_STATUS.join('|')}`);
-    if (decision.status === 'verified' && !(typeof decision.truth?.lemma === 'string' && typeof decision.truth?.pos === 'string')) errors.push(`${decision.candidate_id}: verified needs truth {lemma,pos}`);
+    if (decision.status !== 'truth_unknown' && !(typeof decision.truth?.lemma === 'string' && typeof decision.truth?.pos === 'string')) errors.push(`${decision.candidate_id}: ${decision.status} needs truth {lemma,pos}`);
+    if (decision.status === 'verified') {
+      const provenance = decision.provenance;
+      if (!(provenance && PROVENANCE_ROLES.includes(provenance.adjudicator_role) && provenance.independent === true && provenance.analyzer_blind === true
+        && provenance.evidence_access === 'authorized_original_context')) errors.push(`${decision.candidate_id}: verified requires independent, analyzer-blind provenance with authorized original-context access`);
+    }
     if (decision.status === 'truth_unknown' && decision.truth) errors.push(`${decision.candidate_id}: truth_unknown must not carry a truth`);
   }
   for (const id of wanted) if (!seen.has(id)) errors.push(`${id}: sampled but not adjudicated`);
@@ -278,8 +286,10 @@ export function validateAdjudication(decisions, sample) {
 // certainty: without a truth the label is truth_unknown, never verified_correct.
 export function verifiedLabel(record, decision) {
   if (record.outcome !== 'success' || record.best === '') return 'unsupported';
-  if (!decision || decision.status !== 'verified') return 'truth_unknown';
-  return readingContainsTruth(record.best, decision.truth) ? 'verified_correct' : 'verified_wrong';
+  if (!decision || decision.status === 'truth_unknown') return 'truth_unknown';
+  const correct = readingContainsTruth(record.best, decision.truth);
+  if (decision.status === 'ai_self_check') return correct ? 'self_check_correct' : 'self_check_wrong';
+  return correct ? 'verified_correct' : 'verified_wrong';
 }
 // A derived predicate (가장하다) is also correctly explained by its recorded root (가장/noun).
 export function readingContainsTruth(bestSignature, truth) {
@@ -289,9 +299,15 @@ export function readingContainsTruth(bestSignature, truth) {
 
 // ---------- summary ----------
 
-const tally = (labels) => Object.fromEntries(['verified_correct', 'verified_wrong', 'truth_unknown', 'unsupported'].map((label) => [label, labels.filter((value) => value === label).length]));
-const precision = (counts) => ({ ...counts, precision: counts.verified_correct + counts.verified_wrong === 0 ? null : round3(counts.verified_correct / (counts.verified_correct + counts.verified_wrong)),
-  wilson95: wilson(counts.verified_correct, counts.verified_correct + counts.verified_wrong) });
+const tally = (labels) => Object.fromEntries(['verified_correct', 'verified_wrong', 'self_check_correct', 'self_check_wrong', 'truth_unknown', 'unsupported'].map((label) => [label, labels.filter((value) => value === label).length]));
+// Independently verified precision and AI self-check agreement are separate figures; the former is
+// null (never computed from self-check records) unless independent verification exists.
+const precision = (counts) => {
+  const verified = counts.verified_correct + counts.verified_wrong;
+  const checked = counts.self_check_correct + counts.self_check_wrong;
+  return { ...counts, verified_precision: verified === 0 ? null : round3(counts.verified_correct / verified), verified_wilson95: wilson(counts.verified_correct, verified),
+    self_check_agreement: checked === 0 ? null : round3(counts.self_check_correct / checked), self_check_wilson95: wilson(counts.self_check_correct, checked) };
+};
 
 // Every number the audit report states is computed here from the two committed files.
 export function buildSummary(outcomes, adjudication) {
@@ -321,7 +337,7 @@ export function buildSummary(outcomes, adjudication) {
     const subset = sampled.filter((row) => row.stratum === stratum);
     if (subset.length === 0) continue;
     byStratum[stratum] = { size: outcomes.sample.strata[stratum].size, sampled: subset.length, providers: Object.fromEntries(PROVIDER_IDS.map((id) => [id, precision(tally(labelsOf(id, subset)))])),
-      proposed_confirmed: subset.filter((row) => decisions.get(row.id).reason_code === 'proposed_confirmed').length, truth_unknown: subset.filter((row) => decisions.get(row.id).status !== 'verified').length };
+      proposed_confirmed: subset.filter((row) => decisions.get(row.id).reason_code === 'proposed_confirmed').length, truth_unknown: subset.filter((row) => decisions.get(row.id).status === 'truth_unknown').length };
   }
   // Hypothetical agreement rule (NOT implemented anywhere): among Kiwi-ambiguous rows where both
   // best-only providers contain the proposed lemma/POS, how often is the proposal actually right?
@@ -337,7 +353,8 @@ export function buildSummary(outcomes, adjudication) {
       ambiguity_origin_indeterminate_rows: rows.filter((row) => row.ambiguity_origin_indeterminate).length, upstream_hold_counts: countBy(rows.flatMap((row) => row.upstream_holds)) },
     standalone, pair_agreement: pairs, agreement_classes: countBy(rows.map((row) => row.agreement)), orders,
     order_gain_vs_kiwi_only: orders.slice(1).map((order) => ({ order: order.order, apparent_resolved_gain: (order.states.apparent_resolved ?? 0) - order0, held_rows_change: order.held_rows - orders[0].held_rows })),
-    adjudication: { sampled: sampled.length, verified: sampled.filter((row) => decisions.get(row.id).status === 'verified').length, truth_unknown: sampled.filter((row) => decisions.get(row.id).status !== 'verified').length,
+    adjudication: { sampled: sampled.length, independently_verified: sampled.filter((row) => decisions.get(row.id).status === 'verified').length, ai_self_check: sampled.filter((row) => decisions.get(row.id).status === 'ai_self_check').length,
+      truth_unknown: sampled.filter((row) => decisions.get(row.id).status === 'truth_unknown').length,
       proposed_confirmed: sampled.filter((row) => decisions.get(row.id).reason_code === 'proposed_confirmed').length, providers: verifiedProvider, by_stratum: byStratum },
     hypothetical_agreement_rule: { ...hypothetical, baseline_ambiguous_population_matching: agreeingPopulation },
     timing: outcomes.timing,
@@ -345,7 +362,8 @@ export function buildSummary(outcomes, adjudication) {
 }
 
 function precisionOfProposal(subset, decisions) {
-  const verified = subset.filter((row) => decisions.get(row.id).status === 'verified');
+  const verified = subset.filter((row) => decisions.get(row.id).status !== 'truth_unknown');
   const confirmed = verified.filter((row) => decisions.get(row.id).reason_code === 'proposed_confirmed').length;
-  return { proposal_verified: verified.length, proposal_confirmed: confirmed, proposal_precision: verified.length ? round3(confirmed / verified.length) : null, proposal_wilson95: wilson(confirmed, verified.length) };
+  return { proposal_self_checked: verified.length, proposal_confirmed: confirmed, proposal_self_check_agreement: verified.length ? round3(confirmed / verified.length) : null, proposal_wilson95: wilson(confirmed, verified.length),
+    proposal_independently_verified: subset.filter((row) => decisions.get(row.id).status === 'verified').length };
 }
