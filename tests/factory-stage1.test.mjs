@@ -20,6 +20,8 @@ const ANALYSES = {
   짠해서: [[{ lemma: '짠하다', pos: 'adjective', form: '짠하' }]],
   걸음: [[{ lemma: '걸음', pos: 'noun', form: '걸음' }]],
   걸어: [[{ lemma: '걷다', pos: 'verb', form: '걷' }]],
+  바람물결: [[{ lemma: '바람', pos: 'noun', form: '바람' }, { lemma: '물결', pos: 'noun', form: '물결' }]],
+  망각한: [[{ lemma: '망각', pos: 'noun', form: '망각' }, { lemma: '망각하다', pos: 'verb', form: '망각하' }]],
   나는: [[{ lemma: '나', pos: 'noun', form: '나' }], [{ lemma: '날다', pos: 'verb', form: '날' }]],
 };
 const syntheticAnalyzer = (analyses = ANALYSES, metadata = METADATA) => async (requests) => ({
@@ -180,4 +182,16 @@ test('CLI fails closed without permission, outside data/reference, on bad argume
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/x.json'], deps), /--task-id/);
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/x.json', ...base, '--bogus'], deps), /unknown argument/);
   await assert.rejects(() => readdir(path.join(root, 'data/candidates')), { code: 'ENOENT' });
+});
+
+test('a multi-morpheme surface not explained by the proposed lemma is held; derived predicates and plain inflections pass', async () => {
+  const { rows } = await produce(evidenceDoc([
+    cand('바람', 'noun', [hit('d6', 'p1', '바람물결')]),
+    cand('망각하다', 'verb', [hit('d7', 'p1', '망각한')]),
+    cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]),
+  ]));
+  const by = Object.fromEntries(rows.map((row) => [row.input, row.holds]));
+  assert.deepEqual(by.바람, ['lemma_mismatch']);
+  assert.deepEqual(by.망각하다, []);
+  assert.deepEqual(by.짠하다, []);
 });
