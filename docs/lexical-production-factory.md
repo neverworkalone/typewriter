@@ -62,6 +62,16 @@ schema. The factory is a work-organization layer around the existing contracts.
   uncertain distinguishable uses. It must **not prematurely reject** a possible
   new sense. Repeated usage that is true repetition of the same evidence is
   deduplicated; a distinguishable use is not.
+- Stage 1 reuses the existing Kiwi-based corpus extractor to discover headwords
+  and POS candidates (the `reference:corpus:candidates` extractor of
+  [`docs/m9-corpus-production.md`](m9-corpus-production.md), pinned
+  `kiwipiepy==0.24.0`, and the shared intake in `scripts/intake/`). Inflected
+  forms are restored to the base form where possible (`observedForms` keeps the
+  surface forms). When the morphological analysis is uncertain or admits several
+  readings, Stage 1 records that as `holds` (e.g. `analysis_ambiguous`,
+  `lemma_mismatch`, `pos_mismatch`) together with the candidate rather than
+  guessing. Kiwi output is only a candidate proposal; the final semantic and POS
+  judgment belongs to Stage 2.
 - Candidate and evidence content follows the existing source discipline: bounded
   text-free provenance only; never copyrighted paragraph text or a corpus
   snapshot in Git ([`DATA-LICENSE.md`](../DATA-LICENSE.md),
