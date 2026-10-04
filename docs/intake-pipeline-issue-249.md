@@ -241,3 +241,14 @@ is a #251 non-goal.
 - **CI scope.** All of the above is deterministic Node and runs in `ci:fast` /
   `ci:normal`. Real kiwipiepy, the corpus index and the local analysis directory stay
   out of CI: use the real-route smoke above (pinned kiwipiepy 0.24.0, `TYPEWRITER_PYTHON`).
+
+`tests/validator-b16-positive.test.mjs` (normal CI) is the positive validator
+fixture: in a temp tree it runs the real hand-off CLI (`build`, `bind`), the real
+batch builder with `--intake-handoff` (refused without it) and the real
+`validate-issue-223.mjs` for a small B16 (two synthetic candidates `소년기`/`청년기`
+whose corpus counts are synthetic test data, plus B15's real held `호시탐탐`;
+`tests/fixtures/validator-b16`). Only the Kiwi model is replaced, by a
+deterministic stand-in `kiwipiepy` placed on `PYTHONPATH` (CI has no model); the
+pinned version check, stability retries, binding and fresh-analysis comparison all
+run unchanged. It then removes or tampers the tracked hand-off and expects the
+validator to fail.

@@ -1,0 +1,117 @@
+{
+  "schema_version": "1",
+  "contract_version": "authored-semantic-review-input-v1",
+  "kind": "authored-semantic-review-input",
+  "batch_id": "issue-223-m9-e-corpus-batch-16-20261004",
+  "reviewer": "claude-sonnet-5-5",
+  "review_status": "complete",
+  "review_provenance": "agent-self-check",
+  "independent_review": false,
+  "reviews": [
+    {
+      "lemma": "소년기",
+      "gloss_sha256": "17e45ce95dbd8f4b96821345542b9178989ebaacfe433495d9681fc256f26c00",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ],
+      "boundary_rationale": "소년기: 문맥 0: 소년기에 겪은 시골 생활; 문맥 1: 소년기를 지나 청년이 되는 과정; 문맥 2: 소년기의 기억 — 모두 같은 어휘의 같은 쓰임으로 읽힌다.",
+      "semantic_rationale": "소년기: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 소년기가 어린 시절과 청년 사이의 시기를 가리킨다는 점을 문맥 0과 문맥 2의 쓰임에서 점검했다. 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+      "no_relation_rationale": "소년기: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "소년기: 문맥 0: 소년기에 겪은 시골 생활; 문맥 1: 소년기를 지나 청년이 되는 과정; 문맥 2: 소년기의 기억 — 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "소년기: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "그는 소년기를 시골에서 보냈다.",
+          "relation_type": "near",
+          "target_class": "소년기의 검토된 핵심 뜻"
+        }
+      ]
+    },
+    {
+      "lemma": "청년기",
+      "gloss_sha256": "0831c72d79e9de3b1ea5c685d15df181bc27fc9045bdeb1528557086f53cc6bd",
+      "gloss_judgment": "fit",
+      "boundary_action": "retain",
+      "boundary_classification": "atomic",
+      "single_sense_boundary_status": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ],
+      "boundary_rationale": "청년기: 문맥 0: 청년기에 품은 꿈; 문맥 1: 청년기를 보낸 도시; 문맥 2: 청년기의 방황 — 모두 같은 어휘의 같은 쓰임으로 읽힌다.",
+      "semantic_rationale": "청년기: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 청년기가 젊은 한창의 시기를 가리킨다는 점을 문맥 1과 문맥 2의 쓰임에서 점검했다. 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+      "no_relation_rationale": "청년기: 이 검토에서 개별 관계 근거를 따로 세우지 않았으므로 관계 없음이 유효하다.",
+      "decision_rationale": "청년기: 문맥 0: 청년기에 품은 꿈; 문맥 1: 청년기를 보낸 도시; 문맥 2: 청년기의 방황 — 정체성·품사·풀이·의미 경계를 후보 근거에서 별도 맥락으로 검토했고 공통 승인 경로에서 판단한다.",
+      "frame_rationale": "청년기: 진단 프레임은 풀이 구간마다 같은 의미를 유지하며, 경로 표시는 보강 메타데이터이지 승인 근거가 아니다.",
+      "frames": [
+        {
+          "sentence_frame": "그녀의 청년기는 도시에서 시작됐다.",
+          "relation_type": "near",
+          "target_class": "청년기의 검토된 핵심 뜻"
+        }
+      ]
+    }
+  ],
+  "candidate_outcomes": [
+    {
+      "ordinal": 1,
+      "lemma": "소년기",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 2,
+      "lemma": "청년기",
+      "generator_disposition": "admit",
+      "generator_agreement": "agree",
+      "verdict": "pass",
+      "identity_check": "ok",
+      "pos_check": "ok",
+      "gloss_check": "fit",
+      "sense_boundary_check": "single",
+      "checked_hit_indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "ordinal": 3,
+      "lemma": "호시탐탐",
+      "generator_disposition": "hold",
+      "generator_agreement": "agree",
+      "verdict": "hold",
+      "identity_check": "unresolved",
+      "pos_check": "ok",
+      "gloss_check": "n/a",
+      "sense_boundary_check": "single",
+      "hold_basis": "unresolved-identity",
+      "hold_rationale": "관찰형이 모두 호시탐탐 하나로만 나타나 부사적 쓰임뿐이라 명사 정체가 확정되지 않는다."
+    }
+  ]
+}

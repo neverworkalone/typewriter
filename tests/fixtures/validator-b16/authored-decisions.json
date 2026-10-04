@@ -1,0 +1,30 @@
+{
+  "reviewer": "claude-sonnet-5-5",
+  "generator": "claude-sonnet-5-5",
+  "generation_pass_id": "issue-223-m9-e-corpus-batch-16-authored-generation-20261004-r1",
+  "candidate_review_pass_id": "issue-223-m9-e-corpus-batch-16-lexical-review-20261004-r1",
+  "semantic_verification_pass_id": "issue-223-m9-e-corpus-batch-16-semantic-verification-20261004-r1",
+  "decisions": [
+    {
+      "candidate_ordinal": 1,
+      "lemma": "소년기",
+      "disposition": "admit",
+      "axis": "X",
+      "gloss": "어린아이에서 청년으로 자라 가는 사이의 시기."
+    },
+    {
+      "candidate_ordinal": 2,
+      "lemma": "청년기",
+      "disposition": "admit",
+      "axis": "X",
+      "gloss": "몸과 마음이 한창 자라 어른이 되어 가는 젊은 시기."
+    },
+    {
+      "candidate_ordinal": 3,
+      "lemma": "호시탐탐",
+      "disposition": "hold",
+      "basis": "unresolved-identity",
+      "rationale": "관찰형이 모두 호시탐탐 하나로만 나타나 부사적 쓰임뿐이라 명사 정체가 확정되지 않는다."
+    }
+  ]
+}
