@@ -52,7 +52,8 @@ Frame grammar: a later review found 83 verb diagnostic frames (B13 24, B14 34, B
 
 ## 4. CI accounting
 
-Local invocations observed in ledgers: `ci:fast` B13 ×2 (first failed on a dirty worktree), B14 ×1, B15 ×1 (all passing, 21–24 s); `batch:issue-223:check` ×3 (54–65 s). `ci:normal` at the 12,204 checkpoint (commit `7d3990a`) failed once, 227.1 s: `tests/artifact-policy.test.mjs` rejected the two `data/timing/m10-b-short-search-comparison-*.json` files as unclassified. Fixed by registering that pattern in `config/artifact-policy.json`; the rerun at the policy-fix commit passed in 283.7 s (ledger label `ci-normal-rerun-after-policy-fix`). GitHub CI invocations: `unavailable` at report time (branch not yet pushed).
+Local invocations observed in ledgers: `ci:fast` B13 ×2 (first failed on a dirty worktree), B14 ×1, B15 ×1 (all passing, 21–24 s); `batch:issue-223:check` ×3 (54–65 s). `ci:normal` at the 12,204 checkpoint (commit `7d3990a`) failed once, 227.1 s: `tests/artifact-policy.test.mjs` rejected the two `data/timing/m10-b-short-search-comparison-*.json` files as unclassified. Fixed by registering that pattern in `config/artifact-policy.json`; the rerun at the policy-fix commit passed in 283.7 s (ledger label `ci-normal-rerun-after-policy-fix`). 
+GitHub CI (PR #248, workflow `CI`, event `pull_request`, queried via `gh run list` after merge): 25 runs on branch `issue-247-m10b` from 2026-10-03 01:11Z to 08:21Z, all `success`, none failed, retried or cancelled. Per-run duration (created→updated, includes queue time) 229–407 s, 8,625 s summed. The last run, on PR head `be3acc7`, passed in 229 s. The runs correspond to successive pushes of review fixes, so they overlap in wall time with local work and are not additive to it. The earlier local `ci:normal` failure has no failed GitHub counterpart. GitHub runner time is not split between nested fast/normal stages.
 
 ## Known issues (deferred)
 
@@ -78,4 +79,4 @@ Add a lint command that runs the existing `merge-authors` and `self-check-assemb
 - Span times are not model-compute times; the improvement across B13→B15 mixes learning, templating and tooling.
 - Self-check rows are the same agent re-reading its own decisions; admitted quality is not independently verified. B14 and B15 notes were rewritten per context after review; both rewrites re-expressed contexts already read in the same session rather than a fresh reading, and the per-context descriptions are short paraphrases.
 - Reader memory, fallback-query share and behaviour on a cold OS page cache were not measured; timings come from one machine.
-- GitHub CI behaviour is not yet observed.
+- GitHub CI durations include queue time and are per-push, not per-batch; the split between `ci:fast` and `ci:normal` stages on the runner was not extracted.
