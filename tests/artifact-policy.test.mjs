@@ -232,6 +232,14 @@ test('artifact policy classifies projections before they can become tracked data
   assert.deepEqual(relocatedWithDifferentName.generated, ['data/batches/editorial-judgments-20260915.json']);
   assert.deepEqual(relocatedWithDifferentName.unclassified, []);
 
+  // Factory Stage 1 candidate batches are durable, text-free evidence (validated by the factory contract).
+  const stage1Batch = classifyTrackedArtifacts(
+    ['data/candidates/C000001/manifest.json', 'data/candidates/C000001/candidates.jsonl'],
+    options,
+  );
+  assert.deepEqual(stage1Batch.generated, []);
+  assert.deepEqual(stage1Batch.unclassified, []);
+
   await assert.doesNotReject(validateArtifactPolicy());
   await assert.rejects(
     validateArtifactPolicy({
