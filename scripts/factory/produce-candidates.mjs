@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_PROVIDER_ORDER, createKiwiProvider } from './analyzer-providers.mjs';
 import { createKhaiiiProvider } from './khaiii-provider.mjs';
+import { createMecabProvider } from './mecab-provider.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
 import { parseJsonl } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
@@ -29,6 +30,7 @@ import {
 export const PROVIDER_REGISTRY = Object.freeze({
   kiwi: ({ python }) => createKiwiProvider({ python }),
   khaiii: () => createKhaiiiProvider(), // lazy: nothing runs until Stage 1 asks it about an unresolved surface
+  mecab: () => createMecabProvider(), // lazy, like khaiii
 });
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
