@@ -19,6 +19,9 @@ SERVICE_VERSION = "1"
 MAX_BATCH_SIZE = 500
 MAX_TEXT_LENGTH = 2000
 TOP_N = 3
+# Version of the proposal semantics. v1: derived predicates carry `derived_from`/`derived_from_index`.
+# Kept separate from SERVICE_VERSION so stored hand-offs (service_version "1") stay verifiable.
+PROPOSAL_CONTRACT = "derivation-root-v1"
 POS_BY_TAG = {"NNG": "noun", "VV": "verb", "VA": "adjective", "MAG": "adverb"}
 PINNED_VERSIONS = {"kiwipiepy": "0.24.0", "kiwipiepy_model": "0.24.0"}
 
@@ -41,6 +44,7 @@ def run_metadata() -> dict:
         "kiwipiepy_version": _package_version("kiwipiepy"),
         "kiwipiepy_model_version": _package_version("kiwipiepy_model"),
         "top_n": TOP_N,
+        "proposal_contract": PROPOSAL_CONTRACT,
         "pinned": dict(PINNED_VERSIONS),
     }
 
@@ -71,8 +75,17 @@ def _proposals(tokens) -> list[dict]:
             lemma = form + "다" if pos in {"verb", "adjective"} else form
             result.append({"lemma": lemma, "pos": pos, "form": form})
         elif tag in DERIVATIONAL_SUFFIX_POS and previous is not None and previous["tag"] in {"NNG", "XR"}:
-            base = result[-1]["form"] if result and result[-1]["lemma"] == previous["form"] else previous["form"]
-            result.append({"lemma": base + form + "다", "pos": DERIVATIONAL_SUFFIX_POS[tag], "form": base + form})
+            root_index = len(result) - 1 if previous["tag"] == "NNG" and result and result[-1]["lemma"] == previous["form"] else None
+            base = result[root_index]["form"] if root_index is not None else previous["form"]
+            # `derived_from` / `derived_from_index` keep the analyzer's own root→suffix link: the root
+            # text and the position of its noun proposal in this path (None for a non-noun XR root).
+            result.append({
+                "lemma": base + form + "다",
+                "pos": DERIVATIONAL_SUFFIX_POS[tag],
+                "form": base + form,
+                "derived_from": base,
+                "derived_from_index": root_index,
+            })
         previous = {"tag": tag, "form": form}
     return result
 

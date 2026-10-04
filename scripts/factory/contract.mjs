@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import { HOLD_REASONS, POS_VALUES } from '../intake/candidate-contract.mjs';
+import { HOLD_REASONS, POS_VALUES, digest } from '../intake/candidate-contract.mjs';
+import { PINNED_RUN, analyzerDigest } from '../intake/pipeline.mjs';
 
 // Lexical production factory contracts (issue #263, design: docs/lexical-production-factory.md).
 // Factory ids (C…) never reuse canonical `w…` ids or the canonical `candidate_id` field.
@@ -13,6 +14,15 @@ export const REVIEW_STATUSES = Object.freeze(['ready', 'complete', 'rejected']);
 export const DISPOSITIONS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
 export const TARGET_KINDS = Object.freeze(['new_entry', 'new_pos_on_existing_lemma', 'new_sense_on_existing_entry']);
 export const MAX_EVIDENCE_REFERENCES = 5;
+// Semantics of the Kiwi proposals Stage 1 interprets (`derived_from*`); see docs/lexical-factory-contracts.md.
+export const PROPOSAL_CONTRACT = 'derivation-root-v1';
+
+// The analyzer digest a Stage 1 manifest must carry: the shared analyzer digest of the pinned run
+// for its `analyzer_version`, bound to the proposal contract.
+export function expectedAnalyzerDigest(manifest) {
+  const version = String(manifest.analyzer_version ?? '').replace(/^kiwipiepy==/u, '');
+  return digest([analyzerDigest({ ...PINNED_RUN, kiwipiepy_version: version, kiwipiepy_model_version: version }), manifest.proposal_contract]);
+}
 
 // Operational fields: excluded from every content digest (design §7.3).
 export const MUTABLE_MANIFEST_FIELDS = Object.freeze(['status', 'rejected_pr', 'attempt', 'history']);
@@ -93,7 +103,8 @@ export function validateCandidateBatch({ manifest, candidatesText }) {
   const errors = [];
   if (!isPlainObject(manifest)) return ['candidate manifest must be an object'];
   const required = ['contract', 'task_id', 'batch_id', 'candidate_count', 'source_adapter', 'source_snapshot',
-    'canonical_snapshot_digest', 'extractor_version', 'analyzer_version', 'candidates_sha256', 'status'];
+    'canonical_snapshot_digest', 'extractor_version', 'analyzer_version', 'analyzer_digest', 'proposal_contract',
+    'source_evidence_sha256', 'candidates_sha256', 'status'];
   for (const key of required) if (manifest[key] === undefined) errors.push(`candidate manifest: missing ${key}`);
   if (errors.length) return errors;
   if (manifest.contract !== CANDIDATE_MANIFEST_CONTRACT) errors.push(`candidate manifest: contract must be ${CANDIDATE_MANIFEST_CONTRACT}`);
@@ -101,6 +112,11 @@ export function validateCandidateBatch({ manifest, candidatesText }) {
   if (!CANDIDATE_STATUSES.includes(manifest.status)) errors.push(`candidate manifest: status must be one of ${CANDIDATE_STATUSES.join(', ')}`);
   if (!isSha256(manifest.candidates_sha256)) errors.push('candidate manifest: candidates_sha256 must be sha256 hex');
   if (!isSha256(manifest.canonical_snapshot_digest)) errors.push('candidate manifest: canonical_snapshot_digest must be sha256 hex');
+  if (manifest.proposal_contract !== PROPOSAL_CONTRACT) errors.push(`candidate manifest: proposal_contract must be ${PROPOSAL_CONTRACT}`);
+  if (!isSha256(manifest.source_evidence_sha256)) errors.push('candidate manifest: source_evidence_sha256 must be sha256 hex');
+  if (!isSha256(manifest.analyzer_digest) || manifest.analyzer_digest !== expectedAnalyzerDigest(manifest)) {
+    errors.push('candidate manifest: analyzer_digest must bind the pinned analyzer and proposal_contract');
+  }
   if (manifest.analyzer_version !== undefined && !/^kiwipiepy==\d+\.\d+\.\d+$/u.test(String(manifest.analyzer_version))) errors.push('candidate manifest: analyzer_version must be a pinned kiwipiepy==X.Y.Z');
   for (const key of ['task_id', 'source_adapter', 'source_snapshot', 'extractor_version']) {
     if (typeof manifest[key] !== 'string' || manifest[key].length === 0) errors.push(`candidate manifest: ${key} must be a non-empty string`);
