@@ -299,6 +299,13 @@ function stripVolatileDatabaseMetadata(snapshot) {
   };
 }
 
+// The builder only produces a review-only artifact for owner-directed B05; a later batch
+// must not use that status to skip the mandatory hand-off and semantic validation.
+export function assertReviewOnlyAllowed(batchOrdinal, reviewOnly) {
+  if (reviewOnly) assert.equal(batchOrdinal, 5, 'only B05 is an owner-directed review-only batch; later batches cannot skip semantic and intake validation');
+  return true;
+}
+
 async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence }) {
   const reviewerRegistry = await loadSemanticReviewerRegistry();
   const names = (await readdir(BATCH_DIRECTORY))
@@ -331,6 +338,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     const candidateBytes = await readFile(candidatePath);
     const candidateReview = JSON.parse(candidateBytes.toString('utf8'));
     const reviewOnly = candidateReview.canonical_import_status === 'owner-deferred-review-only';
+    assertReviewOnlyAllowed(parseIssue223BatchId(candidateReview.batch_id).ordinal, reviewOnly);
     assert.ok(candidateReview.canonical_import_status === undefined || reviewOnly,
       `${candidateReview.batch_id} has an unsupported canonical import status`);
     const [semanticBytes, importBytes] = reviewOnly
