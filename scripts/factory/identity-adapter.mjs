@@ -3,7 +3,7 @@ import { runIntake } from '../intake/pipeline.mjs';
 // Adapter between factory candidates (one `C…` id per usage) and the legacy shared
 // intake, which keys by input+POS, merges same-key candidates and drops every
 // already-canonical lemma as `covered` (design §10.1). The legacy contract is not
-// changed (B05–B16 history stays intact): the adapter feeds it one representative per
+// changed (B05–B16 history stays intact): the adapter feeds it every candidate, which it merges per
 // distinct input+POS only to share Kiwi analysis, then fans each result back out to
 // every factory candidate, never passing `coveredLemmas`.
 
@@ -34,22 +34,21 @@ export function classifyAgainstCanonical(candidate, canonicalIndex) {
   return { route: 'new_sense_on_existing_entry', existingEntryIds: sameLemmaPos.map((entry) => entry.id) };
 }
 
-const toRawCandidate = (candidate) => ({
+export const toRawCandidate = (candidate) => ({
   input: candidate.input,
   pos: candidate.pos,
   observedForms: candidate.observedForms,
   evidence: candidate.evidence,
   holds: candidate.holds,
 });
-const keyOf = (candidate) => `${candidate.input}\u0000${candidate.pos}`;
 
 export async function runFactoryIntake({ candidates, analyzer, canonicalIndex, adapterId = 'factory' }) {
   const ids = new Set(candidates.map((candidate) => candidate.candidate_id));
   if (ids.size !== candidates.length) throw new Error('factory candidates must have distinct candidate_id values');
-  const representatives = new Map();
-  for (const candidate of candidates) if (!representatives.has(keyOf(candidate))) representatives.set(keyOf(candidate), candidate);
+  // runIntake merges same input+POS before analysis, so Kiwi runs once per key while
+  // every `C…` identity is fanned back out below.
   const run = await runIntake({
-    candidates: [...representatives.values()].map(toRawCandidate),
+    candidates: candidates.map(toRawCandidate),
     analyzer,
     adapterId,
   });

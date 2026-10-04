@@ -9,10 +9,11 @@ const withoutMutable = (manifest) => Object.fromEntries(
 );
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
+// No `held` transition: it requires owner authorization, which has no verifiable contract yet,
+// so it is rejected rather than trusted. Add it together with a checkable authorization field.
 const CANDIDATE_TRANSITIONS = Object.freeze({
-  created: ['created', 'complete', 'held'],
-  complete: ['complete', 'held'],
-  held: ['held'],
+  created: ['created', 'complete'],
+  complete: ['complete'],
 });
 
 export function validateCandidateTransition(before, after) {

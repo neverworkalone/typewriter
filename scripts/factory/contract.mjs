@@ -6,7 +6,9 @@ import { HOLD_REASONS, POS_VALUES } from '../intake/candidate-contract.mjs';
 // Factory ids (C…) never reuse canonical `w…` ids or the canonical `candidate_id` field.
 export const CANDIDATE_MANIFEST_CONTRACT = 'lexical-factory-candidate-manifest-v1';
 export const REVIEW_MANIFEST_CONTRACT = 'lexical-factory-review-manifest-v1';
-export const CANDIDATE_STATUSES = Object.freeze(['created', 'complete', 'held']);
+// `held` (owner-directed exception) is deliberately not accepted: there is no verifiable owner-
+// authorization field yet, so an unauthorized hold must fail instead of being trusted.
+export const CANDIDATE_STATUSES = Object.freeze(['created', 'complete']);
 export const REVIEW_STATUSES = Object.freeze(['ready', 'complete', 'rejected']);
 export const DISPOSITIONS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
 export const TARGET_KINDS = Object.freeze(['new_entry', 'new_pos_on_existing_lemma', 'new_sense_on_existing_entry']);

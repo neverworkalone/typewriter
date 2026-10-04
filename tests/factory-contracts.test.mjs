@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -18,6 +19,9 @@ import { partitionByWriterSupport, validateDecisionRow } from '../scripts/factor
 import { buildCanonicalIndex, classifyAgainstCanonical, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { validateCandidateTransition, validateLinkedTransition, validateReviewTransition } from '../scripts/factory/transitions.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
+import { validateReviewArtifacts } from '../scripts/factory/artifacts.mjs';
+import { toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
+import { buildProductionHandoff } from '../scripts/intake/production-handoff.mjs';
 
 const HEX = (seed) => sha256Hex(seed);
 const record = (n, over = {}) => ({
@@ -117,6 +121,10 @@ test('legal candidate and review transitions pass; unsupported ones fail', () =>
   has(validateReviewTransition(rejected, { ...rework, decisions_sha256: rejected.decisions_sha256 }), 'new decisions');
   has(validateReviewTransition(ready, { ...done, decisions_sha256: HEX('edited') }), 'review content');
   has(validateCandidateTransition(created, { ...created, status: 'ready' }), 'illegal candidate transition');
+  // An owner-directed `held` has no verifiable authorization contract yet, so it is refused.
+  has(validateCandidateTransition(created, { ...created, status: 'held' }), 'illegal candidate transition');
+  has(validateCandidateTransition(complete, { ...complete, status: 'held' }), 'illegal candidate transition');
+  has(validateCandidateBatch(candidateBatch([record(1)], { status: 'held' })), 'status must be one of');
   has(validateCandidateTransition(created, { ...complete, candidates_sha256: HEX('mutated') }), 'immutable');
   has(validateCandidateTransition(null, complete), 'must start as created');
   has(validateLinkedTransition({ candidateBefore: complete, candidateAfter: { ...complete, status: 'held' }, reviewBefore: ready, reviewAfter: done }), 'Stage 3 transitions must not change the candidate');
@@ -196,23 +204,127 @@ test('repository validator passes with no batches and enforces linkage on disk',
   assert.ok((await validateFactoryRepository({ root, canonicalEntries: ENTRIES })).some((e) => e.includes('candidates_sha256')));
 });
 
-test('repository validator checks linked transitions against a base and stays stable through status-only change', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'factory-'));
-  const batch = candidateBatch();
-  const complete = { ...batch.manifest, status: 'complete' };
-  const decisions = jsonl([{ source_candidate_id: 'C000001-0001', disposition: 'held', reason: 'unclear' }, { source_candidate_id: 'C000001-0002', disposition: 'deferred', reason: 'later' }]);
-  const review = reviewManifest({ decisions_sha256: sha256Hex(decisions), semantic_decisions_sha256: sha256Hex('{}\n'), handoff_sha256: sha256Hex('{}\n') });
+
+const META = { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0', top_n: 3 };
+const analyzer = async (requests) => ({
+  metadata: META,
+  results: requests.map(({ id, text }) => ({
+    status: 'ok', id, input_digest: analysisInputDigest(text), analyses: [[{ lemma: text, pos: 'adjective', form: text }]],
+  })),
+});
+const semantic = (ids, over = {}) => ({
+  schema_version: '1', contract_version: 'lexical-semantic-decision-source-v4', kind: 'separately-authored-semantic-decision-source',
+  batch_id: 'C000001', decisions: ids.map((source_candidate_id) => ({ source_candidate_id })), ...over,
+});
+async function reviewFixture(decisionRows) {
+  const rows = [record(1), record(2)];
+  const handoff = await buildProductionHandoff({ batchId: 'C000001', rawCandidates: rows.map(toRawCandidate), analyzer, adapterId: 'corpus-adapter' });
+  const admitted = decisionRows.filter((row) => ['included', 'corrected'].includes(row.disposition)).map((row) => row.source_candidate_id);
+  return {
+    batchId: 'C000001', adapterId: 'corpus-adapter', candidates: rows, decisions: decisionRows,
+    semanticDecisionsText: JSON.stringify(semantic(admitted)), handoffText: JSON.stringify(handoff),
+  };
+}
+const included = (n) => ({ source_candidate_id: `C000001-000${n}`, disposition: 'included', target: { kind: 'new_entry' }, reviewed_record: { lemma: '짠하다', senses: [{ pos: 'adjective', gloss: 'g' }] } });
+const held = (n) => ({ source_candidate_id: `C000001-000${n}`, disposition: 'held', reason: 'unclear' });
+
+test('review artifacts are validated by content and bound to candidates, not only by digest', async () => {
+  const good = await reviewFixture([included(1), held(2)]);
+  assert.deepEqual(validateReviewArtifacts(good), []);
+  const has = (input, fragment) => assert.ok(validateReviewArtifacts(input).some((e) => e.includes(fragment)), `${fragment}: ${validateReviewArtifacts(input)}`);
+  has({ ...good, semanticDecisionsText: 's' }, 'not valid JSON');
+  has({ ...good, handoffText: 'h' }, 'not valid JSON');
+  has({ ...good, handoffText: '{}' }, 'unsupported contract');
+  has({ ...good, semanticDecisionsText: JSON.stringify(semantic(['C000001-0001'], { contract_version: 'v0' })) }, 'unsupported semantic decision source');
+  has({ ...good, semanticDecisionsText: JSON.stringify(semantic(['C000001-0001'], { batch_id: 'C000009' })) }, 'different batch');
+  has({ ...good, semanticDecisionsText: JSON.stringify(semantic([])) }, 'exactly one semantic decision');
+  has({ ...good, semanticDecisionsText: JSON.stringify(semantic(['C000001-0001', 'C000001-0002'])) }, 'exactly one semantic decision');
+  const other = JSON.parse(good.handoffText);
+  other.batch_id = 'C000009';
+  has({ ...good, handoffText: JSON.stringify(other) }, 'different batch');
+  const heldOnly = JSON.parse(good.handoffText);
+  heldOnly.entries[0] = { ...heldOnly.entries[0], decision: 'hold', holds: ['analysis_error'] };
+  has({ ...good, handoffText: JSON.stringify(heldOnly) }, 'intake-handoff.json');
+  has({ ...good, decisions: [{ ...included(1), reviewed_record: { lemma: '다른말', senses: [{ pos: 'adjective', gloss: 'g' }] } }, held(2)] }, 'differs from the candidate input');
+});
+
+// Real registered-command regression: the CLI compares against the merge-base with master,
+// so changes to merged `created` batches, deletions and unauthorized holds fail.
+async function gitFixture() {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-git-'));
+  const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+  git('init', '-q', '-b', 'master');
+  git('config', 'user.email', 't@example.com');
+  git('config', 'user.name', 't');
   const write = async (name, content) => { await mkdir(path.dirname(path.join(root, name)), { recursive: true }); await writeFile(path.join(root, name), content); };
-  await write('data/candidates/C000001/manifest.json', JSON.stringify(complete));
+  const batch = candidateBatch();
+  await write('data/candidates/C000001/manifest.json', JSON.stringify(batch.manifest));
   await write('data/candidates/C000001/candidates.jsonl', batch.candidatesText);
-  await write('data/reviews/C000001/manifest.json', JSON.stringify(review));
-  await write('data/reviews/C000001/decisions.jsonl', decisions);
-  await write('data/reviews/C000001/semantic-decisions.json', '{}\n');
-  await write('data/reviews/C000001/intake-handoff.json', '{}\n');
-  const base = { candidate: { C000001: batch.manifest }, review: {} };
-  assert.deepEqual(await validateFactoryRepository({ root, canonicalEntries: ENTRIES, base }), []);
-  const bad = { candidate: { C000001: complete }, review: {} };
-  assert.ok((await validateFactoryRepository({ root, canonicalEntries: ENTRIES, base: bad })).some((e) => e.includes('created → complete')));
-  const reviewed = { candidate: { C000001: complete }, review: { C000001: review } };
-  assert.deepEqual(await validateFactoryRepository({ root, canonicalEntries: ENTRIES, base: reviewed }), []);
+  git('add', '-A'); git('commit', '-qm', 'stage1');
+  git('checkout', '-q', '-b', 'work');
+  const run = () => spawnSync(process.execPath, ['scripts/factory/validate.mjs'], {
+    cwd: path.resolve('.'), encoding: 'utf8', env: { ...process.env, FACTORY_ROOT: root, FACTORY_BASE_REF: 'master' },
+  });
+  return { root, git, write, batch, run };
+}
+
+test('registered validator fails closed on merged-batch mutation, deletion, held and unresolved base', async () => {
+  const f = await gitFixture();
+  assert.equal(f.run().status, 0, f.run().stderr);
+
+  const edited = candidateBatch([record(1), record(2, { evidence: [{ kind: 'corpus-paragraph', ref: 'swapped' }] })]);
+  await f.write('data/candidates/C000001/manifest.json', JSON.stringify(edited.manifest));
+  await f.write('data/candidates/C000001/candidates.jsonl', edited.candidatesText);
+  let result = f.run();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /immutable/);
+
+  await f.write('data/candidates/C000001/manifest.json', JSON.stringify({ ...f.batch.manifest, status: 'held' }));
+  await f.write('data/candidates/C000001/candidates.jsonl', f.batch.candidatesText);
+  result = f.run();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /status must be one of|illegal candidate transition/);
+
+  f.git('checkout', '-q', '--', '.');
+  f.git('rm', '-rq', 'data/candidates/C000001');
+  result = f.run();
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /deleted/);
+  f.git('checkout', '-q', 'HEAD', '--', '.');
+
+  const unresolved = spawnSync(process.execPath, ['scripts/factory/validate.mjs'], {
+    cwd: path.resolve('.'), encoding: 'utf8', env: { ...process.env, FACTORY_ROOT: f.root, FACTORY_BASE_REF: 'no-such-ref' },
+  });
+  assert.notEqual(unresolved.status, 0);
+  assert.match(unresolved.stderr, /cannot resolve factory base/);
+});
+
+test('registered validator accepts a new Stage 1 batch and a complete Stage 2 transition', async () => {
+  const f = await gitFixture();
+  const second = candidateBatch([record(1)], {});
+  second.manifest.batch_id = 'C000002';
+  const row = { ...record(1), candidate_id: 'C000002-0001' };
+  const text = jsonl([row]);
+  await f.write('data/candidates/C000002/manifest.json', JSON.stringify({ ...second.manifest, candidates_sha256: sha256Hex(text) }));
+  await f.write('data/candidates/C000002/candidates.jsonl', text);
+  assert.equal(f.run().status, 0, f.run().stderr);
+
+  // Stage 2 for C000001: created → complete with a ready review whose artifacts are real.
+  const rows = [record(1), record(2)];
+  const handoff = await buildProductionHandoff({ batchId: 'C000001', rawCandidates: rows.map(toRawCandidate), analyzer, adapterId: 'corpus-adapter' });
+  const decisions = jsonl([held(1), held(2)]);
+  const semanticText = `${JSON.stringify(semantic([]))}\n`;
+  const handoffText = `${JSON.stringify(handoff)}\n`;
+  await f.write('data/candidates/C000001/manifest.json', JSON.stringify({ ...f.batch.manifest, status: 'complete' }));
+  await f.write('data/reviews/C000001/decisions.jsonl', decisions);
+  await f.write('data/reviews/C000001/semantic-decisions.json', semanticText);
+  await f.write('data/reviews/C000001/intake-handoff.json', handoffText);
+  await f.write('data/reviews/C000001/manifest.json', JSON.stringify(reviewManifest({
+    decisions_sha256: sha256Hex(decisions), semantic_decisions_sha256: sha256Hex(semanticText), handoff_sha256: sha256Hex(handoffText),
+  })));
+  assert.equal(f.run().status, 0, f.run().stderr);
+
+  // Review without the candidate transition is rejected by the linked gate.
+  await f.write('data/candidates/C000001/manifest.json', JSON.stringify(f.batch.manifest));
+  assert.notEqual(f.run().status, 0);
 });

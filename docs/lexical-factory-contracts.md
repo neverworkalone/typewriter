@@ -9,13 +9,16 @@ It is a library plus a repository validator; it creates no batches, claims or ag
 | `scripts/factory/transitions.mjs` | Both state machines and the linked Stage 2 / Stage 3 transitions on manifests of merged `master` vs. a merge result |
 | `scripts/factory/identity-adapter.mjs` | Keeps one decision per `C…` id on top of the legacy `input+POS` intake; routes to `new_entry`, `new_pos_on_existing_lemma`, `new_sense_on_existing_entry` |
 | `scripts/factory/handoff.mjs` | Typed decision rows and canonical-compatibility checks; writer-support partition |
-| `scripts/factory/validate.mjs` | Repository validator (`ci:fast`); `FACTORY_BASE_REF=<ref>` also checks transitions against that ref |
+| `scripts/factory/artifacts.mjs` | Content validation of a review's `semantic-decisions.json` and `intake-handoff.json`: existing contract ids, existing `verifyProductionHandoff`, one semantic decision per admitted candidate, reviewed lemma/hold-resolution bound to the candidate and hand-off entry |
+| `scripts/factory/validate.mjs` | Repository validator run by `ci:fast`. It always compares with the merge-base of `origin/master` (override `FACTORY_BASE_REF`; unresolved base fails closed, only `none` skips): candidate transitions are checked with or without a review, and deleted merged batches/reviews fail |
 
 ## Adjustments to the design's illustrative shapes
 
 - Review manifest adds `history` (`[{attempt, rejected_pr}]`, one entry per rejected attempt). `rejected_pr` is valid only while `status` is `rejected` and equals the last history entry; rework (`rejected → ready`) advances `attempt` by one and may not alter history.
 - Candidate manifest adds `analyzer_version` (pinned `kiwipiepy==X.Y.Z`). Candidate rows require `usage_hint`; evidence is text-free (`kind`, `ref`) and capped at five.
 - `status`, `rejected_pr`, `attempt`, `history` are the only mutable manifest fields and are excluded from `manifestContentDigest`; `candidates.jsonl` and review artifacts are covered by separate byte digests, so a status-only change never changes them.
+- The owner-directed `held` candidate status is **rejected** for now: there is no verifiable owner-authorization field, so an unauthorized hold cannot be told from an authorized one. Add it together with a checkable authorization contract.
+- Full `validateAuthoredSemanticDecisionSource` is bound to per-issue configuration (pass ids, identity source); wiring it for factory batches belongs to the Stage 2 producer (#265), which supplies those identities. #263 fixes the structure and candidate cross-binding every review must satisfy.
 - Candidate transitions: `created → complete` only together with a new `ready` review in the same change; `rejected → ready` (rework) and Stage 3's `ready → complete|rejected` leave the candidate manifest unchanged.
 
 ## Compatibility findings (design §10, §12)
