@@ -158,62 +158,47 @@ every content digest, so changing `created → complete` never invalidates it.
 
 | Step | Actor | Action | Idempotent recovery |
 | --- | --- | --- | --- |
-| 1 | worker | Select batch `C…` from `master` manifests (`created`, or `rejected` rework). | Selection is recomputed each attempt. |
-| 2 | worker | Create ref `stage2-claims/C…` pointing at a **claim-record commit** (empty commit on current `master` whose message records `owner`, `claim_seq: 1`, base SHA, and for rework the rejected PR). 422 ⇒ lost; choose another batch. | Re-running after success finds its own ref (owner matches): step 3. |
-| 3 | worker | Find or create the issue for the claim. The **ref head commit is the durable ownership record**; the issue is derived history. The issue body begins with the machine marker `stage2-claim: C… seq=N`, and the owner searches that marker before creating (idempotent). | Only the current owner (the one named in the ref head record) may create or adopt the issue; a non-owner never creates one. A crash between steps 2 and 3 is resumed by the owner or taken over via the exclusive transfer below. |
-| 4 | worker | Work on branch `stage2/C…` (or `stage2/C…-rN` for rework). | Branch is derived from the claim, so a restart resumes it. |
-| 5 | worker | Open the Stage 2 result PR (§5). Issue links the PR. | Existing PR for the branch is reused. |
+| 1 | agent | Select batch `C…` from `master` manifests (`created`, or `rejected` rework). | Selection is recomputed each attempt. |
+| 2 | agent | Atomically create ref `stage2-claims/C…` at current `master` head. 422 ⇒ lost; choose another batch. The ref is the **only** batch lock. | A session that created the ref continues in its own context. |
+| 3 | agent | The successful claimant creates the tracking Issue; its GitHub-generated number `N` is unique in the repository. The issue body names the ref, base SHA and, for rework, the rejected PR. | If the ref exists without an issue, see *interrupted claim* below. |
+| 4 | agent | Work on branch `<agent>/stage2/<N>-C…` (rework: `<agent>/stage2/<N>-C…-rK`), e.g. `claude/stage2/260-C000001`, `codex/stage2/261-C000002`. `<agent>` is `claude` or `codex` (the only supported agents today). | The branch name is a label, never a lock. |
+| 5 | agent | Open the Stage 2 result PR (§5). Issue links the PR. | Existing PR for the branch is reused. |
 | 6 | merge | On merge the claim ref is deleted by the merger; the issue is closed with the PR. | Orphan cleanup below. |
 
-**Recovery rules (policy):**
+The owner launches as many agents as the token budget allows. Each agent follows
+this same queue and does not inspect, coordinate with or count other agents, and
+agent-generated worker identifiers are not used. The Git ref is the only
+exclusivity mechanism: not issue titles, not branch names, not the GitHub login
+(which is shared across sessions) and not the `<agent>` prefix.
 
-- *Ownership identity is a run token, not a GitHub account.* Independently
-  launched agents share GitHub authentication, username and Git identity, so none
-  of those can identify an owner. Each worker invocation generates an opaque,
-  unique `worker_token` (random, at least 128 bits) **scoped to the batch it
-  claims**, writes it to the claim-record commit as `owner`, and persists it
-  locally (an untracked per-claim recovery file in the agent's own workspace)
-  so that its own crash recovery can present it. A worker is the owner **only if
-  the token it holds equals the `owner` in the ref head**; the GitHub user is
-  authentication only. A fresh session without the token is never the owner and
-  can acquire ownership only through the exclusive transfer below (after the
-  stale threshold, or owner-directed). The same rule governs Stage 3 claims.
-- *Single-owner invariant.* At any instant the owner of a batch is the token
-  recorded as `owner` in the **head commit of `stage2-claims/C…`**. Only that owner creates the
-  issue, branch or result PR. An observer that merely sees a claim never creates
-  the issue.
-- *Exclusive transfer (the only way to adopt a stale or orphan claim).* A worker
-  W that finds a claim past the stale threshold (below) takes over by creating a
-  new claim-record commit **whose parent is the observed ref head**
-  (`claim_seq` + 1, `owner: <W's new worker_token>`, `previous_owner`, observed head SHA) and updating
-  the ref **without force** (`PATCH /git/refs/…` with `force: false`). The update
-  succeeds only as a fast-forward from the observed head. Two simultaneous
-  adopters build sibling commits on the same parent; GitHub accepts exactly one
-  and rejects the other with 422 (non-fast-forward). The loser re-reads the ref,
-  sees the new owner and a fresh (non-stale) record, and **defers to another
-  batch**. The winner then finds or creates the issue by the marker
-  `stage2-claim: C… seq=N`, so even a retry after a crash creates no duplicate.
-  This is a compare-and-swap on the ref, not a policy on issue titles.
-- *Alternative for non-automatic cases.* If the stale threshold is not
-  met, or a PR is open, takeover is not automatic: it is an owner-directed
-  transfer, recorded by the same claim-record commit made by or on behalf of the
-  owner of the repository.
-- *Ref created, issue creation failed:* the owner (by the head record) retries
-  step 3. Others wait out the stale threshold, then use the exclusive transfer.
-- *Interrupted run:* the replacement uses the exclusive transfer, keeps the same
-  branch, and continues. The issue gets a comment with the transfer.
-- *Stale claim:* a claim is stale when the ref head, the branch, the PR and the
-  issue all show no activity for a threshold set by the owner (to be fixed at
-  implementation). A stale claim with an open PR is transferred (never silently
-  deleted); the new owner continues that PR.
+**Recovery rules (policy):** deliberately simple and owner-driven.
+
+- *Interrupted claim (ref exists, issue creation did not happen or is unknown).*
+  The ref is preserved. No other agent infers ownership, creates an issue, or
+  starts the batch: an issue number does not exist yet, so branch naming cannot
+  resolve this case. The claimant that created the ref (still running) creates the
+  issue. In a new session, an agent that finds an issue-less claim ref **leaves it
+  alone and selects another batch**.
+- *Ambiguous orphan or stale claim* (no issue, or an issue with no recent branch,
+  PR or comment activity, and the claimant is gone): resolved by **owner-directed
+  manual action**: the owner either deletes the ref, or comments on the issue
+  naming the agent that should continue. A continuing agent keeps the same ref and
+  issue and reuses the existing branch. There is no automatic adoption, so there
+  is no race to prove.
+- *Optional later automation.* If automatic adoption is ever added, it must be an
+  exclusive Git-ref update (non-force fast-forward from the observed head, so that
+  only one of several simultaneous adopters wins) with race-safety proven by the
+  fault-injection test in §12, and must not weaken duplicate-batch exclusion. It is
+  not part of this design.
+- *Duplicate prevention.* Before creating an issue the claimant searches for an
+  existing one that cites the claim ref in its body (a non-authoritative
+  convenience check); the ref, not the search, is the lock.
 - *Orphan ref:* a ref whose batch is already `complete` on `master` (or whose
-  issue is closed and no PR is open) may be deleted by any worker.
+  issue is closed and no PR is open) may be deleted by any agent.
 - *Rework claim:* for a `rejected` review batch the ref is `stage2-claims/C…`
-  again with `claim_seq` continuing the history; the existing issue is reused
-  and extended rather than duplicated. If a prior ref still exists it is the
-  claim and only the exclusive transfer can change its owner.
+  again; the existing issue is reused and extended rather than duplicated.
 - *Cleanup:* refs are removed after merge of the result PR (success) or on
-  abandonment recorded in the issue.
+  owner-recorded abandonment.
 
 ## 4. Stage 2 — Full lexical authoring/QA (many agents, parallel)
 
@@ -349,13 +334,12 @@ crash-safe record:
 
 - **Attempt claim ref** `stage3-claims/C…-aN`, `N` = the review manifest's
   `attempt` on `master`. Created atomically (422 ⇒ another invocation owns that
-  attempt). Its head commit records `owner`, base SHA and the PR number once known.
+  attempt). It is the only lock; the PR is linked to it by name (below).
 - **Step 0: the admission PR is opened first, as a draft**, immediately after the
   claim, before preflight. GitHub cannot create a PR whose head has no commit
-  ahead of base, so the branch `stage3/C…-aN` is created from `master` with one
+  ahead of base, so the branch `<agent>/stage3/C…-aN` (`claude` or `codex`) is created from `master` with one
   **starter commit** that adds only the metadata file
-  `data/reviews/C…/attempt-aN.json` (`{batch_id, attempt, claim_ref, worker
-  token digest}`; no canonical data, no invalid records). The draft PR opens on
+  `data/reviews/C…/attempt-aN.json` (`{batch_id, attempt, claim_ref}`; no canonical data, no invalid records). The draft PR opens on
   that diff. The marker is reversible: a successful admission PR removes it
   before it is marked ready for review; a closed attempt discards it with the
   branch. An *empty* commit is not assumed to work (reported as "No commits
@@ -367,14 +351,18 @@ crash-safe record:
 - **Selection rule.** Stage 3 skips a `ready` batch if `stage3-claims/C…-aN`
   exists for the current `attempt`, or if any open PR (admission or
   rejection status-only) references that batch.
-- **Resume rule on restart** (the same invocation or a new one, resolved *before*
-  any fresh admission): (a) open admission PR ⇒ continue it; (b) admission PR
-  closed and a rejection status-only PR open ⇒ continue/await that PR, do not
-  re-admit; (c) admission PR closed and no rejection PR ⇒ create the rejection
-  status-only PR citing it; (d) claim ref but no PR ⇒ the owner re-creates the
-  draft PR (looked up first by the branch name `stage3/C…-aN`), then resumes.
-  Takeover of a stale Stage 3 claim uses the same non-force CAS and worker-token
-  ownership as §3.1 (a restart only resumes if it holds the recorded token).
+- **Idempotent recovery of an interrupted attempt** (resolved *before* any fresh
+  admission; usernames never distinguish sessions, so state is read from the
+  claim ref, the branch and PRs, never from "who am I"): (a) open admission PR
+  ⇒ continue it; (b) admission PR closed and a rejection status-only PR open ⇒
+  await that PR, do not re-admit; (c) admission PR closed and no rejection PR ⇒
+  create the rejection status-only PR citing it; (d) claim ref but no PR ⇒ look
+  for a branch `*/stage3/C…-aN` and its PR, else recreate the draft from the
+  starter commit. Because ownership is not inferred, a *concurrent* second session
+  that finds a live claim does nothing and moves on; only a claim that is
+  evidently abandoned is resumed, as directed by the owner (the same manual rule
+  as §3.1). Duplicate admission is prevented by the claim ref plus the PR linkage,
+  not by session identity.
 - **Release.** The claim ref is deleted when the admission PR merges
   (`complete`) or when the rejection status-only PR merges (`rejected`; the next
   attempt number gets a new ref).
@@ -500,7 +488,7 @@ its `stage2-claims/C…` ref (§3). Systemic rejections do not enter the queue.
 | # | Scenario | Expected outcome |
 | --- | --- | --- |
 | 1 | Two workers pick `C000007` simultaneously. | Both try to create `stage2-claims/C000007`; GitHub returns 422 to one. The loser selects another batch. Only the winner creates the issue and branch. |
-| 2 | Worker creates the ref, crashes before the issue; two other workers later both see the stale issue-less ref. | The ref head record names the crashed owner, so nobody else may create the issue. Both attempt the exclusive transfer (non-force fast-forward from the same observed head); exactly one wins and creates the issue by marker, the other gets 422 and defers. No duplicate issue or work. |
+| 2 | Agent creates the claim ref and crashes before the issue; other agents later see the issue-less ref. | The ref is preserved. No other agent creates an issue or starts the batch; they select other batches. The owner either deletes the ref or names the agent to continue. No duplicate issue or work. |
 | 3 | Stage 3 opens an admission PR for `C000003`; reviewer finds a gloss/sense defect. | Lexical block: close the admission PR, dispose of its branch, open status-only PR with `rejected`/`rejected_pr`. Stage 3 proceeds to `C000004` without waiting for that PR. While it is open the batch is still `ready`; it joins the queue only after it merges. |
 | 4 | A second admission (`C000002`) merges while `C000003`'s PR is in flight. | Stage 3 rebases to latest `master`, reallocates ids, re-runs gates. Pure id/order drift is fixed mechanically; a new lemma collision is a lexical block. |
 | 5 | Stage 2 result PR fails CI or digest binding. | Not merged ⇒ manifests unchanged (`created`); the claim persists and the owner fixes the same PR. No state change is needed because nothing was committed to `master`. |
@@ -599,20 +587,20 @@ This is the input to a **later implementation issue**; none of it is done here.
   other (`created→ready`, `complete→rejected`, `rejected` without `rejected_pr`,
   digest drift in immutable files, status mutation changing a content digest)
   fails.
-- Claim protocol with a fake GitHub: concurrent creation (exactly one winner);
-  **race/fault injection with one orphan ref and two simultaneous adopters:
-  exactly one proceeds, the other defers, one issue, no duplicate work**;
-  ref-without-issue recovery; stale and orphan handling; rework reuse.
-- Same-account ownership: two independent workers authenticated as the **same
-  GitHub user** attempt orphan recovery, active-claim recovery and transfer; only
-  the holder of the recorded `worker_token` or the CAS winner proceeds, and
-  exactly one issue and one result PR exist. Same for a Stage 3 claim.
+- Claim protocol with a fake GitHub: concurrent creation of one claim ref
+  (exactly one winner, losers select another batch); ref-without-issue (no other
+  agent creates an issue or works the batch, the ref is preserved); branch naming
+  `<agent>/stage2/<issue>-C…` for `claude`/`codex` only; rework reuse of the
+  issue; orphan cleanup. Agents sharing one GitHub login must be indistinguishable
+  to the protocol.
+- If automatic adoption is ever added: race/fault injection with one orphan ref
+  and two simultaneous adopters; exactly one proceeds.
 - Real-GitHub (not fake) integration test: a brand-new Stage 3 claim opens its
   draft PR from the starter commit *before* any canonical data exists; also
   record whether an empty commit would be accepted. Then exercise immediate
   preflight failure → draft closed → status-only PR with `rejected_pr` citing that
   real PR.
-- Stage 3 in-flight guard with fault injection: restart after the admission PR
+- Stage 3 in-flight guard with fault injection (two sessions, same login): restart after the admission PR
   is opened; restart while the rejection status-only PR is pending; failure at
   preflight before any canonical change. Each yields exactly one traceable
   attempt, no duplicate admission, and a populated `rejected_pr`.
