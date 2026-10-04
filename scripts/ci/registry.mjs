@@ -151,7 +151,8 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/intake-kiwi-service.test.mjs', 'Test shared Kiwi batch service'),
       commandCheck('Validate factory candidate/review batch contracts', ['scripts/factory/validate.mjs'], []),
       testCheck('tests/factory-contracts.test.mjs', 'Test factory contracts, state machines, identity adapter, and typed handoff'),
-      testCheck('tests/factory-stage1.test.mjs', 'Test factory Stage 1 Kiwi-backed candidate batch producer'),
+      testCheck('tests/factory-stage1.test.mjs', 'Test factory Stage 1 lemma-centered candidate batch producer'),
+      testCheck('tests/factory-lemma.test.mjs', 'Test lemma-centered candidate contract, usage-group decisions, and v1/v2 compatibility'),
     ],
   },
 

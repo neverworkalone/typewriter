@@ -5,18 +5,24 @@ import path from 'node:path';
 import { HOLD_REASONS, POS_VALUES, normalizeText } from '../intake/candidate-contract.mjs';
 import { analysisInputDigest, analyzerDigest, assertPinnedAnalyzer, PINNED_ANALYZER } from '../intake/pipeline.mjs';
 import { digest } from '../intake/candidate-contract.mjs';
+import { candidateIdFor, isBatchId, sha256Hex, validateCandidateBatch } from './contract.mjs';
+import { buildCanonicalIndex, classifyLemmaCandidate } from './identity-adapter.mjs';
 import {
-  CANDIDATE_MANIFEST_CONTRACT,
-  MAX_EVIDENCE_REFERENCES,
-  candidateIdFor,
-  isBatchId,
-  sha256Hex,
-  validateCandidateBatch,
-} from './contract.mjs';
-import { buildCanonicalIndex, classifyAgainstCanonical } from './identity-adapter.mjs';
+  LEMMA_CANDIDATE_MANIFEST_CONTRACT,
+  LEMMA_POLICY,
+  MAX_OBSERVATIONS_PER_CANDIDATE,
+  MAX_UNRESOLVED_OBSERVATIONS,
+  UNRESOLVED_HOLDS,
+  formIdFor,
+  groupIdFor,
+  observationIdFor,
+  observationKey,
+  observationSetDigest,
+} from './lemma-contract.mjs';
 
 // Factory Stage 1 producer library (issue #264; design docs/lexical-production-factory.md §2).
-// It turns text-free corpus evidence into one immutable candidate batch. It never writes review
+// Since issue #275 the unit is a distinct citation-form lemma, not a usage row: it turns text-free
+// corpus evidence into one immutable lemma-centered (v2) candidate batch. It never writes review
 // rows, glosses, canonical records or paragraph text, and it does not touch the legacy
 // candidateKey/dedupeCandidates/coveredLemmas path.
 
@@ -24,14 +30,18 @@ export const CORPUS_EVIDENCE_CONTRACT = 'm9-corpus-candidate-evidence-v1';
 export const CORPUS_SOURCE_ADAPTER = 'corpus-adapter';
 // Stage 1 interprets `derived_from_index`; a service without this proposal contract is refused.
 export const REQUIRED_PROPOSAL_CONTRACT = 'derivation-root-v1';
+// The bound counts DISTINCT LEMMAS (headwords), never usages or observations.
 export const DEFAULT_MAX_CANDIDATES = 500;
 export const HARD_MAX_CANDIDATES = 1000;
 
 // Exactly the fields `safeEvidenceHit` of the extractor may emit; anything else (a context,
 // paragraph form or text) is raw corpus text that must never reach Git.
 const SAFE_HIT_FIELDS = new Set(['source_path', 'corpus_id', 'document_id', 'document_ordinal', 'paragraph_id',
-  'paragraph_ordinal', 'source_category', 'source_year', 'matched_surface_form', 'matched_morpheme_span_surface']);
+  'paragraph_ordinal', 'source_category', 'source_year', 'matched_surface_form', 'matched_morpheme_span_surface',
+  // Optional text-free sense/usage-group token (e.g. a cluster id) when the extractor can tell uses apart.
+  'usage_group']);
 const KOREAN_WORD = /^[가-힣]+$/u;
+const TOKEN = /^[a-z0-9_-]{1,32}$/u;
 
 export class Stage1Error extends Error {
   constructor(errors) {
@@ -79,6 +89,7 @@ export function observationsFromCorpusEvidence(evidence) {
       const unsafe = Object.keys(hit).filter((key) => !SAFE_HIT_FIELDS.has(key));
       if (unsafe.length) errors.push(`${at}: raw corpus text field(s) not allowed: ${unsafe.join(', ')}`);
       if (!hit.document_id || !hit.paragraph_id) errors.push(`${at}: hit needs document_id and paragraph_id`);
+      if (hit.usage_group !== undefined && !TOKEN.test(String(hit.usage_group))) errors.push(`${at}: usage_group must be a short text-free token`);
     }
     const holds = extractorHolds(candidate);
     const forms = [...new Set((candidate.observed_surface_forms ?? []).map((form) => normalizeText(form.surface)).filter(Boolean))].sort(compare);
@@ -91,7 +102,7 @@ export function observationsFromCorpusEvidence(evidence) {
     }
     for (const hit of hits) {
       const surface = normalizeText(hit.matched_surface_form) || forms[0] || input;
-      observations.push({ ...base, surface, ref: { kind: 'corpus-paragraph', ref: `${hit.document_id}#${hit.paragraph_id}` } });
+      observations.push({ ...base, surface, group: hit.usage_group, ref: { kind: 'corpus-paragraph', ref: `${hit.document_id}#${hit.paragraph_id}` } });
     }
   });
   if (errors.length) throw new Stage1Error(errors);
@@ -137,11 +148,11 @@ export function resolveSurface(surface, hint, outcome) {
   return { holds, lemma: chosen.lemma, pos: chosen.pos };
 }
 
-const keyOf = (usage) => `${usage.input}\u0000${usage.pos}\u0000${usage.ref.kind}\u0000${usage.ref.ref}`;
-
-// Groups observations into distinguishable usages. Only an identical (lemma, POS, evidence
-// reference) is a repeat and merges; same lemma/POS at another reference stays a separate row.
-export async function buildUsages({ observations, analyzer }) {
+// Lemma-centered grouping (issue #275). Every observation that resolves to a dictionary-form lemma
+// joins that lemma's single candidate; observations without a reliable lemma/POS are returned
+// separately (preserved, never counted as headwords, never guessed). Holds stay on the observation
+// that earned them.
+export async function buildLemmaGroups({ observations, analyzer }) {
   const surfaces = [...new Set(observations.map((observation) => observation.surface))].sort(compare);
   const analysis = await analyzer(surfaces.map((surface) => ({ id: surface, text: surface })));
   assertPinnedAnalyzer(analysis.metadata);
@@ -149,54 +160,108 @@ export async function buildUsages({ observations, analyzer }) {
     throw new Stage1Error([`analyzer proposal_contract ${analysis.metadata.proposal_contract ?? 'missing'} is not ${REQUIRED_PROPOSAL_CONTRACT}`]);
   }
   const outcomes = new Map(analysis.results.map((outcome) => [outcome.id, outcome]));
-  const usages = new Map();
+  const lemmas = new Map();
+  const unresolved = new Map();
+  let repeatsMerged = 0;
   for (const observation of observations) {
     const resolved = resolveSurface(observation.surface, observation.hint, outcomes.get(observation.surface));
+    const unresolvedHolds = resolved.holds.filter((hold) => UNRESOLVED_HOLDS.includes(hold));
+    if (unresolvedHolds.length) {
+      const key = [observation.surface, observation.ref.kind, observation.ref.ref].join('\u0000');
+      const known = unresolved.get(key);
+      if (known) known.holds = [...new Set([...known.holds, ...unresolvedHolds])].sort(compare);
+      else unresolved.set(key, { surface: observation.surface, evidence: observation.ref, holds: [...new Set(unresolvedHolds)].sort(compare) });
+      continue;
+    }
     if (!KOREAN_WORD.test(resolved.lemma ?? '') || !POS_VALUES.includes(resolved.pos)) {
       throw new Stage1Error([`cannot represent ${observation.surface}: no dictionary-form lemma/POS from analysis or extractor hint`]);
     }
-    const draft = { input: resolved.lemma, pos: resolved.pos, ref: observation.ref };
-    const usage = usages.get(keyOf(draft)) ?? { ...draft, forms: new Set(), holds: new Set(), repeats: 0 };
-    usage.repeats += 1;
-    usage.forms.add(observation.surface);
-    for (const hold of [...observation.holds, ...resolved.holds]) usage.holds.add(hold);
-    usages.set(keyOf(draft), usage);
+    const holds = [...observation.holds, ...resolved.holds].filter((hold) => !UNRESOLVED_HOLDS.includes(hold));
+    const group = observation.group ?? '';
+    const entry = lemmas.get(resolved.lemma) ?? new Map();
+    const key = observationKey(resolved.pos, group, observation.surface, observation.ref);
+    const known = entry.get(key);
+    if (known) {
+      repeatsMerged += 1;
+      for (const hold of holds) known.holds.add(hold);
+    } else {
+      entry.set(key, {
+        key, pos: resolved.pos, group, surface: observation.surface, evidence: observation.ref,
+        digest: analysisInputDigest(observation.surface), holds: new Set(holds),
+      });
+    }
+    lemmas.set(resolved.lemma, entry);
   }
-  return { usages: [...usages.values()], metadata: analysis.metadata };
+  return { lemmas, unresolved: [...unresolved.values()].sort((a, b) => compare(a.surface, b.surface) || compare(a.evidence.ref, b.evidence.ref)), repeatsMerged, metadata: analysis.metadata };
 }
 
-// One factory row per usage; ids follow the sorted order so replay is byte-identical.
-export function buildCandidateRows({ usages, batchId, maxCandidates = DEFAULT_MAX_CANDIDATES, producedUsageKeys = new Set() }) {
+const compareObservation = (a, b) => compare(a.pos, b.pos) || compare(a.group, b.group) || compare(a.surface, b.surface)
+  || compare(a.evidence.kind, b.evidence.kind) || compare(a.evidence.ref, b.evidence.ref);
+
+// One lemma → one candidate row. A bounded, deterministic selection keeps at least one observation
+// for every observed form and every usage group (so no distinct sense opportunity or form is erased);
+// the digest and total bind the omitted remainder to the locally recoverable evidence.
+export function buildLemmaRow({ lemma, observations: entry, candidateId }) {
+  const all = [...entry.values()].sort(compareObservation);
+  const posHypotheses = [...new Set(all.map((item) => item.pos))].sort(compare);
+  const groupKeys = [...new Set(all.map((item) => `${item.pos}\u0000${item.group}`))].sort(compare);
+  const groups = groupKeys.map((key, index) => {
+    const [pos, hint] = key.split('\u0000');
+    return { group_id: groupIdFor(candidateId, index + 1), pos, basis: hint ? 'corpus-hint' : 'pos-default', ...(hint ? { hint } : {}) };
+  });
+  const groupOf = new Map(groupKeys.map((key, index) => [key, groups[index].group_id]));
+  const surfaces = [...new Set(all.map((item) => item.surface))].sort(compare);
+  const forms = surfaces.map((surface, index) => ({ form_id: formIdFor(candidateId, index + 1), surface }));
+  const formOf = new Map(forms.map((form) => [form.surface, form.form_id]));
+
+  const coveredForms = new Set();
+  const coveredGroups = new Set();
+  const chosen = new Set();
+  for (const item of all) {
+    const group = groupOf.get(`${item.pos}\u0000${item.group}`);
+    if (!coveredGroups.has(group) || !coveredForms.has(item.surface)) {
+      chosen.add(item);
+      coveredGroups.add(group);
+      coveredForms.add(item.surface);
+    }
+  }
+  if (chosen.size > MAX_OBSERVATIONS_PER_CANDIDATE) {
+    throw new Stage1Error([`lemma ${lemma} needs ${chosen.size} observations to keep every form and usage group, above the bound ${MAX_OBSERVATIONS_PER_CANDIDATE}`]);
+  }
+  for (const item of all) {
+    if (chosen.size >= MAX_OBSERVATIONS_PER_CANDIDATE) break;
+    chosen.add(item);
+  }
+  const retained = all.filter((item) => chosen.has(item));
+  return {
+    candidate_id: candidateId,
+    input: lemma,
+    pos_hypotheses: posHypotheses,
+    forms,
+    usage_groups: groups,
+    observations: retained.map((item, index) => ({
+      observation_id: observationIdFor(candidateId, index + 1),
+      form_id: formOf.get(item.surface),
+      group_id: groupOf.get(`${item.pos}\u0000${item.group}`),
+      pos: item.pos,
+      evidence: item.evidence,
+      analysis: { status: 'ok', input_digest: item.digest },
+      holds: [...item.holds].filter((hold) => HOLD_REASONS.includes(hold)).sort(compare),
+    })),
+    observation_total: all.length,
+    observation_digest: observationSetDigest(all.map((item) => item.key)),
+  };
+}
+
+// Eligible lemmas (not yet in any earlier batch) in deterministic lemma order; the first
+// `maxCandidates` distinct lemmas become the batch, the rest are deferred.
+export function selectLemmas({ lemmas, maxCandidates = DEFAULT_MAX_CANDIDATES, producedLemmas = new Set() }) {
   if (!Number.isInteger(maxCandidates) || maxCandidates < 1 || maxCandidates > HARD_MAX_CANDIDATES) {
     throw new Stage1Error([`max candidates must be an integer from 1 to ${HARD_MAX_CANDIDATES}`]);
   }
-  const fresh = usages.filter((usage) => !producedUsageKeys.has(keyOf(usage)));
-  if (fresh.length === 0) throw new Stage1Error(['no unprocessed usages: every usage in the evidence is already in an existing candidate batch (source exhausted)']);
-  const ordered = [...fresh].sort((a, b) => compare(a.input, b.input) || compare(a.pos, b.pos) || compare(a.ref.kind, b.ref.kind) || compare(a.ref.ref, b.ref.ref));
-  // Whole lemma groups only, so a lemma's usages never split across batches.
-  const groups = new Map();
-  for (const usage of ordered) groups.set(usage.input, [...(groups.get(usage.input) ?? []), usage]);
-  const selected = [];
-  const deferredLemmas = [];
-  for (const [lemma, group] of groups) {
-    if (group.length > maxCandidates) throw new Stage1Error([`lemma ${lemma} alone has ${group.length} usages, above the batch bound ${maxCandidates}`]);
-    if (deferredLemmas.length === 0 && selected.length + group.length <= maxCandidates) selected.push(...group);
-    else deferredLemmas.push(lemma);
-  }
-  const rows = selected.map((usage, index) => {
-    const forms = [...usage.forms].sort(compare);
-    return {
-      candidate_id: candidateIdFor(batchId, index + 1),
-      input: usage.input,
-      pos: usage.pos,
-      usage_hint: `provisional: ${usage.pos} usage observed as ${forms.join('/')}; sense undecided (Stage 2)`,
-      observedForms: forms,
-      evidence: [usage.ref, ...forms.slice(0, MAX_EVIDENCE_REFERENCES - 1)
-        .map((form) => ({ kind: 'corpus-surface', ref: form })).filter((entry) => entry.ref !== usage.ref.ref)].slice(0, MAX_EVIDENCE_REFERENCES),
-      holds: [...usage.holds].filter((hold) => HOLD_REASONS.includes(hold)).sort(compare),
-    };
-  });
-  return { rows, deferredLemmas, skippedProduced: usages.length - fresh.length, repeatsMerged: selected.reduce((sum, usage) => sum + usage.repeats - 1, 0) };
+  const fresh = [...lemmas.keys()].filter((lemma) => !producedLemmas.has(lemma)).sort(compare);
+  if (fresh.length === 0) throw new Stage1Error(['no unprocessed lemmas: every resolved lemma in the evidence is already in an existing candidate batch (source exhausted)']);
+  return { selected: fresh.slice(0, maxCandidates), deferred: fresh.slice(maxCandidates), skippedProduced: lemmas.size - fresh.length };
 }
 
 // Identity of a produced usage across batches: lemma + POS + its primary evidence reference
@@ -227,38 +292,76 @@ export function allocateBatchId(knownIds) {
   return `C${String(next).padStart(6, '0')}`;
 }
 
-export const routeCounts = (rows, canonicalEntries) => {
+// Canonical comparison summary (issue #275): per-POS routes, the lemmas whose observed forms the
+// shared search-form projection does not support (search/morphology coverage route), and holds.
+export const routeCounts = (rows, canonicalEntries, support = new Map()) => {
   const index = buildCanonicalIndex(canonicalEntries);
-  const counts = { new_entry: 0, new_pos_on_existing_lemma: 0, new_sense_on_existing_entry: 0, held: 0 };
+  const counts = { new_entry: 0, new_pos_on_existing_lemma: 0, new_sense_on_existing_entry: 0, lemmas_with_unsupported_forms: 0, unsupported_forms: 0, lemmas_with_holds: 0 };
   for (const row of rows) {
-    counts[classifyAgainstCanonical(row, index).route] += 1;
-    if (row.holds.length) counts.held += 1;
+    const { routes, unsupported_forms: unsupported } = classifyLemmaCandidate(row, index, support);
+    for (const route of routes) counts[route.route] += 1;
+    if (unsupported.length) { counts.lemmas_with_unsupported_forms += 1; counts.unsupported_forms += unsupported.length; }
+    if (row.observations.some((observation) => observation.holds.length)) counts.lemmas_with_holds += 1;
   }
   return counts;
 };
 
-// Pure producer: evidence + analyzer + canonical → manifest and candidates.jsonl text.
+// Operator metrics: "500" counts unique lemmas. Surfaces, POS/sense hypotheses and observations are
+// reported separately and are never part of the bound.
+export const batchMetrics = (rows, { unresolved, repeatsMerged }) => {
+  const holdsPerReason = {};
+  let heldObservations = 0;
+  for (const row of rows) {
+    for (const observation of row.observations) {
+      if (observation.holds.length) heldObservations += 1;
+      for (const hold of observation.holds) holdsPerReason[hold] = (holdsPerReason[hold] ?? 0) + 1;
+    }
+  }
+  return {
+    unique_lemmas: rows.length,
+    observed_forms: rows.reduce((sum, row) => sum + row.forms.length, 0),
+    pos_hypotheses: rows.reduce((sum, row) => sum + row.pos_hypotheses.length, 0),
+    usage_groups: rows.reduce((sum, row) => sum + row.usage_groups.length, 0),
+    observations_total: rows.reduce((sum, row) => sum + row.observation_total, 0),
+    observations_retained: rows.reduce((sum, row) => sum + row.observations.length, 0),
+    held_observations: heldObservations,
+    holds_by_reason: Object.fromEntries(Object.entries(holdsPerReason).sort(([a], [b]) => compare(a, b))),
+    unresolved_observations: unresolved.length,
+    repeated_evidence_merged: repeatsMerged,
+  };
+};
+
+// Pure producer: evidence + analyzer + canonical → v2 manifest and candidates.jsonl text.
 export async function produceCandidateBatch({
-  evidence, analyzer, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES, producedUsageKeys = new Set(),
+  evidence, analyzer, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES,
+  producedLemmas = new Set(), searchFormSupport = new Map(),
 }) {
   if (!isBatchId(batchId)) throw new Stage1Error(['batchId must match C000000']);
   if (!/^T\d{6}$/u.test(String(taskId))) throw new Stage1Error(['taskId must match T000000']);
   const { observations, source } = observationsFromCorpusEvidence(evidence);
-  const { usages, metadata } = await buildUsages({ observations, analyzer });
-  const { rows, deferredLemmas, repeatsMerged, skippedProduced } = buildCandidateRows({ usages, batchId, maxCandidates, producedUsageKeys });
+  const grouped = await buildLemmaGroups({ observations, analyzer });
+  if (grouped.unresolved.length > MAX_UNRESOLVED_OBSERVATIONS) {
+    throw new Stage1Error([`${grouped.unresolved.length} observations have no reliable lemma/POS, above the bound ${MAX_UNRESOLVED_OBSERVATIONS}; split the evidence run`]);
+  }
+  const { selected, deferred, skippedProduced } = selectLemmas({ lemmas: grouped.lemmas, maxCandidates, producedLemmas });
+  const rows = selected.map((lemma, index) => buildLemmaRow({ lemma, observations: grouped.lemmas.get(lemma), candidateId: candidateIdFor(batchId, index + 1) }));
   const candidatesText = serializeCandidates(rows);
   const manifest = {
-    contract: CANDIDATE_MANIFEST_CONTRACT,
+    contract: LEMMA_CANDIDATE_MANIFEST_CONTRACT,
+    lemma_policy: LEMMA_POLICY,
     task_id: taskId,
     batch_id: batchId,
     candidate_count: rows.length,
+    observation_count: rows.reduce((sum, row) => sum + row.observation_total, 0),
+    selection: { bound: maxCandidates, eligible_lemma_count: selected.length + deferred.length, deferred_lemma_count: deferred.length },
+    unresolved_observations: grouped.unresolved,
     source_adapter: CORPUS_SOURCE_ADAPTER,
     source_snapshot: source.source_snapshot,
     canonical_snapshot_digest: canonicalDigest,
     extractor_version: source.extractor_version,
-    analyzer_version: `kiwipiepy==${metadata.kiwipiepy_version}`,
-    analyzer_digest: digest([analyzerDigest(metadata), metadata.proposal_contract]),
-    proposal_contract: metadata.proposal_contract,
+    analyzer_version: `kiwipiepy==${grouped.metadata.kiwipiepy_version}`,
+    analyzer_digest: digest([analyzerDigest(grouped.metadata), grouped.metadata.proposal_contract]),
+    proposal_contract: grouped.metadata.proposal_contract,
     source_evidence_sha256: createHash('sha256').update(JSON.stringify(evidence)).digest('hex'),
     candidates_sha256: sha256Hex(candidatesText),
     status: 'created',
@@ -269,6 +372,12 @@ export async function produceCandidateBatch({
     manifest,
     candidatesText,
     rows,
-    summary: { candidates: rows.length, deferredLemmas, skippedProduced, repeatsMerged, routes: routeCounts(rows, canonicalEntries) },
+    summary: {
+      candidates: rows.length,
+      deferredLemmas: deferred,
+      skippedProducedLemmas: skippedProduced,
+      metrics: batchMetrics(rows, grouped),
+      routes: routeCounts(rows, canonicalEntries, searchFormSupport),
+    },
   };
 }

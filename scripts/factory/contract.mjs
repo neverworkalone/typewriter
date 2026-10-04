@@ -2,8 +2,12 @@ import { createHash } from 'node:crypto';
 
 import { HOLD_REASONS, POS_VALUES, digest } from '../intake/candidate-contract.mjs';
 import { PINNED_RUN, analyzerDigest } from '../intake/pipeline.mjs';
+import { LEMMA_CANDIDATE_MANIFEST_CONTRACT, validateLemmaCandidateBatch } from './lemma-contract.mjs';
 
 // Lexical production factory contracts (issue #263, design: docs/lexical-production-factory.md).
+// This file holds the per-usage v1 candidate contract (historical, e.g. the C000001 comparison
+// cohort) and the contracts shared by both versions; the lemma-centered v2 contract of issue #275
+// lives in lemma-contract.mjs.
 // Factory ids (C…) never reuse canonical `w…` ids or the canonical `candidate_id` field.
 export const CANDIDATE_MANIFEST_CONTRACT = 'lexical-factory-candidate-manifest-v1';
 export const REVIEW_MANIFEST_CONTRACT = 'lexical-factory-review-manifest-v1';
@@ -102,6 +106,8 @@ export function validateCandidateRecord(record, { batchId, ordinal }) {
 export function validateCandidateBatch({ manifest, candidatesText }) {
   const errors = [];
   if (!isPlainObject(manifest)) return ['candidate manifest must be an object'];
+  // v2 (lemma-centered, issue #275) batches; the per-usage v1 contract below stays valid for merged history.
+  if (manifest.contract === LEMMA_CANDIDATE_MANIFEST_CONTRACT) return validateLemmaCandidateBatch({ manifest, candidatesText });
   const required = ['contract', 'task_id', 'batch_id', 'candidate_count', 'source_adapter', 'source_snapshot',
     'canonical_snapshot_digest', 'extractor_version', 'analyzer_version', 'analyzer_digest', 'proposal_contract',
     'source_evidence_sha256', 'candidates_sha256', 'status'];

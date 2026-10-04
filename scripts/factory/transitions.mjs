@@ -21,6 +21,7 @@ export function validateCandidateTransition(before, after) {
     return after?.status === 'created' ? [] : [`new candidate manifest must start as created, got ${after?.status}`];
   }
   const errors = [];
+  if (before.contract !== after.contract) errors.push(`candidate contract migration ${before.contract} → ${after.contract} is not authorized; merged batches keep their contract`);
   if (!(CANDIDATE_TRANSITIONS[before.status] ?? []).includes(after.status)) {
     errors.push(`illegal candidate transition ${before.status} → ${after.status}`);
   }

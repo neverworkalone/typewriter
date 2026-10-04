@@ -13,6 +13,9 @@ import {
 } from './contract.mjs';
 import { validateDecisionHandoff } from './handoff.mjs';
 import { buildCanonicalIndex } from './identity-adapter.mjs';
+import { isLemmaRow } from './lemma-contract.mjs';
+import { validateLemmaDecision } from './lemma-decisions.mjs';
+import { loadSearchFormSupport } from './search-form-support.mjs';
 import { usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
 
@@ -24,6 +27,17 @@ async function readOptional(file) {
     return await readFile(file, 'utf8');
   } catch (error) {
     if (error.code === 'ENOENT') return undefined;
+    throw error;
+  }
+}
+// Tracked candidate artifacts are exactly the manifest and the candidate rows; anything else (a
+// staging leftover, a raw-evidence copy, a note) is refused so it cannot reach Git.
+const CANDIDATE_FILES = ['candidates.jsonl', 'manifest.json'];
+async function candidateDirectoryFiles(directory) {
+  try {
+    return (await readdir(directory)).sort();
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
     throw error;
   }
 }
@@ -63,7 +77,12 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   const reviewBatches = await subdirectories(path.join(root, 'data/reviews'));
   const canonicalIndex = buildCanonicalIndex(canonicalEntries ?? (reviewBatches.length ? await loadCanonicalEntries(root) : []));
   const candidates = new Map();
+  for (const name of await candidateDirectoryFiles(path.join(root, 'data/candidates'))) {
+    if (!candidateBatches.includes(name)) errors.push(`data/candidates/${name}: only batch directories are allowed`);
+  }
   for (const batch of candidateBatches) {
+    const files = await candidateDirectoryFiles(path.join(root, 'data/candidates', batch));
+    if (JSON.stringify(files) !== JSON.stringify(CANDIDATE_FILES)) errors.push(`${batch}: candidate directory must hold exactly ${CANDIDATE_FILES.join(' and ')}, found ${files.join(', ') || 'nothing'}`);
     const directory = path.join(root, 'data/candidates', batch);
     const manifestText = await readOptional(path.join(directory, 'manifest.json'));
     if (manifestText === undefined) { errors.push(`${batch}: candidates manifest.json missing`); continue; }
@@ -75,16 +94,33 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   }
   const seenIds = new Set();
   const seenUsages = new Map();
-  for (const [batch, { candidatesText }] of candidates) {
+  const seenLemmas = new Map();
+  for (const [batch, { candidatesText }] of [...candidates].sort(([a], [b]) => (a < b ? -1 : 1))) {
     for (const row of parseJsonl(candidatesText ?? '', batch, [])) {
       if (seenIds.has(row.candidate_id)) errors.push(`${batch}: candidate_id ${row.candidate_id} is not unique across batches`);
       seenIds.add(row.candidate_id);
+      if (isLemmaRow(row)) {
+        // v2: a headword is produced once; a later batch may not repeat a lemma of any earlier batch.
+        const earlier = seenLemmas.get(row.input);
+        if (earlier && earlier.batch !== batch) errors.push(`${batch}: ${row.candidate_id} repeats lemma ${row.input} already in ${earlier.id}`);
+        else if (!earlier) seenLemmas.set(row.input, { batch, id: row.candidate_id });
+        continue;
+      }
       const usage = usageKeyOfRow(row);
       if (seenUsages.has(usage)) errors.push(`${batch}: ${row.candidate_id} repeats the usage of ${seenUsages.get(usage)} (same lemma, POS and evidence reference)`);
       else seenUsages.set(usage, row.candidate_id);
+      // Historical v1 lemmas count as produced headwords for later lemma-centered batches.
+      if (!seenLemmas.has(row.input)) seenLemmas.set(row.input, { batch, id: row.candidate_id });
     }
   }
   const reviews = new Map();
+  // The generated-surface projection is only built when a decision needs a canonical proof.
+  let canonicalForSupport;
+  const supportFor = async (decisions) => {
+    if (!decisions.some((decision) => (decision.group_decisions ?? []).some((entry) => ['covered', 'search_coverage'].includes(entry?.disposition)))) return undefined;
+    canonicalForSupport ??= canonicalEntries ?? await loadCanonicalEntries(root);
+    return loadSearchFormSupport(canonicalForSupport);
+  };
   for (const batch of reviewBatches) {
     const directory = path.join(root, 'data/reviews', batch);
     const manifestText = await readOptional(path.join(directory, 'manifest.json'));
@@ -104,6 +140,15 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
       errors.push(...validateDecisionRows(decisions, candidateRows.map((row) => row.candidate_id)).map((error) => `${batch}: ${error}`));
       // Sense-level compatibility is checked against canonical only while admission is pending.
       if (manifest.status === 'ready') errors.push(...validateDecisionHandoff(decisions, { canonicalIndex }).map((error) => `${batch}: ${error}`));
+      if (candidateRows.some(isLemmaRow)) {
+        // Canonical proofs (covered / search_coverage) are bound only while admission is pending.
+        const proofs = manifest.status === 'ready' ? { canonicalIndex, support: await supportFor(decisions) } : {};
+        const rowById = new Map(candidateRows.map((row) => [row.candidate_id, row]));
+        for (const decision of decisions) {
+          const candidate = rowById.get(decision.source_candidate_id);
+          if (candidate) errors.push(...validateLemmaDecision(decision, candidate, proofs).map((error) => `${batch}: ${error}`));
+        }
+      }
       if (typeof semanticDecisionsText === 'string' && typeof handoffText === 'string') {
         errors.push(...validateReviewArtifacts({
           batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText,
