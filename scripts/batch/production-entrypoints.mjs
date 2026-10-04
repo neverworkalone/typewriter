@@ -23,18 +23,21 @@ export const HISTORICAL_ENTRYPOINTS = Object.freeze({
 // name canonical data directly, via the import path, or via an identifier that was
 // assigned from an expression naming canonical data. Writes into temporary
 // verification copies are ignored.
+// Writes into temporary trees/copies (temp, tmp, temporary...) are not production writes.
+const TEMP_TREE = /(?:^|[^A-Za-z])(?:temp|tmp)/iu;
+const TEMP_OR_READ = /(?:^|[^A-Za-z])(?:temp|tmp)|await|read|JSON|map\(|filter\(/iu;
 const WRITE_CALL = '(?:writeFile|writeFileSync|appendFile|appendFileSync|rename|renameSync|copyFile|copyFileSync|cp|cpSync|createWriteStream)';
 
 export function writesCanonical(source) {
   const aliases = new Set(['importPath']);
   for (const [, name, expression] of source.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]*?);/gu)) {
     // Only path-like aliases (not values read from canonical data).
-    if (/canonical/iu.test(expression) && !/temporary|tmp|await|read|JSON|map\(|filter\(/iu.test(expression)) aliases.add(name);
+    if (/canonical/iu.test(expression) && !TEMP_OR_READ.test(expression)) aliases.add(name);
   }
   const names = [...aliases].map((name) => name.replace(/\$/gu, '\\$'));
   const pattern = new RegExp(`${WRITE_CALL}\\(([^;]*?)\\)`, 'gu');
   return [...source.matchAll(pattern)].some(([, args]) => {
-    if (/temporary|tmp/iu.test(args)) return false;
+    if (TEMP_TREE.test(args)) return false;
     return /canonical/iu.test(args) || names.some((name) => new RegExp(`(?:^|[^\\w$.])${name}(?![\\w$])`, 'u').test(args));
   });
 }
