@@ -8,6 +8,7 @@ import {
   isSha256,
   parseJsonl,
   sha256Hex,
+  validateProviderFields,
 } from './contract.mjs';
 
 // Lemma-centered candidate contract (issue #275). It supersedes the per-usage v1 contract for
@@ -170,6 +171,7 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText }) {
   if (!isSha256(manifest.analyzer_digest) || manifest.analyzer_digest !== expectedAnalyzerDigest(manifest)) {
     errors.push('candidate manifest: analyzer_digest must bind the pinned analyzer and proposal_contract');
   }
+  errors.push(...validateProviderFields(manifest));
   if (!/^kiwipiepy==\d+\.\d+\.\d+$/u.test(String(manifest.analyzer_version))) errors.push('candidate manifest: analyzer_version must be a pinned kiwipiepy==X.Y.Z');
   for (const key of ['task_id', 'source_adapter', 'source_snapshot', 'extractor_version']) {
     if (typeof manifest[key] !== 'string' || manifest[key].length === 0) errors.push(`candidate manifest: ${key} must be a non-empty string`);

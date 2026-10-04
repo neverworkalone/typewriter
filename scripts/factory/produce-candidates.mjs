@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { createKiwiAnalyzer } from '../intake/kiwi-client.mjs';
+import { DEFAULT_PROVIDER_ORDER, createKiwiProvider } from './analyzer-providers.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
 import { parseJsonl } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
@@ -23,11 +23,15 @@ import {
 // Input is the text-free output of `npm run reference:corpus:candidates`. Output is
 // data/candidates/C…/{manifest.json,candidates.jsonl} with status `created`; nothing else is written.
 
+// Providers selectable by `--providers`; adding one is a registry entry (docs/lexical-factory-contracts.md).
+// Unknown ids fail closed. Local-only: no provider may send candidates or corpus text to a network.
+export const PROVIDER_REGISTRY = Object.freeze({ kiwi: ({ python }) => createKiwiProvider({ python }) });
+
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DEFAULT_BASE_REF = 'origin/master';
 
 export function parseArguments(argv) {
-  const options = { maxCandidates: DEFAULT_MAX_CANDIDATES, baseRef: DEFAULT_BASE_REF, dryRun: false, python: process.env.TYPEWRITER_PYTHON || 'python3' };
+  const options = { maxCandidates: DEFAULT_MAX_CANDIDATES, baseRef: DEFAULT_BASE_REF, dryRun: false, python: process.env.TYPEWRITER_PYTHON || 'python3', providers: [...DEFAULT_PROVIDER_ORDER], attemptLog: null };
   const value = (index, flag) => {
     const next = argv[index + 1];
     if (!next || next.startsWith('--')) throw new Stage1Error([`${flag} requires a value`]);
@@ -38,6 +42,8 @@ export function parseArguments(argv) {
     if (flag === '--dry-run') options.dryRun = true;
     else if (flag === '--evidence') options.evidence = value(index++, flag);
     else if (flag === '--task-id') options.taskId = value(index++, flag);
+    else if (flag === '--providers') options.providers = value(index++, flag).split(',').map((id) => id.trim());
+    else if (flag === '--attempt-log') options.attemptLog = value(index++, flag);
     else if (flag === '--python') options.python = value(index++, flag);
     else if (flag === '--base-ref') options.baseRef = value(index++, flag);
     else if (flag === '--max-candidates') options.maxCandidates = Number(value(index++, flag));
@@ -45,6 +51,9 @@ export function parseArguments(argv) {
   }
   if (!options.evidence) throw new Stage1Error(['--evidence <data/reference/.../candidate-evidence.json> is required']);
   if (!options.taskId) throw new Stage1Error(['--task-id T000000 is required']);
+  const unknown = options.providers.filter((id) => !Object.hasOwn(PROVIDER_REGISTRY, id));
+  if (unknown.length) throw new Stage1Error([`unknown analyzer provider(s) ${unknown.join(',')}; known: ${Object.keys(PROVIDER_REGISTRY).join(',')}`]);
+  if (new Set(options.providers).size !== options.providers.length) throw new Stage1Error(['--providers must not repeat a provider']);
   return options;
 }
 
@@ -99,7 +108,7 @@ async function producedLemmas(root, baseRef) {
 
 // `analyzer` and `permission` are injectable so tests need neither Kiwi nor the corpus.
 export async function runStage1(argv, {
-  root = REPOSITORY_DIRECTORY, analyzer, permission = assertCorpusPermission, log = console.log,
+  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log,
 } = {}) {
   const options = parseArguments(argv);
   const evidencePath = path.resolve(root, options.evidence);
@@ -118,7 +127,9 @@ export async function runStage1(argv, {
   const batchId = allocateBatchId(await knownBatchIds(root, options.baseRef));
   const produced = await produceCandidateBatch({
     evidence,
-    analyzer: analyzer ?? createKiwiAnalyzer({ python: options.python }),
+    // Injected `analyzer` stands in for kiwi only; the default order is exactly [kiwi].
+    providers: providers ?? options.providers.map((id) => (id === 'kiwi' && analyzer
+      ? createKiwiProvider({ analyze: analyzer }) : PROVIDER_REGISTRY[id]({ python: options.python }))),
     canonicalEntries,
     canonicalDigest: await canonicalSnapshotDigest(root),
     batchId,
@@ -127,6 +138,13 @@ export async function runStage1(argv, {
     producedLemmas: await producedLemmas(root, options.baseRef),
     searchFormSupport: await loadSearchFormSupport(canonicalEntries),
   });
+  if (options.attemptLog) {
+    // Text-free (input digests only); kept in the ignored data/reference tree, never in a batch.
+    const logPath = path.resolve(root, options.attemptLog);
+    const inside = path.relative(path.join(root, 'data/reference'), logPath);
+    if (!inside || inside.startsWith('..') || path.isAbsolute(inside)) throw new Stage1Error(['--attempt-log must be inside data/reference/']);
+    await writeFile(logPath, produced.attemptLog.map((entry) => JSON.stringify(entry)).join('\n') + '\n', 'utf8');
+  }
   const target = path.join(root, 'data/candidates', batchId);
   if (!options.dryRun) {
     await mkdir(path.join(root, 'data/candidates'), { recursive: true });

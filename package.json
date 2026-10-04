@@ -129,6 +129,7 @@
     "reference:corpus:build": "node scripts/reference/build-corpus-index.mjs",
     "reference:corpus:candidates": "node scripts/reference/run-corpus-lemma-pilot.mjs",
     "factory:stage1": "node scripts/factory/produce-candidates.mjs",
+    "factory:stage2": "node scripts/factory/run-stage2-worker.mjs",
     "reference:corpus:search": "node scripts/reference/search-corpus-index.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",

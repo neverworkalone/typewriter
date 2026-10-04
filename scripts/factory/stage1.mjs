@@ -3,9 +3,18 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import { HOLD_REASONS, POS_VALUES, normalizeText } from '../intake/candidate-contract.mjs';
-import { analysisInputDigest, analyzerDigest, assertPinnedAnalyzer, PINNED_ANALYZER } from '../intake/pipeline.mjs';
+import { analysisInputDigest, PINNED_ANALYZER } from '../intake/pipeline.mjs';
+import {
+  FALLBACK_ELIGIBLE_HOLDS,
+  RESOLUTION_POLICY,
+  assertProvider,
+  createKiwiProvider,
+  normalizeProviderResult,
+  providerDescriptor,
+  toLegacyOutcome,
+} from './analyzer-providers.mjs';
 import { digest } from '../intake/candidate-contract.mjs';
-import { candidateIdFor, isBatchId, sha256Hex, validateCandidateBatch } from './contract.mjs';
+import { candidateIdFor, expectedAnalyzerDigest, isBatchId, sha256Hex, validateCandidateBatch } from './contract.mjs';
 import { buildCanonicalIndex, classifyLemmaCandidate } from './identity-adapter.mjs';
 import {
   LEMMA_CANDIDATE_MANIFEST_CONTRACT,
@@ -148,23 +157,96 @@ export function resolveSurface(surface, hint, outcome) {
   return { holds, lemma: chosen.lemma, pos: chosen.pos };
 }
 
+const isEligible = (holds) => holds.length > 0 && holds.every((hold) => FALLBACK_ELIGIBLE_HOLDS.includes(hold));
+
+// Common resolution policy (RESOLUTION_POLICY). One provider's reading of one observation is
+// `resolved` (no holds), `needs_verification` (a clean reading from a provider that reports only
+// its single best path — it cannot prove the absence of a rival, so it is never certain on its
+// own) or `unresolved` (explicit holds). Order controls expense only: a later provider is asked
+// only about observations still unresolved after an earlier one, and only for the classified
+// holds in FALLBACK_ELIGIBLE_HOLDS; any other hold is final. A later provider confirming a
+// best-only reading must agree on lemma/POS, otherwise `analysis_mismatch` is kept.
+function judgeAttempt(provider, observation, normalized) {
+  if (normalized.outcome === 'ambiguous') return { state: 'unresolved', holds: ['analysis_ambiguous'], lemma: observation.hint?.input, pos: observation.hint?.pos };
+  const resolved = resolveSurface(observation.surface, observation.hint, toLegacyOutcome(normalized));
+  if (resolved.holds.length) return { state: 'unresolved', ...resolved };
+  if (!provider.capabilities.n_best) return { state: 'needs_verification', holds: ['analysis_ambiguous'], lemma: resolved.lemma, pos: resolved.pos };
+  return { state: 'resolved', holds: [], lemma: resolved.lemma, pos: resolved.pos };
+}
+
+export async function resolveWithProviders({ observations, providers }) {
+  const metadataByProvider = new Map();
+  const attemptLog = [];
+  const decided = new Array(observations.length).fill(null);
+  const provisional = new Array(observations.length).fill(null);
+  const heldBy = observations.map(() => new Set());
+  let pending = observations.map((_, index) => index);
+  for (const provider of providers) {
+    if (pending.length === 0) break;
+    const surfaces = [...new Set(pending.map((index) => observations[index].surface))].sort(compare);
+    const requests = surfaces.map((surface) => ({ id: surface, text: surface }));
+    let response;
+    try {
+      response = await provider.analyze(requests);
+      provider.assertMetadata(response?.metadata);
+    } catch (error) {
+      throw new Stage1Error([`analyzer provider ${provider.id} failed closed: ${error.message}`]);
+    }
+    if (response.metadata.proposal_contract !== REQUIRED_PROPOSAL_CONTRACT) {
+      throw new Stage1Error([`analyzer proposal_contract ${response.metadata.proposal_contract ?? 'missing'} is not ${REQUIRED_PROPOSAL_CONTRACT}`]);
+    }
+    metadataByProvider.set(provider.id, response.metadata);
+    const list = Array.isArray(response.results) ? response.results : [];
+    const raw = new Map(list.map((outcome) => [outcome?.id, outcome]));
+    // More than one result for a requested id is malformed and order-dependent: never trust either.
+    const duplicated = new Set(list.map((outcome) => outcome?.id).filter((id, at, ids) => ids.indexOf(id) !== at));
+    const normalized = new Map(requests.map((request) => {
+      const result = normalizeProviderResult(provider, request, raw.get(request.id));
+      return [request.id, duplicated.has(request.id)
+        ? { ...result, outcome: 'error', analyses: [], diagnostics: { reason: 'duplicate_result_id' } } : result];
+    }));
+    const next = [];
+    for (const index of pending) {
+      const observation = observations[index];
+      const result = normalized.get(observation.surface);
+      const attempt = judgeAttempt(provider, observation, result);
+      if (provisional[index] && attempt.state !== 'unresolved'
+        && (attempt.lemma !== provisional[index].lemma || attempt.pos !== provisional[index].pos)) {
+        attempt.state = 'unresolved';
+        attempt.holds = ['analysis_mismatch'];
+      }
+      attempt.holds.forEach((hold) => heldBy[index].add(hold));
+      attemptLog.push({ provider_id: provider.id, input_digest: analysisInputDigest(observation.surface), outcome: result.outcome, state: attempt.state, holds: [...attempt.holds].sort(compare),
+        fallback: attempt.state === 'needs_verification' || isEligible(attempt.holds) });
+      if (attempt.state === 'resolved') {
+        decided[index] = { holds: [], lemma: attempt.lemma, pos: attempt.pos };
+        continue;
+      }
+      // Two best-only readers agreeing is still not proof of the absence of a rival: keep the hold.
+      if (attempt.state === 'needs_verification') provisional[index] ??= { lemma: attempt.lemma, pos: attempt.pos };
+      if (attempt.state === 'needs_verification' || isEligible(attempt.holds)) next.push(index);
+      else decided[index] = { holds: [...heldBy[index]].sort(compare), lemma: provisional[index]?.lemma ?? attempt.lemma, pos: provisional[index]?.pos ?? attempt.pos };
+    }
+    pending = next;
+  }
+  // Never resolved by any provider: the explicit holds of every attempt stay on the row.
+  for (const index of pending) {
+    decided[index] = { holds: [...heldBy[index]].sort(compare), lemma: provisional[index]?.lemma ?? observations[index].hint?.input, pos: provisional[index]?.pos ?? observations[index].hint?.pos };
+  }
+  return { resolutions: decided, metadataByProvider, attemptLog };
+}
+
 // Lemma-centered grouping (issue #275). Every observation that resolves to a dictionary-form lemma
 // joins that lemma's single candidate; observations without a reliable lemma/POS are returned
 // separately (preserved, never counted as headwords, never guessed). Holds stay on the observation
 // that earned them.
-export async function buildLemmaGroups({ observations, analyzer }) {
-  const surfaces = [...new Set(observations.map((observation) => observation.surface))].sort(compare);
-  const analysis = await analyzer(surfaces.map((surface) => ({ id: surface, text: surface })));
-  assertPinnedAnalyzer(analysis.metadata);
-  if (analysis.metadata.proposal_contract !== REQUIRED_PROPOSAL_CONTRACT) {
-    throw new Stage1Error([`analyzer proposal_contract ${analysis.metadata.proposal_contract ?? 'missing'} is not ${REQUIRED_PROPOSAL_CONTRACT}`]);
-  }
-  const outcomes = new Map(analysis.results.map((outcome) => [outcome.id, outcome]));
+export async function buildLemmaGroups({ observations, analyzer, providers = [createKiwiProvider({ analyze: analyzer })] }) {
+  const { resolutions, metadataByProvider, attemptLog } = await resolveWithProviders({ observations, providers });
   const lemmas = new Map();
   const unresolved = new Map();
   let repeatsMerged = 0;
-  for (const observation of observations) {
-    const resolved = resolveSurface(observation.surface, observation.hint, outcomes.get(observation.surface));
+  for (const [index, observation] of observations.entries()) {
+    const resolved = resolutions[index];
     const unresolvedHolds = resolved.holds.filter((hold) => UNRESOLVED_HOLDS.includes(hold));
     if (unresolvedHolds.length) {
       const key = [observation.surface, observation.ref.kind, observation.ref.ref].join('\u0000');
@@ -192,7 +274,7 @@ export async function buildLemmaGroups({ observations, analyzer }) {
     }
     lemmas.set(resolved.lemma, entry);
   }
-  return { lemmas, unresolved: [...unresolved.values()].sort((a, b) => compare(a.surface, b.surface) || compare(a.evidence.ref, b.evidence.ref)), repeatsMerged, metadata: analysis.metadata };
+  return { lemmas, unresolved: [...unresolved.values()].sort((a, b) => compare(a.surface, b.surface) || compare(a.evidence.ref, b.evidence.ref)), repeatsMerged, metadataByProvider, attemptLog };
 }
 
 const compareObservation = (a, b) => compare(a.pos, b.pos) || compare(a.group, b.group) || compare(a.surface, b.surface)
@@ -292,6 +374,17 @@ export function allocateBatchId(knownIds) {
   return `C${String(next).padStart(6, '0')}`;
 }
 
+export function summarizeAttempts(attemptLog) {
+  const counts = {};
+  for (const entry of attemptLog) {
+    const row = counts[entry.provider_id] ??= { attempts: 0, resolved: 0, fell_through: 0 };
+    row.attempts += 1;
+    if (entry.state === 'resolved') row.resolved += 1;
+    else if (entry.fallback) row.fell_through += 1;
+  }
+  return counts;
+}
+
 // Canonical comparison summary (issue #275): per-POS routes, the lemmas whose observed forms the
 // shared search-form projection does not support (search/morphology coverage route), and holds.
 export const routeCounts = (rows, canonicalEntries, support = new Map()) => {
@@ -333,19 +426,30 @@ export const batchMetrics = (rows, { unresolved, repeatsMerged }) => {
 
 // Pure producer: evidence + analyzer + canonical → v2 manifest and candidates.jsonl text.
 export async function produceCandidateBatch({
-  evidence, analyzer, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES,
+  evidence, analyzer, providers, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES,
   producedLemmas = new Set(), searchFormSupport = new Map(),
 }) {
   if (!isBatchId(batchId)) throw new Stage1Error(['batchId must match C000000']);
   if (!/^T\d{6}$/u.test(String(taskId))) throw new Stage1Error(['taskId must match T000000']);
   const { observations, source } = observationsFromCorpusEvidence(evidence);
-  const grouped = await buildLemmaGroups({ observations, analyzer });
+  const ordered = providers ?? [createKiwiProvider({ analyze: analyzer })];
+  ordered.forEach(assertProvider);
+  const ids = ordered.map((provider) => provider.id);
+  if (new Set(ids).size !== ids.length) throw new Stage1Error([`duplicate analyzer provider in order: ${ids.join(',')}`]);
+  // The manifest still anchors on the pinned Kiwi (analyzer_version/analyzer_digest); Khaiii-only
+  // runs are for a successor issue, so Kiwi must be somewhere in the order.
+  if (!ids.includes('kiwi')) throw new Stage1Error(['analyzer provider order must include the pinned kiwi provider']);
+  const grouped = await buildLemmaGroups({ observations, providers: ordered });
+  const { attemptLog } = grouped;
   if (grouped.unresolved.length > MAX_UNRESOLVED_OBSERVATIONS) {
     throw new Stage1Error([`${grouped.unresolved.length} observations have no reliable lemma/POS, above the bound ${MAX_UNRESOLVED_OBSERVATIONS}; split the evidence run`]);
   }
   const { selected, deferred, skippedProduced } = selectLemmas({ lemmas: grouped.lemmas, maxCandidates, producedLemmas });
   const rows = selected.map((lemma, index) => buildLemmaRow({ lemma, observations: grouped.lemmas.get(lemma), candidateId: candidateIdFor(batchId, index + 1) }));
   const candidatesText = serializeCandidates(rows);
+  // Default [kiwi] omits the provider fields: byte-identical to the pre-provider manifest.
+  const providerFields = ids.length === 1 ? {} : { analyzer_providers: ordered.map(providerDescriptor), resolution_policy: RESOLUTION_POLICY };
+  const anchor = { analyzer_version: `kiwipiepy==${PINNED_ANALYZER.kiwipiepy_version}`, proposal_contract: REQUIRED_PROPOSAL_CONTRACT, ...providerFields };
   const manifest = {
     contract: LEMMA_CANDIDATE_MANIFEST_CONTRACT,
     lemma_policy: LEMMA_POLICY,
@@ -359,9 +463,10 @@ export async function produceCandidateBatch({
     source_snapshot: source.source_snapshot,
     canonical_snapshot_digest: canonicalDigest,
     extractor_version: source.extractor_version,
-    analyzer_version: `kiwipiepy==${grouped.metadata.kiwipiepy_version}`,
-    analyzer_digest: digest([analyzerDigest(grouped.metadata), grouped.metadata.proposal_contract]),
-    proposal_contract: grouped.metadata.proposal_contract,
+    analyzer_version: anchor.analyzer_version,
+    analyzer_digest: expectedAnalyzerDigest(anchor),
+    proposal_contract: REQUIRED_PROPOSAL_CONTRACT,
+    ...providerFields,
     source_evidence_sha256: createHash('sha256').update(JSON.stringify(evidence)).digest('hex'),
     candidates_sha256: sha256Hex(candidatesText),
     status: 'created',
@@ -370,9 +475,12 @@ export async function produceCandidateBatch({
   if (errors.length) throw new Stage1Error(errors);
   return {
     manifest,
+    attemptLog,
     candidatesText,
     rows,
     summary: {
+      providerOrder: ids,
+      providerAttempts: summarizeAttempts(attemptLog),
       candidates: rows.length,
       deferredLemmas: deferred,
       skippedProducedLemmas: skippedProduced,

@@ -153,6 +153,8 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/factory-contracts.test.mjs', 'Test factory contracts, state machines, identity adapter, and typed handoff'),
       testCheck('tests/factory-stage1.test.mjs', 'Test factory Stage 1 lemma-centered candidate batch producer'),
       testCheck('tests/factory-lemma.test.mjs', 'Test lemma-centered candidate contract, usage-group decisions, and v1/v2 compatibility'),
+      testCheck('tests/factory-analyzer-providers.test.mjs', 'Test factory Stage 1 analyzer provider boundary and fallback'),
+      testCheck('tests/factory-stage2-worker.test.mjs', 'Test Stage 2 atomic claims, merge-gated session loop, and cleanup'),
     ],
   },
 
