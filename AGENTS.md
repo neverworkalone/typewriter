@@ -264,12 +264,18 @@ are distinct from the PR-review gates in `REVIEW.md`.
   provenance and ambiguity; submit candidate batches as separate PRs, independent
   of downstream stages. Do not finalize senses/glosses, do Stage 2 authoring, or
   change canonical JSONL.
-- **Stage 2 — Authoring and QA (independent batches):** select eligible work,
-  prioritizing rejected reviews, and exclusively claim **one** batch through the
-  documented GitHub ref/issue protocol. Perform the full existing PR-ready
-  lexical authoring, source-bound semantic QA, validation and regression process
-  and produce ready review artifacts. Do not edit canonical JSONL or turn Stage 3
-  into an editorial repair pass.
+- **Stage 2 — Authoring and QA (a continuous series of batches):** on an
+  instruction such as "Stage 2 진행해", loop without further operator input:
+  re-read the committed queue (rejected reviews first, then `created`), claim one
+  batch via its atomic Git ref *before* creating a tracking Issue (skip if lost),
+  create a new Issue and a branch `<claude|codex>/stage2/<issue>-<batch>` (rework
+  reuses the Issue with a later branch), perform the full existing PR-ready
+  lexical authoring, source-bound semantic QA, validation and regression process,
+  and submit the result PR. Then continue immediately with the next batch without
+  waiting for Stage 3, while handling review feedback on earlier PRs in their own
+  branches. Stop only when no eligible work remains, the owner stops you, or a
+  systemic failure blocks safe progress. Do not edit canonical JSONL or turn
+  Stage 3 into an editorial repair pass.
 - **Stage 3 — Admission (serial):** take a committed `ready` review that has no
   live Stage 3 attempt; check against current master, allocate IDs
   deterministically, open the canonical admission PR, and send lexical/content/

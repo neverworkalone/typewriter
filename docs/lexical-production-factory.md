@@ -257,6 +257,59 @@ snapshot (digest recorded), using temporary/resolved ids where final `w…` ids
 are not yet allocated, and binds the evidence and snapshot digests to the result.
 Final ids are allocated by Stage 3.
 
+### 4.3 One invocation is a series of batches (session loop)
+
+The operator starts an independently launched Claude or Codex primary agent with
+a simple instruction such as **"Stage 2 진행해"**. Unlike Stage 1 and Stage 3,
+which the owner may scope with a dedicated execution Issue, Stage 2 **creates its
+own tracking Issue for every batch it claims** and keeps going through successive
+batches without a new operator instruction or a pre-created Issue per batch.
+
+Sequential loop inside one session:
+
+1. **Read the queue now** (never a cached list): prefer a review manifest
+   `rejected` (rework), otherwise an eligible candidate manifest `created`.
+2. **Claim first:** atomically create the batch ref `stage2-claims/C…` before any
+   Issue. If another agent won, skip and try another batch; do not coordinate with
+   or count other workers.
+3. **New batch:** create a fresh tracking Issue, then a fresh branch
+   `<agent>/stage2/<issue>-<batch>` (`claude` or `codex`, the actual agent).
+   **Rework:** reuse or reopen the existing Issue and history (no duplicate
+   issue) and use a distinct later branch `…-rK`.
+4. **Do the whole batch:** the full PR-ready authoring and QA of §4.1; submit its
+   own validated result PR with the manifest transitions of §5.2. No canonical
+   JSONL. Normal review and CI gates apply; the agent never reviews or merges its
+   own PR.
+5. **Continue immediately** with the next available batch on a new branch; do not
+   stop because a PR was submitted and do not wait for Stage 3. The earlier claim
+   stays reserved until its PR is merged or otherwise resolved. Keep worktree/PR
+   isolation, track unfinished PRs, and handle actionable review feedback for each
+   PR on its own branch without touching another batch's artifacts.
+6. **Stop** when no eligible unclaimed work remains (report; no busy polling), the
+   owner stops the session, or a blocking shared/systemic failure prevents safe
+   continuation. A recoverable lexical problem in one batch is handled or
+   recorded under the normal Stage 2 process and does not stop other eligible
+   batches.
+
+The owner chooses how many such agents to launch from the token budget; none
+needs worker-count awareness, tokens, orchestration or helper agents. Single-claim
+atomicity is preserved. Stage 1 keeps filling the queue and Stage 3 admits ready
+batches serially.
+
+**Worked example (one session, one agent):**
+
+| Step | Batch | Issue | Branch | PR | Note |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `C000001` | #260 (new) | `claude/stage2/260-C000001` | #270 | claim ref first, then issue; full Stage 2; result PR submitted |
+| 2 | `C000002` | #261 (new) | `claude/stage2/261-C000002` | #271 | starts at once, without waiting for #270 to merge or for Stage 3 |
+| 3 | `C000003` | #262 (new) | `claude/stage2/262-C000003` | #272 | again new issue, branch and PR |
+| — | `C000001` | #260 | same branch | #270 | review feedback on #270 is fixed on its own branch between batches |
+| — | `C000004` | — | — | — | claim lost to another agent ⇒ skipped; if nothing is left, report and stop |
+
+If Stage 3 later rejects `C000001` (review `rejected`, `rejected_pr` set), the
+same or another Stage 2 session picks it up first: Issue #260 is reused, the branch
+is `claude/stage2/260-C000001-r2`, and a new result PR returns the review to `ready`.
+
 ## 5. Stage 2 result PR
 
 ### 5.1 Illustrative output
@@ -604,6 +657,12 @@ This is the input to a **later implementation issue**; none of it is done here.
   is opened; restart while the rejection status-only PR is pending; failure at
   preflight before any canonical change. Each yields exactly one traceable
   attempt, no duplicate admission, and a populated `rejected_pr`.
+- Session loop pilot: one Stage 2 invocation, with no second owner instruction,
+  processes **two consecutive available batches** (separate claim refs, Issues,
+  branches and result PRs), then, while PR 1 is still open, applies actionable
+  review feedback on PR 1's branch without changing batch 2's artifacts; with no
+  eligible batch left it reports and stops without polling. A lost claim is
+  skipped, not retried against the same batch.
 - Stage 2 equivalence: a fixture batch produced through the factory yields the
   same canonical records and validator results as the current builder.
 - Stage 3: success path; stale-master id reassignment; lexical conflict →
