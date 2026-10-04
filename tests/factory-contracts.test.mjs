@@ -195,6 +195,15 @@ test('a held usage never holds its same lemma/POS siblings, in intake or in the 
   assert.ok(validateReviewArtifacts({ ...fixture, decisions: admittedHeld, semanticDecisionsText: semanticFor(admittedHeld) }).some((e) => e.includes('requires a hold_resolution')));
   const resolved = [{ ...included(1), hold_resolution: 'C000001-0001 re-read: reading is unambiguous in context.' }, included(2)];
   assert.deepEqual(validateReviewArtifacts({ ...fixture, decisions: resolved, semanticDecisionsText: semanticFor(resolved) }), []);
+  // All-held key: the hand-off entry carries the union of holds, but each usage is judged by its own.
+  const allHeld = [record(1, { holds: ['analysis_error'] }), record(2, { holds: ['analysis_ambiguous'] })];
+  const allHeldHandoff = await buildProductionHandoff({ batchId: 'C000001', rawCandidates: intakeCandidates(allHeld).map(toRawCandidate), analyzer, adapterId: 'corpus-adapter' });
+  const mixed = [{ ...held(1) }, { ...included(2), hold_resolution: 'C000001-0002 re-read: reading is unambiguous in context.' }];
+  const allHeldFixture = { ...fixture, candidates: allHeld, handoffText: JSON.stringify(allHeldHandoff), decisions: mixed, semanticDecisionsText: semanticFor(mixed) };
+  assert.deepEqual(validateReviewArtifacts(allHeldFixture), [], 'a resolvable usage is not blocked by a sibling hard hold');
+  const both = [{ ...included(1), hold_resolution: 'x' }, mixed[1]];
+  assert.ok(validateReviewArtifacts({ ...allHeldFixture, decisions: both, semanticDecisionsText: semanticFor(both) }).some((e) => e.includes('decision C000001-0001') && e.includes('cannot be admitted')));
+  assert.ok(!validateReviewArtifacts({ ...allHeldFixture, decisions: both, semanticDecisionsText: semanticFor(both) }).some((e) => e.includes('decision C000001-0002')));
   const hard = [record(1, { holds: ['analysis_error'] }), record(2)];
   const hardHandoff = await buildProductionHandoff({ batchId: 'C000001', rawCandidates: intakeCandidates(hard).map(toRawCandidate), analyzer, adapterId: 'corpus-adapter' });
   assert.ok(validateReviewArtifacts({ ...fixture, candidates: hard, handoffText: JSON.stringify(hardHandoff), decisions: resolved, semanticDecisionsText: semanticFor(resolved) }).some((e) => e.includes('cannot be admitted')));

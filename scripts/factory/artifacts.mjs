@@ -112,8 +112,14 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
         errors.push(`decision ${row.source_candidate_id}: Stage 1 hold ${candidate.holds.join(', ')} cannot be admitted`);
       }
       if (row.reviewed_record?.lemma !== candidate.input) errors.push(`decision ${row.source_candidate_id}: reviewed lemma differs from the candidate input`);
-      const resolvable = entry.decision === 'hold' && entry.holds.every((hold) => REVIEWABLE_HOLDS.includes(hold));
+      // The hand-off entry is keyed by input+POS, so for a key whose usages are all held it carries
+      // the UNION of their holds. Admissibility is therefore judged per candidate from its own
+      // Stage 1 holds (above); the entry is consulted only for a usage with no hold of its own,
+      // which is bound to its analysis-backed entry.
+      if (candidate.holds.length) continue;
       if (entry.decision === 'semantic_qa') continue;
+      // An analysis-originated (Kiwi) hold on a usage with no hold of its own is resolvable only if reviewable.
+      const resolvable = entry.decision === 'hold' && entry.holds.every((hold) => REVIEWABLE_HOLDS.includes(hold));
       if (!resolvable) errors.push(`decision ${row.source_candidate_id}: hand-off ${entry.decision} (${(entry.holds ?? []).join(', ')}) cannot be admitted`);
       else if (typeof row.hold_resolution !== 'string' || !row.hold_resolution) errors.push(`decision ${row.source_candidate_id}: reviewable hold requires a hold_resolution`);
     }
