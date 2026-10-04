@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
 import { createGitHubClient, repositoryFromRemote } from '../scripts/factory/github-client.mjs';
 import { CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, expectedAnalyzerDigest, sha256Hex } from '../scripts/factory/contract.mjs';
+import { createInteractiveStage2Callbacks, runStage2Cli } from '../scripts/factory/run-stage2-worker.mjs';
 import {
   Stage2WorkerError,
   claimNextStage2Batch,
@@ -70,6 +72,21 @@ function snapshotGit(batches) {
   };
 }
 
+function queueSnapshot(batchIds) {
+  return {
+    headSha: SHA,
+    validated: true,
+    candidates: batchIds.map((batchId) => {
+      const artifacts = candidateArtifacts(batchId);
+      return {
+        batchId, manifest: artifacts.manifest, candidatesText: artifacts.candidatesText,
+        rows: [record(batchId, batchId)],
+      };
+    }),
+    reviews: [],
+  };
+}
+
 class FakeGitHub {
   constructor({ raceInitialReads = false } = {}) {
     this.refs = new Map();
@@ -129,6 +146,7 @@ class FakeGitHub {
   async deleteClaimRef(batchId) {
     this.deletedClaims.push(batchId);
     this.refs.delete('refs/heads/stage2-claims/' + batchId);
+    this.events.push('claim-released:' + batchId);
   }
   async getPullRequest(number) {
     const result = this.pullRequests.get(number);
@@ -334,6 +352,127 @@ test('one session fixes the same open PR, waits for each merge, and stops at an 
   assert.ok(mergeFirst < releaseFirst && releaseFirst < startSecond);
   assert.ok(events.some((event) => event.startsWith('report:No unclaimed')));
   assert.equal(events.filter((event) => event.startsWith('wait:')).length, 2);
+});
+
+test('the CLI entrypoint runs one merge-gated session across two batches and then stops', async () => {
+  const github = new FakeGitHub();
+  github.pullRequests.set(401, [
+    {
+      number: 401, state: 'open', merged: false, ci: 'failure', review: 'changes_requested',
+      head: { ref: 'codex/stage2/300-C000001' },
+    },
+    { number: 401, state: 'closed', merged: true, base: { ref: 'master' }, head: { ref: 'codex/stage2/300-C000001' } },
+  ]);
+  github.pullRequests.set(402, [
+    { number: 402, state: 'closed', merged: true, base: { ref: 'master' }, head: { ref: 'codex/stage2/301-C000002' } },
+  ]);
+  const snapshot = queueSnapshot(['C000001', 'C000002']);
+  const git = snapshotGit({});
+  const events = github.events;
+  let nextPr = 401;
+  const result = await runStage2Cli([], {
+    env: { GH_TOKEN: 'fake-token' },
+    makeGit: () => git,
+    makeGithub: () => github,
+    loadSnapshot: async () => snapshot,
+    log: (line) => events.push('output:' + line),
+    sessionCallbacks: {
+      async startResultPr(claim) {
+        events.push('author-and-open-pr:' + claim.batchId + ':' + claim.branchName);
+        return { number: nextPr++ };
+      },
+      async waitForMerge(claim, pullRequest) {
+        const outcome = await waitForPullRequestMerge({
+          github, prNumber: pullRequest.number,
+          sleep: async (duration) => events.push('sleep:' + duration),
+          onPending: async (snapshot) => events.push(
+            'same-branch-feedback:' + claim.branchName + ':' + snapshot.ci + ':' + snapshot.review,
+          ),
+        });
+        if (outcome.status === 'merged') {
+          const candidate = snapshot.candidates.find((entry) => entry.batchId === claim.batchId);
+          candidate.manifest.status = 'complete';
+          snapshot.reviews.push({ batchId: claim.batchId, manifest: { status: 'ready', attempt: claim.attempt } });
+        }
+        return outcome;
+      },
+    },
+  });
+
+  assert.equal(result.status, 'session-finished');
+  assert.equal(result.mergedBatchCount, 2);
+  assert.ok(events.includes('same-branch-feedback:codex/stage2/300-C000001:failure:changes_requested'));
+  assert.ok(events.includes('sleep:300000'));
+  assert.deepEqual(github.deletedClaims, ['C000001', 'C000002']);
+  const firstMerge = events.indexOf('pr:401:closed:merged');
+  const firstRelease = events.indexOf('claim-released:C000001');
+  const secondClaim = events.indexOf('claim-won:C000002');
+  const secondIssue = events.findIndex((event) => event.startsWith('issue:301:C000002'));
+  const secondPr = events.indexOf('author-and-open-pr:C000002:codex/stage2/301-C000002');
+  assert.ok(firstMerge >= 0 && firstMerge < firstRelease && firstRelease < secondClaim && secondClaim < secondPr);
+  assert.equal(events.filter((event) => event.startsWith('author-and-open-pr:')).length, 2);
+  assert.ok(events.some((event) => event.includes('No unclaimed Stage 2 batches remain.')));
+  assert.ok(secondIssue >= 0 && secondPr > secondIssue);
+});
+
+test('interactive primary-context hand-offs return a result PR and same-branch feedback action', async () => {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let written = '';
+  output.on('data', (chunk) => { written += chunk.toString(); });
+  let prRead = 0;
+  const callbacks = createInteractiveStage2Callbacks({
+    input, output, sleep: async () => {},
+    github: {
+      async getPullRequestSnapshot() {
+        prRead += 1;
+        return prRead === 1
+          ? {
+            pullRequest: { number: 501, state: 'open', merged: false },
+            reviews: [{ state: 'CHANGES_REQUESTED' }],
+            inlineComments: [{ body: 'fix this on the same branch' }],
+            conversationComments: [],
+            combinedStatus: { state: 'failure' },
+            checkRuns: [{ name: 'ci:normal', conclusion: 'failure' }],
+          }
+          : { pullRequest: { number: 501, state: 'closed', merged: true } };
+      },
+    },
+  });
+  const claim = { batchId: 'C000001', issueNumber: 71, branchName: 'codex/stage2/71-C000001' };
+  const readEvent = async (lineIndex) => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const lines = written.trimEnd().split('\n');
+      if (lines.length > lineIndex) return JSON.parse(lines[lineIndex]);
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    throw new Error('interactive hand-off was not written');
+  };
+
+  try {
+    const createdPromise = callbacks.startResultPr(claim);
+    const authorEvent = await readEvent(0);
+    assert.equal(authorEvent.event, 'AUTHOR_STAGE2_RESULT');
+    input.write(JSON.stringify({ action: 'created', pr_number: 501 }) + '\n');
+    const pullRequest = await createdPromise;
+    assert.equal(pullRequest.number, 501);
+
+    const mergePromise = callbacks.waitForMerge(claim, pullRequest);
+    const pendingEvent = await readEvent(1);
+    assert.equal(pendingEvent.event, 'STAGE2_PR_PENDING');
+    assert.equal(pendingEvent.claim.branchName, claim.branchName);
+    assert.equal(pendingEvent.reviews[0].state, 'CHANGES_REQUESTED');
+    assert.equal(pendingEvent.inlineComments[0].body, 'fix this on the same branch');
+    assert.equal(pendingEvent.combinedStatus.state, 'failure');
+    assert.equal(pendingEvent.checkRuns[0].name, 'ci:normal');
+    input.write(JSON.stringify({ action: 'continue' }) + '\n');
+    assert.equal((await mergePromise).status, 'merged');
+    assert.equal(prRead, 2);
+  } finally {
+    callbacks.close();
+    input.destroy();
+    output.destroy();
+  }
 });
 
 test('closed unmerged result PR stops the session before a second claim', async () => {

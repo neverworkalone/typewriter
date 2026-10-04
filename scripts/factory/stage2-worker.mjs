@@ -299,7 +299,8 @@ export async function waitForPullRequestMerge({
     const pullRequest = snapshot.pullRequest || snapshot;
     if (pullRequest.merged === true || pullRequest.merged_at) return { status: 'merged', pullRequest, snapshot };
     if (pullRequest.state === 'closed') return { status: 'closed-unmerged', pullRequest, snapshot };
-    await onPending(snapshot);
+    const decision = await onPending(snapshot);
+    if (decision?.status) return { ...decision, pullRequest, snapshot };
     await sleep(intervalMs);
   }
 }
