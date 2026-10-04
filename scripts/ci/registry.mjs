@@ -149,6 +149,8 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/intake-production-e2e.test.mjs', 'Test production hand-off to canonical, SQLite and direct search (both adapters)'),
       testCheck('tests/production-entrypoints.test.mjs', 'Test declared canonical-writer entrypoints and the mandatory intake hand-off policy'),
       testCheck('tests/intake-kiwi-service.test.mjs', 'Test shared Kiwi batch service'),
+      commandCheck('Validate factory candidate/review batch contracts', ['scripts/factory/validate.mjs'], []),
+      testCheck('tests/factory-contracts.test.mjs', 'Test factory contracts, state machines, identity adapter, and typed handoff'),
     ],
   },
 
