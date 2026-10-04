@@ -17,7 +17,7 @@ can follow it without chat history.
 > **~500 distinct headwords, not 500 usage rows**: **"500" counts unique lemmas, not
 > usages.** §2 below is normative for the lemma-centered (v2) contract; the per-usage
 > (v1) shapes in §2.1/§2.2 are **historical** and remain valid only for already-created
-> batches such as the C000001 comparison cohort.
+> batches such as the historical, **unmerged** C000001 500-usage benchmark cohort (PR #270; not an accepted production batch).
 
 The three parts of this document are kept separate:
 
@@ -137,8 +137,8 @@ schema. The factory is a work-organization layer around the existing contracts.
 
 ### 2.1 Candidate manifest, per-usage v1 (historical)
 
-> Historical (superseded by §2.3 for new batches): kept to describe merged v1
-> batches, e.g. the C000001 comparison cohort. v1 rows are one per usage possibility.
+> Historical (superseded by §2.3 for new batches): kept to describe the v1 shape, e.g.
+> the unmerged C000001 benchmark cohort. v1 rows are one per usage possibility.
 > They are **not** the active candidate unit.
 
 

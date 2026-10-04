@@ -38,8 +38,9 @@ The unit of a Stage 1 candidate is a **normalized citation-form lemma (표제어
 policy, the before/after data shape and the operator note: **"500" counts unique lemmas, not usages.**
 
 - **Versioning.** New batches use `lexical-factory-candidate-manifest-v2`; `validateCandidateBatch`
-  dispatches on the manifest `contract`. v1 data, IDs and digests (including the PR #270 / `C000001`
-  500-usage comparison cohort of #274) validate unchanged. A merged batch may not change contract
+  dispatches on the manifest `contract`. v1 data, IDs and digests validate unchanged. `C000001` (PR #270 HEAD
+  `3890edb7e64644ccfd9fac35d68f5e54d95f7965`) is a **historical, unmerged** 500-usage benchmark cohort:
+  it is not on `master`, not an accepted production batch, and its ID is not reserved by this repository. A merged batch may not change contract
   (`validateCandidateTransition`: *contract migration is not authorized*); nothing is migrated.
 - **Row.** `candidate_id`, `input` (lemma), `pos_hypotheses`, `forms` (`form_id`, `surface`),
   `usage_groups` (`group_id`, `pos`, `basis: pos-default|corpus-hint`, `hint`), `observations`
@@ -61,7 +62,10 @@ policy, the before/after data shape and the operator note: **"500" counts unique
 - **Batches.** The bound counts distinct lemmas; a lemma already present in any earlier batch (v1
   or v2) is not produced again and a later batch repeating one fails the shared validator.
   `data/candidates/C…/` may hold exactly `manifest.json` and `candidates.jsonl` (also enforced for v1),
-  and `data/candidates/` only batch directories.
+  and `data/candidates/` only batch directories. `config/artifact-policy.json` durable-tracks exactly
+  `data/candidates/C*/manifest.json` and `data/candidates/C*/candidates.jsonl` (#284); any other file under
+  `data/candidates/` (raw corpus text, evidence dumps, extra JSON, reports, generated projections) stays an
+  unclassified protected artifact and fails `validateArtifactPolicy`.
 - **Stage 2.** A v2 decision row keeps one row per `C…` id and adds `group_decisions` (entries per
   usage group; a group may be split by `observation_ids` into independently judged sense opportunities, see design §5.1). The real extractor emits no `usage_group`, so this split is how Stage 2 separates senses. `validateLemmaDecision` binds `included` groups to reviewed senses of
   the same POS, per-group `hold_resolution`s, and the canonical proofs of `covered`/`search_coverage`
@@ -71,7 +75,7 @@ policy, the before/after data shape and the operator note: **"500" counts unique
   `source_candidate_id`/`C…` identities, the typed decision rows and the hand-off unchanged; the only
   additions are the v2 candidate shape and `group_decisions`, validated in the shared validator rather
   than a batch-only path. #272–#274 (analyzer series) are independent: the candidate record carries no
-  provider-specific result, only normalized per-observation outcomes; the C000001 benchmark cohort is
+  provider-specific result, only normalized per-observation outcomes; the historical, unmerged `C000001` benchmark cohort is
   untouched. The #258/#261 execution assumptions (a Stage 1 batch of 500 usage rows) are superseded by 500
   distinct lemmas; their tests are not claimed to have run here. Stage 3 canonical admission of lemma
   candidates still needs the writer for `new_pos_on_existing_lemma`/`new_sense_on_existing_entry`
@@ -81,8 +85,8 @@ policy, the before/after data shape and the operator note: **"500" counts unique
 
 > Since issue #275 the producer below emits **lemma-centered v2** batches. The per-usage rules in this
 > section (identity per usage, row-per-reference, `usage_hint`, five evidence references, usage-key
-> dedupe across batches) describe the **historical v1** producer that created the `C000001`
-> comparison cohort; they are no longer active for new batches.
+> dedupe across batches) describe the **historical v1** producer that created the unmerged `C000001`
+> benchmark cohort (PR #270, never merged to `master`); they are no longer active for new batches.
 
 Single serial Stage 1 entry point; it writes `data/candidates/C…/{manifest.json,candidates.jsonl}` with `status: created` and nothing else (no review rows, glosses, canonical records or paragraph text).
 
