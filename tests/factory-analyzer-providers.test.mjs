@@ -204,8 +204,9 @@ test('CLI provider selection defaults to kiwi and fails closed on unknown, repea
   const base = ['--evidence', 'data/reference/x/e.json', '--task-id', 'T000001'];
   assert.deepEqual(parseArguments(base).providers, ['kiwi']);
   assert.deepEqual(parseArguments([...base, '--providers', 'kiwi']).providers, ['kiwi']);
-  assert.throws(() => parseArguments([...base, '--providers', 'kiwi,khaiii']), /unknown analyzer provider\(s\) khaiii/);
+  assert.deepEqual(parseArguments([...base, '--providers', 'kiwi,khaiii']).providers, ['kiwi', 'khaiii']);
+  assert.throws(() => parseArguments([...base, '--providers', 'kiwi,nope']), /unknown analyzer provider\(s\) nope/);
   assert.throws(() => parseArguments([...base, '--providers', 'kiwi,kiwi']), /repeat/);
-  assert.deepEqual(Object.keys(PROVIDER_REGISTRY), ['kiwi']);
+  assert.deepEqual(Object.keys(PROVIDER_REGISTRY), ['kiwi', 'khaiii']);
   await assert.rejects(() => runStage1([...base, '--attempt-log', 'data/candidates/log.jsonl'], { permission: async () => {}, root: '/nonexistent' }), Stage1Error);
 });
