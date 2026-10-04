@@ -1,5 +1,7 @@
 import { REVIEWABLE_HOLDS, verifyProductionHandoff } from '../intake/production-handoff.mjs';
-import { intakeCandidates, toRawCandidate } from './identity-adapter.mjs';
+import { candidateViews, intakeCandidates, toRawCandidate } from './identity-adapter.mjs';
+import { isLemmaRow } from './lemma-contract.mjs';
+import { resolveGroupEntries } from './lemma-decisions.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { decisionSenseReviews, validateAuthoredDecisionDisposition, validateDistinctSenseSemanticRationales, validateSenseReviews } from '../batch/authored-semantic-decision-source.mjs';
 import { SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION, validateAuthoredSemanticReviewBinding } from '../validate/semantic-decision-row.mjs';
@@ -93,7 +95,7 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
   const handoff = parse(handoffText, 'intake-handoff.json', errors);
   if (handoff) {
     try {
-      verifyProductionHandoff(handoff, { rawCandidates: intakeCandidates(candidates).map(toRawCandidate), batchId, adapterId });
+      verifyProductionHandoff(handoff, { rawCandidates: intakeCandidates(candidateViews(candidates)).map(toRawCandidate), batchId, adapterId });
     } catch (error) {
       errors.push(`intake-handoff.json: ${error.message}`);
     }
@@ -101,6 +103,7 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
     for (const row of decisions) {
       const candidate = candidateById.get(row.source_candidate_id);
       if (!candidate) continue;
+      if (isLemmaRow(candidate)) { errors.push(...validateLemmaHandoffEntries(row, candidate, entryByKey)); continue; }
       const entry = entryByKey.get(`${candidate.input}\u0000${candidate.pos}`);
       if (!entry) { errors.push(`decision ${row.source_candidate_id}: no hand-off entry for its input+POS`); continue; }
       if (!ADMITTED.has(row.disposition)) continue;
@@ -123,6 +126,32 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
       if (!resolvable) errors.push(`decision ${row.source_candidate_id}: hand-off ${entry.decision} (${(entry.holds ?? []).join(', ')}) cannot be admitted`);
       else if (typeof row.hold_resolution !== 'string' || !row.hold_resolution) errors.push(`decision ${row.source_candidate_id}: reviewable hold requires a hold_resolution`);
     }
+  }
+  return errors;
+}
+
+// Hand-off binding of a lemma-centered decision: every POS hypothesis has a hand-off entry, and an
+// admitted group is bound to the entry of its own POS. Holds are judged per group from its own
+// observations (group-level resolutions are checked by validateLemmaDecision); a group with an
+// unheld observation is additionally bound to its analysis-backed entry.
+function validateLemmaHandoffEntries(row, candidate, entryByKey) {
+  const errors = [];
+  for (const pos of candidate.pos_hypotheses) {
+    if (!entryByKey.has(`${candidate.input}\u0000${pos}`)) errors.push(`decision ${row.source_candidate_id}: no hand-off entry for its input+POS (${pos})`);
+  }
+  if (!ADMITTED.has(row.disposition)) return errors;
+  if (row.reviewed_record?.lemma !== candidate.input) errors.push(`decision ${row.source_candidate_id}: reviewed lemma differs from the candidate input`);
+  // Group entries are already validated by validateLemmaDecision; only the judged observations matter here.
+  const { entries } = resolveGroupEntries(row, candidate);
+  for (const { entry, group, members } of entries) {
+    if (entry.disposition !== 'included') continue;
+    if (members.every((observation) => observation.holds.length)) continue;
+    const handoffEntry = entryByKey.get(`${candidate.input}\u0000${group.pos}`);
+    if (!handoffEntry || handoffEntry.decision === 'semantic_qa') continue;
+    const resolvable = handoffEntry.decision === 'hold' && handoffEntry.holds.every((hold) => REVIEWABLE_HOLDS.includes(hold));
+    const resolution = entry.hold_resolution;
+    if (!resolvable) errors.push(`decision ${row.source_candidate_id} group ${group.group_id}: hand-off ${handoffEntry.decision} (${(handoffEntry.holds ?? []).join(', ')}) cannot be admitted`);
+    else if (typeof resolution !== 'string' || !resolution) errors.push(`decision ${row.source_candidate_id} group ${group.group_id}: reviewable hold requires a hold_resolution`);
   }
   return errors;
 }
