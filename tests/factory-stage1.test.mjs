@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { validateCandidateBatch } from '../scripts/factory/contract.mjs';
+import { expectedAnalyzerDigest, validateCandidateBatch } from '../scripts/factory/contract.mjs';
 import { buildCanonicalIndex, classifyAgainstCanonical, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { Stage1Error, allocateBatchId, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
@@ -135,6 +135,7 @@ test('an analyzer without the derivation-root proposal contract is refused and t
   const { manifest } = await produce(evidence);
   assert.equal(manifest.proposal_contract, 'derivation-root-v1');
   const legacyDigest = (await import('../scripts/intake/pipeline.mjs')).analyzerDigest(METADATA);
+  assert.equal(manifest.analyzer_digest, expectedAnalyzerDigest(manifest));
   assert.notEqual(manifest.analyzer_digest, legacyDigest, 'the manifest digest binds the proposal contract');
 });
 

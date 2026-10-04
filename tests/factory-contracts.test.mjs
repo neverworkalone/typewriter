@@ -9,6 +9,8 @@ import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import {
   CANDIDATE_MANIFEST_CONTRACT,
   REVIEW_MANIFEST_CONTRACT,
+  PROPOSAL_CONTRACT,
+  expectedAnalyzerDigest,
   manifestContentDigest,
   sha256Hex,
   validateCandidateBatch,
@@ -45,7 +47,9 @@ const candidateBatch = (rows = [record(1), record(2)], over = {}) => {
     manifest: {
       contract: CANDIDATE_MANIFEST_CONTRACT, task_id: 'T000001', batch_id: 'C000001', candidate_count: rows.length,
       source_adapter: 'corpus-adapter', source_snapshot: 'snap-1', canonical_snapshot_digest: HEX('canon'),
-      extractor_version: 'x1', analyzer_version: 'kiwipiepy==0.24.0', candidates_sha256: sha256Hex(candidatesText),
+      extractor_version: 'x1', analyzer_version: 'kiwipiepy==0.24.0', proposal_contract: PROPOSAL_CONTRACT,
+      analyzer_digest: expectedAnalyzerDigest({ analyzer_version: 'kiwipiepy==0.24.0', proposal_contract: PROPOSAL_CONTRACT }),
+      source_evidence_sha256: HEX('evidence'), candidates_sha256: sha256Hex(candidatesText),
       status: 'created', ...over,
     },
   };
@@ -72,6 +76,11 @@ test('candidate batch fails closed on tamper, count, id, evidence-text and hold 
   fails(candidateBatch([record(1, { pos: 'particle' })]), 'pos must');
   fails(candidateBatch([record(1, { evidence: Array.from({ length: 6 }, (_, i) => ({ kind: 'k', ref: `r${i}` })) })]), 'at most 5');
   fails(candidateBatch([record(1)], { analyzer_version: 'kiwipiepy==0.25.0-dev' }), 'pinned');
+  const without = (key) => { const { [key]: _drop, ...rest } = good.manifest; return rest; };
+  for (const key of ['proposal_contract', 'analyzer_digest', 'source_evidence_sha256']) fails({ manifest: without(key), candidatesText: good.candidatesText }, `missing ${key}`);
+  fails(candidateBatch([record(1)], { proposal_contract: 'derivation-root-v0' }), 'proposal_contract must be');
+  fails(candidateBatch([record(1)], { analyzer_digest: HEX('legacy-digest-without-contract') }), 'analyzer_digest must bind');
+  fails(candidateBatch([record(1)], { source_evidence_sha256: 'nope' }), 'source_evidence_sha256');
   const { status, ...incomplete } = good.manifest;
   fails({ manifest: incomplete, candidatesText: good.candidatesText }, 'missing status');
 });
