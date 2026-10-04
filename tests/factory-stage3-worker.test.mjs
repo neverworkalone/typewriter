@@ -12,6 +12,7 @@ import {
   processStage3Attempt,
   recoverStage3Attempt,
   releaseStage3Claim,
+  runStage3PreflightCi,
   runStage3Session,
 } from '../scripts/factory/stage3-worker.mjs';
 import { parseArguments, runStage3Cli } from '../scripts/factory/run-stage3-worker.mjs';
@@ -46,6 +47,14 @@ function plan(decisions, canonicalRecords = [baseRecord]) {
     baseCanonicalSnapshotDigest: digest,
   });
 }
+
+test('Stage 3 preflight runs one normal CI command with its nested fast checkpoint', () => {
+  const commands = [];
+  runStage3PreflightCi('/repo', (file, args, options) => commands.push({ file, args, options }));
+  assert.deepEqual(commands, [{
+    file: 'npm', args: ['run', 'ci:normal'], options: { cwd: '/repo', stdio: 'inherit' },
+  }]);
+});
 
 test('Stage 3 deterministically allocates entry ids and remaps candidate and provisional references', () => {
   const first = decision({ n: 1, lemma: '새롭다', relations: [{ type: 'near', target: 'C000001-0002', target_sense: 'C000001-0002-s1' }] });

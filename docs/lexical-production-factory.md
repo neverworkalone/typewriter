@@ -766,11 +766,11 @@ after a claim collision, the actual-number rejection payload, starter removal
 before the ready transition, interrupted-attempt recovery, serial merge gating
 and merge-gated attempt/global-lock release.
 
-The complete repository checks remain authoritative: `ci:fast` and `ci:normal`
-validate the shared lexical/semantic contract, canonical baseline and writer
-allowlist, complete factory transitions, reproducible SQLite build, exact direct
-search and the one-current-revision-build invariant. Stage 3 does not alter Deep
-CI.
+The complete repository checks remain authoritative: one `ci:normal` execution
+includes the `ci:fast` checkpoint and validates the shared lexical/semantic
+contract, canonical baseline and writer allowlist, complete factory transitions,
+reproducible SQLite build, exact direct search and the one-current-revision-build
+invariant. Stage 3 does not alter Deep CI.
 
 Owner override for Issue #266 (2026-10-04): validate the real GitHub claim/ref →
 starter push → Draft → lexical rejection → status-PR merge lifecycle later in

@@ -312,6 +312,10 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
   return { ...prepared, semanticAuthority, plan, files: [...new Set([...plan.changes.map((change) => change.path), semanticAuthority.sourcePath, `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
 }
 
+export function runStage3PreflightCi(root, run = execFileSync) {
+  run('npm', ['run', 'ci:normal'], { cwd: root, stdio: 'inherit' });
+}
+
 export async function validatePreparedStage3Admission({ root, git, claim, prepared, runGates = true } = {}) {
   const base = loadBaseManifests('origin/master', root);
   const errors = await validateFactoryRepository({ root, base });
@@ -320,8 +324,7 @@ export async function validatePreparedStage3Admission({ root, git, claim, prepar
   });
   if (runGates) {
     try {
-      execFileSync('npm', ['run', 'ci:fast'], { cwd: root, stdio: 'inherit' });
-      execFileSync('npm', ['run', 'ci:normal'], { cwd: root, stdio: 'inherit' });
+      runStage3PreflightCi(root);
     } catch (error) {
       throw new Stage3WorkerError('complete canonical CI failed during Stage 3 preflight; preserve the draft as a systemic blocker', {
         batchId: claim.batchId, attempt: claim.attempt, claimCreated: true, prNumber: claim.prNumber,
