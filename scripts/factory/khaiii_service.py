@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Local Khaiii batch analysis service for Factory Stage 1 (issue #273).
 
-Same stdin/stdout shape as scripts/intake/kiwi_service.py. Runs inside the pinned container
-(docker/khaiii/Dockerfile) with no network. Khaiii returns exactly one best path and no score,
+Same stdin/stdout shape as scripts/intake/kiwi_service.py. Runs either inside the pinned container
+(docker/khaiii/Dockerfile, `docker` runtime, no network) or on the host against the verified
+`genonfire/khaiii` macOS arm64 release (`native` runtime; KHAIII_NATIVE_ROOT). The normalization
+below is shared by both runtimes. Khaiii returns exactly one best path and no score,
 so every result carries a single analysis; N-best, ranking and `derived_from*` are never invented.
 A noun/root directly followed by XSV/XSA inside the one path is reported as that one derived
 predicate (the whole surface explained by one proposal); it is not linked to a separate root.
@@ -22,7 +24,10 @@ SERVICE_VERSION = "1"
 PROPOSAL_CONTRACT = "derivation-root-v1"
 MAX_BATCH_SIZE = 500
 MAX_TEXT_LENGTH = 2000
-RESOURCE_DIR = os.environ.get("KHAIII_RESOURCE_DIR", "/usr/local/share/khaiii")
+NATIVE_ROOT = os.environ.get("KHAIII_NATIVE_ROOT", "")
+RUNTIME = "native" if NATIVE_ROOT else "docker"
+RESOURCE_DIR = os.path.join(NATIVE_ROOT, "share", "khaiii") if NATIVE_ROOT else os.environ.get("KHAIII_RESOURCE_DIR", "/usr/local/share/khaiii")
+LIB_PATH = os.path.join(NATIVE_ROOT, "lib", "libkhaiii.dylib") if NATIVE_ROOT else ""
 POS_BY_TAG = {"NNG": "noun", "VV": "verb", "VA": "adjective", "MAG": "adverb"}
 DERIVATIONAL_SUFFIX_POS = {"XSV": "verb", "XSA": "adjective"}
 # Content-bearing morphemes this service does not map; a path containing one is only partly
@@ -36,6 +41,11 @@ def _package_version(name: str) -> str:
         return package_version(name)
     except PackageNotFoundError:
         return "unavailable"
+
+
+def _native_version() -> str:
+    from khaiii import KhaiiiApi
+    return KhaiiiApi(lib_path=LIB_PATH, rsc_dir=RESOURCE_DIR).version()
 
 
 def resource_digest(directory: str = RESOURCE_DIR) -> str:
@@ -53,14 +63,40 @@ def resource_digest(directory: str = RESOURCE_DIR) -> str:
     return outer.hexdigest()
 
 
+def _release_provenance() -> dict:
+    if not NATIVE_ROOT:
+        return {}
+    with open(os.path.join(NATIVE_ROOT, "PROVENANCE.json"), encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _source() -> tuple:
+    if NATIVE_ROOT:
+        upstream = _release_provenance().get("upstream", {})
+        return upstream.get("tag", "unavailable"), upstream.get("commit", "unavailable")
+    return os.environ.get("KHAIII_SOURCE_TAG", "unavailable"), os.environ.get("KHAIII_SOURCE_SHA", "unavailable")
+
+
+def file_digest(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def run_metadata() -> dict:
     return {
+        "runtime": RUNTIME,
+        "library_digest": file_digest(LIB_PATH) if LIB_PATH else "container",
         "service_version": SERVICE_VERSION,
         "proposal_contract": PROPOSAL_CONTRACT,
         "provider": "khaiii",
-        "khaiii_version": _package_version("khaiii"),
-        "khaiii_source_tag": os.environ.get("KHAIII_SOURCE_TAG", "unavailable"),
-        "khaiii_source_sha": os.environ.get("KHAIII_SOURCE_SHA", "unavailable"),
+        "khaiii_version": _package_version("khaiii") if RUNTIME == "docker" else _native_version(),
+        "khaiii_source_tag": _source()[0],
+        "khaiii_source_sha": _source()[1],
+        "release_fork_commit": _release_provenance().get("fork_commit", "container"),
+        "release_provenance_digest": file_digest(os.path.join(NATIVE_ROOT, "PROVENANCE.json")) if NATIVE_ROOT else "container",
         "resource_digest": resource_digest(),
         "top_n": 1,
     }
@@ -124,13 +160,16 @@ def analyze_batch(api, requests: list[dict]) -> dict:
 
 
 def main() -> int:
+    if NATIVE_ROOT:
+        sys.path.insert(0, os.path.join(NATIVE_ROOT, "python"))
     try:
         from khaiii import KhaiiiApi
     except ImportError:
         print(json.dumps({"error": "khaiii_not_installed"}))
         return 2
     payload = json.load(sys.stdin)
-    response = analyze_batch(KhaiiiApi(), payload["requests"])
+    api = KhaiiiApi(lib_path=LIB_PATH, rsc_dir=RESOURCE_DIR) if NATIVE_ROOT else KhaiiiApi()
+    response = analyze_batch(api, payload["requests"])
     json.dump(response, sys.stdout, ensure_ascii=False, sort_keys=True)
     return 0
 

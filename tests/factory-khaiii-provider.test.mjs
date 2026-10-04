@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { createKiwiProvider, normalizeProviderResult } from '../scripts/factory/analyzer-providers.mjs';
-import { PINNED_KHAIII, assertPinnedKhaiii, createKhaiiiAnalyzer, createKhaiiiProvider, DEFAULT_KHAIII_IMAGE } from '../scripts/factory/khaiii-provider.mjs';
+import { DEFAULT_KHAIII_IMAGE, KHAIII_RUNTIMES, NATIVE_RELEASE, PINNED_KHAIII, assertPinnedKhaiii, createKhaiiiAnalyzer, createKhaiiiProvider, defaultNativeRoot,
+  pinnedMetadata, resolveKhaiiiRuntime } from '../scripts/factory/khaiii-provider.mjs';
+import { providerIdentityDigest } from '../scripts/factory/analyzer-providers.mjs';
 import { PROVIDER_REGISTRY } from '../scripts/factory/produce-candidates.mjs';
 import { produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 
 const HEX = 'a'.repeat(64);
 const KIWI_METADATA = { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0', top_n: 3, proposal_contract: 'derivation-root-v1' };
-const KHAIII_METADATA = { ...PINNED_KHAIII };
 const item = (lemma, pos, form = lemma.replace(/다$/u, '')) => ({ lemma, pos, form });
 
 // Synthetic table → service-shaped result. Records the surfaces each provider was asked about.
@@ -27,7 +28,7 @@ function stub(table, metadata) {
   } };
 }
 const kiwi = (table) => { const inner = stub(table, KIWI_METADATA); return { ...createKiwiProvider({ analyze: inner.analyze }), calls: inner.calls }; };
-const khaiii = (table) => { const inner = stub(table, KHAIII_METADATA); return { ...createKhaiiiProvider({ analyze: inner.analyze }), calls: inner.calls }; };
+const khaiii = (table, runtime = 'native') => { const inner = stub(table, pinnedMetadata(runtime)); return { ...createKhaiiiProvider({ analyze: inner.analyze, runtime }), calls: inner.calls }; };
 
 const hit = (document, surface) => ({ source_path: 'c/x', corpus_id: 'c', document_id: document, document_ordinal: 1, paragraph_id: 'p1',
   paragraph_ordinal: 1, source_category: 'written', source_year: 2025, matched_surface_form: surface });
@@ -50,11 +51,19 @@ test('Khaiii service regressions (synthetic Khaiii API; not proof the official b
 });
 
 test('provider declares honest best-only capabilities and a pinned, reproducible identity', () => {
-  const provider = createKhaiiiProvider({ analyze: async () => ({}) });
-  assert.deepEqual(provider.capabilities, { n_best: false, derivation: false });
-  assert.equal(provider.identity.version, '0.4');
-  assert.equal(provider.identity.config.source_sha, 'fa5fbd10aeddfe97cd7aa87faee39628e5e9c18a');
-  assert.match(provider.identity.model, /^resource:[0-9a-f]{64}$/u);
+  for (const runtime of KHAIII_RUNTIMES) {
+    const provider = createKhaiiiProvider({ analyze: async () => ({}), runtime });
+    assert.deepEqual(provider.capabilities, { n_best: false, derivation: false });
+    assert.equal(provider.identity.version, '0.4');
+    assert.equal(provider.identity.config.runtime, runtime);
+    assert.equal(provider.identity.config.source_sha, 'fa5fbd10aeddfe97cd7aa87faee39628e5e9c18a');
+    assert.match(provider.identity.model, /^resource:[0-9a-f]{64}$/u);
+  }
+  const native = createKhaiiiProvider({ analyze: async () => ({}), runtime: 'native' }).identity.config;
+  assert.deepEqual([native.archive_sha256, native.library_digest, native.fork_commit], [NATIVE_RELEASE.archive_sha256, NATIVE_RELEASE.library_digest, NATIVE_RELEASE.fork_commit]);
+  // Runtime and binary identity are part of the digest: native and docker never share one.
+  assert.notEqual(providerIdentityDigest(createKhaiiiProvider({ analyze: async () => ({}), runtime: 'native' }).identity),
+    providerIdentityDigest(createKhaiiiProvider({ analyze: async () => ({}), runtime: 'docker' }).identity));
   // The Dockerfile builds exactly the pinned source revision.
   const dockerfile = readFileSync('docker/khaiii/Dockerfile', 'utf8');
   assert.ok(dockerfile.includes(`KHAIII_SHA=${PINNED_KHAIII.khaiii_source_sha}`));
@@ -62,12 +71,33 @@ test('provider declares honest best-only capabilities and a pinned, reproducible
   assert.ok(readFileSync('docker/khaiii/README.md', 'utf8').includes(PINNED_KHAIII.resource_digest));
 });
 
-test('metadata drift (version, source revision, resource bundle, contract) fails closed', () => {
-  assertPinnedKhaiii(KHAIII_METADATA);
-  for (const patch of [{ khaiii_version: '0.5' }, { khaiii_source_sha: 'deadbeef' }, { resource_digest: HEX }, { proposal_contract: 'other' }, { top_n: 3 }]) {
-    assert.throws(() => assertPinnedKhaiii({ ...KHAIII_METADATA, ...patch }), /does not match pinned/);
+test('metadata drift (version, source, resource bundle, binary, runtime) fails closed per runtime', () => {
+  for (const runtime of KHAIII_RUNTIMES) {
+    assertPinnedKhaiii(pinnedMetadata(runtime), runtime);
+    for (const patch of [{ khaiii_version: '0.5' }, { khaiii_source_sha: 'deadbeef' }, { resource_digest: HEX }, { proposal_contract: 'other' }, { top_n: 3 },
+      { library_digest: HEX }, { release_fork_commit: 'deadbeef' }, { release_provenance_digest: HEX }]) {
+      assert.throws(() => assertPinnedKhaiii({ ...pinnedMetadata(runtime), ...patch }, runtime), /does not match pinned/);
+    }
   }
+  assert.throws(() => assertPinnedKhaiii(pinnedMetadata('docker'), 'native'), /does not match pinned/, 'a container result cannot pass as the native runtime');
+  assert.throws(() => assertPinnedKhaiii(pinnedMetadata('native'), 'docker'), /does not match pinned/);
   assert.throws(() => assertPinnedKhaiii(undefined), /required/);
+});
+
+test('runtime selection: native default on macOS arm64, docker elsewhere, explicit override, invalid fails', () => {
+  assert.equal(resolveKhaiiiRuntime({ env: {}, platform: 'darwin', arch: 'arm64' }), 'native');
+  assert.equal(resolveKhaiiiRuntime({ env: {}, platform: 'linux', arch: 'x64' }), 'docker');
+  assert.equal(resolveKhaiiiRuntime({ env: {}, platform: 'darwin', arch: 'x64' }), 'docker');
+  assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'docker' }, platform: 'darwin', arch: 'arm64' }), 'docker');
+  assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'native' }, platform: 'linux', arch: 'x64' }), 'native');
+  assert.throws(() => resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'podman' } }), /native\|docker/);
+});
+
+test('native failure is reported, never silently switched to docker', async () => {
+  const missing = createKhaiiiAnalyzer({ runtime: 'native', nativeRoot: '/nonexistent/khaiii', platform: 'darwin', arch: 'arm64', docker: '/nonexistent/docker-must-not-run' });
+  await assert.rejects(() => missing([{ id: 'a', text: '먹었다' }]), /native release not found.*Not falling back to docker/u);
+  assert.throws(() => createKhaiiiAnalyzer({ runtime: 'native', platform: 'linux', arch: 'x64' }), /macOS arm64 only.*TYPEWRITER_KHAIII_RUNTIME=docker/u);
+  assert.equal(defaultNativeRoot('/c'), `/c/${NATIVE_RELEASE.tag}/${NATIVE_RELEASE.directory}`);
 });
 
 test('kiwi alone never constructs or runs Khaiii (lazy registry)', async () => {
@@ -133,17 +163,21 @@ test('Khaiii results pass the shared normalization (malformed output is an error
   assert.equal(bad.outcome, 'error');
 });
 
-// Real pinned build. Skipped (and reported) where the container image is absent: never a mock substitute.
+// Real pinned runtimes. Each is skipped (and the reason reported) where unavailable: never a mock substitute.
 const image = process.env.TYPEWRITER_KHAIII_IMAGE || DEFAULT_KHAIII_IMAGE;
 const docker = process.env.TYPEWRITER_DOCKER || 'docker';
 const probe = spawnSync(docker, ['image', 'inspect', image, '--format', '{{.Id}}'], { encoding: 'utf8' });
-const realSkip = probe.status === 0 ? false : `Khaiii image ${image} not available (build: docker/khaiii/README.md); real-binary evidence not produced here`;
+const dockerSkip = probe.status === 0 ? false : `Khaiii image ${image} not available (build: docker/khaiii/README.md); docker real-binary evidence not produced here`;
+const nativeRoot = process.env.TYPEWRITER_KHAIII_NATIVE_ROOT || defaultNativeRoot();
+const nativeSkip = process.platform === 'darwin' && process.arch === 'arm64' && existsSync(`${nativeRoot}/lib/libkhaiii.dylib`) ? false
+  : `native Khaiii release not available on ${process.platform}/${process.arch} at ${nativeRoot} (run scripts/factory/fetch-khaiii-native.mjs on macOS arm64); native real-binary evidence not produced here`;
 
-test('REAL pinned Khaiii v0.4 container smoke', { skip: realSkip }, async () => {
-  const analyze = createKhaiiiAnalyzer({ docker, image });
+async function realSmoke(runtime) {
+  const analyze = createKhaiiiAnalyzer({ runtime, docker, image, nativeRoot });
   const surfaces = ['먹었다', '아름다웠던', '망각했다', '행복한', '조용히', '서울에', 'ㅁㅁㅁ', '두 단어', '   '];
   const { metadata, results } = await analyze(surfaces.map((text) => ({ id: text, text })));
-  assertPinnedKhaiii(metadata);
+  assertPinnedKhaiii(metadata, runtime);
+  assert.equal(metadata.runtime, runtime);
   const byId = Object.fromEntries(results.map((result) => [result.id, result]));
   const lemmas = (id) => byId[id].analyses[0].map((entry) => `${entry.lemma}/${entry.pos}`);
   assert.deepEqual(lemmas('먹었다'), ['먹다/verb']);
@@ -155,11 +189,21 @@ test('REAL pinned Khaiii v0.4 container smoke', { skip: realSkip }, async () => 
   for (const id of ['서울에', 'ㅁㅁㅁ', '두 단어', '   ']) assert.equal(byId[id].status, 'unsupported', id);
   assert.ok(results.every((result) => result.analyses.flat().every((entry) => !('derived_from' in entry) && !('derived_from_index' in entry))));
   // End to end through the shared policy: Khaiii alone never clears; invalid/missing input stays held.
-  const result = await produce([FILLER, cand('먹다', 'verb', '먹었다')], [kiwi(fillerTable), createKhaiiiProvider({ analyze })]);
+  const result = await produce([FILLER, cand('먹다', 'verb', '먹었다')], [kiwi(fillerTable), createKhaiiiProvider({ analyze, runtime })]);
   assert.equal(rowOf(result, '먹다'), undefined);
   assert.deepEqual(unresolvedOf(result), [['먹었다', ['analysis_unsupported']]]);
+  return results;
+}
+
+test('REAL pinned Khaiii v0.4 native macOS arm64 release smoke', { skip: nativeSkip }, () => realSmoke('native'));
+test('REAL pinned Khaiii v0.4 docker container smoke', { skip: dockerSkip }, () => realSmoke('docker'));
+
+test('native and docker runtimes yield identical analyses (when both real runtimes exist)', { skip: nativeSkip || dockerSkip }, async () => {
+  const surfaces = ['먹었다', '아름다웠던', '망각했다', '행복한'];
+  const run = (runtime) => createKhaiiiAnalyzer({ runtime, docker, image, nativeRoot })(surfaces.map((text) => ({ id: text, text })));
+  assert.deepEqual((await run('native')).results, (await run('docker')).results);
 });
 
 test('a missing container runtime is an explicit failure, not silent output', async () => {
-  await assert.rejects(() => createKhaiiiAnalyzer({ docker: '/nonexistent/docker' })([{ id: 'a', text: '먹었다' }]));
+  await assert.rejects(() => createKhaiiiAnalyzer({ runtime: 'docker', docker: '/nonexistent/docker' })([{ id: 'a', text: '먹었다' }]));
 });
