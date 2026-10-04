@@ -84,13 +84,15 @@ test('metadata drift (version, source, resource bundle, binary, runtime) fails c
   assert.throws(() => assertPinnedKhaiii(undefined), /required/);
 });
 
-test('runtime selection: native default on macOS arm64, docker elsewhere, explicit override, invalid fails', () => {
-  assert.equal(resolveKhaiiiRuntime({ env: {}, platform: 'darwin', arch: 'arm64' }), 'native');
-  assert.equal(resolveKhaiiiRuntime({ env: {}, platform: 'linux', arch: 'x64' }), 'docker');
-  assert.equal(resolveKhaiiiRuntime({ env: {}, platform: 'darwin', arch: 'x64' }), 'docker');
-  assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'docker' }, platform: 'darwin', arch: 'arm64' }), 'docker');
-  assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'native' }, platform: 'linux', arch: 'x64' }), 'native');
+test('runtime selection: native is the only default on every host; docker only when explicitly requested', () => {
+  assert.equal(resolveKhaiiiRuntime({ env: {} }), 'native');
+  assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: '' } }), 'native');
+  assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'docker' } }), 'docker');
+  assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'native' } }), 'native');
   assert.throws(() => resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'podman' } }), /native\|docker/);
+  // A host without the native release (e.g. Linux) must opt in to docker; it is never chosen implicitly.
+  assert.throws(() => createKhaiiiProvider({ runtime: resolveKhaiiiRuntime({ env: {} }), platform: 'linux', arch: 'x64' }), /macOS arm64 only.*TYPEWRITER_KHAIII_RUNTIME=docker/u);
+  assert.doesNotThrow(() => createKhaiiiProvider({ runtime: resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'docker' } }), platform: 'linux', arch: 'x64' }));
 });
 
 test('native failure is reported, never silently switched to docker', async () => {

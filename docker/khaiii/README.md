@@ -1,6 +1,6 @@
 # Pinned Khaiii (issue #273)
 
-Docker runtime of the optional Khaiii Provider for Factory Stage 1 (`TYPEWRITER_KHAIII_RUNTIME=docker`; the default on macOS arm64 is the verified native `genonfire/khaiii` release, see `docs/lexical-factory-contracts.md`). Official Kakao Khaiii
+Docker runtime of the optional Khaiii Provider for Factory Stage 1 (`TYPEWRITER_KHAIII_RUNTIME=docker`; the default is the verified native `genonfire/khaiii` release, see `docs/lexical-factory-contracts.md`). Official Kakao Khaiii
 (Apache-2.0, <https://github.com/kakao/khaiii>), tag `v0.4`, revision
 `fa5fbd10aeddfe97cd7aa87faee39628e5e9c18a`. Kiwi stays the default; Khaiii runs only when
 `--providers kiwi,khaiii` is passed.

@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 //
 // Two interchangeable runtimes feed the same `khaiii_service.py` (one normalization, one provider
 // interface), selected by TYPEWRITER_KHAIII_RUNTIME=native|docker:
-//   native — the verified `genonfire/khaiii` v0.4 macOS arm64 GitHub Release (default on darwin/arm64;
+//   native — the verified `genonfire/khaiii` v0.4 macOS arm64 GitHub Release (the default;
 //            fetched and checked by scripts/factory/fetch-khaiii-native.mjs);
-//   docker — the pinned Linux container built from docker/khaiii/Dockerfile (default elsewhere).
+//   docker — the pinned Linux container built from docker/khaiii/Dockerfile (explicit fallback only).
 // A failing runtime is a clear error; it never falls back to the other one silently.
 
 export const KHAIII_SERVICE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'khaiii_service.py');
@@ -58,9 +58,11 @@ const RUNTIME_PINS = Object.freeze({
 // Metadata a correct run of `runtime` must report.
 export const pinnedMetadata = (runtime) => ({ ...PINNED_KHAIII, ...RUNTIME_PINS[runtime] });
 
-export function resolveKhaiiiRuntime({ env = process.env, platform = process.platform, arch = process.arch } = {}) {
+// `native` is the only default. Docker is an explicit choice, never implied by the host: a host
+// without the native release must say TYPEWRITER_KHAIII_RUNTIME=docker (createKhaiiiAnalyzer errors otherwise).
+export function resolveKhaiiiRuntime({ env = process.env } = {}) {
   const requested = env.TYPEWRITER_KHAIII_RUNTIME;
-  if (requested === undefined || requested === '') return platform === 'darwin' && arch === 'arm64' ? 'native' : 'docker';
+  if (requested === undefined || requested === '') return 'native';
   if (!KHAIII_RUNTIMES.includes(requested)) throw new Error(`TYPEWRITER_KHAIII_RUNTIME must be one of ${KHAIII_RUNTIMES.join('|')}, got ${requested}`);
   return requested;
 }
