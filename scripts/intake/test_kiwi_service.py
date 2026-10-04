@@ -75,6 +75,10 @@ class KiwiServiceTest(unittest.TestCase):
             {"lemma": "망각하다", "pos": "verb", "form": "망각하", "derived_from": "망각", "derived_from_index": 0},
         ])
 
+    def test_run_metadata_declares_the_proposal_contract(self):
+        self.assertEqual(service.run_metadata()["proposal_contract"], "derivation-root-v1")
+        self.assertEqual(service.run_metadata()["service_version"], "1")
+
     def test_derived_root_position_is_the_adjacent_noun(self):
         outcome = service.analyze_one(FakeAnalyzer(), "사하다")
         self.assertEqual(outcome["analyses"][0][-1]["derived_from_index"], 1)

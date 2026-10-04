@@ -19,6 +19,9 @@ SERVICE_VERSION = "1"
 MAX_BATCH_SIZE = 500
 MAX_TEXT_LENGTH = 2000
 TOP_N = 3
+# Version of the proposal semantics. v1: derived predicates carry `derived_from`/`derived_from_index`.
+# Kept separate from SERVICE_VERSION so stored hand-offs (service_version "1") stay verifiable.
+PROPOSAL_CONTRACT = "derivation-root-v1"
 POS_BY_TAG = {"NNG": "noun", "VV": "verb", "VA": "adjective", "MAG": "adverb"}
 PINNED_VERSIONS = {"kiwipiepy": "0.24.0", "kiwipiepy_model": "0.24.0"}
 
@@ -41,6 +44,7 @@ def run_metadata() -> dict:
         "kiwipiepy_version": _package_version("kiwipiepy"),
         "kiwipiepy_model_version": _package_version("kiwipiepy_model"),
         "top_n": TOP_N,
+        "proposal_contract": PROPOSAL_CONTRACT,
         "pinned": dict(PINNED_VERSIONS),
     }
 

@@ -11,7 +11,7 @@ import { Stage1Error, allocateBatchId, produceCandidateBatch } from '../scripts/
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 
-const METADATA = { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0', top_n: 3 };
+const METADATA = { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0', top_n: 3, proposal_contract: 'derivation-root-v1' };
 const HEX = 'a'.repeat(64);
 
 // Synthetic stand-in for kiwi_service: surface → ranked proposal paths.
@@ -125,6 +125,17 @@ test('fails closed on raw text, malformed evidence, incompatible analyzer and un
   await rejects(evidenceDoc([{ ...good[0], proposed_lemma: 'abc' }]), 'Korean word');
   // No hint and no analysis: nothing may be guessed.
   await assert.rejects(() => produce(evidenceDoc([{ ...good[0], proposed_pos: 'particle' }])), /proposed_pos/);
+});
+
+test('an analyzer without the derivation-root proposal contract is refused and the manifest records it', async () => {
+  const { proposal_contract: _omit, ...legacy } = METADATA;
+  const evidence = evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])]);
+  await assert.rejects(() => produce(evidence, { analyzer: syntheticAnalyzer(ANALYSES, legacy) }), /proposal_contract missing/);
+  await assert.rejects(() => produce(evidence, { analyzer: syntheticAnalyzer(ANALYSES, { ...METADATA, proposal_contract: 'other' }) }), /proposal_contract other/);
+  const { manifest } = await produce(evidence);
+  assert.equal(manifest.proposal_contract, 'derivation-root-v1');
+  const legacyDigest = (await import('../scripts/intake/pipeline.mjs')).analyzerDigest(METADATA);
+  assert.notEqual(manifest.analyzer_digest, legacyDigest, 'the manifest digest binds the proposal contract');
 });
 
 test('an unsupported analysis keeps the extractor hint and an explicit hold instead of a guess', async () => {

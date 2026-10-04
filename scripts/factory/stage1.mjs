@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { HOLD_REASONS, POS_VALUES, normalizeText } from '../intake/candidate-contract.mjs';
 import { analysisInputDigest, analyzerDigest, assertPinnedAnalyzer, PINNED_ANALYZER } from '../intake/pipeline.mjs';
+import { digest } from '../intake/candidate-contract.mjs';
 import {
   CANDIDATE_MANIFEST_CONTRACT,
   MAX_EVIDENCE_REFERENCES,
@@ -21,6 +22,8 @@ import { buildCanonicalIndex, classifyAgainstCanonical } from './identity-adapte
 
 export const CORPUS_EVIDENCE_CONTRACT = 'm9-corpus-candidate-evidence-v1';
 export const CORPUS_SOURCE_ADAPTER = 'corpus-adapter';
+// Stage 1 interprets `derived_from_index`; a service without this proposal contract is refused.
+export const REQUIRED_PROPOSAL_CONTRACT = 'derivation-root-v1';
 export const DEFAULT_MAX_CANDIDATES = 500;
 export const HARD_MAX_CANDIDATES = 1000;
 
@@ -142,6 +145,9 @@ export async function buildUsages({ observations, analyzer }) {
   const surfaces = [...new Set(observations.map((observation) => observation.surface))].sort(compare);
   const analysis = await analyzer(surfaces.map((surface) => ({ id: surface, text: surface })));
   assertPinnedAnalyzer(analysis.metadata);
+  if (analysis.metadata.proposal_contract !== REQUIRED_PROPOSAL_CONTRACT) {
+    throw new Stage1Error([`analyzer proposal_contract ${analysis.metadata.proposal_contract ?? 'missing'} is not ${REQUIRED_PROPOSAL_CONTRACT}`]);
+  }
   const outcomes = new Map(analysis.results.map((outcome) => [outcome.id, outcome]));
   const usages = new Map();
   for (const observation of observations) {
@@ -245,7 +251,8 @@ export async function produceCandidateBatch({
     canonical_snapshot_digest: canonicalDigest,
     extractor_version: source.extractor_version,
     analyzer_version: `kiwipiepy==${metadata.kiwipiepy_version}`,
-    analyzer_digest: analyzerDigest(metadata),
+    analyzer_digest: digest([analyzerDigest(metadata), metadata.proposal_contract]),
+    proposal_contract: metadata.proposal_contract,
     source_evidence_sha256: createHash('sha256').update(JSON.stringify(evidence)).digest('hex'),
     candidates_sha256: sha256Hex(candidatesText),
     status: 'created',
