@@ -29,7 +29,39 @@ class FakeAnalyzer:
         return self.TABLE.get(text, [])
 
 
+class FlakyAnalyzer:
+    """Corrupts the form on the first call(s), as kiwipiepy 0.24.0 occasionally does."""
+
+    def __init__(self, bad_calls, bad_form="빚어\ufffd\ufffd"):
+        self.calls = 0
+        self.bad_calls = bad_calls
+        self.bad_form = bad_form
+
+    def analyze(self, text, top_n):
+        self.calls += 1
+        form = self.bad_form if self.calls <= self.bad_calls else "빚어지"
+        return [([tok(form, "VV")], 0.0)]
+
+
 class KiwiServiceTest(unittest.TestCase):
+    def test_corrupted_output_is_retried_and_never_returned(self):
+        recovered = service.analyze_one(FlakyAnalyzer(bad_calls=1), "빚어지다")
+        self.assertEqual(recovered["status"], "ok")
+        self.assertEqual(recovered["analyses"][0][0]["form"], "빚어지")
+        unstable = service.analyze_one(FlakyAnalyzer(bad_calls=99), "빚어지다")
+        self.assertEqual((unstable["status"], unstable["reason"]), ("error", "unstable_output"))
+
+    def test_run_dependent_garbage_without_replacement_chars_is_not_accepted(self):
+        class Drifting:
+            calls = 0
+
+            def analyze(self, text, top_n):
+                self.calls += 1
+                return [([tok(f"빚어{self.calls}", "VV")], 0.0)]
+
+        outcome = service.analyze_one(Drifting(), "빚어지다")
+        self.assertEqual((outcome["status"], outcome["reason"]), ("error", "unstable_output"))
+
     def run_batch(self, texts):
         requests = [{"id": str(i), "text": t} for i, t in enumerate(texts)]
         return service.analyze_batch(FakeAnalyzer(), requests)["results"]

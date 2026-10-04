@@ -90,3 +90,117 @@ that empty evidence. Peak memory and review/rework
 cost were not measured; no quality-win claim is made beyond the table above.
 
 B05–B10 history and canonical/SQLite/search schema are unchanged.
+
+## Production hand-off (issue #251, PR A)
+
+The real batch route is `scripts/batch/build-issue-223-corpus-batch.mjs`
+(`buildIssue223CorpusBatch`: candidate inventory/evidence + authored decisions +
+self-check review input → candidate review, semantic decisions, canonical
+import). Before this change it never touched `scripts/intake/`; the test helper
+`tests/helpers/intake-admission.mjs` was not production QA.
+
+`scripts/intake/production-handoff.mjs` is the source-neutral production
+hand-off: `CorpusAdapter` (or any adapter) → `runIntake` (normalize, dedupe,
+coverage, bounded pinned Kiwi) → one text-free `*-intake-handoff.json` per batch
+(input digest, analyzer metadata/digest, per-candidate decision, holds,
+`adapter_ids`, bounded evidence references, `analysis_binding`).
+
+- `node scripts/intake/production-handoff-cli.mjs build --batch-id=… --analysis-directory=… --out=…`
+  runs real local Kiwi (`TYPEWRITER_PYTHON` → the pinned kiwipiepy 0.24.0 env).
+- The agent authors the review input as before, then
+  `… bind --handoff=… --review-input=… --analysis-directory=… --authored-decisions=…`
+  writes the `intake_handoff` block (per-admission bindings over hand-off entry,
+  final POS and gloss digest; `resolutions` stay agent-authored).
+- `build-issue-223-corpus-batch.mjs --intake-handoff=…` revalidates, before any
+  write: contract/batch, pinned analyzer, input digest recomputed from the
+  current inventory/evidence (changed input, lemma, POS, removed/reordered
+  evidence, dropped adapter all fail), per-entry analysis bindings, and that
+  every admitted candidate is bound to its entry/POS/gloss. Nothing is
+  auto-admitted: `semantic_qa` still needs the source-bound self-check;
+  reviewable holds (`analysis_ambiguous`, `lemma_mismatch`, `pos_mismatch`,
+  `analysis_unsupported`, `frame_not_verified`) can be admitted only with an
+  explicit resolution citing checked contexts; hard holds (`coverage_collision`,
+  invalid input, missing/stale/errored analysis) and `covered` never. The shared
+  `validateLexicalAddition`, `frameUsesLemma` and semantic-audit gates still run
+  afterwards unchanged; Kiwi stays corroborative.
+- Without `--intake-handoff` the prior workflow runs unchanged (rollback). A
+  review input carrying `intake_handoff` without the flag is rejected.
+- `validate-issue-223.mjs` re-verifies a tracked hand-off offline (no corpus or
+  Kiwi); historical batches carry none and are untouched.
+
+Dry run (no canonical modification): B15's analysis directory through real Kiwi
+gave 500 candidates → 397 covered (already canonical), 78 `semantic_qa`, 13
+`lemma_mismatch`, 12 `analysis_ambiguous`.
+
+Each hand-off entry also stores the bounded, text-free Kiwi outcome
+(`analysis_outcome`: status, input digest, ranked lemma/POS analyses). The
+builder boundary recomputes every analyzer-originated decision from it
+(`judgeOutcome`), so an analysis hold cannot be relabelled `semantic_qa` and
+adapter holds are preserved in every branch. The recorded outcome is authenticated at the write boundary:
+`buildIssue223CorpusBatch --intake-handoff` re-runs the pinned local analyzer on
+the current candidates (`assertHandoffMatchesFreshAnalysis`) and requires the
+whole hand-off (entries, outcomes, analyzer metadata) to equal the fresh result,
+so a rewritten outcome, relabelled decision or recomputed binding is rejected
+(`INTAKE_HANDOFF_FRESH_ANALYSIS`). This needs the local kiwipiepy 0.24.0 env at
+build time; the offline tracked validator (`verifyTrackedHandoff`) checks
+consistency only and cannot re-authenticate the analysis.
+
+### Real-route smoke (not CI)
+
+```bash
+TYPEWRITER_PYTHON=data/reference/venv-kiwi024/bin/python \
+node scripts/intake/smoke-production-route.mjs \
+  --batch-id=issue-223-m9-e-corpus-batch-15-20261003 \
+  --analysis-directory=data/reference/production/issue-247/corpus-batch-15
+```
+
+Needs kiwipiepy 0.24.0 and the ignored local analysis directory. It copies the
+repository to a temp directory in its pre-B15 state (the working tree is never
+written), builds the hand-off with real Kiwi, binds the tracked self-check, and
+runs the real `build-issue-223-corpus-batch.mjs --intake-handoff`. Result for
+B15: 500 candidates → 455 `semantic_qa`, 32 `lemma_mismatch`, 13
+`analysis_ambiguous`; the builder imported 397 records, and the candidate review,
+canonical import and semantic-decision rows are byte/row-identical to the tracked
+B15 artifacts (the review input differs only by the `intake_handoff` block).
+Without resolutions the builder correctly refused B15's admitted candidates that
+Kiwi flagged (e.g. `양주`: `INTAKE_HANDOFF_HOLD_UNRESOLVED`); for this equivalence
+smoke the tracked self-check's checked-context citations stand in as the explicit
+resolutions. The smoke also checks, per adapter, that a tampered binding is
+rejected by the real builder before any batch file is written, and that the
+temp copy then passes `validate-issue-223.mjs` (which includes
+`verifyTrackedHandoff`).
+
+The hand-off names its `source_adapter`; the builder boundary reads the batch
+inputs through that adapter (`BATCH_SOURCE_ADAPTERS`). The same smoke repeats
+the whole route with `--source-adapter=synthetic-word-list`: the contract then
+carries each candidate's word, POS and the holds recorded in the batch inventory
+(those are facts about the candidate, so naming another adapter can never drop
+them; `batchCandidatesFor` fails with `INTAKE_HANDOFF_HOLD_DROPPED` otherwise),
+but no corpus evidence. For the same 500 inputs both adapters now give the same
+decisions: 455 `semantic_qa`, 32 `lemma_mismatch`, 13 `analysis_ambiguous`; the
+real builder imported the same 397 records, with candidate review and canonical
+import identical to the tracked B15 artifacts and the tracked validator passing.
+Scope note: the builder's
+review rows and the reviewer's cited contexts still come from the batch's
+inventory/evidence files; "synthetic" here means the intake contract does not
+depend on the corpus. Feeding the builder from a source with no inventory at all
+is a #251 non-goal.
+
+### Source-hold facts and Kiwi output stability (issue #251)
+
+- When a hand-off is used the builder records each candidate's source holds in
+  its candidate-review row (`intake_source_holds`, from the CorpusAdapter rule
+  including fail-closed `decision_state: held`). The row is digest-bound into the
+  semantic source, so `verifyTrackedHandoff` checks source holds against the
+  tracked row, not the editable hand-off; a row without the field cannot vouch
+  for a hand-off (`INTAKE_HANDOFF_HOLD_ORIGIN`). The real-route smoke compares
+  the review with the tracked B15 one ignoring only this field and its digest.
+- kiwipiepy 0.24.0 occasionally returned a corrupted token form for a sound
+  input (seen once in ~10 smoke runs: `빚어지` came back as replacement bytes), which
+  surfaced as an intermittent `INTAKE_HANDOFF_FRESH_ANALYSIS`. `kiwi_service.py`
+  now accepts an analysis only when two runs agree and contain no U+FFFD; otherwise
+  the outcome is `error` / `unstable_output` (an explicit hold, never a guess).
+  Regressions: `scripts/intake/test_kiwi_service.py`. After the change 8
+  consecutive smoke runs passed and the hand-off for B15 is byte-identical to the
+  earlier deterministic build. The mismatch error now names the first differing
+  path.

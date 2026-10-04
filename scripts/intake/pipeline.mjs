@@ -68,6 +68,20 @@ function interpret(candidate, outcome) {
   return { proposedPos: match.pos };
 }
 
+// Deterministic judgement of one analysis outcome (stale check, then interpretation).
+// Exported so a stored hand-off can be recomputed instead of trusted.
+export function judgeOutcome(candidate, outcome) {
+  const result = interpret(candidate, outcome);
+  if (outcome && outcome.input_digest !== analysisInputDigest(candidate.input)) return { hold: 'analysis_stale' };
+  return result;
+}
+
+// The text-free part of a Kiwi outcome needed to re-derive the decision.
+export function boundedOutcome(outcome) {
+  if (!outcome) return null;
+  return { status: outcome.status, input_digest: outcome.input_digest, analyses: outcome.analyses ?? [] };
+}
+
 export async function runIntake({ candidates, analyzer, coveredLemmas = new Set(), adapterId = 'unspecified' }) {
   const normalized = candidates.map((raw) => normalizeCandidate(raw, { adapterId: raw.adapterId ?? adapterId }));
   for (const candidate of normalized) {
@@ -88,12 +102,10 @@ export async function runIntake({ candidates, analyzer, coveredLemmas = new Set(
     if (candidate.holds.length) return { ...base, decision: 'hold', holds: candidate.holds };
     if (coveredLemmas.has(candidate.input)) return { ...base, decision: 'covered', holds: [] };
     const outcome = outcomes.get(candidate.key);
-    const result = interpret(candidate, outcome);
-    if (outcome && outcome.input_digest !== analysisInputDigest(candidate.input)) {
-      return { ...base, decision: 'hold', holds: ['analysis_stale'] };
-    }
-    if (result.hold) return { ...base, decision: 'hold', holds: [result.hold], proposedPos: result.proposedPos ?? null };
+    const result = judgeOutcome(candidate, outcome);
+    if (result.hold) return { ...base, decision: 'hold', holds: [result.hold], proposedPos: result.proposedPos ?? null, outcome: boundedOutcome(outcome) };
     return {
+      outcome: boundedOutcome(outcome),
       ...base,
       decision: 'semantic_qa',
       holds: [],

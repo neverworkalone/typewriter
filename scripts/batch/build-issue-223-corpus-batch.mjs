@@ -8,6 +8,7 @@ import {
   canonicalRecordsSha256,
   sha256Json,
 } from '../validate/semantic-audit.mjs';
+import { createKiwiAnalyzer } from '../intake/kiwi-client.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import {
   findAmbiguousParticleFragments,
@@ -32,6 +33,8 @@ import {
   isSelfCheckInput,
   SELF_CHECK_PROVENANCE,
 } from './semantic-self-check.mjs';
+import { checkBatchIntakeHandoff } from './intake-handoff-boundary.mjs';
+import { corpusHolds } from '../intake/adapters/corpus-adapter.mjs';
 import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
@@ -635,8 +638,17 @@ function requireArgs(args) {
   return { ...values, 'review-only': values['review-only'] === 'true' };
 }
 
+// Production write boundary for the shared-intake hand-off. The analyzer is fixed to
+// the pinned local Kiwi service here and is deliberately not a parameter: a caller
+// cannot substitute an analyzer to authenticate its own hand-off. Tests inject an
+// analyzer only through the write-free `checkBatchIntakeHandoff`.
+export function assertBatchIntakeHandoff(args) {
+  return checkBatchIntakeHandoff({ ...args, analyzer: createKiwiAnalyzer() });
+}
+
 export async function buildIssue223CorpusBatch({
   batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewerRawOutputsPath, reviewOnly = false,
+  intakeHandoffPath,
 }) {
   const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
@@ -727,6 +739,11 @@ export async function buildIssue223CorpusBatch({
     );
   });
 
+  if (intakeHandoffPath) {
+    // Source-hold facts are recorded in the candidate review itself (digest-bound into the semantic
+    // source), so offline validation never has to trust the editable hand-off for a hold's origin.
+    rows.forEach((row, index) => { row.intake_source_holds = corpusHolds(inventory.candidates[index]); });
+  }
   const admittedRows = rows.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
   const sourceTemplate = previous.at(-1);
   assert.ok(sourceTemplate, 'Issue #223 corpus batch 01 must exist before generation');
@@ -803,6 +820,7 @@ export async function buildIssue223CorpusBatch({
   const semanticInputPath = path.join(batchDirectory, `${batchStem}-semantic-review-input.json`);
   const reviewerRunRecordPath = path.join(batchDirectory, `${batchStem}-reviewer-run-record.json`);
   const importPath = path.join(canonicalDirectory, `${batchStem}.jsonl`);
+  const intakeHandoffOutPath = path.join(batchDirectory, `${batchStem}-intake-handoff.json`);
   if (reviewOnly) {
     for (const sidecarPath of [semanticPath, importPath]) {
       try {
@@ -887,6 +905,16 @@ export async function buildIssue223CorpusBatch({
       candidateRows: rows,
       glossByLemma,
     });
+  }
+  // Shared source-neutral intake (issue #251). Optional until activation: without a
+  // hand-off the prior workflow runs unchanged. With one, every admitted candidate
+  // must be bound to its reviewed hand-off entry, POS and gloss before any write.
+  let intakeHandoffBytes = null;
+  if (intakeHandoffPath) {
+    intakeHandoffBytes = await readFile(path.resolve(ROOT, intakeHandoffPath));
+    await assertBatchIntakeHandoff({ handoffBytes: intakeHandoffBytes, inventory, evidence, batchId, semanticInput, rows });
+  } else {
+    assert.equal(semanticInput.intake_handoff, undefined, 'a review input with an intake integration block requires --intake-handoff');
   }
   const semanticReviewByLemma = new Map(semanticInput.reviews.map((entry) => [entry.lemma, entry]));
   assert.equal(semanticReviewByLemma.size, semanticInput.reviews.length, 'semantic review input has duplicate lemmas');
@@ -1006,6 +1034,7 @@ export async function buildIssue223CorpusBatch({
     writeFile(reviewPath, reviewBytes),
     writeFile(semanticPath, semanticBytes),
     writeFile(semanticInputPath, semanticInputBytes),
+    ...(intakeHandoffBytes ? [writeFile(intakeHandoffOutPath, intakeHandoffBytes)] : []),
     ...(reviewerRunRecordBytes ? [writeFile(reviewerRunRecordPath, reviewerRunRecordBytes)] : []),
     writeFile(importPath, importBytes),
   ]);
@@ -1100,6 +1129,7 @@ if (isMain) {
     authoredDecisionsPath: args['authored-decisions'],
     semanticReviewsPath: args['semantic-reviews'],
     reviewerRawOutputsPath: args['reviewer-raw-outputs'],
+    intakeHandoffPath: args['intake-handoff'],
     reviewOnly: args['review-only'],
   }).then((summary) => {
     console.log(JSON.stringify(summary, null, 2));
