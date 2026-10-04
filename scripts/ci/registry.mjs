@@ -154,7 +154,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/factory-stage1.test.mjs', 'Test factory Stage 1 lemma-centered candidate batch producer'),
       testCheck('tests/factory-lemma.test.mjs', 'Test lemma-centered candidate contract, usage-group decisions, and v1/v2 compatibility'),
       testCheck('tests/factory-analyzer-providers.test.mjs', 'Test factory Stage 1 analyzer provider boundary and fallback'),
-      testCheck('tests/factory-khaiii-provider.test.mjs', 'Test pinned Khaiii provider adapter, lazy fallback and real-container smoke (skipped without the image)'),
+      testCheck('tests/factory-khaiii-provider.test.mjs', 'Test pinned Khaiii provider contract, lazy fallback and native smoke (synthetic; native skipped without the release; no Docker)'),
       testCheck('tests/factory-stage2-worker.test.mjs', 'Test Stage 2 atomic claims, merge-gated session loop, and cleanup'),
     ],
   },

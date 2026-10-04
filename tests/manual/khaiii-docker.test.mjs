@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
-import { DEFAULT_KHAIII_IMAGE, createKhaiiiAnalyzer, defaultNativeRoot } from '../../scripts/factory/khaiii-provider.mjs';
-import { existsSync } from 'node:fs';
+import { DEFAULT_KHAIII_IMAGE, PINNED_KHAIII, createKhaiiiAnalyzer, defaultNativeRoot } from '../../scripts/factory/khaiii-provider.mjs';
+import { existsSync, readFileSync } from 'node:fs';
 import { realSmoke } from '../support/khaiii-fixtures.mjs';
 
 // MANUAL Docker-runtime tests (npm run test:khaiii:docker). Deliberately not in scripts/ci/registry.mjs:
@@ -26,4 +26,11 @@ test('native and docker runtimes yield identical analyses (when both real runtim
 
 test('a missing container runtime is an explicit failure, not silent output', async () => {
   await assert.rejects(() => createKhaiiiAnalyzer({ runtime: 'docker', docker: '/nonexistent/docker' })([{ id: 'a', text: '먹었다' }]));
+});
+
+test('the Dockerfile builds exactly the pinned source and the README records the pinned resource digest', () => {
+  const dockerfile = readFileSync('docker/khaiii/Dockerfile', 'utf8');
+  assert.ok(dockerfile.includes(`KHAIII_SHA=${PINNED_KHAIII.khaiii_source_sha}`));
+  assert.ok(dockerfile.includes('FROM ubuntu:20.04'));
+  assert.ok(readFileSync('docker/khaiii/README.md', 'utf8').includes(PINNED_KHAIII.resource_digest));
 });

@@ -32,11 +32,6 @@ test('provider declares honest best-only capabilities and a pinned, reproducible
   // Runtime and binary identity are part of the digest: native and docker never share one.
   assert.notEqual(providerIdentityDigest(createKhaiiiProvider({ analyze: async () => ({}), runtime: 'native' }).identity),
     providerIdentityDigest(createKhaiiiProvider({ analyze: async () => ({}), runtime: 'docker' }).identity));
-  // The Dockerfile builds exactly the pinned source revision.
-  const dockerfile = readFileSync('docker/khaiii/Dockerfile', 'utf8');
-  assert.ok(dockerfile.includes(`KHAIII_SHA=${PINNED_KHAIII.khaiii_source_sha}`));
-  assert.ok(dockerfile.includes('FROM ubuntu:20.04'));
-  assert.ok(readFileSync('docker/khaiii/README.md', 'utf8').includes(PINNED_KHAIII.resource_digest));
 });
 
 test('metadata drift (version, source, resource bundle, binary, runtime) fails closed per runtime', () => {
