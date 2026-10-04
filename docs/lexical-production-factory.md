@@ -159,28 +159,48 @@ every content digest, so changing `created → complete` never invalidates it.
 | Step | Actor | Action | Idempotent recovery |
 | --- | --- | --- | --- |
 | 1 | worker | Select batch `C…` from `master` manifests (`created`, or `rejected` rework). | Selection is recomputed each attempt. |
-| 2 | worker | Create ref `stage2-claims/C…` pointing at current `master` head. 422 ⇒ lost; choose another batch. | Re-running after success finds its own ref: step 3. |
-| 3 | worker | Create (or find) the issue titled `[Stage 2] C…` and assign it. The ref name is the join key; the issue body records ref, base SHA, worker, and for rework the rejected PR/issue. | If the ref exists but no issue references it, **the ref's creator** (or any worker after the stale threshold) creates the issue; never a second ref. |
+| 2 | worker | Create ref `stage2-claims/C…` pointing at a **claim-record commit** (empty commit on current `master` whose message records `owner`, `claim_seq: 1`, base SHA, and for rework the rejected PR). 422 ⇒ lost; choose another batch. | Re-running after success finds its own ref (owner matches): step 3. |
+| 3 | worker | Find or create the issue for the claim. The **ref head commit is the durable ownership record**; the issue is derived history. The issue body begins with the machine marker `stage2-claim: C… seq=N`, and the owner searches that marker before creating (idempotent). | Only the current owner (the one named in the ref head record) may create or adopt the issue; a non-owner never creates one. A crash between steps 2 and 3 is resumed by the owner or taken over via the exclusive transfer below. |
 | 4 | worker | Work on branch `stage2/C…` (or `stage2/C…-rN` for rework). | Branch is derived from the claim, so a restart resumes it. |
 | 5 | worker | Open the Stage 2 result PR (§5). Issue links the PR. | Existing PR for the branch is reused. |
 | 6 | merge | On merge the claim ref is deleted by the merger; the issue is closed with the PR. | Orphan cleanup below. |
 
 **Recovery rules (policy):**
 
-- *Ref created, issue creation failed:* the claim is valid; the next worker that
-  sees an issue-less claim ref younger than the stale threshold leaves it alone,
-  an older one adopts it by creating the issue and recording the adoption.
-- *Interrupted run:* the issue is the history; a replacement assignee comments
-  the transfer, keeps the same ref and branch, and continues.
-- *Stale claim:* a claim is stale when it has no commit, PR activity or comment
-  for a threshold set by the owner (to be fixed at implementation). A stale claim
-  may be transferred by comment, never silently deleted while a PR is open.
+- *Single-owner invariant.* At any instant the owner of a batch is the `owner`
+  in the **head commit of `stage2-claims/C…`**. Only that owner creates the
+  issue, branch or result PR. An observer that merely sees a claim never creates
+  the issue.
+- *Exclusive transfer (the only way to adopt a stale or orphan claim).* A worker
+  W that finds a claim past the stale threshold (below) takes over by creating a
+  new claim-record commit **whose parent is the observed ref head**
+  (`claim_seq` + 1, `owner: W`, `previous_owner`, observed head SHA) and updating
+  the ref **without force** (`PATCH /git/refs/…` with `force: false`). The update
+  succeeds only as a fast-forward from the observed head. Two simultaneous
+  adopters build sibling commits on the same parent; GitHub accepts exactly one
+  and rejects the other with 422 (non-fast-forward). The loser re-reads the ref,
+  sees the new owner and a fresh (non-stale) record, and **defers to another
+  batch**. The winner then finds or creates the issue by the marker
+  `stage2-claim: C… seq=N`, so even a retry after a crash creates no duplicate.
+  This is a compare-and-swap on the ref, not a policy on issue titles.
+- *Alternative for non-automatic cases.* If the stale threshold is not
+  met, or a PR is open, takeover is not automatic: it is an owner-directed
+  transfer, recorded by the same claim-record commit made by or on behalf of the
+  owner of the repository.
+- *Ref created, issue creation failed:* the owner (by the head record) retries
+  step 3. Others wait out the stale threshold, then use the exclusive transfer.
+- *Interrupted run:* the replacement uses the exclusive transfer, keeps the same
+  branch, and continues. The issue gets a comment with the transfer.
+- *Stale claim:* a claim is stale when the ref head, the branch, the PR and the
+  issue all show no activity for a threshold set by the owner (to be fixed at
+  implementation). A stale claim with an open PR is transferred (never silently
+  deleted); the new owner continues that PR.
 - *Orphan ref:* a ref whose batch is already `complete` on `master` (or whose
   issue is closed and no PR is open) may be deleted by any worker.
-- *Rework claim:* for a `rejected` review batch the ref name is
-  `stage2-claims/C…` as well; the existing issue/history is reused and extended
-  rather than duplicated. The claim is still exclusive; if the prior ref still
-  exists it is the claim.
+- *Rework claim:* for a `rejected` review batch the ref is `stage2-claims/C…`
+  again with `claim_seq` continuing the history; the existing issue is reused
+  and extended rather than duplicated. If a prior ref still exists it is the
+  claim and only the exclusive transfer can change its owner.
 - *Cleanup:* refs are removed after merge of the result PR (success) or on
   abandonment recorded in the issue.
 
@@ -306,17 +326,48 @@ claim.
 
 The operator may simply say **"Stage 3 등록해"**. The agent lists committed
 `data/reviews/*/manifest.json` with `status: "ready"` on `master` and processes
-them one at a time, in any order.
+them one at a time, in any order — **but only those without a live Stage 3
+attempt (§6.0)**.
+
+### 6.0 Stage 3 in-flight guard
+
+A merged `ready` manifest stays `ready` while an admission PR is open and also
+while a `rejected` status-only PR is open, so `ready` alone cannot tell a fresh
+batch from one being worked on. Each Stage 3 attempt therefore has a durable,
+crash-safe record:
+
+- **Attempt claim ref** `stage3-claims/C…-aN`, `N` = the review manifest's
+  `attempt` on `master`. Created atomically (422 ⇒ another invocation owns that
+  attempt). Its head commit records `owner`, base SHA and the PR number once known.
+- **Step 0: the admission PR is opened first, as a draft**, immediately after the
+  claim, before preflight. The draft PR number is the attempt's traceable
+  identifier and is what `rejected_pr` will always cite — including when preflight
+  fails before any canonical change is produced (the draft then carries no
+  canonical diff and is closed, not merged). This is why `rejected_pr` is always
+  populatable.
+- **Selection rule.** Stage 3 skips a `ready` batch if `stage3-claims/C…-aN`
+  exists for the current `attempt`, or if any open PR (admission or
+  rejection status-only) references that batch.
+- **Resume rule on restart** (the same invocation or a new one, resolved *before*
+  any fresh admission): (a) open admission PR ⇒ continue it; (b) admission PR
+  closed and a rejection status-only PR open ⇒ continue/await that PR, do not
+  re-admit; (c) admission PR closed and no rejection PR ⇒ create the rejection
+  status-only PR citing it; (d) claim ref but no PR ⇒ the owner re-creates the
+  draft PR (looked up first by the branch name `stage3/C…-aN`), then resumes.
+  Takeover of a stale Stage 3 claim uses the same non-force CAS as §3.1.
+- **Release.** The claim ref is deleted when the admission PR merges
+  (`complete`) or when the rejection status-only PR merges (`rejected`; the next
+  attempt number gets a new ref).
 
 ### 6.1 Successful path
 
-1. Load the complete Stage 2 output and verify every digest binding.
+1. Take the attempt claim and open the draft PR (§6.0), then load the complete Stage 2 output and verify every digest binding.
 2. Against the **latest `master`**: recheck collisions and the full common
    admission and semantic gates; deterministically allocate final canonical ids
    and references; assemble the complete prospective canonical revision; run the
    existing CI, reproducibility and regression requirements.
-3. Open a **single admission PR** with the canonical changes and the review
-   manifest `status: "complete"`.
+3. Push the canonical changes and the review manifest `status: "complete"` to
+   the **single admission PR** (the draft is marked ready for GitHub review).
 4. Apply the PR reviewer gates of `REVIEW.md` (the implementation agent does not
    review or merge). The manifest becomes complete only after merge.
 
@@ -325,7 +376,8 @@ No existing validation is weakened to hit a throughput target.
 ### 6.2 Blocked path — lexical / content / evidence / stale-snapshot problem
 
 1. Stage 3 performs **no substantive lexical correction**. It stops that batch,
-   closes/abandons the unmerged admission PR and disposes of its branch and
+   closes/abandons the unmerged admission PR (including the draft when preflight
+   blocked before any canonical change) and disposes of its branch and
    worktree. This is a rollback of unmerged work, not a revert of `master`.
 2. A small **separate status-only PR** sets the review manifest to
    `status: "rejected"` and records the blocked PR in a **separate field**:
@@ -335,7 +387,7 @@ No existing validation is weakened to hit a throughput target.
    ```
 
    (not a free-text `rejected(#275)`). The status is effective only after that
-   PR merges.
+   PR merges; until then the claim ref keeps the batch out of Stage 3 selection.
 3. Stage 3 moves on to the next ready review; the serial agent is never blocked.
 4. A Stage 2 agent takes rejected work first (§3), reads the cited PR, reviews
    and blockers, claims or reuses the issue, fixes **all** content/QA/provenance
@@ -428,11 +480,12 @@ its `stage2-claims/C…` ref (§3). Systemic rejections do not enter the queue.
 | # | Scenario | Expected outcome |
 | --- | --- | --- |
 | 1 | Two workers pick `C000007` simultaneously. | Both try to create `stage2-claims/C000007`; GitHub returns 422 to one. The loser selects another batch. Only the winner creates the issue and branch. |
-| 2 | Worker creates the ref, crashes before the issue. | The claim holds. The same worker on restart (or another after the stale threshold) creates the issue and records adoption; no second ref, no duplicate batch work. |
+| 2 | Worker creates the ref, crashes before the issue; two other workers later both see the stale issue-less ref. | The ref head record names the crashed owner, so nobody else may create the issue. Both attempt the exclusive transfer (non-force fast-forward from the same observed head); exactly one wins and creates the issue by marker, the other gets 422 and defers. No duplicate issue or work. |
 | 3 | Stage 3 opens an admission PR for `C000003`; reviewer finds a gloss/sense defect. | Lexical block: close the admission PR, dispose of its branch, open status-only PR with `rejected`/`rejected_pr`. Stage 3 proceeds to `C000004` without waiting for that PR. While it is open the batch is still `ready`; it joins the queue only after it merges. |
 | 4 | A second admission (`C000002`) merges while `C000003`'s PR is in flight. | Stage 3 rebases to latest `master`, reallocates ids, re-runs gates. Pure id/order drift is fixed mechanically; a new lemma collision is a lexical block. |
 | 5 | Stage 2 result PR fails CI or digest binding. | Not merged ⇒ manifests unchanged (`created`); the claim persists and the owner fixes the same PR. No state change is needed because nothing was committed to `master`. |
-| 6 | Rejection status PR is open when a Stage 2 agent looks for rework. | The batch is still `ready` on `master`, so it is not rework yet; Stage 2 takes other work. |
+| 6 | Rejection status PR is open when a Stage 2 agent looks for rework or when Stage 3 is restarted. | The batch is still `ready` on `master`, so it is not rework yet; Stage 2 takes other work. Stage 3 skips it (claim ref / open PR) and, if its own attempt was interrupted, resumes per §6.0. |
+| 6a | Stage 3 restarts after opening the admission PR; or preflight fails before any canonical change. | The claim ref and the draft PR identify one attempt; the restart resumes it (no duplicate admission). A preflight failure closes the draft and cites its number in `rejected_pr`. |
 | 7 | The admission allocator emits colliding ids for several batches. | Systemic: halt, fix allocator, add a regression, resume the unchanged batches (§6.3). |
 | 8 | Assignee leaves. | Transfer by comment, keep ref/branch; stale rules in §3.1. |
 
@@ -523,7 +576,13 @@ This is the input to a **later implementation issue**; none of it is done here.
   digest drift in immutable files, status mutation changing a content digest)
   fails.
 - Claim protocol with a fake GitHub: concurrent creation (exactly one winner);
+  **race/fault injection with one orphan ref and two simultaneous adopters:
+  exactly one proceeds, the other defers, one issue, no duplicate work**;
   ref-without-issue recovery; stale and orphan handling; rework reuse.
+- Stage 3 in-flight guard with fault injection: restart after the admission PR
+  is opened; restart while the rejection status-only PR is pending; failure at
+  preflight before any canonical change. Each yields exactly one traceable
+  attempt, no duplicate admission, and a populated `rejected_pr`.
 - Stage 2 equivalence: a fixture batch produced through the factory yields the
   same canonical records and validator results as the current builder.
 - Stage 3: success path; stale-master id reassignment; lexical conflict →
