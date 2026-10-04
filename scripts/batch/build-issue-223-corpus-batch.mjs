@@ -35,6 +35,7 @@ import {
 } from './semantic-self-check.mjs';
 import { checkBatchIntakeHandoff } from './intake-handoff-boundary.mjs';
 import { corpusHolds } from '../intake/adapters/corpus-adapter.mjs';
+import { assertIntakeHandoffPolicy } from '../intake/production-handoff.mjs';
 import {
   authorSemanticReviewBinding,
   compactAuthoredSemanticDecisionRow,
@@ -654,6 +655,8 @@ export async function buildIssue223CorpusBatch({
   const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
   const { ordinal: batchOrdinal, ordinalText: batchNumber, date: batchDate, stem: batchStem } = parseIssue223BatchId(batchId);
   if (reviewOnly) assert.equal(batchOrdinal, 5, 'only B05 is an owner-directed review-only batch');
+  // Closes the prior-workflow bypass: batches at or after the activation batch cannot build without the shared hand-off.
+  assertIntakeHandoffPolicy({ batchOrdinal, hasHandoff: Boolean(intakeHandoffPath), label: batchId });
   assert.equal(path.resolve(ROOT, analysisDirectory), absoluteAnalysis);
   const inventoryPath = path.join(absoluteAnalysis, 'candidate-inventory.json');
   const evidencePath = path.join(absoluteAnalysis, 'candidate-evidence.json');

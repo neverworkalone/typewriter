@@ -26,6 +26,20 @@ export const REVIEWABLE_HOLDS = Object.freeze([
   'analysis_ambiguous', 'analysis_unsupported', 'lemma_mismatch', 'pos_mismatch', 'frame_not_verified',
 ]);
 
+// Rollout switch (issue #251, PR B): from this corpus batch on, the shared intake
+// hand-off is mandatory at the builder and in tracked validation. Earlier batches
+// (B05-B15) are historical and carry none. Lowering this number would re-open the
+// bypass; raising it is the documented rollback to the prior workflow.
+export const INTAKE_HANDOFF_FIRST_BATCH = 16;
+export const requiresIntakeHandoff = (batchOrdinal) => batchOrdinal >= INTAKE_HANDOFF_FIRST_BATCH;
+
+export function assertIntakeHandoffPolicy({ batchOrdinal, hasHandoff, label = `batch ${batchOrdinal}` }) {
+  if (requiresIntakeHandoff(batchOrdinal) && !hasHandoff) {
+    fail(`${label} requires the shared intake hand-off (from batch ${INTAKE_HANDOFF_FIRST_BATCH}); it cannot be admitted without one`, 'INTAKE_HANDOFF_REQUIRED');
+  }
+  return true;
+}
+
 export class ProductionHandoffError extends Error {
   constructor(message, code = 'INTAKE_HANDOFF') {
     super(message);

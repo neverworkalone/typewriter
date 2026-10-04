@@ -146,6 +146,8 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/intake-end-to-end.test.mjs', 'Test corpus intake to SQLite direct-search path'),
       testCheck('tests/intake-end-to-end-synthetic.test.mjs', 'Test corpus-free synthetic intake to SQLite direct-search path'),
       testCheck('tests/intake-production-handoff.test.mjs', 'Test production intake hand-off binding at the batch builder boundary'),
+      testCheck('tests/intake-production-e2e.test.mjs', 'Test production hand-off to canonical, SQLite and direct search (both adapters)'),
+      testCheck('tests/production-entrypoints.test.mjs', 'Test declared canonical-writer entrypoints and the mandatory intake hand-off policy'),
       testCheck('tests/intake-kiwi-service.test.mjs', 'Test shared Kiwi batch service'),
     ],
   },

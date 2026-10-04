@@ -58,6 +58,11 @@ export function admitHandoffs(run, authored, { batchId = 'intake-e2e-fixture', t
     const id = `w9${String(records.length + 1).padStart(4, '0')}`;
     records.push({ id, record_type: 'entry', role: 'start', candidate_id: id, lemma: handoff.lemma, search_forms: [handoff.lemma], senses: [{ id: `${id}-s1`, pos: handoff.pos, gloss }] });
   }
+  return admitRecords(records, { batchId, tamperAudit, omitAudit });
+}
+
+// Shared lexical admission over already-assembled records (used by the production-handoff path too).
+export function admitRecords(records, { batchId = 'intake-e2e-fixture', tamperAudit = false, omitAudit = false } = {}) {
   const infos = records.map((record) => ({ record, source: 'intake-handoff' }));
   const auditInfos = omitAudit ? [] : tamperAudit ? [{ record: { ...records[0], lemma: '다른말', search_forms: ['다른말'] }, source: 'intake-handoff' }] : infos;
   const semanticAudit = makeSemanticAudit(auditInfos);

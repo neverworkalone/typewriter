@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
-import { verifyTrackedHandoff } from '../intake/production-handoff.mjs';
+import { assertIntakeHandoffPolicy, requiresIntakeHandoff, verifyTrackedHandoff } from '../intake/production-handoff.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import {
   assertIndependentSemanticReviewer,
@@ -304,6 +304,16 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     .filter((name) => /^issue-223-m9-e-corpus-batch-\d+-candidate-review\.json$/u.test(name))
     .sort((left, right) => Number(/batch-(\d+)/u.exec(left)?.[1]) - Number(/batch-(\d+)/u.exec(right)?.[1]));
   assert.ok(names.length > 0, 'Issue #223 needs at least one corpus candidate review');
+  // A canonical import for a batch that must carry the intake hand-off cannot exist without a
+  // reviewed batch (no direct insertion of an unreviewed canonical file).
+  for (const name of await readdir(path.join(ROOT, 'data/canonical'))) {
+    const match = /^issue-223-m9-e-corpus-batch-(\d+)(?:-\d{8})?\.jsonl$/u.exec(name);
+    if (match && requiresIntakeHandoff(Number(match[1]))) {
+      const stem = name.replace(/\.jsonl$/u, '');
+      assert.ok(names.includes(`${stem}-candidate-review.json`),
+        `${name} is a canonical import without a reviewed ${stem}-candidate-review.json`);
+    }
+  }
   const batches = [];
   const seenInventoryIds = new Set();
   const seenCandidateIds = new Set();
@@ -528,6 +538,11 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     const selfCheckBatch = semanticInputBytes !== null && isSelfCheckInput(JSON.parse(semanticInputBytes.toString('utf8')));
     const intakeHandoffPath = path.join(BATCH_DIRECTORY, `${stem}-intake-handoff.json`);
     const trackedInput = semanticInputBytes ? JSON.parse(semanticInputBytes.toString('utf8')) : null;
+    assertIntakeHandoffPolicy({
+      batchOrdinal: parseIssue223BatchId(candidateReview.batch_id).ordinal,
+      hasHandoff: Boolean(trackedInput?.intake_handoff) && await fileExists(intakeHandoffPath),
+      label: candidateLabel,
+    });
     if (trackedInput?.intake_handoff !== undefined || await fileExists(intakeHandoffPath)) {
       assert.ok(trackedInput?.intake_handoff && await fileExists(intakeHandoffPath),
         `${candidateLabel} intake hand-off and its review-input integration block must exist together`);

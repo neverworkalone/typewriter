@@ -204,3 +204,33 @@ is a #251 non-goal.
   consecutive smoke runs passed and the hand-off for B15 is byte-identical to the
   earlier deterministic build. The mismatch error now names the first differing
   path.
+
+## Enforcement (issue #251, PR B)
+
+- **Mandatory route.** `INTAKE_HANDOFF_FIRST_BATCH = 16`
+  (`scripts/intake/production-handoff.mjs`): from corpus batch 16 on,
+  `build-issue-223-corpus-batch.mjs` refuses to run without `--intake-handoff`
+  (`INTAKE_HANDOFF_REQUIRED`, before any file is read or written), and
+  `validate-issue-223.mjs` requires the tracked hand-off plus its review-input
+  integration block for every such batch. A canonical import
+  `issue-223-…-batch-NN.jsonl` (NN ≥ 16) without a reviewed candidate-review is
+  rejected, so a canonical file cannot be inserted directly. B05–B15 stay
+  historical and carry no hand-off; their evidence is untouched. Rollback: raise
+  the constant (it is the single switch) — it is *not* silently bypassable per batch.
+- **No undeclared writers.** `scripts/batch/production-entrypoints.mjs` declares the
+  only scripts that may write canonical records: the active corpus batch builder and
+  the fixed, completed M5 pipelines (historical; constant output paths, no batch id).
+  `tests/production-entrypoints.test.mjs` scans `scripts/` and fails on any other writer.
+- **Regressions at the shared boundary** (`tests/intake-production-handoff.test.mjs`,
+  `tests/intake-production-e2e.test.mjs`): wrong/missing analyzer versions and
+  digests, changed input/lemma/POS/gloss, removed/reordered evidence, dropped adapter
+  or inventory hold, relabelled analysis hold, rewritten outcome (fresh run),
+  unresolved competing analyses, held-candidate admission, missing/extra candidate
+  entries, plus invalid frames Kiwi normalizes (`듣어서`, `가볍었다`) staying
+  rejected while genuine regular/irregular/honorific frames are not auto-rejected.
+  Both adapters run producer → hand-off → production gate → existing
+  `validateLexicalAddition` → canonical JSONL → SQLite → direct search (`푸른` →
+  `푸르다`); holds and tampering fail before any record exists.
+- **CI scope.** All of the above is deterministic Node and runs in `ci:fast` /
+  `ci:normal`. Real kiwipiepy, the corpus index and the local analysis directory stay
+  out of CI: use the real-route smoke above (pinned kiwipiepy 0.24.0, `TYPEWRITER_PYTHON`).
