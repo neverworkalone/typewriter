@@ -39,6 +39,10 @@ const produce = (candidates, providers) => produceCandidateBatch({
   providers, canonicalEntries: [], canonicalDigest: HEX, batchId: 'C000001', taskId: 'T000001',
 });
 const rowOf = (result, lemma) => result.rows.find((row) => row.input === lemma);
+const unresolvedOf = (result) => result.manifest.unresolved_observations.map((entry) => [entry.surface, entry.holds]);
+const FILLER = cand('걸음', 'noun', '걸음', 'dz');
+const fillerTable = { 걸음: [[item('걸음', 'noun')]] };
+const holdsOf = (result, lemma) => [...new Set(rowOf(result, lemma).observations.flatMap((observation) => observation.holds))].sort();
 
 test('Khaiii service regressions (synthetic Khaiii API; not proof the official binary ran)', () => {
   const result = spawnSync(process.env.TYPEWRITER_PYTHON || 'python3', ['scripts/factory/test_khaiii_service.py'], { encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
@@ -74,50 +78,52 @@ test('kiwi alone never constructs or runs Khaiii (lazy registry)', async () => {
   assert.ok(original);
   const kiwiOnly = kiwi({ 짠한: [[item('짠하다', 'adjective')]] });
   const result = await produce([cand('짠하다', 'adjective', '짠한')], [kiwiOnly]);
-  assert.deepEqual(rowOf(result, '짠하다').holds, []);
+  assert.deepEqual(holdsOf(result, '짠하다'), []);
   assert.equal(started, 0);
   assert.equal(result.manifest.analyzer_providers, undefined, 'the default manifest is unchanged');
 });
 
 test('fallback call count: a Kiwi-resolved candidate never reaches Khaiii; only unresolved eligible surfaces do', async () => {
-  const kiwiProvider = kiwi({ 짠한: [[item('짠하다', 'adjective')]], 걸어: [[item('걸다', 'verb')]] });
+  const kiwiProvider = kiwi({ ...fillerTable, 짠한: [[item('짠하다', 'adjective')]], 걸어: [[item('걸다', 'verb')]] });
   const khaiiiProvider = khaiii({ 낯선: [[item('낯설다', 'adjective')]], 걸어: [[item('걷다', 'verb')]] });
-  const result = await produce([cand('짠하다', 'adjective', '짠한'), cand('낯설다', 'adjective', '낯선', 'd2'), cand('걷다', 'verb', '걸어', 'd3')], [kiwiProvider, khaiiiProvider]);
-  assert.deepEqual(kiwiProvider.calls, [['걸어', '낯선', '짠한']]);
+  const result = await produce([FILLER, cand('짠하다', 'adjective', '짠한'), cand('낯설다', 'adjective', '낯선', 'd2'), cand('걷다', 'verb', '걸어', 'd3')], [kiwiProvider, khaiiiProvider]);
+  assert.deepEqual(kiwiProvider.calls, [['걸어', '걸음', '낯선', '짠한']]);
   assert.deepEqual(khaiiiProvider.calls, [['낯선']], 'resolved 짠한 and the final lemma_mismatch 걸어 are not sent to Khaiii');
-  assert.deepEqual(rowOf(result, '짠하다').holds, []);
-  assert.deepEqual(rowOf(result, '걸다').holds, ['lemma_mismatch']);
-  // Best-only: Khaiii's clean single path is explicit "needs verification", never a silent clear.
-  assert.deepEqual(rowOf(result, '낯설다').holds, ['analysis_ambiguous', 'analysis_unsupported']);
+  assert.deepEqual(holdsOf(result, '짠하다'), []);
+  assert.deepEqual(holdsOf(result, '걸다'), ['lemma_mismatch']);
+  // Best-only: Khaiii's clean single path never makes 낯선 a headword; it stays an explicit unresolved observation.
+  assert.equal(rowOf(result, '낯설다'), undefined);
+  assert.deepEqual(unresolvedOf(result), [['낯선', ['analysis_unsupported']]]);
   const log = result.attemptLog.filter((entry) => entry.provider_id === 'khaiii');
   assert.deepEqual(log.map((entry) => [entry.outcome, entry.state, entry.fallback]), [['success', 'needs_verification', true]]);
 });
 
 test('Khaiii never clears analysis_ambiguous or any hold on one best segmentation', async () => {
-  const kiwiRival = kiwi({ 바라: [[item('바라다', 'verb')], [item('바람', 'noun')]] });
-  const result = await produce([cand('바라다', 'verb', '바라')], [kiwiRival, khaiii({ 바라: [[item('바라다', 'verb')]] })]);
-  assert.deepEqual(rowOf(result, '바라다').holds, ['analysis_ambiguous']);
+  const kiwiRival = kiwi({ ...fillerTable, 바라: [[item('바라다', 'verb')], [item('바람', 'noun')]] });
+  const result = await produce([FILLER, cand('바라다', 'verb', '바라')], [kiwiRival, khaiii({ 바라: [[item('바라다', 'verb')]] })]);
+  assert.deepEqual(holdsOf(result, '바라다'), ['analysis_ambiguous'], 'the rival reading stays held');
   // Khaiii is consulted (eligible hold) but cannot settle it; its agreement is not N-best proof.
   assert.equal(result.attemptLog.filter((entry) => entry.provider_id === 'khaiii')[0].state, 'needs_verification');
 });
 
 test('Khaiii that explains only part of a surface keeps the shared lemma_mismatch hold', async () => {
-  const result = await produce([cand('사하다', 'verb', '사사하다')],
-    [kiwi({}), khaiii({ 사사하다: [[item('사', 'noun'), item('사하다', 'verb', '사하')]] })]);
-  assert.ok(rowOf(result, '사하다').holds.includes('lemma_mismatch'));
+  const result = await produce([FILLER, cand('사하다', 'verb', '사사하다')],
+    [kiwi(fillerTable), khaiii({ 사사하다: [[item('사', 'noun'), item('사하다', 'verb', '사하')]] })]);
+  assert.equal(rowOf(result, '사하다'), undefined, 'a partly explained surface is not a headword');
+  assert.ok(unresolvedOf(result).flatMap(([, holds]) => holds).length > 0);
 });
 
 test('Khaiii failure is isolated to a closed run and metadata change alters the analyzer digest', async () => {
   const down = { ...khaiii({}), analyze: async () => { throw new Error('docker unavailable'); } };
-  await assert.rejects(() => produce([cand('낯설다', 'adjective', '낯선')], [kiwi({}), down]), /khaiii failed closed: docker unavailable/);
-  const run = (providers) => produce([cand('낯설다', 'adjective', '낯선')], providers);
-  const base = await run([kiwi({}), khaiii({ 낯선: [[item('낯설다', 'adjective')]] })]);
-  const again = await run([kiwi({}), khaiii({ 낯선: [[item('낯설다', 'adjective')]] })]);
+  await assert.rejects(() => produce([FILLER, cand('낯설다', 'adjective', '낯선')], [kiwi(fillerTable), down]), /khaiii failed closed: docker unavailable/);
+  const run = (providers) => produce([FILLER, cand('낯설다', 'adjective', '낯선')], providers);
+  const base = await run([kiwi(fillerTable), khaiii({ 낯선: [[item('낯설다', 'adjective')]] })]);
+  const again = await run([kiwi(fillerTable), khaiii({ 낯선: [[item('낯설다', 'adjective')]] })]);
   assert.deepEqual(base.manifest, again.manifest);
   assert.deepEqual(base.manifest.analyzer_providers.map((entry) => entry.provider_id), ['kiwi', 'khaiii']);
   const changed = { ...khaiii({ 낯선: [[item('낯설다', 'adjective')]] }) };
   changed.identity = { ...changed.identity, model: `resource:${HEX}` };
-  assert.notEqual((await run([kiwi({}), changed])).manifest.analyzer_digest, base.manifest.analyzer_digest);
+  assert.notEqual((await run([kiwi(fillerTable), changed])).manifest.analyzer_digest, base.manifest.analyzer_digest);
 });
 
 test('Khaiii results pass the shared normalization (malformed output is an error, not a certain result)', () => {
@@ -149,8 +155,9 @@ test('REAL pinned Khaiii v0.4 container smoke', { skip: realSkip }, async () => 
   for (const id of ['서울에', 'ㅁㅁㅁ', '두 단어', '   ']) assert.equal(byId[id].status, 'unsupported', id);
   assert.ok(results.every((result) => result.analyses.flat().every((entry) => !('derived_from' in entry) && !('derived_from_index' in entry))));
   // End to end through the shared policy: Khaiii alone never clears; invalid/missing input stays held.
-  const result = await produce([cand('먹다', 'verb', '먹었다')], [kiwi({}), createKhaiiiProvider({ analyze })]);
-  assert.deepEqual(rowOf(result, '먹다').holds, ['analysis_ambiguous', 'analysis_unsupported']);
+  const result = await produce([FILLER, cand('먹다', 'verb', '먹었다')], [kiwi(fillerTable), createKhaiiiProvider({ analyze })]);
+  assert.equal(rowOf(result, '먹다'), undefined);
+  assert.deepEqual(unresolvedOf(result), [['먹었다', ['analysis_unsupported']]]);
 });
 
 test('a missing container runtime is an explicit failure, not silent output', async () => {
