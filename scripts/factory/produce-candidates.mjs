@@ -6,11 +6,13 @@ import { fileURLToPath } from 'node:url';
 
 import { createKiwiAnalyzer } from '../intake/kiwi-client.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
+import { parseJsonl } from './contract.mjs';
 import { validateFactoryRepository, loadCanonicalEntries } from './validate.mjs';
 import {
   DEFAULT_MAX_CANDIDATES,
   Stage1Error,
   allocateBatchId,
+  usageKeyOfRow,
   canonicalSnapshotDigest,
   produceCandidateBatch,
 } from './stage1.mjs';
@@ -70,6 +72,30 @@ async function knownBatchIds(root, baseRef) {
   return [...ids];
 }
 
+// Usages already produced by any existing batch, locally and on the merged base, so a rerun
+// only yields unprocessed usages.
+async function producedUsageKeys(root, baseRef) {
+  const keys = new Set();
+  const add = (text, label) => {
+    const errors = [];
+    for (const row of parseJsonl(text, label, errors)) keys.add(usageKeyOfRow(row));
+    if (errors.length) throw new Stage1Error(errors);
+  };
+  try {
+    for (const entry of await readdir(path.join(root, 'data/candidates'), { withFileTypes: true })) {
+      if (entry.isDirectory()) add(await readFile(path.join(root, 'data/candidates', entry.name, 'candidates.jsonl'), 'utf8'), entry.name);
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (baseRef !== 'none') {
+    for (const entry of git(['ls-tree', '--name-only', baseRef, 'data/candidates/'], root).split('\n').filter(Boolean)) {
+      add(git(['show', `${baseRef}:${entry}/candidates.jsonl`], root), path.basename(entry));
+    }
+  }
+  return keys;
+}
+
 // `analyzer` and `permission` are injectable so tests need neither Kiwi nor the corpus.
 export async function runStage1(argv, {
   root = REPOSITORY_DIRECTORY, analyzer, permission = assertCorpusPermission, log = console.log,
@@ -97,6 +123,7 @@ export async function runStage1(argv, {
     batchId,
     taskId: options.taskId,
     maxCandidates: options.maxCandidates,
+    producedUsageKeys: await producedUsageKeys(root, options.baseRef),
   });
   const target = path.join(root, 'data/candidates', batchId);
   if (!options.dryRun) {

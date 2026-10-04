@@ -166,11 +166,13 @@ export async function buildUsages({ observations, analyzer }) {
 }
 
 // One factory row per usage; ids follow the sorted order so replay is byte-identical.
-export function buildCandidateRows({ usages, batchId, maxCandidates = DEFAULT_MAX_CANDIDATES }) {
+export function buildCandidateRows({ usages, batchId, maxCandidates = DEFAULT_MAX_CANDIDATES, producedUsageKeys = new Set() }) {
   if (!Number.isInteger(maxCandidates) || maxCandidates < 1 || maxCandidates > HARD_MAX_CANDIDATES) {
     throw new Stage1Error([`max candidates must be an integer from 1 to ${HARD_MAX_CANDIDATES}`]);
   }
-  const ordered = [...usages].sort((a, b) => compare(a.input, b.input) || compare(a.pos, b.pos) || compare(a.ref.kind, b.ref.kind) || compare(a.ref.ref, b.ref.ref));
+  const fresh = usages.filter((usage) => !producedUsageKeys.has(keyOf(usage)));
+  if (fresh.length === 0) throw new Stage1Error(['no unprocessed usages: every usage in the evidence is already in an existing candidate batch (source exhausted)']);
+  const ordered = [...fresh].sort((a, b) => compare(a.input, b.input) || compare(a.pos, b.pos) || compare(a.ref.kind, b.ref.kind) || compare(a.ref.ref, b.ref.ref));
   // Whole lemma groups only, so a lemma's usages never split across batches.
   const groups = new Map();
   for (const usage of ordered) groups.set(usage.input, [...(groups.get(usage.input) ?? []), usage]);
@@ -194,8 +196,12 @@ export function buildCandidateRows({ usages, batchId, maxCandidates = DEFAULT_MA
       holds: [...usage.holds].filter((hold) => HOLD_REASONS.includes(hold)).sort(compare),
     };
   });
-  return { rows, deferredLemmas, repeatsMerged: selected.reduce((sum, usage) => sum + usage.repeats - 1, 0) };
+  return { rows, deferredLemmas, skippedProduced: usages.length - fresh.length, repeatsMerged: selected.reduce((sum, usage) => sum + usage.repeats - 1, 0) };
 }
+
+// Identity of a produced usage across batches: lemma + POS + its primary evidence reference
+// (always the first evidence entry). Used to skip already-produced usages and to reject repeats.
+export const usageKeyOfRow = (row) => `${row.input}\u0000${row.pos}\u0000${row.evidence?.[0]?.kind}\u0000${row.evidence?.[0]?.ref}`;
 
 export const serializeCandidates = (rows) => `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`;
 
@@ -233,13 +239,13 @@ export const routeCounts = (rows, canonicalEntries) => {
 
 // Pure producer: evidence + analyzer + canonical → manifest and candidates.jsonl text.
 export async function produceCandidateBatch({
-  evidence, analyzer, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES,
+  evidence, analyzer, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES, producedUsageKeys = new Set(),
 }) {
   if (!isBatchId(batchId)) throw new Stage1Error(['batchId must match C000000']);
   if (!/^T\d{6}$/u.test(String(taskId))) throw new Stage1Error(['taskId must match T000000']);
   const { observations, source } = observationsFromCorpusEvidence(evidence);
   const { usages, metadata } = await buildUsages({ observations, analyzer });
-  const { rows, deferredLemmas, repeatsMerged } = buildCandidateRows({ usages, batchId, maxCandidates });
+  const { rows, deferredLemmas, repeatsMerged, skippedProduced } = buildCandidateRows({ usages, batchId, maxCandidates, producedUsageKeys });
   const candidatesText = serializeCandidates(rows);
   const manifest = {
     contract: CANDIDATE_MANIFEST_CONTRACT,
@@ -263,6 +269,6 @@ export async function produceCandidateBatch({
     manifest,
     candidatesText,
     rows,
-    summary: { candidates: rows.length, deferredLemmas, repeatsMerged, routes: routeCounts(rows, canonicalEntries) },
+    summary: { candidates: rows.length, deferredLemmas, skippedProduced, repeatsMerged, routes: routeCounts(rows, canonicalEntries) },
   };
 }

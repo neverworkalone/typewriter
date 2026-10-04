@@ -406,7 +406,7 @@ test('registered validator accepts a new Stage 1 batch and a complete Stage 2 tr
   const f = await gitFixture();
   const second = candidateBatch([record(1)], {});
   second.manifest.batch_id = 'C000002';
-  const row = { ...record(1), candidate_id: 'C000002-0001' };
+  const row = { ...record(1), candidate_id: 'C000002-0001', evidence: [{ kind: 'corpus-paragraph', ref: 'doc-other' }] };
   const text = jsonl([row]);
   await f.write('data/candidates/C000002/manifest.json', JSON.stringify({ ...second.manifest, candidates_sha256: sha256Hex(text) }));
   await f.write('data/candidates/C000002/candidates.jsonl', text);

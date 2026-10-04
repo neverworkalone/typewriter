@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { expectedAnalyzerDigest, validateCandidateBatch } from '../scripts/factory/contract.mjs';
+import { expectedAnalyzerDigest, sha256Hex, validateCandidateBatch } from '../scripts/factory/contract.mjs';
 import { buildCanonicalIndex, classifyAgainstCanonical, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { Stage1Error, allocateBatchId, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
@@ -181,8 +181,24 @@ test('CLI writes an immutable, valid batch under data/candidates and nothing els
   assert.deepEqual(await readdir(path.join(root, 'data')).then((names) => names.sort()), ['candidates', 'canonical', 'reference']);
   assert.equal(await readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'utf8'), first.candidatesText);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
-  assert.equal((await runStage1(args, deps)).manifest.batch_id, 'C000002');
+  // Same evidence again: every usage is already produced, so nothing is regenerated.
+  await assert.rejects(() => runStage1(args, deps), /no unprocessed usages/);
+  assert.deepEqual((await readdir(path.join(root, 'data/candidates'))).sort(), ['C000001']);
+  // New evidence adds one usage: only that unprocessed usage becomes the next serial batch.
+  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'),
+    JSON.stringify(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한'), hit('d1', 'p2', '짠해서')])])));
+  const next = await runStage1(args, deps);
+  assert.equal(next.manifest.batch_id, 'C000002');
+  assert.deepEqual(next.rows.map((row) => [row.candidate_id, row.evidence[0].ref]), [['C000002-0001', 'd1#p2']]);
+  assert.equal(next.summary.skippedProduced, 1);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
+  // A hand-copied batch repeating a produced usage is rejected globally by the shared validator.
+  const copy = path.join(root, 'data/candidates/C000003');
+  await mkdir(copy);
+  const text = first.candidatesText.replaceAll('C000001-', 'C000003-');
+  await writeFile(path.join(copy, 'candidates.jsonl'), text);
+  await writeFile(path.join(copy, 'manifest.json'), JSON.stringify({ ...first.manifest, batch_id: 'C000003', candidates_sha256: sha256Hex(text) }));
+  assert.ok((await validateFactoryRepository({ root })).some((error) => error.includes('repeats the usage of C000001-0001')));
 });
 
 test('CLI fails closed without permission, outside data/reference, on bad arguments and on a missing evidence file', async () => {

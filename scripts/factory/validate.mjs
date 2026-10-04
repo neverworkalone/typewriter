@@ -13,6 +13,7 @@ import {
 } from './contract.mjs';
 import { validateDecisionHandoff } from './handoff.mjs';
 import { buildCanonicalIndex } from './identity-adapter.mjs';
+import { usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -73,10 +74,14 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     candidates.set(batch, { manifest, candidatesText });
   }
   const seenIds = new Set();
+  const seenUsages = new Map();
   for (const [batch, { candidatesText }] of candidates) {
     for (const row of parseJsonl(candidatesText ?? '', batch, [])) {
       if (seenIds.has(row.candidate_id)) errors.push(`${batch}: candidate_id ${row.candidate_id} is not unique across batches`);
       seenIds.add(row.candidate_id);
+      const usage = usageKeyOfRow(row);
+      if (seenUsages.has(usage)) errors.push(`${batch}: ${row.candidate_id} repeats the usage of ${seenUsages.get(usage)} (same lemma, POS and evidence reference)`);
+      else seenUsages.set(usage, row.candidate_id);
     }
   }
   const reviews = new Map();
