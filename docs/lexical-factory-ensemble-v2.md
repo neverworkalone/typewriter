@@ -162,5 +162,6 @@ are not used to calibrate any approval probability.
 - A **real native three-Provider smoke** is required before calling the ensemble default operationally ready;
   the smoke result is recorded in the PR and is distinct from the mocked tests. It shows the providers were
   genuinely invoked and the batch validates; it does not claim analyzer agreement is correct.
-- Completing #285 does not authorize a new batch, the 10K rollout or the #261 Pilot, and new v2 production
-  remains gated on #284 and #261 acceptance.
+- Completing #285 does not itself start a batch. After #285 is reviewed and merged, #261 may produce two small
+  real v2 batches as a controlled pilot; ordinary 500-headword scale-up, Phase 2 and 10K production remain gated
+  on an evidenced #261 Pilot PASS (#284 is already merged via #286).
