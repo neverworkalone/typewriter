@@ -23,6 +23,8 @@ import {
   MAX_UNRESOLVED_OBSERVATIONS,
   UNRESOLVED_HOLDS,
   formIdFor,
+  isReferenceToken,
+  isSurfaceToken,
   groupIdFor,
   observationIdFor,
   observationKey,
@@ -113,6 +115,11 @@ export function observationsFromCorpusEvidence(evidence) {
       const surface = normalizeText(hit.matched_surface_form) || forms[0] || input;
       observations.push({ ...base, surface, group: hit.usage_group, ref: { kind: 'corpus-paragraph', ref: `${hit.document_id}#${hit.paragraph_id}` } });
     }
+  });
+  // Tracked output may carry only a single bounded word form and an opaque source reference.
+  observations.forEach((observation, index) => {
+    if (!isSurfaceToken(observation.surface)) errors.push(`observation ${index + 1}: observed surface is not a single bounded word form (phrase or sentence text must never reach Git)`);
+    if (!isReferenceToken(observation.ref.ref) || !isReferenceToken(observation.ref.kind)) errors.push(`observation ${index + 1}: evidence reference must be an opaque token`);
   });
   if (errors.length) throw new Stage1Error(errors);
   return {

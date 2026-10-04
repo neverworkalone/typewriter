@@ -32,6 +32,13 @@ export const UNRESOLVED_HOLDS = Object.freeze(['analysis_missing', 'analysis_sta
 
 const KOREAN_WORD = /^[가-힣]+$/u;
 const TOKEN = /^[a-z0-9_-]{1,32}$/u;
+// Tracked JSON may hold only a single observed word form and an opaque source reference, never a
+// phrase, sentence or paragraph of corpus text: letters/digits/hyphen/middle dot, no whitespace or
+// control characters, bounded length. The producer applies the same pattern (fail closed).
+export const SURFACE_TOKEN = /^[\p{L}\p{N}\-·]{1,24}$/u;
+export const REFERENCE_TOKEN = /^[^\s\p{C}]{1,200}$/u;
+export const isSurfaceToken = (value) => typeof value === 'string' && SURFACE_TOKEN.test(value);
+export const isReferenceToken = (value) => typeof value === 'string' && REFERENCE_TOKEN.test(value);
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const suffix = (letter, ordinal) => `${letter}${String(ordinal).padStart(2, '0')}`;
 
@@ -70,7 +77,7 @@ export function validateLemmaCandidateRecord(record, { batchId, ordinal }) {
   forms.forEach((form, index) => {
     if (!isPlainObject(form) || Object.keys(form).some((key) => key !== 'form_id' && key !== 'surface')) { errors.push(`${at}: forms[${index}] must be {form_id, surface}`); return; }
     if (form.form_id !== formIdFor(id, index + 1)) errors.push(`${at}: forms[${index}].form_id must be ${formIdFor(id, index + 1)}`);
-    if (typeof form.surface !== 'string' || !form.surface || /\s/u.test(form.surface)) errors.push(`${at}: forms[${index}].surface must be a non-empty single token`);
+    if (!isSurfaceToken(form.surface)) errors.push(`${at}: forms[${index}].surface must be a single bounded word form (no whitespace or sentence text)`);
     formIds.add(form.form_id);
   });
   if (new Set(forms.map((form) => form?.surface)).size !== forms.length) errors.push(`${at}: observed forms must be unique`);
@@ -106,7 +113,7 @@ export function validateLemmaCandidateRecord(record, { batchId, ordinal }) {
     usedForms.add(observation.form_id);
     usedGroups.add(observation.group_id);
     const evidence = observation.evidence;
-    if (!isPlainObject(evidence) || typeof evidence.kind !== 'string' || typeof evidence.ref !== 'string' || !evidence.kind || !evidence.ref
+    if (!isPlainObject(evidence) || !isReferenceToken(evidence.kind) || !isReferenceToken(evidence.ref)
       || Object.keys(evidence).some((key) => key !== 'kind' && key !== 'ref')) {
       errors.push(`${here}: evidence must be a text-free reference (kind, ref only)`);
     } else {
@@ -147,8 +154,9 @@ function validateUnresolved(list) {
   list.forEach((entry, index) => {
     const at = `candidate manifest: unresolved_observations[${index}]`;
     if (!isPlainObject(entry) || Object.keys(entry).some((key) => !['surface', 'evidence', 'holds'].includes(key))) { errors.push(`${at} must be {surface, evidence, holds}`); return; }
-    if (typeof entry.surface !== 'string' || !entry.surface) errors.push(`${at}: surface is required`);
-    if (!isPlainObject(entry.evidence) || !entry.evidence.kind || !entry.evidence.ref || Object.keys(entry.evidence).some((key) => key !== 'kind' && key !== 'ref')) errors.push(`${at}: text-free evidence reference required`);
+    if (!isSurfaceToken(entry.surface)) errors.push(`${at}: surface must be a single bounded word form (no whitespace or sentence text)`);
+    if (!isPlainObject(entry.evidence) || !isReferenceToken(entry.evidence.kind) || !isReferenceToken(entry.evidence.ref)
+      || Object.keys(entry.evidence).some((key) => key !== 'kind' && key !== 'ref')) errors.push(`${at}: text-free evidence reference required`);
     if (!Array.isArray(entry.holds) || entry.holds.length === 0 || entry.holds.some((hold) => !UNRESOLVED_HOLDS.includes(hold))) errors.push(`${at}: holds must name an unresolved-analysis reason`);
   });
   return errors;

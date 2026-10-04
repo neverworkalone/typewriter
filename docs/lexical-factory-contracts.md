@@ -46,6 +46,7 @@ policy, the before/after data shape and the operator note: **"500" counts unique
   (`observation_id`, `form_id`, `group_id`, `pos`, text-free `evidence`, `analysis`
   `{status: ok, input_digest}` bound to the analyzed surface, per-observation `holds`),
   `observation_total` and `observation_digest`. Sub-identities are `C…-NNNN.fNN|gNN|oNN`.
+- **Raw-text boundary.** Tracked v2 JSON may carry only single bounded word forms (`forms[].surface`, `unresolved_observations[].surface`: letters/digits/`-`/`·`, 1–24 characters, no whitespace or control characters) and opaque source references (no whitespace/control characters, ≤200). The producer fails closed on anything else and the shared validator rejects it, so a phrase, sentence or paragraph can never reach Git through the manifest or rows.
 - **Holds** belong to the observation that earned them; a sibling form or the lemma is never
   held by them. Observations whose analysis yields no reliable lemma/POS (`analysis_missing|stale|error|
   unsupported`) are listed in the manifest `unresolved_observations` and are not headwords.

@@ -420,3 +420,46 @@ test('real safe-evidence output: two sense opportunities in one group get indepe
   const artifacts = await artifactsFor(rows, [decision(split)]);
   assert.deepEqual(validateReviewArtifacts({ ...artifacts, candidates: rows.slice(0, 1) }).filter((e) => !e.includes('semantic-decisions')), []);
 });
+
+test('tracked v2 artifacts can never carry corpus phrases: surfaces and references are bounded single tokens', async () => {
+  const unresolvedEvidence = evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는')]), cand('낯설다', 'adjective', [hit('d2', 'p1', '낯선')])]);
+  const { manifest, rows } = await batchOf(unresolvedEvidence);
+  assert.deepEqual(manifest.unresolved_observations.map((entry) => entry.surface), ['낯선'], 'a valid unresolved word form passes');
+  assert.deepEqual(validateCandidateBatch(restamp(manifest, rows)), []);
+
+  const sentence = '코퍼스 원문 전체가 담긴 문장입니다';
+  const forged = (mutate) => {
+    const man = clone(manifest);
+    const copy = clone(rows);
+    mutate(man, copy);
+    return restamp(man, copy);
+  };
+  const cases = [
+    [(m) => { m.unresolved_observations[0].surface = sentence; }, 'unresolved_observations[0]: surface must be a single bounded word form'],
+    [(m) => { m.unresolved_observations[0].surface = '낯선\n다음줄'; }, 'unresolved_observations[0]: surface must be a single bounded word form'],
+    [(m) => { m.unresolved_observations[0].surface = '가'.repeat(25); }, 'unresolved_observations[0]: surface must be a single bounded word form'],
+    [(m) => { m.unresolved_observations[0].surface = '낯\u0007선'; }, 'unresolved_observations[0]: surface must be a single bounded word form'],
+    [(m) => { m.unresolved_observations[0].evidence.ref = `${sentence} 전체`; }, 'text-free evidence reference required'],
+    [(m, r) => { r[0].forms[0].surface = sentence; }, 'forms[0].surface must be a single bounded word form'],
+    [(m, r) => { r[0].forms[0].surface = '가'.repeat(25); }, 'forms[0].surface must be a single bounded word form'],
+    [(m, r) => { r[0].observations[0].evidence.ref = `d1 ${sentence}`; }, 'evidence must be a text-free reference'],
+    [(m, r) => { r[0].observations[0].evidence.ref = 'r'.repeat(201); }, 'evidence must be a text-free reference'],
+  ];
+  for (const [mutate, fragment] of cases) {
+    const errors = validateCandidateBatch(forged(mutate));
+    assert.ok(errors.some((error) => error.includes(fragment)), `${fragment}: ${errors.join(' | ')}`);
+  }
+
+  // The registered repository validator refuses the forged manifest on disk as well.
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-lemma-text-'));
+  const directory = path.join(root, 'data/candidates/C000002');
+  await mkdir(directory, { recursive: true });
+  const bad = forged((m) => { m.unresolved_observations[0].surface = sentence; });
+  await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(bad.manifest));
+  await writeFile(path.join(directory, 'candidates.jsonl'), bad.candidatesText);
+  assert.ok((await validateFactoryRepository({ root, canonicalEntries: [] })).some((e) => e.includes('surface must be a single bounded word form')));
+
+  // The producer fails closed on phrase-like evidence instead of writing it.
+  await assert.rejects(() => batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는 길에 만난 사람')])])), /single bounded word form/);
+  await assert.rejects(() => batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1 문장 전체', 'p1', '가는')])])), /opaque token/);
+});
