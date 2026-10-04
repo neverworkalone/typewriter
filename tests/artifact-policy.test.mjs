@@ -241,6 +241,64 @@ test('artifact policy classifies projections before they can become tracked data
   );
 });
 
+test('artifact policy tracks only the two immutable candidate artifacts per batch directory', async () => {
+  const policy = await readArtifactPolicy();
+  const options = {
+    deterministicProjectionPatterns: policy.deterministic_projection_patterns,
+    relocatableProjectionPatterns: policy.relocatable_projection_patterns,
+    durableProjectionPatterns: policy.durable_projection_patterns,
+    durableTrackedPatterns: policy.durable_tracked_patterns,
+    protectedRoots: policy.protected_roots,
+  };
+  // Generic: any `C…` batch directory (v1 historical or v2 lemma-centered), never a named batch.
+  const legitimate = classifyTrackedArtifacts(
+    [
+      'data/candidates/C000002/manifest.json',
+      'data/candidates/C000002/candidates.jsonl',
+      'data/candidates/C000417/manifest.json',
+      'data/candidates/C000417/candidates.jsonl',
+    ],
+    options,
+  );
+  assert.deepEqual(legitimate.generated, []);
+  assert.deepEqual(legitimate.unclassified, []);
+
+  const stray = [
+    'data/candidates/C000002/raw-corpus.txt',
+    'data/candidates/C000002/paragraphs.jsonl',
+    'data/candidates/C000002/evidence.json',
+    'data/candidates/C000002/report.json',
+    'data/candidates/C000002/candidates.jsonl.bak',
+    'data/candidates/C000002/nested/candidates.jsonl',
+    'data/candidates/C000002/nested/manifest.json',
+    'data/candidates/manifest.json',
+    'data/candidates/stray.json',
+    'data/candidates/D000002/manifest.json',
+    'data/candidates/C000002/semantic-audit.json',
+  ];
+  const strays = classifyTrackedArtifacts(stray, options);
+  assert.deepEqual([...strays.unclassified, ...strays.generated].sort(), [...stray].sort());
+
+  // A generated projection cannot be reclassified as durable evidence by placing it in a batch.
+  const moved = classifyTrackedArtifacts(
+    ['data/candidates/C000002/manifest.json'],
+    { ...options, artifactRoles: new Map([['data/candidates/C000002/manifest.json', 'semantic-review']]) },
+  );
+  assert.deepEqual(moved.generated, ['data/candidates/C000002/manifest.json']);
+  const renamedAudit = classifyTrackedArtifacts(['data/candidates/C000002/canonical-semantic-audit.json'], options);
+  assert.deepEqual(renamedAudit.unclassified.length + renamedAudit.generated.length, 1);
+
+  await assert.doesNotReject(
+    validateArtifactPolicy({
+      tracked: ['data/candidates/C000002/manifest.json', 'data/candidates/C000002/candidates.jsonl'],
+    }),
+  );
+  await assert.rejects(
+    validateArtifactPolicy({ tracked: ['data/candidates/C000002/raw-corpus.txt'] }),
+    (error) => error instanceof ArtifactPolicyError && /not classified as durable evidence/u.test(error.message),
+  );
+});
+
 test('Issue #223 retrospective semantic QA uses a registered closed durable artifact contract', async () => {
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-223-qa-policy-'));
   const relativePath = 'data/batches/issue-223-b01-b04-semantic-qa.json';
