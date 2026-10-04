@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { HOLD_REASONS, POS_VALUES, digest } from '../intake/candidate-contract.mjs';
 import { PINNED_RUN, analyzerDigest } from '../intake/pipeline.mjs';
+import { RESOLUTION_POLICY, createKiwiProvider, providerDescriptor } from './analyzer-providers.mjs';
 
 // Lexical production factory contracts (issue #263, design: docs/lexical-production-factory.md).
 // Factory ids (C…) never reuse canonical `w…` ids or the canonical `candidate_id` field.
@@ -21,7 +22,27 @@ export const PROPOSAL_CONTRACT = 'derivation-root-v1';
 // for its `analyzer_version`, bound to the proposal contract.
 export function expectedAnalyzerDigest(manifest) {
   const version = String(manifest.analyzer_version ?? '').replace(/^kiwipiepy==/u, '');
-  return digest([analyzerDigest({ ...PINNED_RUN, kiwipiepy_version: version, kiwipiepy_model_version: version }), manifest.proposal_contract]);
+  const base = digest([analyzerDigest({ ...PINNED_RUN, kiwipiepy_version: version, kiwipiepy_model_version: version }), manifest.proposal_contract]);
+  // A non-default provider order binds the ordered provider identities and the resolution policy,
+  // so a different provider/model/policy can never share a digest with Kiwi-only output.
+  return manifest.analyzer_providers === undefined ? base
+    : digest([base, 'providers', JSON.stringify(manifest.analyzer_providers), manifest.resolution_policy]);
+}
+
+// Optional `analyzer_providers`/`resolution_policy` (absent for the default [kiwi] order).
+function validateProviderFields(manifest) {
+  if (manifest.analyzer_providers === undefined && manifest.resolution_policy === undefined) return [];
+  const errors = [];
+  const list = manifest.analyzer_providers;
+  if (!Array.isArray(list) || list.length < 2) return ['candidate manifest: analyzer_providers must list at least two ordered providers (omit it for the default kiwi order)'];
+  const ids = list.map((entry) => entry?.provider_id);
+  if (list.some((entry) => !isPlainObject(entry) || Object.keys(entry).sort().join() !== 'identity_digest,provider_id'
+    || typeof entry.provider_id !== 'string' || !isSha256(entry.identity_digest))) errors.push('candidate manifest: analyzer_providers entries need provider_id and sha256 identity_digest only');
+  if (new Set(ids).size !== ids.length) errors.push('candidate manifest: analyzer_providers must not repeat a provider');
+  const kiwi = providerDescriptor(createKiwiProvider());
+  if (!list.some((entry) => entry?.provider_id === 'kiwi' && entry.identity_digest === kiwi.identity_digest)) errors.push('candidate manifest: analyzer_providers must include the pinned kiwi provider');
+  if (manifest.resolution_policy !== RESOLUTION_POLICY) errors.push(`candidate manifest: resolution_policy must be ${RESOLUTION_POLICY}`);
+  return errors;
 }
 
 // Operational fields: excluded from every content digest (design §7.3).
@@ -117,6 +138,7 @@ export function validateCandidateBatch({ manifest, candidatesText }) {
   if (!isSha256(manifest.analyzer_digest) || manifest.analyzer_digest !== expectedAnalyzerDigest(manifest)) {
     errors.push('candidate manifest: analyzer_digest must bind the pinned analyzer and proposal_contract');
   }
+  errors.push(...validateProviderFields(manifest));
   if (manifest.analyzer_version !== undefined && !/^kiwipiepy==\d+\.\d+\.\d+$/u.test(String(manifest.analyzer_version))) errors.push('candidate manifest: analyzer_version must be a pinned kiwipiepy==X.Y.Z');
   for (const key of ['task_id', 'source_adapter', 'source_snapshot', 'extractor_version']) {
     if (typeof manifest[key] !== 'string' || manifest[key].length === 0) errors.push(`candidate manifest: ${key} must be a non-empty string`);
