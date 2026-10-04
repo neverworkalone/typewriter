@@ -1,0 +1,7 @@
+# Hash-pinned MeCab-ko runtime for the optional `mecab` Stage 1 provider (issue #281).
+# Installed only by scripts/factory/setup-mecab.mjs into ~/.cache/typewriter/mecab/venv (never into Git).
+# The wheel is the CPython 3.11 macOS arm64 build; the dictionary is the sdist (a pure data package).
+mecab-ko==1.0.2 \
+    --hash=sha256:fbe31456cceac890cecbc100ff981260c1fa1bd971687f32e45f8620c3a0be09
+mecab-ko-dic==1.0.0 \
+    --hash=sha256:3ba22858736e02e8a0e92f2a7f099528c733ae47701b29d12c75e982a85d1f11
