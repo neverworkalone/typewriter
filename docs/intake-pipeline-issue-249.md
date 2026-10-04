@@ -204,3 +204,66 @@ is a #251 non-goal.
   consecutive smoke runs passed and the hand-off for B15 is byte-identical to the
   earlier deterministic build. The mismatch error now names the first differing
   path.
+
+## Enforcement (issue #251, PR B)
+
+- **Mandatory route.** `INTAKE_HANDOFF_FIRST_BATCH = 16`
+  (`scripts/intake/production-handoff.mjs`): from corpus batch 16 on,
+  `build-issue-223-corpus-batch.mjs` refuses to run without `--intake-handoff`
+  (`INTAKE_HANDOFF_REQUIRED`, before any file is read or written), and
+  `validate-issue-223.mjs` requires the tracked hand-off plus its review-input
+  integration block for every such batch. A canonical import
+  `issue-223-…-batch-NN.jsonl` (NN ≥ 16) without a reviewed candidate-review is
+  rejected, so a canonical file cannot be inserted directly. B05–B15 stay
+  historical and carry no hand-off; their evidence is untouched. Rollback: raise
+  the constant (it is the single switch) — it is *not* silently bypassable per batch.
+- **Data-level gate (authoritative).** `data/validation/canonical-non-batch-baseline.json`
+  freezes the id set of every canonical record outside the validated corpus batch
+  imports (7,521 records through B15). `validate-issue-223.mjs` fails
+  (`CANONICAL_RECORD_OUTSIDE_REVIEWED_BATCH`) when the non-batch set differs, so a
+  record inserted by any script, file name or path variable that does not belong to a
+  reviewed batch (with its hand-off from B16) is rejected. Changing the baseline is an
+  explicit reviewed edit; new records never need it, because they enter as batches.
+- **No undeclared writers (tripwire).** `scripts/batch/production-entrypoints.mjs` declares the
+  only scripts that may write canonical records: the active corpus batch builder and
+  the fixed, completed M5 pipelines (historical; constant output paths, no batch id).
+  `tests/production-entrypoints.test.mjs` scans `scripts/` (direct, import-path and path-variable writes; temp copies ignored) and fails on any other writer. This static scan is best-effort; the data-level gate above is what actually enforces the invariant.
+- **Regressions at the shared boundary** (`tests/intake-production-handoff.test.mjs`,
+  `tests/intake-production-e2e.test.mjs`): wrong/missing analyzer versions and
+  digests, changed input/lemma/POS/gloss, removed/reordered evidence, dropped adapter
+  or inventory hold, relabelled analysis hold, rewritten outcome (fresh run),
+  unresolved competing analyses, held-candidate admission, missing/extra candidate
+  entries, plus invalid frames Kiwi normalizes (`듣어서`, `가볍었다`) staying
+  rejected while genuine regular/irregular/honorific frames are not auto-rejected.
+  Both adapters run producer → hand-off → production gate → existing
+  `validateLexicalAddition` → canonical JSONL → SQLite → direct search (`푸른` →
+  `푸르다`); holds and tampering fail before any record exists.
+- **CI scope.** All of the above is deterministic Node and runs in `ci:fast` /
+  `ci:normal`. Real kiwipiepy, the corpus index and the local analysis directory stay
+  out of CI: use the real-route smoke above (pinned kiwipiepy 0.24.0, `TYPEWRITER_PYTHON`).
+
+### B16 boundary tests and the single shared canonical context (#253)
+
+`ci:normal` keeps one complete-revision context, so no registered test starts a
+second complete-canonical validator. The boundary logic is therefore extracted from
+`validateCorpusBatches` into shared functions that both the validator and the tests
+call: `classifyCandidateReview` (review-only recognised and restricted to B05 before
+any early continue), `assertCanonicalImportsReviewed` and `verifyBatchIntakeArtifacts`
+(policy, hand-off/integration-block pairing, offline hand-off verification), plus the
+baseline gate. `tests/intake-batch-boundary.test.mjs` (normal CI, ~2 s) exercises them
+on small inputs and, in a temp tree, runs the real hand-off CLI (`build`, `bind`) and
+the real batch builder for a small B16 (two synthetic candidates `소년기`/`청년기` whose
+corpus counts are synthetic test data, plus B15's real held `호시탐탐`;
+`tests/fixtures/validator-b16`), then applies the shared checks to the produced
+artifacts (missing/tampered hand-off, stripped source holds) and the baseline gate on a
+small synthetic baseline plus the produced B16 import (no complete-canonical re-read in
+the test; the real builder's own single read in the temp tree is part of the run). Only the Kiwi model is replaced, by a deterministic stand-in `kiwipiepy`
+on `PYTHONPATH`; version pin, stability retries, binding and fresh-analysis
+comparison run unchanged.
+
+The complete end-to-end run of the real `validate-issue-223.mjs` (normal B16 passes;
+hand-off removed/tampered, B16+ review-only, an unrelated-name canonical record and
+an unreviewed B16 import fail) is the manual integration
+`npm run intake:validator:integration` (~50 s, six full-validator runs). It is not
+part of CI because each run re-reads all canonical data; the per-PR normal run already
+executes the real validator once via `batch:issue-223:check`.

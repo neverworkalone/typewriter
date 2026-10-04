@@ -146,6 +146,8 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/intake-end-to-end.test.mjs', 'Test corpus intake to SQLite direct-search path'),
       testCheck('tests/intake-end-to-end-synthetic.test.mjs', 'Test corpus-free synthetic intake to SQLite direct-search path'),
       testCheck('tests/intake-production-handoff.test.mjs', 'Test production intake hand-off binding at the batch builder boundary'),
+      testCheck('tests/intake-production-e2e.test.mjs', 'Test production hand-off to canonical, SQLite and direct search (both adapters)'),
+      testCheck('tests/production-entrypoints.test.mjs', 'Test declared canonical-writer entrypoints and the mandatory intake hand-off policy'),
       testCheck('tests/intake-kiwi-service.test.mjs', 'Test shared Kiwi batch service'),
     ],
   },
@@ -208,6 +210,7 @@ export const CI_CATEGORIES = Object.freeze({
         'Test Issue #223 committed-artifact cross-file regressions',
         ['--test', 'scripts/batch/issue-223-tracked-artifacts.test.mjs'],
       ),
+      testCheck('tests/intake-batch-boundary.test.mjs', 'Test B16+ review-only, canonical-import review, intake artifact verification and a real builder run (no complete-canonical validator rerun)'),
       npmCheck('Validate Issue #223 committed M9-E checkpoint artifacts', 'batch:issue-223:check'),
       commandCheck(
         'Test Issue #223 source-bound paragraph references',

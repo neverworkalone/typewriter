@@ -8,7 +8,7 @@ import { sha256Json } from '../validate/semantic-audit.mjs';
 import { makeSemanticDecision } from './build-issue-223-corpus-batch.mjs';
 import { outcomeFromRaw, reviewFromRaw, runRecordFromRaw } from './reviewer-raw-outputs.mjs';
 import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
-import { candidateRequiresBoundedContext, semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
+import { assertReviewOnlyAllowed, candidateRequiresBoundedContext, semanticDecisionConfig, validateReviewOnlyCanonicalImportBoundary, validateSemanticReviewInputBinding } from './validate-issue-223.mjs';
 
 function reviewOnlyBatch() {
   return {
@@ -319,4 +319,10 @@ test('Issue #223 legacy unbound exception is pinned to the exact historical B01â
     assert.throws(() => validateSemanticReviewInputBinding({ ...base, batchId, legacyArtifactBytes: { ...bytes, semantic_decisions: Buffer.concat([bytes.semantic_decisions, Buffer.from(' ')]) } }), /no longer matches the pinned historical artifact/u);
     assert.throws(() => validateSemanticReviewInputBinding({ ...base, batchId, legacyArtifactBytes: { candidate_review: bytes.candidate_review } }), /needs every pinned artifact/u);
   }
+});
+
+test('review-only status is an owner-directed B05 exception and cannot bypass the intake hand-off later', () => {
+  assert.equal(assertReviewOnlyAllowed(5, true), true);
+  assert.equal(assertReviewOnlyAllowed(16, false), true);
+  for (const ordinal of [4, 6, 15, 16, 40]) assert.throws(() => assertReviewOnlyAllowed(ordinal, true), /only B05/u);
 });
