@@ -21,6 +21,9 @@ import { validateCandidateTransition, validateLinkedTransition, validateReviewTr
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { validateReviewArtifacts } from '../scripts/factory/artifacts.mjs';
 import { toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
+import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
+import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
+import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 import { buildProductionHandoff } from '../scripts/intake/production-handoff.mjs';
 
 const HEX = (seed) => sha256Hex(seed);
@@ -212,17 +215,34 @@ const analyzer = async (requests) => ({
     status: 'ok', id, input_digest: analysisInputDigest(text), analyses: [[{ lemma: text, pos: 'adjective', form: text }]],
   })),
 });
-const semantic = (ids, over = {}) => ({
+// A full source-bound semantic row for an admitted decision (same row contract as historical batches).
+function semanticRow(decision, over = {}) {
+  const id = decision.source_candidate_id;
+  const record = reviewedCandidateRecord(decision);
+  const row = {
+    source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: decision.disposition,
+    decision_rationale: `${id}: the lemma, POS and one-sense gloss form one coherent writer-facing unit.`, gloss_judgment: 'fit',
+    sense_reviews: record.senses.map((sense) => ({
+      sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+      boundary_rationale: `${id} ${sense.id}: bounded single meaning.`, semantic_rationale: `${id} ${sense.id}: denotes ${sense.gloss}`,
+    })),
+    ...over,
+  };
+  row.review_binding = authorSemanticReviewBinding(row, record);
+  return row;
+}
+const semantic = (decisionRows, over = {}) => ({
   schema_version: '1', contract_version: 'lexical-semantic-decision-source-v4', kind: 'separately-authored-semantic-decision-source',
-  batch_id: 'C000001', decisions: ids.map((source_candidate_id) => ({ source_candidate_id })), ...over,
+  batch_id: 'C000001', authoring_mode: 'agent-authored-decision', provenance: { human_reviewed: false },
+  review: { status: 'complete', reviewer: 'claude-agent', reviewed_candidate_count: 2 },
+  decisions: decisionRows.filter((row) => ['included', 'corrected'].includes(row.disposition)).map((row) => semanticRow(row)), ...over,
 });
 async function reviewFixture(decisionRows) {
   const rows = [record(1), record(2)];
   const handoff = await buildProductionHandoff({ batchId: 'C000001', rawCandidates: rows.map(toRawCandidate), analyzer, adapterId: 'corpus-adapter' });
-  const admitted = decisionRows.filter((row) => ['included', 'corrected'].includes(row.disposition)).map((row) => row.source_candidate_id);
   return {
     batchId: 'C000001', adapterId: 'corpus-adapter', candidates: rows, decisions: decisionRows,
-    semanticDecisionsText: JSON.stringify(semantic(admitted)), handoffText: JSON.stringify(handoff),
+    semanticDecisionsText: JSON.stringify(semantic(decisionRows)), handoffText: JSON.stringify(handoff),
   };
 }
 const included = (n) => ({ source_candidate_id: `C000001-000${n}`, disposition: 'included', target: { kind: 'new_entry' }, reviewed_record: { lemma: '짠하다', senses: [{ pos: 'adjective', gloss: 'g' }] } });
@@ -235,10 +255,25 @@ test('review artifacts are validated by content and bound to candidates, not onl
   has({ ...good, semanticDecisionsText: 's' }, 'not valid JSON');
   has({ ...good, handoffText: 'h' }, 'not valid JSON');
   has({ ...good, handoffText: '{}' }, 'unsupported contract');
-  has({ ...good, semanticDecisionsText: JSON.stringify(semantic(['C000001-0001'], { contract_version: 'v0' })) }, 'unsupported semantic decision source');
-  has({ ...good, semanticDecisionsText: JSON.stringify(semantic(['C000001-0001'], { batch_id: 'C000009' })) }, 'different batch');
-  has({ ...good, semanticDecisionsText: JSON.stringify(semantic([])) }, 'exactly one semantic decision');
-  has({ ...good, semanticDecisionsText: JSON.stringify(semantic(['C000001-0001', 'C000001-0002'])) }, 'exactly one semantic decision');
+  const rows = [included(1), held(2)];
+  const withSemantic = (value) => ({ ...good, semanticDecisionsText: JSON.stringify(value) });
+  has(withSemantic(semantic(rows, { contract_version: 'v0' })), 'unsupported semantic decision source');
+  has(withSemantic(semantic(rows, { batch_id: 'C000009' })), 'different batch');
+  has(withSemantic(semantic([])), 'exactly one semantic decision');
+  has(withSemantic(semantic([included(1), included(2)])), 'exactly one semantic decision');
+  has(withSemantic(semantic(rows, { provenance: { human_reviewed: true } })), 'honest agent authoring');
+  has(withSemantic(semantic(rows, { review: { status: 'draft' } })), 'review must be complete');
+  // An ID-only row, or one missing judgment fields, must fail the source-bound row contract.
+  has(withSemantic(semantic(rows, { decisions: [{ source_candidate_id: 'C000001-0001' }] })), 'does not bind the reviewed record');
+  const row = semanticRow(included(1));
+  const tampered = (patch) => withSemantic(semantic(rows, { decisions: [{ ...row, ...patch }] }));
+  has(tampered({ gloss_judgment: 'reject' }), 'gloss_judgment');
+  has(tampered({ decision_rationale: '' }), 'decision_rationale');
+  has(tampered({ sense_reviews: [] }), 'sense_reviews');
+  has(tampered({ decision: 'corrected' }), 'contradicts the reviewed disposition');
+  has(tampered({ review_binding: { ...row.review_binding, decision_evidence_sha256: '0'.repeat(64) } }), 'review binding');
+  has(tampered({ sense_reviews: [{ ...row.sense_reviews[0], boundary_rationale: '' }] }), 'boundary_rationale');
+  has(tampered({ candidate_record_sha256: '0'.repeat(64) }), 'does not bind the reviewed record');
   const other = JSON.parse(good.handoffText);
   other.batch_id = 'C000009';
   has({ ...good, handoffText: JSON.stringify(other) }, 'different batch');
@@ -313,7 +348,7 @@ test('registered validator accepts a new Stage 1 batch and a complete Stage 2 tr
   const rows = [record(1), record(2)];
   const handoff = await buildProductionHandoff({ batchId: 'C000001', rawCandidates: rows.map(toRawCandidate), analyzer, adapterId: 'corpus-adapter' });
   const decisions = jsonl([held(1), held(2)]);
-  const semanticText = `${JSON.stringify(semantic([]))}\n`;
+  const semanticText = `${JSON.stringify(semantic([held(1), held(2)]))}\n`;
   const handoffText = `${JSON.stringify(handoff)}\n`;
   await f.write('data/candidates/C000001/manifest.json', JSON.stringify({ ...f.batch.manifest, status: 'complete' }));
   await f.write('data/reviews/C000001/decisions.jsonl', decisions);

@@ -1,15 +1,54 @@
 import { REVIEWABLE_HOLDS, verifyProductionHandoff } from '../intake/production-handoff.mjs';
-import { SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION } from '../validate/semantic-decision-row.mjs';
 import { toRawCandidate } from './identity-adapter.mjs';
+import { sha256Json } from '../validate/semantic-audit.mjs';
+import { validateAuthoredDecisionDisposition, validateDistinctSenseSemanticRationales } from '../batch/authored-semantic-decision-source.mjs';
+import { SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION, validateAuthoredSemanticReviewBinding } from '../validate/semantic-decision-row.mjs';
 
 // Content validation of a review's semantic-decision source and intake hand-off, bound to
 // the candidate rows and decision rows (not just their digests). It reuses the existing
-// hand-off verifier and contract identifiers. The full historical
-// `validateAuthoredSemanticDecisionSource` is bound to per-issue configuration (pass ids,
-// identity sources) that the Stage 2 producer (#265) must supply; this layer fixes the
-// structure and cross-binding every factory review must satisfy.
+// hand-off verifier and the exported per-row semantic validators (review binding, disposition
+// basis, distinct sense rationales). The historical whole-source
+// `validateAuthoredSemanticDecisionSource` additionally needs per-issue selection/rank/axis
+// configuration that has no factory meaning, so the row-level source-bound contract is applied
+// to every admitted candidate here instead.
 
 const ADMITTED = new Set(['included', 'corrected']);
+
+const isText = (value) => typeof value === 'string' && value.trim().length > 0;
+
+// The synthetic candidate record a semantic row reviews, derived from the reviewed decision.
+export const reviewedCandidateRecord = (decision) => ({
+  id: decision.source_candidate_id,
+  record_type: 'entry',
+  lemma: decision.reviewed_record.lemma,
+  senses: decision.reviewed_record.senses.map((sense, index) => ({ id: `${decision.source_candidate_id}-s${index + 1}`, pos: sense.pos, gloss: sense.gloss })),
+});
+
+function validateSemanticRow(row, decision, errors) {
+  const id = decision.source_candidate_id;
+  const at = `semantic decision ${id}`;
+  const record = reviewedCandidateRecord(decision);
+  const fail = (message) => errors.push(`${at}: ${message}`);
+  if (row.decision !== decision.disposition) fail(`decision ${row.decision} contradicts the reviewed disposition ${decision.disposition}`);
+  if (row.candidate_record_id !== id) fail('candidate_record_id must be the source_candidate_id');
+  if (row.candidate_record_sha256 !== sha256Json(record)) { fail('candidate_record_sha256 does not bind the reviewed record'); return; }
+  if (row.gloss_judgment !== 'fit') fail('gloss_judgment must be fit for an admitted candidate');
+  if (!isText(row.decision_rationale) || !row.decision_rationale.includes(id)) fail('decision_rationale must cite the candidate id');
+  if (!Array.isArray(row.sense_reviews) || row.sense_reviews.length !== record.senses.length) { fail('sense_reviews must cover every reviewed sense'); return; }
+  row.sense_reviews.forEach((review, index) => {
+    const sense = record.senses[index];
+    if (review?.sense_id !== sense.id) fail(`sense_reviews[${index}] is not bound to ${sense.id}`);
+    if (!isText(review?.semantic_rationale) || !isText(review?.boundary_rationale)) fail(`sense_reviews[${index}] needs semantic_rationale and boundary_rationale`);
+    if (review?.boundary_action !== 'retain' || review?.boundary_classification !== 'atomic') fail(`sense_reviews[${index}] must retain an atomic writer-facing unit`);
+  });
+  try {
+    validateAuthoredDecisionDisposition(row, at);
+    validateDistinctSenseSemanticRationales(record, row.sense_reviews);
+    validateAuthoredSemanticReviewBinding(row, record);
+  } catch (error) {
+    fail(error.message);
+  }
+}
 
 function parse(text, label, errors) {
   try {
@@ -39,7 +78,19 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
       const expected = admitted.map((row) => row.source_candidate_id).sort();
       if (JSON.stringify([...ids].sort()) !== JSON.stringify(expected)) {
         errors.push('semantic-decisions.json: must hold exactly one semantic decision per included/corrected candidate');
+      } else {
+        const rowById = new Map(semantic.decisions.map((row) => [row.source_candidate_id, row]));
+        for (const decision of admitted) {
+          if (typeof decision.reviewed_record?.lemma !== 'string' || !Array.isArray(decision.reviewed_record.senses)) continue;
+          validateSemanticRow(rowById.get(decision.source_candidate_id), decision, errors);
+        }
       }
+    }
+    if (semantic.provenance?.human_reviewed !== false || semantic.authoring_mode !== 'agent-authored-decision') {
+      errors.push('semantic-decisions.json: provenance must be honest agent authoring (human_reviewed false)');
+    }
+    if (semantic.review?.status !== 'complete' || !isText(semantic.review?.reviewer) || semantic.review?.reviewed_candidate_count !== candidates.length) {
+      errors.push('semantic-decisions.json: review must be complete, name its reviewer and cover every candidate');
     }
   }
 
