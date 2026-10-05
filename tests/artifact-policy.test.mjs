@@ -995,6 +995,12 @@ test('artifact policy accepts a factory decision row addressed by source_candida
     delete legacy.decisions[0].source_candidate_id;
     await writeFile(filePath, `${JSON.stringify(legacy)}\n`, 'utf8');
     await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }), /missing compact field inventory_id/u);
+    // A v3 selection row at the factory path cannot opt out either: the exemption needs the v4 contract.
+    const v3 = structuredClone(source);
+    v3.contract_version = 'lexical-semantic-decision-source-v3';
+    await writeFile(filePath, `${JSON.stringify(v3)}\n`, 'utf8');
+    await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }), /missing compact field inventory_id/u);
+    await writeFile(filePath, `${JSON.stringify(source)}\n`, 'utf8');
     // The exemption is bound to the factory review path: an M5/M9 batch decision source cannot opt out
     // of inventory identity and rank by adding source_candidate_id.
     const batchPath = 'data/batches/m9-synthetic-semantic-decisions.json';
