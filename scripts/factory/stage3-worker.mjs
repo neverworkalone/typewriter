@@ -518,10 +518,10 @@ export async function recoverStage3Attempt({ github, git, agent = 'codex', batch
     status: 'await-rejection', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: rejection.head.ref,
     prNumber: rejection.number, admissionPr: admission?.number, prState: 'rejection-status',
   };
-  if (rejection && !rejection.merged && rejection.state === 'closed') {
+  if (rejection && !(rejection.merged || rejection.merged_at) && rejection.state === 'closed') {
     throw new Stage3WorkerError(`${claimRef} rejection status PR #${rejection.number} is closed without merging; preserve the claim for owner-directed recovery`, { batchId, attempt, claimCreated: true, prNumber: rejection.number });
   }
-  if (admission && !admission.merged && admission.state === 'closed' && !rejection) {
+  if (admission && !(admission.merged || admission.merged_at) && admission.state === 'closed' && !rejection) {
     if (!/^Stage 3 disposition: lexical-rejection \([A-Z0-9_]+\)\.$/mu.test(admission.body ?? '')) {
       throw new Stage3WorkerError(`${claimRef} admission PR #${admission.number} is closed without a recorded lexical-rejection disposition; preserve it for owner review`, {
         batchId, attempt, claimCreated: true, prNumber: admission.number,
@@ -532,8 +532,8 @@ export async function recoverStage3Attempt({ github, git, agent = 'codex', batch
       rejectionBranchName: rejectionBranchName(agent, batchId, attempt), admissionPr: admission.number,
     };
   }
-  if (admission?.merged) return { status: 'admission-merged', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: admission.head.ref, prNumber: admission.number, prState: 'admission' };
-  if (rejection?.merged) return {
+  if (admission?.merged || admission?.merged_at) return { status: 'admission-merged', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: admission.head.ref, prNumber: admission.number, prState: 'admission' };
+  if (rejection?.merged || rejection?.merged_at) return {
     status: 'rejection-merged', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: rejection.head.ref,
     prNumber: rejection.number, admissionPr: admission?.number, prState: 'rejection-status',
   };
