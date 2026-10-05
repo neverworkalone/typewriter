@@ -430,9 +430,10 @@ function validateCompactDecisionSource(value, filePath, semantics) {
       ? [...semantics.batch_decision_required_fields, 'review_binding']
       : semantics.batch_decision_required_fields;
     // A Stage 2 factory row is addressed by its Stage 1 candidate id; inventory identity and selection
-    // rank are M5/M9 selection concepts it does not have. The exemption needs the factory review path
-    // as well as the field, so an M5/M9 batch row cannot opt out by adding source_candidate_id.
-    const factoryRow = FACTORY_REVIEW_DECISION_PATH.test(filePath.split(path.sep).join('/'))
+    // rank are M5/M9 selection concepts it does not have. The exemption needs the source-bound v4 contract,
+    // the factory review path and the field, so an M5/M9 batch row cannot opt out by adding source_candidate_id.
+    const factoryRow = value.contract_version === SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION
+      && FACTORY_REVIEW_DECISION_PATH.test(filePath.split(path.sep).join('/'))
       && Object.hasOwn(row, 'source_candidate_id');
     for (const field of requiredFields) {
       if (factoryRow && FACTORY_EXEMPT_FIELDS.has(field)) continue;
