@@ -152,3 +152,41 @@ decision record are part of the v2 manifest (`ensemble`, `context_fallback`) and
 `--policy v1` compatibility and A/B baseline and validates unchanged. The CLI's `--providers` option under the
 ensemble must be exactly `kiwi,khaiii,mecab`. See [`lexical-factory-ensemble-v2.md`](lexical-factory-ensemble-v2.md)
 for categories, reason codes, the queue gate, the fallback procedure and honest measurement.
+
+## Stage 3 complete-canonical bookkeeping (Pilot C, #291)
+
+Admission plans surface-form dispositions and collision reviews from the prospective
+complete revision before writing canonical files. Only dispositions dictated by the
+existing inflection rules and the retain-all collision policy are mechanical; a
+required lexical judgment returns to Stage 2 without a partial canonical write.
+
+Append-sense admission events preserve the prior canonical record and compact semantic
+review, bound to their existing hashes. The original M5 promotion ledger stays immutable:
+inventory validation follows the validated admission chain from its original authored
+batch binding to the current record and rejects rewriting the original payload.
+Factory-created records enter the target inventory through the digest-bound creation
+event (`admitted_from: C…-aN`); they carry no invented M5 selection-axis reason codes.
+Identity, POS, sense/gloss, source and canonical admission gates remain mandatory.
+
+Stage 3 commits the prospective admission locally before complete CI, preserving
+the strict clean-tree/revision requirement of the SQLite builder. It pushes and
+marks the Draft ready only after the gates pass. Recovery preserves an owned
+local checkpoint ahead of the remote Draft; dirty or divergent worktrees fail
+closed without resetting or discarding work.
+
+Frozen pre-factory payload checks reconstruct the original record set from the
+validated append/create history, enforcing preservation of existing identities
+and sense prefixes. Historical admission contexts scope already-reviewed surface
+collision candidates to the retained senses without disabling collision or
+semantic gates. The existing #219/#220 producers refresh their live checkpoint
+fields as part of Stage 3 output; authored historical decisions stay immutable.
+
+## Stage 3 durable admission history
+
+The canonical decision source permits `factory_admissions` as an optional,
+closed array of hash-bound event metadata, candidate mappings and record changes.
+An append-sense change retains its original record and compact semantic review
+for historical snapshot reconstruction. Their field contracts remain closed,
+including nested sense/relation and compact review evidence objects. Full
+semantic validation independently verifies the retained hashes and live record
+binding; this artifact-policy allowance does not replace admission validation.

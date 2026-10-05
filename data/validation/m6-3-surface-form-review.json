@@ -5960,6 +5960,36 @@
       "record_id": "w12501",
       "sense_id": "w12501-s1",
       "reason": "Plain past for this open-final vowel class remains outside the current projection whitelist; retain its other applicable forms."
+    },
+    {
+      "class_id": "m6-3-open-vowel-past-excluded",
+      "record_id": "w12542",
+      "sense_id": "w12542-s1",
+      "reason": "Plain past for this open-final vowel class remains outside the current projection whitelist; retain its other applicable forms."
+    },
+    {
+      "class_id": "m6-3-open-vowel-past-excluded",
+      "record_id": "w12544",
+      "sense_id": "w12544-s1",
+      "reason": "Plain past for this open-final vowel class remains outside the current projection whitelist; retain its other applicable forms."
+    },
+    {
+      "class_id": "m6-3-open-vowel-past-excluded",
+      "record_id": "w12544",
+      "sense_id": "w12544-s2",
+      "reason": "Plain past for this open-final vowel class remains outside the current projection whitelist; retain its other applicable forms."
+    },
+    {
+      "class_id": "m6-3-open-vowel-past-excluded",
+      "record_id": "w12546",
+      "sense_id": "w12546-s1",
+      "reason": "Plain past for this open-final vowel class remains outside the current projection whitelist; retain its other applicable forms."
+    },
+    {
+      "class_id": "m6-3-open-vowel-past-excluded",
+      "record_id": "w12546",
+      "sense_id": "w12546-s2",
+      "reason": "Plain past for this open-final vowel class remains outside the current projection whitelist; retain its other applicable forms."
     }
   ],
   "reviewed_collisions": {
@@ -6487,6 +6517,54 @@
             "record_id": "w853",
             "sense_id": "w853-s2",
             "rule_id": "predicate-plain-past-hada"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "같았다",
+        "candidates": [
+          {
+            "record_id": "w12541",
+            "sense_id": "w12541-s1",
+            "rule_id": "predicate-plain-past-coda-bearing"
+          },
+          {
+            "record_id": "w12541",
+            "sense_id": "w12541-s2",
+            "rule_id": "predicate-plain-past-coda-bearing"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "같은",
+        "candidates": [
+          {
+            "record_id": "w12541",
+            "sense_id": "w12541-s1",
+            "rule_id": "adjective-present-adnominal-eun"
+          },
+          {
+            "record_id": "w12541",
+            "sense_id": "w12541-s2",
+            "rule_id": "adjective-present-adnominal-eun"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "같을",
+        "candidates": [
+          {
+            "record_id": "w12541",
+            "sense_id": "w12541-s1",
+            "rule_id": "predicate-future-adnominal-eul"
+          },
+          {
+            "record_id": "w12541",
+            "sense_id": "w12541-s2",
+            "rule_id": "predicate-future-adnominal-eul"
           }
         ],
         "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
@@ -7695,6 +7773,54 @@
         "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
       },
       {
+        "form": "느끼는",
+        "candidates": [
+          {
+            "record_id": "w12544",
+            "sense_id": "w12544-s1",
+            "rule_id": "verb-present-adnominal-neun"
+          },
+          {
+            "record_id": "w12544",
+            "sense_id": "w12544-s2",
+            "rule_id": "verb-present-adnominal-neun"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "느낀",
+        "candidates": [
+          {
+            "record_id": "w12544",
+            "sense_id": "w12544-s1",
+            "rule_id": "verb-past-adnominal-eun"
+          },
+          {
+            "record_id": "w12544",
+            "sense_id": "w12544-s2",
+            "rule_id": "verb-past-adnominal-eun"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "느낄",
+        "candidates": [
+          {
+            "record_id": "w12544",
+            "sense_id": "w12544-s1",
+            "rule_id": "predicate-future-adnominal-eul"
+          },
+          {
+            "record_id": "w12544",
+            "sense_id": "w12544-s2",
+            "rule_id": "predicate-future-adnominal-eul"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
         "form": "느슨한",
         "candidates": [
           {
@@ -8399,6 +8525,38 @@
         "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
       },
       {
+        "form": "드는",
+        "candidates": [
+          {
+            "record_id": "w2797",
+            "sense_id": "w2797-s1",
+            "rule_id": "verb-present-adnominal-neun"
+          },
+          {
+            "record_id": "w2797",
+            "sense_id": "w2797-s2",
+            "rule_id": "verb-present-adnominal-neun"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "든",
+        "candidates": [
+          {
+            "record_id": "w2797",
+            "sense_id": "w2797-s1",
+            "rule_id": "verb-past-adnominal-eun"
+          },
+          {
+            "record_id": "w2797",
+            "sense_id": "w2797-s2",
+            "rule_id": "verb-past-adnominal-eun"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
         "form": "듣는",
         "candidates": [
           {
@@ -8410,6 +8568,22 @@
             "record_id": "w201",
             "sense_id": "w201-s2",
             "rule_id": "verb-present-adnominal-neun"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "들",
+        "candidates": [
+          {
+            "record_id": "w2797",
+            "sense_id": "w2797-s1",
+            "rule_id": "predicate-future-adnominal-eul"
+          },
+          {
+            "record_id": "w2797",
+            "sense_id": "w2797-s2",
+            "rule_id": "predicate-future-adnominal-eul"
           }
         ],
         "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
@@ -8430,6 +8604,11 @@
           {
             "record_id": "w2797",
             "sense_id": "w2797-s1",
+            "rule_id": "predicate-plain-past-coda-bearing"
+          },
+          {
+            "record_id": "w2797",
+            "sense_id": "w2797-s2",
             "rule_id": "predicate-plain-past-coda-bearing"
           }
         ],
@@ -8574,6 +8753,54 @@
           {
             "record_id": "w1098",
             "sense_id": "w1098-s2",
+            "rule_id": "predicate-future-adnominal-eul"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "따르는",
+        "candidates": [
+          {
+            "record_id": "w12546",
+            "sense_id": "w12546-s1",
+            "rule_id": "verb-present-adnominal-neun"
+          },
+          {
+            "record_id": "w12546",
+            "sense_id": "w12546-s2",
+            "rule_id": "verb-present-adnominal-neun"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "따른",
+        "candidates": [
+          {
+            "record_id": "w12546",
+            "sense_id": "w12546-s1",
+            "rule_id": "verb-past-adnominal-eun"
+          },
+          {
+            "record_id": "w12546",
+            "sense_id": "w12546-s2",
+            "rule_id": "verb-past-adnominal-eun"
+          }
+        ],
+        "reason": "Retain every listed sense-bound candidate; do not select or collapse candidates."
+      },
+      {
+        "form": "따를",
+        "candidates": [
+          {
+            "record_id": "w12546",
+            "sense_id": "w12546-s1",
+            "rule_id": "predicate-future-adnominal-eul"
+          },
+          {
+            "record_id": "w12546",
+            "sense_id": "w12546-s2",
             "rule_id": "predicate-future-adnominal-eul"
           }
         ],

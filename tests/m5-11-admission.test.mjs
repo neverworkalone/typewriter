@@ -1,3 +1,4 @@
+import { restorePreFactoryDecisionSource } from '../scripts/validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
@@ -122,9 +123,9 @@ async function createM511PromotionTransactionFixture() {
   const historicalDecisionSourcePath = path.join(temporaryDirectory, 'm5-11-decision-source.json');
   const historicalCanonical = await readCanonicalRecords(prospectiveCanonicalDirectory);
   const historicalIds = new Set(historicalCanonical.records.map(({ record }) => record.id));
-  const historicalDecisionSource = JSON.parse(
+  const historicalDecisionSource = restorePreFactoryDecisionSource(JSON.parse(
     await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'),
-  );
+  ), historicalCanonical.records);
   const historicalReview = historicalDecisionSource.authored_review;
   const historicalRecords = historicalCanonical.records.map(({ record }) => record);
   const historicalSenseCount = historicalRecords.reduce((sum, record) => sum + record.senses.length, 0);

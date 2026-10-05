@@ -785,7 +785,7 @@
     "candidate_count": 584,
     "potentially_recoverable_before_count": 545,
     "potentially_recoverable_after_count": 507,
-    "recovery_ceiling": 12711,
+    "recovery_ceiling": 12717,
     "target_count": 6000,
     "shortfall_to_6000": 0,
     "recovered_count": 62,
@@ -829,34 +829,34 @@
     ]
   },
   "current": {
-    "canonical_sha256": "522a1f8ba6a6545bc6d1c28fcd4fdfdba7e2f4e238bcf9149f5efcbd59fcc264",
-    "canonical_record_count": 12204,
-    "canonical_start_count": 12162,
+    "canonical_sha256": "6a1617adaad1164aa539a1250e5fc53e9b97e5a1ea42ebcba2fd48be18662e06",
+    "canonical_record_count": 12210,
+    "canonical_start_count": 12168,
     "reference_only_count": 42,
-    "sense_count": 12466,
+    "sense_count": 12476,
     "relation_count": 487,
-    "canonical_search_form_count": 12461,
-    "searchable_lemma_count": 12204,
+    "canonical_search_form_count": 12467,
+    "searchable_lemma_count": 12210,
     "record_type_counts": {
-      "entry": 11050,
+      "entry": 11056,
       "expression": 1154
     },
     "sense_pos_counts": {
-      "adjective": 528,
+      "adjective": 530,
       "adverb": 12,
       "expression": 1176,
       "noun": 9187,
-      "verb": 1563
+      "verb": 1571
     },
-    "relation_empty_searchable_record_count": 11868,
+    "relation_empty_searchable_record_count": 11874,
     "exact_search_coverage": {
-      "expected_lemma_count": 12204,
-      "covered_lemma_count": 12204,
+      "expected_lemma_count": 12210,
+      "covered_lemma_count": 12210,
       "non_searchable_record_count": 0,
       "non_searchable_records": [],
-      "distinct_search_form_count": 12461,
-      "expected_form_owner_key_count": 12461,
-      "covered_form_owner_key_count": 12461,
+      "distinct_search_form_count": 12467,
+      "expected_form_owner_key_count": 12467,
+      "covered_form_owner_key_count": 12467,
       "missing_form_owner_key_count": 0,
       "unexpected_form_owner_key_count": 0,
       "cross_record_collision_key_count": 0
@@ -893,7 +893,7 @@
     "production_admission": "pass",
     "semantic_audit": "pass",
     "deterministic_sqlite": "pass",
-    "logical_database_digest": "2bc7cd3eb4e1656df40d553306629b030f8a550aa06f6194706ec09767efa971"
+    "logical_database_digest": "32d5e8d96d97c2e461b1d2965850ca9147594008b32b86eec0252cd466319f69"
   },
   "defect_findings": [
     {
@@ -1011,6 +1011,6 @@
   "normal_ci": {
     "command": "npm run ci:normal",
     "result": "pending",
-    "canonical_sha256": "522a1f8ba6a6545bc6d1c28fcd4fdfdba7e2f4e238bcf9149f5efcbd59fcc264"
+    "canonical_sha256": "6a1617adaad1164aa539a1250e5fc53e9b97e5a1ea42ebcba2fd48be18662e06"
   }
 }

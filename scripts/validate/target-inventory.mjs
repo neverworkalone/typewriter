@@ -9,6 +9,8 @@ import { loadCanonicalContext } from './canonical-context.mjs';
 import {
   DEFAULT_SEED_PATH,
   buildTargetInventory,
+  factoryInventoryMappings,
+  DEFAULT_DECISION_SOURCE_PATH,
 } from '../inventory/generate-target-inventory.mjs';
 import { validateDatasetRecords } from './dataset-integrity.mjs';
 import {
@@ -236,7 +238,7 @@ function validateEntryShape(entry, index) {
     fail(`${prefix}.entry record cannot have expression part of speech`, 'ENTRY_EXPRESSION_POS');
   }
 
-  if (entry.planned_role === 'start' && entry.reason_codes.length === 0) {
+  if (entry.planned_role === 'start' && entry.reason_codes.length === 0 && !entry.admitted_from) {
     fail(`${prefix}.start entry must have at least one reason code`, 'MISSING_REASON_CODE');
   }
 
@@ -277,7 +279,7 @@ function countStatuses(entries) {
   return counts;
 }
 
-function validateCanonicalEntry(entry, canonicalById, index) {
+function validateCanonicalEntry(entry, canonicalById, index, factoryMappings) {
   const prefix = `entries[${index}]`;
   if (!Object.hasOwn(entry, 'canonical_id')) {
     fail(`${prefix}.canonical_id is required for canonical entry`, 'MISSING_CANONICAL_ID');
@@ -288,6 +290,10 @@ function validateCanonicalEntry(entry, canonicalById, index) {
   }
 
   const { record } = canonicalInfo;
+  const expectedAdmission = factoryMappings.get(record.id);
+  if (entry.admitted_from !== expectedAdmission) {
+    fail(`${prefix}.admitted_from does not bind the source-bound factory creation`, 'FACTORY_ADMISSION_BINDING');
+  }
   const isPromoted = Object.hasOwn(entry, 'promoted_from');
   if (isPromoted) {
     if (entry.inventory_id !== entry.promoted_from) {
@@ -546,9 +552,12 @@ export async function validateTargetInventory({
     canonicalResult.records.map((recordInfo) => [recordInfo.record.id, recordInfo]),
   );
 
+  const factorySource = requireSemanticAudit
+    ? JSON.parse(await readFile(DEFAULT_DECISION_SOURCE_PATH, 'utf8')) : {};
+  const factoryMappings = factoryInventoryMappings(factorySource, canonicalResult.records);
   for (const [index, entry] of inventory.entries.entries()) {
     if (entry.source === 'canonical') {
-      validateCanonicalEntry(entry, canonicalById, index);
+      validateCanonicalEntry(entry, canonicalById, index, factoryMappings);
     } else {
       validateEditorialEntry(entry, canonicalById, index);
     }

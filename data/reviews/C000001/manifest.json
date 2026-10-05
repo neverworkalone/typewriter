@@ -7,6 +7,168 @@
   "semantic_decisions_sha256": "84e36754117172126d17c88eb21bcc3d7a412b6b5fdc826cd2d2035598914a1e",
   "handoff_sha256": "30627dda183e4a5848ab0db3d19f39bc4bf881773a801de5c1024b8921d0369e",
   "attempt": 1,
-  "status": "ready",
-  "history": []
+  "status": "complete",
+  "history": [],
+  "admission": {
+    "contract": "lexical-factory-admission-v1",
+    "attempt": 1,
+    "admission_pr": 303,
+    "base_canonical_snapshot_digest": "41a2f5aafb06774d0829022a60f5639185bfa2b6e96d286965ec78e9f7f07da6",
+    "canonical_snapshot_digest": "9b884315ab7912075bce399ff7ff09307ac3b12e536c4255d1ce59a2f2acdb92",
+    "entries": [
+      {
+        "source_candidate_id": "C000001-0001",
+        "record_id": "w12541",
+        "sense_ids": [
+          "w12541-s1",
+          "w12541-s2"
+        ]
+      },
+      {
+        "source_candidate_id": "C000001-0002",
+        "record_id": "w12542",
+        "sense_ids": [
+          "w12542-s1"
+        ]
+      },
+      {
+        "source_candidate_id": "C000001-0003",
+        "record_id": "w12543",
+        "sense_ids": [
+          "w12543-s1"
+        ]
+      },
+      {
+        "source_candidate_id": "C000001-0004",
+        "record_id": "w12544",
+        "sense_ids": [
+          "w12544-s1",
+          "w12544-s2"
+        ]
+      },
+      {
+        "source_candidate_id": "C000001-0006",
+        "record_id": "w12545",
+        "sense_ids": [
+          "w12545-s1"
+        ]
+      },
+      {
+        "source_candidate_id": "C000001-0009",
+        "record_id": "w2797",
+        "sense_ids": [
+          "w2797-s2"
+        ]
+      },
+      {
+        "source_candidate_id": "C000001-0011",
+        "record_id": "w12546",
+        "sense_ids": [
+          "w12546-s1",
+          "w12546-s2"
+        ]
+      }
+    ],
+    "changes": [
+      {
+        "entry_id": "w12541",
+        "operation": "create",
+        "path": "data/canonical/factory-C000001-a1.jsonl",
+        "source_candidate_ids": [
+          "C000001-0001"
+        ],
+        "added_sense_ids": [
+          "w12541-s1",
+          "w12541-s2"
+        ],
+        "before_sha256": null,
+        "after_sha256": "3e6d9702d687217b534a93c04f049f3ac0b8a9b78e56ae0695523a488cb14575"
+      },
+      {
+        "entry_id": "w12542",
+        "operation": "create",
+        "path": "data/canonical/factory-C000001-a1.jsonl",
+        "source_candidate_ids": [
+          "C000001-0002"
+        ],
+        "added_sense_ids": [
+          "w12542-s1"
+        ],
+        "before_sha256": null,
+        "after_sha256": "d8244246283ddc37325b4ad712493dedcbc8bd7e9cd9d2a655d09251e1f58788"
+      },
+      {
+        "entry_id": "w12543",
+        "operation": "create",
+        "path": "data/canonical/factory-C000001-a1.jsonl",
+        "source_candidate_ids": [
+          "C000001-0003"
+        ],
+        "added_sense_ids": [
+          "w12543-s1"
+        ],
+        "before_sha256": null,
+        "after_sha256": "c27fc32c5fa64452563ba1d39fdef3f04b8e4b4998e5a7fa93a3fc28733664dc"
+      },
+      {
+        "entry_id": "w12544",
+        "operation": "create",
+        "path": "data/canonical/factory-C000001-a1.jsonl",
+        "source_candidate_ids": [
+          "C000001-0004"
+        ],
+        "added_sense_ids": [
+          "w12544-s1",
+          "w12544-s2"
+        ],
+        "before_sha256": null,
+        "after_sha256": "40ea0627d142b332e7022452ff98811483af939459fc8fa4d0db656fd136ac2d"
+      },
+      {
+        "entry_id": "w12545",
+        "operation": "create",
+        "path": "data/canonical/factory-C000001-a1.jsonl",
+        "source_candidate_ids": [
+          "C000001-0006"
+        ],
+        "added_sense_ids": [
+          "w12545-s1"
+        ],
+        "before_sha256": null,
+        "after_sha256": "84cfbdac454fffa9f7b168f77df1f6be4a7fbdf3be29345acea53499c13d9f05"
+      },
+      {
+        "entry_id": "w12546",
+        "operation": "create",
+        "path": "data/canonical/factory-C000001-a1.jsonl",
+        "source_candidate_ids": [
+          "C000001-0011"
+        ],
+        "added_sense_ids": [
+          "w12546-s1",
+          "w12546-s2"
+        ],
+        "before_sha256": null,
+        "after_sha256": "38c89e98b0896e8aabf09088ae649f8deeb090d428ddad2ad1c5faa97c2d8036"
+      },
+      {
+        "entry_id": "w2797",
+        "operation": "append_senses",
+        "path": "data/canonical/m5-13-expansion.jsonl",
+        "source_candidate_ids": [
+          "C000001-0009"
+        ],
+        "added_sense_ids": [
+          "w2797-s2"
+        ],
+        "before_sha256": "a64bf944809805e9ee6bada68ae50c7377b56285b296345f0c138d18a25be7dd",
+        "after_sha256": "51eb0097f54cffe2a1db59f1bd0f48aaa2efe140c4c81eaac306a46c9659ec5a"
+      }
+    ],
+    "semantic_authority": {
+      "path": "data/validation/canonical-semantic-decision-source.json",
+      "source_id": "canonical-semantic-decision-source-20260914",
+      "admission_sha256": "e2f79d8d13fe467c9051b30785428df5b85dc2bbd49a905bc16e739d55e15bee"
+    }
+  }
 }

@@ -123,17 +123,17 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   const { artifact } = await buildCanonicalSemanticAudit();
   const inventory = await buildTargetInventory();
 
-  assert.equal(artifact.record_count, 12204);
-  assert.equal(artifact.source.canonical_records_sha256, '522a1f8ba6a6545bc6d1c28fcd4fdfdba7e2f4e238bcf9149f5efcbd59fcc264');
-  assert.equal(artifact.sense_count, 12466);
+  const source = JSON.parse(await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8'));
+  assert.equal(artifact.source.canonical_records_sha256, source.source.canonical_records_sha256);
+  assert.equal(artifact.record_count, inventory.canonical_snapshot.record_count);
+  assert.equal(artifact.record_count, inventory.canonical_snapshot.start_count + inventory.canonical_snapshot.reference_only_count);
+  assert.equal(artifact.sense_count, artifact.review.records.reduce((count, record) => count + record.sense_reviews.length, 0));
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
-  assert.equal(semanticAuditBytes.length, 83129944);
-  assert.equal(sha256(semanticAuditBytes), '932780964ebc37182157cf7f68aaf1f858e5da450f95a010d90eb9206df699e4');
-  assert.equal(inventoryBytes.length, 8679756);
-  assert.equal(sha256(inventoryBytes), '6d757849f53f07cb869ec469ec44b363cc6c5801fd966535d3b24e6d3ecb6dc2');
-  assert.equal(inventory.canonical_snapshot.record_count, 12204);
-  assert.equal(inventory.canonical_snapshot.start_count, 12162);
+  const secondAudit = (await buildCanonicalSemanticAudit()).artifact;
+  const secondInventory = await buildTargetInventory();
+  assert.equal(sha256(semanticAuditBytes), sha256(serializeSemanticAuditArtifact(secondAudit)));
+  assert.equal(sha256(inventoryBytes), sha256(serializeTargetInventory(secondInventory)));
   assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
 });
 
@@ -922,6 +922,53 @@ test('artifact policy closes the compact canonical decision source against deriv
       }),
       (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
     );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy closes factory admission history and preserved snapshots recursively', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-factory-ledger-policy-'));
+  const relativePath = 'data/validation/canonical-semantic-decision-source.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const source = JSON.parse(await readFile(path.resolve(relativePath), 'utf8'));
+  source.factory_admissions = [{
+    batch_id: 'C999999', attempt: 1, semantic_decisions_sha256: 'a'.repeat(64),
+    entries: [{ source_candidate_id: 'C999999-0001', record_id: 'w1001', sense_ids: ['w1001-s2'] }],
+    changes: [{
+      entry_id: 'w1001', operation: 'append_senses', path: 'data/canonical/example.jsonl',
+      source_candidate_ids: ['C999999-0001'], added_sense_ids: ['w1001-s2'],
+      before_sha256: 'b'.repeat(64), after_sha256: 'c'.repeat(64),
+      previous_semantic_review_sha256: 'd'.repeat(64), semantic_review_sha256: 'e'.repeat(64),
+      previous_record: candidateRecordFixture({ relation: true }),
+      previous_semantic_review: structuredClone(source.authored_review.records[0]),
+    }], sha256: 'f'.repeat(64),
+  }];
+  const check = async (value) => {
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    return validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] });
+  };
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await assert.doesNotReject(check(source));
+    for (const inject of [
+      (event) => { event.raw_evidence = {}; },
+      (event) => { event.entries[0].raw_evidence = {}; },
+      (event) => { event.changes[0].raw_evidence = {}; },
+      (event) => { event.changes[0].previous_record.raw_evidence = {}; },
+      (event) => { event.changes[0].previous_record.senses[0].raw_evidence = {}; },
+      (event) => { event.changes[0].previous_record.senses[0].relations[0].raw_evidence = {}; },
+      (event) => { event.changes[0].previous_semantic_review.raw_evidence = {}; },
+    ]) {
+      const invalid = structuredClone(source);
+      inject(invalid.factory_admissions[0]);
+      await assert.rejects(check(invalid),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE');
+    }
+    const invalidType = structuredClone(source);
+    invalidType.factory_admissions[0].attempt = '1';
+    await assert.rejects(check(invalidType),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE');
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }

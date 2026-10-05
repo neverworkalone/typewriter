@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { canonicalSnapshotDigest } from './stage1.mjs';
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from './admission.mjs';
+import { planSurfaceFormDispositions, writeSurfaceFormDispositions } from './surface-form-dispositions.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
 import { loadFactorySnapshot } from './stage2-worker.mjs';
 import { validateFactoryRepository, loadBaseManifests } from './validate.mjs';
@@ -82,15 +83,31 @@ export function createStage3GitRepository({ root = process.cwd() } = {}) {
       gitRun(root, ['push', 'origin', 'HEAD:refs/heads/' + branchName]);
       return gitRun(root, ['rev-parse', 'HEAD']);
     },
+    async commitPrepared({ message, files }) {
+      gitRun(root, ['add', '--', ...files]);
+      gitRun(root, ['commit', '-m', message]);
+      return gitRun(root, ['rev-parse', 'HEAD']);
+    },
+    async pushPrepared(branchName) {
+      gitRun(root, ['push', 'origin', 'HEAD:refs/heads/' + branchName]);
+    },
+    isAncestor(ancestor, descendant) {
+      return gitRun(root, ['merge-base', '--is-ancestor', ancestor, descendant], { allowFailure: true }) !== null;
+    },
     rebaseOnMaster() {
       gitRun(root, ['fetch', 'origin', 'master:refs/remotes/origin/master']);
       gitRun(root, ['rebase', 'origin/master']);
     },
     async refreshBranch(branchName) {
+      if (gitRun(root, ['status', '--porcelain', '--untracked-files=all'])) {
+        throw new Error('Stage 3 recovery requires a clean worktree; preserve uncommitted work');
+      }
       gitRun(root, ['fetch', 'origin', branchName + ':refs/remotes/origin/' + branchName]);
       const current = gitRun(root, ['branch', '--show-current']);
       if (current !== branchName) gitRun(root, ['switch', branchName]);
-      gitRun(root, ['reset', '--hard', 'refs/remotes/origin/' + branchName]);
+      const remoteRef = 'refs/remotes/origin/' + branchName;
+      if (this.isAncestor(remoteRef, 'HEAD')) return; // Keep a local, not-yet-pushed admission checkpoint.
+      gitRun(root, ['merge', '--ff-only', remoteRef]);
     },
     async restoreMaster() {
       const current = gitRun(root, ['branch', '--show-current']);
@@ -302,14 +319,33 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
     root, baseCanonicalRecords: prepared.canonicalRecords, plan,
     semanticDecisions: prepared.semanticDecisions, semanticDecisionsText: prepared.semanticDecisionsText,
   });
+  const projected = new Map(prepared.canonicalRecords.map((record) => [record.id, record]));
+  for (const [id, update] of plan.records) projected.set(id, update.record);
+  const surfacePlan = await planSurfaceFormDispositions({ root, records: [...projected.values()] });
   await applyStage3FileChanges(plan, { root, reviewManifestPath });
+  const surfaceFiles = await writeSurfaceFormDispositions(surfacePlan);
   await writeFile(path.join(root, semanticAuthority.sourcePath), semanticAuthority.sourceText, 'utf8');
   const digest = await canonicalSnapshotDigest(root);
   plan.reviewManifest.admission.canonical_snapshot_digest = digest;
   await writeFile(reviewManifestPath, JSON.stringify(plan.reviewManifest, null, 2) + '\n', 'utf8');
   const marker = path.join(root, MARKER_NAME(claim.batchId, claim.attempt));
   await rm(marker, { force: true });
-  return { ...prepared, semanticAuthority, plan, files: [...new Set([...plan.changes.map((change) => change.path), semanticAuthority.sourcePath, `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
+  const reportFiles = refreshStage3ReportCheckpoints(root);
+  return { ...prepared, semanticAuthority, plan, files: [...new Set([...reportFiles, ...surfaceFiles, ...plan.changes.map((change) => change.path), semanticAuthority.sourcePath, `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
+}
+
+// Existing M9 reports contain live canonical/search/SQLite checkpoint fields.
+// Refresh them through their ordinary source-bound report producers before pinning CI's tree.
+export function refreshStage3ReportCheckpoints(root, run = execFileSync) {
+  for (const script of ['inventory:issue-210:write', 'batch:issue-219:report', 'batch:issue-220:report', 'batch:issue-222:report']) {
+    run('npm', ['run', script], { cwd: root, stdio: 'inherit' });
+  }
+  return [
+    'docs/issue-210-historical-exclusion-report.md', 'data/inventory/issue-210-recovery-inventory.json',
+    'docs/issue-222-m9-d-scale-coverage.md', 'data/validation/issue-222-m9-d-scale-coverage-report.json',
+    'docs/issue-219-m9-a-recovery.md', 'data/validation/issue-219-m9-lexical-batch-report.json',
+    'docs/issue-220-m9-b-checkpoint.md', 'data/validation/issue-220-m9-b-checkpoint-report.json',
+  ];
 }
 
 export function runStage3PreflightCi(root, run = execFileSync) {
@@ -416,21 +452,26 @@ export async function processStage3Attempt({
           ...claim, claimCreated: true, prNumber: claim.prNumber,
         });
       }
-      if (draftPr.head?.sha && git.resolveRef('HEAD') !== draftPr.head.sha) {
+      const localCheckpoint = draftPr.head?.sha && git.resolveRef('HEAD') !== draftPr.head.sha;
+      if (localCheckpoint && !git.isAncestor?.(draftPr.head.sha, 'HEAD')) {
         throw new Stage3WorkerError('local recovery branch does not match the exact open Draft PR head', {
           ...claim, claimCreated: true, prNumber: claim.prNumber,
         });
       }
       prepared = { plan: null, recoveredCompleteAdmission: true };
       await validate({ root, git, claim, prepared, runGates });
+      if (localCheckpoint) await git.pushPrepared(claim.branchName);
       const pullRequest = await github.markPullRequestReady(claim.prNumber);
       log(`Recovered the completed Stage 3 admission on PR #${claim.prNumber} for ${claim.batchId}.`);
       return { ...claim, prNumber: claim.prNumber, prState: 'admission', pullRequest, prepared };
     }
     prepared = await prepare({ root, git, claim, admissionPr: claim.prNumber });
     const applied = await apply({ root, git, claim, prepared });
+    // Pin the prospective revision locally so the strict builder sees a clean, reproducible tree.
+    // Failed gates preserve this local checkpoint and the remote metadata-only Draft.
+    await git.commitPrepared({ message: `[Stage 3] Admit ${claim.batchId} attempt ${claim.attempt}`, files: applied.files });
     await validate({ root, git, claim, prepared: applied, runGates });
-    await git.commitAndPush({ branchName: claim.branchName, message: `[Stage 3] Admit ${claim.batchId} attempt ${claim.attempt}`, files: applied.files });
+    await git.pushPrepared(claim.branchName);
     const pullRequest = await github.markPullRequestReady(claim.prNumber);
     log(`Stage 3 admission PR #${claim.prNumber} for ${claim.batchId} is ready for review.`);
     return { ...claim, prNumber: claim.prNumber, prState: 'admission', pullRequest, prepared: applied };

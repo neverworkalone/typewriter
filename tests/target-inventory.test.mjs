@@ -19,6 +19,9 @@ import {
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 
+const authority = JSON.parse(await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8'));
+const factoryCreations = (authority.factory_admissions ?? []).flatMap((event) => event.changes).filter((change) => change.operation === 'create').length;
+
 async function readInventory() {
   return buildTargetInventory();
 }
@@ -40,12 +43,12 @@ async function validateModifiedInventory(mutator) {
 test('validates the current target inventory and keeps independent start counts', async () => {
   const summary = await validateTargetInventory();
 
-  assert.equal(summary.inventoryEntryCount, 12750);
-  assert.equal(summary.canonicalRecordCount, 12204);
-  assert.equal(summary.currentStartCount, 12162);
+  assert.equal(summary.inventoryEntryCount, 12750 + factoryCreations);
+  assert.equal(summary.canonicalRecordCount, 12204 + factoryCreations);
+  assert.equal(summary.currentStartCount, 12162 + factoryCreations);
   assert.equal(summary.currentReferenceOnlyCount, 42);
   assert.equal(summary.candidateStartCount, 6);
-  assert.equal(summary.plannedStartCount, 12168);
+  assert.equal(summary.plannedStartCount, 12168 + factoryCreations);
   assert.equal(summary.heldCount, 221);
   assert.equal(summary.rejectedCount, 62);
   assert.equal(summary.deferredCount, 252);
@@ -67,7 +70,7 @@ test('validates the current target inventory and keeps independent start counts'
     X: 1752,
   });
   assert.deepEqual(summary.recordTypeCounts, {
-    entry: 11009,
+    entry: 11009 + factoryCreations,
     expression: 1159,
   });
 });
@@ -78,8 +81,8 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
   try {
     const generated = await generateTargetInventory({ outputPath });
-    assert.equal(generated.entries.length, 12750);
-    assert.equal(generated.canonical_snapshot.record_count, 12204);
+    assert.equal(generated.entries.length, 12750 + factoryCreations);
+    assert.equal(generated.canonical_snapshot.record_count, 12204 + factoryCreations);
     assert.equal(
       generated.entries.find((entry) => entry.inventory_id === 'm5-001').source,
       'canonical',
@@ -101,7 +104,7 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
 test('inventory candidates remain outside canonical input and SQLite build scope', async () => {
   const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  assert.equal(canonical.records.length, 12204);
+  assert.equal(canonical.records.length, 12204 + factoryCreations);
   assert.equal(canonical.records.some(({ record }) => record.id === 'm5-001'), false);
   assert.equal(canonical.records.some(({ record }) => record.id === 'w301'), true);
   assert.equal(canonical.records.some(({ record }) => record.lemma === '말을 잃다'), false);
@@ -336,4 +339,64 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
+});
+
+// Synthetic records exercise the shared promotion/admission boundary without modifying historical ledgers.
+test('factory admission preserves original promotion bindings and fails closed on rewritten history', async () => {
+  const { validatePromotionLedgerBindings, factoryInventoryMappings } = await import('../scripts/inventory/generate-target-inventory.mjs');
+  const { sha256Json, restorePreFactoryDecisionSource, canonicalRecordsBeforeFactoryAdmissions } = await import('../scripts/validate/semantic-audit.mjs');
+  const original = { id: 'w90001', role: 'start', lemma: '합성어', senses: [{ id: 'w90001-s1', pos: 'noun', gloss: '첫째 뜻' }] };
+  const current = { ...original, senses: [...original.senses, { id: 'w90001-s2', pos: 'noun', gloss: '둘째 뜻' }] };
+  const binding = { source_id: 'original-source', artifact_sha256: 'a'.repeat(64), decision_row_sha256: 'b'.repeat(64), candidate_record_id: original.id, decision: 'included', reviewed_record_sha256: sha256Json(original) };
+  const previousReview = { record_id: original.id, record_sha256: sha256Json(original), authored_batch_decision: binding };
+  const review = { record_id: current.id, record_sha256: sha256Json(current) };
+  const change = { entry_id: current.id, operation: 'append_senses', before_sha256: sha256Json(original), after_sha256: sha256Json(current), previous_semantic_review_sha256: sha256Json(previousReview), semantic_review_sha256: sha256Json(review), previous_semantic_review: previousReview, previous_record: original, source_candidate_ids: ['C900001-0001'] };
+  const event = { batch_id: 'C900001', attempt: 1, semantic_decisions_sha256: 'c'.repeat(64), entries: [{ source_candidate_id: 'C900001-0001', record_id: current.id, sense_ids: ['w90001-s2'] }], changes: [change] };
+  event.sha256 = sha256Json(event);
+  const source = { authored_review: { records: [review] }, factory_admissions: [event] };
+  const entry = { canonical_id: current.id, record_sha256: sha256Json(original), decision_source_id: binding.source_id, decision_source_sha256: binding.artifact_sha256, decision_row_sha256: binding.decision_row_sha256, decision: 'included' };
+  const check = (authority = source, ledger = entry, record = current) => validatePromotionLedgerBindings({ entries: [ledger], canonicalRecords: [record], decisionSource: authority });
+  assert.equal(check(), true);
+  assert.deepEqual(canonicalRecordsBeforeFactoryAdmissions([current], source), [original]);
+  assert.deepEqual(canonicalRecordsBeforeFactoryAdmissions([{ record: current, filePath: 'synthetic.jsonl' }], source), [{ record: original, filePath: 'synthetic.jsonl' }]);
+  const historical = restorePreFactoryDecisionSource(source, [original]);
+  assert.deepEqual(historical.authored_review.records, [previousReview]);
+  assert.equal(historical.factory_admissions, undefined);
+  assert.deepEqual(source.factory_admissions, [event], 'current authority remains intact');
+  assert.throws(() => restorePreFactoryDecisionSource(source, [current]), /does not match the retained admission history/);
+  assert.equal(factoryInventoryMappings(source, [current]).size, 0, 'an amendment is not a new inventory creation');
+  assert.throws(() => check(source, { ...entry, decision_source_id: 'invented-source' }), /not bound/);
+  const tampered = structuredClone(source);
+  tampered.factory_admissions[0].changes[0].previous_record.senses[0].gloss = 'rewritten';
+  const eventWithoutHash = { ...tampered.factory_admissions[0] }; delete eventWithoutHash.sha256;
+  tampered.factory_admissions[0].sha256 = sha256Json(eventWithoutHash);
+  assert.throws(() => check(tampered), /preserved pre-admission/);
+  assert.throws(() => restorePreFactoryDecisionSource(tampered, [original]), /bound pre-admission/);
+  const changed = structuredClone(current); changed.senses[0].gloss = 'rewritten old sense';
+  const rewritten = structuredClone(source);
+  rewritten.authored_review.records[0].record_sha256 = sha256Json(changed);
+  rewritten.factory_admissions[0].changes[0].after_sha256 = sha256Json(changed);
+  rewritten.factory_admissions[0].changes[0].semantic_review_sha256 = sha256Json(rewritten.authored_review.records[0]);
+  const unsigned = { ...rewritten.factory_admissions[0] }; delete unsigned.sha256;
+  rewritten.factory_admissions[0].sha256 = sha256Json(unsigned);
+  assert.throws(() => check(rewritten, entry, changed), /rewrote the original promoted payload/);
+  assert.throws(() => canonicalRecordsBeforeFactoryAdmissions([changed], rewritten), /rewrote an existing canonical payload/);
+});
+
+test('factory inventory mappings require digest-bound canonical creations', async () => {
+  const { factoryInventoryMappings } = await import('../scripts/inventory/generate-target-inventory.mjs');
+  const { sha256Json } = await import('../scripts/validate/semantic-audit.mjs');
+  const record = { id: 'w90002', senses: [{ id: 'w90002-s1', pos: 'noun', gloss: '합성 뜻' }] };
+  const review = { record_id: record.id, record_sha256: sha256Json(record) };
+  const event = { batch_id: 'C900002', attempt: 2, semantic_decisions_sha256: 'c'.repeat(64), entries: [{ source_candidate_id: 'C900002-0001', record_id: record.id, sense_ids: ['w90002-s1'] }], changes: [{ entry_id: record.id, operation: 'create', before_sha256: null, after_sha256: sha256Json(record), previous_semantic_review_sha256: null, semantic_review_sha256: sha256Json(review), source_candidate_ids: ['C900002-0001'] }] };
+  event.sha256 = sha256Json(event);
+  const source = { authored_review: { records: [review] }, factory_admissions: [event] };
+  assert.equal(factoryInventoryMappings(source, [record]).get(record.id), 'C900002-a2');
+  assert.throws(() => factoryInventoryMappings(source, [{ ...record, senses: [] }]), /current canonical record/);
+});
+
+test('an inventory cannot invent factory admission provenance', async () => {
+  await assert.rejects(validateModifiedInventory((inventory) => {
+    inventory.entries.find((entry) => entry.canonical_id === 'w001').admitted_from = 'C900001-a1';
+  }), (error) => error.code === 'FACTORY_ADMISSION_BINDING');
 });

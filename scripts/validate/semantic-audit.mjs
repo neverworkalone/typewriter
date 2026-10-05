@@ -2372,7 +2372,7 @@ export function validateSemanticDecisionSource(
   return materializedReview;
 }
 
-function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
+export function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
   if (decisionSource.factory_admissions === undefined) return [];
   const events = requireArray(decisionSource.factory_admissions, `${label}.factory_admissions`);
   const canonicalById = new Map(recordInfos.map((recordInfo) => {
@@ -2430,6 +2430,15 @@ function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
         fail(`${changeLabel}.previous_semantic_review_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       requireDigest(change.semantic_review_sha256, `${changeLabel}.semantic_review_sha256`);
+      if (change.previous_semantic_review !== undefined || change.previous_record !== undefined) {
+        if (change.operation !== 'append_senses'
+          || sha256Json(change.previous_semantic_review) !== change.previous_semantic_review_sha256
+          || sha256Json(change.previous_record) !== change.before_sha256
+          || change.previous_semantic_review?.record_sha256 !== change.before_sha256
+          || change.previous_record?.id !== change.entry_id) {
+          fail(`${changeLabel} does not bind its preserved pre-admission record and review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+      }
       const mappingSources = requireArray(change.source_candidate_ids, `${changeLabel}.source_candidate_ids`);
       if (mappingSources.length === 0 || mappingSources.some((sourceCandidateId) => mappings.get(sourceCandidateId)?.record_id !== change.entry_id)) {
         fail(`${changeLabel}.source_candidate_ids do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
@@ -2707,4 +2716,79 @@ if (isMainModule) {
       console.error(error.code ? `${error.code}: ${error.message}` : error.message);
       process.exitCode = 1;
     });
+}
+
+/** Reconstruct a retained pre-factory snapshot; never use this for current admission. */
+export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) {
+  const source = structuredClone(currentSource);
+  const snapshotById = new Map(snapshotRecords.map((info) => {
+    const record = recordOf(info); return [record.id, record];
+  }));
+  const reviews = new Map(source.authored_review.records.map((row) => [row.record_id, row]));
+  const restored = new Set();
+  for (const event of [...(source.factory_admissions ?? [])].reverse()) {
+    const unsigned = { ...event }; delete unsigned.sha256;
+    if (sha256Json(unsigned) !== event.sha256) {
+      fail('historical snapshot cannot rewind an unbound factory event', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    }
+    for (const change of event.changes) {
+      const target = snapshotById.get(change.entry_id);
+      if (change.operation === 'create') {
+        if (target) fail('pre-factory snapshot contains a factory-created record', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        reviews.delete(change.entry_id);
+      } else if (target) {
+        if (sha256Json(change.previous_semantic_review) !== change.previous_semantic_review_sha256
+          || sha256Json(change.previous_record) !== change.before_sha256
+          || change.previous_semantic_review?.record_sha256 !== change.before_sha256) {
+          fail('historical snapshot lacks a bound pre-admission record and review', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+        reviews.set(change.entry_id, structuredClone(change.previous_semantic_review));
+        restored.add(change.entry_id);
+      }
+    }
+  }
+  for (const id of restored) {
+    if (reviews.get(id)?.record_sha256 !== sha256Json(snapshotById.get(id))) {
+      fail(`pre-factory snapshot for ${id} does not match the retained admission history`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    }
+  }
+  source.authored_review.records = [...reviews.values()];
+  delete source.factory_admissions;
+  source.authored_review_sha256 = sha256Json(source.authored_review);
+  return source;
+}
+
+/** Historical payload checks use this view; current semantic/build gates still use current records. */
+export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSource) {
+  const events = validateFactoryAdmissionLedger(decisionSource, recordInfos, 'historical canonical authority');
+  const records = new Map(recordInfos.map((info) => [recordOf(info).id, info]));
+  for (const event of [...events].reverse()) {
+    for (const change of event.changes) {
+      const info = records.get(change.entry_id);
+      const current = recordOf(info);
+      if (!current || sha256Json(current) !== change.after_sha256) {
+        fail('historical canonical reconstruction has a discontinuous admission chain', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      if (change.operation === 'create') {
+        records.delete(change.entry_id);
+        continue;
+      }
+      const original = change.previous_record;
+      if (!original || sha256Json(original) !== change.before_sha256) {
+        fail('historical canonical reconstruction lacks the bound original record', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      const { senses: oldSenses, ...oldIdentity } = original;
+      const { senses: newSenses, ...newIdentity } = current;
+      if (JSON.stringify(oldIdentity) !== JSON.stringify(newIdentity)
+        || oldSenses.some((sense, index) => JSON.stringify(sense) !== JSON.stringify(newSenses[index]))) {
+        fail('factory admission rewrote an existing canonical payload', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      records.set(change.entry_id, info.record ? { ...info, record: structuredClone(original) } : structuredClone(original));
+    }
+  }
+  return [...records.values()];
+}
+
+export async function loadCanonicalBeforeFactoryAdmissions(recordInfos) {
+  return canonicalRecordsBeforeFactoryAdmissions(recordInfos, await readSemanticDecisionSourceArtifact());
 }

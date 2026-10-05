@@ -1,3 +1,6 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
+import { applySurfaceFormDispositions, planSurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
@@ -13,12 +16,15 @@ import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decisi
 
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
+  createStage3GitRepository,
+  applyStage3Admission,
   claimNextStage3Batch,
   createStage3Draft,
   eligibleStage3Batches,
   processStage3Attempt,
   recoverStage3Attempt,
   releaseStage3Claim,
+  refreshStage3ReportCheckpoints,
   runStage3PreflightCi,
   runStage3Session,
 } from '../scripts/factory/stage3-worker.mjs';
@@ -364,7 +370,8 @@ test('successful admission removes the starter before commit and ready transitio
     };
     const git = {
       async fetchMaster() {}, resolveRef() { return 'head'; },
-      async commitAndPush({ files }) { assert.equal(files.includes('data/reviews/C000001/attempt-a1.json'), false); events.push('commit-push'); },
+      async commitPrepared({ files }) { assert.equal(files.includes('data/reviews/C000001/attempt-a1.json'), false); events.push('commit-local'); },
+      async pushPrepared() { events.push('push'); },
     };
     await processStage3Attempt({
       github, git, root, claim, runGates: false,
@@ -373,13 +380,13 @@ test('successful admission removes the starter before commit and ready transitio
       validate: async () => { assert.equal(await readFile(marker, 'utf8').then(() => true, () => false), false); events.push('validate'); },
       log: () => {},
     });
-    assert.deepEqual(events, ['validate', 'commit-push', 'ready']);
+    assert.deepEqual(events, ['commit-local', 'validate', 'push', 'ready']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test('restart after admission commit validates the exact pushed tree and marks the Draft ready without reapplying', async () => {
+for (const localHead of ['pr-head', 'local-checkpoint']) test(`restart after admission commit preserves ${localHead} and validates without reapplying`, async () => {
   const events = [];
   const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-restart-complete-'));
   try {
@@ -396,7 +403,9 @@ test('restart after admission commit validates the exact pushed tree and marks t
       async markPullRequestReady() { events.push('ready'); return { number: 82, isDraft: false }; },
     };
     const git = {
-      async fetchMaster() {}, resolveRef(ref) { return ref === 'HEAD' ? 'pr-head' : 'head'; }, branchBaseSha() { return 'head'; },
+      async fetchMaster() {}, resolveRef(ref) { return ref === 'HEAD' ? localHead : 'head'; }, branchBaseSha() { return 'head'; },
+      isAncestor(ancestor, descendant) { return ancestor === 'pr-head' && descendant === 'HEAD'; },
+      async pushPrepared() { events.push('push-local-checkpoint'); },
     };
     const result = await processStage3Attempt({
       github, git, root, claim, runGates: false,
@@ -406,7 +415,7 @@ test('restart after admission commit validates the exact pushed tree and marks t
       log: () => {},
     });
     assert.equal(result.prState, 'admission');
-    assert.deepEqual(events, ['validate', 'ready']);
+    assert.deepEqual(events, localHead === 'pr-head' ? ['validate', 'ready'] : ['validate', 'push-local-checkpoint', 'ready']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -639,4 +648,238 @@ test('a new two-sense entry is admitted by the semantic authority and passes the
   assert.doesNotThrow(() => buildSemanticAuditFromDecisionSource(afterRecords, authority.sourceObject, {
     baseRecords: afterRecords, batchDecisionSources, artifactId: 'test-complete-semantic-audit',
   }));
+});
+
+async function surfaceFormRoot(records) {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'surface-form-dispositions-'));
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  await mkdir(path.join(root, 'data/validation'), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/x.jsonl'), records.map((row) => JSON.stringify(row)).join('\n') + '\n');
+  await writeFile(path.join(root, 'data/validation/m6-2-inflection-exceptions.json'), JSON.stringify({ schema_version: 1, contract_id: 'm6-2-inflection-exceptions-v1', source_issue: 174, exceptions: [] }, null, 2) + '\n');
+  await writeFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), JSON.stringify({
+    schema_version: 1, contract_id: 'm6-3-searchable-predicate-review-v2', source_issue: 209, dispositions: [], reviewed_collisions: { exact_generated: [], ambiguous_generated: [] },
+  }, null, 2) + '\n');
+  return root;
+}
+const predicate = (id, lemma, pos = 'verb') => ({ id, record_type: 'entry', role: 'start', candidate_id: id, lemma, search_forms: [lemma], senses: [{ id: id + '-s1', pos, gloss: '뜻풀이.' }] });
+
+test('Stage 3 adds the rule-dictated sense-bound surface-form disposition for new predicate senses, idempotently', async () => {
+  const root = await surfaceFormRoot([predicate('w1', '그러다'), predicate('w2', '걸음', 'noun')]);
+  try {
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), ['data/validation/m6-3-surface-form-review.json']);
+    const review = JSON.parse(await readFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), 'utf8'));
+    assert.deepEqual(review.dispositions.map(({ class_id, record_id, sense_id }) => ({ class_id, record_id, sense_id })), [
+      { class_id: 'm6-3-open-vowel-past-excluded', record_id: 'w1', sense_id: 'w1-s1' },
+    ]);
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), []);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('a surface-form gap that needs a reviewer judgment fails as a lexical blocker instead of being guessed', async () => {
+  const root = await surfaceFormRoot([predicate('w1', '좋다', 'adjective')]);
+  try {
+    await assert.rejects(applySurfaceFormDispositions({ root }), (error) => error.category === 'lexical' && error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Stage 3 reviews the generated-form ambiguity a multi-sense predicate creates, with the fixed retain-all policy', async () => {
+  const record = { ...predicate('w1', '같다', 'adjective'), senses: [{ id: 'w1-s1', pos: 'adjective', gloss: '첫째 뜻풀이.' }, { id: 'w1-s2', pos: 'adjective', gloss: '둘째 뜻풀이.' }] };
+  const root = await surfaceFormRoot([record]);
+  try {
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), ['data/validation/m6-3-surface-form-review.json']);
+    const { reviewed_collisions: reviewed } = JSON.parse(await readFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), 'utf8'));
+    const ambiguous = reviewed.ambiguous_generated.find(({ form }) => form === '같은');
+    assert.deepEqual(ambiguous.candidates.map(({ sense_id }) => sense_id), ['w1-s1', 'w1-s2']);
+    assert.match(ambiguous.reason, /Retain every listed sense-bound candidate/u);
+    assert.deepEqual(reviewed.ambiguous_generated.map(({ form }) => form), [...reviewed.ambiguous_generated.map(({ form }) => form)].sort());
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), []);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Stage 3 extends an existing collision review when a later sense joins its candidate set, keeping its reason', async () => {
+  const one = { ...predicate('w1', '같다', 'adjective'), senses: [{ id: 'w1-s1', pos: 'adjective', gloss: '첫째 뜻풀이.' }, { id: 'w1-s2', pos: 'adjective', gloss: '둘째 뜻풀이.' }] };
+  const root = await surfaceFormRoot([one]);
+  try {
+    await applySurfaceFormDispositions({ root });
+    const file = path.join(root, 'data/validation/m6-3-surface-form-review.json');
+    const reviewed = JSON.parse(await readFile(file, 'utf8'));
+    reviewed.reviewed_collisions.ambiguous_generated.find(({ form }) => form === '같은').reason = 'Reviewer wording kept.';
+    await writeFile(file, JSON.stringify(reviewed, null, 2) + '\n');
+    const three = { ...one, senses: [...one.senses, { id: 'w1-s3', pos: 'adjective', gloss: '셋째 뜻풀이.' }] };
+    await writeFile(path.join(root, 'data/canonical/x.jsonl'), JSON.stringify(three) + '\n');
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), ['data/validation/m6-3-surface-form-review.json']);
+    const next = JSON.parse(await readFile(file, 'utf8')).reviewed_collisions.ambiguous_generated.find(({ form }) => form === '같은');
+    assert.deepEqual(next.candidates.map(({ sense_id }) => sense_id), ['w1-s1', 'w1-s2', 'w1-s3']);
+    assert.equal(next.reason, 'Reviewer wording kept.');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('planning surface-form dispositions from projected records writes nothing, so a judgment gap leaves the worktree untouched', async () => {
+  const root = await surfaceFormRoot([predicate('w1', '그러다')]);
+  try {
+    const canonicalFile = path.join(root, 'data/canonical/x.jsonl');
+    const before = await Promise.all([canonicalFile, path.join(root, 'data/validation/m6-3-surface-form-review.json'), path.join(root, 'data/validation/m6-2-inflection-exceptions.json')].map((file) => readFile(file, 'utf8')));
+    const projected = [predicate('w1', '그러다'), predicate('w2', '그러다'), predicate('w3', '좋다', 'adjective')];
+    await assert.rejects(planSurfaceFormDispositions({ root, records: projected }), (error) => error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');
+    const plan = await planSurfaceFormDispositions({ root, records: projected.slice(0, 2) });
+    assert.deepEqual(plan.map(({ path: relativePath }) => relativePath), ['data/validation/m6-3-surface-form-review.json']);
+    const after = await Promise.all([canonicalFile, path.join(root, 'data/validation/m6-3-surface-form-review.json'), path.join(root, 'data/validation/m6-2-inflection-exceptions.json')].map((file) => readFile(file, 'utf8')));
+    assert.deepEqual(after, before, 'planning never writes');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+// Real applyStage3Admission: a surface-form judgment gap must stop it before any canonical or manifest write.
+test('applyStage3Admission leaves the worktree untouched when a surface-form judgment gap is found', async () => {
+  const canonicalRecords = [];
+  const recordPathById = new Map();
+  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
+    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      canonicalRecords.push(record);
+      recordPathById.set(record.id, 'data/canonical/' + name);
+    }
+  }
+  const id = 'C900001-0001';
+  // A verb whose final coda needs a reviewer's regular/irregular judgment cannot be decided by the rule.
+  const decision = {
+    source_candidate_id: id, disposition: 'included', target: { kind: 'new_entry' },
+    reviewed_record: { lemma: '합성놓다', senses: [{ pos: 'verb', gloss: '합성 시험에서 쓰는 단일 뜻풀이.' }] },
+  };
+  const record = reviewedCandidateRecord(decision);
+  const row = {
+    source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+    decision_rationale: id + ': 합성 시험 결정.', gloss_judgment: 'fit',
+    sense_reviews: record.senses.map((sense) => ({
+      sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+      boundary_rationale: id + ' ' + sense.id + ': 한 가지 뜻으로 한정된다.', semantic_rationale: id + ' ' + sense.id + ': ' + sense.gloss,
+      relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: id + ' ' + sense.id + ': 관계 없음.',
+    })),
+    boundary_pairs: inspectSenseBoundaryPairs(record).map(() => { throw new Error('single sense has no pairs'); }),
+  };
+  row.review_binding = authorSemanticReviewBinding(row, record);
+  const digest = 'a'.repeat(64);
+  const plan = planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-apply-gap-'));
+  try {
+    for (const file of ['data/validation/canonical-semantic-decision-source.json', 'data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']) {
+      await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+      await writeFile(path.join(root, file), await readFile(file, 'utf8'));
+    }
+    await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+    await mkdir(path.join(root, 'data/reviews/C900001'), { recursive: true });
+    const reviewManifestPath = path.join(root, 'data/reviews/C900001/manifest.json');
+    await writeFile(reviewManifestPath, '{"status":"ready"}\n');
+    const snapshot = async () => JSON.stringify([
+      await readdir(path.join(root, 'data/canonical')),
+      ...await Promise.all([reviewManifestPath, ...['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json', 'canonical-semantic-decision-source.json'].map((name) => path.join(root, 'data/validation', name))]
+        .map((file) => readFile(file, 'utf8'))),
+    ]);
+    const before = await snapshot();
+    // The projected canonical revision is used for planning, but the base records are never rewritten here.
+    await assert.rejects(
+      applyStage3Admission({
+        root, claim: { batchId: 'C900001', attempt: 1 },
+        prepared: { plan, reviewManifestPath, canonicalRecords, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' },
+      }),
+      (error) => error.category === 'lexical' && error.code === 'STAGE3_SURFACE_FORM_JUDGMENT',
+    );
+    assert.equal(await snapshot(), before, 'no canonical, manifest or authority file changed');
+
+    // Same gap through processStage3Attempt with the real apply step: the draft is rejected from a clean tree.
+    const events = [];
+    const claim = { batchId: 'C000001', attempt: 1, claimRef: 'refs/heads/stage3-claims/C000001-a1', branchName: 'codex/stage3/C000001-a1', rejectionBranchName: 'codex/stage3-status/C000001-a1', baseSha: 'head', prNumber: 75 };
+    const processManifestPath = path.join(root, 'data/reviews/C000001/manifest.json');
+    await mkdir(path.dirname(processManifestPath), { recursive: true });
+    await writeFile(processManifestPath, JSON.stringify(manifests([]).reviewManifest));
+    const snapshotSync = () => JSON.stringify([
+      readdirSync(path.join(root, 'data/canonical')),
+      ...[processManifestPath, ...['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json', 'canonical-semantic-decision-source.json'].map((name) => path.join(root, 'data/validation', name))]
+        .map((file) => readFileSync(file, 'utf8')),
+    ]);
+    const processBefore = snapshotSync();
+    const github = {
+      async getPullRequest() { return { number: 75, state: 'open', draft: true, base: { ref: 'master' }, head: { ref: claim.branchName } }; },
+      async getBranchHead() { return 'head'; },
+      async updatePullRequestBody() { events.push('disposition'); },
+      async closePullRequest() { events.push('close'); },
+      async createPullRequest(payload) { events.push('status-pr'); return { number: 76, html_url: 'https://example.test/76' }; },
+    };
+    const git = {
+      async fetchMaster() {}, resolveRef() { return 'head'; },
+      // The rejection-status branch is created only from an unchanged worktree.
+      createBranch() { events.push(snapshotSync() === processBefore ? 'status-branch:clean' : 'status-branch:DIRTY'); },
+      async commitAndPush() {}, async deleteBranch() {},
+    };
+    const result = await processStage3Attempt({
+      github, git, root, claim, runGates: false,
+      prepare: async () => ({ plan, reviewManifestPath, canonicalRecords, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' }),
+    });
+    assert.equal(result.prState, 'rejection-status');
+    assert.equal(result.prNumber, 76);
+    assert.deepEqual(events.slice(0, 4), ['disposition', 'close', 'status-branch:clean', 'status-pr']);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('real Git recovery preserves unpushed admission commits and refuses dirty trees', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'stage3-real-git-recovery-'));
+  const root = path.join(directory, 'work');
+  const remote = path.join(directory, 'remote.git');
+  const run = (args, cwd = root) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  try {
+    await mkdir(root);
+    run(['init', '--bare', remote], directory);
+    run(['init', '-b', 'codex/stage3/C900001-a1']);
+    run(['config', 'user.name', 'Synthetic fixture']);
+    run(['config', 'user.email', 'fixture@example.invalid']);
+    run(['remote', 'add', 'origin', remote]);
+    const file = path.join(root, 'checkpoint');
+    await writeFile(file, 'starter');
+    run(['add', 'checkpoint']); run(['commit', '-m', 'Fixture starter']);
+    run(['push', '-u', 'origin', 'HEAD']);
+    await writeFile(file, 'local admission');
+    const git = createStage3GitRepository({ root });
+    await git.commitPrepared({ message: 'Fixture local admission', files: ['checkpoint'] });
+    const checkpoint = git.resolveRef('HEAD');
+    await git.refreshBranch('codex/stage3/C900001-a1');
+    assert.equal(git.resolveRef('HEAD'), checkpoint);
+    assert.equal(await readFile(file, 'utf8'), 'local admission');
+    await writeFile(file, 'uncommitted work');
+    await assert.rejects(git.refreshBranch('codex/stage3/C900001-a1'), /preserve uncommitted work/);
+    assert.equal(await readFile(file, 'utf8'), 'uncommitted work');
+    assert.equal(git.resolveRef('HEAD'), checkpoint);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('historical collision evidence is scoped to retained senses while strict collision gates remain enforced', async () => {
+  const { projectHistoricalSurfaceFormReview } = await import('../scripts/batch/historical-canonical.mjs');
+  const { buildSurfaceFormProjection } = await import('../scripts/inflection/surface-form-projection.mjs');
+  const one = predicate('w1', '같다', 'adjective');
+  const two = { ...one, senses: [...one.senses, { ...one.senses[0], id: 'w1-s2', gloss: '두번째 합성 뜻.' }] };
+  const root = await surfaceFormRoot([two]);
+  try {
+    await applySurfaceFormDispositions({ root });
+    const review = JSON.parse(await readFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), 'utf8'));
+    const before = JSON.stringify(review);
+    const projected = projectHistoricalSurfaceFormReview(review, [one]);
+    const exceptionManifest = JSON.parse(await readFile(path.join(root, 'data/validation/m6-2-inflection-exceptions.json'), 'utf8'));
+    assert.equal(JSON.stringify(review), before, 'the current review evidence is not edited');
+    assert.doesNotThrow(() => buildSurfaceFormProjection([one], { exceptionManifest, reviewManifest: projected, requireCollisionReview: true }));
+    assert.throws(() => buildSurfaceFormProjection([two], { exceptionManifest, reviewManifest: projected, requireCollisionReview: true }), (error) => error.code === 'SURFACE_FORM_COLLISION_REVIEW_MISMATCH');
+    assert.deepEqual(projectHistoricalSurfaceFormReview(review, [two]), review);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('Stage 3 refreshes its live dependent checkpoints through existing source-bound report producers', () => {
+  const commands = [];
+  const files = refreshStage3ReportCheckpoints('/repo', (file, args, options) => commands.push({ file, args, options }));
+  assert.deepEqual(commands.map(({ args }) => args), [['run', 'inventory:issue-210:write'], ['run', 'batch:issue-219:report'], ['run', 'batch:issue-220:report'], ['run', 'batch:issue-222:report']]);
+  assert.equal(files.length, 8);
+  assert.ok(files.every((file) => file.startsWith('docs/') || file.startsWith('data/validation/') || file.startsWith('data/inventory/')));
 });
