@@ -46,6 +46,14 @@ For systemic defects demand **minimal failing fixture → shared producer/valida
 
 When canonical or CI architecture changes, verify: one shared complete-revision context; global semantic audit before SQLite; downstream checks reuse the context; no redundant whole-corpus parsing/building. Compare claimed parse/scan/build counts to actual wiring.
 
+### PR CI execution and skip policy
+
+- The CI workflow runs on `pull_request` only; a post-merge push to `master` does not rerun `ci:normal`.
+- When **every** changed path is under `docs/**` or is exactly `README.md` or `REVIEW.md`, the PR is documentation-only and may skip `ci:normal`.
+- Any other path, any mixture of documentation and non-documentation changes, or an empty/unclassifiable change set requires the full `ci:normal`. Check renamed files on both sides; never classify a moved source file as documentation-only.
+- The workflow must still complete the usual `Validate and test Typewriter` check successfully for a documentation-only skip, and report explicitly that `ci:normal` was **skipped**, not run.
+- Reviewers independently confirm the complete changed-file list matches the skip decision. For a non-documentation PR, require a successful `ci:normal` for the reviewed HEAD; a skip is not valid evidence.
+- All existing fast/normal/deep gates, coverage and one-build invariants remain unchanged **when the normal test actually runs**. A documentation-only skip does not claim those tests or the SQLite build occurred.
 CI must remain nested: `ci:fast` (early), `ci:normal` (full merge), `ci:all` (deep). A single normal run may include the fast checkpoint without a second full-canonical run; independent two-build reproducibility belongs in deep/manual. If a Deep CI or deep regression changes, require successful **`Deep CI Gate` on this exact HEAD** (`ci:all`); otherwise its passing skip gate is sufficient.
 
 **One-build invariant (BLOCKER if broken):** every successful `ci:normal` builds SQLite for the exact current canonical revision **exactly once** across parent, subprocesses and nested validators (`parent_current_revision_sqlite_build_count=1`, `child_current_revision_sqlite_build_count=0`, `current_revision_sqlite_build_count=1`), enforced by `scripts/ci/run-category.mjs` at the fast checkpoint, normal-phase completion and final exit, regardless of changed files. Block any PR that adds a second exact-current-revision build in normal, weakens/bypasses/falsifies the guard or its fail-closed ledger (omitted hook, malformed/missing ledger, trusting a caller-supplied revision label), or adds a batch-specific full-canonical replay instead of reusing the shared context/artifact (`scripts/ci/current-revision-database.mjs`). Fixture/other-revision builds are counted separately; independent two-build proofs are allowed only in the deep phase (`independentCurrentRevisionBuilds`).
@@ -114,6 +122,6 @@ After the mandatory two-line header, document:
   
 ## 7. Stage 3 — reviews of reviews and merge
 
-Check the active issue, changed-file names, same-HEAD sequential **independent, evidence-bearing** `+1`/`+2` reviews, blocker/fix history and exact-HEAD validation. Confirm both reviews covered the real approach and systemic risk, not just markers. Perform **one targeted adversarial probe** of a material unverified assumption (e.g. requirement → evidence → enforcement → known-invalid regression); do **not** perform a third full review.
+Check the active issue, changed-file names, same-HEAD sequential **independent, evidence-bearing** `+1`/`+2` reviews, blocker/fix history and exact-HEAD validation. For the reviewed HEAD, accept a successful documentation-only skip gate only after verifying **every** changed path is eligible; otherwise require a successful full `ci:normal`. Do not treat a skipped normal run as passed tests. No post-merge `master` CI run is required. Confirm both reviews covered the real approach and systemic risk, not just markers. Perform **one targeted adversarial probe** of a material unverified assumption (e.g. requirement → evidence → enforcement → known-invalid regression); do **not** perform a third full review.
 
 If any gate is stale, incomplete or disproved: comment with the blocker, **do not merge**. Otherwise **squash-merge that exact PR using the expected HEAD SHA**. No `+3`, no `APPROVE`.
