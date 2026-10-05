@@ -7,6 +7,12 @@
   "semantic_decisions_sha256": "8f493463c277f8a50e34761485d98ccdfad4f0795b6737e2c1a5ae71568f10df",
   "handoff_sha256": "ab7e605a5f975a3f243eb738cfb70abb72e0aa205b0f5fd9325bb776c7549ce3",
   "attempt": 1,
-  "status": "ready",
-  "history": []
+  "status": "rejected",
+  "history": [
+    {
+      "attempt": 1,
+      "rejected_pr": 305
+    }
+  ],
+  "rejected_pr": 305
 }
