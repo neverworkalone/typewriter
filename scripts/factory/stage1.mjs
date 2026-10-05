@@ -93,7 +93,7 @@ function extractorHolds(candidate) {
   return holds;
 }
 
-const PUNCTUATED_EOJEOL = /^[\p{L}\p{N}\p{M}\p{P}]{1,24}$/u; // letters/digits plus real punctuation only; symbols, emoji, controls and whitespace never qualify
+const PUNCTUATED_EOJEOL = /^(?=.*\p{L})(?=.*\p{P})[\p{L}\p{N}\p{P}]{1,24}$/u; // a real word (a letter) with attached punctuation, nothing else: no marks, symbols, emoji or controls
 
 // Text-free extractor evidence → usage observations (one per bounded paragraph hit).
 export function observationsFromCorpusEvidence(evidence) {
