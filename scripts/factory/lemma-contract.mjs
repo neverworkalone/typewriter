@@ -75,7 +75,7 @@ export function validateLemmaCandidateRecord(record, { batchId, ordinal, ensembl
   const errors = [];
   if (record.candidate_id !== id) errors.push(`candidate ${id}: candidate_id must be ${id}, got ${record.candidate_id}`);
   if (typeof record.input !== 'string' || !KOREAN_WORD.test(record.input)) errors.push(`${at}: input must be a dictionary-form Korean lemma`);
-  const allowed = new Set(['candidate_id', 'input', 'pos_hypotheses', 'forms', 'usage_groups', 'observations', 'observation_total', 'observation_digest', ...(ensemble ? ['review'] : [])]);
+  const allowed = new Set(['candidate_id', 'input', 'pos_hypotheses', 'forms', 'usage_groups', 'observations', 'observation_total', 'observation_digest', ...(ensemble ? ['review', 'omitted'] : [])]);
   for (const key of Object.keys(record)) if (!allowed.has(key)) errors.push(`${at}: unknown field ${key}`);
 
   const posList = record.pos_hypotheses;
@@ -159,7 +159,7 @@ export function validateLemmaCandidateRecord(record, { batchId, ordinal, ensembl
     });
     if (observationSetDigest(keys) !== record.observation_digest) errors.push(`${at}: observation_digest does not match the retained observations`);
   }
-  if (ensemble && errors.length === 0) errors.push(...validateReviewField(record.review, observations, record.observation_total, at));
+  if (ensemble && errors.length === 0) errors.push(...validateReviewField(record.review, observations, record.omitted, record.observation_total, at));
   else if (ensemble && record.review === undefined) errors.push(`${at}: review is required under the ensemble policy`);
   return errors;
 }
@@ -297,7 +297,7 @@ function validateEnsembleBindings(manifest, rows) {
   const errors = [];
   const decisions = manifest.context_fallback.decisions;
   const providers = manifest.analyzer_providers;
-  const observationDigests = rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest)]);
+  const observationDigests = rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest), ...row.omitted.map((entry) => entry.trace_digest)]);
   const queueDigests = manifest.unresolved_observations.map((entry) => entry.trace_digest);
   if (ensembleTraceSha256({ providers, observationTraceDigests: observationDigests, queueTraceDigests: queueDigests, contextDecisionsSha256: manifest.context_fallback.decisions_sha256 }) !== manifest.ensemble.trace_sha256) {
     errors.push('candidate manifest: ensemble.trace_sha256 does not bind the providers, observation traces, queue and context decisions');

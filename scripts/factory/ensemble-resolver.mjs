@@ -266,6 +266,8 @@ export function buildTrace({ observation, results, decision }) {
     readings: decision.trace,
     category: decision.category,
     reasons: decision.reasons,
+    // Holds the observation carries from the extractor and (for an assigned reading) from the ensemble.
+    observation_holds: sortedUnique([...(observation.holds ?? []), ...(ASSIGNING_CATEGORIES.includes(decision.category) ? decision.holds : [])]),
   };
 }
 export const traceDigest = (trace) => sha256(JSON.stringify(trace));
@@ -305,7 +307,9 @@ export function decideObservations({ observations, run }) {
 // concordant and hold-free; `standard`: otherwise. `trace_sha256` commits to all trace digests.
 const isHeld = (record) => record.holds.length > 0 || record.ensemble.resolution === 'context';
 export const priorityOf = ({ categories, held }, total) => (categories.concordant !== total || held > 0 ? 'verify_first' : total >= 2 ? 'high' : 'standard');
-export const observationSetTraceDigest = (digests) => digest(['ensemble-observation-set', digests]);
+// Order-independent commitment to every observation's (trace, category, held) — retained or omitted.
+export const observationSetTraceDigest = (records) => digest(['ensemble-observation-set', records
+  .map((record) => JSON.stringify([record.ensemble.trace_digest, record.ensemble.category, isHeld(record)])).sort()]);
 export function reviewSummary(records) {
   const categories = { concordant: 0, supported_alternative: 0, conflicted: 0, unsupported_or_unknown: 0 };
   let held = 0;
@@ -317,7 +321,7 @@ export function reviewSummary(records) {
     priority: priorityOf({ categories, held }, records.length),
     categories: Object.fromEntries(Object.entries(categories).filter(([, count]) => count > 0)),
     held,
-    trace_sha256: observationSetTraceDigest(records.map((record) => record.ensemble.trace_digest)),
+    trace_sha256: observationSetTraceDigest(records),
   };
 }
 // Retention preference when the bound omits observations: reviewable ones (holds, rivals,
@@ -380,21 +384,52 @@ export function validateEnsembleObservation(record, at, { decisionIds = new Set(
   return errors;
 }
 
-export function validateReviewField(review, observations, observationTotal, at) {
-  if (!isObject(review) || Object.keys(review).sort().join() !== 'categories,held,priority,trace_sha256' || !PRIORITIES.includes(review.priority)
-    || !isObject(review.categories) || !Number.isInteger(review.held) || review.held < 0 || !SHA256.test(String(review.trace_sha256))) return [`${at}: review must be {priority, categories, held, trace_sha256}`];
+// The compact, text-free record kept for each observation the bound omits: enough to recompute the
+// row's totals, holds and commitment exactly (the full trace stays in the local trace file).
+export const omittedRecord = (record) => ({ category: record.ensemble.category, held: isHeld(record), trace_digest: record.ensemble.trace_digest });
+const asRecord = (entry) => ({ holds: entry.held ? ['omitted'] : [], ensemble: { category: entry.category, resolution: 'ensemble', trace_digest: entry.trace_digest } });
+
+export function validateOmitted(omitted, observationTotal, retainedCount, at) {
+  if (!Array.isArray(omitted)) return [`${at}: omitted must be an array under the ensemble policy`];
   const errors = [];
-  const entries = Object.entries(review.categories);
-  if (entries.some(([key, count]) => !CATEGORIES.includes(key) || !Number.isInteger(count) || count < 1)
-    || JSON.stringify(entries.map(([key]) => key)) !== JSON.stringify(CATEGORIES.filter((key) => review.categories[key]))) errors.push(`${at}: review.categories must list non-zero known categories in order`);
-  const full = { concordant: 0, supported_alternative: 0, conflicted: 0, unsupported_or_unknown: 0, ...review.categories };
-  if (Object.values(full).reduce((sum, count) => sum + count, 0) !== observationTotal) errors.push(`${at}: review.categories must account for every one of the ${observationTotal} observations, including omitted ones`);
-  if (review.held > observationTotal) errors.push(`${at}: review.held exceeds the observation total`);
-  if (review.priority !== priorityOf({ categories: full, held: review.held }, observationTotal)) errors.push(`${at}: review.priority does not follow from the full observation categories and holds`);
-  const retained = reviewSummary(observations);
-  for (const category of CATEGORIES) if ((retained.categories[category] ?? 0) > full[category]) errors.push(`${at}: retained ${category} observations exceed the recorded total`);
-  if (retained.held > review.held) errors.push(`${at}: retained held observations exceed review.held`);
-  if (observations.length === observationTotal && JSON.stringify(retained) !== JSON.stringify(review)) errors.push(`${at}: review does not match its observations' ensemble categories, holds and traces`);
+  if (omitted.length !== observationTotal - retainedCount) errors.push(`${at}: omitted must hold exactly one record per omitted observation (${observationTotal - retainedCount})`);
+  omitted.forEach((entry, index) => {
+    if (!isObject(entry) || Object.keys(entry).sort().join() !== 'category,held,trace_digest' || !CATEGORIES.includes(entry.category)
+      || typeof entry.held !== 'boolean' || !SHA256.test(String(entry.trace_digest))) errors.push(`${at}: omitted[${index}] must be {category, held, trace_digest}`);
+  });
+  return errors;
+}
+
+// `review` is recomputed EXACTLY from the retained observations plus the omitted records: no total,
+// hold count, priority or commitment may be edited without editing the per-observation records.
+export function validateReviewField(review, observations, omitted, observationTotal, at) {
+  if (!isObject(review) || Object.keys(review).sort().join() !== 'categories,held,priority,trace_sha256' || !PRIORITIES.includes(review.priority)) return [`${at}: review must be {priority, categories, held, trace_sha256}`];
+  const errors = validateOmitted(omitted, observationTotal, observations.length, at);
+  if (errors.length) return errors;
+  const expected = reviewSummary([...observations, ...omitted.map(asRecord)]);
+  return JSON.stringify(expected) === JSON.stringify(review) ? []
+    : [`${at}: review does not match the category, hold and trace records of all ${observationTotal} observations (retained and omitted)`];
+}
+
+// LOCAL integration check (needs the ignored `--ensemble-trace` file, never part of routine CI):
+// every retained/omitted/queue record must be backed by a trace whose digest, category and hold
+// state agree. This is what proves an omitted observation's category/hold against real analysis.
+export function verifyEnsembleTraces({ rows, queue = [], traces }) {
+  const byDigest = new Map(traces.map((entry) => [entry.trace_digest, entry.trace]));
+  const errors = [];
+  const check = (at, record) => {
+    const trace = byDigest.get(record.trace_digest);
+    if (!trace) { errors.push(`${at}: no local trace for ${record.trace_digest.slice(0, 12)}`); return; }
+    if (traceDigest(trace) !== record.trace_digest) errors.push(`${at}: local trace does not hash to its digest`);
+    if (trace.category !== record.category) errors.push(`${at}: recorded category ${record.category} differs from the trace (${trace.category})`);
+    if (record.resolution !== 'context' && trace.observation_holds.length > 0 !== record.held) errors.push(`${at}: recorded hold state differs from the trace`);
+  };
+  for (const row of rows) {
+    for (const observation of row.observations) check(`${row.candidate_id} ${observation.observation_id}`, { trace_digest: observation.ensemble.trace_digest, category: observation.ensemble.category,
+      held: observation.holds.length > 0, resolution: observation.ensemble.resolution });
+    (row.omitted ?? []).forEach((entry, index) => check(`${row.candidate_id} omitted[${index}]`, entry));
+  }
+  for (const entry of queue) check(entry.queue_id, { trace_digest: entry.trace_digest, category: entry.category, held: false, resolution: 'queue' });
   return errors;
 }
 

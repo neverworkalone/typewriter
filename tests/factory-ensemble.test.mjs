@@ -11,6 +11,7 @@ import {
   ENSEMBLE_POLICY,
   classifyObservation,
   ENSEMBLE_PROVIDER_ORDER,
+  verifyEnsembleTraces,
 } from '../scripts/factory/ensemble-resolver.mjs';
 import { createMecabProvider, pinnedMetadata as mecabMetadata } from '../scripts/factory/mecab-provider.mjs';
 import { POLICY_ALIASES, parseArguments, runStage1 } from '../scripts/factory/produce-candidates.mjs';
@@ -620,10 +621,31 @@ test('review fix: observations beyond the 64 bound keep their hold, category acc
     manifest.candidates_sha256 = sha256Hex(text);
     return validateCandidateBatch({ manifest, candidatesText: text }).join('\n');
   };
-  assert.match(check(tail, (r) => { r.review = { ...r.review, held: 0, priority: 'high' }; }), /retained held observations exceed review.held/);
-  assert.match(check(tail, (r) => { r.review.categories = { concordant: 64 }; }), /account for every one of the 65 observations/);
-  assert.match(check(tail, (r) => { r.review.categories = { concordant: 60, conflicted: 5 }; }), /priority|trace_sha256|retained/);
-  assert.match(check(tail, (r) => { r.review.trace_sha256 = HEX; }), /trace_sha256 does not bind/);
+  const exact = /review does not match the category, hold and trace records of all 65 observations/;
+  assert.match(check(tail, (r) => { r.review = { ...r.review, held: 0, priority: 'high' }; }), exact);
+  assert.match(check(tail, (r) => { r.review.categories = { concordant: 64 }; }), exact);
+  assert.match(check(tail, (r) => { r.review.trace_sha256 = HEX; }), exact);
   assert.match(check(tail, (r, m) => { m.ensemble.counts.categories.concordant = 64; }), /does not match/);
-  assert.match(check(many, (r) => { r.review.priority = 'high'; }), /review.priority does not follow/);
+  // The reviewer's forgery: relabel the unseen 65th observation in the totals AND the manifest counts.
+  assert.match(check(clean, (r, m) => { r.review.categories = { concordant: 64, conflicted: 1 }; r.review.priority = 'verify_first'; m.ensemble.counts.categories = { concordant: 64, supported_alternative: 0, conflicted: 1, unsupported_or_unknown: 0 }; }), exact);
+  // ... and lowering the hold count of 70 omitted-from-retention holds is equally rejected.
+  const manyExact = /of all 70 observations/;
+  assert.match(check(many, (r) => { r.review.held = 64; }), manyExact);
+  assert.match(check(many, (r) => { r.review.priority = 'high'; }), manyExact);
+  // Omitted records must exist, match the count and keep their shape.
+  assert.match(check(clean, (r) => { r.omitted = []; }), /one record per omitted observation \(1\)/);
+  assert.match(check(clean, (r) => { delete r.omitted; }), /omitted must be an array/);
+  assert.match(check(clean, (r) => { r.omitted[0].category = 'bogus'; }), /omitted\[0\] must be/);
+  // Editing the omitted record itself is self-consistent for the portable validator once its totals are
+  // recomputed; it is caught by the LOCAL trace check, which needs the ignored --ensemble-trace file.
+  const rowsOf = (result) => result.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
+  const traces = clean.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace }));
+  assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf(clean), queue: clean.manifest.unresolved_observations, traces }), []);
+  const forged = rowsOf(clean);
+  forged[0].omitted[0].category = 'conflicted';
+  assert.match(verifyEnsembleTraces({ rows: forged, traces }).join(), /recorded category conflicted differs from the trace/);
+  const heldForged = rowsOf(many);
+  heldForged[0].omitted[0].held = false;
+  assert.match(verifyEnsembleTraces({ rows: heldForged, traces: many.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace })) }).join(), /hold state differs/);
+  assert.match(verifyEnsembleTraces({ rows: rowsOf(clean), traces: [] }).join(), /no local trace/);
 });

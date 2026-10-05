@@ -23,6 +23,7 @@ import {
   ensembleCohortMetrics,
   ensembleTraceSha256,
   needsReviewFirst,
+  omittedRecord,
   reviewSummary,
   runEnsembleProviders,
 } from './ensemble-resolver.mjs';
@@ -473,7 +474,8 @@ export function buildLemmaRow({ lemma, observations: entry, candidateId, ensembl
     observations: observationRecords,
     observation_total: all.length,
     observation_digest: observationSetDigest(all.map((item) => item.key)),
-    ...(ensemble ? { review: reviewSummary(all.map((item) => ({ holds: [...item.holds], ensemble: item.ensemble }))) } : {}),
+    ...(ensemble ? { review: reviewSummary(all.map((item) => ({ holds: [...item.holds], ensemble: item.ensemble }))),
+      omitted: all.filter((item) => !chosen.has(item)).map((item) => omittedRecord({ holds: [...item.holds], ensemble: item.ensemble })) } : {}),
   };
 }
 
@@ -579,7 +581,7 @@ function ensembleManifestFields({ grouped, rows, providers }) {
       counts: { observations: rows.reduce((sum, row) => sum + row.observation_total, 0) + grouped.unresolved.length, categories, queue: grouped.unresolved.length },
       trace_sha256: ensembleTraceSha256({
         providers,
-        observationTraceDigests: rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest)]),
+        observationTraceDigests: rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest), ...row.omitted.map((entry) => entry.trace_digest)]),
         queueTraceDigests: grouped.unresolved.map((entry) => entry.trace_digest),
         contextDecisionsSha256: contextDecisionsDigest,
       }),

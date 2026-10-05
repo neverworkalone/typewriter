@@ -68,7 +68,11 @@ Each row carries `review: {priority, categories, held, trace_sha256}`, computed 
 lemma — including those the 64-observation bound omits — and recomputed/enforced by the validator:
 `verify_first` (a rival reading, a hold or an unresolved category exists), `high` (two or more independent
 source observations, all concordant and hold-free), `standard`. `categories`/`held` account for the full
-`observation_total`; `trace_sha256` commits to all observation trace digests. When the bound omits observations,
+`observation_total`; `trace_sha256` is an order-independent commitment to every observation's `(trace_digest, category, held)`. When the
+bound omits observations, each omitted one keeps a compact text-free record `omitted[] = {category, held, trace_digest}`, so
+the validator recomputes `categories`, `held`, `priority` and `trace_sha256` **exactly** from retained + omitted records (no
+total can be edited without editing a per-observation record). Authenticity of an omitted record against the real analysis is
+proven by the local check `verifyEnsembleTraces` (needs the ignored `--ensemble-trace` file; not part of routine CI). When the bound omits observations,
 reviewable ones (holds, rivals, context recoveries) are retained before plain concordant ones. It orders Stage 2
 review effort only; per `AGENTS.md`, usefulness never admits, holds or rejects a lexical entry.
 
