@@ -54,26 +54,35 @@ CI must remain nested: `ci:fast` (early), `ci:normal` (full merge), `ci:all` (de
 
 ### Mandatory review format
 
-Every GitHub review MUST begin with exactly two lines:
+Every GitHub PR review MUST begin with exactly two lines:
 
 Line 1: Review result
-- +1 : First review passed
-- +2 : Second review passed
-- -1 : Blocker found
+- +1 : Stage 1 PASS
+- +2 : Stage 2 PASS
+- -1 : FAIL (blocker found)
 
 Line 2: Reviewed commit
 - HEAD: <full 40-character SHA>
 
 Rules:
-- No text, whitespace, or blank lines before the result marker.
 - The result marker MUST occupy the entire first line.
+- No text, whitespace, or blank lines before the result marker.
 - Use exactly one result marker per review.
 - The HEAD line MUST immediately follow the result marker.
 - The HEAD must identify the exact commit actually reviewed.
 - Do not wrap either line in Markdown or a code block.
 - Write review details after these two lines.
 - Submit exactly one final result per review run.
-- Submit reviews as GitHub COMMENT, never APPROVE.
+
+### Review submission
+
+- Submit the final result as a GitHub pull request
+  review using COMMENT (`gh pr review --comment`).
+- Never use `gh pr comment` for the final review.
+- Never submit APPROVE or REQUEST_CHANGES.
+- Verify the PR HEAD before submission.
+- If HEAD changed during review, do not issue a PASS
+  for the unreviewed commit.
 
 ### Required review evidence
 
@@ -82,20 +91,25 @@ After the mandatory two-line header, document:
 - Review stage and issue/acceptance scope.
 - Checked approach, implementation, and material boundaries.
 - Blockers and supporting evidence, or explicitly none.
-- For each blocker: cause, impact, safer correction, and required regression validation.
+- For each blocker: cause, impact, safer correction,
+  and required regression validation.
 - Exact-HEAD tests and CI results.
 - Checks not performed and remaining uncertainties.
 - A clear conclusion for the reviewed HEAD.
 
 ### Result rules
 
-- Stage 1 uses +1 only when its review passes.
-- Stage 2 uses +2 only when its independent review passes.
-- Either stage uses -1 when a blocker is confirmed.
+- Stage 1 submits +1 only when its review passes.
+- Stage 2 submits +2 only when its independent review passes.
+- Either stage submits -1 when a blocker is confirmed.
 - Never issue a passing marker while blockers remain.
-- Missing required validation is a blocker.
-- If required checks are still running, wait for their results before submitting the final review.
-- A new commit invalidates previous passing markers; review the updated HEAD before issuing a new result.
+- If required checks are still running, wait for their results
+  before submitting the final review.
+- If required validation remains missing or cannot be
+  established, withhold PASS and report the missing
+  evidence as a blocker.
+- A new commit invalidates previous passing markers.
+  Review the updated HEAD before issuing a new result.
 - A failed review never authorizes merging.
   
 ## 7. Stage 3 — reviews of reviews and merge
