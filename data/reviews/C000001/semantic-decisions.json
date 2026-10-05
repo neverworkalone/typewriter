@@ -3,6 +3,7 @@
   "contract_version": "lexical-semantic-decision-source-v4",
   "kind": "separately-authored-semantic-decision-source",
   "batch_id": "C000001",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
   "authoring_mode": "agent-authored-decision",
   "provenance": {
     "human_reviewed": false
@@ -51,26 +52,6 @@
           "left_sense_id": "C000001-0001-s1",
           "right_sense_id": "C000001-0001-s2",
           "relationship": "distinct",
-          "shared_tokens": [],
-          "left_distinctive_tokens": [
-            "것",
-            "견주어",
-            "다르지",
-            "다른",
-            "비슷하거나",
-            "서",
-            "않고",
-            "한가지이다"
-          ],
-          "right_distinctive_tokens": [
-            "그러하리라고",
-            "상태",
-            "않지",
-            "어떤",
-            "일이나",
-            "짐작되다",
-            "확실하지"
-          ],
           "decision": "retain",
           "left_gloss_sha256": "eab81709b75824333c2e013af037141df7b3795717e460501ae2486ab141c2cd",
           "right_gloss_sha256": "40bf98bcf815ca3c9a5b763c07a23d1b27cc631da671d2dc55c37558a466621b",
@@ -83,7 +64,7 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000001-0001",
         "candidate_record_sha256": "8fd0f29dfc36d18047a7bea63e03da4e29931cbab8b39221c9fa658990577460",
-        "decision_evidence_sha256": "05b52ad0dda2c72974d78c152912ee42c1baded576669f0f5b5fc3d71d294aba",
+        "decision_evidence_sha256": "692d152cb451775ef68b6f6c45944a1c23620e206ff68f8665dbcc9dde03817a",
         "sense_evidence": [
           {
             "sense_id": "C000001-0001-s1",
@@ -212,21 +193,6 @@
           "left_sense_id": "C000001-0004-s1",
           "right_sense_id": "C000001-0004-s2",
           "relationship": "distinct",
-          "shared_tokens": [
-            "어떤"
-          ],
-          "left_distinctive_tokens": [
-            "감정",
-            "겪어",
-            "마음",
-            "알다"
-          ],
-          "right_distinctive_tokens": [
-            "대상",
-            "마음속",
-            "어떠하다고",
-            "여기다"
-          ],
           "decision": "retain",
           "left_gloss_sha256": "d49687ed69cb479401ae5d7032d2107241593f7e07ef6320b76fbe29fdd63718",
           "right_gloss_sha256": "aca300537e5d16af4fe7b1d07f424ca5f8d762c362f8bd538940dca40aea87c4",
@@ -239,7 +205,7 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000001-0004",
         "candidate_record_sha256": "d317474edc29b78bfc903380c4f8b42f0eeb7e2213cff77b4f6f9ce68fbcab22",
-        "decision_evidence_sha256": "84a25b1f39763ece8b742523ca818a51ac1f549d0e0c89996f617f2630ebbc9d",
+        "decision_evidence_sha256": "e0b4fd01295011d0473afbe564ac763d43a51afc0ec5f7224447293ab66061fb",
         "sense_evidence": [
           {
             "sense_id": "C000001-0004-s1",
@@ -368,24 +334,6 @@
           "left_sense_id": "C000001-0011-s1",
           "right_sense_id": "C000001-0011-s2",
           "relationship": "distinct",
-          "shared_tokens": [
-            "그"
-          ],
-          "left_distinctive_tokens": [
-            "것",
-            "근거",
-            "기준이나",
-            "맞추다",
-            "삼아",
-            "앞선"
-          ],
-          "right_distinctive_tokens": [
-            "결과",
-            "생기다",
-            "어떤",
-            "이어",
-            "일"
-          ],
           "decision": "retain",
           "left_gloss_sha256": "124bb9107cca20eccc4774998dd72bf594a7e0f69b1bdaea3f48d98107c123d8",
           "right_gloss_sha256": "ab626bbc0ae29c6b4190a13f8436b84ea35556bda6283127c3292624a710a1b6",
@@ -398,7 +346,7 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000001-0011",
         "candidate_record_sha256": "034a8ade438827ecefa6b3782eb6d42090b7bbd0c47e373fba2b548eea6af143",
-        "decision_evidence_sha256": "ef7cc4d200041cccea6982d9fd6a87650ed75c376cacd69ec42a4b87d4501063",
+        "decision_evidence_sha256": "e8b48328ccee56241af34f6cfb9791e39b76ed4466d84af21f183c6ecc570605",
         "sense_evidence": [
           {
             "sense_id": "C000001-0011-s1",
