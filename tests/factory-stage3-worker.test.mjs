@@ -611,3 +611,21 @@ test('Stage 3 reviews the generated-form ambiguity a multi-sense predicate creat
     assert.deepEqual(await applySurfaceFormDispositions({ root }), []);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('Stage 3 extends an existing collision review when a later sense joins its candidate set, keeping its reason', async () => {
+  const one = { ...predicate('w1', '같다', 'adjective'), senses: [{ id: 'w1-s1', pos: 'adjective', gloss: '첫째 뜻풀이.' }, { id: 'w1-s2', pos: 'adjective', gloss: '둘째 뜻풀이.' }] };
+  const root = await surfaceFormRoot([one]);
+  try {
+    await applySurfaceFormDispositions({ root });
+    const file = path.join(root, 'data/validation/m6-3-surface-form-review.json');
+    const reviewed = JSON.parse(await readFile(file, 'utf8'));
+    reviewed.reviewed_collisions.ambiguous_generated.find(({ form }) => form === '같은').reason = 'Reviewer wording kept.';
+    await writeFile(file, JSON.stringify(reviewed, null, 2) + '\n');
+    const three = { ...one, senses: [...one.senses, { id: 'w1-s3', pos: 'adjective', gloss: '셋째 뜻풀이.' }] };
+    await writeFile(path.join(root, 'data/canonical/x.jsonl'), JSON.stringify(three) + '\n');
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), ['data/validation/m6-3-surface-form-review.json']);
+    const next = JSON.parse(await readFile(file, 'utf8')).reviewed_collisions.ambiguous_generated.find(({ form }) => form === '같은');
+    assert.deepEqual(next.candidates.map(({ sense_id }) => sense_id), ['w1-s1', 'w1-s2', 'w1-s3']);
+    assert.equal(next.reason, 'Reviewer wording kept.');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

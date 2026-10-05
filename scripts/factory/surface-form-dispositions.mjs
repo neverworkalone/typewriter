@@ -51,24 +51,33 @@ export async function applySurfaceFormDispositions({ root }) {
       throw new Stage3AdmissionError(`unknown surface-form manifest ${manifest}`, { category: 'systemic', code: 'STAGE3_SURFACE_FORM_MANIFEST' });
     }
   }
-  // New senses can also create exact/generated or generated/generated collisions. The collision
-  // policy is fixed (exact lookup keeps precedence; every sense-bound candidate is retained), so
-  // the entries for newly appearing forms are dictated by the rule rather than judged here.
+  // New senses can also create, or extend the candidate set of, exact/generated and generated/generated
+  // collisions. The policy is fixed (exact lookup keeps precedence; every sense-bound candidate is
+  // retained), so these entries are dictated by the rule rather than judged here; reasons are kept.
   const records = await canonicalRecords(root);
   const { collisions } = buildSurfaceFormProjection(records, { exceptionManifest, reviewManifest });
   const reviewed = reviewManifest.reviewed_collisions;
-  const haveExact = new Set(reviewed.exact_generated.map(({ form }) => form));
-  const haveAmbiguous = new Set(reviewed.ambiguous_generated.map(({ form }) => form));
-  const newExact = collisions.exactCollisions.filter(({ form }) => !haveExact.has(form));
-  const newAmbiguous = collisions.ambiguousGeneratedForms.filter(({ form }) => !haveAmbiguous.has(form));
-  if (newExact.length) {
-    reviewed.exact_generated = [...reviewed.exact_generated, ...newExact.map(({ form, exact_candidates: exact, generated_candidates: generated }) => ({
-      form, exact_candidates: exact, generated_candidates: generated, reason: EXACT_REASON,
-    }))].sort(byForm);
+  const reasonOf = (entries) => new Map(entries.map((entry) => [entry.form, entry.reason]));
+  const exactReasons = reasonOf(reviewed.exact_generated);
+  const ambiguousReasons = reasonOf(reviewed.ambiguous_generated);
+  const nextExact = collisions.exactCollisions.map(({ form, exact_candidates: exact, generated_candidates: generated }) => ({
+    form, exact_candidates: exact, generated_candidates: generated, reason: exactReasons.get(form) ?? EXACT_REASON,
+  })).sort(byForm);
+  const nextAmbiguous = collisions.ambiguousGeneratedForms.map(({ form, candidates }) => ({
+    form, candidates, reason: ambiguousReasons.get(form) ?? AMBIGUOUS_REASON,
+  })).sort(byForm);
+  // An additive admission can only add collision forms or extend the candidate set of an existing one.
+  const disappeared = [...exactReasons.keys()].some((form) => !nextExact.some((entry) => entry.form === form))
+    || [...ambiguousReasons.keys()].some((form) => !nextAmbiguous.some((entry) => entry.form === form));
+  if (disappeared) {
+    throw new Stage3AdmissionError('a reviewed surface-form collision disappeared after an additive admission', { category: 'systemic', code: 'STAGE3_SURFACE_FORM_COLLISION' });
+  }
+  if (JSON.stringify(nextExact) !== JSON.stringify(reviewed.exact_generated)) {
+    reviewed.exact_generated = nextExact;
     changed.add(reviewPath);
   }
-  if (newAmbiguous.length) {
-    reviewed.ambiguous_generated = [...reviewed.ambiguous_generated, ...newAmbiguous.map(({ form, candidates }) => ({ form, candidates, reason: AMBIGUOUS_REASON }))].sort(byForm);
+  if (JSON.stringify(nextAmbiguous) !== JSON.stringify(reviewed.ambiguous_generated)) {
+    reviewed.ambiguous_generated = nextAmbiguous;
     changed.add(reviewPath);
   }
   if (changed.has(reviewPath)) await writeFile(reviewPath, `${JSON.stringify(reviewManifest, null, 2)}\n`, 'utf8');
