@@ -93,7 +93,7 @@ function extractorHolds(candidate) {
   return holds;
 }
 
-const PUNCTUATED_EOJEOL = /^[^\s\p{C}]{1,24}$/u;
+const PUNCTUATED_EOJEOL = /^[\p{L}\p{N}\p{M}\p{P}]{1,24}$/u; // letters/digits plus real punctuation only; symbols, emoji, controls and whitespace never qualify
 
 // Text-free extractor evidence → usage observations (one per bounded paragraph hit).
 export function observationsFromCorpusEvidence(evidence) {
@@ -132,8 +132,8 @@ export function observationsFromCorpusEvidence(evidence) {
     const holds = extractorHolds(candidate);
     const forms = [...new Set((candidate.observed_surface_forms ?? []).map((form) => normalizeText(form.surface)).filter(Boolean))].sort(compare);
     const base = { hint: { input, pos }, holds };
-    // Only a single whitespace-free eojeol with punctuation is omitted; a phrase, sentence, control or
-    // over-long text still reaches the boundary check below and fails the run closed.
+    // Only a single eojeol made of letters/digits and real punctuation is omitted; a phrase, sentence,
+    // symbol/emoji, control or over-long text still reaches the boundary check below and fails the run closed.
     const usableHits = hits.filter((hit) => {
       const surface = normalizeText(hit.matched_surface_form) || forms[0] || input;
       return isSurfaceToken(surface) || !PUNCTUATED_EOJEOL.test(surface);
