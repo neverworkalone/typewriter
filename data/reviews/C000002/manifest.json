@@ -2,17 +2,16 @@
   "contract": "lexical-factory-review-manifest-v1",
   "batch_id": "C000002",
   "candidates_sha256": "facf0dca0537b38a559a433f65a02efd8049a08e9595ad5c5c99b783bf0feb31",
-  "canonical_snapshot_digest": "41a2f5aafb06774d0829022a60f5639185bfa2b6e96d286965ec78e9f7f07da6",
-  "decisions_sha256": "cd760be52db076a1ab1b35874bc6f759a08aa8e50ceb3fd9ed7ba5ce0026dcb4",
-  "semantic_decisions_sha256": "8f493463c277f8a50e34761485d98ccdfad4f0795b6737e2c1a5ae71568f10df",
+  "canonical_snapshot_digest": "9b884315ab7912075bce399ff7ff09307ac3b12e536c4255d1ce59a2f2acdb92",
+  "decisions_sha256": "c5ead4ee756c7eeea914aab8fdf40e1d144c51de4f336dddf34a9b95750c655d",
+  "semantic_decisions_sha256": "aae95f5a8ffac4f710c6997821bf22b4d942acb76aa6c21499eee1d2aa1c7c91",
   "handoff_sha256": "ab7e605a5f975a3f243eb738cfb70abb72e0aa205b0f5fd9325bb776c7549ce3",
-  "attempt": 1,
-  "status": "rejected",
+  "attempt": 2,
+  "status": "ready",
   "history": [
     {
       "attempt": 1,
       "rejected_pr": 305
     }
-  ],
-  "rejected_pr": 305
+  ]
 }

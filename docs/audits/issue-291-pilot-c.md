@@ -160,3 +160,106 @@ Shared recovery now recognizes either API merge marker for admission and
 rejection status. A synthetic API-shape regression also keeps closed-unmerged
 status PRs blocked. That regression is not reported as a real negative pilot.
 C000002 has not been claimed while this repair is pending.
+
+## C000002 controlled negative path and real rejection merge
+
+The recovery repair [#304](https://github.com/neverworkalone/typewriter/pull/304)
+merged at 10:20:19 as `8c710631e30c87011af8c9c4656859417da1a10d` after
+exact-head Stage 1 +1, Stage 2 +2 and CI run 37294847236. Its monitor was deleted.
+
+On that master, the real serial gate acquired
+`refs/heads/stage3-claims/C000002-a1` and singleton lock
+`cff16bf096c27fd0742d8066a89a81219d7e10e7`. Metadata-only starter
+`e6b478701d551927f9e36729fa344829112ae0fa` opened real Draft
+[#305](https://github.com/neverworkalone/typewriter/pull/305) at 10:21:47.
+This is **bounded safe fault injection, not a genuine lexical defect**:
+`STAGE3_PILOT_SAFE_FAULT_INJECTION` was thrown before the allocator or any
+canonical write. #305 closed unmerged at 10:21:59. No invalid canonical record
+was committed and its unmerged starter branch was removed.
+
+The separate status-only [#306](https://github.com/neverworkalone/typewriter/pull/306)
+opened at 10:26:50, after commit
+`58aaf37b74d9da1c70802af6647ab0914986cff2` passed the entire local normal CI
+and clean-checkout gate. Its only changed file was the C000002 review manifest:
+ready → rejected, actual `rejected_pr=305`, history `{attempt:1,rejected_pr:305}`.
+Candidate/review content digests and canonical were preserved. Exact-head
+Stage 1 +1 at 10:32:22, Stage 2 +2 at 10:35:13 and CI run 37296638066 preceded
+its actual merge at 10:35:40, commit
+`ea97d4245e9a8e6ee772fde6cf23bd6b198e4034`. The rejection became authoritative
+only at this merge; its monitor was deleted.
+
+Actual pending restart checks:
+
+- 10:21:56: recovery returned `resume-admission`, same #305; another claim
+  returned null. Attempt 2 could not adopt attempt 1's live lock.
+- 10:26:56: recovery returned `await-rejection`, same #306; another claim
+  returned null. No duplicate attempt/PR or ID allocation occurred.
+- Canonical tree stayed `1e7ee2f05e494674fd0758e6f44d19fe2e03f69b` throughout.
+- 10:27:32: a **read-only API-response injection**, adding a hypothetical other
+  orphan claim to the live query result, stopped with owner-directed ambiguity;
+  actual remote refs and lock were unchanged. This is a bounded probe, not a
+  real orphan ref creation or a real orphan-adoption lifecycle claim.
+- 10:39: post-merge CLI restart returned `rejection-merged` using actual REST
+  `merged_at`, verified master/rejected_pr305, and released both owned refs.
+  This supplies real post-merge restart evidence for #304's repaired path.
+
+## C000002 full Stage 2 rework checkpoint
+
+At 10:40 the normal rejected-first Stage 2 worker acquired the exclusive
+`refs/heads/stage2-claims/C000002` at master `ea97d424...` **before** reopening
+original tracking [#301](https://github.com/neverworkalone/typewriter/issues/301)
+at 10:40:28. It created `codex/stage2/301-C000002-r2`, attempt 2, and recorded
+[the claim](https://github.com/neverworkalone/typewriter/issues/301#issuecomment-5992831306).
+The `r2` suffix follows the worker's actual attempt numbering; no duplicate
+tracking Issue was created.
+
+The primary Codex context performed a new **agent self-check** of all 12 lemmas,
+12 usage groups and all 32 observation references, including every recorded
+ambiguity/lemma-mismatch hold. The permission-gated local index's input and
+logical-row digests equal the Pilot A identities above. Each bound paragraph
+and observed surface was read locally; the short affirmative observation for
+맞다 also used its preceding/following dialogue to disambiguate the POS/sense.
+Paragraphs/context logs remain private and are not tracked. New public reasons
+are Typewriter-authored, text-free analysis; no new corpus quotations were added.
+
+| Candidate suffix / lemma | Observation-level self-check and resulting disposition |
+| --- | --- |
+| 0001 만나다 | o01–o03 are verbal contact with people, all within w188-s1; reject a duplicate addition, retain separate search-coverage route. |
+| 0002 만들다 | o02 supports caused action/state, distinct from production; include one append sense on w5362. o01/o03 stay w5362-s1 search coverage. |
+| 0003 많다 | o01–o03 are quantity/frequency/degree in existing w5361-s1; no additional sense. |
+| 0004 맞다 | o01/o02 affirm a proposition, including dialogue-confirmed o02; o03 evaluates fit with a preference. Preserve two distinct verb senses. |
+| 0005 먹다 | o01–o03 ingest food in w11382-s1; reject duplicate lexical addition, retain coverage route. |
+| 0006 모르다 | o01/o02 concern lack of awareness/knowledge; o03 supports possibility only in the -ㄹ지도 모르다 construction. Preserve the explicit construction-bound second sense and single-observation limitation. |
+| 0007 모습 | Correct o01/o02 to existing w5351-s2 action/state aspect; o03 remains visible appearance w5351-s1. No new sense is needed. |
+| 0008 보내다 | o01 causes spatial movement; o02/o03 concern passing time. Preserve two senses with separate observation binding. |
+| 0009 보이다 | o01/o02 adjectival complements and o03 noun+으로 all express perceived quality/impression. Correct the old adjective-only boundary explanation; retain one sense. |
+| 0010 볼 | o01's counted cooking vessel resolves noun identity; neither 보다's modifier form nor a body-part reading fits. |
+| 0011 사다 | o01 is purchase of an object, resolving the competing occupation-noun reading. |
+| 0012 사람 | o01–o03 are individual humans in w5360-s1; no new sense from origin or number. |
+
+Counts stay 7 admitted candidates (6 new entries + 1 append-sense candidate),
+5 duplicate/coverage-only lexical rejections, no candidate holds/deferred rows;
+10 newly reviewed senses, no authored relations. Admission was not conditional
+on commonness, writer usefulness or relation count. The lexical payloads and
+glosses remain unchanged; source-bound reasons/mappings and reviewer provenance
+were newly checked, not relabeled as an independent or human review. Attempt 1's
+rejected_pr305 history remains immutable.
+
+The real pinned Kiwi 0.24.0 hand-off was rebuilt through the shared factory
+observation adapter. It reproduced analyzer digest
+`7e2637cc1b03827f6fd4333672a2b3cac86b2ab434ca3f1f1b2a1ecf159d834e`
+and byte-identical intake hand-off. Original Stage 1 ensemble data was not rerun
+or rewritten. Shared per-candidate semantic/boundary/binding and factory
+transition validators pass on the fresh current-canonical snapshot
+`9b884315ab7912075bce399ff7ff09307ac3b12e536c4255d1ce59a2f2acdb92`.
+
+At 10:48:24 a **non-mutating prospective check** built the complete 12,216-record
+view, source-bound semantic authority and rule-dictated surface manifests in
+memory, then passed complete dataset/semantic/surface validation. The pure
+planner's required PR metadata used an explicit synthetic placeholder, never a
+real admission claim/PR; projected final ids were not reserved or written.
+The same factory ledger validates append-sense history; legacy 'corrected'
+review changes are not fabricated for additive admission. Working-tree diff was
+verified unchanged by the preview. This is deterministic validation, **not**
+proof of the still-unrun successful C000002 admission/merge. Rework review/CI/
+merge and final positive admission remain pending; Pilot PASS is not claimed.
