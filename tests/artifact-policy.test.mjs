@@ -995,6 +995,12 @@ test('artifact policy accepts a factory decision row addressed by source_candida
     delete legacy.decisions[0].source_candidate_id;
     await writeFile(filePath, `${JSON.stringify(legacy)}\n`, 'utf8');
     await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }), /missing compact field inventory_id/u);
+    // The exemption is bound to the factory review path: an M5/M9 batch decision source cannot opt out
+    // of inventory identity and rank by adding source_candidate_id.
+    const batchPath = 'data/batches/m9-synthetic-semantic-decisions.json';
+    await mkdir(path.dirname(path.join(repositoryDirectory, batchPath)), { recursive: true });
+    await writeFile(path.join(repositoryDirectory, batchPath), `${JSON.stringify(source)}\n`, 'utf8');
+    await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [batchPath] }), /missing compact field inventory_id/u);
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }
