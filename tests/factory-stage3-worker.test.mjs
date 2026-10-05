@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { finalBoundary } from '../scripts/factory/semantic-authority.mjs';
+import { finalBoundary, buildStage3SemanticAuthority } from '../scripts/factory/semantic-authority.mjs';
+import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
+import {
+  buildSemanticAuditFromDecisionSource, inspectSenseBoundaryPairs, readAuthoredBatchDecisionSources, sha256Json,
+} from '../scripts/validate/semantic-audit.mjs';
+import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
@@ -572,4 +577,66 @@ test('a multi-sense canonical record is a split, separated boundary whether its 
   assert.deepEqual(finalBoundary({ senseCount: 2, ...retained }), { finalDecision: 'split', finalClassification: 'separated' });
   assert.deepEqual(finalBoundary({ senseCount: 3, ...retained, priorClassification: 'coordinated' }), { finalDecision: 'split', finalClassification: 'coordinated' });
   assert.deepEqual(finalBoundary({ senseCount: 2, boundaryAction: 'retain', candidateClassification: 'coordinated' }), { finalDecision: 'split', finalClassification: 'coordinated' });
+});
+
+// Production path for a new multi-sense entry: plan -> buildStage3SemanticAuthority -> the same complete
+// source-bound semantic audit that ci:normal applies. Synthetic lemma; reads (never writes) the real canonical revision.
+test('a new two-sense entry is admitted by the semantic authority and passes the complete semantic audit', async () => {
+  const canonicalRecords = [];
+  const recordPathById = new Map();
+  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
+    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      canonicalRecords.push(record);
+      recordPathById.set(record.id, 'data/canonical/' + name);
+    }
+  }
+  const id = 'C900001-0001';
+  const decision = {
+    source_candidate_id: id, disposition: 'included', target: { kind: 'new_entry' },
+    reviewed_record: { lemma: '합성시험낱말', senses: [{ pos: 'noun', gloss: '합성 시험에서 쓰는 첫째 뜻풀이.' }, { pos: 'noun', gloss: '합성 시험에서 쓰는 전혀 다른 둘째 뜻풀이.' }] },
+  };
+  const record = reviewedCandidateRecord(decision);
+  const row = {
+    source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+    decision_rationale: id + ': 합성 시험 결정.', gloss_judgment: 'fit',
+    sense_reviews: record.senses.map((sense) => ({
+      sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+      boundary_rationale: id + ' ' + sense.id + ': 한 가지 뜻으로 한정된다.', semantic_rationale: id + ' ' + sense.id + ': ' + sense.gloss,
+      relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: id + ' ' + sense.id + ': 관계 없음.',
+    })),
+    boundary_pairs: inspectSenseBoundaryPairs(record).map((pair) => {
+      const gloss = (senseId) => record.senses.find((sense) => sense.id === senseId).gloss;
+      return {
+        left_sense_id: pair.left_sense_id, right_sense_id: pair.right_sense_id, relationship: pair.relationship, decision: 'retain',
+        left_gloss_sha256: sha256Json(gloss(pair.left_sense_id)), right_gloss_sha256: sha256Json(gloss(pair.right_sense_id)),
+        evidence_basis: id + ': 두 뜻은 서로 다른 쓰임이다.', distinguishing_feature: id + ': 쓰임이 다르다.', rationale: id + ': 별개의 뜻으로 유지한다.',
+      };
+    }),
+  };
+  row.review_binding = authorSemanticReviewBinding(row, record);
+  const digest = 'a'.repeat(64);
+  const plan = planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  const authority = await buildStage3SemanticAuthority({
+    root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}',
+  });
+  const entryId = plan.entries[0].record_id;
+  const reviewed = authority.sourceObject.authored_review.records.find((review) => review.record_id === entryId);
+  assert.equal(reviewed.boundary_review.decision, 'split');
+  assert.equal(reviewed.boundary_review.classification, 'separated');
+  assert.equal(reviewed.boundary_review.pairwise.length, 1);
+  assert.equal(reviewed.boundary_review.pairwise[0].decision, 'retain');
+  assert.equal(reviewed.sense_reviews.length, 2);
+  assert.deepEqual(reviewed.boundary_review.evidence.map((item) => item.sense_id), [entryId + '-s1', entryId + '-s2']);
+  const afterRecords = canonicalRecords.map((existing) => plan.records.get(existing.id)?.record ?? existing)
+    .concat([...plan.records.values()].filter((update) => !update.before).map((update) => update.record));
+  const batchDecisionSources = await readAuthoredBatchDecisionSources();
+  assert.doesNotThrow(() => buildSemanticAuditFromDecisionSource(afterRecords, authority.sourceObject, {
+    baseRecords: afterRecords, batchDecisionSources, artifactId: 'test-complete-semantic-audit',
+  }));
 });
