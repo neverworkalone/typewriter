@@ -352,7 +352,14 @@ def select_from_cached_analysis(
                 "excluded_candidate_lemma_count": len(exclusion["lemmas"]),
                 "exclusion_sha256": exclusion["exclusion_sha256"],
                 "exclusion_source_artifacts": exclusion["source_artifacts"],
-                **({"include_canonical_lemmas": True} if include_canonical_lemmas else {}),
+                **(
+                    {
+                        "include_canonical_lemmas": True,
+                        "selected_lemma_count": len({row["coverage_normalized_key"] for row in candidate_rows}),
+                    }
+                    if include_canonical_lemmas
+                    else {}
+                ),
             },
             "yield": {
                 **source_yield,

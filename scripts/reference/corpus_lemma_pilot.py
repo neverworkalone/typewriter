@@ -527,8 +527,7 @@ def select_candidate_rows(
         [(lemma,) for lemma in (excluded_lemmas or [])],
     )
 
-    rows = staging.execute(
-        f"""
+    ranked_pos_sql = f"""
         WITH ranked_pos AS (
             SELECT candidates.*,
                    COUNT(*) OVER (PARTITION BY normalized_lemma) AS pos_interpretation_count,
@@ -549,6 +548,10 @@ def select_candidate_rows(
                max_source_token_count, ambiguous_surface_count,
                pos_interpretation_count, coverage_status, coverage_matches_json
         FROM ranked_pos
+        """
+    rows = staging.execute(
+        ranked_pos_sql
+        + """
         WHERE pos_rank = 1
         ORDER BY source_count DESC, document_count DESC, token_count DESC,
                  lemma COLLATE BINARY
@@ -556,6 +559,20 @@ def select_candidate_rows(
         """,
         (candidate_limit,),
     ).fetchall()
+    if include_canonical_lemmas:
+        # The bound counts distinct lemmas. Every observed POS of a selected lemma is kept as its own
+        # candidate row (own surface forms and source evidence) so a lower-ranked POS, e.g. a new POS
+        # of an existing canonical lemma, is not lost before Stage 1.
+        lemma_order = {str(row[1]): index for index, row in enumerate(rows)}
+        all_pos_rows = staging.execute(
+            ranked_pos_sql
+            + """
+        WHERE normalized_lemma IN (SELECT value FROM json_each(?))
+        ORDER BY pos_rank
+        """,
+            (json.dumps(list(lemma_order), ensure_ascii=False),),
+        ).fetchall()
+        rows = sorted(all_pos_rows, key=lambda row: lemma_order[str(row[1])])  # stable: keeps pos_rank order
     candidates: list[dict] = []
     for row in rows:
         (
@@ -1013,7 +1030,14 @@ def run_extraction(
                 "excluded_candidate_lemma_count": len(exclusion_manifest["lemmas"]),
                 "exclusion_sha256": exclusion_manifest["exclusion_sha256"],
                 "exclusion_source_artifacts": exclusion_manifest["source_artifacts"],
-                **({"include_canonical_lemmas": True} if include_canonical_lemmas else {}),
+                **(
+                    {
+                        "include_canonical_lemmas": True,
+                        "selected_lemma_count": len({row["coverage_normalized_key"] for row in candidate_rows}),
+                    }
+                    if include_canonical_lemmas
+                    else {}
+                ),
             },
             "yield": {
                 "eligible_pos_token_observations_before_shape_filter": eligible_tag_token_count,

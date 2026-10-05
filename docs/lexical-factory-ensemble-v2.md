@@ -187,3 +187,13 @@ They are never `covered` at Stage 1; `classifyLemmaCandidate` routes them (`new_
 `new_sense_on_existing_entry`) and only a validated Stage 2 `covered` disposition may exclude a group. The default (flag absent)
 keeps the M9 behaviour and byte-identical historical outputs. Because the cached-analysis path binds the extractor source hash,
 changing the extractor invalidates older analysis caches; re-extract.
+
+In this mode the bound counts **distinct lemmas** and every observed POS of a selected lemma is kept as its own evidence row (own
+surface forms and source references), so a lower-ranked POS (e.g. a new POS of an existing canonical lemma) is not lost before
+Stage 1; `selection.selected_lemma_count` records the lemma count. Both the direct and the cached re-selection path share this logic
+and are covered by `scripts/reference/test-corpus-lemma-pilot.py` (registered in the normal CI via
+`tests/corpus-lemma-pilot-python.test.mjs`). A matched eojeol that carries punctuation (not a bounded word form) is counted in the run
+summary as `omittedNonWordFormHits` and never stored; phrases, sentences or control text still fail the run closed.
+
+Manifest vs cohort counts: the manifest's `ensemble.counts` cover only this batch (retained observations + its verification queue).
+The run summary's `ensemble` block measures the whole evidence cohort, including observations of lemmas deferred to later batches.

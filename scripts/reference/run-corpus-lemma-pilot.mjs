@@ -482,9 +482,13 @@ export function buildTextFreeCandidateEvidence(inventory) {
   };
 }
 
+// The batch bound counts distinct lemmas: with `--include-canonical-lemmas` a lemma may carry one
+// candidate row per observed POS; otherwise there is exactly one row per lemma.
+const distinctLemmaCount = (candidates) => new Set((candidates ?? []).map((candidate) => candidate.coverage_normalized_key)).size;
+
 async function addBoundedCorpusEvidence(selection, candidateLimit) {
   const candidates = selection.candidates;
-  if (!Array.isArray(candidates) || candidates.length > candidateLimit) {
+  if (!Array.isArray(candidates) || distinctLemmaCount(candidates) > candidateLimit) {
     throw new Error('Candidate extraction exceeded its requested bounded candidate limit.');
   }
 
@@ -652,7 +656,7 @@ async function main() {
         includeCanonicalLemmas: options.includeCanonicalLemmas,
       });
     const selection = JSON.parse(await readFile(candidateSelectionPath, 'utf8'));
-    if (selection.candidates.length > options.candidateLimit
+    if (distinctLemmaCount(selection.candidates) > options.candidateLimit
       || selection.selection?.selected_candidate_count !== selection.candidates.length) {
       throw new Error('Candidate extraction exceeded or misreported the requested batch bound.');
     }

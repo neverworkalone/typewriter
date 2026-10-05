@@ -7,8 +7,8 @@
   "observation_count": 31,
   "selection": {
     "bound": 12,
-    "eligible_lemma_count": 52,
-    "deferred_lemma_count": 40
+    "eligible_lemma_count": 53,
+    "deferred_lemma_count": 41
   },
   "unresolved_observations": [
     {
@@ -2177,6 +2177,104 @@
     },
     {
       "queue_id": "U0050",
+      "surface": "썼다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.68"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "쓰다",
+          "pos": "adjective",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "쓰다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "쓰다",
+        "pos": "adjective"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "a83911ef56ba791000943fc22b9fdcd7fd7154cd3a36b1fa8cc8de40321bee00",
+      "trace_digest": "3f7f2a860c41cd3f2ba84b497d3b754e33af52380c5b618587c4ec7fa7517824",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0051",
+      "surface": "쓰고",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.337"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "one_vs_two_disagreement"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "쓰다",
+          "pos": "adjective",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "쓰다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top"
+          ]
+        },
+        {
+          "lemma": "쓸다",
+          "pos": "verb",
+          "supporters": [
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "쓰다",
+        "pos": "adjective"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "577ec8fc1b8a6a2c729064c9ec15704e4b22807c0b5acd62b65cfab21b1f3909",
+      "trace_digest": "72b7459560730de92167cb6698f84d575dfcd9109a452449005ba863043d3053",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0052",
       "surface": "쓰는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2228,7 +2326,59 @@
       }
     },
     {
-      "queue_id": "U0051",
+      "queue_id": "U0053",
+      "surface": "쓴",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.35"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "쓰다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "쓴",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "쓸다",
+          "pos": "verb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "쓰다",
+        "pos": "adjective"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "ff574c49d5bed3fedfad7837eec97f101a7bf1f860ed671dbbff5ccbbe39dd33",
+      "trace_digest": "88a266427a5bf1f3d1f4aa621c2ee748a1ba373fc16fbd837fcd1554b0788c1b",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0054",
       "surface": "쓴",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2280,7 +2430,7 @@
       }
     },
     {
-      "queue_id": "U0052",
+      "queue_id": "U0055",
       "surface": "쓸",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2326,7 +2476,7 @@
       }
     },
     {
-      "queue_id": "U0053",
+      "queue_id": "U0056",
       "surface": "없다",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2370,7 +2520,7 @@
       }
     },
     {
-      "queue_id": "U0054",
+      "queue_id": "U0057",
       "surface": "없어",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2414,7 +2564,7 @@
       }
     },
     {
-      "queue_id": "U0055",
+      "queue_id": "U0058",
       "surface": "온",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2458,7 +2608,7 @@
       }
     },
     {
-      "queue_id": "U0056",
+      "queue_id": "U0059",
       "surface": "와",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2496,7 +2646,7 @@
       }
     },
     {
-      "queue_id": "U0057",
+      "queue_id": "U0060",
       "surface": "위한",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2548,7 +2698,7 @@
       }
     },
     {
-      "queue_id": "U0058",
+      "queue_id": "U0061",
       "surface": "이상",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2591,7 +2741,7 @@
       }
     },
     {
-      "queue_id": "U0059",
+      "queue_id": "U0062",
       "surface": "이상의",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2626,7 +2776,7 @@
       }
     },
     {
-      "queue_id": "U0060",
+      "queue_id": "U0063",
       "surface": "이상한",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2676,7 +2826,7 @@
       }
     },
     {
-      "queue_id": "U0061",
+      "queue_id": "U0064",
       "surface": "이야기",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2726,7 +2876,52 @@
       }
     },
     {
-      "queue_id": "U0062",
+      "queue_id": "U0065",
+      "surface": "있다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.318"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "no_single_target_morpheme"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "있다",
+          "pos": "adjective",
+          "supporters": [
+            "kiwi_alt",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "있다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "있다",
+        "pos": "adjective"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "35811a62cddfe5d84e382480a56dfeb5a3bb7289c828281187be77c15a05c094",
+      "trace_digest": "e164c09dff624d9ba046a9b2dd1dfe1d68eb848c3ee26910bd027527fd59ff1c",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0066",
       "surface": "있다",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2771,7 +2966,7 @@
       }
     },
     {
-      "queue_id": "U0063",
+      "queue_id": "U0067",
       "surface": "자리",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2816,7 +3011,7 @@
       }
     },
     {
-      "queue_id": "U0064",
+      "queue_id": "U0068",
       "surface": "자신을",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2859,7 +3054,7 @@
       }
     },
     {
-      "queue_id": "U0065",
+      "queue_id": "U0069",
       "surface": "자신의",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2901,7 +3096,7 @@
       }
     },
     {
-      "queue_id": "U0066",
+      "queue_id": "U0070",
       "surface": "정도",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2946,7 +3141,7 @@
       }
     },
     {
-      "queue_id": "U0067",
+      "queue_id": "U0071",
       "surface": "정도의",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2990,7 +3185,7 @@
       }
     },
     {
-      "queue_id": "U0068",
+      "queue_id": "U0072",
       "surface": "좋지",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3034,7 +3229,7 @@
       }
     },
     {
-      "queue_id": "U0069",
+      "queue_id": "U0073",
       "surface": "주는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3085,7 +3280,7 @@
       }
     },
     {
-      "queue_id": "U0070",
+      "queue_id": "U0074",
       "surface": "죽어",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3129,7 +3324,7 @@
       }
     },
     {
-      "queue_id": "U0071",
+      "queue_id": "U0075",
       "surface": "죽은",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3179,7 +3374,7 @@
       }
     },
     {
-      "queue_id": "U0072",
+      "queue_id": "U0076",
       "surface": "준",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3216,7 +3411,7 @@
       }
     },
     {
-      "queue_id": "U0073",
+      "queue_id": "U0077",
       "surface": "지금도",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3259,7 +3454,7 @@
       }
     },
     {
-      "queue_id": "U0074",
+      "queue_id": "U0078",
       "surface": "지금의",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3302,7 +3497,7 @@
       }
     },
     {
-      "queue_id": "U0075",
+      "queue_id": "U0079",
       "surface": "지나",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3340,7 +3535,7 @@
       }
     },
     {
-      "queue_id": "U0076",
+      "queue_id": "U0080",
       "surface": "지난",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3385,7 +3580,7 @@
       }
     },
     {
-      "queue_id": "U0077",
+      "queue_id": "U0081",
       "surface": "찾아",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3429,7 +3624,7 @@
       }
     },
     {
-      "queue_id": "U0078",
+      "queue_id": "U0082",
       "surface": "처음",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3472,7 +3667,7 @@
       }
     },
     {
-      "queue_id": "U0079",
+      "queue_id": "U0083",
       "surface": "처음에",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3516,7 +3711,7 @@
       }
     },
     {
-      "queue_id": "U0080",
+      "queue_id": "U0084",
       "surface": "처음에는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3560,7 +3755,52 @@
       }
     },
     {
-      "queue_id": "U0081",
+      "queue_id": "U0085",
+      "surface": "커",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.1689"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "one_vs_two_disagreement"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "커",
+          "pos": "noun",
+          "supporters": [
+            "khaiii"
+          ]
+        },
+        {
+          "lemma": "크다",
+          "pos": "adjective",
+          "supporters": [
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "크다",
+        "pos": "verb"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "51b45ac347d5d5dda4c6b2fc980984ffe92304c250f559787685bc30a4f64274",
+      "trace_digest": "2097f3391802248beb1bf5ed41c9f006b5ec925e8af09d07a67866ce9dc29835",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0086",
       "surface": "크게",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3606,7 +3846,7 @@
       }
     },
     {
-      "queue_id": "U0082",
+      "queue_id": "U0087",
       "surface": "크고",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3652,7 +3892,7 @@
       }
     },
     {
-      "queue_id": "U0083",
+      "queue_id": "U0088",
       "surface": "큰",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3704,7 +3944,7 @@
       }
     },
     {
-      "queue_id": "U0084",
+      "queue_id": "U0089",
       "surface": "필요한",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3744,6 +3984,140 @@
       "verification": {
         "state": "needs_verification"
       }
+    },
+    {
+      "queue_id": "U0090",
+      "surface": "하게",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.631"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "하다",
+          "pos": "adjective",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "하다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "하다",
+        "pos": "adjective"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "3c757003624e0b5ff1be1ab3dcfa95b157d0db3a178e2c24049ec6cc686aea4d",
+      "trace_digest": "e71e080a30a5c4046c371f31e1078443e3ce7a15b940bed02a3461ee44efcea8",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0091",
+      "surface": "하다",
+      "evidence": {
+        "kind": "corpus-surface",
+        "ref": "하다"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "다",
+          "pos": "adverb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "하다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "하다",
+        "pos": "noun"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous",
+        "no_evidence"
+      ],
+      "observation_digest": "015a131791aeb54f0e8f3dae7e203224010c7812ddf0ff9ef21e5cfb00b513ae",
+      "trace_digest": "0773743f76bf7b49e449b704866fe5f88bafa2c7794467b4925093c5129f3015",
+      "verification": {
+        "state": "blocked",
+        "blocked_by": [
+          "no_evidence",
+          "no_located_source"
+        ]
+      }
+    },
+    {
+      "queue_id": "U0092",
+      "surface": "한",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.12"
+      },
+      "holds": [
+        "analysis_unsupported"
+      ],
+      "category": "unsupported_or_unknown",
+      "reasons": [
+        "khaiii_unusable",
+        "mecab_unusable"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "하다",
+          "pos": "verb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "하다",
+        "pos": "adjective"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "721b685418e52eb4261b8ca4d65d67d05eede8fcd32f7b1d9c1e7169061d7566",
+      "trace_digest": "570df72184cd33c8ae1ba6aa40fcb67565f1a24840a638ef5098d0daa0f6d90b",
+      "verification": {
+        "state": "needs_verification"
+      }
     }
   ],
   "source_adapter": "corpus-adapter",
@@ -3771,16 +4145,16 @@
   "ensemble": {
     "contract": "ensemble-resolution-v2",
     "counts": {
-      "observations": 115,
+      "observations": 123,
       "categories": {
         "concordant": 16,
         "supported_alternative": 1,
-        "conflicted": 85,
-        "unsupported_or_unknown": 13
+        "conflicted": 92,
+        "unsupported_or_unknown": 14
       },
-      "queue": 84
+      "queue": 92
     },
-    "trace_sha256": "8ba56237e08253b003f93bfb050706b94407b8e506c2a927308c8d20f726ee26"
+    "trace_sha256": "c9750841bdb391f0261002bb9d13320bb7961c2719f4da091d9cb29f552ec37f"
   },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
@@ -4359,7 +4733,7 @@
     ],
     "decisions_sha256": "86552d6920b7f9741e8293409b4de1a1167f4b05adeccc9af15ec0d12a75e829"
   },
-  "source_evidence_sha256": "0f88aeef1b3e7016084349602780e79d427e5c1caf00b8fc0e40f448c6097810",
+  "source_evidence_sha256": "4c41b22499ea2008a13992d45f38151c8e53d9f24dd1613b459d33620ce339a7",
   "candidates_sha256": "dc241ea4eea5178224891b93f36c5e8edf9437a03086eb7174befc69df4058a8",
   "status": "created"
 }

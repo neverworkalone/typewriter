@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -15,7 +16,12 @@ from types import SimpleNamespace
 MODULE_PATH = Path(__file__).with_name("corpus_lemma_pilot.py")
 SPEC = importlib.util.spec_from_file_location("corpus_lemma_pilot", MODULE_PATH)
 pilot = importlib.util.module_from_spec(SPEC)
+sys.modules["corpus_lemma_pilot"] = pilot
 SPEC.loader.exec_module(pilot)
+CACHED_PATH = Path(__file__).with_name("select-corpus-candidates-from-analysis.py")
+CACHED_SPEC = importlib.util.spec_from_file_location("select_corpus_candidates_from_analysis", CACHED_PATH)
+cached = importlib.util.module_from_spec(CACHED_SPEC)
+CACHED_SPEC.loader.exec_module(cached)
 
 
 class FakeAnalyzer:
@@ -26,6 +32,7 @@ class FakeAnalyzer:
             ("물결", "NNG", 2, 2),
         ],
         "푸른": [("푸르", "VA", 0, 2)],
+        "푸르러": [("푸르", "VV", 0, 2)],
         "기록": [("기록", "NNG", 0, 2)],
         "녹음": [("녹음", "NNG", 0, 2)],
     }
@@ -269,38 +276,151 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             self.assertIn("바라다", excluded_candidates)
             self.assertEqual(excluded["selection"]["excluded_candidate_lemma_count"], 1)
 
-    def test_factory_mode_keeps_exact_canonical_lemmas_for_stage_one_comparison(self):
+    def _multi_pos_fixture(self, root):
+        index_path = root / "index.sqlite"
+        dictionary_path = root / "dictionary.sqlite"
+        permission_path = root / "permission.md"
+        create_index(index_path)
+        create_dictionary(dictionary_path)
+        create_permission(permission_path)
+        # Seventh paragraph: the same lemma 푸르다 observed as a second POS (verb) with its own form.
+        database = sqlite3.connect(index_path)
+        database.execute("UPDATE index_metadata SET value = '7' WHERE key = 'paragraph_count'")
+        database.execute("INSERT INTO paragraphs VALUES (7, 2, 'b-2', 2, '푸르러')")
+        database.commit()
+        database.close()
+        return index_path, dictionary_path, permission_path
+
+    def _extract(self, root, name, fixture, include, limit=10):
+        index_path, dictionary_path, permission_path = fixture
+        return pilot.run_extraction(
+            index_path=index_path,
+            dictionary_path=dictionary_path,
+            staging_path=root / f"{name}-staging.sqlite",
+            candidate_output_path=root / f"{name}-candidates.json",
+            permission_record_path=permission_path,
+            analyzer=FakeAnalyzer(),
+            sample_every=1,
+            candidate_limit=limit,
+            batch_size=2,
+            include_canonical_lemmas=include,
+        )
+
+    def _select_cached(self, root, name, fixture, include, limit=10, mutate=None):
+        index_path, dictionary_path, permission_path = fixture
+        cached.ROOT = root.resolve()  # cached artifacts must stay inside the (synthetic) repository root
+        analysis_path = root / "default-staging.sqlite"
+        selection_path = root / "default-candidates.json"
+        selection = json.loads(selection_path.read_text(encoding="utf-8"))
+        selection["analysis_cache"] = {
+            "database_path": cached.relative_path(analysis_path),
+            "database_sha256": cached.sha256_file(analysis_path),
+            "mode": "full-corpus-scan",
+        }
+        if mutate:
+            mutate(selection)
+        bound_selection = root / f"{name}-bound-selection.json"
+        bound_selection.write_text(json.dumps(selection), encoding="utf-8")
+        exclusion_path = root / "no-exclusions.json"
+        create_exclusion_manifest(exclusion_path, [])
+        original = pilot.DEFAULT_PERMISSION_RECORD_PATH
+        pilot.DEFAULT_PERMISSION_RECORD_PATH = permission_path
+        try:
+            cached.select_from_cached_analysis(
+                analysis_path=analysis_path,
+                selection_path=bound_selection,
+                dictionary_path=dictionary_path,
+                index_path=index_path,
+                staging_path=root / f"{name}-cached-staging.sqlite",
+                candidate_output_path=root / f"{name}-cached-candidates.json",
+                exclusion_manifest_path=exclusion_path,
+                candidate_limit=limit,
+                include_canonical_lemmas=include,
+            )
+            return json.loads((root / f"{name}-cached-candidates.json").read_text(encoding="utf-8"))
+        finally:
+            pilot.DEFAULT_PERMISSION_RECORD_PATH = original
+
+    def test_factory_mode_keeps_canonical_lemmas_and_every_pos_in_both_selection_paths(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
-            index_path = root / "index.sqlite"
-            dictionary_path = root / "dictionary.sqlite"
-            permission_path = root / "permission.md"
-            create_index(index_path)
-            create_dictionary(dictionary_path)
-            create_permission(permission_path)
-            results = {}
-            for name, include in (("default", False), ("factory", True)):
-                results[name] = pilot.run_extraction(
-                    index_path=index_path,
-                    dictionary_path=dictionary_path,
-                    staging_path=root / f"{name}-staging.sqlite",
-                    candidate_output_path=root / f"{name}-candidates.json",
-                    permission_record_path=permission_path,
-                    analyzer=FakeAnalyzer(),
-                    sample_every=1,
-                    candidate_limit=10,
-                    batch_size=2,
-                    include_canonical_lemmas=include,
+            fixture = self._multi_pos_fixture(root)
+            original_sample = pilot.SAMPLE_EVERY_PARAGRAPHS
+            pilot.SAMPLE_EVERY_PARAGRAPHS = 1  # the cached path binds the sampling interval
+            try:
+                direct_default = self._extract(root, "default", fixture, False)
+                direct_factory = self._extract(root, "factory", fixture, True)
+                cached_default = self._select_cached(root, "off", fixture, False)
+                cached_factory = self._select_cached(root, "on", fixture, True)
+            finally:
+                pilot.SAMPLE_EVERY_PARAGRAPHS = original_sample
+
+            def pairs(result):
+                return sorted((row["proposed_lemma"], row["proposed_pos"]) for row in result["candidates"])
+
+            # Historical M9 behaviour: exact canonical lemmas are dropped and one POS row per lemma.
+            self.assertNotIn("녹음", {lemma for lemma, _ in pairs(direct_default)})
+            self.assertEqual(len([1 for lemma, _ in pairs(direct_default) if lemma == "푸르다"]), 1)
+            self.assertNotIn("include_canonical_lemmas", direct_default["selection"])
+            self.assertEqual(pairs(cached_default), pairs(direct_default))
+            self.assertNotIn("include_canonical_lemmas", cached_default["selection"])
+
+            # Factory mode: the canonical lemma stays and no observed POS of a lemma is lost.
+            for result in (direct_factory, cached_factory):
+                found = pairs(result)
+                self.assertIn(("녹음", "noun"), found)
+                self.assertIn(("푸르다", "adjective"), found)
+                self.assertIn(("푸르다", "verb"), found)
+                self.assertTrue(result["selection"]["include_canonical_lemmas"])
+                self.assertEqual(result["selection"]["selected_candidate_count"], len(result["candidates"]))
+                self.assertEqual(
+                    result["selection"]["selected_lemma_count"],
+                    len({lemma for lemma, _ in found}),
                 )
-            default_lemmas = {row["proposed_lemma"] for row in results["default"]["candidates"]}
-            factory = {row["proposed_lemma"]: row for row in results["factory"]["candidates"]}
-            # Historical M9 behaviour is unchanged; the opt-in factory mode no longer drops an exact
-            # canonical lemma before Stage 1/2 can compare its evidence-backed POS and senses.
-            self.assertNotIn("녹음", default_lemmas)
-            self.assertNotIn("include_canonical_lemmas", results["default"]["selection"])
-            self.assertEqual(factory["녹음"]["coverage_status"], "exact_canonical_lemma")
-            self.assertTrue(results["factory"]["selection"]["include_canonical_lemmas"])
-            self.assertEqual(default_lemmas | {"녹음"}, set(factory))
+                by_pos = {row["proposed_pos"]: row for row in result["candidates"] if row["proposed_lemma"] == "푸르다"}
+                self.assertEqual({form["surface"] for form in by_pos["verb"]["observed_surface_forms"]}, {"푸르러"})
+                self.assertEqual(by_pos["verb"]["pos_interpretation_count_in_sample"], 2)
+                self.assertEqual(
+                    next(r for r in result["candidates"] if r["proposed_lemma"] == "녹음")["coverage_status"],
+                    "exact_canonical_lemma",
+                )
+            self.assertEqual(pairs(cached_factory), pairs(direct_factory))
+
+    def test_factory_bound_counts_distinct_lemmas_not_pos_rows(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            fixture = self._multi_pos_fixture(root)
+            full = self._extract(root, "full", fixture, True, limit=10)
+            ranked = []
+            for row in full["candidates"]:
+                if row["proposed_lemma"] not in ranked:
+                    ranked.append(row["proposed_lemma"])
+            limited = self._extract(root, "limited", fixture, True, limit=2)
+            lemmas = {row["proposed_lemma"] for row in limited["candidates"]}
+            self.assertEqual(lemmas, set(ranked[:2]))
+            self.assertEqual(limited["selection"]["selected_lemma_count"], 2)
+
+    def test_cached_selection_rejects_stale_or_mismatched_cache(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            fixture = self._multi_pos_fixture(root)
+            original_sample = pilot.SAMPLE_EVERY_PARAGRAPHS
+            pilot.SAMPLE_EVERY_PARAGRAPHS = 1
+            try:
+                self._extract(root, "default", fixture, False)
+
+                def other_source(selection):
+                    selection["extractor"]["script_sha256"] = "0" * 64
+
+                def other_database(selection):
+                    selection["analysis_cache"]["database_sha256"] = "0" * 64
+
+                with self.assertRaisesRegex(RuntimeError, "different morphology extractor source"):
+                    self._select_cached(root, "stale", fixture, True, mutate=other_source)
+                with self.assertRaisesRegex(RuntimeError, "digest does not match"):
+                    self._select_cached(root, "tampered", fixture, True, mutate=other_database)
+            finally:
+                pilot.SAMPLE_EVERY_PARAGRAPHS = original_sample
 
     def test_candidate_limit_is_bounded(self):
         self.assertEqual(pilot.TARGET_CANDIDATES, 200)
