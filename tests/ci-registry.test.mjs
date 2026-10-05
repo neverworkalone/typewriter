@@ -219,8 +219,9 @@ test('CI changed-path gate skips only documentation-only PRs', async (t) => {
       git(['-c', 'user.name=CI Test', '-c', 'user.email=ci@example.invalid', 'commit', '-qm', name]);
     }
     const head = git(['rev-parse', 'HEAD']);
-    const output = path.join(root, '.ci-result');
-    const summary = path.join(root, '.ci-summary');
+    // Keep runner outputs under .git so later fixture commits never include them.
+    const output = path.join(root, '.git', 'ci-result');
+    const summary = path.join(root, '.git', 'ci-summary');
     await rm(output, { force: true });
     await rm(summary, { force: true });
     execFileSync('bash', ['-c', script], {
