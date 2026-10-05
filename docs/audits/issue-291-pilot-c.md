@@ -117,3 +117,11 @@ is now #210 inventory → #219 report → #220 report → #222 report; all eight
 existing dependent outputs are included in its commit. Historical decisions,
 source snapshots, original rejected/held evidence and historical admission
 counts are preserved. The shared worker suite passes 33 tests at this checkpoint.
+
+The following normal run passed portable #222 regeneration and reached the
+surface-form suite. A pinned M6-3 case still expected the pre-factory sense set,
+so the legitimate append-sense admission added an unexpected candidate to its
+literal historical list. The test now retains strict full-current projection,
+class and collision coverage, and checks the pinned cases on the hash-bound
+pre-factory view. All 11 surface-form tests pass. This changes a historical
+fixture boundary; it does not suppress a current dictionary candidate.

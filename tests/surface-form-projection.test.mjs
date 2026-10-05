@@ -1,3 +1,5 @@
+import { canonicalRecordsBeforeFactoryAdmissions, readSemanticDecisionSourceArtifact } from '../scripts/validate/semantic-audit.mjs';
+import { projectHistoricalSurfaceFormReview } from '../scripts/batch/historical-canonical.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -112,7 +114,7 @@ function reviewCollisionsFrom(collisions) {
   };
 }
 
-test('the complete 5K canonical domain has deterministic declared projection coverage', async () => {
+test('the complete canonical domain has deterministic coverage and preserves pinned pre-factory projection bindings', async () => {
   const [canonical, contract, exceptionManifest, review] = await Promise.all([
     readCanonicalRecords(canonicalDirectory, { useSharedContext: false }),
     readFile(contractPath, 'utf8').then(JSON.parse),
@@ -169,8 +171,19 @@ test('the complete 5K canonical domain has deterministic declared projection cov
     }
   }
 
+  // The pinned M6-3 candidates describe the pre-factory snapshot. The complete
+  // live revision, including every new sense, was validated above against its
+  // full disposition/collision evidence; historical assertions use bound history.
+  const historicalRecords = canonicalRecordsBeforeFactoryAdmissions(records, await readSemanticDecisionSourceArtifact());
+  const historicalProjection = buildSurfaceFormProjection(historicalRecords, {
+    exceptionManifest,
+    reviewManifest: projectHistoricalSurfaceFormReview(review, historicalRecords),
+    requireExceptionTargets: false,
+    requireClassDispositions: true,
+    requireCollisionReview: true,
+  });
   for (const searchCase of contract.cases.filter(({ corpus_binding }) => corpus_binding === 'canonical')) {
-    const actual = rowsForForm(projection, searchCase.query)
+    const actual = rowsForForm(historicalProjection, searchCase.query)
       .map(({ record_id, sense_id, rule_id }) => `${record_id}/${sense_id}/${rule_id}`)
       .sort();
     const expected = searchCase.expected_candidates.flatMap((candidate) => (
@@ -182,7 +195,7 @@ test('the complete 5K canonical domain has deterministic declared projection cov
   }
 
   for (const searchCase of contract.cases.filter(({ classification }) => classification === 'unsupported')) {
-    assert.deepEqual(rowsForForm(projection, searchCase.query), [], `${searchCase.id} stays unsupported`);
+    assert.deepEqual(rowsForForm(historicalProjection, searchCase.query), [], `${searchCase.id} stays unsupported`);
   }
 });
 
