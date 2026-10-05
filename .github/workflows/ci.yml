@@ -2,9 +2,6 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches:
-      - master
 
 permissions:
   contents: read
@@ -20,13 +17,51 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Classify changed files
+        id: changes
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          paths_file="$(mktemp)"
+          trap 'rm -f "$paths_file"' EXIT
+
+          # Use the PR merge base, not the checked-out synthetic merge commit.
+          # Disable renames so moving code into docs/ cannot hide a source-file deletion.
+          git diff --no-renames --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
+          mapfile -d '' -t changed_files < "$paths_file"
+
+          # An empty or unclassifiable diff must never be treated as docs-only.
+          run_normal=true
+          if ((${#changed_files[@]} > 0)); then
+            run_normal=false
+            for file in "${changed_files[@]}"; do
+              case "$file" in
+                docs/*|README.md|REVIEW.md) ;;
+                *) run_normal=true; break ;;
+              esac
+            done
+          fi
+
+          echo "run_normal=$run_normal" >> "$GITHUB_OUTPUT"
+          if [[ "$run_normal" == true ]]; then
+            echo "Full ci:normal required for this PR." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Documentation-only PR: ci:normal intentionally skipped." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Set up Node.js
+        if: steps.changes.outputs.run_normal == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 22.13.x
 
       - name: Install pinned dependencies
+        if: steps.changes.outputs.run_normal == 'true'
         run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Normal validation (fast checkpoint + continuation)
+        if: steps.changes.outputs.run_normal == 'true'
         run: npm run ci:normal
