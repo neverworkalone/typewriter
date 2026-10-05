@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -179,6 +181,91 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
   );
 });
 
+
+// Execute the actual inline CI classifier against tiny synthetic Git histories. A docs-only
+// shortcut must not mask a code deletion disguised as a source-to-doc rename.
+test('CI changed-path gate skips only documentation-only PRs', async (t) => {
+  const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
+  const block = workflow.split('      - name: Classify changed files\n')[1]
+    ?.split('      - name: Set up Node.js\n')[0];
+  assert.ok(block, 'workflow must classify PR changes before Node setup');
+  const script = block.split('        run: |\n')[1]
+    ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
+  assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
+  assert.equal(
+    (workflow.match(/if: steps\.changes\.outputs\.run_normal == 'true'/gu) ?? []).length,
+    3,
+    'Node setup, dependencies and the full normal run must all use the same classifier result',
+  );
+
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const git = (args) => execFileSync('git', args, { cwd: root, stdio: 'pipe', encoding: 'utf8' }).trim();
+  await mkdir(path.join(root, 'docs'), { recursive: true });
+  await mkdir(path.join(root, 'src'), { recursive: true });
+  await writeFile(path.join(root, 'docs/guide.md'), 'guide v1\n');
+  await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 1;\n');
+  git(['init', '-q']);
+  git(['add', '-A']);
+  git(['-c', 'user.name=CI Test', '-c', 'user.email=ci@example.invalid', 'commit', '-qm', 'base']);
+  const base = git(['rev-parse', 'HEAD']);
+
+  let count = 0;
+  const scenario = async (name, edit, expectedNormal) => {
+    git(['checkout', '-q', '-B', `fixture-${++count}`, base]);
+    if (edit) {
+      await edit();
+      git(['add', '-A']);
+      git(['-c', 'user.name=CI Test', '-c', 'user.email=ci@example.invalid', 'commit', '-qm', name]);
+    }
+    const head = git(['rev-parse', 'HEAD']);
+    // Keep runner outputs under .git so later fixture commits never include them.
+    const output = path.join(root, '.git', 'ci-result');
+    const summary = path.join(root, '.git', 'ci-summary');
+    await rm(output, { force: true });
+    await rm(summary, { force: true });
+    execFileSync('bash', ['-c', script], {
+      cwd: root,
+      stdio: 'pipe',
+      env: {
+        ...process.env,
+        BASE_SHA: base,
+        HEAD_SHA: head,
+        GITHUB_OUTPUT: output,
+        GITHUB_STEP_SUMMARY: summary,
+      },
+    });
+    assert.equal(await readFile(output, 'utf8'), `run_normal=${expectedNormal}\n`, name);
+    assert.match(
+      await readFile(summary, 'utf8'),
+      expectedNormal ? /Full ci:normal required/u : /Documentation-only PR: ci:normal intentionally skipped/u,
+      name,
+    );
+  };
+
+  await scenario('docs-only', () => writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n'), false);
+  await scenario('root-docs', async () => {
+    await writeFile(path.join(root, 'README.md'), 'readme\n');
+    await writeFile(path.join(root, 'REVIEW.md'), 'review\n');
+  }, false);
+  await scenario('docs-with-spaces', () => writeFile(path.join(root, 'docs/has spaces.md'), 'new\n'), false);
+  await scenario('mixed-docs-code', async () => {
+    await writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n');
+    await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 2;\n');
+  }, true);
+  await scenario('data', async () => {
+    await mkdir(path.join(root, 'data'), { recursive: true });
+    await writeFile(path.join(root, 'data/records.jsonl'), '{}\n');
+  }, true);
+  await scenario('workflow', async () => {
+    await mkdir(path.join(root, '.github/workflows'), { recursive: true });
+    await writeFile(path.join(root, '.github/workflows/ci.yml'), 'name: changed\n');
+  }, true);
+  await scenario('other-markdown', () => writeFile(path.join(root, 'UNCLASSIFIED.md'), 'new\n'), true);
+  await scenario('source-to-doc-rename', () => rename(path.join(root, 'src/main.mjs'), path.join(root, 'docs/moved.mjs')), true);
+  await scenario('no-changed-files', null, true);
+});
+
 test('CI and Pages workflows keep their trigger responsibilities separate', async () => {
   const workflow = await readFile(
     path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'),
@@ -198,7 +285,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   );
 
   assert.match(workflow, /pull_request:/u);
-  assert.match(workflow, /branches:\n\s+- master/u);
+  assert.doesNotMatch(workflow, /^\s+push:/mu, 'normal CI runs on PRs, not on master pushes');
   assert.match(workflow, /name: Normal validation \(fast checkpoint \+ continuation\)/u);
   assert.match(workflow, /run: npm run ci:normal/u);
   assert.equal((workflow.match(/run: npm run ci:normal/gu) ?? []).length, 1);
