@@ -125,3 +125,18 @@ literal historical list. The test now retains strict full-current projection,
 class and collision coverage, and checks the pinned cases on the hash-bound
 pre-factory view. All 11 surface-form tests pass. This changes a historical
 fixture boundary; it does not suppress a current dictionary candidate.
+
+The subsequent full local normal run passed the batch and product gates but
+failed the artifact-policy suite: the canonical decision source producer added
+`factory_admissions` without extending the closed durable contract. The shared
+policy now explicitly bounds admission events, mappings, changes and retained
+pre-admission snapshots. Preserved semantic reviews reuse the same closed field
+contract as current compact reviews; original record/sense/relation fields are
+closed as canonical records. A synthetic regression rejects unknown fields at
+every nesting level and invalid attempt types. Whole-source semantic audit still
+checks event hashes and the current canonical binding separately.
+
+Implementation commits were previously pushed before the complete local normal
+run finished. This was a validation sequencing mistake. From this checkpoint,
+subsequent implementation changes remain local until the complete `ci:normal`
+passes on their committed revision; targeted passes do not authorize a push.

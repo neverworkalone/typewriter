@@ -180,3 +180,13 @@ and sense prefixes. Historical admission contexts scope already-reviewed surface
 collision candidates to the retained senses without disabling collision or
 semantic gates. The existing #219/#220 producers refresh their live checkpoint
 fields as part of Stage 3 output; authored historical decisions stay immutable.
+
+## Stage 3 durable admission history
+
+The canonical decision source permits `factory_admissions` as an optional,
+closed array of hash-bound event metadata, candidate mappings and record changes.
+An append-sense change retains its original record and compact semantic review
+for historical snapshot reconstruction. Their field contracts remain closed,
+including nested sense/relation and compact review evidence objects. Full
+semantic validation independently verifies the retained hashes and live record
+binding; this artifact-policy allowance does not replace admission validation.
