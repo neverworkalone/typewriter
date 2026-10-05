@@ -597,3 +597,17 @@ test('a surface-form gap that needs a reviewer judgment fails as a lexical block
     await assert.rejects(applySurfaceFormDispositions({ root }), (error) => error.category === 'lexical' && error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('Stage 3 reviews the generated-form ambiguity a multi-sense predicate creates, with the fixed retain-all policy', async () => {
+  const record = { ...predicate('w1', '같다', 'adjective'), senses: [{ id: 'w1-s1', pos: 'adjective', gloss: '첫째 뜻풀이.' }, { id: 'w1-s2', pos: 'adjective', gloss: '둘째 뜻풀이.' }] };
+  const root = await surfaceFormRoot([record]);
+  try {
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), ['data/validation/m6-3-surface-form-review.json']);
+    const { reviewed_collisions: reviewed } = JSON.parse(await readFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), 'utf8'));
+    const ambiguous = reviewed.ambiguous_generated.find(({ form }) => form === '같은');
+    assert.deepEqual(ambiguous.candidates.map(({ sense_id }) => sense_id), ['w1-s1', 'w1-s2']);
+    assert.match(ambiguous.reason, /Retain every listed sense-bound candidate/u);
+    assert.deepEqual(reviewed.ambiguous_generated.map(({ form }) => form), [...reviewed.ambiguous_generated.map(({ form }) => form)].sort());
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), []);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
