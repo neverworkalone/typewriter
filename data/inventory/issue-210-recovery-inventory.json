@@ -4,17 +4,17 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "7647d1cd3a651992573adfffaab4e054848729f6e71e2781a5dd976be905ff8c",
+    "current_canonical_revision": "41bf715f8d8449f9bca36436937145d3932b164cb3c05dc129a1b4a6c3b33ebd",
     "source_manifest": [
       {
         "path": "AGENTS.md",
-        "sha256": "829a6a541c6f6c86e2bddcbc0f81f3bdc826479636878b7a692526d34fc9e259",
-        "byte_count": 17119
+        "sha256": "f937457df31c2970867a9176b9120d0ad4af0d40fca2feffd627d51d33996fdc",
+        "byte_count": 20244
       },
       {
         "path": "config/artifact-policy.json",
-        "sha256": "ed6622ba4c7c1bcecc74ee0b75c3a23bc3a7442ee9ba96ea1ecca441c2fd8860",
-        "byte_count": 147453
+        "sha256": "a10e7ec19c4c9eb09d30d57252337f4006658b9496cbb18a3b2309e1dd4b770e",
+        "byte_count": 147860
       },
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -512,6 +512,11 @@
         "byte_count": 323557
       },
       {
+        "path": "data/canonical/factory-C000001-a1.jsonl",
+        "sha256": "9c809d37e66055e9ab380019c550cac2c316e990d48b973020a2a1d4a4a876dd",
+        "byte_count": 1739
+      },
+      {
         "path": "data/canonical/issue-204-corpus-pilot.jsonl",
         "sha256": "d600ef23a911afa4c8e6bbb7ecce51260767225601c0c9c9adeb62287ae72843",
         "byte_count": 2538
@@ -688,8 +693,8 @@
       },
       {
         "path": "data/canonical/m5-13-expansion.jsonl",
-        "sha256": "4af53e85dba0ee65906c51d7ba68d439e78b7bdd77ab50438e42f3afb0fda426",
-        "byte_count": 247169
+        "sha256": "73df87db4e4fe926b04868d38374d35bbe3fcfac8557c52d462dc10251deaa15",
+        "byte_count": 247275
       },
       {
         "path": "data/canonical/m5-14-expansion.jsonl",
@@ -738,17 +743,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "9b4dcb90e32041321a1c47d010635beb2e13f000e1c36337da44796df736412e",
-        "byte_count": 11434756
+        "sha256": "016402fd65193ca506b3efeb55b949faf226f56e82c19c73115b469a9314f92c",
+        "byte_count": 11460551
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "40abf5110eab6bf8d89ffb7f215e6956289dd34be0582a7d698aed6208656b7e",
+        "sha256": "4150b0ac2bb06c44ab0c8af6b611763e55f69d9c1a3d9b3d0657880c90b08f97",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "73c9ee46b17715db97cd71e0046540f03aca39586f691d8f0b3b75fd828e32de",
+        "sha256": "0f8219e3a0ca89d6a82d2a5bce65e2a6037c018a8fc633b8c1a9eaad0e6ace55",
         "byte_count": 29642
       },
       {
@@ -758,8 +763,8 @@
       },
       {
         "path": "data/validation/m6-3-surface-form-review.json",
-        "sha256": "061bcf590abcec1da59b39ab47cedc7b39b6264ad9903e72e30e70ace2554df2",
-        "byte_count": 467972
+        "sha256": "4561b7d660dc786c7d390287d90cc396fd091d7e04fd83a035e911ffcdc133e6",
+        "byte_count": 475223
       },
       {
         "path": "docs/editorial-model.md",
@@ -783,12 +788,12 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "cab15f2893c804be28d6b0b0d6778a1f3aeba2e1085ffdcf710682a5ab1354b7",
+        "sha256": "8970e973531700fcccd906e16cdb1f78b15ab232873a373e28a3a704c5850bae",
         "byte_count": 6007
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "7a6f06d956ff202311f35524942656c119da5ee549480b67ca4fd045d4acb4bd",
+        "sha256": "8e3df85cc0248090403ca3a63d71d931443ab783a587f58e1e48932b7ed3da13",
         "byte_count": 8778
       },
       {
@@ -833,8 +838,8 @@
       },
       {
         "path": "docs/m9-corpus-production.md",
-        "sha256": "552ad5769dc42ca5c7c860c73428cc31744af988f890bf4e2c41e0dedd977974",
-        "byte_count": 15175
+        "sha256": "30dc8dfa71e9a3bd152c662b3c8b14c6a22db5f343972851bc0571caa84c4b2b",
+        "byte_count": 15836
       },
       {
         "path": "docs/pilot-scope.md",
@@ -843,8 +848,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "8bb1452813ed246585c931d891d071c96d38010d198a158b5f43c6ebd0ca39d2",
-        "byte_count": 11031
+        "sha256": "c14b6f0fa830239e7b459f78f3d7b5cf335bc021a6cadd33e5bde9fefc8affc0",
+        "byte_count": 11480
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -858,8 +863,8 @@
       },
       {
         "path": "scripts/batch/authored-semantic-decision-source.mjs",
-        "sha256": "c3af89b27224e2d7cea845712e54fa1b2051a0273cd956bbec86a56118665116",
-        "byte_count": 30079
+        "sha256": "1fad89526e3287823a85cbae91b341cb73b9cd0c1ce2c9c35d907db3520fb978",
+        "byte_count": 30522
       },
       {
         "path": "scripts/batch/lexical-production.mjs",
@@ -883,33 +888,33 @@
       },
       {
         "path": "scripts/batch/validate-issue-211.mjs",
-        "sha256": "f9f448819aae8b701d5db8ec8d7e99fe4f0df710f9ebae9ae2d9d53ec248d898",
-        "byte_count": 35197
+        "sha256": "7a10a39900f34d99f6c84934a409473442832a74244d6f687d2eb8f1eb0bf882",
+        "byte_count": 35676
       },
       {
         "path": "scripts/batch/validate-issue-219.mjs",
-        "sha256": "eaa67434e083a5d6e41fea1c7c99d75306930a894b9d2bacf2f7a14820ec427f",
-        "byte_count": 34496
+        "sha256": "1b243007eba190d6206fee2654126c9c180181242643d69e70c310cb1d5d0303",
+        "byte_count": 35049
       },
       {
         "path": "scripts/batch/validate-issue-220.mjs",
-        "sha256": "7a439cc11cce8eec6e1811d7c93a69f07e85decd800698c53359dddc4ee776e0",
-        "byte_count": 58121
+        "sha256": "dcb7bcbc6ba9bcff3a9f98f703b595f5478cfeb78dd0a4c1de0746a58aa857da",
+        "byte_count": 58601
       },
       {
         "path": "scripts/batch/validate-issue-221.mjs",
-        "sha256": "f4d45a6820de9050d714ea7f3711dffb2040fd4ec0f25434e9508b14fad3957a",
-        "byte_count": 25042
+        "sha256": "08b693e4fcf234a02118b184134886e649ed387e40068aeab6d4106b961e50ba",
+        "byte_count": 25233
       },
       {
         "path": "scripts/batch/validate-issue-222.mjs",
-        "sha256": "c15383dc7d3c3a824de42645a86d8b1b5037a38f39634b5f0e55c17eb0429d82",
-        "byte_count": 61889
+        "sha256": "2da961631b948bc6bb564f46875fbd6461e70e5bb585ca5d433bd8553418cd6f",
+        "byte_count": 62719
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "1b83c876ab66a1216d4f2b979300b336d8e02be53b0d164eff11e8842ec02fea",
-        "byte_count": 14358
+        "sha256": "c5c644959e663906ee703a4b0bfaf3037f48be0a7bbf9a2b158ed375ede27584",
+        "byte_count": 18555
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
@@ -923,13 +928,13 @@
       },
       {
         "path": "scripts/reference/corpus_lemma_pilot.py",
-        "sha256": "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e",
-        "byte_count": 48737
+        "sha256": "5cb8cb22db737afaccd64585dfe613ea428a3fc74dbb359eac4c4a1a177b6ee6",
+        "byte_count": 50508
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.mjs",
-        "sha256": "88f5c80e9087fa62f9048bf9ae2220962e44f5d864f6efc99d95e321685effac",
-        "byte_count": 31140
+        "sha256": "acb888a21421824dc61e96deb2a87211c90e1fa0dbf099620739da59de044bab",
+        "byte_count": 31963
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.test.mjs",
@@ -938,8 +943,8 @@
       },
       {
         "path": "scripts/reference/test-corpus-lemma-pilot.py",
-        "sha256": "e4afffc2aa377711e209c653245de7685c48176d78a3ef3346fc008690757d15",
-        "byte_count": 12526
+        "sha256": "3596f783fce5edcd60f00ec4eccdaaefc7dbf566fdefcb8160a4a7ce637a0476",
+        "byte_count": 20841
       },
       {
         "path": "scripts/reference/validate-corpus-candidate-review.mjs",
@@ -953,18 +958,18 @@
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "0b435919225e39b977b802e8bfb544fb501cfca2442284e46d870e125d33e03b",
-        "byte_count": 114158
+        "sha256": "830135b47a4c398b4d150277713eb7234a0beb6051a47e0cfab6f03b86f3d7d4",
+        "byte_count": 127139
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",
-        "sha256": "3019f5ce59c778a6e913f30c49c915508dfbb1792db891f410af86ff6a857d3e",
-        "byte_count": 8224
+        "sha256": "0f5c5a01c6635c3ba6358563e44c9751301440dbb5396f111d9979cfab9b9d15",
+        "byte_count": 8471
       },
       {
         "path": "tests/issue-211-search.test.mjs",
-        "sha256": "0010c76cc0eced37c3ac51d3993c66b4d700a1d5d3dc2872fc0171ced5af2351",
-        "byte_count": 7417
+        "sha256": "249819c69e8f46120e5be74378eb9e97e3ccbdc079ac33d89c18e7f3d9d63d54",
+        "byte_count": 7312
       },
       {
         "path": "tests/issue-219-content-digest.test.mjs",
@@ -973,8 +978,8 @@
       },
       {
         "path": "tests/issue-219-search.test.mjs",
-        "sha256": "fef7a0aa61b2afdc6f44bdc1513bca7c737b0a6ed7fdbf66ff3338be64dd0ad3",
-        "byte_count": 1873
+        "sha256": "970902e707d1acf2aae7f3eea74869abd83a21a477d6b755a2e1d6f61cad6cd2",
+        "byte_count": 1747
       },
       {
         "path": "tests/lexical-production-candidates.test.mjs",
@@ -1037,7 +1042,7 @@
     "issue_222_historical_held_count": 0,
     "issue_222_historical_rejected_count": 0,
     "issue_222_promotion_events_audited": 2396,
-    "historical_recovery_ceiling_count": 12711,
+    "historical_recovery_ceiling_count": 12717,
     "historical_recovery_shortfall_to_6000": 0,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
@@ -1050,8 +1055,8 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 12204,
-    "exact_search_key_count": 12461,
+    "directly_searchable_canonical_record_count": 12210,
+    "exact_search_key_count": 12467,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
@@ -1084,20 +1089,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 12204,
-    "directly_searchable_record_count": 12204,
+    "canonical_record_count": 12210,
+    "directly_searchable_record_count": 12210,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 12461,
+    "exact_search_key_count": 12467,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 12162,
+      "start": 12168,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 11009,
+      "start/entry": 11015,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
@@ -33362,15 +33367,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12541"
+        ],
+        "all_query_match_ids": [
+          "w12541"
+        ],
         "queries": [
           {
             "query": "같다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "같다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12541",
+                "lemma": "같다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "같다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -34096,15 +34118,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12545"
+        ],
+        "all_query_match_ids": [
+          "w12545"
+        ],
         "queries": [
           {
             "query": "대하다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "대하다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12545",
+                "lemma": "대하다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "대하다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -34357,15 +34396,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12543"
+        ],
+        "all_query_match_ids": [
+          "w12543"
+        ],
         "queries": [
           {
             "query": "나다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "나다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12543",
+                "lemma": "나다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "나다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -34508,15 +34564,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12542"
+        ],
+        "all_query_match_ids": [
+          "w12542"
+        ],
         "queries": [
           {
             "query": "그러다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "그러다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12542",
+                "lemma": "그러다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "그러다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -34630,15 +34703,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12544"
+        ],
+        "all_query_match_ids": [
+          "w12544"
+        ],
         "queries": [
           {
             "query": "느끼다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "느끼다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12544",
+                "lemma": "느끼다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "느끼다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -34891,15 +34981,32 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w12546"
+        ],
+        "all_query_match_ids": [
+          "w12546"
+        ],
         "queries": [
           {
             "query": "따르다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "따르다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w12546",
+                "lemma": "따르다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "따르다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },

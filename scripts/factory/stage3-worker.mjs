@@ -337,10 +337,12 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
 // Existing M9 reports contain live canonical/search/SQLite checkpoint fields.
 // Refresh them through their ordinary source-bound report producers before pinning CI's tree.
 export function refreshStage3ReportCheckpoints(root, run = execFileSync) {
-  for (const script of ['batch:issue-219:report', 'batch:issue-220:report']) {
+  for (const script of ['inventory:issue-210:write', 'batch:issue-219:report', 'batch:issue-220:report', 'batch:issue-222:report']) {
     run('npm', ['run', script], { cwd: root, stdio: 'inherit' });
   }
   return [
+    'docs/issue-210-historical-exclusion-report.md', 'data/inventory/issue-210-recovery-inventory.json',
+    'docs/issue-222-m9-d-scale-coverage.md', 'data/validation/issue-222-m9-d-scale-coverage-report.json',
     'docs/issue-219-m9-a-recovery.md', 'data/validation/issue-219-m9-lexical-batch-report.json',
     'docs/issue-220-m9-b-checkpoint.md', 'data/validation/issue-220-m9-b-checkpoint-report.json',
   ];

@@ -879,7 +879,7 @@ test('historical collision evidence is scoped to retained senses while strict co
 test('Stage 3 refreshes its live dependent checkpoints through existing source-bound report producers', () => {
   const commands = [];
   const files = refreshStage3ReportCheckpoints('/repo', (file, args, options) => commands.push({ file, args, options }));
-  assert.deepEqual(commands.map(({ args }) => args), [['run', 'batch:issue-219:report'], ['run', 'batch:issue-220:report']]);
-  assert.equal(files.length, 4);
-  assert.ok(files.every((file) => file.startsWith('docs/') || file.startsWith('data/validation/')));
+  assert.deepEqual(commands.map(({ args }) => args), [['run', 'inventory:issue-210:write'], ['run', 'batch:issue-219:report'], ['run', 'batch:issue-220:report'], ['run', 'batch:issue-222:report']]);
+  assert.equal(files.length, 8);
+  assert.ok(files.every((file) => file.startsWith('docs/') || file.startsWith('data/validation/') || file.startsWith('data/inventory/')));
 });

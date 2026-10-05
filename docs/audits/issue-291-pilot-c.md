@@ -108,3 +108,12 @@ counts and source lineage remain intact. Stage 3 now invokes these existing
 report producers so subsequent admissions do not leave stale live reports.
 Standalone report reproduction remains separate from the normal CI shared
 one-build gate; it is not reported as a real lifecycle or independent review.
+
+Normal CI next reached portable #222 report regeneration, exposing its live
+#210 recovery-inventory dependency: the stored count was 12,204 while the
+prospective dictionary had 12,210. The existing #210 inventory and #222 report
+producers regenerated these live fields successfully. Stage 3's refresh order
+is now #210 inventory → #219 report → #220 report → #222 report; all eight
+existing dependent outputs are included in its commit. Historical decisions,
+source snapshots, original rejected/held evidence and historical admission
+counts are preserved. The shared worker suite passes 33 tests at this checkpoint.
