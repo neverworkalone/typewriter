@@ -22,8 +22,6 @@ import {
   decideObservations,
   ensembleCohortMetrics,
   ensembleTraceSha256,
-  needsReviewFirst,
-  omittedRecord,
   reviewSummary,
   runEnsembleProviders,
 } from './ensemble-resolver.mjs';
@@ -446,11 +444,12 @@ export function buildLemmaRow({ lemma, observations: entry, candidateId, ensembl
   if (chosen.size > MAX_OBSERVATIONS_PER_CANDIDATE) {
     throw new Stage1Error([`lemma ${lemma} needs ${chosen.size} observations to keep every form and usage group, above the bound ${MAX_OBSERVATIONS_PER_CANDIDATE}`]);
   }
-  // Under the ensemble policy a bounded selection keeps reviewable observations (holds, rivals,
-  // context recoveries) before plain concordant ones; the omitted remainder stays accounted for by
-  // `review` (computed over all observations) and `observation_digest`.
-  const fillOrder = ensemble ? [...all.filter((item) => needsReviewFirst({ holds: [...item.holds], ensemble: item.ensemble })), ...all.filter((item) => !needsReviewFirst({ holds: [...item.holds], ensemble: item.ensemble }))] : all;
-  for (const item of fillOrder) {
+  // Under the ensemble policy no observation may be omitted: an unseen observation could carry a hold
+  // or category no tracked artifact shows. A lemma beyond the bound fails the run (split the evidence).
+  if (ensemble && all.length > MAX_OBSERVATIONS_PER_CANDIDATE) {
+    throw new Stage1Error([`lemma ${lemma} has ${all.length} observations, above the bound ${MAX_OBSERVATIONS_PER_CANDIDATE}; the ensemble policy never omits an observation, so split the evidence run`]);
+  }
+  for (const item of all) {
     if (chosen.size >= MAX_OBSERVATIONS_PER_CANDIDATE) break;
     chosen.add(item);
   }
@@ -474,8 +473,7 @@ export function buildLemmaRow({ lemma, observations: entry, candidateId, ensembl
     observations: observationRecords,
     observation_total: all.length,
     observation_digest: observationSetDigest(all.map((item) => item.key)),
-    ...(ensemble ? { review: reviewSummary(all.map((item) => ({ holds: [...item.holds], ensemble: item.ensemble }))),
-      omitted: all.filter((item) => !chosen.has(item)).map((item) => omittedRecord({ holds: [...item.holds], ensemble: item.ensemble })) } : {}),
+    ...(ensemble ? { review: reviewSummary(all.map((item) => ({ holds: [...item.holds], ensemble: item.ensemble }))) } : {}),
   };
 }
 
@@ -581,7 +579,7 @@ function ensembleManifestFields({ grouped, rows, providers }) {
       counts: { observations: rows.reduce((sum, row) => sum + row.observation_total, 0) + grouped.unresolved.length, categories, queue: grouped.unresolved.length },
       trace_sha256: ensembleTraceSha256({
         providers,
-        observationTraceDigests: rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest), ...row.omitted.map((entry) => entry.trace_digest)]),
+        observationTraceDigests: rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest)]),
         queueTraceDigests: grouped.unresolved.map((entry) => entry.trace_digest),
         contextDecisionsSha256: contextDecisionsDigest,
       }),

@@ -299,15 +299,14 @@ export function decideObservations({ observations, run }) {
 
 // --- 3. Review priority and per-row summary ---------------------------------------------------
 
-// Computed over EVERY observation of the lemma (retained or omitted by the bounded selection), then
-// stored beside the bounded row, so a hold or category that the 64-observation bound omitted still
-// drives priority, accounting and the trace identity. Review ORDER only (never lexical admission:
+// Computed over every observation of the lemma (the ensemble policy never omits one), so every hold
+// and category drives priority, accounting and the trace identity. Review ORDER only (never lexical admission:
 // AGENTS.md — usefulness must not admit, hold or reject). `verify_first`: a rival reading, a hold or
 // an unresolved category exists; `high`: two or more independent source observations, all
 // concordant and hold-free; `standard`: otherwise. `trace_sha256` commits to all trace digests.
 const isHeld = (record) => record.holds.length > 0 || record.ensemble.resolution === 'context';
 export const priorityOf = ({ categories, held }, total) => (categories.concordant !== total || held > 0 ? 'verify_first' : total >= 2 ? 'high' : 'standard');
-// Order-independent commitment to every observation's (trace, category, held) — retained or omitted.
+// Order-independent commitment to every observation's (trace, category, held).
 export const observationSetTraceDigest = (records) => digest(['ensemble-observation-set', records
   .map((record) => JSON.stringify([record.ensemble.trace_digest, record.ensemble.category, isHeld(record)])).sort()]);
 export function reviewSummary(records) {
@@ -324,10 +323,6 @@ export function reviewSummary(records) {
     trace_sha256: observationSetTraceDigest(records),
   };
 }
-// Retention preference when the bound omits observations: reviewable ones (holds, rivals,
-// context recoveries) are kept before plain concordant ones.
-export const needsReviewFirst = (record) => isHeld(record) || record.ensemble.category !== 'concordant';
-
 // --- 4. Shared validators (called by lemma-contract) -----------------------------------------
 
 const SHA256 = /^[0-9a-f]{64}$/u;
@@ -384,36 +379,20 @@ export function validateEnsembleObservation(record, at, { decisionIds = new Set(
   return errors;
 }
 
-// The compact, text-free record kept for each observation the bound omits: enough to recompute the
-// row's totals, holds and commitment exactly (the full trace stays in the local trace file).
-export const omittedRecord = (record) => ({ category: record.ensemble.category, held: isHeld(record), trace_digest: record.ensemble.trace_digest });
-const asRecord = (entry) => ({ holds: entry.held ? ['omitted'] : [], ensemble: { category: entry.category, resolution: 'ensemble', trace_digest: entry.trace_digest } });
-
-export function validateOmitted(omitted, observationTotal, retainedCount, at) {
-  if (!Array.isArray(omitted)) return [`${at}: omitted must be an array under the ensemble policy`];
-  const errors = [];
-  if (omitted.length !== observationTotal - retainedCount) errors.push(`${at}: omitted must hold exactly one record per omitted observation (${observationTotal - retainedCount})`);
-  omitted.forEach((entry, index) => {
-    if (!isObject(entry) || Object.keys(entry).sort().join() !== 'category,held,trace_digest' || !CATEGORIES.includes(entry.category)
-      || typeof entry.held !== 'boolean' || !SHA256.test(String(entry.trace_digest))) errors.push(`${at}: omitted[${index}] must be {category, held, trace_digest}`);
-  });
-  return errors;
-}
-
-// `review` is recomputed EXACTLY from the retained observations plus the omitted records: no total,
-// hold count, priority or commitment may be edited without editing the per-observation records.
-export function validateReviewField(review, observations, omitted, observationTotal, at) {
+// Under the ensemble policy a lemma's observations are never omitted: every observation (with its
+// category, hold and trace digest) is a tracked, individually validated row entry, so `review` is
+// recomputed EXACTLY from them and no unseen observation can hide a hold or a category. (A lemma
+// that would need more than the bound fails the run — see `buildLemmaRow`.)
+export function validateReviewField(review, observations, observationTotal, at) {
   if (!isObject(review) || Object.keys(review).sort().join() !== 'categories,held,priority,trace_sha256' || !PRIORITIES.includes(review.priority)) return [`${at}: review must be {priority, categories, held, trace_sha256}`];
-  const errors = validateOmitted(omitted, observationTotal, observations.length, at);
-  if (errors.length) return errors;
-  const expected = reviewSummary([...observations, ...omitted.map(asRecord)]);
-  return JSON.stringify(expected) === JSON.stringify(review) ? []
-    : [`${at}: review does not match the category, hold and trace records of all ${observationTotal} observations (retained and omitted)`];
+  if (observations.length !== observationTotal) return [`${at}: under the ensemble policy every observation must be retained (observation_total ${observationTotal} vs ${observations.length}); an omitted observation could hide a hold or category`];
+  return JSON.stringify(reviewSummary(observations)) === JSON.stringify(review) ? []
+    : [`${at}: review does not match the category, hold and trace records of its ${observationTotal} observations`];
 }
 
 // LOCAL integration check (needs the ignored `--ensemble-trace` file, never part of routine CI):
-// every retained/omitted/queue record must be backed by a trace whose digest, category and hold
-// state agree. This is what proves an omitted observation's category/hold against real analysis.
+// every observation and queue record must be backed by a trace whose digest, category and hold
+// state agree. This proves recorded categories/holds against the real analysis.
 export function verifyEnsembleTraces({ rows, queue = [], traces }) {
   const byDigest = new Map(traces.map((entry) => [entry.trace_digest, entry.trace]));
   const errors = [];
@@ -427,7 +406,6 @@ export function verifyEnsembleTraces({ rows, queue = [], traces }) {
   for (const row of rows) {
     for (const observation of row.observations) check(`${row.candidate_id} ${observation.observation_id}`, { trace_digest: observation.ensemble.trace_digest, category: observation.ensemble.category,
       held: observation.holds.length > 0, resolution: observation.ensemble.resolution });
-    (row.omitted ?? []).forEach((entry, index) => check(`${row.candidate_id} omitted[${index}]`, entry));
   }
   for (const entry of queue) check(entry.queue_id, { trace_digest: entry.trace_digest, category: entry.category, held: false, resolution: 'queue' });
   return errors;

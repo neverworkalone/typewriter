@@ -590,62 +590,44 @@ const bigEvidence = (count, { heldTail = false, allHeld = false } = {}) => [
 ];
 const GADA = { 가는: [p('가다', 'verb', '가')] };
 
-test('review fix: observations beyond the 64 bound keep their hold, category accounting and trace identity', async () => {
-  const clean = await produce(bigEvidence(65), triple({ k: GADA, h: GADA, m: GADA }));
-  assert.equal(clean.rows[0].observation_total, 65);
-  assert.equal(clean.rows[0].observations.length, 64);
-  assert.deepEqual([clean.rows[0].review.priority, clean.rows[0].review.categories, clean.rows[0].review.held], ['high', { concordant: 65 }, 0]);
-  assert.equal(clean.manifest.ensemble.counts.observations, 65);
-  assert.deepEqual(clean.manifest.ensemble.counts.categories.concordant, 65, 'the category totals explain ALL observations, not the retained 64');
-  // One held observation among 65: preferred for retention, priority is verify_first, accounting complete.
-  const tail = await produce(bigEvidence(65, { heldTail: true }), triple({ k: GADA, h: GADA, m: GADA }));
-  const row = tail.rows[0];
-  assert.equal(row.observation_total, 65);
+test('review fix: the ensemble policy never omits an observation, so no unseen hold or category can exist', async () => {
+  const run = (evidence) => produce(evidence, triple({ k: GADA, h: GADA, m: GADA }));
+  // 64 observations (the bound) are all retained and exactly summarized.
+  const full = await run(bigEvidence(64, { heldTail: true }));
+  const row = full.rows[0];
+  assert.equal(row.observation_total, 64);
   assert.equal(row.observations.length, 64);
-  assert.deepEqual([row.review.priority, row.review.held, row.review.categories], ['verify_first', 1, { concordant: 65 }]);
-  assert.ok(row.observations.some((o) => o.holds.includes('analysis_ambiguous')), 'the only held observation is retained before plain concordant ones');
-  assert.notEqual(row.review.trace_sha256, clean.rows[0].review.trace_sha256, 'the hold changes the full-set trace commitment');
-  assert.notEqual(tail.manifest.ensemble.trace_sha256, clean.manifest.ensemble.trace_sha256);
-  assert.deepEqual(validateCandidateBatch({ manifest: tail.manifest, candidatesText: tail.candidatesText }), []);
-  // More held observations than the bound: the omitted holds are still counted and drive priority.
-  const many = await produce(bigEvidence(70, { allHeld: true }), triple({ k: GADA, h: GADA, m: GADA }));
-  assert.equal(many.rows[0].observations.length, 64);
-  assert.deepEqual([many.rows[0].review.held, many.rows[0].review.priority], [70, 'verify_first']);
-  assert.deepEqual(validateCandidateBatch({ manifest: many.manifest, candidatesText: many.candidatesText }), []);
-  // Known-invalid: hiding the hold, mis-accounting categories or editing the commitment is rejected.
-  const check = (base, mutate) => {
-    const manifest = structuredClone(base.manifest);
-    const rows = base.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
+  assert.deepEqual([row.review.priority, row.review.held, row.review.categories], ['verify_first', 1, { concordant: 64 }]);
+  assert.equal(full.manifest.ensemble.counts.categories.concordant, 64);
+  assert.deepEqual(validateCandidateBatch({ manifest: full.manifest, candidatesText: full.candidatesText }), []);
+  // Beyond the bound the run fails closed instead of omitting (even a lone hold at the end), so a
+  // hold can never disappear from review priority, accounting or the trace.
+  await assert.rejects(() => run(bigEvidence(65, { heldTail: true })), /never omits an observation, so split the evidence run/);
+  await assert.rejects(() => run(bigEvidence(70, { allHeld: true })), /above the bound 64/);
+  // The shared validator also refuses a forged row that claims omitted observations.
+  const check = (mutate) => {
+    const manifest = structuredClone(full.manifest);
+    const rows = full.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
     mutate(rows[0], manifest);
     const text = `${rows.map((entry) => JSON.stringify(entry)).join('\n')}\n`;
     manifest.candidates_sha256 = sha256Hex(text);
+    manifest.observation_count = rows.reduce((sum, entry) => sum + entry.observation_total, 0);
     return validateCandidateBatch({ manifest, candidatesText: text }).join('\n');
   };
-  const exact = /review does not match the category, hold and trace records of all 65 observations/;
-  assert.match(check(tail, (r) => { r.review = { ...r.review, held: 0, priority: 'high' }; }), exact);
-  assert.match(check(tail, (r) => { r.review.categories = { concordant: 64 }; }), exact);
-  assert.match(check(tail, (r) => { r.review.trace_sha256 = HEX; }), exact);
-  assert.match(check(tail, (r, m) => { m.ensemble.counts.categories.concordant = 64; }), /does not match/);
-  // The reviewer's forgery: relabel the unseen 65th observation in the totals AND the manifest counts.
-  assert.match(check(clean, (r, m) => { r.review.categories = { concordant: 64, conflicted: 1 }; r.review.priority = 'verify_first'; m.ensemble.counts.categories = { concordant: 64, supported_alternative: 0, conflicted: 1, unsupported_or_unknown: 0 }; }), exact);
-  // ... and lowering the hold count of 70 omitted-from-retention holds is equally rejected.
-  const manyExact = /of all 70 observations/;
-  assert.match(check(many, (r) => { r.review.held = 64; }), manyExact);
-  assert.match(check(many, (r) => { r.review.priority = 'high'; }), manyExact);
-  // Omitted records must exist, match the count and keep their shape.
-  assert.match(check(clean, (r) => { r.omitted = []; }), /one record per omitted observation \(1\)/);
-  assert.match(check(clean, (r) => { delete r.omitted; }), /omitted must be an array/);
-  assert.match(check(clean, (r) => { r.omitted[0].category = 'bogus'; }), /omitted\[0\] must be/);
-  // Editing the omitted record itself is self-consistent for the portable validator once its totals are
-  // recomputed; it is caught by the LOCAL trace check, which needs the ignored --ensemble-trace file.
-  const rowsOf = (result) => result.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
-  const traces = clean.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace }));
-  assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf(clean), queue: clean.manifest.unresolved_observations, traces }), []);
-  const forged = rowsOf(clean);
-  forged[0].omitted[0].category = 'conflicted';
-  assert.match(verifyEnsembleTraces({ rows: forged, traces }).join(), /recorded category conflicted differs from the trace/);
-  const heldForged = rowsOf(many);
-  heldForged[0].omitted[0].held = false;
-  assert.match(verifyEnsembleTraces({ rows: heldForged, traces: many.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace })) }).join(), /hold state differs/);
-  assert.match(verifyEnsembleTraces({ rows: rowsOf(clean), traces: [] }).join(), /no local trace/);
+  assert.match(check((r) => { r.observation_total = 65; }), /every observation must be retained/);
+  assert.match(check((r) => { r.observations.pop(); r.observation_total = 63; }), /observation_digest|review does not match|forms|every observation/);
+  // Forged category/hold/priority/commitment, even with consistent derived counts, is rejected by exact recomputation.
+  const exact = /review does not match the category, hold and trace records of its 64 observations/;
+  assert.match(check((r) => { r.review.held = 0; r.review.priority = 'high'; }), exact);
+  assert.match(check((r) => { r.review.categories = { concordant: 63, conflicted: 1 }; }), exact);
+  assert.match(check((r) => { r.review.trace_sha256 = HEX; }), exact);
+  assert.match(check((r, m) => { r.observations[0].ensemble.category = 'supported_alternative'; }), /supported_alternative must|review does not match/);
+  assert.match(check((r, m) => { m.ensemble.counts.categories.concordant = 63; }), /does not match/);
+  // The local trace check proves recorded categories/holds against the real analysis (ignored trace file).
+  const traces = full.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace }));
+  const rowsOf = full.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
+  assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf, queue: [], traces }), []);
+  const forged = structuredClone(rowsOf);
+  forged[0].observations[0].holds = ['analysis_ambiguous'];
+  assert.match(verifyEnsembleTraces({ rows: forged, traces }).join(), /hold state differs/);
 });
