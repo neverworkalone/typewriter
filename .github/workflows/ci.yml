@@ -31,18 +31,20 @@ jobs:
           # Use the PR merge base, not the checked-out synthetic merge commit.
           # Disable renames so moving code into docs/ cannot hide a source-file deletion.
           git diff --no-renames --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
-          mapfile -d '' -t changed_files < "$paths_file"
+          # Read NUL-delimited paths (including whitespace safely); Bash 3.2 compatible.
+          run_normal=false
+          saw_file=false
+          while IFS= read -r -d '' file; do
+            saw_file=true
+            case "$file" in
+              docs/*|README.md|REVIEW.md) ;;
+              *) run_normal=true; break ;;
+            esac
+          done < "$paths_file"
 
-          # An empty or unclassifiable diff must never be treated as docs-only.
-          run_normal=true
-          if ((${#changed_files[@]} > 0)); then
-            run_normal=false
-            for file in "${changed_files[@]}"; do
-              case "$file" in
-                docs/*|README.md|REVIEW.md) ;;
-                *) run_normal=true; break ;;
-              esac
-            done
+          # Empty or unclassifiable diffs must run full CI.
+          if [[ "$saw_file" != true ]]; then
+            run_normal=true
           fi
 
           echo "run_normal=$run_normal" >> "$GITHUB_OUTPUT"
