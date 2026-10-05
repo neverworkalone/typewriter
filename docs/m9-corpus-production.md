@@ -103,3 +103,12 @@ Typewriter separates three activities: research and development (analyzing the N
 This statement records the owner's release plan. It is not an authorization to disclose corpus-derived data, and it does not settle the redistribution status of the B05–B09 records held under `data/canonical/`; that status stays governed by `DATA-LICENSE.md` and `docs/publication-boundary.md` until the NIKL decision is documented.
 
 Owner clarification (PR #235 conversation): authorization to use the corpus for research and development in this repository has already been obtained, so corpus-assisted development needs no further approval. The repository's public visibility is described as opening the research and development process, not as publishing a result. The result built with the corpus (the Chrome Extension) is under application for use and remains unreleased; Typewriter 0.1 was published without the corpus, and the corpus-based version is to be released only after approval. This is recorded as the owner's statement; it does not record an NIKL decision, and the `publication_state` of the B05–B09 artifacts is unchanged.
+
+## Local context review as the Stage 1 v2 fallback (issue #285)
+
+The local bounded-context review described under *Coverage and review* is reused, unchanged in method, as the
+**fallback of the three-Provider Ensemble Resolver v2** for observations whose lemma/POS Kiwi, Khaiii and MeCab-ko
+cannot reliably assign (see [`lexical-factory-ensemble-v2.md`](lexical-factory-ensemble-v2.md)). Morphology
+analyzes only the observed eojeol; the original paragraph is what shows meaning. The review is an AI
+self-check recorded as a text-free, digest-bound decision, never as independent or human review; contexts stay
+in ignored `data/reference/` and never enter Git.

@@ -4,7 +4,10 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { DEFAULT_PROVIDER_ORDER, createKiwiProvider } from './analyzer-providers.mjs';
+import { DEFAULT_PROVIDER_ORDER, RESOLUTION_POLICY, createKiwiProvider } from './analyzer-providers.mjs';
+import { ENSEMBLE_POLICY, ENSEMBLE_PROVIDER_ORDER } from './ensemble-resolver.mjs';
+import { alignedInContext, alignedOffset, fallbackBlockers } from './context-fallback.mjs';
+import { createCorpusContextSource } from './corpus-context-source.mjs';
 import { createKhaiiiProvider } from './khaiii-provider.mjs';
 import { createMecabProvider } from './mecab-provider.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
@@ -16,6 +19,8 @@ import {
   Stage1Error,
   allocateBatchId,
   canonicalSnapshotDigest,
+  compareResolutionPolicies,
+  observationsFromCorpusEvidence,
   produceCandidateBatch,
 } from './stage1.mjs';
 
@@ -36,8 +41,14 @@ export const PROVIDER_REGISTRY = Object.freeze({
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DEFAULT_BASE_REF = 'origin/master';
 
+// `--policy` selects the resolution policy. Newly produced v2 batches default to the all-three
+// ensemble; the v1 conditional-fallback policy (Kiwi-only by default) is an explicit compatibility
+// and A/B baseline mode, so a Kiwi-only production run can never happen by accident.
+export const POLICY_ALIASES = Object.freeze({ ensemble: ENSEMBLE_POLICY, v1: RESOLUTION_POLICY, [ENSEMBLE_POLICY]: ENSEMBLE_POLICY, [RESOLUTION_POLICY]: RESOLUTION_POLICY });
+
 export function parseArguments(argv) {
-  const options = { maxCandidates: DEFAULT_MAX_CANDIDATES, baseRef: DEFAULT_BASE_REF, dryRun: false, python: process.env.TYPEWRITER_PYTHON || 'python3', providers: [...DEFAULT_PROVIDER_ORDER], attemptLog: null };
+  const options = { maxCandidates: DEFAULT_MAX_CANDIDATES, baseRef: DEFAULT_BASE_REF, dryRun: false, python: process.env.TYPEWRITER_PYTHON || 'python3', providers: null, attemptLog: null,
+    policy: ENSEMBLE_POLICY, ensembleTrace: null, contextProposals: null, contextReplay: null, contextReviewPack: null, compareKiwiOnly: false };
   const value = (index, flag) => {
     const next = argv[index + 1];
     if (!next || next.startsWith('--')) throw new Stage1Error([`${flag} requires a value`]);
@@ -50,6 +61,16 @@ export function parseArguments(argv) {
     else if (flag === '--task-id') options.taskId = value(index++, flag);
     else if (flag === '--providers') options.providers = value(index++, flag).split(',').map((id) => id.trim());
     else if (flag === '--attempt-log') options.attemptLog = value(index++, flag);
+    else if (flag === '--policy') {
+      const requested = value(index++, flag);
+      if (!Object.hasOwn(POLICY_ALIASES, requested)) throw new Stage1Error([`unknown --policy ${requested}; known: ${Object.keys(POLICY_ALIASES).join(', ')}`]);
+      options.policy = POLICY_ALIASES[requested];
+    }
+    else if (flag === '--ensemble-trace') options.ensembleTrace = value(index++, flag);
+    else if (flag === '--context-proposals') options.contextProposals = value(index++, flag);
+    else if (flag === '--context-replay') options.contextReplay = value(index++, flag);
+    else if (flag === '--context-review-pack') options.contextReviewPack = value(index++, flag);
+    else if (flag === '--compare-kiwi-only') options.compareKiwiOnly = true;
     else if (flag === '--python') options.python = value(index++, flag);
     else if (flag === '--base-ref') options.baseRef = value(index++, flag);
     else if (flag === '--max-candidates') options.maxCandidates = Number(value(index++, flag));
@@ -57,6 +78,15 @@ export function parseArguments(argv) {
   }
   if (!options.evidence) throw new Stage1Error(['--evidence <data/reference/.../candidate-evidence.json> is required']);
   if (!options.taskId) throw new Stage1Error(['--task-id T000000 is required']);
+  const explicitProviders = options.providers !== null;
+  options.providers ??= options.policy === ENSEMBLE_POLICY ? [...ENSEMBLE_PROVIDER_ORDER] : [...DEFAULT_PROVIDER_ORDER];
+  if (options.policy === ENSEMBLE_POLICY && JSON.stringify(options.providers) !== JSON.stringify(ENSEMBLE_PROVIDER_ORDER)) {
+    throw new Stage1Error([`the ensemble policy runs exactly ${ENSEMBLE_PROVIDER_ORDER.join(',')}${explicitProviders ? ` (got --providers ${options.providers.join(',')})` : ''}; use --policy ${RESOLUTION_POLICY} for a conditional or Kiwi-only baseline`]);
+  }
+  if (options.policy !== ENSEMBLE_POLICY && (options.contextProposals || options.contextReplay || options.contextReviewPack)) {
+    throw new Stage1Error([`the contextual fallback options require the ${ENSEMBLE_POLICY} policy`]);
+  }
+  if (options.contextProposals && options.contextReplay) throw new Stage1Error(['--context-proposals and --context-replay are exclusive']);
   const unknown = options.providers.filter((id) => !Object.hasOwn(PROVIDER_REGISTRY, id));
   if (unknown.length) throw new Stage1Error([`unknown analyzer provider(s) ${unknown.join(',')}; known: ${Object.keys(PROVIDER_REGISTRY).join(',')}`]);
   if (new Set(options.providers).size !== options.providers.length) throw new Stage1Error(['--providers must not repeat a provider']);
@@ -113,8 +143,49 @@ async function producedLemmas(root, baseRef) {
 }
 
 // `analyzer` and `permission` are injectable so tests need neither Kiwi nor the corpus.
+// Local-only output (review packs hold original context text; traces hold analyzer paths) must stay
+// inside the ignored data/reference tree and never reach Git.
+function ignoredOutputPath(root, file, flag) {
+  const resolved = path.resolve(root, file);
+  const inside = path.relative(path.join(root, 'data/reference'), resolved);
+  if (!inside || inside.startsWith('..') || path.isAbsolute(inside)) throw new Stage1Error([`${flag} must be inside data/reference/`]);
+  return resolved;
+}
+
+const readJson = async (file, label) => {
+  try {
+    return JSON.parse(await readFile(file, 'utf8'));
+  } catch (error) {
+    throw new Stage1Error([`cannot read ${label} ${file}: ${error.message}`]);
+  }
+};
+
+// Review pack for the contextual fallback: eligible unresolved observations with a bounded window of
+// the ORIGINAL paragraph, for the primary agent's local reading. It is written only to ignored
+// data/reference/ and is never part of a batch.
+async function buildContextReviewPack({ queue, contextSource }) {
+  const items = [];
+  for (const entry of queue) {
+    const blockers = fallbackBlockers(entry);
+    const item = { observation_digest: entry.observation_digest, surface: entry.surface, evidence: entry.evidence, extractor_hint: entry.extractor_hint,
+      hypotheses: entry.hypotheses, category: entry.category, reasons: entry.reasons, blocked_by: blockers };
+    if (!blockers.length) {
+      const found = await contextSource.lookup({ kind: entry.evidence.kind, ref: entry.evidence.ref });
+      if (found?.status === 'snapshot_mismatch') throw new Stage1Error(['the local corpus index does not match the evidence source snapshot; refusing to build a review pack from it']);
+      item.source_status = found?.status ?? 'absent';
+      if (found?.status === 'ok') {
+        item.aligned = alignedInContext(found.text, entry.surface);
+        const aligned = alignedOffset(found.text, entry.surface);
+        item.context = aligned === null ? null : found.text.slice(Math.max(0, aligned.start - 120), aligned.end + 120);
+      }
+    }
+    items.push(item);
+  }
+  return items;
+}
+
 export async function runStage1(argv, {
-  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log,
+  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource, contextDatabasePath,
 } = {}) {
   const options = parseArguments(argv);
   const evidencePath = path.resolve(root, options.evidence);
@@ -131,11 +202,40 @@ export async function runStage1(argv, {
   }
   const canonicalEntries = await loadCanonicalEntries(root);
   const batchId = allocateBatchId(await knownBatchIds(root, options.baseRef));
-  const produced = await produceCandidateBatch({
+  let source = contextSource;
+  const ownSource = !source && (options.contextProposals || options.contextReviewPack);
+  if (ownSource) {
+    try {
+      source = createCorpusContextSource({ permission, expectedSnapshot: `corpus:${evidence?.index?.input_manifest_sha256}:${evidence?.index?.logical_rows_sha256}`, ...(contextDatabasePath ? { databasePath: contextDatabasePath } : {}) });
+    } catch (error) {
+      throw new Stage1Error([error.message]);
+    }
+  }
+  let contextProposals = null;
+  let contextReplay = null;
+  let contextAgent = null;
+  if (options.contextProposals) {
+    const file = await readJson(ignoredOutputPath(root, options.contextProposals, '--context-proposals'), 'context proposals');
+    contextProposals = file.proposals;
+    contextAgent = file.agent ?? null; // required: recordContextDecisions refuses a missing author
+    if (!Array.isArray(contextProposals)) throw new Stage1Error(['context proposals file must be {agent, proposals: []}']);
+  }
+  if (options.contextReplay) {
+    const file = await readJson(path.resolve(root, options.contextReplay), 'context replay record');
+    contextReplay = Array.isArray(file) ? file : file.context_fallback?.decisions;
+    if (!Array.isArray(contextReplay)) throw new Stage1Error(['context replay record must be a manifest or a decisions array']);
+  }
+  const resolvedProviders = providers ?? options.providers.map((id) => (id === 'kiwi' && analyzer
+    ? createKiwiProvider({ analyze: analyzer }) : PROVIDER_REGISTRY[id]({ python: options.python })));
+  const produceArguments = {
     evidence,
-    // Injected `analyzer` stands in for kiwi only; the default order is exactly [kiwi].
-    providers: providers ?? options.providers.map((id) => (id === 'kiwi' && analyzer
-      ? createKiwiProvider({ analyze: analyzer }) : PROVIDER_REGISTRY[id]({ python: options.python }))),
+    // Injected `analyzer` stands in for kiwi only; the effective order is printed in the run summary.
+    providers: resolvedProviders,
+    policy: options.policy,
+    contextProposals,
+    contextReplay,
+    contextSource: source,
+    contextAgent,
     canonicalEntries,
     canonicalDigest: await canonicalSnapshotDigest(root),
     batchId,
@@ -143,7 +243,23 @@ export async function runStage1(argv, {
     maxCandidates: options.maxCandidates,
     producedLemmas: await producedLemmas(root, options.baseRef),
     searchFormSupport: await loadSearchFormSupport(canonicalEntries),
-  });
+  };
+  let produced;
+  try {
+    produced = await produceCandidateBatch(produceArguments);
+    if (options.contextReviewPack) {
+      const pack = await buildContextReviewPack({ queue: produced.manifest.unresolved_observations, contextSource: source });
+      await writeFile(ignoredOutputPath(root, options.contextReviewPack, '--context-review-pack'), `${JSON.stringify(pack, null, 2)}\n`, 'utf8');
+      options.dryRun = true; // a review pack is read locally before any batch is written
+    }
+  } finally {
+    if (ownSource) source.close?.();
+  }
+  if (options.ensembleTrace && produced.ensemble) {
+    // Text-free local trace (provider paths + Kiwi N-best per observation digest); never in Git.
+    const lines = produced.ensemble.decisions.map((decision) => JSON.stringify({ observation_digest: decision.observation_digest, trace_digest: decision.trace_digest, trace: decision.trace }));
+    await writeFile(ignoredOutputPath(root, options.ensembleTrace, '--ensemble-trace'), `${lines.join('\n')}\n`, 'utf8');
+  }
   if (options.attemptLog) {
     // Text-free (input digests only); kept in the ignored data/reference tree, never in a batch.
     const logPath = path.resolve(root, options.attemptLog);
@@ -169,7 +285,16 @@ export async function runStage1(argv, {
       throw new Stage1Error(errors);
     }
   }
-  log(JSON.stringify({ batch_id: batchId, dry_run: options.dryRun, directory: path.relative(root, target), ...produced.summary }));
+  let comparison;
+  if (options.compareKiwiOnly) {
+    // Same-cohort A/B: nothing is written; verified accuracy stays `not_established`.
+    const { observations, source: evidenceSource } = observationsFromCorpusEvidence(evidence);
+    comparison = await compareResolutionPolicies({
+      observations, kiwiProvider: analyzer ? createKiwiProvider({ analyze: analyzer }) : PROVIDER_REGISTRY.kiwi({ python: options.python }),
+      ensembleProviders: resolvedProviders, context: contextProposals || contextReplay ? { contextProposals, contextReplay, contextSource: source, contextAgent, snapshot: evidenceSource.source_snapshot } : null,
+    });
+  }
+  log(JSON.stringify({ batch_id: batchId, dry_run: options.dryRun, directory: path.relative(root, target), ...produced.summary, ...(comparison ? { comparison } : {}) }));
   return produced;
 }
 

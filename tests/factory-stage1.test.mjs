@@ -278,7 +278,7 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
   const writeEvidence = (candidates) => writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(candidates)));
   await writeEvidence([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])]);
   const deps = { root, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
-  const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none'];
+  const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
 
   const dry = await runStage1([...args, '--dry-run'], deps);
   await assert.rejects(() => readdir(path.join(root, 'data/candidates')), { code: 'ENOENT' });
@@ -305,7 +305,7 @@ test('CLI fails closed without permission, outside data/reference, on bad argume
   const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
   await mkdir(path.join(root, 'data/reference'), { recursive: true });
   const deps = { root, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
-  const base = ['--task-id', 'T000001', '--base-ref', 'none'];
+  const base = ['--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/x.json', ...base], { ...deps, permission: async () => { throw new Error('Corpus use is not authorized'); } }), /not authorized/);
   await assert.rejects(() => runStage1(['--evidence', 'elsewhere.json', ...base], deps), /data\/reference/);
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/missing.json', ...base], deps), /cannot read evidence/);

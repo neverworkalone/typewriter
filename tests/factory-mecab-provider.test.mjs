@@ -49,10 +49,10 @@ test('metadata drift (wrapper, library, dictionary, loaded file, user dictionary
 test('registry entry is lazy and --providers accepts every permitted ordered combination containing kiwi', () => {
   assert.equal(typeof PROVIDER_REGISTRY.mecab, 'function');
   for (const order of ['kiwi,mecab', 'kiwi,khaiii,mecab', 'kiwi,mecab,khaiii']) {
-    assert.deepEqual(parseArguments(['--evidence', 'e.json', '--task-id', 'T000001', '--providers', order]).providers, order.split(','));
+    assert.deepEqual(parseArguments(['--evidence', 'e.json', '--task-id', 'T000001', '--policy', 'v1', '--providers', order]).providers, order.split(','));
   }
-  assert.deepEqual(parseArguments(['--evidence', 'e.json', '--task-id', 'T000001']).providers, ['kiwi'], 'the default stays Kiwi-only');
-  assert.throws(() => parseArguments(['--evidence', 'e.json', '--task-id', 'T000001', '--providers', 'kiwi,mecab,mecab']), /repeat/);
+  assert.deepEqual(parseArguments(['--evidence', 'e.json', '--task-id', 'T000001', '--policy', 'v1']).providers, ['kiwi'], 'the explicit v1 baseline stays Kiwi-only');
+  assert.throws(() => parseArguments(['--evidence', 'e.json', '--task-id', 'T000001', '--policy', 'v1', '--providers', 'kiwi,mecab,mecab']), /repeat/);
 });
 
 test('fallback call count with two providers: clean Kiwi → zero MeCab calls; eligible unresolved → exactly one', async () => {
