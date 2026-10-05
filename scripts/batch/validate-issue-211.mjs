@@ -563,7 +563,7 @@ export async function validateIssue211({ writeReport = false } = {}) {
   ]);
   const candidateSource = JSON.parse(candidateSourceBytes.toString('utf8'));
   const semanticSource = JSON.parse(semanticSourceBytes.toString('utf8'));
-  const importRecords = readJsonl(importBytes, 'Issue #211 canonical import');
+  const liveImportRecords = readJsonl(importBytes, 'Issue #211 canonical import');
   const seed = JSON.parse(seedBytes.toString('utf8'));
   const historicalSeed = JSON.parse(baseSeedSnapshotBytes.toString('utf8'));
   const oldLedger = JSON.parse(oldDecisionBytes.toString('utf8'));
@@ -585,6 +585,13 @@ export async function validateIssue211({ writeReport = false } = {}) {
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const historicalCanonical = await readCanonicalRecords(M9_BASE_CANONICAL_DIRECTORY);
   const currentCanonicalById = new Map((await loadCanonicalBeforeFactoryAdmissions(currentCanonical.records)).map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
+  // This canonical file remains editable for later additive admissions. Its frozen
+  // Issue #211 payload comes from the same hash-bound historical view as the base.
+  const importRecords = liveImportRecords.map(({ id }) => {
+    const original = currentCanonicalById.get(id);
+    assert.ok(original, `${id} Issue #211 import is present before factory admissions`);
+    return original;
+  });
   for (const recordInfo of historicalCanonical.records) {
     const record = recordOf(recordInfo);
     assert.deepEqual(currentCanonicalById.get(record.id), record, `${record.id} frozen Issue #219 base record is unchanged`);
@@ -608,7 +615,7 @@ export async function validateIssue211({ writeReport = false } = {}) {
       assert.equal(decision.decision, 'held', `${candidate.id} non-admitted disposition`);
     }
   }
-  assert.deepEqual(importRecords, semanticSource.candidate_records.filter(({ id }) => admittedDecisionIds.has(id)), 'canonical import bytes match authored candidate records');
+  assert.deepEqual(importRecords, semanticSource.candidate_records.filter(({ id }) => admittedDecisionIds.has(id)), 'pre-factory canonical import matches authored candidate records');
 
   const baseSeed = {
     ...structuredClone(historicalSeed),
