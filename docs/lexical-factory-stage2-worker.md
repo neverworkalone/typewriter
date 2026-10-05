@@ -71,7 +71,10 @@ never launches another agent or model.
 
 An existing claim ref is never adopted based on GitHub login, branch prefix,
 Issue title, or elapsed time. A claim ref without its Issue stays untouched.
-Likewise, if a newly acquired ref finds an older Issue for a fresh batch, or a
+Only a genuine Stage 2 tracking Issue (exact `[Stage 2] C… lexical authoring and QA` title and
+the generated body's first line and `Claim ref:` line, see `stage2-issue.mjs`) counts as a prior Issue;
+a bare mention of a claim ref in any other Issue, such as an example in a design document, is ignored.
+If a newly acquired ref finds a genuine older Issue for a fresh batch, or a
 rework batch does not resolve to exactly one prior Issue, the command stops and
 preserves the claim for owner-directed recovery. Failures after claim creation
 also preserve the ref. Claim cleanup is allowed only after the matching Stage 2

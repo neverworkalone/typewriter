@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import { createGitHubClient, repositoryFromRemote } from '../scripts/factory/github-client.mjs';
 import { CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, expectedAnalyzerDigest, sha256Hex } from '../scripts/factory/contract.mjs';
+import { isStage2TrackingIssue, trackingIssueBody, trackingIssueTitle } from '../scripts/factory/stage2-issue.mjs';
 import { createInteractiveStage2Callbacks, runStage2Cli } from '../scripts/factory/run-stage2-worker.mjs';
 import {
   Stage2WorkerError,
@@ -124,7 +125,7 @@ class FakeGitHub {
     this.events.push('claim-won:' + batchId);
     return true;
   }
-  async findIssuesForClaim(claimRef) { return this.issues.filter((issue) => issue.body.includes(claimRef)); }
+  async findIssuesForClaim(claimRef) { return this.issues.filter((issue) => isStage2TrackingIssue(issue, claimRef)); }
   async createIssue(issue) {
     const created = { ...issue, number: this.nextIssue++, state: 'open' };
     this.issues.push(created);
@@ -319,7 +320,8 @@ test('rejected reviews take priority, reuse their Issue, reopen it, and use a ne
   const github = new FakeGitHub();
   github.issues.push({
     number: 42, state: 'closed',
-    body: 'Claim ref: refs/heads/stage2-claims/C000001',
+    title: trackingIssueTitle('C000001'),
+    body: trackingIssueBody({ batchId: 'C000001', claimRef: 'refs/heads/stage2-claims/C000001', baseSha: SHA, attempt: 1 }),
   });
   const claim = await runClaim(github, git, { loadSnapshot: async () => snapshot });
   assert.equal(claim.batchId, 'C000001');
@@ -534,4 +536,30 @@ test('closed unmerged result PR stops the session before a second claim', async 
     releaseClaim: async () => true,
   }), /stopping without claiming another batch/u);
   assert.equal(claims, 1);
+});
+
+test('only a genuine Stage 2 tracking Issue is prior-issue evidence; a bare claim-ref mention is ignored', async () => {
+  const claimRef = 'refs/heads/stage2-claims/C000001';
+  const genuine = { title: trackingIssueTitle('C000001'), body: trackingIssueBody({ batchId: 'C000001', claimRef, baseSha: SHA, attempt: 1 }) };
+  assert.equal(isStage2TrackingIssue(genuine, claimRef), true);
+  assert.equal(isStage2TrackingIssue({ ...genuine, body: genuine.body.replace(/\n/gu, '\r\n') }, claimRef), true);
+  const mention = { title: '[Lexical Factory] Design', body: 'Example:\n\n```text\n' + claimRef + '\n```\nClaim ref: ' + claimRef + ' is illustrative.' };
+  assert.equal(isStage2TrackingIssue(mention, claimRef), false);
+  assert.equal(isStage2TrackingIssue({ ...genuine, title: '[Stage 2] C000001 notes' }, claimRef), false);
+  assert.equal(isStage2TrackingIssue({ ...genuine, body: 'Claim ref: ' + claimRef }, claimRef), false);
+  assert.equal(isStage2TrackingIssue({ ...genuine, pull_request: {} }, claimRef), false);
+  assert.equal(isStage2TrackingIssue(genuine, 'refs/heads/stage2-claims/C000002'), false);
+
+  const git = snapshotGit({ C000001: candidateArtifacts('C000001') });
+  const github = new FakeGitHub();
+  github.issues.push({ number: 5, state: 'closed', ...mention });
+  const claim = await runClaim(github, git);
+  assert.equal(claim.batchId, 'C000001');
+  assert.equal(github.issues.length, 2);
+  assert.equal(github.issues[0].state, 'closed');
+
+  const prior = new FakeGitHub();
+  prior.issues.push({ number: 9, state: 'open', ...genuine });
+  await assert.rejects(runClaim(prior, snapshotGit({ C000001: candidateArtifacts('C000001') })), /owner-directed recovery/u);
+  assert.equal(prior.refs.has(claimRef), true);
 });

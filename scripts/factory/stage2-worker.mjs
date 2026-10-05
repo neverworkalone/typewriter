@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { validateFactoryRepository } from './validate.mjs';
 import { parseJsonl } from './contract.mjs';
+import { trackingIssueBody, trackingIssueTitle } from './stage2-issue.mjs';
 
 const MASTER = 'master';
 const CLAIM_PREFIX = 'refs/heads/stage2-claims/';
@@ -215,20 +216,6 @@ async function currentMaster({ github, git, loadSnapshot }) {
   return { headSha: remoteSha, snapshot: await loadSnapshot({ git, headSha: remoteSha }) };
 }
 
-function issueBody({ batchId, claimRef, baseSha, attempt, rejectedPr }) {
-  const lines = [
-    'Tracks full Stage 2 lexical authoring and source-bound semantic QA for ' + batchId + '.',
-    '',
-    'Claim ref: ' + claimRef,
-    'Master snapshot: ' + baseSha,
-    'Implementation scope: #265',
-    'Attempt: ' + attempt,
-    'Result PR: the Stage 2 result PR should close this tracking issue when merged.',
-  ];
-  if (rejectedPr) lines.push('Prior rejected admission PR: #' + rejectedPr);
-  return lines.join('\n');
-}
-
 function branchNameFor(agent, issueNumber, batchId, attempt) {
   if (!['codex', 'claude'].includes(agent)) throw new Stage2WorkerError('agent must be codex or claude');
   const base = agent + '/stage2/' + issueNumber + '-' + batchId;
@@ -274,8 +261,8 @@ export async function claimNextStage2Batch({
           );
         }
         const issue = await github.createIssue({
-          title: '[Stage 2] ' + batchId + ' lexical authoring and QA',
-          body: issueBody({ batchId, claimRef, baseSha: headSha, attempt: candidate.attempt, rejectedPr: candidate.rejectedPr }),
+          title: trackingIssueTitle(batchId),
+          body: trackingIssueBody({ batchId, claimRef, baseSha: headSha, attempt: candidate.attempt, rejectedPr: candidate.rejectedPr }),
         });
         issueNumber = issue.number;
       }
