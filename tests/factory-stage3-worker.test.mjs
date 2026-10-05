@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { finalBoundary } from '../scripts/factory/semantic-authority.mjs';
+
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
   claimNextStage3Batch,
@@ -562,4 +564,12 @@ test('rejection status keeps the global lock until its real status PR is merged'
     loadSnapshot: async () => ({ reviews: [{ batchId: 'C000001', manifest: { status: 'rejected', attempt: 1, rejected_pr: 75 } }] }),
   }), true);
   assert.deepEqual(released, ['claim', 'global']);
+});
+
+test('a multi-sense canonical record is a split, separated boundary whether its senses are new or amended', () => {
+  const retained = { boundaryAction: 'retain', candidateClassification: 'atomic' };
+  assert.deepEqual(finalBoundary({ senseCount: 1, ...retained }), { finalDecision: 'retain', finalClassification: 'atomic' });
+  assert.deepEqual(finalBoundary({ senseCount: 2, ...retained }), { finalDecision: 'split', finalClassification: 'separated' });
+  assert.deepEqual(finalBoundary({ senseCount: 3, ...retained, priorClassification: 'coordinated' }), { finalDecision: 'split', finalClassification: 'coordinated' });
+  assert.deepEqual(finalBoundary({ senseCount: 2, boundaryAction: 'retain', candidateClassification: 'coordinated' }), { finalDecision: 'split', finalClassification: 'coordinated' });
 });
