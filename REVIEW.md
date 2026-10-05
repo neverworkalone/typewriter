@@ -18,6 +18,8 @@ A new commit invalidates both gate markers, **not previously verified reasoning*
 
 **Aim for 1–3 minutes on routine PRs, not a deadline. Do not spend ten minutes duplicating Stage 2.** Speed does not justify overlooking a known blocker or claiming an unverified fix.
 
+**NEVER HOLD FOR CI:** Stage 1 must never delay, defer, withhold, or omit `+1` because CI is queued, pending, running, missing, or failed. If the Stage 1 code/fix review has no outstanding confirmed blocker, submit `+1` immediately. Stage 1 must not inspect CI to make this decision; even if CI status is incidentally visible, it must not affect the Stage 1 result. CI success, failure, waiting, and exact-HEAD gate evaluation belong exclusively to Stage 2.
+
 1. **Route once:** initial review = promptly inspect the issue/approach, changed risk surface and obvious structural or potential defects. Follow-up = collect **all still-relevant prior Stage 1 AND Stage 2 blockers**; compare changed HEAD with earlier reviewed commit(s), then check **each blocker** against its root cause, fix, impacted invariants and appropriate shared regression. A Stage 2 `-1` must be verified by Stage 1 on the next HEAD **before any new `+1`**.
 2. **Map risk:** identify the material **producer → enforcer/validator → test → consumer/output** boundaries, the most likely failure modes, and any new risk caused by a fix; do not redo an exhaustive whole-PR assessment after every push.
 3. **Inspect narrowly:** use file-scoped patches, bounded context, applicable Section 4 guidance, and representative risky lexical/data cases. Confirm that previous blockers were fixed generally rather than by patching only an example.
