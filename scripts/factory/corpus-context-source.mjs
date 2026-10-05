@@ -44,11 +44,10 @@ export function createCorpusContextSource({ databasePath = DEFAULT_INDEX_PATH, p
 
         const documentId = ref.slice(0, at);
         if (!documentRowids.has(documentId)) {
-          documentRowids.set(documentId, documentStatement.get(documentId)?.document_rowid ?? null);
+          documentRowids.set(documentId, documentStatement.all(documentId).map((row) => row.document_rowid));
         }
-        const documentRowid = documentRowids.get(documentId);
-        if (documentRowid === null) return { status: 'absent' };
-        const rows = paragraphStatement.all(documentRowid, ref.slice(at + 1));
+        const rows = documentRowids.get(documentId)
+          .flatMap((documentRowid) => paragraphStatement.all(documentRowid, ref.slice(at + 1)));
         // An ambiguous or missing id is never guessed: it is "absent".
         return rows.length === 1 && typeof rows[0].form === 'string' ? { status: 'ok', text: rows[0].form } : { status: 'absent' };
       } catch {

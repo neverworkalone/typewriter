@@ -685,13 +685,24 @@ test('review fix: local trace verification accepts correct queue/context records
 
 // A real (temporary, synthetic) SQLite index with the corpus index schema subset the source reads.
 let indexCounter = 0;
-function syntheticIndex(dir, { manifest = HEX, rows = 'b'.repeat(64), text = '그는 천천히 갈 길을 정했다.', skipMetadata = false } = {}) {
+function syntheticIndex(dir, {
+  manifest = HEX,
+  rows = 'b'.repeat(64),
+  text = '그는 천천히 갈 길을 정했다.',
+  skipMetadata = false,
+  documents = [{ document_rowid: 1, document_id: 'd3' }],
+  paragraphs = [{ paragraph_rowid: 1, document_rowid: 1, paragraph_id: 'p1', form: text }],
+} = {}) {
   const file = path.join(dir, `index-${indexCounter += 1}.sqlite`);
   const db = new DatabaseSync(file);
   db.exec('CREATE TABLE index_metadata (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE documents (document_rowid INTEGER PRIMARY KEY, document_id TEXT); CREATE TABLE paragraphs (paragraph_rowid INTEGER PRIMARY KEY, document_rowid INTEGER, paragraph_id TEXT, form TEXT);');
   if (!skipMetadata) db.prepare('INSERT INTO index_metadata(key, value) VALUES (?, ?), (?, ?)').run('input_manifest_sha256', manifest, 'logical_rows_sha256', rows);
-  db.prepare('INSERT INTO documents VALUES (1, ?)').run('d3');
-  db.prepare('INSERT INTO paragraphs VALUES (1, 1, ?, ?)').run('p1', text);
+  const insertDocument = db.prepare('INSERT INTO documents VALUES (?, ?)');
+  for (const document of documents) insertDocument.run(document.document_rowid, document.document_id);
+  const insertParagraph = db.prepare('INSERT INTO paragraphs VALUES (?, ?, ?, ?)');
+  for (const paragraph of paragraphs) {
+    insertParagraph.run(paragraph.paragraph_rowid, paragraph.document_rowid, paragraph.paragraph_id, paragraph.form);
+  }
   db.close();
   return file;
 }
@@ -704,6 +715,45 @@ test('review fix: the corpus context source verifies the real index metadata aga
   assert.deepEqual(await good.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' }), { status: 'ok', text: '그는 천천히 갈 길을 정했다.' });
   assert.deepEqual(await good.lookup({ kind: 'corpus-paragraph', ref: 'd3#p9' }), { status: 'absent' });
   good.close();
+  const repeatedDocumentAndParagraph = createCorpusContextSource({
+    databasePath: syntheticIndex(dir, {
+      documents: [
+        { document_rowid: 1, document_id: 'duplicate-document' },
+        { document_rowid: 2, document_id: 'duplicate-document' },
+      ],
+      paragraphs: [
+        { paragraph_rowid: 1, document_rowid: 1, paragraph_id: 'duplicate-paragraph', form: '첫 번째 문서 문단.' },
+        { paragraph_rowid: 2, document_rowid: 2, paragraph_id: 'duplicate-paragraph', form: '두 번째 문서 문단.' },
+      ],
+    }),
+    permission,
+    expectedSnapshot: snapshot,
+  });
+  assert.deepEqual(
+    await repeatedDocumentAndParagraph.lookup({ kind: 'corpus-paragraph', ref: 'duplicate-document#duplicate-paragraph' }),
+    { status: 'absent' },
+    'a shared document/paragraph id remains ambiguous across documents',
+  );
+  repeatedDocumentAndParagraph.close();
+  const paragraphInSecondDocument = createCorpusContextSource({
+    databasePath: syntheticIndex(dir, {
+      documents: [
+        { document_rowid: 1, document_id: 'duplicate-document' },
+        { document_rowid: 2, document_id: 'duplicate-document' },
+      ],
+      paragraphs: [
+        { paragraph_rowid: 2, document_rowid: 2, paragraph_id: 'second-only', form: '두 번째 문서에만 있는 문단.' },
+      ],
+    }),
+    permission,
+    expectedSnapshot: snapshot,
+  });
+  assert.deepEqual(
+    await paragraphInSecondDocument.lookup({ kind: 'corpus-paragraph', ref: 'duplicate-document#second-only' }),
+    { status: 'ok', text: '두 번째 문서에만 있는 문단.' },
+    'the matching row is found even when it belongs to a later document row',
+  );
+  paragraphInSecondDocument.close();
   // Same document/paragraph ids and even the same text, but a different index snapshot: refused.
   const rebuilt = createCorpusContextSource({ databasePath: syntheticIndex(dir, { rows: 'c'.repeat(64) }), permission, expectedSnapshot: snapshot });
   assert.deepEqual(await rebuilt.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' }), { status: 'snapshot_mismatch' });
