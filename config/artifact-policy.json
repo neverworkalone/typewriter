@@ -1051,6 +1051,7 @@
           }
         },
         "decision_allowed_fields": [
+          "source_candidate_id",
           "candidate_record_id",
           "inventory_id",
           "candidate_record_sha256",
