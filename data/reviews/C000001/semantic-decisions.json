@@ -1,0 +1,419 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "kind": "separately-authored-semantic-decision-source",
+  "batch_id": "C000001",
+  "authoring_mode": "agent-authored-decision",
+  "provenance": {
+    "human_reviewed": false
+  },
+  "review": {
+    "status": "complete",
+    "reviewer": "claude-agent-self-check",
+    "reviewed_candidate_count": 12
+  },
+  "decisions": [
+    {
+      "source_candidate_id": "C000001-0001",
+      "candidate_record_id": "C000001-0001",
+      "candidate_record_sha256": "8fd0f29dfc36d18047a7bea63e03da4e29931cbab8b39221c9fa658990577460",
+      "decision": "included",
+      "decision_rationale": "C000001-0001: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000001-0001-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0001: 비교 대상이 있는 서술 쓰임으로 한정된다.",
+          "semantic_rationale": "C000001-0001: 대상끼리 견주어 비슷함을 말하는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0001 C000001-0001-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000001-0001-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0001: 앞말이 가리키는 일에 대한 화자의 추측 쓰임으로 한정된다.",
+          "semantic_rationale": "C000001-0001: 확실하지 않은 일을 짐작하는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0001 C000001-0001-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        }
+      ],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000001-0001-s1",
+          "right_sense_id": "C000001-0001-s2",
+          "relationship": "distinct",
+          "shared_tokens": [],
+          "left_distinctive_tokens": [
+            "것",
+            "견주어",
+            "다르지",
+            "다른",
+            "비슷하거나",
+            "서",
+            "않고",
+            "한가지이다"
+          ],
+          "right_distinctive_tokens": [
+            "그러하리라고",
+            "상태",
+            "않지",
+            "어떤",
+            "일이나",
+            "짐작되다",
+            "확실하지"
+          ],
+          "decision": "retain",
+          "left_gloss_sha256": "eab81709b75824333c2e013af037141df7b3795717e460501ae2486ab141c2cd",
+          "right_gloss_sha256": "40bf98bcf815ca3c9a5b763c07a23d1b27cc631da671d2dc55c37558a466621b",
+          "evidence_basis": "C000001-0001: 두 뜻은 서로 다른 근거 관찰에서 확인된 쓰임이다.",
+          "distinguishing_feature": "C000001-0001: 하나는 대상 간 유사를, 다른 하나는 화자의 추측을 나타낸다.",
+          "rationale": "C000001-0001: 서로 다른 쓰임이라 별개의 뜻으로 유지한다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000001-0001",
+        "candidate_record_sha256": "8fd0f29dfc36d18047a7bea63e03da4e29931cbab8b39221c9fa658990577460",
+        "decision_evidence_sha256": "05b52ad0dda2c72974d78c152912ee42c1baded576669f0f5b5fc3d71d294aba",
+        "sense_evidence": [
+          {
+            "sense_id": "C000001-0001-s1",
+            "sense_sha256": "bbe87b06dd3bdebac4d7ed72818ddfff5af050fb347e48ee3386e7ed9653bdd5",
+            "gloss_sha256": "eab81709b75824333c2e013af037141df7b3795717e460501ae2486ab141c2cd",
+            "evidence_sha256": "0a2c8526d32698917f46f44b6a850475a7ffb50a682c5d1b98e5d6201e6a77e6"
+          },
+          {
+            "sense_id": "C000001-0001-s2",
+            "sense_sha256": "1e07d58c29d4206d5a9e646c539d5ce2dc0a8d92fe0160777e8b027b698a2d68",
+            "gloss_sha256": "40bf98bcf815ca3c9a5b763c07a23d1b27cc631da671d2dc55c37558a466621b",
+            "evidence_sha256": "0ed2c11ffddd77cafbcf88e51edafa6d91fb5aa33263256261dd1ff0b710eaa7"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000001-0002",
+      "candidate_record_id": "C000001-0002",
+      "candidate_record_sha256": "b03b910e85b36f4fa4f84aa6197d7fa04046ab91b8f1fcb0079a941ef04835fe",
+      "decision": "included",
+      "decision_rationale": "C000001-0002: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000001-0002-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0002: 대동사 쓰임 하나로 한정된다.",
+          "semantic_rationale": "C000001-0002: 앞선 말이나 행동을 이어받아 그렇게 하다를 뜻한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0002 C000001-0002-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        }
+      ],
+      "boundary_pairs": [],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000001-0002",
+        "candidate_record_sha256": "b03b910e85b36f4fa4f84aa6197d7fa04046ab91b8f1fcb0079a941ef04835fe",
+        "decision_evidence_sha256": "70a058c5440c2ff76d7828565ff3404a6be4836149a1be923c83fd95a6472cb5",
+        "sense_evidence": [
+          {
+            "sense_id": "C000001-0002-s1",
+            "sense_sha256": "073437d3b745d4d7ba79610c11efe8f3dd8b195b27d5c427131c505b5bd2e9e7",
+            "gloss_sha256": "f9f10992d0570a4eb9d1027449de4102ffb8a27350d47db14aed41a64f4f4098",
+            "evidence_sha256": "db96925e9f9f9303e4e1db4c7d39348b1844e4d0955878a0cfce68e14117ddf6"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000001-0003",
+      "candidate_record_id": "C000001-0003",
+      "candidate_record_sha256": "bb3f5210955058455433e6bab0f538b18e581ae5cc935c6f77e143392980c986",
+      "decision": "included",
+      "decision_rationale": "C000001-0003: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000001-0003-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0003: 감각 대상이 주어인 쓰임으로 한정된다.",
+          "semantic_rationale": "C000001-0003: 냄새가 생겨 느껴지는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0003 C000001-0003-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        }
+      ],
+      "boundary_pairs": [],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000001-0003",
+        "candidate_record_sha256": "bb3f5210955058455433e6bab0f538b18e581ae5cc935c6f77e143392980c986",
+        "decision_evidence_sha256": "0254951ffb061470908b13dc2d83db935b50cc69da0dd8d777baaabe38cfc5df",
+        "sense_evidence": [
+          {
+            "sense_id": "C000001-0003-s1",
+            "sense_sha256": "a303653b84e08b3bbc0724cf012bfa3afd51b7e099941c0e8453b60aee95e481",
+            "gloss_sha256": "734f3621405496fd94a6cff0ef86a93732b873475b15078fc40179d252f6b0c4",
+            "evidence_sha256": "2088c7b8c06ca7c49acf13cbecaae677a3c657f1a2be5089050a4057babaad2a"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000001-0004",
+      "candidate_record_id": "C000001-0004",
+      "candidate_record_sha256": "d317474edc29b78bfc903380c4f8b42f0eeb7e2213cff77b4f6f9ce68fbcab22",
+      "decision": "included",
+      "decision_rationale": "C000001-0004: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000001-0004-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0004: 경험되는 감정이 목적어인 쓰임으로 한정된다.",
+          "semantic_rationale": "C000001-0004: 감정을 마음으로 겪어 아는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0004 C000001-0004-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000001-0004-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0004: 에로 표시되는 대상 판단 쓰임으로 한정된다.",
+          "semantic_rationale": "C000001-0004: 대상을 마음속으로 어떠하다고 여기는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0004 C000001-0004-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        }
+      ],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000001-0004-s1",
+          "right_sense_id": "C000001-0004-s2",
+          "relationship": "distinct",
+          "shared_tokens": [
+            "어떤"
+          ],
+          "left_distinctive_tokens": [
+            "감정",
+            "겪어",
+            "마음",
+            "알다"
+          ],
+          "right_distinctive_tokens": [
+            "대상",
+            "마음속",
+            "어떠하다고",
+            "여기다"
+          ],
+          "decision": "retain",
+          "left_gloss_sha256": "d49687ed69cb479401ae5d7032d2107241593f7e07ef6320b76fbe29fdd63718",
+          "right_gloss_sha256": "aca300537e5d16af4fe7b1d07f424ca5f8d762c362f8bd538940dca40aea87c4",
+          "evidence_basis": "C000001-0004: 두 뜻은 서로 다른 근거 관찰에서 확인된 쓰임이다.",
+          "distinguishing_feature": "C000001-0004: 하나는 감정의 경험을, 다른 하나는 대상에 대한 판단을 나타낸다.",
+          "rationale": "C000001-0004: 서로 다른 쓰임이라 별개의 뜻으로 유지한다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000001-0004",
+        "candidate_record_sha256": "d317474edc29b78bfc903380c4f8b42f0eeb7e2213cff77b4f6f9ce68fbcab22",
+        "decision_evidence_sha256": "84a25b1f39763ece8b742523ca818a51ac1f549d0e0c89996f617f2630ebbc9d",
+        "sense_evidence": [
+          {
+            "sense_id": "C000001-0004-s1",
+            "sense_sha256": "11ea147ca87702532b7f8e49734c4511af3062ac0b5f1cc1d0077c5295cb8b7f",
+            "gloss_sha256": "d49687ed69cb479401ae5d7032d2107241593f7e07ef6320b76fbe29fdd63718",
+            "evidence_sha256": "07738915c876a1e1cd075f642c1ae848063b9f79a3d1ead3f2cb9b109fdcadd5"
+          },
+          {
+            "sense_id": "C000001-0004-s2",
+            "sense_sha256": "6efb992b60536b5a6e8c5b5bbd01a6b3160f4d4e6007faed3a87d62169a92174",
+            "gloss_sha256": "aca300537e5d16af4fe7b1d07f424ca5f8d762c362f8bd538940dca40aea87c4",
+            "evidence_sha256": "9b15d8e68b80c597889fc48658e3c19c126d676bfb0004aa9f973434e3a9f375"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000001-0006",
+      "candidate_record_id": "C000001-0006",
+      "candidate_record_sha256": "70955de12f6d2248facfdf57f5193f5a63222a9ab595994025b0d53bd6d5ae68",
+      "decision": "included",
+      "decision_rationale": "C000001-0006: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000001-0006-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0006: 에 대한 꼴의 쓰임 하나로 한정된다.",
+          "semantic_rationale": "C000001-0006: 대상을 상대나 주제로 삼는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0006 C000001-0006-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        }
+      ],
+      "boundary_pairs": [],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000001-0006",
+        "candidate_record_sha256": "70955de12f6d2248facfdf57f5193f5a63222a9ab595994025b0d53bd6d5ae68",
+        "decision_evidence_sha256": "0ce6a4edc00b5bbe7cf47fceb9c55a198f472e6b42a65abcfb3960bdf5cf4709",
+        "sense_evidence": [
+          {
+            "sense_id": "C000001-0006-s1",
+            "sense_sha256": "d5b30d09cee00de71ae54c630f98cf857919dea00717e43bab5d39df7036835c",
+            "gloss_sha256": "409dfffc04515c22363bc35dbb3068d291b85f3c9a3ce090a1569cecc02e9337",
+            "evidence_sha256": "902c717561a27c071427761d13bf1aba82793c83685cbd3fe1c78efcb509d911"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000001-0009",
+      "candidate_record_id": "C000001-0009",
+      "candidate_record_sha256": "2097337e9bd1ed6521133b923e91c1d4ab5d4c00c79cc4b7a3f35c0349cefc68",
+      "decision": "included",
+      "decision_rationale": "C000001-0009: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000001-0009-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0009: 기존 들어 올리다 뜻과 구분되는 존재 쓰임으로 한정된다.",
+          "semantic_rationale": "C000001-0009: 어떤 공간이나 범위 안에 있다는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0009 C000001-0009-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        }
+      ],
+      "boundary_pairs": [],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000001-0009",
+        "candidate_record_sha256": "2097337e9bd1ed6521133b923e91c1d4ab5d4c00c79cc4b7a3f35c0349cefc68",
+        "decision_evidence_sha256": "b917eb941028e3dc0cfd3e6ef2c2019a81081f1a45b43d465ded113d14c72e06",
+        "sense_evidence": [
+          {
+            "sense_id": "C000001-0009-s1",
+            "sense_sha256": "9e5036537d56b1eee537aa892d1204153722aa72e69f7a2bcd989942954875fc",
+            "gloss_sha256": "a07e5268d76ee62709fe6f4265e4f79edfe83331ad729668cb20a672683d3dc8",
+            "evidence_sha256": "d31a03fe27f5287a7312abe1039718c0f12038b82835ecc5269ac5186e664cf6"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000001-0011",
+      "candidate_record_id": "C000001-0011",
+      "candidate_record_sha256": "034a8ade438827ecefa6b3782eb6d42090b7bbd0c47e373fba2b548eea6af143",
+      "decision": "included",
+      "decision_rationale": "C000001-0011: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000001-0011-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0011: 에 따라, 에 따르면 꼴의 쓰임으로 한정된다.",
+          "semantic_rationale": "C000001-0011: 기준이나 근거로 삼아 맞추는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0011 C000001-0011-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000001-0011-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0011: 에 따른 꼴의 결과 쓰임으로 한정된다.",
+          "semantic_rationale": "C000001-0011: 앞선 일의 결과로 생기는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0011 C000001-0011-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        }
+      ],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000001-0011-s1",
+          "right_sense_id": "C000001-0011-s2",
+          "relationship": "distinct",
+          "shared_tokens": [
+            "그"
+          ],
+          "left_distinctive_tokens": [
+            "것",
+            "근거",
+            "기준이나",
+            "맞추다",
+            "삼아",
+            "앞선"
+          ],
+          "right_distinctive_tokens": [
+            "결과",
+            "생기다",
+            "어떤",
+            "이어",
+            "일"
+          ],
+          "decision": "retain",
+          "left_gloss_sha256": "124bb9107cca20eccc4774998dd72bf594a7e0f69b1bdaea3f48d98107c123d8",
+          "right_gloss_sha256": "ab626bbc0ae29c6b4190a13f8436b84ea35556bda6283127c3292624a710a1b6",
+          "evidence_basis": "C000001-0011: 두 뜻은 서로 다른 근거 관찰에서 확인된 쓰임이다.",
+          "distinguishing_feature": "C000001-0011: 하나는 기준에 맞춤을, 다른 하나는 결과로 생김을 나타낸다.",
+          "rationale": "C000001-0011: 서로 다른 쓰임이라 별개의 뜻으로 유지한다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000001-0011",
+        "candidate_record_sha256": "034a8ade438827ecefa6b3782eb6d42090b7bbd0c47e373fba2b548eea6af143",
+        "decision_evidence_sha256": "ef7cc4d200041cccea6982d9fd6a87650ed75c376cacd69ec42a4b87d4501063",
+        "sense_evidence": [
+          {
+            "sense_id": "C000001-0011-s1",
+            "sense_sha256": "7932db1ab8baccfaa7d00154098caf02459e4cad1ca2ed8078f1ee71103a0fad",
+            "gloss_sha256": "124bb9107cca20eccc4774998dd72bf594a7e0f69b1bdaea3f48d98107c123d8",
+            "evidence_sha256": "872f82b244c9c94ce37187bec1aa0d281dbaf708c710042989c7594b73f4857e"
+          },
+          {
+            "sense_id": "C000001-0011-s2",
+            "sense_sha256": "f8377df52853263c0ee1973cb902d2b7da0277d055299c836303b841cd5c27b9",
+            "gloss_sha256": "ab626bbc0ae29c6b4190a13f8436b84ea35556bda6283127c3292624a710a1b6",
+            "evidence_sha256": "4dd570ccba00c2e2e9b4dd6ba6e91fd39e8ad45b7d08e55c22939538c0ff4a46"
+          }
+        ]
+      }
+    }
+  ]
+}
