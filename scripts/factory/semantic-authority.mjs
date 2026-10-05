@@ -158,6 +158,17 @@ function crossBoundaryPair({ record, beforeReview, oldSense, newSense, decision,
   };
 }
 
+// Entry-level boundary of the complete canonical record. Stage 2 states every reviewed sense as
+// a retained atomic unit; a record that ends with several senses (new or amended) is a split,
+// separated record, and a single-sense record keeps its authored boundary.
+export function finalBoundary({ senseCount, boundaryAction, candidateClassification, priorClassification }) {
+  if (senseCount > 1) {
+    const coordinated = priorClassification === 'coordinated' || candidateClassification === 'coordinated';
+    return { finalDecision: 'split', finalClassification: coordinated ? 'coordinated' : 'separated' };
+  }
+  return { finalDecision: boundaryAction, finalClassification: candidateClassification };
+}
+
 function buildReviewForChangedRecord({ record, beforeRecord, beforeReview, mappedDecisions, semanticRows, decisionSourceId, batchId, attempt }) {
   if (mappedDecisions.length !== 1) {
     failSystemic(`${record.id}: Stage 3 must not combine multiple source candidates on one canonical record without authored cross-candidate pairwise evidence`, 'STAGE3_MULTI_CANDIDATE_RECORD');
@@ -180,12 +191,9 @@ function buildReviewForChangedRecord({ record, beforeRecord, beforeReview, mappe
 
   const sourceId = decisionSourceId;
   const priorBoundary = beforeReview?.boundary_review;
-  const finalDecision = isNew ? boundaryAction : (record.senses.length > 1 ? 'split' : boundaryAction);
-  const finalClassification = isNew
-    ? candidateClassification
-    : record.senses.length > 1
-      ? (priorBoundary?.classification === 'coordinated' || candidateClassification === 'coordinated' ? 'coordinated' : 'separated')
-      : candidateClassification;
+  const { finalDecision, finalClassification } = finalBoundary({
+    senseCount: record.senses.length, boundaryAction, candidateClassification, priorClassification: priorBoundary?.classification,
+  });
   if (!['retain', 'split'].includes(finalDecision)
     || !['atomic', 'separated', 'coordinated'].includes(finalClassification)
     || (finalDecision === 'retain' && (record.senses.length !== 1 || finalClassification !== 'atomic'))
