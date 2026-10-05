@@ -7,10 +7,10 @@ All timestamps are UTC on 2026-10-05.
 **pilot PASS under the owner-resolved review-operation interpretation.** Actual
 admission, negative/recovery and full rework paths passed. #307/#308 Stage 1
 records explicitly relied on CI, contrary to the Stage 1 operation rule; this
-observed process deviation remains recorded. The owner explicitly confirmed in the primary #291 implementation chat on
-2026-10-05: “적용: PASS, 절차상 한계 보존.” This resolves it as
-non-blocking for downstream independent Stage 2 technical review and exact-head
-CI, rather than a Pilot C functional failure. This does not fabricate a clean
+observed process deviation remains recorded. The owner explicitly resolved this in the primary #291 implementation chat
+on 2026-10-05 as non-blocking for downstream independent Stage 2 technical
+review and exact-head CI, while preserving it as a process caveat rather than
+a Pilot C functional failure. This does not fabricate a clean
 CI-independent Stage 1 run or change the general review rule. Phase 2 was not
 started in this issue. This agent did not review, request review, approve or
 merge its own changes.
