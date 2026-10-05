@@ -629,5 +629,54 @@ test('review fix: the ensemble policy never omits an observation, so no unseen h
   assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf, queue: [], traces }), []);
   const forged = structuredClone(rowsOf);
   forged[0].observations[0].holds = ['analysis_ambiguous'];
-  assert.match(verifyEnsembleTraces({ rows: forged, traces }).join(), /hold state differs/);
+  assert.match(verifyEnsembleTraces({ rows: forged, traces }).join(), /differ from the trace's source holds/);
+});
+
+test('review fix: local trace verification accepts correct queue/context records and rejects forged holds', async () => {
+  const k = { 갈: [p('갈', 'noun')], 낯: [p('낯', 'noun')], 가는: GADA.가는 };
+  const hh = { 갈: [p('갈다', 'verb', '갈')], 낯: [p('낯다', 'verb', '낯')], 가는: GADA.가는 };
+  const mm = { 갈: [p('가다', 'verb', '가')], 낯: [p('낮다', 'verb', '낮')], 가는: GADA.가는 };
+  const evidence = [
+    cand('가다', 'verb', [h('d1', '가는'), h('d3', '갈')]), // (a) hold-free unresolved (갈) beside a clear sibling
+    cand('낮다', 'verb', [h('d4', '낯')], { coverage_status: 'covered_elsewhere' }), // (b) unresolved with a source hold
+  ];
+  const result = await produce(evidence, triple({ k, h: hh, m: mm }));
+  const tracesOf = (r) => r.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace }));
+  const rowsOf = (r) => r.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
+  const queue = result.manifest.unresolved_observations;
+  assert.ok(queue.some((entry) => entry.extractor_holds.includes('coverage_collision')) && queue.some((entry) => entry.extractor_holds.length === 0));
+  assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf(result), queue, traces: tracesOf(result) }), [], '(a) and (b) pass');
+  // (c) a tampered or deleted source hold fails.
+  const deleted = structuredClone(queue);
+  deleted.find((entry) => entry.extractor_holds.length).extractor_holds = [];
+  assert.match(verifyEnsembleTraces({ rows: rowsOf(result), queue: deleted, traces: tracesOf(result) }).join(), /differ from the trace's source holds/);
+  const added = structuredClone(queue);
+  added.find((entry) => !entry.extractor_holds.length).extractor_holds = ['coverage_collision'];
+  assert.match(verifyEnsembleTraces({ rows: rowsOf(result), queue: added, traces: tracesOf(result) }).join(), /differ from the trace's source holds/);
+  // (d) a context-recovered row (extractor hold kept + reviewable analysis_ambiguous) passes; dropping the source hold fails.
+  const open = queue.find((entry) => !entry.extractor_holds.length);
+  const recovered = await produce(evidence, triple({ k, h: hh, m: mm }), {
+    contextProposals: [proposal(open, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })], contextAgent: 'claude', contextSource: source({ 'd3#p1': { status: 'ok', text: '그는 갈 길을 정했다.' } }),
+  });
+  assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf(recovered), queue: recovered.manifest.unresolved_observations, traces: tracesOf(recovered) }), [], '(d) passes');
+  const forgedRows = rowsOf(recovered);
+  // The recovered observation had no source hold; its only hold is the reviewable context one, and a
+  // source hold added to the row that the trace never had is rejected.
+  forgedRows[0].observations.find((o) => o.ensemble.resolution === 'context').holds = ['analysis_ambiguous', 'coverage_collision'];
+  assert.match(verifyEnsembleTraces({ rows: forgedRows, queue: recovered.manifest.unresolved_observations, traces: tracesOf(recovered) }).join(), /differ from the trace's source holds/);
+  // A context recovery of an observation WITH a source hold (extractor analysis_ambiguous) keeps it:
+  // the correct row passes, a row that swallowed the source hold fails.
+  const held = [cand('가다', 'verb', [h('d1', '가는'), h('d3', '갈')], { ambiguity_status: 'held_extractor' })];
+  const heldFirst = await produce(held, triple({ k, h: hh, m: mm }));
+  const heldEntry = heldFirst.manifest.unresolved_observations.find((entry) => entry.surface === '갈');
+  assert.deepEqual(heldEntry.extractor_holds, ['analysis_ambiguous']);
+  const heldRecovered = await produce(held, triple({ k, h: hh, m: mm }), {
+    contextProposals: [proposal(heldEntry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })], contextAgent: 'claude', contextSource: source({ 'd3#p1': { status: 'ok', text: '그는 갈 길을 정했다.' } }),
+  });
+  assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf(heldRecovered), queue: [], traces: tracesOf(heldRecovered) }), []);
+  const swallowed = rowsOf(heldRecovered);
+  const context = swallowed[0].observations.find((o) => o.ensemble.resolution === 'context');
+  context.holds = context.holds.filter((hold) => hold !== 'analysis_ambiguous');
+  context.holds.push('lemma_mismatch');
+  assert.match(verifyEnsembleTraces({ rows: swallowed, queue: [], traces: tracesOf(heldRecovered) }).join(), /differ from the trace's source holds/);
 });

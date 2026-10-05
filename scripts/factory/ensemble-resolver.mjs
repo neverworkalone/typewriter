@@ -396,18 +396,30 @@ export function validateReviewField(review, observations, observationTotal, at) 
 export function verifyEnsembleTraces({ rows, queue = [], traces }) {
   const byDigest = new Map(traces.map((entry) => [entry.trace_digest, entry.trace]));
   const errors = [];
+  const sameList = (left, right) => JSON.stringify(sortedUnique(left)) === JSON.stringify(sortedUnique(right));
+  // `holds` is the full recorded hold list; `kind` says how it relates to the trace's pre-context
+  // `observation_holds` (the extractor holds, plus the ensemble's own holds for an assigned reading):
+  //   assigned — exactly equal; context — the trace holds plus only the reviewable analysis_ambiguous;
+  //   queue — the entry's extractor_holds exactly equal the trace holds (an unassigned observation
+  //   carries only its extractor holds, never an ensemble-made one).
   const check = (at, record) => {
     const trace = byDigest.get(record.trace_digest);
     if (!trace) { errors.push(`${at}: no local trace for ${record.trace_digest.slice(0, 12)}`); return; }
     if (traceDigest(trace) !== record.trace_digest) errors.push(`${at}: local trace does not hash to its digest`);
     if (trace.category !== record.category) errors.push(`${at}: recorded category ${record.category} differs from the trace (${trace.category})`);
-    if (record.resolution !== 'context' && trace.observation_holds.length > 0 !== record.held) errors.push(`${at}: recorded hold state differs from the trace`);
+    const traced = trace.observation_holds;
+    const ok = record.kind === 'context'
+      ? traced.every((hold) => record.holds.includes(hold)) && record.holds.every((hold) => traced.includes(hold) || hold === 'analysis_ambiguous')
+      : sameList(record.holds, traced);
+    if (!ok) errors.push(`${at}: recorded holds ${JSON.stringify(record.holds)} differ from the trace's source holds ${JSON.stringify(traced)}`);
   };
   for (const row of rows) {
-    for (const observation of row.observations) check(`${row.candidate_id} ${observation.observation_id}`, { trace_digest: observation.ensemble.trace_digest, category: observation.ensemble.category,
-      held: observation.holds.length > 0, resolution: observation.ensemble.resolution });
+    for (const observation of row.observations) {
+      check(`${row.candidate_id} ${observation.observation_id}`, { trace_digest: observation.ensemble.trace_digest, category: observation.ensemble.category,
+        holds: observation.holds, kind: observation.ensemble.resolution === 'context' ? 'context' : 'assigned' });
+    }
   }
-  for (const entry of queue) check(entry.queue_id, { trace_digest: entry.trace_digest, category: entry.category, held: false, resolution: 'queue' });
+  for (const entry of queue) check(entry.queue_id, { trace_digest: entry.trace_digest, category: entry.category, holds: entry.extractor_holds, kind: 'queue' });
   return errors;
 }
 
