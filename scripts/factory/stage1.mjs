@@ -93,6 +93,8 @@ function extractorHolds(candidate) {
   return holds;
 }
 
+const PUNCTUATED_EOJEOL = /^(?=.*\p{L})(?=.*\p{P})[\p{L}\p{N}\p{P}]{1,24}$/u; // a real word (a letter) with attached punctuation, nothing else: no marks, symbols, emoji or controls
+
 // Text-free extractor evidence → usage observations (one per bounded paragraph hit).
 export function observationsFromCorpusEvidence(evidence) {
   const errors = [];
@@ -108,6 +110,11 @@ export function observationsFromCorpusEvidence(evidence) {
   if (errors.length) throw new Stage1Error(errors);
 
   const observations = [];
+  // An eojeol that carries punctuation (e.g. a quote inside the matched form) is not a single bounded
+  // word form and can never be stored. Such a hit is not an observation: it is counted (auditable in the
+  // run summary, still recoverable from the local evidence) instead of failing the whole run or leaking
+  // text. A candidate left with no usable hit stays visible through the explicit `no_evidence` hold.
+  let omittedNonWordFormHits = 0;
   evidence.candidates.forEach((candidate, index) => {
     const at = `evidence candidate ${index + 1}`;
     const input = normalizeText(candidate.proposed_lemma);
@@ -125,13 +132,20 @@ export function observationsFromCorpusEvidence(evidence) {
     const holds = extractorHolds(candidate);
     const forms = [...new Set((candidate.observed_surface_forms ?? []).map((form) => normalizeText(form.surface)).filter(Boolean))].sort(compare);
     const base = { hint: { input, pos }, holds };
-    if (hits.length === 0) {
+    // Only a single eojeol made of letters/digits and real punctuation is omitted; a phrase, sentence,
+    // symbol/emoji, control or over-long text still reaches the boundary check below and fails the run closed.
+    const usableHits = hits.filter((hit) => {
+      const surface = normalizeText(hit.matched_surface_form) || forms[0] || input;
+      return isSurfaceToken(surface) || !PUNCTUATED_EOJEOL.test(surface);
+    });
+    omittedNonWordFormHits += hits.length - usableHits.length;
+    if (usableHits.length === 0) {
       // No located paragraph: keep the candidate visible, explicitly held, never fabricate a reference.
-      const surface = forms[0] ?? input;
+      const surface = forms.find(isSurfaceToken) ?? input;
       observations.push({ ...base, surface, holds: [...holds, 'no_evidence'], ref: { kind: 'corpus-surface', ref: surface } });
       return;
     }
-    for (const hit of hits) {
+    for (const hit of usableHits) {
       const surface = normalizeText(hit.matched_surface_form) || forms[0] || input;
       observations.push({ ...base, surface, group: hit.usage_group, ref: { kind: 'corpus-paragraph', ref: `${hit.document_id}#${hit.paragraph_id}` } });
     }
@@ -147,6 +161,7 @@ export function observationsFromCorpusEvidence(evidence) {
     source: {
       source_snapshot: `corpus:${manifestDigest}:${rowsDigest}`,
       extractor_version: evidence.extractor.extractor_version,
+      omitted_non_word_form_hits: omittedNonWordFormHits,
     },
   };
 }
@@ -732,6 +747,7 @@ export async function produceCandidateBatch({
       providerAttempts: ensemble ? grouped.run.calls : summarizeAttempts(attemptLog),
       ...(ensemble ? { ensemble: ensembleCohortMetrics({ observations, decisions: grouped.decisions, run: grouped.run, contextOutcomes: grouped.contextRecords }) } : {}),
       candidates: rows.length,
+      omittedNonWordFormHits: source.omitted_non_word_form_hits,
       deferredLemmas: deferred,
       skippedProducedLemmas: skippedProduced,
       metrics: batchMetrics(rows, grouped),

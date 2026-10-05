@@ -34,6 +34,7 @@ export function parseArguments(argumentsList) {
     outputDirectory: LOCAL_PILOT_DIRECTORY,
     reuseAnalysisFrom: null,
     exclusionLemmaSources: [],
+    includeCanonicalLemmas: false,
     batchId: 'issue-201-pilot',
   };
   for (let index = 0; index < argumentsList.length; index += 1) {
@@ -70,6 +71,10 @@ export function parseArguments(argumentsList) {
       }
       options.reuseAnalysisFrom = path.resolve(REPOSITORY_DIRECTORY, value);
       index += 1;
+      continue;
+    }
+    if (argument === '--include-canonical-lemmas') {
+      options.includeCanonicalLemmas = true;
       continue;
     }
     if (argument === '--exclude-decision-source' || argument === '--exclude-lemma-source') {
@@ -185,6 +190,7 @@ function runPythonExtractor({
   candidateSelectionPath,
   candidateLimit,
   exclusionManifestPath,
+  includeCanonicalLemmas,
 }) {
   return new Promise((resolve, reject) => {
     const child = spawn(
@@ -196,6 +202,7 @@ function runPythonExtractor({
         '--candidate-json', candidateSelectionPath,
         '--candidate-limit', String(candidateLimit),
         '--exclusion-manifest', exclusionManifestPath,
+        ...(includeCanonicalLemmas ? ['--include-canonical-lemmas'] : []),
       ],
       {
         cwd: REPOSITORY_DIRECTORY,
@@ -238,6 +245,7 @@ function runPythonCachedSelector({
   candidateSelectionPath,
   candidateLimit,
   exclusionManifestPath,
+  includeCanonicalLemmas,
 }) {
   return new Promise((resolve, reject) => {
     const child = spawn(
@@ -252,6 +260,7 @@ function runPythonCachedSelector({
         '--candidate-json', candidateSelectionPath,
         '--candidate-limit', String(candidateLimit),
         '--exclusion-manifest', exclusionManifestPath,
+        ...(includeCanonicalLemmas ? ['--include-canonical-lemmas'] : []),
       ],
       {
         cwd: REPOSITORY_DIRECTORY,
@@ -473,9 +482,13 @@ export function buildTextFreeCandidateEvidence(inventory) {
   };
 }
 
+// The batch bound counts distinct lemmas: with `--include-canonical-lemmas` a lemma may carry one
+// candidate row per observed POS; otherwise there is exactly one row per lemma.
+const distinctLemmaCount = (candidates) => new Set((candidates ?? []).map((candidate) => candidate.coverage_normalized_key)).size;
+
 async function addBoundedCorpusEvidence(selection, candidateLimit) {
   const candidates = selection.candidates;
-  if (!Array.isArray(candidates) || candidates.length > candidateLimit) {
+  if (!Array.isArray(candidates) || distinctLemmaCount(candidates) > candidateLimit) {
     throw new Error('Candidate extraction exceeded its requested bounded candidate limit.');
   }
 
@@ -631,6 +644,7 @@ async function main() {
         candidateSelectionPath,
         candidateLimit: options.candidateLimit,
         exclusionManifestPath,
+        includeCanonicalLemmas: options.includeCanonicalLemmas,
       })
       : await runPythonExtractor({
         python: options.python,
@@ -639,9 +653,10 @@ async function main() {
         candidateSelectionPath,
         candidateLimit: options.candidateLimit,
         exclusionManifestPath,
+        includeCanonicalLemmas: options.includeCanonicalLemmas,
       });
     const selection = JSON.parse(await readFile(candidateSelectionPath, 'utf8'));
-    if (selection.candidates.length > options.candidateLimit
+    if (distinctLemmaCount(selection.candidates) > options.candidateLimit
       || selection.selection?.selected_candidate_count !== selection.candidates.length) {
       throw new Error('Candidate extraction exceeded or misreported the requested batch bound.');
     }

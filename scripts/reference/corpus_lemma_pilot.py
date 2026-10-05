@@ -493,7 +493,12 @@ def select_candidate_rows(
     staging: sqlite3.Connection,
     candidate_limit: int,
     excluded_lemmas: list[str] | None = None,
+    include_canonical_lemmas: bool = False,
 ) -> list[dict]:
+    # Factory Stage 1 (issue #289): an exact canonical lemma may still carry an evidence-backed new
+    # POS or sense, so it must reach Stage 1/2 instead of being dropped here as `covered`. The
+    # default stays the historical M9 behaviour.
+    coverage_filter = "TRUE" if include_canonical_lemmas else "covered = 0"
     staging.execute(
         """
         UPDATE candidate_surfaces
@@ -522,8 +527,7 @@ def select_candidate_rows(
         [(lemma,) for lemma in (excluded_lemmas or [])],
     )
 
-    rows = staging.execute(
-        """
+    ranked_pos_sql = f"""
         WITH ranked_pos AS (
             SELECT candidates.*,
                    COUNT(*) OVER (PARTITION BY normalized_lemma) AS pos_interpretation_count,
@@ -533,7 +537,7 @@ def select_candidate_rows(
                                 token_count DESC, pos COLLATE BINARY
                    ) AS pos_rank
             FROM candidates
-            WHERE covered = 0
+            WHERE {coverage_filter}
               AND NOT EXISTS (
                   SELECT 1 FROM excluded_candidate_lemmas AS excluded
                   WHERE excluded.normalized_lemma = candidates.normalized_lemma
@@ -544,6 +548,10 @@ def select_candidate_rows(
                max_source_token_count, ambiguous_surface_count,
                pos_interpretation_count, coverage_status, coverage_matches_json
         FROM ranked_pos
+        """
+    rows = staging.execute(
+        ranked_pos_sql
+        + """
         WHERE pos_rank = 1
         ORDER BY source_count DESC, document_count DESC, token_count DESC,
                  lemma COLLATE BINARY
@@ -551,6 +559,20 @@ def select_candidate_rows(
         """,
         (candidate_limit,),
     ).fetchall()
+    if include_canonical_lemmas:
+        # The bound counts distinct lemmas. Every observed POS of a selected lemma is kept as its own
+        # candidate row (own surface forms and source evidence) so a lower-ranked POS, e.g. a new POS
+        # of an existing canonical lemma, is not lost before Stage 1.
+        lemma_order = {str(row[1]): index for index, row in enumerate(rows)}
+        all_pos_rows = staging.execute(
+            ranked_pos_sql
+            + """
+        WHERE normalized_lemma IN (SELECT value FROM json_each(?))
+        ORDER BY pos_rank
+        """,
+            (json.dumps(list(lemma_order), ensure_ascii=False),),
+        ).fetchall()
+        rows = sorted(all_pos_rows, key=lambda row: lemma_order[str(row[1])])  # stable: keeps pos_rank order
     candidates: list[dict] = []
     for row in rows:
         (
@@ -691,6 +713,7 @@ def run_extraction(
     sample_every: int = SAMPLE_EVERY_PARAGRAPHS,
     candidate_limit: int = TARGET_CANDIDATES,
     batch_size: int = ROW_BATCH_SIZE,
+    include_canonical_lemmas: bool = False,
 ) -> dict:
     validate_candidate_limit(candidate_limit)
     if sample_every < 1 or batch_size < 1:
@@ -874,7 +897,9 @@ def run_extraction(
         staging.commit()
 
         apply_product_coverage(staging, product_surface_matches)
-        candidate_rows = select_candidate_rows(staging, candidate_limit, exclusion_manifest["lemmas"])
+        candidate_rows = select_candidate_rows(
+            staging, candidate_limit, exclusion_manifest["lemmas"], include_canonical_lemmas
+        )
 
         total_candidate_rows = int(staging.execute("SELECT COUNT(*) FROM candidates").fetchone()[0])
         total_candidate_lemmas = int(
@@ -1005,6 +1030,14 @@ def run_extraction(
                 "excluded_candidate_lemma_count": len(exclusion_manifest["lemmas"]),
                 "exclusion_sha256": exclusion_manifest["exclusion_sha256"],
                 "exclusion_source_artifacts": exclusion_manifest["source_artifacts"],
+                **(
+                    {
+                        "include_canonical_lemmas": True,
+                        "selected_lemma_count": len({row["coverage_normalized_key"] for row in candidate_rows}),
+                    }
+                    if include_canonical_lemmas
+                    else {}
+                ),
             },
             "yield": {
                 "eligible_pos_token_observations_before_shape_filter": eligible_tag_token_count,
@@ -1065,6 +1098,7 @@ def main() -> int:
     parser.add_argument("--candidate-json", type=Path, default=DEFAULT_SELECTION_PATH)
     parser.add_argument("--candidate-limit", type=int, default=TARGET_CANDIDATES)
     parser.add_argument("--exclusion-manifest", type=Path)
+    parser.add_argument("--include-canonical-lemmas", action="store_true")
     arguments = parser.parse_args()
     try:
         from kiwipiepy import Kiwi
@@ -1080,6 +1114,7 @@ def main() -> int:
         candidate_limit=arguments.candidate_limit,
         exclusion_manifest_path=arguments.exclusion_manifest.resolve() if arguments.exclusion_manifest else None,
         analyzer=Kiwi(),
+        include_canonical_lemmas=arguments.include_canonical_lemmas,
     )
     print(
         json.dumps(

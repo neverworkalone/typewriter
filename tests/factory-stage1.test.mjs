@@ -193,6 +193,20 @@ test('a candidate without a located paragraph is held on its surface observation
   assert.deepEqual(rows[0].observations.map((o) => [o.evidence.kind, o.holds]), [['corpus-surface', ['no_evidence']]]);
 });
 
+test('a punctuated eojeol hit is counted and omitted, never stored; a phrase still fails closed', async () => {
+  const { rows, summary } = await produce(evidenceDoc([
+    cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), hit('d3', 'p2', "걸음'을")]),
+    cand('낯설다', 'adjective', [hit('d5', 'p1', "낯선'")]),
+  ]));
+  assert.equal(summary.omittedNonWordFormHits, 2);
+  assert.deepEqual(rows.find((row) => row.input === '걸음').observations.map((o) => o.evidence.ref), ['d3#p1']);
+  assert.deepEqual(rows.find((row) => row.input === '낯설다')?.observations.map((o) => [o.evidence.kind, o.holds]) ?? [['corpus-surface', ['no_evidence']]], [['corpus-surface', ['no_evidence']]]);
+  await assert.rejects(() => produce(evidenceDoc([cand('걸음', 'noun', [hit('d3', 'p1', '걸음 을 걷다')])])), /single bounded word form/);
+  for (const bad of ['🙂', '1\uFE0F\u20E3', '걸음1\uFE0F\u20E3', '1.', '걸음🙂', '걸음\u0007', '가'.repeat(25), '걸음 을']) {
+    await assert.rejects(() => produce(evidenceDoc([cand('걸음', 'noun', [hit('d3', 'p1', bad)])])), /single bounded word form/, `symbol/control/oversize form ${JSON.stringify(bad)} must fail closed`);
+  }
+});
+
 test('canonical comparison: new lemma, new POS, possible new sense, and unsupported search forms are routed, never auto-covered', async () => {
   const entries = [
     ...CANONICAL,
