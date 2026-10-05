@@ -121,7 +121,7 @@
     {
       "source_candidate_id": "C000002-0006",
       "candidate_record_id": "C000002-0006",
-      "candidate_record_sha256": "0d1abd5c8586d2215afdc0eea46a21422213dc5723cf02f0c4e72424f920b30a",
+      "candidate_record_sha256": "6a60d8349592b71fee6f04506f6480baacb1074fa0aa5fc709e7c85844f621a7",
       "decision": "included",
       "decision_rationale": "C000002-0006: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
       "gloss_judgment": "fit",
@@ -131,56 +131,26 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000002-0006: 사실이나 방법을 알지 못하는 쓰임으로 한정된다.",
+          "boundary_rationale": "C000002-0006: 사실이나 방법을 알지 못하는 쓰임으로 한정되며 -ㄹ지도 모른다도 이 뜻의 구성적 쓰임이다.",
           "semantic_rationale": "C000002-0006: 알지 못하는 뜻이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000002-0006 C000002-0006-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
-        },
-        {
-          "sense_id": "C000002-0006-s2",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000002-0006: -ㄹ지도 모른다 꼴의 짐작 쓰임으로 한정된다.",
-          "semantic_rationale": "C000002-0006: 그럴 수도 있다고 짐작하는 뜻이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000002-0006 C000002-0006-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
         }
       ],
-      "boundary_pairs": [
-        {
-          "left_sense_id": "C000002-0006-s1",
-          "right_sense_id": "C000002-0006-s2",
-          "relationship": "distinct",
-          "decision": "retain",
-          "left_gloss_sha256": "3286ba8cfc09ec592a6eec0499aacb0df9d01c5d35297e64c7a16ce272c786c7",
-          "right_gloss_sha256": "54a09852112a86696eee612fb560127965e019e27695593bb19924b6607f55e8",
-          "evidence_basis": "C000002-0006: 두 뜻은 서로 다른 근거 관찰에서 확인된 쓰임이다.",
-          "distinguishing_feature": "C000002-0006: 앎의 부재 대 가능성의 짐작로 구분된다.",
-          "rationale": "C000002-0006: 서로 다른 쓰임이라 별개의 뜻으로 유지한다."
-        }
-      ],
+      "boundary_pairs": [],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000002-0006",
-        "candidate_record_sha256": "0d1abd5c8586d2215afdc0eea46a21422213dc5723cf02f0c4e72424f920b30a",
-        "decision_evidence_sha256": "3667efb0546a7f6c6f9c569fdec7fe1e613302c5ab02bbaa57473640a976a342",
+        "candidate_record_sha256": "6a60d8349592b71fee6f04506f6480baacb1074fa0aa5fc709e7c85844f621a7",
+        "decision_evidence_sha256": "e48f846c69ef53f497b891947d9fbba1c4d52c369f9dccce06392940154a615f",
         "sense_evidence": [
           {
             "sense_id": "C000002-0006-s1",
             "sense_sha256": "6678f5e0dacaf194eed661d464b560137389e4c86ecfe181d9d2fc8f3543af37",
             "gloss_sha256": "3286ba8cfc09ec592a6eec0499aacb0df9d01c5d35297e64c7a16ce272c786c7",
-            "evidence_sha256": "46d88ade902ede8390d01f7b45cb922976489ca42f84e23422f9efbd94fceda1"
-          },
-          {
-            "sense_id": "C000002-0006-s2",
-            "sense_sha256": "d90b8bba5446db446d95d261cb67b52f4b96080bce7e4ef9d1b3233f11482527",
-            "gloss_sha256": "54a09852112a86696eee612fb560127965e019e27695593bb19924b6607f55e8",
-            "evidence_sha256": "20307e74a69f176d9c1cbc42fb4e8290fd7f2bb4b5d339762c6d8e96abe8ef80"
+            "evidence_sha256": "6c354573ca7a0acca70c915ee28f844e64ce80576d5be7be7da7ae208847834a"
           }
         ]
       }
