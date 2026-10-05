@@ -16,6 +16,11 @@ export function createCorpusContextSource({ databasePath = DEFAULT_INDEX_PATH, p
     throw new Error('a corpus context source needs the expected evidence source_snapshot (corpus:<manifest>:<rows>)');
   }
   let database = null;
+  let snapshotMatches = null;
+  let metadataStatement = null;
+  let documentStatement = null;
+  let paragraphStatement = null;
+  const documentRowids = new Map();
   return {
     async lookup({ kind, ref }) {
       if (kind !== 'corpus-paragraph') return { status: 'absent' };
@@ -28,10 +33,22 @@ export function createCorpusContextSource({ databasePath = DEFAULT_INDEX_PATH, p
       if (at < 1) return { status: 'absent' };
       try {
         database ??= new DatabaseSync(databasePath, { readOnly: true });
-        const metadata = Object.fromEntries(database.prepare("SELECT key, value FROM index_metadata WHERE key IN ('input_manifest_sha256', 'logical_rows_sha256')").all().map((row) => [row.key, row.value]));
-        if (`corpus:${metadata.input_manifest_sha256}:${metadata.logical_rows_sha256}` !== expectedSnapshot) return { status: 'snapshot_mismatch' };
-        const rows = database.prepare(`SELECT p.form AS form FROM paragraphs AS p JOIN documents AS d ON d.document_rowid = p.document_rowid
-          WHERE d.document_id = ? AND p.paragraph_id = ?`).all(ref.slice(0, at), ref.slice(at + 1));
+        metadataStatement ??= database.prepare("SELECT key, value FROM index_metadata WHERE key IN ('input_manifest_sha256', 'logical_rows_sha256')");
+        documentStatement ??= database.prepare('SELECT document_rowid FROM documents WHERE document_id = ?');
+        paragraphStatement ??= database.prepare('SELECT form FROM paragraphs WHERE document_rowid = ? AND paragraph_id = ?');
+        if (snapshotMatches === null) {
+          const metadata = Object.fromEntries(metadataStatement.all().map((row) => [row.key, row.value]));
+          snapshotMatches = `corpus:${metadata.input_manifest_sha256}:${metadata.logical_rows_sha256}` === expectedSnapshot;
+        }
+        if (!snapshotMatches) return { status: 'snapshot_mismatch' };
+
+        const documentId = ref.slice(0, at);
+        if (!documentRowids.has(documentId)) {
+          documentRowids.set(documentId, documentStatement.get(documentId)?.document_rowid ?? null);
+        }
+        const documentRowid = documentRowids.get(documentId);
+        if (documentRowid === null) return { status: 'absent' };
+        const rows = paragraphStatement.all(documentRowid, ref.slice(at + 1));
         // An ambiguous or missing id is never guessed: it is "absent".
         return rows.length === 1 && typeof rows[0].form === 'string' ? { status: 'ok', text: rows[0].form } : { status: 'absent' };
       } catch {
@@ -41,6 +58,11 @@ export function createCorpusContextSource({ databasePath = DEFAULT_INDEX_PATH, p
     close() {
       database?.close();
       database = null;
+      snapshotMatches = null;
+      metadataStatement = null;
+      documentStatement = null;
+      paragraphStatement = null;
+      documentRowids.clear();
     },
   };
 }
