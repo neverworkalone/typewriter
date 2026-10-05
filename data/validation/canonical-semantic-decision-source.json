@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "522a1f8ba6a6545bc6d1c28fcd4fdfdba7e2f4e238bcf9149f5efcbd59fcc264"
+    "canonical_records_sha256": "6a1617adaad1164aa539a1250e5fc53e9b97e5a1ea42ebcba2fd48be18662e06"
   },
-  "authored_review_sha256": "0613eb2470cb9a576fae7f79f593755f7cfb6745b4614a138e59bb2769012002",
+  "authored_review_sha256": "394b6434d9721dc6e15b265a4a458006bac8c2000cfdc1e2f4979434049124e2",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,34 +1058,9 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "522a1f8ba6a6545bc6d1c28fcd4fdfdba7e2f4e238bcf9149f5efcbd59fcc264"
+      "canonical_records_sha256": "6a1617adaad1164aa539a1250e5fc53e9b97e5a1ea42ebcba2fd48be18662e06"
     },
     "records": [
-      {
-        "record_id": "w001",
-        "record_sha256": "06b60b57d0f5a161aaa4d206891d55678d213677ec9167d34781a8e1e5870bd2",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w001:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w001-s1",
-              "evidence_basis_code": "reason-95b1ea0a6e04d1b9",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w001-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
       {
         "record_id": "r001",
         "record_sha256": "cfd0c9fb85f6b060a3c7dee591bbe06cbce7de3859d9db6fda924cb6f54bdf6c",
@@ -1109,31 +1084,6 @@
             "relation_decision": "no-relations",
             "relation_rationale_code": "reason-f4f9ba852759d7a7",
             "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
-        "record_id": "w002",
-        "record_sha256": "a00f7e3198de1431a40c1948d676a79626a07bc5d33ab19ddc34764254d535ea",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w002:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w002-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w002-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
           }
         ]
       },
@@ -1164,56 +1114,6 @@
         ]
       },
       {
-        "record_id": "w003",
-        "record_sha256": "303d9d6155a41094711b1c2d1262d9543a71b53f99baa41270ce8bf253c0ca15",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w003:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w003-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w003-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "w004",
-        "record_sha256": "fc6e38f288cfdae1364bb25e4115857f61bcaee47440998e8047bc76f90a7dd0",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w004:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w004-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w004-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
         "record_id": "r004",
         "record_sha256": "99f09243f7e16cbd28c96f0bd5d9dc5326d278a981f8b4ae4cd138f3cf421f43",
         "boundary_review": {
@@ -1236,31 +1136,6 @@
             "relation_decision": "no-relations",
             "relation_rationale_code": "reason-f4f9ba852759d7a7",
             "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
-        "record_id": "w005",
-        "record_sha256": "9d4c865fc00b4335c87e95b3058d4c6a1d9ebb2ffbb1b9c431672de06ec1b7fd",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w005:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w005-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w005-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
           }
         ]
       },
@@ -1317,56 +1192,6 @@
         ]
       },
       {
-        "record_id": "w006",
-        "record_sha256": "e5d402396d57bda1e61b0d1df5c58aa9c13d4b9f3f9d3321239310f2e1819939",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w006:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w006-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w006-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "w007",
-        "record_sha256": "b7690c770fa979185559acecfb3d9758e9f1b8048bd6d110aceaf9c16e499427",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w007:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w007-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w007-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
         "record_id": "r008",
         "record_sha256": "c4ba5c10a434d4f84ffec8b2dc0a01c6dc9b1a3cd180345e247547dd6c446924",
         "boundary_review": {
@@ -1389,56 +1214,6 @@
             "relation_decision": "no-relations",
             "relation_rationale_code": "reason-f4f9ba852759d7a7",
             "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
-        "record_id": "w008",
-        "record_sha256": "dcd7340b3e7140f5a4e1a7f3b04cf792e35be2a139bbedba2bac0bf470fee5d3",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w008:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w008-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w008-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "w009",
-        "record_sha256": "b616e8d0d0456a069044475280a75e09eecb45118bbc2afec81bbf1f197260dd",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w009:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w009-s1",
-              "evidence_basis_code": "reason-69159cfdaa64f400",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w009-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
           }
         ]
       },
@@ -1469,31 +1244,6 @@
         ]
       },
       {
-        "record_id": "w010",
-        "record_sha256": "ef856cac2dd21164901de9152d01d0a56439fb05b2212830d95d8b6dd7e4fa31",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w010:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w010-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w010-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
         "record_id": "r010",
         "record_sha256": "48a0ef2782ba8164ce176832f5df63636f1c4e14c15629604dec52da7fb10aff",
         "boundary_review": {
@@ -1516,31 +1266,6 @@
             "relation_decision": "no-relations",
             "relation_rationale_code": "reason-f4f9ba852759d7a7",
             "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
-        "record_id": "w011",
-        "record_sha256": "17bcccc517b12aa2b4b4be93fc24fc4735d50be05b4918c168ae2c9e982abf85",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w011:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w011-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w011-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
           }
         ]
       },
@@ -1571,31 +1296,6 @@
         ]
       },
       {
-        "record_id": "w012",
-        "record_sha256": "1d568feddb622b54ea8d20b0c0547a3635be61b578201723fd519ca6d04e0826",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w012:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w012-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w012-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
         "record_id": "r013",
         "record_sha256": "117d66d3f791b115bd4926d7df33206f4e46ac202f30d66117ab1ed55de13668",
         "boundary_review": {
@@ -1618,31 +1318,6 @@
             "relation_decision": "no-relations",
             "relation_rationale_code": "reason-f4f9ba852759d7a7",
             "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
-        "record_id": "w013",
-        "record_sha256": "e75703702424e1cf5ca0b648be4015382bf5dd71c4bfc4e8d0edc5cbb82ad002",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w013:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w013-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w013-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
           }
         ]
       },
@@ -1673,31 +1348,6 @@
         ]
       },
       {
-        "record_id": "w014",
-        "record_sha256": "ef94269ccfdbed4f52ebc2e25183eede94f184316493174b211b580b5c8ea1d9",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w014:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w014-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w014-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
         "record_id": "r015",
         "record_sha256": "bd12094edeff85ef264dbb43c19cb8e9fc39f27263ae5441b3c837c0af71ad9e",
         "boundary_review": {
@@ -1720,31 +1370,6 @@
             "relation_decision": "no-relations",
             "relation_rationale_code": "reason-f4f9ba852759d7a7",
             "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
-        "record_id": "w015",
-        "record_sha256": "bc4cb2d65472cc6fcbae9f531c949837985d9cec03a7aa1d1fd7b0e47779f042",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w015:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w015-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w015-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
           }
         ]
       },
@@ -1775,31 +1400,6 @@
         ]
       },
       {
-        "record_id": "w016",
-        "record_sha256": "c67897f74c829724ca66bea3ff37256e9b0456480b71a99bf08c4031b9905ffe",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w016:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w016-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w016-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
         "record_id": "r017",
         "record_sha256": "119854253a786c73897bc78e58311d2d0558348eb9b32e13dd69e3921e3947eb",
         "boundary_review": {
@@ -1822,56 +1422,6 @@
             "relation_decision": "no-relations",
             "relation_rationale_code": "reason-f4f9ba852759d7a7",
             "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
-        "record_id": "w017",
-        "record_sha256": "92f1d51564714b46b42498589ef20c99cb936bff3bd3cb4184525537372dbfec",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w017:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w017-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w017-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "w018",
-        "record_sha256": "d95d4871bf66a30b44b697c6ab090decb5fcf87d609d43e93341dbf87de193c9",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w018:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w018-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w018-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
           }
         ]
       },
@@ -1928,31 +1478,6 @@
         ]
       },
       {
-        "record_id": "w019",
-        "record_sha256": "2ad8c5c7eb1193acf24f9f0ac99d944850c39b24e57cdc07e743fd2abad31f60",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:w019:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "w019-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "w019-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
         "record_id": "r020",
         "record_sha256": "1843c13e7c85ff777378f1168578efbde9bcbf905f6e8885a019c93378bdcb0f",
         "boundary_review": {
@@ -1975,6 +1500,1131 @@
             "relation_decision": "no-relations",
             "relation_rationale_code": "reason-f4f9ba852759d7a7",
             "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r026",
+        "record_sha256": "9a4ba5b5685438e471f03d00bc9c144192ee2f99b863cd01f4817107d4b77207",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r026:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r026-s1",
+              "evidence_basis_code": "reason-99eaa5965ce0753c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r026-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r028",
+        "record_sha256": "b074ff30716f882d0108d589c5e252278f8c6fcb965276b873da67f2707adbca",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r028:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r028-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r028-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r029",
+        "record_sha256": "52fee32afaad1bf22f618e73bcba63c8cf47c274505306675bd55d37ca76594f",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r029:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r029-s1",
+              "evidence_basis_code": "reason-99eaa5965ce0753c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r029-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r030",
+        "record_sha256": "80a51006ba2687300e29c7396eec891c27ab42783fc09db0cf8bcca787fd019f",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r030:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r030-s1",
+              "evidence_basis_code": "reason-95b1ea0a6e04d1b9",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r030-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r031",
+        "record_sha256": "49b8e0d571575b9122269bd1ee937eb470e1a64fb95e70869917761384c74349",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r031:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r031-s1",
+              "evidence_basis_code": "reason-69159cfdaa64f400",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r031-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r032",
+        "record_sha256": "116fa3f18227165157f39e2f56700c151ac9d9dca6f3aebdcb06b271e64fa7f9",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r032:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r032-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r032-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r033",
+        "record_sha256": "60cd61c5406649b18a2e17ec2ad28b1985d961e44cf745b1f65e3dd07d119fe4",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r033:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r033-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r033-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r034",
+        "record_sha256": "498c5fbdd05a65e77227228c92987e6f813363d92e0b533fa98d00e0e95fb452",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r034:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r034-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r034-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r035",
+        "record_sha256": "81010b2e78fdef4260ad7133ca3867ada48de4268d8a7c6e7679b189a7718af2",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r035:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r035-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r035-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r036",
+        "record_sha256": "f89c23819e7e0f068d2c371f0f56b8c6c11ef4b9539a79a745075189c8c9071b",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r036:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r036-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r036-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r037",
+        "record_sha256": "fbd03c0b645d7717425114fe5a04782c2827f8f4bdf87bcbddd67c606d975f52",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r037:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r037-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r037-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r038",
+        "record_sha256": "384ca8b688252cb78069a5cb3ee170757569b5552467ff23fcf08c98af57bff6",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r038:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r038-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r038-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r039",
+        "record_sha256": "affee5e104f4b75a95126eac441a9aeb20a5f2e3b2ffaf0377ea48aaff2f9993",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r039:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r039-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r039-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r040",
+        "record_sha256": "f25c854b4134b694d39248367cb41b93bfff45aa9c6bca22187f198f08cbbd89",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r040:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r040-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r040-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r041",
+        "record_sha256": "11552679bf012d14e2cc9c11e69e6001bc2ecf12c63d8769cd7f67df1fb69c21",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r041:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r041-s1",
+              "evidence_basis_code": "reason-69159cfdaa64f400",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r041-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r042",
+        "record_sha256": "974c6cb3c6fe1d8237fe7e50b4f3c5770c94cc5e551c1e2659ba9f782817837f",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r042:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r042-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r042-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r043",
+        "record_sha256": "a2b5e461114e00980981baf70a1995b0a7a9412b2060d82c336868c091b0c280",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r043:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r043-s1",
+              "evidence_basis_code": "reason-99eaa5965ce0753c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r043-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r044",
+        "record_sha256": "f5552d127f947b93895495f88ffa4c67906acbf7859f23f2c8eae71a6c10c7b4",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r044:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r044-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r044-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r045",
+        "record_sha256": "33c3c81f6125f8429c04b42466ec23254ed814b81f9b8a86af7fb707fb12fe13",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r045:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r045-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r045-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r046",
+        "record_sha256": "c29d3feee8546cac7ba916e8786370ac7c34d5b5a450603d73abf87657c56772",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r046:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r046-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r046-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r047",
+        "record_sha256": "b5f1e17fd47748d938615783dd433e44af1701a874df0902dfcddc240cbe9e0a",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r047:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r047-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r047-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r048",
+        "record_sha256": "28b5f2d5ddf78d4b8071be33ed7ea7fe6bf8e0d1bedeb1a7a86b4ea163106182",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r048:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r048-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r048-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r049",
+        "record_sha256": "97579d4f156c398de782699e4e1640b909c1f0c6a3f1b5d3d01709dafde306ea",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r049:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r049-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r049-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r050",
+        "record_sha256": "9b5062c5e5923ccd02bd2e7111886c6c7cbbfb3e4c2784d81964d678bb5d5513",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r050:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r050-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r050-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "r051",
+        "record_sha256": "f103af14106cd5be771ad6453056a97d43167b86b15595fadf52f3d72b29a444",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:r051:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "r051-s1",
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "r051-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
+          }
+        ]
+      },
+      {
+        "record_id": "w001",
+        "record_sha256": "06b60b57d0f5a161aaa4d206891d55678d213677ec9167d34781a8e1e5870bd2",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w001:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w001-s1",
+              "evidence_basis_code": "reason-95b1ea0a6e04d1b9",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w001-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w002",
+        "record_sha256": "a00f7e3198de1431a40c1948d676a79626a07bc5d33ab19ddc34764254d535ea",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w002:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w002-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w002-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w003",
+        "record_sha256": "303d9d6155a41094711b1c2d1262d9543a71b53f99baa41270ce8bf253c0ca15",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w003:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w003-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w003-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w004",
+        "record_sha256": "fc6e38f288cfdae1364bb25e4115857f61bcaee47440998e8047bc76f90a7dd0",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w004:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w004-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w004-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w005",
+        "record_sha256": "9d4c865fc00b4335c87e95b3058d4c6a1d9ebb2ffbb1b9c431672de06ec1b7fd",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w005:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w005-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w005-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w006",
+        "record_sha256": "e5d402396d57bda1e61b0d1df5c58aa9c13d4b9f3f9d3321239310f2e1819939",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w006:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w006-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w006-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w007",
+        "record_sha256": "b7690c770fa979185559acecfb3d9758e9f1b8048bd6d110aceaf9c16e499427",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w007:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w007-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w007-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w008",
+        "record_sha256": "dcd7340b3e7140f5a4e1a7f3b04cf792e35be2a139bbedba2bac0bf470fee5d3",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w008:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w008-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w008-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w009",
+        "record_sha256": "b616e8d0d0456a069044475280a75e09eecb45118bbc2afec81bbf1f197260dd",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w009:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w009-s1",
+              "evidence_basis_code": "reason-69159cfdaa64f400",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w009-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w010",
+        "record_sha256": "ef856cac2dd21164901de9152d01d0a56439fb05b2212830d95d8b6dd7e4fa31",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w010:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w010-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w010-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w011",
+        "record_sha256": "17bcccc517b12aa2b4b4be93fc24fc4735d50be05b4918c168ae2c9e982abf85",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w011:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w011-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w011-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w012",
+        "record_sha256": "1d568feddb622b54ea8d20b0c0547a3635be61b578201723fd519ca6d04e0826",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w012:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w012-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w012-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w013",
+        "record_sha256": "e75703702424e1cf5ca0b648be4015382bf5dd71c4bfc4e8d0edc5cbb82ad002",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w013:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w013-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w013-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w014",
+        "record_sha256": "ef94269ccfdbed4f52ebc2e25183eede94f184316493174b211b580b5c8ea1d9",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w014:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w014-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w014-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w015",
+        "record_sha256": "bc4cb2d65472cc6fcbae9f531c949837985d9cec03a7aa1d1fd7b0e47779f042",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w015:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w015-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w015-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w016",
+        "record_sha256": "c67897f74c829724ca66bea3ff37256e9b0456480b71a99bf08c4031b9905ffe",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w016:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w016-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w016-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w017",
+        "record_sha256": "92f1d51564714b46b42498589ef20c99cb936bff3bd3cb4184525537372dbfec",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w017:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w017-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w017-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w018",
+        "record_sha256": "d95d4871bf66a30b44b697c6ab090decb5fcf87d609d43e93341dbf87de193c9",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w018:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w018-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w018-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
+          }
+        ]
+      },
+      {
+        "record_id": "w019",
+        "record_sha256": "2ad8c5c7eb1193acf24f9f0ac99d944850c39b24e57cdc07e743fd2abad31f60",
+        "boundary_review": {
+          "review_id": "canonical-semantic-review:w019:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w019-s1",
+              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+              "rationale_code": "reason-60e22e03a63a9d7b"
+            }
+          ],
+          "pairwise": [],
+          "rationale_code": "reason-f40834b546915e0f"
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w019-s1",
+            "relation_decision": "relations-reviewed",
+            "relation_rationale_code": "reason-6dc1a297c687efa8"
           }
         ]
       },
@@ -2154,32 +2804,6 @@
         ]
       },
       {
-        "record_id": "r026",
-        "record_sha256": "9a4ba5b5685438e471f03d00bc9c144192ee2f99b863cd01f4817107d4b77207",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r026:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r026-s1",
-              "evidence_basis_code": "reason-99eaa5965ce0753c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r026-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w027",
         "record_sha256": "f7bc45a83b36ad01d87a68e9d261cb71ba298b9d2b9d67ce689f5b002e144a88",
         "boundary_review": {
@@ -2205,32 +2829,6 @@
         ]
       },
       {
-        "record_id": "r028",
-        "record_sha256": "b074ff30716f882d0108d589c5e252278f8c6fcb965276b873da67f2707adbca",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r028:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r028-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r028-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w028",
         "record_sha256": "105734e33e3e3993e8587d2a248e0799f6f4f82705bb4bc1a4104346ee9a471d",
         "boundary_review": {
@@ -2252,32 +2850,6 @@
             "sense_id": "w028-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r029",
-        "record_sha256": "52fee32afaad1bf22f618e73bcba63c8cf47c274505306675bd55d37ca76594f",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r029:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r029-s1",
-              "evidence_basis_code": "reason-99eaa5965ce0753c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r029-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -2332,32 +2904,6 @@
         ]
       },
       {
-        "record_id": "r030",
-        "record_sha256": "80a51006ba2687300e29c7396eec891c27ab42783fc09db0cf8bcca787fd019f",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r030:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r030-s1",
-              "evidence_basis_code": "reason-95b1ea0a6e04d1b9",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r030-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w031",
         "record_sha256": "4664b608e0faad9cb9c59b75455d8ab3ecfcc508b237e4e0af272c0ff886a88d",
         "boundary_review": {
@@ -2379,32 +2925,6 @@
             "sense_id": "w031-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r031",
-        "record_sha256": "49b8e0d571575b9122269bd1ee937eb470e1a64fb95e70869917761384c74349",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r031:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r031-s1",
-              "evidence_basis_code": "reason-69159cfdaa64f400",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r031-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -2455,32 +2975,6 @@
         ]
       },
       {
-        "record_id": "r032",
-        "record_sha256": "116fa3f18227165157f39e2f56700c151ac9d9dca6f3aebdcb06b271e64fa7f9",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r032:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r032-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r032-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w033",
         "record_sha256": "9340ee1679360ca0f01132cbbf9c5f0008ab839e144d172a43a149e0e1935566",
         "boundary_review": {
@@ -2502,32 +2996,6 @@
             "sense_id": "w033-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r033",
-        "record_sha256": "60cd61c5406649b18a2e17ec2ad28b1985d961e44cf745b1f65e3dd07d119fe4",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r033:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r033-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r033-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -2557,32 +3025,6 @@
         ]
       },
       {
-        "record_id": "r034",
-        "record_sha256": "498c5fbdd05a65e77227228c92987e6f813363d92e0b533fa98d00e0e95fb452",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r034:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r034-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r034-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w035",
         "record_sha256": "8d8283e25c26307d2d0efca3e594ebcc397e11c378187a9b38a727a1c75ce2b1",
         "boundary_review": {
@@ -2604,58 +3046,6 @@
             "sense_id": "w035-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r035",
-        "record_sha256": "81010b2e78fdef4260ad7133ca3867ada48de4268d8a7c6e7679b189a7718af2",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r035:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r035-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r035-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
-        "record_id": "r036",
-        "record_sha256": "f89c23819e7e0f068d2c371f0f56b8c6c11ef4b9539a79a745075189c8c9071b",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r036:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r036-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r036-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -2685,32 +3075,6 @@
         ]
       },
       {
-        "record_id": "r037",
-        "record_sha256": "fbd03c0b645d7717425114fe5a04782c2827f8f4bdf87bcbddd67c606d975f52",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r037:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r037-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r037-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w037",
         "record_sha256": "490d97930d0bc6c983d8b7b44efc514b88f3d848ed3a11a5b460835a3b319273",
         "boundary_review": {
@@ -2732,32 +3096,6 @@
             "sense_id": "w037-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r038",
-        "record_sha256": "384ca8b688252cb78069a5cb3ee170757569b5552467ff23fcf08c98af57bff6",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r038:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r038-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r038-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -2787,32 +3125,6 @@
         ]
       },
       {
-        "record_id": "r039",
-        "record_sha256": "affee5e104f4b75a95126eac441a9aeb20a5f2e3b2ffaf0377ea48aaff2f9993",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r039:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r039-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r039-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w039",
         "record_sha256": "b5b32faf66d60aa8bc0e3b1c9c95b39c5dcc13383cbb1fed6cfd15116095136c",
         "boundary_review": {
@@ -2834,32 +3146,6 @@
             "sense_id": "w039-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r040",
-        "record_sha256": "f25c854b4134b694d39248367cb41b93bfff45aa9c6bca22187f198f08cbbd89",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r040:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r040-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r040-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -2889,32 +3175,6 @@
         ]
       },
       {
-        "record_id": "r041",
-        "record_sha256": "11552679bf012d14e2cc9c11e69e6001bc2ecf12c63d8769cd7f67df1fb69c21",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r041:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r041-s1",
-              "evidence_basis_code": "reason-69159cfdaa64f400",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r041-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w041",
         "record_sha256": "f3368195a7a56c2a382d78bd24b89ae2f11df2181d33f30e15eb67f1005690fa",
         "boundary_review": {
@@ -2936,32 +3196,6 @@
             "sense_id": "w041-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r042",
-        "record_sha256": "974c6cb3c6fe1d8237fe7e50b4f3c5770c94cc5e551c1e2659ba9f782817837f",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r042:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r042-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r042-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -2991,32 +3225,6 @@
         ]
       },
       {
-        "record_id": "r043",
-        "record_sha256": "a2b5e461114e00980981baf70a1995b0a7a9412b2060d82c336868c091b0c280",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r043:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r043-s1",
-              "evidence_basis_code": "reason-99eaa5965ce0753c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r043-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w043",
         "record_sha256": "11ad5aaea02a953f576a1c76acf37a99be3503e40aad24e7000aeb606c66cc6f",
         "boundary_review": {
@@ -3038,32 +3246,6 @@
             "sense_id": "w043-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r044",
-        "record_sha256": "f5552d127f947b93895495f88ffa4c67906acbf7859f23f2c8eae71a6c10c7b4",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r044:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r044-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r044-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -3113,32 +3295,6 @@
         ]
       },
       {
-        "record_id": "r045",
-        "record_sha256": "33c3c81f6125f8429c04b42466ec23254ed814b81f9b8a86af7fb707fb12fe13",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r045:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r045-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r045-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w045",
         "record_sha256": "411871dedaff82a916fd011d15ac7aad4c235e38423495f02f9bf929ce20680f",
         "boundary_review": {
@@ -3180,32 +3336,6 @@
             "sense_id": "w045-s2",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r046",
-        "record_sha256": "c29d3feee8546cac7ba916e8786370ac7c34d5b5a450603d73abf87657c56772",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r046:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r046-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r046-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -3255,32 +3385,6 @@
         ]
       },
       {
-        "record_id": "r047",
-        "record_sha256": "b5f1e17fd47748d938615783dd433e44af1701a874df0902dfcddc240cbe9e0a",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r047:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r047-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r047-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w047",
         "record_sha256": "21d7dc91a1a55b400b8b0e0a5215ee19c42033e870dbe43242d7e295083ab853",
         "boundary_review": {
@@ -3322,32 +3426,6 @@
             "sense_id": "w047-s2",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r048",
-        "record_sha256": "28b5f2d5ddf78d4b8071be33ed7ea7fe6bf8e0d1bedeb1a7a86b4ea163106182",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r048:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r048-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r048-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -3397,32 +3475,6 @@
         ]
       },
       {
-        "record_id": "r049",
-        "record_sha256": "97579d4f156c398de782699e4e1640b909c1f0c6a3f1b5d3d01709dafde306ea",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r049:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r049-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r049-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w049",
         "record_sha256": "1e2a447c8d79a1efca44c0df97df0d7b00b6bd51fc4a061ea4cb5b35ee44e45a",
         "boundary_review": {
@@ -3468,32 +3520,6 @@
         ]
       },
       {
-        "record_id": "r050",
-        "record_sha256": "9b5062c5e5923ccd02bd2e7111886c6c7cbbfb3e4c2784d81964d678bb5d5513",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r050:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r050-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r050-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
-          }
-        ]
-      },
-      {
         "record_id": "w050",
         "record_sha256": "5dbb528e3cb3a6c23c68d56bc487a5571df277a9ffa46b6bd6a0723ef2523a23",
         "boundary_review": {
@@ -3515,32 +3541,6 @@
             "sense_id": "w050-s1",
             "relation_decision": "relations-reviewed",
             "relation_rationale_code": "reason-6dc1a297c687efa8"
-          }
-        ]
-      },
-      {
-        "record_id": "r051",
-        "record_sha256": "f103af14106cd5be771ad6453056a97d43167b86b15595fadf52f3d72b29a444",
-        "boundary_review": {
-          "review_id": "canonical-semantic-review:r051:boundary",
-          "decision": "retain",
-          "classification": "atomic",
-          "evidence": [
-            {
-              "sense_id": "r051-s1",
-              "evidence_basis_code": "reason-f698c5fd585cdcc5",
-              "rationale_code": "reason-60e22e03a63a9d7b"
-            }
-          ],
-          "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
-        },
-        "sense_reviews": [
-          {
-            "sense_id": "r051-s1",
-            "relation_decision": "no-relations",
-            "relation_rationale_code": "reason-f4f9ba852759d7a7",
-            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -62733,19 +62733,52 @@
       },
       {
         "record_id": "w2797",
-        "record_sha256": "a64bf944809805e9ee6bada68ae50c7377b56285b296345f0c138d18a25be7dd",
-        "authored_batch_decision": {
-          "source_id": "m5-13-authored-semantic-decisions-20260923-r6",
-          "source_sha256": "b3e238b8715c46ed813e4faacac442ad66333b206c245c202d72a00c08ad5bf1",
-          "artifact_sha256": "6ee1835952f11ca713a8cebe4648f235e793bc770ab3ca760f40a8921a736f2b",
-          "decision_row_sha256": "da384dd34b15e8672e620d4e35d5a8dd2e6590301379a13ec629d1e027c80ab9",
-          "candidate_record_id": "w2797",
-          "candidate_record_sha256": "a64bf944809805e9ee6bada68ae50c7377b56285b296345f0c138d18a25be7dd",
-          "decision": "included",
-          "selection_rank": 717,
-          "selection_axis": "A",
-          "reviewed_record_sha256": "a64bf944809805e9ee6bada68ae50c7377b56285b296345f0c138d18a25be7dd"
-        }
+        "record_sha256": "51eb0097f54cffe2a1db59f1bd0f48aaa2efe140c4c81eaac306a46c9659ec5a",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000001-a1:w2797:boundary",
+          "decision": "split",
+          "classification": "separated",
+          "evidence": [
+            {
+              "sense_id": "w2797-s1",
+              "evidence_basis": "w2797 w2797-s1: 손·팔로 물건을 들어 올리거나 지니는 동사다.",
+              "rationale": "m5-2717 w2797 w2797-s1 b177e77d0f3d: 손·팔로 물건을 들어 올리거나 지니는 동사다."
+            },
+            {
+              "sense_id": "w2797-s2",
+              "evidence_basis": "w2797 w2797-s2 a07e5268d76e [C000001-0009]: C000001-0009: 어떤 공간이나 범위 안에 있다는 뜻이다.",
+              "rationale": "w2797 w2797-s2 a07e5268d76e [C000001-0009]: C000001-0009: 기존 들어 올리다 뜻과 구분되는 존재 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [
+            {
+              "left_sense_id": "w2797-s1",
+              "right_sense_id": "w2797-s2",
+              "relationship": "distinct",
+              "decision": "retain",
+              "evidence_basis": "w2797 w2797-s1 w2797-s2: w2797 w2797-s1 reviewed gloss b177e77d0f3d from the bound authored batch decision. C000001-0009: 어떤 공간이나 범위 안에 있다는 뜻이다.",
+              "distinguishing_feature": "w2797 w2797-s1 w2797-s2: Stage 2 new_sense_on_existing_entry context w2797-s1; the source-bound Stage 2 target is distinct from the existing canonical sense.",
+              "rationale": "w2797 w2797-s1 w2797-s2 b177e77d0f3d a07e5268d76e [C000001-0009]: Stage 2 new_sense_on_existing_entry context w2797-s1; C000001-0009: 어떤 공간이나 범위 안에 있다는 뜻이다."
+            }
+          ],
+          "rationale": "w2797: source-bound Stage 3 admission combines the preserved canonical review with C000001-0009 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w2797-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale": "w2797 w2797-s1 relation tuples were reviewed against canonical content.",
+            "no_relation_rationale": "w2797 w2797-s1 relation tuples were reviewed against canonical content."
+          },
+          {
+            "sense_id": "w2797-s2",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w2797 w2797-s2 a07e5268d76e [C000001-0009]: C000001-0009: 어떤 공간이나 범위 안에 있다는 뜻이다.",
+            "boundary_rationale": "w2797 w2797-s2 a07e5268d76e [C000001-0009]: C000001-0009: 기존 들어 올리다 뜻과 구분되는 존재 쓰임으로 한정된다.",
+            "relation_rationale": "w2797 w2797-s2 a07e5268d76e [C000001-0009]: C000001-0009 C000001-0009-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w2797 w2797-s2 a07e5268d76e [C000001-0009]: C000001-0009 C000001-0009-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
       },
       {
         "record_id": "w2798",
@@ -214778,6 +214811,243 @@
           "selection_axis": "X",
           "reviewed_record_sha256": "82da966e347ee98d3242b7f89c4f45dd88dcfe7d9f53c8bba69a8119cf54afe5"
         }
+      },
+      {
+        "record_id": "w12541",
+        "record_sha256": "3e6d9702d687217b534a93c04f049f3ac0b8a9b78e56ae0695523a488cb14575",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000001-a1:w12541:boundary",
+          "decision": "split",
+          "classification": "separated",
+          "evidence": [
+            {
+              "sense_id": "w12541-s1",
+              "evidence_basis": "w12541 w12541-s1 eab81709b758 [C000001-0001]: C000001-0001: 대상끼리 견주어 비슷함을 말하는 뜻이다.",
+              "rationale": "w12541 w12541-s1 eab81709b758 [C000001-0001]: C000001-0001: 비교 대상이 있는 서술 쓰임으로 한정된다."
+            },
+            {
+              "sense_id": "w12541-s2",
+              "evidence_basis": "w12541 w12541-s2 40bf98bcf815 [C000001-0001]: C000001-0001: 확실하지 않은 일을 짐작하는 뜻이다.",
+              "rationale": "w12541 w12541-s2 40bf98bcf815 [C000001-0001]: C000001-0001: 앞말이 가리키는 일에 대한 화자의 추측 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [
+            {
+              "left_sense_id": "w12541-s1",
+              "right_sense_id": "w12541-s2",
+              "relationship": "distinct",
+              "decision": "retain",
+              "evidence_basis": "w12541 w12541-s1 w12541-s2: C000001-0001: 두 뜻은 서로 다른 근거 관찰에서 확인된 쓰임이다.",
+              "distinguishing_feature": "w12541 w12541-s1 w12541-s2: C000001-0001: 하나는 대상 간 유사를, 다른 하나는 화자의 추측을 나타낸다.",
+              "rationale": "w12541 w12541-s1 w12541-s2 eab81709b758 40bf98bcf815 [C000001-0001]: C000001-0001: 서로 다른 쓰임이라 별개의 뜻으로 유지한다."
+            }
+          ],
+          "rationale": "w12541: source-bound Stage 3 admission combines the preserved canonical review with C000001-0001 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12541-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12541 w12541-s1 eab81709b758 [C000001-0001]: C000001-0001: 대상끼리 견주어 비슷함을 말하는 뜻이다.",
+            "boundary_rationale": "w12541 w12541-s1 eab81709b758 [C000001-0001]: C000001-0001: 비교 대상이 있는 서술 쓰임으로 한정된다.",
+            "relation_rationale": "w12541 w12541-s1 eab81709b758 [C000001-0001]: C000001-0001 C000001-0001-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12541 w12541-s1 eab81709b758 [C000001-0001]: C000001-0001 C000001-0001-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          },
+          {
+            "sense_id": "w12541-s2",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12541 w12541-s2 40bf98bcf815 [C000001-0001]: C000001-0001: 확실하지 않은 일을 짐작하는 뜻이다.",
+            "boundary_rationale": "w12541 w12541-s2 40bf98bcf815 [C000001-0001]: C000001-0001: 앞말이 가리키는 일에 대한 화자의 추측 쓰임으로 한정된다.",
+            "relation_rationale": "w12541 w12541-s2 40bf98bcf815 [C000001-0001]: C000001-0001 C000001-0001-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12541 w12541-s2 40bf98bcf815 [C000001-0001]: C000001-0001 C000001-0001-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12542",
+        "record_sha256": "d8244246283ddc37325b4ad712493dedcbc8bd7e9cd9d2a655d09251e1f58788",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000001-a1:w12542:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w12542-s1",
+              "evidence_basis": "w12542 w12542-s1 f9f10992d057 [C000001-0002]: C000001-0002: 앞선 말이나 행동을 이어받아 그렇게 하다를 뜻한다.",
+              "rationale": "w12542 w12542-s1 f9f10992d057 [C000001-0002]: C000001-0002: 대동사 쓰임 하나로 한정된다."
+            }
+          ],
+          "pairwise": [],
+          "rationale": "w12542: source-bound Stage 3 admission combines the preserved canonical review with C000001-0002 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12542-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12542 w12542-s1 f9f10992d057 [C000001-0002]: C000001-0002: 앞선 말이나 행동을 이어받아 그렇게 하다를 뜻한다.",
+            "boundary_rationale": "w12542 w12542-s1 f9f10992d057 [C000001-0002]: C000001-0002: 대동사 쓰임 하나로 한정된다.",
+            "relation_rationale": "w12542 w12542-s1 f9f10992d057 [C000001-0002]: C000001-0002 C000001-0002-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12542 w12542-s1 f9f10992d057 [C000001-0002]: C000001-0002 C000001-0002-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12543",
+        "record_sha256": "c27fc32c5fa64452563ba1d39fdef3f04b8e4b4998e5a7fa93a3fc28733664dc",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000001-a1:w12543:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w12543-s1",
+              "evidence_basis": "w12543 w12543-s1 734f36214054 [C000001-0003]: C000001-0003: 냄새가 생겨 느껴지는 뜻이다.",
+              "rationale": "w12543 w12543-s1 734f36214054 [C000001-0003]: C000001-0003: 감각 대상이 주어인 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [],
+          "rationale": "w12543: source-bound Stage 3 admission combines the preserved canonical review with C000001-0003 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12543-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12543 w12543-s1 734f36214054 [C000001-0003]: C000001-0003: 냄새가 생겨 느껴지는 뜻이다.",
+            "boundary_rationale": "w12543 w12543-s1 734f36214054 [C000001-0003]: C000001-0003: 감각 대상이 주어인 쓰임으로 한정된다.",
+            "relation_rationale": "w12543 w12543-s1 734f36214054 [C000001-0003]: C000001-0003 C000001-0003-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12543 w12543-s1 734f36214054 [C000001-0003]: C000001-0003 C000001-0003-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12544",
+        "record_sha256": "40ea0627d142b332e7022452ff98811483af939459fc8fa4d0db656fd136ac2d",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000001-a1:w12544:boundary",
+          "decision": "split",
+          "classification": "separated",
+          "evidence": [
+            {
+              "sense_id": "w12544-s1",
+              "evidence_basis": "w12544 w12544-s1 d49687ed69cb [C000001-0004]: C000001-0004: 감정을 마음으로 겪어 아는 뜻이다.",
+              "rationale": "w12544 w12544-s1 d49687ed69cb [C000001-0004]: C000001-0004: 경험되는 감정이 목적어인 쓰임으로 한정된다."
+            },
+            {
+              "sense_id": "w12544-s2",
+              "evidence_basis": "w12544 w12544-s2 aca300537e5d [C000001-0004]: C000001-0004: 대상을 마음속으로 어떠하다고 여기는 뜻이다.",
+              "rationale": "w12544 w12544-s2 aca300537e5d [C000001-0004]: C000001-0004: 에로 표시되는 대상 판단 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [
+            {
+              "left_sense_id": "w12544-s1",
+              "right_sense_id": "w12544-s2",
+              "relationship": "distinct",
+              "decision": "retain",
+              "evidence_basis": "w12544 w12544-s1 w12544-s2: C000001-0004: 두 뜻은 서로 다른 근거 관찰에서 확인된 쓰임이다.",
+              "distinguishing_feature": "w12544 w12544-s1 w12544-s2: C000001-0004: 하나는 감정의 경험을, 다른 하나는 대상에 대한 판단을 나타낸다.",
+              "rationale": "w12544 w12544-s1 w12544-s2 d49687ed69cb aca300537e5d [C000001-0004]: C000001-0004: 서로 다른 쓰임이라 별개의 뜻으로 유지한다."
+            }
+          ],
+          "rationale": "w12544: source-bound Stage 3 admission combines the preserved canonical review with C000001-0004 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12544-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12544 w12544-s1 d49687ed69cb [C000001-0004]: C000001-0004: 감정을 마음으로 겪어 아는 뜻이다.",
+            "boundary_rationale": "w12544 w12544-s1 d49687ed69cb [C000001-0004]: C000001-0004: 경험되는 감정이 목적어인 쓰임으로 한정된다.",
+            "relation_rationale": "w12544 w12544-s1 d49687ed69cb [C000001-0004]: C000001-0004 C000001-0004-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12544 w12544-s1 d49687ed69cb [C000001-0004]: C000001-0004 C000001-0004-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          },
+          {
+            "sense_id": "w12544-s2",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12544 w12544-s2 aca300537e5d [C000001-0004]: C000001-0004: 대상을 마음속으로 어떠하다고 여기는 뜻이다.",
+            "boundary_rationale": "w12544 w12544-s2 aca300537e5d [C000001-0004]: C000001-0004: 에로 표시되는 대상 판단 쓰임으로 한정된다.",
+            "relation_rationale": "w12544 w12544-s2 aca300537e5d [C000001-0004]: C000001-0004 C000001-0004-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12544 w12544-s2 aca300537e5d [C000001-0004]: C000001-0004 C000001-0004-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12545",
+        "record_sha256": "84cfbdac454fffa9f7b168f77df1f6be4a7fbdf3be29345acea53499c13d9f05",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000001-a1:w12545:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w12545-s1",
+              "evidence_basis": "w12545 w12545-s1 409dfffc0451 [C000001-0006]: C000001-0006: 대상을 상대나 주제로 삼는 뜻이다.",
+              "rationale": "w12545 w12545-s1 409dfffc0451 [C000001-0006]: C000001-0006: 에 대한 꼴의 쓰임 하나로 한정된다."
+            }
+          ],
+          "pairwise": [],
+          "rationale": "w12545: source-bound Stage 3 admission combines the preserved canonical review with C000001-0006 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12545-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12545 w12545-s1 409dfffc0451 [C000001-0006]: C000001-0006: 대상을 상대나 주제로 삼는 뜻이다.",
+            "boundary_rationale": "w12545 w12545-s1 409dfffc0451 [C000001-0006]: C000001-0006: 에 대한 꼴의 쓰임 하나로 한정된다.",
+            "relation_rationale": "w12545 w12545-s1 409dfffc0451 [C000001-0006]: C000001-0006 C000001-0006-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12545 w12545-s1 409dfffc0451 [C000001-0006]: C000001-0006 C000001-0006-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12546",
+        "record_sha256": "38c89e98b0896e8aabf09088ae649f8deeb090d428ddad2ad1c5faa97c2d8036",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000001-a1:w12546:boundary",
+          "decision": "split",
+          "classification": "separated",
+          "evidence": [
+            {
+              "sense_id": "w12546-s1",
+              "evidence_basis": "w12546 w12546-s1 124bb9107cca [C000001-0011]: C000001-0011: 기준이나 근거로 삼아 맞추는 뜻이다.",
+              "rationale": "w12546 w12546-s1 124bb9107cca [C000001-0011]: C000001-0011: 에 따라, 에 따르면 꼴의 쓰임으로 한정된다."
+            },
+            {
+              "sense_id": "w12546-s2",
+              "evidence_basis": "w12546 w12546-s2 ab626bbc0ae2 [C000001-0011]: C000001-0011: 앞선 일의 결과로 생기는 뜻이다.",
+              "rationale": "w12546 w12546-s2 ab626bbc0ae2 [C000001-0011]: C000001-0011: 에 따른 꼴의 결과 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [
+            {
+              "left_sense_id": "w12546-s1",
+              "right_sense_id": "w12546-s2",
+              "relationship": "distinct",
+              "decision": "retain",
+              "evidence_basis": "w12546 w12546-s1 w12546-s2: C000001-0011: 두 뜻은 서로 다른 근거 관찰에서 확인된 쓰임이다.",
+              "distinguishing_feature": "w12546 w12546-s1 w12546-s2: C000001-0011: 하나는 기준에 맞춤을, 다른 하나는 결과로 생김을 나타낸다.",
+              "rationale": "w12546 w12546-s1 w12546-s2 124bb9107cca ab626bbc0ae2 [C000001-0011]: C000001-0011: 서로 다른 쓰임이라 별개의 뜻으로 유지한다."
+            }
+          ],
+          "rationale": "w12546: source-bound Stage 3 admission combines the preserved canonical review with C000001-0011 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12546-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12546 w12546-s1 124bb9107cca [C000001-0011]: C000001-0011: 기준이나 근거로 삼아 맞추는 뜻이다.",
+            "boundary_rationale": "w12546 w12546-s1 124bb9107cca [C000001-0011]: C000001-0011: 에 따라, 에 따르면 꼴의 쓰임으로 한정된다.",
+            "relation_rationale": "w12546 w12546-s1 124bb9107cca [C000001-0011]: C000001-0011 C000001-0011-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12546 w12546-s1 124bb9107cca [C000001-0011]: C000001-0011 C000001-0011-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          },
+          {
+            "sense_id": "w12546-s2",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12546 w12546-s2 ab626bbc0ae2 [C000001-0011]: C000001-0011: 앞선 일의 결과로 생기는 뜻이다.",
+            "boundary_rationale": "w12546 w12546-s2 ab626bbc0ae2 [C000001-0011]: C000001-0011: 에 따른 꼴의 결과 쓰임으로 한정된다.",
+            "relation_rationale": "w12546 w12546-s2 ab626bbc0ae2 [C000001-0011]: C000001-0011 C000001-0011-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12546 w12546-s2 ab626bbc0ae2 [C000001-0011]: C000001-0011 C000001-0011-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
       }
     ],
     "changes": [],
@@ -214911,5 +215181,210 @@
     "path": "data/validation/canonical-semantic-correction-manifest.json",
     "sha256": "6fd45afc91b29f0eefe0ac558db512d36c7e84b67aa0425aac6a2863f62885ee",
     "source_revision": "post-merge review of PR #123 for issue #121"
-  }
+  },
+  "factory_admissions": [
+    {
+      "batch_id": "C000001",
+      "attempt": 1,
+      "semantic_decisions_sha256": "84e36754117172126d17c88eb21bcc3d7a412b6b5fdc826cd2d2035598914a1e",
+      "entries": [
+        {
+          "source_candidate_id": "C000001-0001",
+          "record_id": "w12541",
+          "sense_ids": [
+            "w12541-s1",
+            "w12541-s2"
+          ]
+        },
+        {
+          "source_candidate_id": "C000001-0002",
+          "record_id": "w12542",
+          "sense_ids": [
+            "w12542-s1"
+          ]
+        },
+        {
+          "source_candidate_id": "C000001-0003",
+          "record_id": "w12543",
+          "sense_ids": [
+            "w12543-s1"
+          ]
+        },
+        {
+          "source_candidate_id": "C000001-0004",
+          "record_id": "w12544",
+          "sense_ids": [
+            "w12544-s1",
+            "w12544-s2"
+          ]
+        },
+        {
+          "source_candidate_id": "C000001-0006",
+          "record_id": "w12545",
+          "sense_ids": [
+            "w12545-s1"
+          ]
+        },
+        {
+          "source_candidate_id": "C000001-0009",
+          "record_id": "w2797",
+          "sense_ids": [
+            "w2797-s2"
+          ]
+        },
+        {
+          "source_candidate_id": "C000001-0011",
+          "record_id": "w12546",
+          "sense_ids": [
+            "w12546-s1",
+            "w12546-s2"
+          ]
+        }
+      ],
+      "changes": [
+        {
+          "entry_id": "w12541",
+          "operation": "create",
+          "path": "data/canonical/factory-C000001-a1.jsonl",
+          "source_candidate_ids": [
+            "C000001-0001"
+          ],
+          "added_sense_ids": [
+            "w12541-s1",
+            "w12541-s2"
+          ],
+          "before_sha256": null,
+          "after_sha256": "3e6d9702d687217b534a93c04f049f3ac0b8a9b78e56ae0695523a488cb14575",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "5ed8e838d7624391748de0fe1392c332abcdfc841a0e609c25666422880e26b2"
+        },
+        {
+          "entry_id": "w12542",
+          "operation": "create",
+          "path": "data/canonical/factory-C000001-a1.jsonl",
+          "source_candidate_ids": [
+            "C000001-0002"
+          ],
+          "added_sense_ids": [
+            "w12542-s1"
+          ],
+          "before_sha256": null,
+          "after_sha256": "d8244246283ddc37325b4ad712493dedcbc8bd7e9cd9d2a655d09251e1f58788",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "3f53977d589f01be28f0d49be9cf27311181b43c526d0327067e9adebae13e6b"
+        },
+        {
+          "entry_id": "w12543",
+          "operation": "create",
+          "path": "data/canonical/factory-C000001-a1.jsonl",
+          "source_candidate_ids": [
+            "C000001-0003"
+          ],
+          "added_sense_ids": [
+            "w12543-s1"
+          ],
+          "before_sha256": null,
+          "after_sha256": "c27fc32c5fa64452563ba1d39fdef3f04b8e4b4998e5a7fa93a3fc28733664dc",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "8c9c24283f28327c08d77e811c8e8f0d791fdc1e5a37b965f4955aea2a90c7d6"
+        },
+        {
+          "entry_id": "w12544",
+          "operation": "create",
+          "path": "data/canonical/factory-C000001-a1.jsonl",
+          "source_candidate_ids": [
+            "C000001-0004"
+          ],
+          "added_sense_ids": [
+            "w12544-s1",
+            "w12544-s2"
+          ],
+          "before_sha256": null,
+          "after_sha256": "40ea0627d142b332e7022452ff98811483af939459fc8fa4d0db656fd136ac2d",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "ea01667e5f914b67d4082834dd5903ec5c57d30d5cae2cf53fa58a9d33ed7f53"
+        },
+        {
+          "entry_id": "w12545",
+          "operation": "create",
+          "path": "data/canonical/factory-C000001-a1.jsonl",
+          "source_candidate_ids": [
+            "C000001-0006"
+          ],
+          "added_sense_ids": [
+            "w12545-s1"
+          ],
+          "before_sha256": null,
+          "after_sha256": "84cfbdac454fffa9f7b168f77df1f6be4a7fbdf3be29345acea53499c13d9f05",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "775b9c320ebe2aa4db32e8de884e9fd0850caadb7249aef83257aad212d4e45b"
+        },
+        {
+          "entry_id": "w12546",
+          "operation": "create",
+          "path": "data/canonical/factory-C000001-a1.jsonl",
+          "source_candidate_ids": [
+            "C000001-0011"
+          ],
+          "added_sense_ids": [
+            "w12546-s1",
+            "w12546-s2"
+          ],
+          "before_sha256": null,
+          "after_sha256": "38c89e98b0896e8aabf09088ae649f8deeb090d428ddad2ad1c5faa97c2d8036",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "83f88bd9d66af098a2f23d46ad853245be54d5102615614298d5f15ae007f384"
+        },
+        {
+          "entry_id": "w2797",
+          "operation": "append_senses",
+          "path": "data/canonical/m5-13-expansion.jsonl",
+          "source_candidate_ids": [
+            "C000001-0009"
+          ],
+          "added_sense_ids": [
+            "w2797-s2"
+          ],
+          "before_sha256": "a64bf944809805e9ee6bada68ae50c7377b56285b296345f0c138d18a25be7dd",
+          "after_sha256": "51eb0097f54cffe2a1db59f1bd0f48aaa2efe140c4c81eaac306a46c9659ec5a",
+          "previous_semantic_review_sha256": "33ba99708f132091e87265cd61e2243d873567ef1f86fc08166f440180f4387b",
+          "previous_semantic_review": {
+            "record_id": "w2797",
+            "record_sha256": "a64bf944809805e9ee6bada68ae50c7377b56285b296345f0c138d18a25be7dd",
+            "authored_batch_decision": {
+              "source_id": "m5-13-authored-semantic-decisions-20260923-r6",
+              "source_sha256": "b3e238b8715c46ed813e4faacac442ad66333b206c245c202d72a00c08ad5bf1",
+              "artifact_sha256": "6ee1835952f11ca713a8cebe4648f235e793bc770ab3ca760f40a8921a736f2b",
+              "decision_row_sha256": "da384dd34b15e8672e620d4e35d5a8dd2e6590301379a13ec629d1e027c80ab9",
+              "candidate_record_id": "w2797",
+              "candidate_record_sha256": "a64bf944809805e9ee6bada68ae50c7377b56285b296345f0c138d18a25be7dd",
+              "decision": "included",
+              "selection_rank": 717,
+              "selection_axis": "A",
+              "reviewed_record_sha256": "a64bf944809805e9ee6bada68ae50c7377b56285b296345f0c138d18a25be7dd"
+            }
+          },
+          "previous_record": {
+            "id": "w2797",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w2797",
+            "lemma": "들다",
+            "search_forms": [
+              "들다"
+            ],
+            "senses": [
+              {
+                "id": "w2797-s1",
+                "pos": "verb",
+                "gloss": "손이나 팔로 물건을 들어 올리거나 지니다."
+              }
+            ]
+          },
+          "semantic_review_sha256": "62956ab2736e42b80175ec84824920f039da2bc3c65c521fa16f76d58a2c62bd"
+        }
+      ],
+      "sha256": "e2f79d8d13fe467c9051b30785428df5b85dc2bbd49a905bc16e739d55e15bee"
+    }
+  ]
 }

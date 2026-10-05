@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { applySurfaceFormDispositions, planSurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
 import assert from 'node:assert/strict';
@@ -15,6 +16,7 @@ import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decisi
 
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
+  createStage3GitRepository,
   applyStage3Admission,
   claimNextStage3Batch,
   createStage3Draft,
@@ -367,7 +369,8 @@ test('successful admission removes the starter before commit and ready transitio
     };
     const git = {
       async fetchMaster() {}, resolveRef() { return 'head'; },
-      async commitAndPush({ files }) { assert.equal(files.includes('data/reviews/C000001/attempt-a1.json'), false); events.push('commit-push'); },
+      async commitPrepared({ files }) { assert.equal(files.includes('data/reviews/C000001/attempt-a1.json'), false); events.push('commit-local'); },
+      async pushPrepared() { events.push('push'); },
     };
     await processStage3Attempt({
       github, git, root, claim, runGates: false,
@@ -376,13 +379,13 @@ test('successful admission removes the starter before commit and ready transitio
       validate: async () => { assert.equal(await readFile(marker, 'utf8').then(() => true, () => false), false); events.push('validate'); },
       log: () => {},
     });
-    assert.deepEqual(events, ['validate', 'commit-push', 'ready']);
+    assert.deepEqual(events, ['commit-local', 'validate', 'push', 'ready']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test('restart after admission commit validates the exact pushed tree and marks the Draft ready without reapplying', async () => {
+for (const localHead of ['pr-head', 'local-checkpoint']) test(`restart after admission commit preserves ${localHead} and validates without reapplying`, async () => {
   const events = [];
   const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-restart-complete-'));
   try {
@@ -399,7 +402,9 @@ test('restart after admission commit validates the exact pushed tree and marks t
       async markPullRequestReady() { events.push('ready'); return { number: 82, isDraft: false }; },
     };
     const git = {
-      async fetchMaster() {}, resolveRef(ref) { return ref === 'HEAD' ? 'pr-head' : 'head'; }, branchBaseSha() { return 'head'; },
+      async fetchMaster() {}, resolveRef(ref) { return ref === 'HEAD' ? localHead : 'head'; }, branchBaseSha() { return 'head'; },
+      isAncestor(ancestor, descendant) { return ancestor === 'pr-head' && descendant === 'HEAD'; },
+      async pushPrepared() { events.push('push-local-checkpoint'); },
     };
     const result = await processStage3Attempt({
       github, git, root, claim, runGates: false,
@@ -409,7 +414,7 @@ test('restart after admission commit validates the exact pushed tree and marks t
       log: () => {},
     });
     assert.equal(result.prState, 'admission');
-    assert.deepEqual(events, ['validate', 'ready']);
+    assert.deepEqual(events, localHead === 'pr-head' ? ['validate', 'ready'] : ['validate', 'push-local-checkpoint', 'ready']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -817,4 +822,35 @@ test('applyStage3Admission leaves the worktree untouched when a surface-form jud
     assert.equal(result.prNumber, 76);
     assert.deepEqual(events.slice(0, 4), ['disposition', 'close', 'status-branch:clean', 'status-pr']);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('real Git recovery preserves unpushed admission commits and refuses dirty trees', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'stage3-real-git-recovery-'));
+  const root = path.join(directory, 'work');
+  const remote = path.join(directory, 'remote.git');
+  const run = (args, cwd = root) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  try {
+    await mkdir(root);
+    run(['init', '--bare', remote], directory);
+    run(['init', '-b', 'codex/stage3/C900001-a1']);
+    run(['config', 'user.name', 'Synthetic fixture']);
+    run(['config', 'user.email', 'fixture@example.invalid']);
+    run(['remote', 'add', 'origin', remote]);
+    const file = path.join(root, 'checkpoint');
+    await writeFile(file, 'starter');
+    run(['add', 'checkpoint']); run(['commit', '-m', 'Fixture starter']);
+    run(['push', '-u', 'origin', 'HEAD']);
+    await writeFile(file, 'local admission');
+    const git = createStage3GitRepository({ root });
+    await git.commitPrepared({ message: 'Fixture local admission', files: ['checkpoint'] });
+    const checkpoint = git.resolveRef('HEAD');
+    await git.refreshBranch('codex/stage3/C900001-a1');
+    assert.equal(git.resolveRef('HEAD'), checkpoint);
+    assert.equal(await readFile(file, 'utf8'), 'local admission');
+    await writeFile(file, 'uncommitted work');
+    await assert.rejects(git.refreshBranch('codex/stage3/C900001-a1'), /preserve uncommitted work/);
+    assert.equal(await readFile(file, 'utf8'), 'uncommitted work');
+    assert.equal(git.resolveRef('HEAD'), checkpoint);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

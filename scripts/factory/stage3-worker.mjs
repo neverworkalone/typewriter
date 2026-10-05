@@ -83,15 +83,31 @@ export function createStage3GitRepository({ root = process.cwd() } = {}) {
       gitRun(root, ['push', 'origin', 'HEAD:refs/heads/' + branchName]);
       return gitRun(root, ['rev-parse', 'HEAD']);
     },
+    async commitPrepared({ message, files }) {
+      gitRun(root, ['add', '--', ...files]);
+      gitRun(root, ['commit', '-m', message]);
+      return gitRun(root, ['rev-parse', 'HEAD']);
+    },
+    async pushPrepared(branchName) {
+      gitRun(root, ['push', 'origin', 'HEAD:refs/heads/' + branchName]);
+    },
+    isAncestor(ancestor, descendant) {
+      return gitRun(root, ['merge-base', '--is-ancestor', ancestor, descendant], { allowFailure: true }) !== null;
+    },
     rebaseOnMaster() {
       gitRun(root, ['fetch', 'origin', 'master:refs/remotes/origin/master']);
       gitRun(root, ['rebase', 'origin/master']);
     },
     async refreshBranch(branchName) {
+      if (gitRun(root, ['status', '--porcelain', '--untracked-files=all'])) {
+        throw new Error('Stage 3 recovery requires a clean worktree; preserve uncommitted work');
+      }
       gitRun(root, ['fetch', 'origin', branchName + ':refs/remotes/origin/' + branchName]);
       const current = gitRun(root, ['branch', '--show-current']);
       if (current !== branchName) gitRun(root, ['switch', branchName]);
-      gitRun(root, ['reset', '--hard', 'refs/remotes/origin/' + branchName]);
+      const remoteRef = 'refs/remotes/origin/' + branchName;
+      if (this.isAncestor(remoteRef, 'HEAD')) return; // Keep a local, not-yet-pushed admission checkpoint.
+      gitRun(root, ['merge', '--ff-only', remoteRef]);
     },
     async restoreMaster() {
       const current = gitRun(root, ['branch', '--show-current']);
@@ -421,21 +437,26 @@ export async function processStage3Attempt({
           ...claim, claimCreated: true, prNumber: claim.prNumber,
         });
       }
-      if (draftPr.head?.sha && git.resolveRef('HEAD') !== draftPr.head.sha) {
+      const localCheckpoint = draftPr.head?.sha && git.resolveRef('HEAD') !== draftPr.head.sha;
+      if (localCheckpoint && !git.isAncestor?.(draftPr.head.sha, 'HEAD')) {
         throw new Stage3WorkerError('local recovery branch does not match the exact open Draft PR head', {
           ...claim, claimCreated: true, prNumber: claim.prNumber,
         });
       }
       prepared = { plan: null, recoveredCompleteAdmission: true };
       await validate({ root, git, claim, prepared, runGates });
+      if (localCheckpoint) await git.pushPrepared(claim.branchName);
       const pullRequest = await github.markPullRequestReady(claim.prNumber);
       log(`Recovered the completed Stage 3 admission on PR #${claim.prNumber} for ${claim.batchId}.`);
       return { ...claim, prNumber: claim.prNumber, prState: 'admission', pullRequest, prepared };
     }
     prepared = await prepare({ root, git, claim, admissionPr: claim.prNumber });
     const applied = await apply({ root, git, claim, prepared });
+    // Pin the prospective revision locally so the strict builder sees a clean, reproducible tree.
+    // Failed gates preserve this local checkpoint and the remote metadata-only Draft.
+    await git.commitPrepared({ message: `[Stage 3] Admit ${claim.batchId} attempt ${claim.attempt}`, files: applied.files });
     await validate({ root, git, claim, prepared: applied, runGates });
-    await git.commitAndPush({ branchName: claim.branchName, message: `[Stage 3] Admit ${claim.batchId} attempt ${claim.attempt}`, files: applied.files });
+    await git.pushPrepared(claim.branchName);
     const pullRequest = await github.markPullRequestReady(claim.prNumber);
     log(`Stage 3 admission PR #${claim.prNumber} for ${claim.batchId} is ready for review.`);
     return { ...claim, prNumber: claim.prNumber, prState: 'admission', pullRequest, prepared: applied };

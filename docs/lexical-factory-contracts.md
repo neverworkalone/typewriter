@@ -167,3 +167,9 @@ batch binding to the current record and rejects rewriting the original payload.
 Factory-created records enter the target inventory through the digest-bound creation
 event (`admitted_from: C…-aN`); they carry no invented M5 selection-axis reason codes.
 Identity, POS, sense/gloss, source and canonical admission gates remain mandatory.
+
+Stage 3 commits the prospective admission locally before complete CI, preserving
+the strict clean-tree/revision requirement of the SQLite builder. It pushes and
+marks the Draft ready only after the gates pass. Recovery preserves an owned
+local checkpoint ahead of the remote Draft; dirty or divergent worktrees fail
+closed without resetting or discarding work.
