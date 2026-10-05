@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { applySurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
+
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
   claimNextStage3Batch,
@@ -562,4 +564,36 @@ test('rejection status keeps the global lock until its real status PR is merged'
     loadSnapshot: async () => ({ reviews: [{ batchId: 'C000001', manifest: { status: 'rejected', attempt: 1, rejected_pr: 75 } }] }),
   }), true);
   assert.deepEqual(released, ['claim', 'global']);
+});
+
+async function surfaceFormRoot(records) {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'surface-form-dispositions-'));
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  await mkdir(path.join(root, 'data/validation'), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/x.jsonl'), records.map((row) => JSON.stringify(row)).join('\n') + '\n');
+  await writeFile(path.join(root, 'data/validation/m6-2-inflection-exceptions.json'), JSON.stringify({ schema_version: 1, contract_id: 'm6-2-inflection-exceptions-v1', source_issue: 174, exceptions: [] }, null, 2) + '\n');
+  await writeFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), JSON.stringify({
+    schema_version: 1, contract_id: 'm6-3-searchable-predicate-review-v2', source_issue: 209, dispositions: [], reviewed_collisions: { exact_generated: [], ambiguous_generated: [] },
+  }, null, 2) + '\n');
+  return root;
+}
+const predicate = (id, lemma, pos = 'verb') => ({ id, record_type: 'entry', role: 'start', candidate_id: id, lemma, search_forms: [lemma], senses: [{ id: id + '-s1', pos, gloss: '뜻풀이.' }] });
+
+test('Stage 3 adds the rule-dictated sense-bound surface-form disposition for new predicate senses, idempotently', async () => {
+  const root = await surfaceFormRoot([predicate('w1', '그러다'), predicate('w2', '걸음', 'noun')]);
+  try {
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), ['data/validation/m6-3-surface-form-review.json']);
+    const review = JSON.parse(await readFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), 'utf8'));
+    assert.deepEqual(review.dispositions.map(({ class_id, record_id, sense_id }) => ({ class_id, record_id, sense_id })), [
+      { class_id: 'm6-3-open-vowel-past-excluded', record_id: 'w1', sense_id: 'w1-s1' },
+    ]);
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), []);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('a surface-form gap that needs a reviewer judgment fails as a lexical blocker instead of being guessed', async () => {
+  const root = await surfaceFormRoot([predicate('w1', '좋다', 'adjective')]);
+  try {
+    await assert.rejects(applySurfaceFormDispositions({ root }), (error) => error.category === 'lexical' && error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');
+  } finally { await rm(root, { recursive: true, force: true }); }
 });

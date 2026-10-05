@@ -6,6 +6,7 @@ import path from 'node:path';
 import { canonicalSnapshotDigest } from './stage1.mjs';
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from './admission.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
+import { applySurfaceFormDispositions } from './surface-form-dispositions.mjs';
 import { loadFactorySnapshot } from './stage2-worker.mjs';
 import { validateFactoryRepository, loadBaseManifests } from './validate.mjs';
 
@@ -303,13 +304,14 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
     semanticDecisions: prepared.semanticDecisions, semanticDecisionsText: prepared.semanticDecisionsText,
   });
   await applyStage3FileChanges(plan, { root, reviewManifestPath });
+  const surfaceFormFiles = await applySurfaceFormDispositions({ root });
   await writeFile(path.join(root, semanticAuthority.sourcePath), semanticAuthority.sourceText, 'utf8');
   const digest = await canonicalSnapshotDigest(root);
   plan.reviewManifest.admission.canonical_snapshot_digest = digest;
   await writeFile(reviewManifestPath, JSON.stringify(plan.reviewManifest, null, 2) + '\n', 'utf8');
   const marker = path.join(root, MARKER_NAME(claim.batchId, claim.attempt));
   await rm(marker, { force: true });
-  return { ...prepared, semanticAuthority, plan, files: [...new Set([...plan.changes.map((change) => change.path), semanticAuthority.sourcePath, `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
+  return { ...prepared, semanticAuthority, plan, files: [...new Set([...plan.changes.map((change) => change.path), semanticAuthority.sourcePath, ...surfaceFormFiles, `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
 }
 
 export function runStage3PreflightCi(root, run = execFileSync) {
