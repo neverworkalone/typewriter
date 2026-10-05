@@ -6,10 +6,10 @@ Read this root `REVIEW.md` from the **current PR HEAD** before reviewing. Do not
 
 **Stage 1 AI and CI are two independent, parallel first-level reviewers.** Neither waits for the other. Stage 2 independently reviews the implementation and judges both first-level results; Stage 3 handles the final gate and merge, not another deep code review.
 
-Before selecting the stage, identify the active issue/owner decisions, PR HEAD/base, complete changed filenames, and existing review result markers/SHAs. **Stage 1 must not inspect CI status or logs.** Stage 1 follow-ups additionally inspect every still-relevant earlier blocker from **either Stage 1 or Stage 2**. Stage 2 may check the same-HEAD `+1` marker but must form its independent technical assessment before reading Stage 1's reasoning.
+Before selecting the stage, identify the active issue/owner decisions, PR HEAD/base, complete changed filenames, and existing review result markers/SHAs. **Stage 1 must not inspect CI status or logs.** Stage 1 follow-ups additionally inspect every still-relevant earlier blocker from **either Stage 1 or Stage 2**. Stage 2 may check the same-HEAD `+1` marker but must form its independent technical assessment before reading Stage 1's reasoning. A Stage 1 PASS is judged by its unambiguous review intent, exact-HEAD binding and substantive evidence; a formatting defect in the `+1` prefix alone does not invalidate it.
 
 - **Stage 1:** no valid same-HEAD `+1` → Section 2. Pass `+1` when the focused code/fix review has no outstanding confirmed blocker, **regardless of CI status**. Never merge.
-- **Stage 2:** valid same-HEAD `+1`, no valid `+2` → Section 3. Pass `+2` only after comprehensive independent review **and** verification of Stage 1 and exact-HEAD CI gates. Never merge.
+- **Stage 2:** valid same-HEAD Stage 1 PASS, no valid `+2` → Section 3. Pass `+2` only after comprehensive independent review **and** verification of Stage 1 and exact-HEAD CI gates. A malformed Stage 1 `+1` prefix is still acceptable when the review unambiguously records PASS/`+1`, binds itself to the exact current 40-character HEAD SHA somewhere in the same review, and contains the required Stage 1 evidence. Never merge.
 - **Stage 3:** sequential independent, evidence-bearing same-HEAD `+1` and `+2` plus required CI gate → Section 7. No `+3`.
 
 A new commit invalidates both gate markers, **not previously verified reasoning**; Stage 1 then Stage 2 must review the new HEAD. Bare markers or reviews without evidence are invalid. A shared GitHub account is permitted only for separate review runs/contexts. Never submit `+1` and `+2` together or require GitHub APPROVE.
@@ -30,7 +30,7 @@ A new commit invalidates both gate markers, **not previously verified reasoning*
 
 Stage 2 is the **most demanding reviewer**, incorporating the substantive work previously assigned to Stage 3. It independently evaluates the full implementation, challenges Stage 1, evaluates CI as a second independent first-level reviewer and owns the final technical confidence needed before merging.
 
-1. Verify a valid `+1` for this exact HEAD, **without first reading Stage 1 conclusions**. In a separate context independently review the problem, approach, complete material change surface, shared contracts, canonical/provenance boundaries, potential regressions, failure behavior and testing adequacy. A clean Stage 1 must not narrow this assessment.
+1. Verify a valid Stage 1 PASS for this exact HEAD, **without first reading Stage 1 conclusions**. The preferred form is the exact `+1`/`HEAD:` prefix from Section 6, but formatting defects alone do not invalidate an otherwise unambiguous, evidence-bearing Stage 1 PASS bound to the exact current 40-character HEAD SHA. In a separate context independently review the problem, approach, complete material change surface, shared contracts, canonical/provenance boundaries, potential regressions, failure behavior and testing adequacy. A clean Stage 1 must not narrow this assessment.
 2. Revisit earlier Stage 1 and Stage 2 blockers and their fixes. **Verify that Stage 1 checked every outstanding blocker, including all previous Stage 2 `-1` findings.** After forming the independent assessment, read Stage 1's evidence; challenge missed risks, insufficient fixes and unwarranted confidence.
 3. Evaluate the **independent CI result**: non-documentation or mixed PRs require a successful exact-HEAD `ci:normal`; documentation-only PRs need the successful documented skip gate plus verification of the complete path list. Inspect test coverage and claims, not only the green indicator. A failing, pending, missing or stale required gate blocks `+2`. Only Stage 2 waits for CI if still running.
 4. Perform **at least one targeted adversarial probe** of an important assumption (requirement → producer → shared validator/consumer → known-invalid regression). Verify valid/invalid paths, regression registration, future-data applicability, canonical fidelity, and deep/manual evidence when mandated. This adversarial check **moves from Stage 3 to Stage 2**. Do not claim that unrun native/corpus/manual tests passed.
@@ -71,9 +71,11 @@ CI must remain nested: `ci:fast` (early), `ci:normal` (full merge), `ci:all` (de
 
 ## 6. Review record — Stages 1 and 2
 
-### Mandatory review format — strict machine-readable prefix
+### Required review format — machine-readable prefix
 
-The first two lines of each **submitted GitHub PR Review COMMENT** are a protocol, not a descriptive label. **Only the following exact two-line shapes are valid.** Replace the placeholder with the actual complete 40-character PR HEAD SHA. The code fences below illustrate the format; **do not submit the fences**.
+Reviewers should submit the first two lines of each **GitHub PR Review COMMENT** in the exact protocol shapes below. Replace the placeholder with the actual complete 40-character PR HEAD SHA. The code fences illustrate the format; **do not submit the fences**.
+
+**Stage 1 PASS compatibility rule:** Stage 2 and Stage 3 must not reject an otherwise valid Stage 1 PASS solely because this prefix is malformed. Accept it when the same review (1) unambiguously records Stage 1 PASS or `+1`, (2) identifies the exact current 40-character HEAD SHA somewhere in the body, and (3) contains substantive Stage 1 review evidence. Formatting alone is not a blocker and does not require Stage 1 to resubmit. This compatibility rule applies only to Stage 1 PASS consumption; reviewers should still emit the canonical prefix, and ambiguous/stale/unsupported reviews remain invalid.
 
 Stage 1 PASS:
 ```text
@@ -96,9 +98,9 @@ HEAD: <40-character HEAD SHA>
 **Meanings (documentation only, NEVER part of the first line):** Stage 1 PASS means a fast AI code/fix review passed independently of CI; Stage 2 PASS means a comprehensive independent code review and Stage 1/CI evidence passed; BLOCKER means a failed review.
 
 Rules:
-- **The entire first line must be exactly `+1`, `+2`, or `-1` and nothing else.** Never append a colon, `PASS`, `FAIL`, `First review passed`, `Second review passed`, `Blocker found`, or any explanation. For example, `-1 : FAIL (blocker found)` is INVALID.
-- **The entire second line must be `HEAD: ` followed immediately by the full 40-character lowercase hexadecimal SHA.** Never use a short SHA, a Markdown link or extra explanation in the original review body. GitHub may render an unformatted full SHA as a shortened hyperlink in its UI; this display transformation is not an error.
-- No leading Markdown bullet, title, fenced code block, whitespace, or empty line before the marker. No blank line between first and second lines.
+- **Submission rule:** the entire first line should be exactly `+1`, `+2`, or `-1` and nothing else. Never append a colon, `PASS`, `FAIL`, `First review passed`, `Second review passed`, `Blocker found`, or any explanation. For example, `-1 : FAIL (blocker found)` is malformed.
+- **Submission rule:** the entire second line should be `HEAD: ` followed immediately by the full 40-character lowercase hexadecimal SHA. Never use a short SHA, a Markdown link or extra explanation in the original review body. GitHub may render an unformatted full SHA as a shortened hyperlink in its UI; this display transformation is not an error.
+- Do not put a leading Markdown bullet, title, fenced code block, whitespace, or empty line before the marker, and do not put a blank line between first and second lines. For Stage 1 PASS only, violating these formatting rules does not by itself invalidate the gate when the compatibility rule above is satisfied.
 - Put all human-language descriptions, evidence, CI results, blockers and conclusions **after** the second line. A blank line after the HEAD is allowed.
 - Submit exactly one final review result per run.
 
@@ -120,7 +122,7 @@ Both stages: give review stage, issue/acceptance scope, checked approach and bou
 ### Result rules
 
 - Stage 1 may issue `+1` as soon as its focused code review and all required earlier blocker-fix checks pass, **whatever CI status is**.
-- Stage 2 may issue `+2` only after independent technical PASS, satisfactory Stage 1 evidence and successful required exact-HEAD CI/skip gate.
+- Stage 2 may issue `+2` only after independent technical PASS, satisfactory Stage 1 evidence and successful required exact-HEAD CI/skip gate. Do not issue `-1` or demand a Stage 1 resubmission merely because an otherwise valid same-HEAD Stage 1 PASS has a malformed prefix.
 - Either stage issues `-1` for a confirmed blocker. A Stage 2 blocker must be checked by Stage 1 on the next HEAD.
 - A Stage 1 PASS must never conceal a known unresolved code/blocker-fix issue; a CI failure alone does not invalidate the independent Stage 1 judgment on that HEAD.
 - Only Stage 2 waits for pending required CI. A failed or missing required CI is a Stage 2 blocker, not a reason for Stage 1 to delay.
@@ -131,6 +133,6 @@ Both stages: give review stage, issue/acceptance scope, checked approach and bou
 
 Stage 3 is the **merge operator**, not another deep code reviewer. Stage 2 already owns comprehensive review, scrutiny of Stage 1/CI and the adversarial probe. Do not repeat this work.
 
-Verify the active PR/issue and exact current HEAD, sequential independent evidence-bearing **`+1` and `+2`** tied to that HEAD, and no later unresolved `-1` or visibly invalid gate. Check the required CI result remains successful for this HEAD: full `ci:normal` for any non-documentation/mixed PR, or successful authorized skip for an entirely documentation-only PR. Never treat a skipped normal run as executed or passed tests. No post-merge `master` CI run is required.
+Verify the active PR/issue and exact current HEAD, sequential independent evidence-bearing Stage 1 PASS and **`+2`** tied to that HEAD, and no later unresolved `-1` or visibly invalid gate. The Stage 1 PASS may use the Section 6 compatibility rule; prefix formatting alone is not a Stage 3 blocker. Check the required CI result remains successful for this HEAD: full `ci:normal` for any non-documentation/mixed PR, or successful authorized skip for an entirely documentation-only PR. Never treat a skipped normal run as executed or passed tests. No post-merge `master` CI run is required.
 
 If a gate is missing, pending, stale, contradictory or failed, **do not merge**; identify the gate to be resolved by the earlier responsible stage. Otherwise **squash-merge this exact PR using the expected HEAD SHA**. No fresh technical review, adversarial probe, `+3` or GitHub `APPROVE`.
