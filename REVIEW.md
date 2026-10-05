@@ -4,29 +4,37 @@ Read this root `REVIEW.md` from the **current PR HEAD** before reviewing. Do not
 
 ## 1. Select the gate before code inspection
 
-Read: active issue and relevant parent owner decisions; PR HEAD/base; complete **changed filenames**; exact-HEAD CI status; prior reviews' **markers and SHAs** (not their reasoning for Stage 2).
+**Stage 1 AI and CI are two independent, parallel first-level reviewers.** Neither waits for the other. Stage 2 independently reviews the implementation and judges both first-level results; Stage 3 handles the final gate and merge, not another deep code review.
 
-- **Stage 1:** no valid same-HEAD `+1` → follow Section 2; submit `+1` only if clean. **Never merge.**
-- **Stage 2:** valid same-HEAD `+1`, no valid `+2` → independent review under Section 3; submit `+2` only if clean. **Never merge.**
-- **Stage 3:** sequential, independent, structured same-HEAD `+1` and `+2` → Section 7; merge only if clean. No `+3`.
+Before selecting the stage, identify the active issue/owner decisions, PR HEAD/base, complete changed filenames, and existing review result markers/SHAs. **Stage 1 must not inspect CI status or logs.** Stage 1 follow-ups additionally inspect every still-relevant earlier blocker from **either Stage 1 or Stage 2**. Stage 2 may check the same-HEAD `+1` marker but must form its independent technical assessment before reading Stage 1's reasoning.
 
-A new commit invalidates both gate markers, **not previously verified analysis**. Each stage must submit a new review on the changed HEAD. Bare markers or reviews without evidence are invalid. A shared GitHub account is acceptable only for **separate review runs/contexts**. Never submit `+1` and `+2` together or require GitHub `APPROVE`.
+- **Stage 1:** no valid same-HEAD `+1` → Section 2. Pass `+1` when the focused code/fix review has no outstanding confirmed blocker, **regardless of CI status**. Never merge.
+- **Stage 2:** valid same-HEAD `+1`, no valid `+2` → Section 3. Pass `+2` only after comprehensive independent review **and** verification of Stage 1 and exact-HEAD CI gates. Never merge.
+- **Stage 3:** sequential independent, evidence-bearing same-HEAD `+1` and `+2` plus required CI gate → Section 7. No `+3`.
 
-## 2. Stage 1 — focused evidence sequence
+A new commit invalidates both gate markers, **not previously verified reasoning**; Stage 1 then Stage 2 must review the new HEAD. Bare markers or reviews without evidence are invalid. A shared GitHub account is permitted only for separate review runs/contexts. Never submit `+1` and `+2` together or require GitHub APPROVE.
 
-**Target 3–5 minutes for routine reviews, not a deadline.** Never trade away a required check, ignore an unresolved risk, or award `+1` to meet the target.
+## 2. Stage 1 — fast code review and all-prior-blocker verification
 
-1. **Route once:** determine **initial** vs **follow-up** from the prior Stage 1 reviewed SHA/outcome. Initial = independently assess the full relevant changed surface. Follow-up = compare `previous-reviewed-SHA..HEAD`; inspect previous blockers, fixes, regressions, newly changed paths and their affected invariants. Expand only for a new approach, dependency or unexamined risk; **do not restart a full review merely because HEAD changed**.
-2. **Map risk:** classify changed filenames once. Identify the material **producer → enforcer/validator → test → consumer/output** paths; check whether the approach solves the issue. Account for all changed categories, **not every generated line**.
-3. **Inspect narrowly:** fetch file-scoped patches and bounded neighboring lines. Read only applicable guides in Section 4. For large lexical/data diffs inspect risk-directed examples (ambiguous senses, POS, holds) and shared admission gates; rely on deterministic validators for mechanical coverage.
-4. **Prove or reject:** trace a likely invalid input through the shared enforcement path. For a changed validator confirm **valid-input success + known-invalid failure** and test registration. Confirm required exact-HEAD checks; do not rerun checks that already prove the relevant property.
-5. **Decide and stop:** once approach, affected risks, checks and blockers are resolved, submit the review immediately. For a confirmed systemic blocker, report the common cause, fix and regression rather than hunting equivalent cases. If essential evidence is missing, say what is missing and **withhold `+1`**.
+**Aim for 1–3 minutes on routine PRs, not a deadline. Do not spend ten minutes duplicating Stage 2.** Speed does not justify overlooking a known blocker or claiming an unverified fix.
 
-**Avoid:** unscoped `gh pr diff <number>`, repeated base-to-head diffs, whole-file dumps, complete CI success logs, repeated generated-artifact scans, unrelated docs/history, duplicate code reads, or exploratory memory lookups. Expand only to resolve a **specific** uncertainty. If a local base commit is missing, use GitHub's comparison/file patch API instead of retrying impossible local diffs.
+1. **Route once:** initial review = promptly inspect the issue/approach, changed risk surface and obvious structural or potential defects. Follow-up = collect **all still-relevant prior Stage 1 AND Stage 2 blockers**; compare changed HEAD with earlier reviewed commit(s), then check **each blocker** against its root cause, fix, impacted invariants and appropriate shared regression. A Stage 2 `-1` must be verified by Stage 1 on the next HEAD **before any new `+1`**.
+2. **Map risk:** identify the material **producer → enforcer/validator → test → consumer/output** boundaries, the most likely failure modes, and any new risk caused by a fix; do not redo an exhaustive whole-PR assessment after every push.
+3. **Inspect narrowly:** use file-scoped patches, bounded context, applicable Section 4 guidance, and representative risky lexical/data cases. Confirm that previous blockers were fixed generally rather than by patching only an example.
+4. **Quick code/test evidence:** inspect applicable good/bad regression cases and shared test registration; trace a likely invalid input when it materially resolves doubt. **Do not retrieve, inspect or wait for CI status/logs** and do not require `ci:normal` for `+1`. CI runs independently in parallel and is evaluated by Stage 2.
+5. **Respond immediately:** confirmed new blocker or any unfixed prior Stage 1/2 blocker → `-1`, with impact, correction and regression requirement; otherwise `+1` and briefly flag plausible but unconfirmed risks for Stage 2. `+1` means only **Stage 1's AI code/fix review** passed; it makes no assertion about CI or overall readiness.
 
-## 3. Stage 2 — independent full review
+**Avoid:** unscoped whole-PR diffs, repeated complete reviews after small fixes, unrelated docs/history, whole-file dumps, CI logs, recurring scans and repeated equivalent failures. Expand only to address concrete uncertainty or an outstanding blocker.
 
-Verify the same-HEAD `+1` marker **without reading Stage 1 conclusions first**. In a separate context, independently assess the issue, approach, changed risk surface, shared contracts, regressions and exact-HEAD checks using Sections 4–5. A clean Stage 1 **does not narrow** this assessment. On a Stage 2 follow-up, revisit that stage's prior blocker/fix delta and impacted invariants; do not assume fixes pass. Only after forming your own assessment may you inspect Stage 1 findings for unresolved disagreements. Stage 2 never merges.
+## 3. Stage 2 — independent comprehensive quality owner
+
+Stage 2 is the **most demanding reviewer**, incorporating the substantive work previously assigned to Stage 3. It independently evaluates the full implementation, challenges Stage 1, evaluates CI as a second independent first-level reviewer and owns the final technical confidence needed before merging.
+
+1. Verify a valid `+1` for this exact HEAD, **without first reading Stage 1 conclusions**. In a separate context independently review the problem, approach, complete material change surface, shared contracts, canonical/provenance boundaries, potential regressions, failure behavior and testing adequacy. A clean Stage 1 must not narrow this assessment.
+2. Revisit earlier Stage 1 and Stage 2 blockers and their fixes. **Verify that Stage 1 checked every outstanding blocker, including all previous Stage 2 `-1` findings.** After forming the independent assessment, read Stage 1's evidence; challenge missed risks, insufficient fixes and unwarranted confidence.
+3. Evaluate the **independent CI result**: non-documentation or mixed PRs require a successful exact-HEAD `ci:normal`; documentation-only PRs need the successful documented skip gate plus verification of the complete path list. Inspect test coverage and claims, not only the green indicator. A failing, pending, missing or stale required gate blocks `+2`. Only Stage 2 waits for CI if still running.
+4. Perform **at least one targeted adversarial probe** of an important assumption (requirement → producer → shared validator/consumer → known-invalid regression). Verify valid/invalid paths, regression registration, future-data applicability, canonical fidelity, and deep/manual evidence when mandated. This adversarial check **moves from Stage 3 to Stage 2**. Do not claim that unrun native/corpus/manual tests passed.
+5. Submit `+2` **only** if independent technical review, previous blocker fixes, Stage 1's review quality, CI adequacy and adversarial probe are satisfactory. Otherwise submit `-1`, identify the systemic cause, safer fix and generic verification. After a Stage 2 `-1`, the committer fixes it and **Stage 1 must verify that fix on the new HEAD before Stage 2 independently follows up**. Stage 2 never merges.
 
 ## 4. Risk routing (load only relevant guides)
 
@@ -40,7 +48,9 @@ For large data batches trace **candidate → source-bound semantic QA → admiss
 
 ## 5. Validation and blockers
 
-A **passing exact-HEAD check proves only its tested properties**; do not claim unrun manual/local checks. Read passed logs only if workflow, validator, fixture or expected behavior changed, or observed code contradicts claimed coverage.
+**Stage 1 AI and CI operate independently in parallel. Stage 1 must not check or wait for CI; it may submit `+1` even if CI is pending or failing. Only Stage 2 checks CI and Stage 1's quality before issuing `+2`. Stage 3 checks final gate validity, not technical depth.**
+
+A **passing exact-HEAD CI check proves only its tested properties**; Stage 2 must not claim unrun manual/local checks. Stage 2 reads passed logs only if the workflow, validator, fixture or expected behavior changed, or observed code contradicts claimed coverage.
 
 For systemic defects demand **minimal failing fixture → shared producer/validator/admission/search fix → old-fails/new-passes regression → enforcement on existing applicable records and future additions**. A recurring data-only patch, invalid self-issued editorial approval, unresolved shared defect or missing required validation is a **BLOCKER**.
 
@@ -52,8 +62,9 @@ When canonical or CI architecture changes, verify: one shared complete-revision 
 - When **every** changed path is under `docs/**` or is exactly `README.md` or `REVIEW.md`, the PR is documentation-only and may skip `ci:normal`.
 - Any other path, any mixture of documentation and non-documentation changes, or an empty/unclassifiable change set requires the full `ci:normal`. Check renamed files on both sides; never classify a moved source file as documentation-only.
 - The workflow must still complete the usual `Validate and test Typewriter` check successfully for a documentation-only skip, and report explicitly that `ci:normal` was **skipped**, not run.
-- Reviewers independently confirm the complete changed-file list matches the skip decision. For a non-documentation PR, require a successful `ci:normal` for the reviewed HEAD; a skip is not valid evidence.
+- **Stage 2** independently confirms the full changed-file list matches the skip decision and requires successful exact-HEAD `ci:normal` for any non-documentation PR. A skip is not valid evidence for those PRs. **Stage 1 does not inspect this result; Stage 3 checks its validity only.**
 - All existing fast/normal/deep gates, coverage and one-build invariants remain unchanged **when the normal test actually runs**. A documentation-only skip does not claim those tests or the SQLite build occurred.
+
 CI must remain nested: `ci:fast` (early), `ci:normal` (full merge), `ci:all` (deep). A single normal run may include the fast checkpoint without a second full-canonical run; independent two-build reproducibility belongs in deep/manual. If a Deep CI or deep regression changes, require successful **`Deep CI Gate` on this exact HEAD** (`ci:all`); otherwise its passing skip gate is sufficient.
 
 **One-build invariant (BLOCKER if broken):** every successful `ci:normal` builds SQLite for the exact current canonical revision **exactly once** across parent, subprocesses and nested validators (`parent_current_revision_sqlite_build_count=1`, `child_current_revision_sqlite_build_count=0`, `current_revision_sqlite_build_count=1`), enforced by `scripts/ci/run-category.mjs` at the fast checkpoint, normal-phase completion and final exit, regardless of changed files. Block any PR that adds a second exact-current-revision build in normal, weakens/bypasses/falsifies the guard or its fail-closed ledger (omitted hook, malformed/missing ledger, trusting a caller-supplied revision label), or adds a batch-specific full-canonical replay instead of reusing the shared context/artifact (`scripts/ci/current-revision-database.mjs`). Fixture/other-revision builds are counted separately; independent two-build proofs are allowed only in the deep phase (`independentCurrentRevisionBuilds`).
@@ -65,8 +76,8 @@ CI must remain nested: `ci:fast` (early), `ci:normal` (full merge), `ci:all` (de
 Every GitHub PR review MUST begin with exactly two lines:
 
 Line 1: Review result
-- +1 : Stage 1 PASS
-- +2 : Stage 2 PASS
+- +1 : Stage 1 PASS (code/fix review only, independent of CI)
+- +2 : Stage 2 PASS (full independent review, Stage 1 and CI verified)
 - -1 : FAIL (blocker found)
 
 Line 2: Reviewed commit
@@ -84,44 +95,33 @@ Rules:
 
 ### Review submission
 
-- Submit the final result as a GitHub pull request
-  review using COMMENT (`gh pr review --comment`).
+- Submit the final result as a GitHub pull request review using COMMENT (`gh pr review --comment`).
 - Never use `gh pr comment` for the final review.
 - Never submit APPROVE or REQUEST_CHANGES.
 - Verify the PR HEAD before submission.
-- If HEAD changed during review, do not issue a PASS
-  for the unreviewed commit.
+- If HEAD changed during review, do not issue a PASS for the unreviewed commit.
 
 ### Required review evidence
 
-After the mandatory two-line header, document:
+Both stages: give review stage, issue/acceptance scope, checked approach and boundaries, confirmed blockers and evidence or explicitly none, for blockers their cause/impact/safer fix/required regression, unrun checks/uncertainty and a conclusion bound to this SHA.
 
-- Review stage and issue/acceptance scope.
-- Checked approach, implementation, and material boundaries.
-- Blockers and supporting evidence, or explicitly none.
-- For each blocker: cause, impact, safer correction,
-  and required regression validation.
-- Exact-HEAD tests and CI results.
-- Checks not performed and remaining uncertainties.
-- A clear conclusion for the reviewed HEAD.
+- **Stage 1:** briefly record inspected risks, and on follow-up account for every still-relevant earlier **Stage 1/Stage 2 blocker** and its fix. Flag potential issues for Stage 2. **Do not inspect, wait for or claim CI evidence.**
+- **Stage 2:** record independent full technical assessment, critique of Stage 1 (including its verification of earlier Stage 2 findings), required exact-HEAD CI success or justified docs-only skip, targeted adversarial probe, regression adequacy and relevant unrun native/manual checks.
 
 ### Result rules
 
-- Stage 1 submits +1 only when its review passes.
-- Stage 2 submits +2 only when its independent review passes.
-- Either stage submits -1 when a blocker is confirmed.
-- Never issue a passing marker while blockers remain.
-- If required checks are still running, wait for their results
-  before submitting the final review.
-- If required validation remains missing or cannot be
-  established, withhold PASS and report the missing
-  evidence as a blocker.
-- A new commit invalidates previous passing markers.
-  Review the updated HEAD before issuing a new result.
+- Stage 1 may issue `+1` as soon as its focused code review and all required earlier blocker-fix checks pass, **whatever CI status is**.
+- Stage 2 may issue `+2` only after independent technical PASS, satisfactory Stage 1 evidence and successful required exact-HEAD CI/skip gate.
+- Either stage issues `-1` for a confirmed blocker. A Stage 2 blocker must be checked by Stage 1 on the next HEAD.
+- A Stage 1 PASS must never conceal a known unresolved code/blocker-fix issue; a CI failure alone does not invalidate the independent Stage 1 judgment on that HEAD.
+- Only Stage 2 waits for pending required CI. A failed or missing required CI is a Stage 2 blocker, not a reason for Stage 1 to delay.
+- A new commit invalidates both passing markers. The new HEAD goes through Stage 1 then Stage 2 again.
 - A failed review never authorizes merging.
-  
-## 7. Stage 3 — reviews of reviews and merge
 
-Check the active issue, changed-file names, same-HEAD sequential **independent, evidence-bearing** `+1`/`+2` reviews, blocker/fix history and exact-HEAD validation. For the reviewed HEAD, accept a successful documentation-only skip gate only after verifying **every** changed path is eligible; otherwise require a successful full `ci:normal`. Do not treat a skipped normal run as passed tests. No post-merge `master` CI run is required. Confirm both reviews covered the real approach and systemic risk, not just markers. Perform **one targeted adversarial probe** of a material unverified assumption (e.g. requirement → evidence → enforcement → known-invalid regression); do **not** perform a third full review.
+## 7. Stage 3 — lightweight final gate and merge
 
-If any gate is stale, incomplete or disproved: comment with the blocker, **do not merge**. Otherwise **squash-merge that exact PR using the expected HEAD SHA**. No `+3`, no `APPROVE`.
+Stage 3 is the **merge operator**, not another deep code reviewer. Stage 2 already owns comprehensive review, scrutiny of Stage 1/CI and the adversarial probe. Do not repeat this work.
+
+Verify the active PR/issue and exact current HEAD, sequential independent evidence-bearing **`+1` and `+2`** tied to that HEAD, and no later unresolved `-1` or visibly invalid gate. Check the required CI result remains successful for this HEAD: full `ci:normal` for any non-documentation/mixed PR, or successful authorized skip for an entirely documentation-only PR. Never treat a skipped normal run as executed or passed tests. No post-merge `master` CI run is required.
+
+If a gate is missing, pending, stale, contradictory or failed, **do not merge**; identify the gate to be resolved by the earlier responsible stage. Otherwise **squash-merge this exact PR using the expected HEAD SHA**. No fresh technical review, adversarial probe, `+3` or GitHub `APPROVE`.
