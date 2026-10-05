@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import process from 'node:process';
 
+import { isStage2TrackingIssue } from './stage2-issue.mjs';
+
 export class GitHubApiError extends Error {
   constructor(message, { status, response } = {}) {
     super(message);
@@ -185,7 +187,7 @@ export function createGitHubClient({
     },
     async findIssuesForClaim(claimRef) {
       const issues = await allPages('repos/' + repoPath + '/issues?state=all&per_page=100');
-      return issues.filter((issue) => !issue.pull_request && typeof issue.body === 'string' && issue.body.includes(claimRef));
+      return issues.filter((issue) => isStage2TrackingIssue(issue, claimRef));
     },
     async createIssue(issue) {
       const result = await request('POST', 'repos/' + repoPath + '/issues', issue);
