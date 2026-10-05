@@ -118,7 +118,11 @@ Procedure (all local, no remote API, no network):
    writes, to ignored `data/reference/` only, each eligible queue entry with its competing hypotheses and a
    bounded window of the original paragraph (looked up by the exact approved document/paragraph ids from the
    ignored corpus index after the corpus permission record is checked; the eojeol must align as an exact,
-   whitespace-delimited form, never a substring/prefix).
+   whitespace-delimited form, never a substring/prefix). The opened index must also be the evidence's snapshot: the
+   source compares its own `index_metadata` (`input_manifest_sha256`, `logical_rows_sha256`) with the evidence
+   `source_snapshot` and reports `snapshot_mismatch` otherwise — pack creation, decision recording and
+   `verifyDecisionsAgainstSource` all fail closed, so a rebuilt index that reuses paragraph ids is never attributed to the
+   old snapshot.
 2. The primary agent reads the pack and writes `data/reference/<run>/proposals.json`
    (`{agent, proposals: [{observation_digest, outcome, lemma?, pos?, reason_code?}]}`; `agent` is **required** — the actual authoring agent, e.g. `claude` or `codex` — and is never defaulted), outcome
    `context_confirmed` (names an analyzer hypothesis), `context_reassigned` (a reading no analyzer proposed) or

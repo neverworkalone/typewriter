@@ -113,6 +113,8 @@ export async function recordContextDecisions({ proposals, queue, contextSource, 
     } catch {
       found = { status: 'denied' };
     }
+    // The index is not the snapshot the evidence was built from: nothing may be recorded against it.
+    if (found?.status === 'snapshot_mismatch') { errors.push(`context proposal for ${entry.surface}: the local corpus index does not match the evidence source snapshot ${snapshot}`); continue; }
     if (found?.status === 'denied') { unknown('permission_denied'); continue; }
     if (found?.status !== 'ok' || typeof found.text !== 'string' || found.text.length === 0) { unknown('no_source'); continue; }
     if (!alignedInContext(found.text, entry.surface)) { unknown('weak_alignment'); continue; }
@@ -180,6 +182,7 @@ export async function verifyDecisionsAgainstSource({ decisions, contextSource, s
   for (const decision of decisions.filter((entry) => RESOLVING_OUTCOMES.includes(entry.outcome))) {
     let found;
     try { found = await contextSource.lookup({ kind: decision.evidence.kind, ref: decision.evidence.ref }); } catch { found = { status: 'denied' }; }
+    if (found?.status === 'snapshot_mismatch') { errors.push(`${decision.decision_id}: the local corpus index does not match the recorded source snapshot ${snapshot}`); continue; }
     if (found?.status !== 'ok') { errors.push(`${decision.decision_id}: source context is not available (${found?.status ?? 'unknown'})`); continue; }
     if (!alignedInContext(found.text, decision.surface)) errors.push(`${decision.decision_id}: the observed eojeol no longer aligns with its source`);
     else if (contextSourceDigest({ snapshot, ref: decision.evidence.ref, text: found.text, surface: decision.surface }) !== decision.source_digest) errors.push(`${decision.decision_id}: source context changed since the decision was recorded`);

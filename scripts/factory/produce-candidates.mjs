@@ -171,6 +171,7 @@ async function buildContextReviewPack({ queue, contextSource }) {
       hypotheses: entry.hypotheses, category: entry.category, reasons: entry.reasons, blocked_by: blockers };
     if (!blockers.length) {
       const found = await contextSource.lookup({ kind: entry.evidence.kind, ref: entry.evidence.ref });
+      if (found?.status === 'snapshot_mismatch') throw new Stage1Error(['the local corpus index does not match the evidence source snapshot; refusing to build a review pack from it']);
       item.source_status = found?.status ?? 'absent';
       if (found?.status === 'ok') {
         item.aligned = alignedInContext(found.text, entry.surface);
@@ -184,7 +185,7 @@ async function buildContextReviewPack({ queue, contextSource }) {
 }
 
 export async function runStage1(argv, {
-  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource,
+  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource, contextDatabasePath,
 } = {}) {
   const options = parseArguments(argv);
   const evidencePath = path.resolve(root, options.evidence);
@@ -203,7 +204,13 @@ export async function runStage1(argv, {
   const batchId = allocateBatchId(await knownBatchIds(root, options.baseRef));
   let source = contextSource;
   const ownSource = !source && (options.contextProposals || options.contextReviewPack);
-  if (ownSource) source = createCorpusContextSource({ permission });
+  if (ownSource) {
+    try {
+      source = createCorpusContextSource({ permission, expectedSnapshot: `corpus:${evidence?.index?.input_manifest_sha256}:${evidence?.index?.logical_rows_sha256}`, ...(contextDatabasePath ? { databasePath: contextDatabasePath } : {}) });
+    } catch (error) {
+      throw new Stage1Error([error.message]);
+    }
+  }
   let contextProposals = null;
   let contextReplay = null;
   let contextAgent = null;

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -13,6 +14,7 @@ import {
   ENSEMBLE_PROVIDER_ORDER,
   verifyEnsembleTraces,
 } from '../scripts/factory/ensemble-resolver.mjs';
+import { createCorpusContextSource } from '../scripts/factory/corpus-context-source.mjs';
 import { createMecabProvider, pinnedMetadata as mecabMetadata } from '../scripts/factory/mecab-provider.mjs';
 import { POLICY_ALIASES, parseArguments, runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { Stage1Error, compareResolutionPolicies, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
@@ -679,4 +681,67 @@ test('review fix: local trace verification accepts correct queue/context records
   context.holds = context.holds.filter((hold) => hold !== 'analysis_ambiguous');
   context.holds.push('lemma_mismatch');
   assert.match(verifyEnsembleTraces({ rows: swallowed, queue: [], traces: tracesOf(heldRecovered) }).join(), /differ from the trace's source holds/);
+});
+
+// A real (temporary, synthetic) SQLite index with the corpus index schema subset the source reads.
+let indexCounter = 0;
+function syntheticIndex(dir, { manifest = HEX, rows = 'b'.repeat(64), text = '그는 천천히 갈 길을 정했다.', skipMetadata = false } = {}) {
+  const file = path.join(dir, `index-${indexCounter += 1}.sqlite`);
+  const db = new DatabaseSync(file);
+  db.exec('CREATE TABLE index_metadata (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE documents (document_rowid INTEGER PRIMARY KEY, document_id TEXT); CREATE TABLE paragraphs (paragraph_rowid INTEGER PRIMARY KEY, document_rowid INTEGER, paragraph_id TEXT, form TEXT);');
+  if (!skipMetadata) db.prepare('INSERT INTO index_metadata(key, value) VALUES (?, ?), (?, ?)').run('input_manifest_sha256', manifest, 'logical_rows_sha256', rows);
+  db.prepare('INSERT INTO documents VALUES (1, ?)').run('d3');
+  db.prepare('INSERT INTO paragraphs VALUES (1, 1, ?, ?)').run('p1', text);
+  db.close();
+  return file;
+}
+
+test('review fix: the corpus context source verifies the real index metadata against the evidence snapshot', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-index-'));
+  const snapshot = `corpus:${HEX}:${'b'.repeat(64)}`;
+  const permission = async () => {};
+  const good = createCorpusContextSource({ databasePath: syntheticIndex(dir), permission, expectedSnapshot: snapshot });
+  assert.deepEqual(await good.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' }), { status: 'ok', text: '그는 천천히 갈 길을 정했다.' });
+  assert.deepEqual(await good.lookup({ kind: 'corpus-paragraph', ref: 'd3#p9' }), { status: 'absent' });
+  good.close();
+  // Same document/paragraph ids and even the same text, but a different index snapshot: refused.
+  const rebuilt = createCorpusContextSource({ databasePath: syntheticIndex(dir, { rows: 'c'.repeat(64) }), permission, expectedSnapshot: snapshot });
+  assert.deepEqual(await rebuilt.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' }), { status: 'snapshot_mismatch' });
+  rebuilt.close();
+  const other = createCorpusContextSource({ databasePath: syntheticIndex(dir, { manifest: 'd'.repeat(64) }), permission, expectedSnapshot: snapshot });
+  assert.deepEqual(await other.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' }), { status: 'snapshot_mismatch' });
+  other.close();
+  const bare = createCorpusContextSource({ databasePath: syntheticIndex(dir, { skipMetadata: true, manifest: 'e'.repeat(64) }), permission, expectedSnapshot: snapshot });
+  assert.notEqual((await bare.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' })).status, 'ok', 'an index without metadata is never trusted');
+  bare.close();
+  assert.throws(() => createCorpusContextSource({ databasePath: 'x', permission }), /expected evidence source_snapshot/);
+  assert.throws(() => createCorpusContextSource({ databasePath: 'x', permission, expectedSnapshot: 'corpus:bad' }), /expected evidence source_snapshot/);
+
+  // Decision creation fails closed on a mismatched index; the matching index records a decision.
+  const first = await produce(fallbackEvidence, triple(FALLBACK));
+  const [entry] = queueOf(first);
+  const proposals = [proposal(entry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' })];
+  const mismatched = createCorpusContextSource({ databasePath: syntheticIndex(dir, { rows: 'f'.repeat(64) }), permission, expectedSnapshot: snapshot });
+  await assert.rejects(() => produce(fallbackEvidence, triple(FALLBACK), { contextProposals: proposals, contextAgent: 'claude', contextSource: mismatched }), /does not match the evidence source snapshot/);
+  mismatched.close();
+  const matching = createCorpusContextSource({ databasePath: syntheticIndex(dir), permission, expectedSnapshot: snapshot });
+  const recorded = await produce(fallbackEvidence, triple(FALLBACK), { contextProposals: proposals, contextAgent: 'claude', contextSource: matching });
+  assert.equal(recorded.manifest.context_fallback.decisions[0].outcome, 'context_confirmed');
+  // Verification of the recorded decision against a different index snapshot is rejected too.
+  const decisions = recorded.manifest.context_fallback.decisions;
+  assert.deepEqual(await verifyDecisionsAgainstSource({ decisions, contextSource: matching, snapshot }), []);
+  const swapped = createCorpusContextSource({ databasePath: syntheticIndex(dir, { rows: '1'.repeat(64) }), permission, expectedSnapshot: snapshot });
+  assert.match((await verifyDecisionsAgainstSource({ decisions, contextSource: swapped, snapshot })).join(), /does not match the recorded source snapshot/);
+  matching.close();
+  swapped.close();
+
+  // CLI path: the review pack and proposals run bind to the real index file named by the evidence digests.
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-clisnap-'));
+  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
+  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--dry-run', '--context-review-pack', 'data/reference/run/pack.json'];
+  const deps = { root, providers: triple(FALLBACK), permission: async () => {}, log: () => {} };
+  await runStage1(args, { ...deps, contextDatabasePath: syntheticIndex(dir) });
+  assert.equal(JSON.parse(await readFile(path.join(root, 'data/reference/run/pack.json'), 'utf8'))[0].aligned, true);
+  await assert.rejects(() => runStage1(args, { ...deps, providers: triple(FALLBACK), contextDatabasePath: syntheticIndex(dir, { rows: '2'.repeat(64) }) }), /does not match the evidence source snapshot/);
 });
