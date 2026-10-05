@@ -1,0 +1,470 @@
+{
+  "contract_version": "intake-production-handoff-v1",
+  "batch_id": "C000002",
+  "source_adapter": "corpus-adapter",
+  "input_digest": "264618875ae2a690b1ee2f0ff02f0b1a46c3b0bf1bfaf41b1ddf879295dff3f3",
+  "analyzer_digest": "7e2637cc1b03827f6fd4333672a2b3cac86b2ab434ca3f1f1b2a1ecf159d834e",
+  "analyzer": {
+    "kiwipiepy_model_version": "0.24.0",
+    "kiwipiepy_version": "0.24.0",
+    "pinned": {
+      "kiwipiepy": "0.24.0",
+      "kiwipiepy_model": "0.24.0"
+    },
+    "proposal_contract": "derivation-root-v1",
+    "service_version": "1",
+    "top_n": 3
+  },
+  "entries": [
+    {
+      "key": "만나다\u0000verb",
+      "input": "만나다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "proposed_pos": null
+    },
+    {
+      "key": "만들다\u0000verb",
+      "input": "만들다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "3c159cf2a6420ca9bda5a7a54650fe8b62296224b4781bdf58554b138cf228fe",
+        "analyses": [
+          [
+            {
+              "form": "만들",
+              "lemma": "만들다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "만들",
+              "lemma": "만들다",
+              "pos": "verb"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "만든",
+        "만들",
+        "만들어"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1319"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.235"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.47"
+        }
+      ],
+      "analysis_binding": "c0d3de57a2543a49252d10b766185293ddaca01b9248edbb90556c2d7779c1c9"
+    },
+    {
+      "key": "많다\u0000adjective",
+      "input": "많다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "b30b4bf6ab97d6a55225e5c3e219530aee839dcc65c6dcaaa0519630524c9a5d",
+        "analyses": [
+          [
+            {
+              "form": "많",
+              "lemma": "많다",
+              "pos": "adjective"
+            }
+          ],
+          [
+            {
+              "form": "많",
+              "lemma": "많다",
+              "pos": "adjective"
+            }
+          ],
+          [
+            {
+              "form": "많",
+              "lemma": "많다",
+              "pos": "adjective"
+            },
+            {
+              "form": "다",
+              "lemma": "다",
+              "pos": "adverb"
+            }
+          ]
+        ]
+      },
+      "pos": "adjective",
+      "observed_forms": [
+        "많고",
+        "많다",
+        "많은"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.218"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.34"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.363"
+        }
+      ],
+      "analysis_binding": "60351f699ec3ebc7e7e0cdd45476291aa16b9c1351097897784fb9ae72ee109e"
+    },
+    {
+      "key": "맞다\u0000verb",
+      "input": "맞다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "6d08580e9b08815338a61dc64c56f0b97598ed70788c62cfa676e928c0d73167",
+        "analyses": [
+          [
+            {
+              "form": "맞",
+              "lemma": "맞다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "맞",
+              "lemma": "맞다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "맞",
+              "lemma": "맞다",
+              "pos": "verb"
+            },
+            {
+              "form": "다",
+              "lemma": "다",
+              "pos": "adverb"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "맞는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.57"
+        }
+      ],
+      "analysis_binding": "72203d17d06f7ade194f81c1ff2270cf335c9de36bb863b1593152760f16edf0"
+    },
+    {
+      "key": "먹다\u0000verb",
+      "input": "먹다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "9639f892bdddb53fc055c86c8a094beb189270fdb0a53ab990c46480182e69cc",
+        "analyses": [
+          [
+            {
+              "form": "먹",
+              "lemma": "먹다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "먹",
+              "lemma": "먹다",
+              "pos": "verb"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "먹고",
+        "먹는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.317"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.525"
+        }
+      ],
+      "analysis_binding": "d465609c32797b800ae163a47e06ec99f119077aa3913f2a17c8f23ebd15a264"
+    },
+    {
+      "key": "모르다\u0000verb",
+      "input": "모르다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "proposed_pos": null
+    },
+    {
+      "key": "모습\u0000noun",
+      "input": "모습",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "4b8858fa4bec51bc3aa6048f83ef46ddc6c4b92efaf19f91658adbd0bc38a308",
+        "analyses": [
+          [
+            {
+              "form": "모습",
+              "lemma": "모습",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "모",
+              "lemma": "모",
+              "pos": "noun"
+            },
+            {
+              "form": "습",
+              "lemma": "습",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "습",
+              "lemma": "습",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "모습을",
+        "모습이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.129"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.275"
+        }
+      ],
+      "analysis_binding": "f95f00a2380f6b55281e8c53b7a5394c0c8b1ef56db6122b05e895ce451bf615"
+    },
+    {
+      "key": "보내다\u0000verb",
+      "input": "보내다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "8af300ffd85ed5a13777e88896970ad3a443f50a5e68e3d2c1aec0ea916c6f7f",
+        "analyses": [
+          [
+            {
+              "form": "보내",
+              "lemma": "보내다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "보내",
+              "lemma": "보내다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "보내",
+              "lemma": "보내다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "보내",
+        "보낸",
+        "보냈다"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1311"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1565"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.35"
+        }
+      ],
+      "analysis_binding": "f49104b4c8c9a4927df28fe1957cd47da9de2f3a1141551740988dbcc4e8a38e"
+    },
+    {
+      "key": "보이다\u0000verb",
+      "input": "보이다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "proposed_pos": null
+    },
+    {
+      "key": "볼\u0000noun",
+      "input": "볼",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "사다\u0000verb",
+      "input": "사다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "사람\u0000noun",
+      "input": "사람",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "389e7564ae2551b4f94dbea3458906b7afb8851da988aa1a85992fcc1dd3d346",
+        "analyses": [
+          [
+            {
+              "form": "사람",
+              "lemma": "사람",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "사",
+              "lemma": "사다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "사",
+              "lemma": "사다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "사람은",
+        "사람이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.28"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.9"
+        }
+      ],
+      "analysis_binding": "7fe0bcb2e1958532630c0715a870840ca7ec90b7a2da49f838dfff2ee2e51889"
+    }
+  ]
+}
