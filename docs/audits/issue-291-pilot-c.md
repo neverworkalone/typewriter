@@ -263,3 +263,31 @@ review changes are not fabricated for additive admission. Working-tree diff was
 verified unchanged by the preview. This is deterministic validation, **not**
 proof of the still-unrun successful C000002 admission/merge. Rework review/CI/
 merge and final positive admission remain pending; Pilot PASS is not claimed.
+
+## C000002 attempt 2 admission checkpoint
+
+Rework PR #307 merged at 11:17:52 as
+`fd8f3e8c45d8e698643fdf7d36dbb156bccb2786`; exact head `9d2d756...`
+passed full local CI before push and GitHub CI run 37299685264. Stage 1 +1
+and the latest Stage 2 +2 bind that head. The Stage 2 reviewer withdrew its
+prior procedural -1 and explicitly accepted the implementation; the Stage 1
+record's stated CI reliance remains a review-operation caveat, not rewritten
+as a pristine CI-independent run. The prior decision and its withdrawal remain
+in GitHub history. Actual master ready/attempt2 validation released the owned
+Stage 2 claim. #301 was reused/closed by this result, not duplicated.
+
+On that master the normal serial Stage 3 worker claimed C000002-a2 and opened
+real Draft #308 before preflight, starter
+`df6efe374ce3ba37032a5ec06b22621282bf46a6`. The mechanical admission maps new
+entries to w12547–w12552 and appends w5362-s2; attempt1/rejected_pr305 history
+remains intact. No Stage 3 gloss/POS rewriting occurred.
+
+The local complete normal run on admission commit `60bff39...` stopped at a
+remaining historical #211 import comparison: it read the now-editable canonical
+file as the frozen original payload, so w5362's legitimate new sense changed
+that comparison. The shared hash-bound pre-factory reconstruction already used
+for #211's base/current checks now supplies this import view too. Imported ID
+membership and exact historical authored payload checks remain enforced, and
+the full live semantic/factory ledger still validates the current dictionary.
+This is a systemic historical-validation wiring repair, not a lexical rejection.
+The failed local admission commit was not pushed; Draft and claims were kept.

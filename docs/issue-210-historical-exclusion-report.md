@@ -16,7 +16,7 @@ Issue #219 result: 20 reviewed; 0 admitted, 10 held, and 10 rejected as composit
 | --- | ---: |
 | Recovery candidate records classified | 584 |
 | Issue #204 records already admitted and searchable | 10 |
-| Current canonical records | 12,210 |
+| Current canonical records | 12,216 |
 | Current non-searchable lexical records | 0 |
 | Current reference-only records, now searchable | 42 |
 | Confirmed active usefulness/generality exclusions (#204) | 0 |
@@ -28,11 +28,11 @@ Issue #219 result: 20 reviewed; 0 admitted, 10 held, and 10 rejected as composit
 | Explicit unresolved sense/POS/context cases | 204 |
 | Additional rationale or lexical-unit holds | 75 |
 | Unsupported lexical categories | 0 |
-| Exact canonical search keys checked | 12,467 |
+| Exact canonical search keys checked | 12,473 |
 
 The 31 historical policy-rejection events include 25 Issue #204 rejects re-reviewed in Issue #211 (24 recovered and searchable, one held for an unresolved sense boundary), two M5-10A2 rejections that later became holds for lexical boundaries, and four M5-3 rejections later corrected and included in M5-7. No Issue #204 row remains an active usefulness/generality exclusion. The two M5-10A2 holds retain their blockers, and the four corrected cases are already searchable. M5's seven “insufficient admission priority” rejections and 20 generic M5-12A rejects remain on hold because their durable rationale does not establish a specific usefulness-only reason or lexical invalidity. The inventory also preserves 11 earlier M5 reject-to-hold transitions; two are the mixed utility cases counted above, while the others retain identity, sense, phrase, or context blockers.
 
-All 12,210 current canonical records resolve directly. Their 12,467 canonical lemma/search-form keys have no missing owner, unexpected owner, or cross-record collision. This includes 42 historical reference-only records (41 entries and 1 expression); all their current lemmas resolve by the same canonical ID.
+All 12,216 current canonical records resolve directly. Their 12,473 canonical lemma/search-form keys have no missing owner, unexpected owner, or cross-record collision. This includes 42 historical reference-only records (41 entries and 1 expression); all their current lemmas resolve by the same canonical ID.
 
 ## New review states
 
@@ -145,7 +145,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | Artifact | SHA-256 |
 | --- | --- |
 | `AGENTS.md` | `f937457df31c2970867a9176b9120d0ad4af0d40fca2feffd627d51d33996fdc` |
-| `config/artifact-policy.json` | `a10e7ec19c4c9eb09d30d57252337f4006658b9496cbb18a3b2309e1dd4b770e` |
+| `config/artifact-policy.json` | `3eca959777c09e8e8562da2bbb25c3c7c5e4e45bfd729814ad77a783beca3651` |
 | `data/batches/issue-204-pilot-decisions.json` | `f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b` |
 | `data/batches/issue-204-semantic-decisions.json` | `66d96ed2b0c104dab185625ebd5f09ef06b21092c9b84e1f3d1ad0d8b76fd60e` |
 | `data/batches/issue-211-lexical-unit-source.json` | `683ac43752125bdc23de25cf5c3f5c64c406055706609d719bee8f847eb22185` |
@@ -246,8 +246,9 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/batches/m5-9-expansion.json` | `236325006a4adab62b7ca5dd420dfa5b7dbb0b5633ca29091ae448019b80fa7d` |
 | `data/batches/m5-9-preimport-inventory.json` | `08716ca1ec9d58c0f54c99773421944792589763cf33f23c0a6ec539c8164120` |
 | `data/canonical/factory-C000001-a1.jsonl` | `9c809d37e66055e9ab380019c550cac2c316e990d48b973020a2a1d4a4a876dd` |
+| `data/canonical/factory-C000002-a2.jsonl` | `220ab5fb8c8456c766f357ee2a7cc5ec522d9863c12089a35ccf01b82e29b965` |
 | `data/canonical/issue-204-corpus-pilot.jsonl` | `d600ef23a911afa4c8e6bbb7ecce51260767225601c0c9c9adeb62287ae72843` |
-| `data/canonical/issue-211-bounded-recovery.jsonl` | `3844cfa4d38e4d99cfd4623670913b224f6b77feaf507d8d48589fb3e95531e9` |
+| `data/canonical/issue-211-bounded-recovery.jsonl` | `1a34b3f4fee7fd60b886b5b427d352f6d401d619e8fada0d25fd68c9e4117e28` |
 | `data/canonical/issue-219-m9-a-recovery.jsonl` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `data/canonical/issue-220-m9-b-batch-01.jsonl` | `84a9f17fdd0de8c867ad961ed90404db3e7e8b76efaba4dd0ee7d50c9ebd8216` |
 | `data/canonical/issue-220-m9-b-batch-02.jsonl` | `b57ae64af48cd99b8395c055c99b0bc09f7e5333d396eb9025cd01a4b9de51db` |
@@ -291,11 +292,11 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/pilot.jsonl` | `d45c15164ef6f146ee51d40e265746515120a556b1e2fb65e057ed36781dff1d` |
 | `data/inventory/m5-target-promotions.jsonl` | `07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `016402fd65193ca506b3efeb55b949faf226f56e82c19c73115b469a9314f92c` |
+| `data/validation/canonical-semantic-decision-source.json` | `2ff1bd4834f51e13f6099ea4c117f4243a485e73536678240de2d3710e680586` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `4150b0ac2bb06c44ab0c8af6b611763e55f69d9c1a3d9b3d0657880c90b08f97` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `0f8219e3a0ca89d6a82d2a5bce65e2a6037c018a8fc633b8c1a9eaad0e6ace55` |
 | `data/validation/m6-2-inflection-exceptions.json` | `0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7` |
-| `data/validation/m6-3-surface-form-review.json` | `4561b7d660dc786c7d390287d90cc396fd091d7e04fd83a035e911ffcdc133e6` |
+| `data/validation/m6-3-surface-form-review.json` | `db84b5319366ef74d2f4338e1fdeb41067dd3a05b9113e52aa4baf0126e9135b` |
 | `docs/editorial-model.md` | `2d6e52189d346bec905f715d0637b27f5738fa6d3396311de0873df0125beeff` |
 | `docs/external-material-review-customs-terminology.md` | `ce7395c649ba9d4eecf2ed3362be2f9859116a398aee85534005e1ea624bce2a` |
 | `docs/issue-208-searchable-start-retrospective.md` | `3e5dfd512389b4a505010686c10c32e0cdfdbb328290e1f4f0bc92a8f6aa6621` |
@@ -347,7 +348,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 - M1–M4 provide a 300-item pilot selection table, canonical pilot records, and historical M3/M4 handoffs, but not a complete durable list of every rejected or deferred candidate. The inventory does not infer omitted lemmas from those missing lists.
 - Historical M5 decision notes such as “insufficient admission priority” are preserved as ambiguous evidence. They remain on hold until candidate-specific lexical grounds can be recovered.
 - Issue #211 re-reviewed all 25 Issue #204 rejects through the shared semantic and admission contracts. Twenty-four now have admitted canonical bodies; one remains held because its current single-sense gloss collapses distinct uses.
-- Issue #220 reviewed two bounded M5-13 reserve batches. The complete Issue #210 historical pool cannot reach 6,000 records even if every remaining candidate/hold/sense-split row is resolved: its calculated ceiling is 12717, short by 0. Issue #221's corpus admissions are part of today's canonical baseline but remain outside that historical pool. Further expansion requires the next approved source workflow, not reconstruction from absent historical material.
+- Issue #220 reviewed two bounded M5-13 reserve batches. The complete Issue #210 historical pool cannot reach 6,000 records even if every remaining candidate/hold/sense-split row is resolved: its calculated ceiling is 12723, short by 0. Issue #221's corpus admissions are part of today's canonical baseline but remain outside that historical pool. Further expansion requires the next approved source workflow, not reconstruction from absent historical material.
 - Current search coverage describes canonical lookup only; it does not claim editorial quality, writer satisfaction, or relation completeness.
 
 ## Reproduction
