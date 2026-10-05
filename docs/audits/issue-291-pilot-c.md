@@ -4,15 +4,16 @@ Acceptance issue: [#291](https://github.com/neverworkalone/typewriter/issues/291
 Program: [#258](https://github.com/neverworkalone/typewriter/issues/258).
 All timestamps are UTC on 2026-10-05.
 
-**pilot FAIL for the complete acceptance contract.** The actual admission,
-negative/recovery and rework paths passed. The required CI-independent Stage 1
-review operation was not established for #307/#308: their same-head +1 records
-explicitly relied on CI. Stage 2 acknowledged this and the owner merged, but
-neither action supplies the missing independent first-level evidence. This is
-not a newly discovered lexical or implementation defect. Phase 2 is **not
-authorized**; a compliant separate review run or explicit owner resolution of
-this acceptance limitation is required. This implementation agent did not
-review, request review, approve or merge its own changes.
+**pilot PASS under the owner-resolved review-operation interpretation.** Actual
+admission, negative/recovery and full rework paths passed. #307/#308 Stage 1
+records explicitly relied on CI, contrary to the Stage 1 operation rule; this
+observed process deviation remains recorded. The owner explicitly confirmed in the primary #291 implementation chat on
+2026-10-05: “적용: PASS, 절차상 한계 보존.” This resolves it as
+non-blocking for downstream independent Stage 2 technical review and exact-head
+CI, rather than a Pilot C functional failure. This does not fabricate a clean
+CI-independent Stage 1 run or change the general review rule. Phase 2 was not
+started in this issue. This agent did not review, request review, approve or
+merge its own changes.
 
 Starting master: `2313f3d745fb7bbd22b85d4e348c550b898651bd`.
 Ending admission master: `daa86b9111dacfec039ca4ffd8fd21a9627c4621`.
@@ -31,7 +32,7 @@ The ending SHA excludes this documentation-only audit PR.
 | Full normal Stage 2 rework / original tracking Issue reused | PASS: #301 reopened only after exclusive claim, -r2 branch, all source observations checked in primary context, #307 merged. |
 | Reworked batch successfully re-admitted and owned refs released | PASS: #308 merged, actual post-merge CLI verified complete master and released its refs. |
 | Full semantic/canonical/search/SQLite gates, exact-head CI | PASS on both final admission heads; current-revision SQLite parent 1 / child 0. No post-merge CI run is implied. |
-| Normal review-gate operation including Stage 1 independence from CI | FAIL: #307/#308 Stage 1 CI reliance; substantive +1/+2 and merge facts remain recorded below. |
+| Review gates under owner resolution | PASS: same-head substantive +1/+2 and exact-head CI; #307/#308 CI-dependent Stage 1 operation remains an observed non-blocking deviation. |
 | New native browser / independent deep two-build run | NOT RUN in Pilot C; no browser-only or Deep CI changes required it. Normal CI is not a deep/manual execution claim. |
 
 ## Input lineage and Pilot B ordering
@@ -202,5 +203,6 @@ First real Draft to last admission merge: 08:43:56–11:41:54, **2h57m58s**,
 including repairs, QA and review/owner wait. Gross elapsed throughput is about
 4.0 new entries/hour (6.7 added senses/hour); this small acceptance exercise is
 not a production-throughput forecast. Final documentation publication/review is
-outside that interval. Functional paths have concrete PASS evidence; the review
-independence limitation keeps overall **pilot FAIL** and Phase 2 stopped.
+outside that interval. Functional paths have concrete PASS evidence. Overall **pilot PASS** uses the
+owner resolution above, while preserving the Stage 1 process deviation. No
+Phase 2 execution was initiated in this issue.
