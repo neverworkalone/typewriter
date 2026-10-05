@@ -883,3 +883,25 @@ test('Stage 3 refreshes its live dependent checkpoints through existing source-b
   assert.equal(files.length, 8);
   assert.ok(files.every((file) => file.startsWith('docs/') || file.startsWith('data/validation/') || file.startsWith('data/inventory/')));
 });
+
+
+test('restart recognizes REST list merged_at without a merged flag for either outcome', async () => {
+  const claimRef = 'refs/heads/stage3-claims/C999999-a1';
+  const activeLock = { batchId: 'C999999', attempt: 1, sha: 'lock', baseSha: 'base' };
+  const admission = { number: 900, state: 'closed', merged_at: '2026-01-01T00:00:00Z',
+    body: `Claim ref: ${claimRef}`, head: { ref: 'codex/stage3/C999999-a1' } };
+  let pulls = [admission];
+  const github = {
+    async listStage3ClaimRefs() { return [{ ref: claimRef }]; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listPullRequests() { return pulls; },
+  };
+  const recover = () => recoverStage3Attempt({ github, git: {}, batchId: 'C999999', attempt: 1 });
+  assert.equal((await recover()).status, 'admission-merged');
+  pulls = [{ ...admission, merged_at: null }, { number: 901, state: 'closed',
+    merged_at: '2026-01-01T00:01:00Z', body: `Claim ref: ${claimRef}`,
+    head: { ref: 'codex/stage3-status/C999999-a1' } }];
+  assert.equal((await recover()).status, 'rejection-merged');
+  pulls[1].merged_at = null;
+  await assert.rejects(recover(), /closed without merging/);
+});

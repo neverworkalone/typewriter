@@ -140,3 +140,23 @@ Implementation commits were previously pushed before the complete local normal
 run finished. This was a validation sequencing mistake. From this checkpoint,
 subsequent implementation changes remain local until the complete `ci:normal`
 passes on their committed revision; targeted passes do not authorize a push.
+
+## C000001 actual admission merge
+
+PR #303 merged at 10:01:54, merge commit
+`3bcb59ab724765536e606d70783e3d57eb4a256b`. Exact head
+`966044fbd639e9326f449caf8f5a748a52a27e56` passed full local normal CI
+before push and GitHub run 37292094129; Stage 1 +1 at 09:54:31 and
+Stage 2 +2 at 10:01:38 bind that same head. Master records C000001 complete,
+with six new records and the reviewed existing-record sense append.
+
+The actual post-merge CLI restart failed closed because recovery checked the
+REST list's absent `merged` flag without its present `merged_at` timestamp.
+The separate existing release function fetched PR #303's detailed merged state,
+verified its branch/master and complete admission manifest, and safely removed
+its own branch and both owned claim/lock refs. Local master fast-forwarded to
+the merge. This was a systemic recovery defect, not a lexical rejection.
+Shared recovery now recognizes either API merge marker for admission and
+rejection status. A synthetic API-shape regression also keeps closed-unmerged
+status PRs blocked. That regression is not reported as a real negative pilot.
+C000002 has not been claimed while this repair is pending.
