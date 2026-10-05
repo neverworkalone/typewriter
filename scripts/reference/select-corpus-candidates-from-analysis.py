@@ -214,6 +214,7 @@ def select_from_cached_analysis(
     candidate_output_path: Path,
     exclusion_manifest_path: Path,
     candidate_limit: int,
+    include_canonical_lemmas: bool = False,
 ) -> dict:
     started = time.perf_counter()
     producer.validate_candidate_limit(candidate_limit)
@@ -275,6 +276,7 @@ def select_from_cached_analysis(
             cached_selection_database,
             candidate_limit,
             exclusion["lemmas"],
+            include_canonical_lemmas,
         )
         cached_selection_database.assert_reused_ambiguity()
 
@@ -350,6 +352,7 @@ def select_from_cached_analysis(
                 "excluded_candidate_lemma_count": len(exclusion["lemmas"]),
                 "exclusion_sha256": exclusion["exclusion_sha256"],
                 "exclusion_source_artifacts": exclusion["source_artifacts"],
+                **({"include_canonical_lemmas": True} if include_canonical_lemmas else {}),
             },
             "yield": {
                 **source_yield,
@@ -413,6 +416,7 @@ def main() -> int:
     parser.add_argument("--candidate-json", required=True, type=Path)
     parser.add_argument("--exclusion-manifest", required=True, type=Path)
     parser.add_argument("--candidate-limit", type=int, required=True)
+    parser.add_argument("--include-canonical-lemmas", action="store_true")
     arguments = parser.parse_args()
     try:
         result = select_from_cached_analysis(
@@ -424,6 +428,7 @@ def main() -> int:
             candidate_output_path=arguments.candidate_json.resolve(),
             exclusion_manifest_path=arguments.exclusion_manifest.resolve(),
             candidate_limit=arguments.candidate_limit,
+            include_canonical_lemmas=arguments.include_canonical_lemmas,
         )
     except (OSError, ValueError, sqlite3.Error, RuntimeError) as error:
         print(str(error), file=sys.stderr)

@@ -176,3 +176,14 @@ are not used to calibrate any approval probability.
 - Completing #285 does not itself start a batch. After #285 is reviewed and merged, #261 may produce two small
   real v2 batches as a controlled pilot; ordinary 500-headword scale-up, Phase 2 and 10K production remain gated
   on an evidenced #261 Pilot PASS (#284 is already merged via #286).
+
+## Existing canonical lemmas in Stage 1 evidence (issue #289)
+
+The historical M9 extractor drops an exact canonical lemma (`covered = 1`) before selection, which would keep an
+evidence-backed new POS or possible new sense of an existing lemma from ever reaching Stage 1/2. Factory Stage 1 evidence is
+therefore extracted with `npm run reference:corpus:candidates -- … --include-canonical-lemmas`: exact canonical lemmas stay in
+the ranked cohort with `coverage_status: exact_canonical_lemma`, and the selection records `include_canonical_lemmas: true`.
+They are never `covered` at Stage 1; `classifyLemmaCandidate` routes them (`new_pos_on_existing_lemma`,
+`new_sense_on_existing_entry`) and only a validated Stage 2 `covered` disposition may exclude a group. The default (flag absent)
+keeps the M9 behaviour and byte-identical historical outputs. Because the cached-analysis path binds the extractor source hash,
+changing the extractor invalidates older analysis caches; re-extract.

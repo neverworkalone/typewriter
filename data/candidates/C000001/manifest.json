@@ -4,11 +4,11 @@
   "task_id": "T000289",
   "batch_id": "C000001",
   "candidate_count": 12,
-  "observation_count": 33,
+  "observation_count": 31,
   "selection": {
     "bound": 12,
-    "eligible_lemma_count": 50,
-    "deferred_lemma_count": 38
+    "eligible_lemma_count": 52,
+    "deferred_lemma_count": 40
   },
   "unresolved_observations": [
     {
@@ -273,193 +273,6 @@
     },
     {
       "queue_id": "U0007",
-      "surface": "긴",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.14"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "긴",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "길다",
-          "pos": "adjective",
-          "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "길다",
-        "pos": "adjective"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "588a780ee76bc8ca39bbdedfcf3d1547abc3e2542b4b629b7d39213d8dc42f4c",
-      "trace_digest": "d2f75b096886aeb14d4f253585abd9b5ca1f857b7c5dfde282352332f83fa063",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0008",
-      "surface": "길게",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.214"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "길다",
-          "pos": "adjective",
-          "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "길다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "길다",
-        "pos": "adjective"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "eebcf66f1f9253603aa3cca3e1ce881bac61ec2be3a5198f6e05dd03783279c2",
-      "trace_digest": "fd3930c35f45f03ed244d9c37d1812549c21be6991c525bb0fbf9529f70e9580",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0009",
-      "surface": "길고",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.361"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "길다",
-          "pos": "adjective",
-          "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "길다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "길다",
-        "pos": "adjective"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "431d273a26632ac43e62e4cb754f4c8d1712c858754e87f35ffbfcfaf545890e",
-      "trace_digest": "5bb6ef038f62fb4efcf2b3a0496b8c2f549de4e0a43941bcf492476c4c20f2df",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0010",
-      "surface": "깊게",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.1343"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "깊게",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "깊다",
-          "pos": "adjective",
-          "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "깊다",
-        "pos": "adjective"
-      },
-      "extractor_holds": [
-        "coverage_collision"
-      ],
-      "observation_digest": "5ad16f0323b6516020ba1fdcae9a703718c128108096e21db3c11edff5316939",
-      "trace_digest": "50b9b3caaefb87a543bcf4a3987623d4fe508c81fbd9e29be00ca9f59437cebc",
-      "verification": {
-        "state": "blocked",
-        "blocked_by": [
-          "coverage_collision"
-        ]
-      }
-    },
-    {
-      "queue_id": "U0011",
       "surface": "나는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -503,7 +316,7 @@
       }
     },
     {
-      "queue_id": "U0012",
+      "queue_id": "U0008",
       "surface": "나온",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -546,7 +359,7 @@
       }
     },
     {
-      "queue_id": "U0013",
+      "queue_id": "U0009",
       "surface": "나올",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -596,7 +409,7 @@
       }
     },
     {
-      "queue_id": "U0014",
+      "queue_id": "U0010",
       "surface": "나와",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -632,7 +445,7 @@
       }
     },
     {
-      "queue_id": "U0015",
+      "queue_id": "U0011",
       "surface": "난",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -676,149 +489,7 @@
       }
     },
     {
-      "queue_id": "U0016",
-      "surface": "남아",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.235"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "one_vs_two_disagreement"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "남",
-          "pos": "noun",
-          "supporters": [
-            "khaiii"
-          ]
-        },
-        {
-          "lemma": "남다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "남아",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "남다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "0bcf0e4506af334e925dff22d40e95a717da15aef88bba84b17488e1ad3de3d9",
-      "trace_digest": "cadb02bcf4445ae17ffebddfdfcd40ff5c1f26e7d0f999dfd34217935ec02c36",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0017",
-      "surface": "남은",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.47"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "남",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "남다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "남다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "42b8b5b6f84416ad07263d36a70212b053dd799d8aa6e7702fecac9e2e8b5d89",
-      "trace_digest": "b9512b00166e2c88f1c631428f8c36d7d6841cece4eb40aeaa920194a25652b8",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0018",
-      "surface": "남지",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000101.1#WARW2500000101.1.1450"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "one_vs_two_disagreement"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "남다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "kiwi_top"
-          ]
-        },
-        {
-          "lemma": "남지",
-          "pos": "noun",
-          "supporters": [
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "남다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "79b5739c0956dedb16dc4be815849eb14c275addfd2ccfbcad46b8d499c88e3a",
-      "trace_digest": "aa07315dbf994c6497c06f3d6266e905bda3aa2183792ceeb08623eb3d08f702",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0019",
+      "queue_id": "U0012",
       "surface": "내는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -853,7 +524,7 @@
       }
     },
     {
-      "queue_id": "U0020",
+      "queue_id": "U0013",
       "surface": "내며",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -895,7 +566,7 @@
       }
     },
     {
-      "queue_id": "U0021",
+      "queue_id": "U0014",
       "surface": "내어",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -937,7 +608,7 @@
       }
     },
     {
-      "queue_id": "U0022",
+      "queue_id": "U0015",
       "surface": "되는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -982,7 +653,7 @@
       }
     },
     {
-      "queue_id": "U0023",
+      "queue_id": "U0016",
       "surface": "된",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1027,7 +698,7 @@
       }
     },
     {
-      "queue_id": "U0024",
+      "queue_id": "U0017",
       "surface": "될",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1072,92 +743,11 @@
       }
     },
     {
-      "queue_id": "U0025",
-      "surface": "둔",
+      "queue_id": "U0018",
+      "surface": "만난",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.1240"
-      },
-      "holds": [
-        "analysis_unsupported"
-      ],
-      "category": "unsupported_or_unknown",
-      "reasons": [
-        "khaiii_unusable"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "두다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "둔",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "두다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "d0047b52f391d88a284b691f039c1d9e441689456771a77db0fa60e02f4fe116",
-      "trace_digest": "a31f81d5e1b57ce63b50e3e414b91e1b56a91521c151ead59226e5fdf7fb4c4b",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0026",
-      "surface": "둘",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.68"
-      },
-      "holds": [
-        "analysis_unsupported"
-      ],
-      "category": "unsupported_or_unknown",
-      "reasons": [
-        "khaiii_unusable",
-        "mecab_unusable"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "두다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "두다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "b61bf27c3a22ce34222e0ae898540c10b7febee8685467b6a333d712ff3dff77",
-      "trace_digest": "ea9a9b9bc4618cd13fb13038bfa20ee14c71777d7fafeaefd18f80c0d2632841",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0027",
-      "surface": "따라",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.337"
+        "ref": "WARW2500000091.1#WARW2500000091.1.119"
       },
       "holds": [
         "analysis_ambiguous"
@@ -1168,42 +758,48 @@
       ],
       "hypotheses": [
         {
-          "lemma": "따다",
-          "pos": "verb",
+          "lemma": "만나",
+          "pos": "noun",
           "supporters": [
             "kiwi_alt"
           ]
         },
         {
-          "lemma": "따르다",
+          "lemma": "만나다",
           "pos": "verb",
           "supporters": [
             "khaiii",
-            "kiwi_alt",
             "kiwi_top",
             "mecab"
+          ]
+        },
+        {
+          "lemma": "만난",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
           ]
         }
       ],
       "extractor_hint": {
-        "lemma": "따르다",
+        "lemma": "만나다",
         "pos": "verb"
       },
       "extractor_holds": [
         "analysis_ambiguous"
       ],
-      "observation_digest": "ecf597ebb7ee273e80bb51768c0fc33b95eeacb5a14c68bf21001cd40ecdc645",
-      "trace_digest": "0c52837d21389534ada2031bec9dbdfcf8b5081efcd685df1a65ba382259f686",
+      "observation_digest": "d79673ecfbdb8644108301603f4c849567f9917505e08c61cbd451c7c938a66b",
+      "trace_digest": "06371eb49e048fb14a0089903c3eef4f242d4db8a654f3df7d09a900f67dcde4",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0028",
-      "surface": "따른",
+      "queue_id": "U0019",
+      "surface": "만날",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000101.1#WARW2500000101.1.1496"
+        "ref": "WARW2500000091.1#WARW2500000091.1.78"
       },
       "holds": [
         "analysis_ambiguous"
@@ -1214,252 +810,37 @@
       ],
       "hypotheses": [
         {
-          "lemma": "따르다",
+          "lemma": "만나다",
           "pos": "verb",
           "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "따르다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "ea331aad9d72d218024bba8338d20e3ecb09a4c003cf08399964b0defcf46b27",
-      "trace_digest": "6aa1c350560958af25791b05c1684ac0d383b193556267b2bf23e365676bd26d",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0029",
-      "surface": "떨어지는",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.611"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "떨다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "떨어지다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
             "kiwi_alt",
             "kiwi_top",
             "mecab"
           ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "떨어지다",
-        "pos": "verb"
-      },
-      "extractor_holds": [],
-      "observation_digest": "90e4a58a911d6d7753779cd0a14af21b6d65ec407e142796bd20481b37378f61",
-      "trace_digest": "b636d37c32ec776e6112406b0462ff78796d86ce73ebbf1ee00fdaf787727c80",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0030",
-      "surface": "떨어진",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.315"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "떨다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
         },
         {
-          "lemma": "떨어지다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "떨어지다",
-        "pos": "verb"
-      },
-      "extractor_holds": [],
-      "observation_digest": "e40e337e2f3415fe6f2a38098ee49adb64510fb6c7517704d5b7537db4a507c9",
-      "trace_digest": "502b1b22281a9fc7a89e7fca1aaaa34ff74ed319dde3af107092bb5ed7461be6",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0031",
-      "surface": "뜬",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.1116"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "뜨다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "뜬",
-          "pos": "noun",
+          "lemma": "만날",
+          "pos": "adverb",
           "supporters": [
             "kiwi_alt"
           ]
         }
       ],
       "extractor_hint": {
-        "lemma": "뜨다",
+        "lemma": "만나다",
         "pos": "verb"
       },
       "extractor_holds": [
         "analysis_ambiguous"
       ],
-      "observation_digest": "92e77b188c502086f0990967891518e5f971d24023b62d39ae260cf4e88c8afd",
-      "trace_digest": "2a46429ebfac93585de82640458cc133643fec51dc66706ce16725b644e35848",
+      "observation_digest": "29865c1b93b0bace505de8d1098189a8424c7b2c5ac21d09ac626af25b622617",
+      "trace_digest": "cd077be90131244791ed9acdfa601567e85d62fd091777fd4d53fa504af48f8e",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0032",
-      "surface": "뜰",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.432"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "뜨다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "뜰",
-          "pos": "noun",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "뜨다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "61a8bdc8f5b097b471d5ff5dba1e06f24ea6757b55c67c19d901bff34b91b818",
-      "trace_digest": "26ac84400bc8b1305b9b9c102ae524e0e8dafb4ae0dd653642b63b693844839b",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0033",
-      "surface": "마실",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.2415"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "no_single_target_morpheme"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "마시다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "마실",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "마시다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "e6e37065bce41e628fe988555d4971b908173575f64e9ce346d5d7a71e55eb7b",
-      "trace_digest": "538a3da770d53b0410b39c950c452dc8ae3c3f8ab233f222a399d310bbc74eaf",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0034",
+      "queue_id": "U0020",
       "surface": "맞아",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1503,7 +884,7 @@
       }
     },
     {
-      "queue_id": "U0035",
+      "queue_id": "U0021",
       "surface": "맞지",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1547,7 +928,50 @@
       }
     },
     {
-      "queue_id": "U0036",
+      "queue_id": "U0022",
+      "surface": "먹을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.103"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "먹",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "먹다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "먹다",
+        "pos": "verb"
+      },
+      "extractor_holds": [],
+      "observation_digest": "2b692ca9ab597ef3f65ac6a343b47717ea55dbcf9e3bc45e5d6523d415302771",
+      "trace_digest": "8c5a337712cc13996ed74a88baaff542db14c08f4dc91abe3a487335081b8ac2",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0023",
       "surface": "모르게",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1593,7 +1017,7 @@
       }
     },
     {
-      "queue_id": "U0037",
+      "queue_id": "U0024",
       "surface": "모른다",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1639,11 +1063,11 @@
       }
     },
     {
-      "queue_id": "U0038",
-      "surface": "문제",
+      "queue_id": "U0025",
+      "surface": "모습",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.136"
+        "ref": "WARW2500000091.1#WARW2500000091.1.18"
       },
       "holds": [
         "analysis_ambiguous"
@@ -1654,78 +1078,35 @@
       ],
       "hypotheses": [
         {
-          "lemma": "문",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "문제",
+          "lemma": "모습",
           "pos": "noun",
           "supporters": [
             "khaiii",
             "kiwi_top",
             "mecab"
           ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "문제",
-        "pos": "noun"
-      },
-      "extractor_holds": [],
-      "observation_digest": "d468566ff27852e646526a2534e20147bc3d725c33195ddd05108e8c9313c4f1",
-      "trace_digest": "7149ac0c14f728cb8c17d6f232509d3cf76eb5d122a871e9b895253652e666f9",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0039",
-      "surface": "문제를",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.134"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
+        },
         {
-          "lemma": "문",
+          "lemma": "습",
           "pos": "noun",
           "supporters": [
             "kiwi_alt"
           ]
-        },
-        {
-          "lemma": "문제",
-          "pos": "noun",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
         }
       ],
       "extractor_hint": {
-        "lemma": "문제",
+        "lemma": "모습",
         "pos": "noun"
       },
       "extractor_holds": [],
-      "observation_digest": "2d20054bb4b0e167406792075216e8fb6afc9c5930890bc518aafaea5dbf0f85",
-      "trace_digest": "eddb48eb445fe72314b962e99759d03fd0fd5b5023446001ba0b9ea78d8bae74",
+      "observation_digest": "e5755d8fee48cca68c9a7a56d97a6dbad2195759476f870eb22ff4a09c3e8fc2",
+      "trace_digest": "bd4eab3e480f93364f4e31c69cccc47025a544c79497ef2a1eafb7ff3c172fe5",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0040",
+      "queue_id": "U0026",
       "surface": "보고",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1769,7 +1150,7 @@
       }
     },
     {
-      "queue_id": "U0041",
+      "queue_id": "U0027",
       "surface": "보이는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1821,7 +1202,7 @@
       }
     },
     {
-      "queue_id": "U0042",
+      "queue_id": "U0028",
       "surface": "본",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1863,50 +1244,7 @@
       }
     },
     {
-      "queue_id": "U0043",
-      "surface": "빠진",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.90"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "빠지다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "빠진",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "빠지다",
-        "pos": "verb"
-      },
-      "extractor_holds": [],
-      "observation_digest": "5f2344a6017270a2983ca391feb9dfc7236f60121a2bca2ae731aafc7a61fbcc",
-      "trace_digest": "5a94e8758d507473cb13706271376587dcca70400619c0f64e22e7266cfd159a",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0044",
+      "queue_id": "U0029",
       "surface": "사는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -1957,7 +1295,227 @@
       }
     },
     {
-      "queue_id": "U0045",
+      "queue_id": "U0030",
+      "surface": "사람",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.26"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "사다",
+          "pos": "verb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "사람",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "사람",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "aa4477d2f8f9b470e15b3f1cd8ddbb0cd9ead4f911d004565e8eba389f51d5bf",
+      "trace_digest": "f69526f63867451e9cc1ec6188db777588e1aaae6b9fdf242495fd4614eea95b",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0031",
+      "surface": "사실을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.52"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "사실",
+          "pos": "adverb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "사실",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "사실",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "df083e79425ed971af199b79d6349c1755e3d59cf0a57f6e47d32e40de352e0d",
+      "trace_digest": "5cf1a0ac0375b29153bdf977c75c4f189719c1c111d3d91a5cf0afa747288c34",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0032",
+      "surface": "사실이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.661"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "사실",
+          "pos": "adverb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "사실",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "사실",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "11d44459e13a1d3d3ed0f2e07ca8c95d6865f0d1d0077cdff8bab4790c9c265e",
+      "trace_digest": "49c878a70c8c3aa46d726c594d9e92bb2f2dcffcec5a0946cb101b34353f0342",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0033",
+      "surface": "사이로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.3"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "사이",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "사이로",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "사이",
+        "pos": "noun"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "39a9dea4cb63b2b7582edfc4a106ce053d10c1c6e95b49b5440c3bf63c61131b",
+      "trace_digest": "daad5d3eaaa8a8291315dacf9d727c0d79068d0c02dc9bbfe059d5261c0bacfd",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0034",
+      "surface": "사이에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.95"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "사이",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "사이에",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "사이",
+        "pos": "noun"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "c05c8b44cf3d78095c54ee92ffd9f27801e5a8fe16fa040b46c06e24bcebe68a",
+      "trace_digest": "9a2581d196520a01125d107d4f912df6dc7b1ebaa4c6ddc7982bd0326a61ae96",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0035",
       "surface": "살아",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2003,11 +1561,11 @@
       }
     },
     {
-      "queue_id": "U0046",
-      "surface": "생긴",
+      "queue_id": "U0036",
+      "surface": "생각을",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.523"
+        "ref": "WARW2500000091.1#WARW2500000091.1.127"
       },
       "holds": [
         "analysis_ambiguous"
@@ -2018,37 +1576,122 @@
       ],
       "hypotheses": [
         {
-          "lemma": "생기다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "생긴",
+          "lemma": "각",
           "pos": "noun",
           "supporters": [
             "kiwi_alt"
           ]
+        },
+        {
+          "lemma": "생각",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
         }
       ],
       "extractor_hint": {
-        "lemma": "생기다",
-        "pos": "verb"
+        "lemma": "생각",
+        "pos": "noun"
       },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "2e143522fbcfa1d941e8211a3167e347e47a14f0ec2ed70167874d59068ed5b0",
-      "trace_digest": "049f963ac2a7887bd3c5ee1f7e3930e14499296a441521e79f09e9fe549cf12d",
+      "extractor_holds": [],
+      "observation_digest": "a85baa871ecd14c4bf94d620b5763ff393e5326be1ff83ef3a681a2be66b8eb5",
+      "trace_digest": "3807f895d1e3797bda3b1370d58e7eea42f0caca0fdd162bfae09e3319368242",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0047",
+      "queue_id": "U0037",
+      "surface": "생각이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.239"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "각",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "생각",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "생각",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "54018965685356c251a019bd5792d2c9176e8324c346b38e3f326f8ca73f4b3a",
+      "trace_digest": "0c24204eb030db7e3974cd50f23a3cb50bf49b5fca208fd9819d475275f17344",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0038",
+      "surface": "생각해",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.1584"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "segmentation_incompatible"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "생각",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_top"
+          ]
+        },
+        {
+          "lemma": "생각하다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "생각",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "6d61d5ef19fb26a7ddfa67b46e648cffd1e623548e190db6ad591ac4422e0645",
+      "trace_digest": "5d722668e498fc03ed0d70f3e89e8877fdfaff74dacb7c07b42d72fc390668b9",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0039",
       "surface": "서서",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2092,56 +1735,61 @@
       }
     },
     {
-      "queue_id": "U0048",
-      "surface": "알려진",
+      "queue_id": "U0040",
+      "surface": "세상",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.315"
+        "ref": "WARW2500000091.1#WARW2500000091.1.3797"
       },
       "holds": [
-        "analysis_unsupported"
+        "analysis_ambiguous"
       ],
-      "category": "unsupported_or_unknown",
+      "category": "conflicted",
       "reasons": [
-        "khaiii_unusable",
-        "mecab_unusable"
+        "kiwi_unsupported_rival"
       ],
       "hypotheses": [
         {
-          "lemma": "알려지다",
-          "pos": "verb",
+          "lemma": "상",
+          "pos": "noun",
           "supporters": [
             "kiwi_alt"
           ]
         },
         {
-          "lemma": "알리다",
-          "pos": "verb",
+          "lemma": "세",
+          "pos": "noun",
           "supporters": [
-            "kiwi_alt",
-            "kiwi_top"
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "세상",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
           ]
         }
       ],
       "extractor_hint": {
-        "lemma": "알리다",
-        "pos": "verb"
+        "lemma": "세상",
+        "pos": "noun"
       },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "ae663b4086b321d0136d5684a15fe29b5991156ac0e6323e9e51be555dc75258",
-      "trace_digest": "433b242a073824d12f1c2ac66f7188c3af91f3ba4bc3d12bff384e602c0ca111",
+      "extractor_holds": [],
+      "observation_digest": "5998d3222c6d443113ef4f2a0174ff90d227688d75889b4c6dde8a31e027a418",
+      "trace_digest": "55b2d1d7a53eaf03a2bdb64bd263ff344639735bef43c8cd10583445db2217d7",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0049",
-      "surface": "알리는",
+      "queue_id": "U0041",
+      "surface": "세상에",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.929"
+        "ref": "WARW2500000091.1#WARW2500000091.1.648"
       },
       "holds": [
         "analysis_ambiguous"
@@ -2152,15 +1800,8 @@
       ],
       "hypotheses": [
         {
-          "lemma": "알다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "알리다",
-          "pos": "verb",
+          "lemma": "세상",
+          "pos": "noun",
           "supporters": [
             "khaiii",
             "kiwi_alt",
@@ -2169,24 +1810,22 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "알리다",
-        "pos": "verb"
+        "lemma": "세상",
+        "pos": "noun"
       },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "499c6aa5c7ef38fec76cdd9d024398d66f218c164ff7c843822daeda3bcc76a2",
-      "trace_digest": "e20ed5151eec21129b3809d64db4302440fd4baf1664575f93c3b0bf7a58d06c",
+      "extractor_holds": [],
+      "observation_digest": "2825c4d55a53b363c794029d119cb5e0699e8e4894ebfb3e989e7d771b7228fb",
+      "trace_digest": "50777e5de5b5bd54f7c7d86f58cec892571923abcb3e15c06dade8d3cf1fb088",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0050",
-      "surface": "어렸을",
+      "queue_id": "U0042",
+      "surface": "세상을",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.235"
+        "ref": "WARW2500000091.1#WARW2500000091.1.218"
       },
       "holds": [
         "analysis_ambiguous"
@@ -2197,8 +1836,97 @@
       ],
       "hypotheses": [
         {
-          "lemma": "어리다",
-          "pos": "adjective",
+          "lemma": "상",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "세상",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "세상",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "d95b0f9d06d49a1599a5bbe9d944c69241e513381e91c9828ec7de18c7c3be13",
+      "trace_digest": "a7aefec9cffc6a0b18a83be917ac389abda82af7c6ff2a10dc655b8ca151bf31",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0043",
+      "surface": "소리",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.576"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "소",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "소리",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "소리",
+        "pos": "noun"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "d00fecc229232c9ca68daa412528d14f9e12bb89819f448d416f60d101b27a1a",
+      "trace_digest": "bbb9780d822470fba6e222b23f55a41709ea6d214d76347f1cdc66598b76a14c",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0044",
+      "surface": "소리가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.189"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "소리",
+          "pos": "noun",
           "supporters": [
             "khaiii",
             "kiwi_alt",
@@ -2207,32 +1935,32 @@
           ]
         },
         {
-          "lemma": "어리다",
-          "pos": "verb",
+          "lemma": "소리가",
+          "pos": "noun",
           "supporters": [
             "kiwi_alt"
           ]
         }
       ],
       "extractor_hint": {
-        "lemma": "어리다",
-        "pos": "adjective"
+        "lemma": "소리",
+        "pos": "noun"
       },
       "extractor_holds": [
         "analysis_ambiguous"
       ],
-      "observation_digest": "f436419c553627db75647626342fdf0306a6e0a9824c978029b10232df7f28d4",
-      "trace_digest": "5dcad69e6255bf76d15e52e7c69071cef1c2fc525a8841eb22283e474eee8815",
+      "observation_digest": "8e483c7740e77ae17d4a229ad0789651229fd02f8fe7c2de2b223b27a96d2027",
+      "trace_digest": "6a9ab5349109e00b25e6e3471a63c26b2831ee76232041f2cc2271689ae64084",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0051",
-      "surface": "어린",
+      "queue_id": "U0045",
+      "surface": "시간",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.52"
+        "ref": "WARW2500000091.1#WARW2500000091.1.56"
       },
       "holds": [
         "analysis_ambiguous"
@@ -2243,111 +1971,14 @@
       ],
       "hypotheses": [
         {
-          "lemma": "어리다",
-          "pos": "adjective",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "어리다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "어린",
+          "lemma": "시",
           "pos": "noun",
           "supporters": [
             "kiwi_alt"
           ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "어리다",
-        "pos": "adjective"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "27c69f3da18924e11f5e42f1c258753064905578b06963bab6e4982a07a6a518",
-      "trace_digest": "dd528c86062b7a78b348924501e5ba8d19ae790cae0745d25532937208b3a90b",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0052",
-      "surface": "어릴",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.34"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "어리다",
-          "pos": "adjective",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
         },
         {
-          "lemma": "어릴",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "어리다",
-        "pos": "adjective"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "a84e4612327aad32e1d0f777ed87dc8228bd40af1f88cb37165c7351548be4cd",
-      "trace_digest": "367fc20ef40380bc9e50fa51cb42d160e8a824d91b92d4b4d359071052074d44",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0053",
-      "surface": "얼마",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.50"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "얼마",
-          "pos": "adverb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "얼마",
+          "lemma": "시간",
           "pos": "noun",
           "supporters": [
             "khaiii",
@@ -2357,22 +1988,22 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "얼마",
+        "lemma": "시간",
         "pos": "noun"
       },
       "extractor_holds": [],
-      "observation_digest": "0c468624fe6257b06bbd0b376cc652137397e8bd4d37d3a1137d06b35938a449",
-      "trace_digest": "f9819bf513fa85f28200045edd597891d53326d39aa9d068614a46fbb36b23fe",
+      "observation_digest": "f1877381600337810a52ecf6a067bada090a9e4bedb2d3f5fd757eb83d73b832",
+      "trace_digest": "012a656d3cb0ecfd0e25b2b722bf73220cfb1498fa6949a630c20649847b5ff3",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0054",
-      "surface": "얼마를",
+      "queue_id": "U0046",
+      "surface": "시간을",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000250.1#WARW2500000250.1.385"
+        "ref": "WARW2500000091.1#WARW2500000091.1.79"
       },
       "holds": [
         "analysis_ambiguous"
@@ -2383,14 +2014,14 @@
       ],
       "hypotheses": [
         {
-          "lemma": "얼마",
-          "pos": "adverb",
+          "lemma": "간",
+          "pos": "noun",
           "supporters": [
             "kiwi_alt"
           ]
         },
         {
-          "lemma": "얼마",
+          "lemma": "시간",
           "pos": "noun",
           "supporters": [
             "khaiii",
@@ -2400,34 +2031,33 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "얼마",
+        "lemma": "시간",
         "pos": "noun"
       },
       "extractor_holds": [],
-      "observation_digest": "0ef79ba954cc9ecdef07bf3bf61612227e97de650ab5d198a9fbd2ffeee9a9e7",
-      "trace_digest": "e39f3502cc7a27b8382bc631980843592c9e31402a691b430d09da721a08e84f",
+      "observation_digest": "821ba1417adeb2ee19daae9fed81031694ef938fc339e82aeff0c27cd11526dc",
+      "trace_digest": "2f8e17ad3e7a3f40542a9bb329747dc6db0fad9aa47283f58b6e643e99b37978",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0055",
-      "surface": "얼마쯤",
+      "queue_id": "U0047",
+      "surface": "시작된",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000250.1#WARW2500000250.1.131"
+        "ref": "WARW2500000091.1#WARW2500000091.1.3330"
       },
       "holds": [
-        "analysis_unsupported"
+        "analysis_ambiguous"
       ],
-      "category": "unsupported_or_unknown",
+      "category": "conflicted",
       "reasons": [
-        "khaiii_unusable",
-        "mecab_unusable"
+        "segmentation_incompatible"
       ],
       "hypotheses": [
         {
-          "lemma": "얼마",
+          "lemma": "시작",
           "pos": "noun",
           "supporters": [
             "kiwi_alt",
@@ -2435,7 +2065,293 @@
           ]
         },
         {
-          "lemma": "얼마쯤",
+          "lemma": "시작되다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "시작",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "b3afef889203439cd1b24fe47e926ca5e430b544eec7fe40dfec0f366bb0d8d9",
+      "trace_digest": "b9bc4ff889abeecf822f839b38e3b0506ac5868316e22e026a6633804fc6f4c6",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0048",
+      "surface": "시작한",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.943"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "segmentation_incompatible"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "시작",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt",
+            "kiwi_top"
+          ]
+        },
+        {
+          "lemma": "시작하다",
+          "pos": "adjective",
+          "supporters": [
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "시작하다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "시작",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "cf9ab57da041b62374dbf50386b46deccc429fea617c2749afbc26e2a506564e",
+      "trace_digest": "75294293c9b5213c67955dbfd1e321a04ca7ade6b62e5955c012624466aa6e14",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0049",
+      "surface": "시작했다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.137"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "segmentation_incompatible"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "시작",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_top"
+          ]
+        },
+        {
+          "lemma": "시작하다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "시작",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "6bc129bd642aa77301b4042d86105c9271b4136d9b3a1e6c7b0ee20d4c5cf04e",
+      "trace_digest": "fceae5d8c817229df8c72b49b34dddd99f7c23083683a2146ebb905ffae1dfa6",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0050",
+      "surface": "쓰는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.19"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "one_vs_two_disagreement"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "쓰다",
+          "pos": "adjective",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "쓰다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top"
+          ]
+        },
+        {
+          "lemma": "쓸다",
+          "pos": "verb",
+          "supporters": [
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "쓰다",
+        "pos": "verb"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "48084048f09e1084f5019759d4ba89e7b0d52e52535c96ad7dd87f343bcc4a0d",
+      "trace_digest": "35e9624d0a6a221ac63b0fd76d26dbd065ccefbb95e65302a34c17cd53c9ec52",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0051",
+      "surface": "쓴",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.35"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "쓰다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "쓴",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "쓸다",
+          "pos": "verb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "쓰다",
+        "pos": "verb"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "87c551c9ee87dfbbc8689a00e2bb239090083904cd488b1f1a58efc5029efd8b",
+      "trace_digest": "63c9fb58572842d248717d835ee3b3aae1c9f9d1994c9679f89f8fefadd2a869",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0052",
+      "surface": "쓸",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.217"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "쓰다",
+          "pos": "adjective",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "쓰다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "쓰다",
+        "pos": "verb"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "28df9cc2dd687e0e2c1c72a375913c2cd19da0c3fe220933bdc115ceb35984a6",
+      "trace_digest": "2511a16a36290b4cd86d41857b06ed1a5cdf0b48e8e157e1c7bbd59d1859ab0c",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0053",
+      "surface": "없다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.876"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "없다",
+          "pos": "adjective",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "없다",
           "pos": "noun",
           "supporters": [
             "kiwi_alt"
@@ -2443,18 +2359,62 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "얼마",
-        "pos": "noun"
+        "lemma": "없다",
+        "pos": "adjective"
       },
       "extractor_holds": [],
-      "observation_digest": "742dab6ee85f4b78b4ee8395fcb68551d848043e52091f54c37640737fa52689",
-      "trace_digest": "47f402a10273ab9a7d9f95bd90371fc0061baec75cca7319752fe537543dcc6c",
+      "observation_digest": "b9aa7cb63e4f012ef38ac14265ec0551c75dc5fdf982947b71875ea63dbebdf5",
+      "trace_digest": "b6498c47189637d00aef64332d4f31ba49227c99921dd21de6a44634bd3f39a0",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0056",
+      "queue_id": "U0054",
+      "surface": "없어",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.225"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "없다",
+          "pos": "adjective",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "없어",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "없다",
+        "pos": "adjective"
+      },
+      "extractor_holds": [],
+      "observation_digest": "6139b4c33333dd6519565e0ace453e7be88b4ff0aa6d06da0e09ab149de4b919",
+      "trace_digest": "781d122749d28ace57d9dcb2d056196f4d2d5fe9fbba10c8c6f07c93864ccfb9",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0055",
       "surface": "온",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2498,51 +2458,7 @@
       }
     },
     {
-      "queue_id": "U0057",
-      "surface": "올린",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.735"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "no_single_target_morpheme"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "올리다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "올린",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "올리다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "a51ff338cfa51849b2851ac9623790c47ca917a51546abe6c9a61e8743b03657",
-      "trace_digest": "7b1e2e6d03fbd5378c4db2f929e72442dda66b04458a37407b3c499134b0e35a",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0058",
+      "queue_id": "U0056",
       "surface": "와",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2580,7 +2496,7 @@
       }
     },
     {
-      "queue_id": "U0059",
+      "queue_id": "U0057",
       "surface": "위한",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2632,7 +2548,7 @@
       }
     },
     {
-      "queue_id": "U0060",
+      "queue_id": "U0058",
       "surface": "이상",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2675,7 +2591,7 @@
       }
     },
     {
-      "queue_id": "U0061",
+      "queue_id": "U0059",
       "surface": "이상의",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2710,7 +2626,7 @@
       }
     },
     {
-      "queue_id": "U0062",
+      "queue_id": "U0060",
       "surface": "이상한",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2760,11 +2676,11 @@
       }
     },
     {
-      "queue_id": "U0063",
-      "surface": "이제는",
+      "queue_id": "U0061",
+      "surface": "이야기",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.124"
+        "ref": "WARW2500000101.1#WARW2500000101.1.260"
       },
       "holds": [
         "analysis_ambiguous"
@@ -2775,14 +2691,21 @@
       ],
       "hypotheses": [
         {
-          "lemma": "이제",
-          "pos": "adverb",
+          "lemma": "기",
+          "pos": "noun",
           "supporters": [
             "kiwi_alt"
           ]
         },
         {
-          "lemma": "이제",
+          "lemma": "야기",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "이야기",
           "pos": "noun",
           "supporters": [
             "khaiii",
@@ -2792,110 +2715,18 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "이제",
+        "lemma": "이야기",
         "pos": "noun"
       },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "9890bad726eeb9793f0e7ded2480d0fc63af6fc54c5dd56d1fee95d64abaee4b",
-      "trace_digest": "e70fde777720f73319c6eb509382300fca1b29ecde47750d70545fc779a1a945",
+      "extractor_holds": [],
+      "observation_digest": "426527f0df157f24010e1b7a6e06d6ebb9e9ecebb8a6c8a5b947a981b49fdc71",
+      "trace_digest": "6f366cdf0d330895161f711c67e68601a740c000c65606fbe94dc1f9d56d681e",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0064",
-      "surface": "이제부터",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000101.1#WARW2500000101.1.2616"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "이제",
-          "pos": "adverb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "이제",
-          "pos": "noun",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "이제",
-        "pos": "noun"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "8c2015f9d5e227d6410be253c789a594371d6a3821b4b077e758227f4e5f9cd0",
-      "trace_digest": "8e136def0f4a45ca58c85b6b8101c6b7a06f46057e6c34c1195776ffa58b7fa2",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0065",
-      "surface": "이젠",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000101.1#WARW2500000101.1.4299"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "이제",
-          "pos": "adverb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "이제",
-          "pos": "noun",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "이제",
-        "pos": "noun"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "48985e99c794095f8017a6db0ce6f3f57f7880e5c5319dc85037dff200ae5123",
-      "trace_digest": "7a398887eb4cb5999f3b08775585a6fb30b2e6a50272c9707dfeb46f75b787c5",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0066",
+      "queue_id": "U0062",
       "surface": "있다",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2940,7 +2771,7 @@
       }
     },
     {
-      "queue_id": "U0067",
+      "queue_id": "U0063",
       "surface": "자리",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -2985,7 +2816,92 @@
       }
     },
     {
-      "queue_id": "U0068",
+      "queue_id": "U0064",
+      "surface": "자신을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.38"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "신",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "자신",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "자신",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "b0cb1033a08a6ac3cdcd59eabb3978843f1f4f4220b9b53a22d9452637c5bb2a",
+      "trace_digest": "80d1f90baa58fb6777a52ff96214b47f823822e0bc5321ef1d8d09e1ab2c0bb7",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0065",
+      "surface": "자신의",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.68"
+      },
+      "holds": [
+        "analysis_unsupported"
+      ],
+      "category": "unsupported_or_unknown",
+      "reasons": [
+        "mecab_unusable"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "신",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "자신",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "자신",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "fe855db19b80dcd1ccffb3bcfc7e549b85846c5cdddc8387255ac572e175ca44",
+      "trace_digest": "a9c2e4c740e82e0050500befbadce8ca3effbcd5deddca5e1b7c1913ed6366c5",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0066",
       "surface": "정도",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3030,7 +2946,7 @@
       }
     },
     {
-      "queue_id": "U0069",
+      "queue_id": "U0067",
       "surface": "정도의",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3074,141 +2990,51 @@
       }
     },
     {
-      "queue_id": "U0070",
-      "surface": "좋아하는",
+      "queue_id": "U0068",
+      "surface": "좋지",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.52"
+        "ref": "WARW2500000091.1#WARW2500000091.1.1701"
       },
       "holds": [
         "analysis_ambiguous"
       ],
       "category": "conflicted",
       "reasons": [
-        "no_single_target_morpheme"
+        "kiwi_unsupported_rival"
       ],
       "hypotheses": [
         {
           "lemma": "좋다",
           "pos": "adjective",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "좋아하다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_top"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "좋아하다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "2edc06bd8178c4fc0c247ff8fdca1e947d2defa04201e6557d49cbdc66d818b8",
-      "trace_digest": "de21b1a17dba41cd25178f245ca2b0ba21835de6a0b8f3944ad1124101c9fbf3",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0071",
-      "surface": "좋아하지",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.562"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "no_single_target_morpheme"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "좋다",
-          "pos": "adjective",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "좋아하다",
-          "pos": "verb",
           "supporters": [
             "khaiii",
             "kiwi_alt",
-            "kiwi_top"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "좋아하다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "9b66a45d251f0f676b880e2a0e3d94281149839c1245f2e11fa1b603d82db986",
-      "trace_digest": "47bac8e72f44e90264fb207f9fddfe893d5c1c8ffac011c7aa55a8f132578a0a",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0072",
-      "surface": "좋아했다",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.18"
-      },
-      "holds": [
-        "analysis_unsupported"
-      ],
-      "category": "unsupported_or_unknown",
-      "reasons": [
-        "mecab_unusable"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "좋다",
-          "pos": "adjective",
-          "supporters": [
-            "kiwi_alt"
+            "kiwi_top",
+            "mecab"
           ]
         },
         {
-          "lemma": "좋아하다",
-          "pos": "verb",
+          "lemma": "좋지",
+          "pos": "noun",
           "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "kiwi_top"
+            "kiwi_alt"
           ]
         }
       ],
       "extractor_hint": {
-        "lemma": "좋아하다",
-        "pos": "verb"
+        "lemma": "좋다",
+        "pos": "adjective"
       },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "6a87049994f69f0b8a19a8ae9689fcf2a8ed7b2d832304f031f4569945f39f6f",
-      "trace_digest": "4628a7df1c91100000397f790ec7e4d4433d3f25d47ed45d30a7369f6f2b5607",
+      "extractor_holds": [],
+      "observation_digest": "2c2cc7d5bc3c486d3d7126e434c88239025c697f63000365d1c26d9d22115b88",
+      "trace_digest": "f3ab74b1d6faa1ded8f2f99512d8f4e0866b6cd26f7f2002d95458b3e27d6846",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0073",
+      "queue_id": "U0069",
       "surface": "주는",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3259,7 +3085,101 @@
       }
     },
     {
-      "queue_id": "U0074",
+      "queue_id": "U0070",
+      "surface": "죽어",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.236"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "죽다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "죽어",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "죽다",
+        "pos": "verb"
+      },
+      "extractor_holds": [],
+      "observation_digest": "f6be666ee7e8dd57b667073af6b287ffc0ec170a3f8945ef7a7e227d4a3cde90",
+      "trace_digest": "f05897a7696aef5e08ebebef4930249d81f787d696893775e4059bf9bc54bfae",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0071",
+      "surface": "죽은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.224"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "죽",
+          "pos": "adverb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "죽",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "죽다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "죽다",
+        "pos": "verb"
+      },
+      "extractor_holds": [],
+      "observation_digest": "126f9f6e89437470f0eae3b629541699c32d51e0d9e554df09a8b2b7e701e9b7",
+      "trace_digest": "30a1bbb9d73c46e70c2d4769304130c5c61c643e02aa4892839222929a3196f6",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0072",
       "surface": "준",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3296,24 +3216,288 @@
       }
     },
     {
-      "queue_id": "U0075",
-      "surface": "지킬",
+      "queue_id": "U0073",
+      "surface": "지금도",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.1377"
+        "ref": "WARW2500000091.1#WARW2500000091.1.765"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "지금",
+          "pos": "adverb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "지금",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "지금",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "60dcf6e6084b85f6b7956c046e80b9fd059c8ae94a33aa712eef3f0176268d60",
+      "trace_digest": "3bf73d04a4568300cf840bdbc3cd114d14c3fdd7a3cc9e4e4e1bfa09c4e839d3",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0074",
+      "surface": "지금의",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.1766"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "segmentation_incompatible"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "지금",
+          "pos": "adverb",
+          "supporters": [
+            "kiwi_alt",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "지금",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "지금",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "254a4a1adfe29a483932aa02ce93bff862d08b39685b9bf2f218407afb1dd9be",
+      "trace_digest": "93cd65e41d548393dcd1e741f9407599ec90df47f17a10050e9e75e21c5550e7",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0075",
+      "surface": "지나",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.70"
       },
       "holds": [
         "analysis_unsupported"
       ],
       "category": "unsupported_or_unknown",
       "reasons": [
-        "khaiii_unusable"
+        "mecab_unusable"
       ],
       "hypotheses": [
         {
-          "lemma": "지키다",
+          "lemma": "지나다",
           "pos": "verb",
           "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "지나다",
+        "pos": "verb"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "0039026f74416b4ae90ffc3530a279989bf49a27afe5789c3e7c5dd22644f7ca",
+      "trace_digest": "586e47395cb946dae5ec243971a2c3ed25b648a4f9fa1bd3e7f53ce61763978a",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0076",
+      "surface": "지난",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.230"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "지나다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "지난",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "지나다",
+        "pos": "verb"
+      },
+      "extractor_holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "c5ecf9172a6bf3fe63c3955985ffbbbcd3413a5b56fd196bd299056a4179d87a",
+      "trace_digest": "1c51f8939e1d80b3481a60e62802c261d4fce4b34a971316e216b5a1dd95f3db",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0077",
+      "surface": "찾아",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.219"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "찾다",
+          "pos": "verb",
+          "supporters": [
+            "khaiii",
+            "kiwi_alt",
+            "kiwi_top",
+            "mecab"
+          ]
+        },
+        {
+          "lemma": "찾아",
+          "pos": "noun",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "찾다",
+        "pos": "verb"
+      },
+      "extractor_holds": [],
+      "observation_digest": "138e6e52f508942f59ffcf4af128a0cb39447ba9e5be04bff68dd92cc80d0957",
+      "trace_digest": "dcf1d50d239c38a4c7232519ce0cbb014c8bc734164b8a6391fe7c82386d65cb",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0078",
+      "surface": "처음",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.1"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "처음",
+          "pos": "adverb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "처음",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
+            "kiwi_top",
+            "mecab"
+          ]
+        }
+      ],
+      "extractor_hint": {
+        "lemma": "처음",
+        "pos": "noun"
+      },
+      "extractor_holds": [],
+      "observation_digest": "5a4a31cd49b99e6205812984097df6fc3014d4ce52ec506f9662bc862e00c238",
+      "trace_digest": "15656695c63bbda7b0f476ada3cad538e9c933131c9827e49678d87fcebb21b2",
+      "verification": {
+        "state": "needs_verification"
+      }
+    },
+    {
+      "queue_id": "U0079",
+      "surface": "처음에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.230"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "category": "conflicted",
+      "reasons": [
+        "kiwi_unsupported_rival"
+      ],
+      "hypotheses": [
+        {
+          "lemma": "처음",
+          "pos": "adverb",
+          "supporters": [
+            "kiwi_alt"
+          ]
+        },
+        {
+          "lemma": "처음",
+          "pos": "noun",
+          "supporters": [
+            "khaiii",
             "kiwi_alt",
             "kiwi_top",
             "mecab"
@@ -3321,64 +3505,62 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "지키다",
-        "pos": "verb"
+        "lemma": "처음",
+        "pos": "noun"
       },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "827c2cd966e16e1be87d08467e64a8957fb0120c7c6ab9517c39e301da448c37",
-      "trace_digest": "6062a35f3ff606c17e52fa3022b79093e39a51ea109b08d291d10f9f0f93dd6b",
+      "extractor_holds": [],
+      "observation_digest": "a821745c42dae67b7409ebb078ed9c9280ac7d5c94cf5e414fbd66ef3a9ee05e",
+      "trace_digest": "eec57fd482baf29c131598bc10e3b1cfab5a5c8431f26315dfa54d47a2757ce5",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0076",
-      "surface": "칠",
+      "queue_id": "U0080",
+      "surface": "처음에는",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.1400"
+        "ref": "WARW2500000091.1#WARW2500000091.1.288"
       },
       "holds": [
-        "analysis_unsupported"
+        "analysis_ambiguous"
       ],
-      "category": "unsupported_or_unknown",
+      "category": "conflicted",
       "reasons": [
-        "khaiii_unusable"
+        "kiwi_unsupported_rival"
       ],
       "hypotheses": [
         {
-          "lemma": "치다",
-          "pos": "verb",
+          "lemma": "처음",
+          "pos": "adverb",
           "supporters": [
             "kiwi_alt"
           ]
         },
         {
-          "lemma": "칠",
+          "lemma": "처음",
           "pos": "noun",
           "supporters": [
+            "khaiii",
             "kiwi_alt",
+            "kiwi_top",
             "mecab"
           ]
         }
       ],
       "extractor_hint": {
-        "lemma": "치다",
-        "pos": "verb"
+        "lemma": "처음",
+        "pos": "noun"
       },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "da704a2df68b293686220a9a9bacdd5e4cff5430a2c8785cd2d2174a024f0404",
-      "trace_digest": "34165680cbcf610f23df01faf74ca1c1b573b374e074e07c11dfc72588776ac3",
+      "extractor_holds": [],
+      "observation_digest": "617499593ff28ab9d58939ebc92304302458ba6acf9fab02097688b52f9e343b",
+      "trace_digest": "1b26e8fcbbdd2a4efe1cc4b22907ece72182f488b861d52a5b3e3fc28c5c3dd5",
       "verification": {
         "state": "needs_verification"
       }
     },
     {
-      "queue_id": "U0077",
+      "queue_id": "U0081",
       "surface": "크게",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3424,7 +3606,7 @@
       }
     },
     {
-      "queue_id": "U0078",
+      "queue_id": "U0082",
       "surface": "크고",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3470,7 +3652,7 @@
       }
     },
     {
-      "queue_id": "U0079",
+      "queue_id": "U0083",
       "surface": "큰",
       "evidence": {
         "kind": "corpus-paragraph",
@@ -3522,203 +3704,11 @@
       }
     },
     {
-      "queue_id": "U0080",
-      "surface": "타",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.360"
-      },
-      "holds": [
-        "analysis_unsupported"
-      ],
-      "category": "unsupported_or_unknown",
-      "reasons": [
-        "mecab_unusable"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "타",
-          "pos": "noun",
-          "supporters": [
-            "khaiii"
-          ]
-        },
-        {
-          "lemma": "타다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "하다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt",
-            "kiwi_top"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "타다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "47d2a17da39de4e0d677f72055d63f67c226fc3451d32e7bd1d38d9ada5afd2d",
-      "trace_digest": "9c2dfb5250b185511fa4d64eab00092861c9ce857c581737c7691e7f28b41323",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0081",
-      "surface": "탄",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.1420"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "one_vs_two_disagreement"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "타다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii"
-          ]
-        },
-        {
-          "lemma": "탄",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "타다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "1368df608cfe519b07ba9333a526f3c687e2c5c79bfcecb84be1cae3d946adf9",
-      "trace_digest": "b8c05fa1d950c5d272a1519b04f10cdea11eccda7ac97b2ed84fea2504ee1724",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0082",
-      "surface": "탈",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.729"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "타다",
-          "pos": "verb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "탈",
-          "pos": "noun",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "타다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "5156958fb2e6da6bc94b78afd160cf79056b356df0d4ad76fda286aa243304f8",
-      "trace_digest": "025433ac8656d0e395ec4804f61da2934ae6c121db7c092953c28039c17e4d0c",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0083",
-      "surface": "통한",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000151.1#WARW2500000151.1.194"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "통하다",
-          "pos": "adjective",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "통하다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "통한",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "통하다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "92282174bc60332eaed21463696662251963d348fae798f1c428acadebf5b43c",
-      "trace_digest": "7f4cea6fecbd9cf3adb843d68fe58c71d724ecae2017eac29b25559ee3ef10b0",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
       "queue_id": "U0084",
-      "surface": "혼자가",
+      "surface": "필요한",
       "evidence": {
         "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.551"
+        "ref": "WARW2500000091.1#WARW2500000091.1.52"
       },
       "holds": [
         "analysis_ambiguous"
@@ -3729,15 +3719,15 @@
       ],
       "hypotheses": [
         {
-          "lemma": "혼자",
-          "pos": "adverb",
+          "lemma": "필요",
+          "pos": "noun",
           "supporters": [
             "kiwi_top"
           ]
         },
         {
-          "lemma": "혼자",
-          "pos": "noun",
+          "lemma": "필요하다",
+          "pos": "adjective",
           "supporters": [
             "khaiii",
             "mecab"
@@ -3745,105 +3735,12 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "혼자",
+        "lemma": "필요",
         "pos": "noun"
       },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "f5a567b5f9fb41ba4d81fc570193778ea98695602c313eddb2d113093d5b67b5",
-      "trace_digest": "0877141fc72a139a494b44422f6328be9f3d97f2efd34cdcf0c08e5294500e99",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0085",
-      "surface": "혼자서",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.830"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "혼자",
-          "pos": "adverb",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        },
-        {
-          "lemma": "혼자",
-          "pos": "noun",
-          "supporters": [
-            "khaiii",
-            "kiwi_alt",
-            "kiwi_top",
-            "mecab"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "혼자",
-        "pos": "noun"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "1763c75e128fd820a853a6443edec1f50794abb7f7461034f1600805852e2852",
-      "trace_digest": "ac157204c9d16f0a9627b23376e9e55f743423e8dcef998286f3d49610acd09f",
-      "verification": {
-        "state": "needs_verification"
-      }
-    },
-    {
-      "queue_id": "U0086",
-      "surface": "흐른",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.1764"
-      },
-      "holds": [
-        "analysis_ambiguous"
-      ],
-      "category": "conflicted",
-      "reasons": [
-        "kiwi_unsupported_rival"
-      ],
-      "hypotheses": [
-        {
-          "lemma": "흐르다",
-          "pos": "verb",
-          "supporters": [
-            "khaiii",
-            "kiwi_top",
-            "mecab"
-          ]
-        },
-        {
-          "lemma": "흐른",
-          "pos": "noun",
-          "supporters": [
-            "kiwi_alt"
-          ]
-        }
-      ],
-      "extractor_hint": {
-        "lemma": "흐르다",
-        "pos": "verb"
-      },
-      "extractor_holds": [
-        "analysis_ambiguous"
-      ],
-      "observation_digest": "7d2ef772957214bd8685c6280a777d8064cf4475b1afe8387e7d4184a2318977",
-      "trace_digest": "ac028d5f9be50f78479bb9ed00b97ab888470e488f95c52885aeb261123274cc",
+      "extractor_holds": [],
+      "observation_digest": "476181e7a9494b0e39a3b123e6bbc6f2579cdb0752e43f666f412679cb56d9c0",
+      "trace_digest": "67b94631e97984f86bc85ee487c8b3f9553e564e98811d547e09124e37c88a26",
       "verification": {
         "state": "needs_verification"
       }
@@ -3874,64 +3771,22 @@
   "ensemble": {
     "contract": "ensemble-resolution-v2",
     "counts": {
-      "observations": 119,
+      "observations": 115,
       "categories": {
-        "concordant": 19,
+        "concordant": 16,
         "supported_alternative": 1,
-        "conflicted": 79,
-        "unsupported_or_unknown": 20
+        "conflicted": 85,
+        "unsupported_or_unknown": 13
       },
-      "queue": 86
+      "queue": 84
     },
-    "trace_sha256": "aa1ebc3fe7f3a5d264da85a7e3f751bcc0c9e7b46cc6ff6444d7ddb87df745b2"
+    "trace_sha256": "8ba56237e08253b003f93bfb050706b94407b8e506c2a927308c8d20f726ee26"
   },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
     "decisions": [
       {
         "decision_id": "D0001",
-        "observation_digest": "0f4446b0287ed82b9617f37c14746149c2d9c88aa790d5146536240dc5769384",
-        "trace_digest": "3f5e5b8b18b3d3b18a61beea01bc0bf08178d6c55e2f6a62f8ca11bb89ec02fb",
-        "surface": "다르게",
-        "evidence": {
-          "kind": "corpus-paragraph",
-          "ref": "WARW2500000091.1#WARW2500000091.1.522"
-        },
-        "considered": [
-          {
-            "lemma": "다르게",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_alt"
-            ]
-          },
-          {
-            "lemma": "다르다",
-            "pos": "adjective",
-            "supporters": [
-              "khaiii",
-              "kiwi_alt",
-              "kiwi_top",
-              "mecab"
-            ]
-          }
-        ],
-        "method": "m9-local-context-review-v1",
-        "author": {
-          "kind": "agent-self-check",
-          "agent": "claude"
-        },
-        "independent": false,
-        "human_reviewed": false,
-        "outcome": "context_confirmed",
-        "lemma": "다르다",
-        "pos": "adjective",
-        "reason_code": "context_supports_reading",
-        "source_digest": "a72acd06c80a7a3c404b57909a070c150cf01e0c8c7aca7a9ef8897ce288dac9",
-        "decision_sha256": "80cbafbc6581f59b769ac69b523c032289ef6da1ce4afc9a306589bd957c269c"
-      },
-      {
-        "decision_id": "D0002",
         "observation_digest": "1770bd2e5b47cf641b10c5a4de2c2c279be83fedc3bc0854dab0fda8a7ccf733",
         "trace_digest": "e3a789938aaa59140d1c5b2b339493d68760487b23387bf31b54c3f43ffdf81a",
         "surface": "느낄",
@@ -3969,42 +3824,10 @@
         "pos": "verb",
         "reason_code": "context_supports_reading",
         "source_digest": "d9e4745d777d4e31c522e349f660d34802dc41b8eacb4c6517918fe3d0d0fc42",
-        "decision_sha256": "218a90be8fea70c3660314dd84ff8301b3cbbc3af2e18465b0843b7fb538c72e"
+        "decision_sha256": "3624a50be47fddc894622242321b91490ed1d3a5d30fbc3babf16bd49672a3f6"
       },
       {
-        "decision_id": "D0003",
-        "observation_digest": "1fe7afd6f2a6333ae096474d1a1045e8eef495ee4e0a5450e3c62e533432454c",
-        "trace_digest": "62425607a1421c2d8d401ea08c5328be632243c8170b4144335e88073e78cccc",
-        "surface": "다른",
-        "evidence": {
-          "kind": "corpus-paragraph",
-          "ref": "WARW2500000091.1#WARW2500000091.1.3"
-        },
-        "considered": [
-          {
-            "lemma": "다르다",
-            "pos": "adjective",
-            "supporters": [
-              "kiwi_alt"
-            ]
-          }
-        ],
-        "method": "m9-local-context-review-v1",
-        "author": {
-          "kind": "agent-self-check",
-          "agent": "claude"
-        },
-        "independent": false,
-        "human_reviewed": false,
-        "outcome": "context_confirmed",
-        "lemma": "다르다",
-        "pos": "adjective",
-        "reason_code": "context_supports_reading",
-        "source_digest": "cd496c10a6808a1810b99f8cc1eefbdf09e3d4610fc0618fa8dd81617ce7da27",
-        "decision_sha256": "053c1af7a5b3214e6c2917325717b999ead9fb013aa2521d9b011ee819a14956"
-      },
-      {
-        "decision_id": "D0004",
+        "decision_id": "D0002",
         "observation_digest": "2227289a60c90703128e05757c42d5b75283b9858a55d5cf04d59be83a682f07",
         "trace_digest": "6c0d4738f3917d0e7ec9faa5075feef60e780299bfda20d966c47d65f249e8f1",
         "surface": "대한",
@@ -4041,21 +3864,144 @@
         "pos": "verb",
         "reason_code": "context_supports_reading",
         "source_digest": "e084e2cf9550dbf5fd80fa2116504eac06d1058043ec89ffed6ffb6c5dd709b2",
-        "decision_sha256": "17c654771f13c65c5833735fd41ec9c66cc75d304d4055848c8ff830d6a08721"
+        "decision_sha256": "e155c060ed2baf39d95ac8ba253a2e00aa153862add55052e3e9d9875d3990c3"
       },
       {
-        "decision_id": "D0005",
-        "observation_digest": "5bbb8482e9aff9039b9e93e74f19cf785565db2a22e62ecd20905c753f55a1ba",
-        "trace_digest": "4d9594325bd7fe404d9b5df09a866eef314abcc2e7f625b8b5db6abdd69a9fe1",
-        "surface": "높다",
+        "decision_id": "D0003",
+        "observation_digest": "51348c76b7700c9c3519499187a18fd61404a7fe7ae6363d22631c183419bfbf",
+        "trace_digest": "3da22a9fc56456953da8350956015f58da9f0636ecd2d209118d33cc0b3e987b",
+        "surface": "들어간",
         "evidence": {
           "kind": "corpus-paragraph",
-          "ref": "WARW2500000250.1#WARW2500000250.1.528"
+          "ref": "WARW2500000091.1#WARW2500000091.1.608"
         },
         "considered": [
           {
-            "lemma": "높다",
-            "pos": "adjective",
+            "lemma": "들다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "들어가다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "들어가다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "ff9fc4cce068e28f52129d81c76196e5022eda9156e49221c5afc393e534814b",
+        "decision_sha256": "c117fd7bbef8b2d23e3e6d3a67cd1a747d1cf129193f79d600f75d26fc8b4b88"
+      },
+      {
+        "decision_id": "D0004",
+        "observation_digest": "5865425a91faf4aa7be834f816475a9ec9c319166360ceb6a9fff148252fe556",
+        "trace_digest": "ac040070d81a6e5911c081d2d67ea5b0d58511312e979cd8c8598eec55e9f44c",
+        "surface": "들고",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.17"
+        },
+        "considered": [
+          {
+            "lemma": "듣다",
+            "pos": "verb",
+            "supporters": [
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "들다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "들다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "82af62bcc2f332b3791e68d5c6fc7d6c6b4834975dea6b1d04ea6a9391d2747d",
+        "decision_sha256": "b64e93e2be6bc1fa6509ccc6c2e95665553f21f468f655f8e693f8d01a8204bd"
+      },
+      {
+        "decision_id": "D0005",
+        "observation_digest": "5c6c0121fc0242b5fcca7eb3f5b4ab03aa6d006fb9f6be49cd2ded917c3e1a04",
+        "trace_digest": "924daf4243606d8b4fe5dc3effd6659a3650a681081da2f6cdd7883d7cf0fea2",
+        "surface": "다음",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.44"
+        },
+        "considered": [
+          {
+            "lemma": "다",
+            "pos": "adverb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "다음",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "다음",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "fa15c30ec582cdc575d61d4ff73a7c5c629e5a534539362a63b0edd47a255aa0",
+        "decision_sha256": "3971f4ed65c20a112805acc8022771eee8a16b6d6e5d1a3256f1c528b89e939f"
+      },
+      {
+        "decision_id": "D0006",
+        "observation_digest": "6264f3080815e1ab53ba908568dddaf3f244c68eee9887fdd56cf7fdd021ac93",
+        "trace_digest": "e8e8c8424f9eea0918d27dcdf1862e247c4d66fde3238286a3be8956704f475d",
+        "surface": "마음이",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.129"
+        },
+        "considered": [
+          {
+            "lemma": "마음",
+            "pos": "noun",
             "supporters": [
               "khaiii",
               "kiwi_alt",
@@ -4064,7 +4010,7 @@
             ]
           },
           {
-            "lemma": "높다",
+            "lemma": "마음이",
             "pos": "noun",
             "supporters": [
               "kiwi_alt"
@@ -4079,52 +4025,11 @@
         "independent": false,
         "human_reviewed": false,
         "outcome": "context_confirmed",
-        "lemma": "높다",
-        "pos": "adjective",
+        "lemma": "마음",
+        "pos": "noun",
         "reason_code": "context_supports_reading",
-        "source_digest": "7326475237e2360ad7a26a5defd1f25648ff62f125f77249329cd87946571da5",
-        "decision_sha256": "5de6de841f3cad7adb1feb668f68aec721245f48839edbce9e6860ff4316b32a"
-      },
-      {
-        "decision_id": "D0006",
-        "observation_digest": "6fb3a7e915f0b8b23bec43fabd634fbe6666c9a595eb5793a4e4ab7bb694e4da",
-        "trace_digest": "2897a54e53a4c56a767f0f6e31038f5b495e7c25d9538da0c39111b59e939af5",
-        "surface": "다닐",
-        "evidence": {
-          "kind": "corpus-paragraph",
-          "ref": "WARW2500000091.1#WARW2500000091.1.1839"
-        },
-        "considered": [
-          {
-            "lemma": "다니다",
-            "pos": "verb",
-            "supporters": [
-              "khaiii",
-              "kiwi_top",
-              "mecab"
-            ]
-          },
-          {
-            "lemma": "다닐",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_alt"
-            ]
-          }
-        ],
-        "method": "m9-local-context-review-v1",
-        "author": {
-          "kind": "agent-self-check",
-          "agent": "claude"
-        },
-        "independent": false,
-        "human_reviewed": false,
-        "outcome": "context_confirmed",
-        "lemma": "다니다",
-        "pos": "verb",
-        "reason_code": "context_supports_reading",
-        "source_digest": "4e5ad7ba9b278df4b71757be32569dc730a25f93ed48dcfcb20d32bbfafecdc9",
-        "decision_sha256": "fc56d3d30ea71620d2c5a075c32d48c53617e83fc1229f8cb5865ed3868f87af"
+        "source_digest": "86df28b57928f50ce61b2dd9cc09b38a88658e33dbe9d631dd01e798e765f4a3",
+        "decision_sha256": "96241a7a7dc8517c36aaaedf1474ba6bb5be38eb6a1b8c05edbe9dcb68a0811a"
       },
       {
         "decision_id": "D0007",
@@ -4169,6 +4074,47 @@
       },
       {
         "decision_id": "D0008",
+        "observation_digest": "8280970c0691d3c019b08b2574d87227a448020609e0395a68906266c20c5a05",
+        "trace_digest": "27bfb1cc46ee74622ebef02076fc8c7af4dc08756b4bc7d3d296ee233c2c2b19",
+        "surface": "들어갈",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.138"
+        },
+        "considered": [
+          {
+            "lemma": "들다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "들어가다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "들어가다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "ecd435edc44fa363da65ccb2b38fd3fca84d0480efa46f4c9a82226a587de29d",
+        "decision_sha256": "93d99e79f0529868eed22a71915bff8be3863f672ea9b5410c222fc9f9b9a2be"
+      },
+      {
+        "decision_id": "D0009",
         "observation_digest": "922cd2565f726eb778d62c16b21a2e7a1214e00bb3687f862e63208f3ceaff7c",
         "trace_digest": "bb7dd0c8283ac63d4caa8c795699a620473f6670132be5f69b55b549ac82cc1e",
         "surface": "같다",
@@ -4207,10 +4153,10 @@
         "pos": "adjective",
         "reason_code": "context_supports_reading",
         "source_digest": "1b50b737e39ca3e0bed78bca4a1a9e07bab79379cbfb5fdea911820930f79cae",
-        "decision_sha256": "8644f7cdda8ac4dc5502a22b1b96a489513a8f97656d333c0dba4ca62ad6871b"
+        "decision_sha256": "e1d45929e3ee1e5de1d56b1daac6e1cd77aa52e51abc6040005f8ee068eb219b"
       },
       {
-        "decision_id": "D0009",
+        "decision_id": "D0010",
         "observation_digest": "9966210c9767b99150d6dda08d4d30112b59d96edbe3d2666f3c62f63621075b",
         "trace_digest": "b8be380e6a10c1941298a29676fa7627d5a83584c18f33b1d7707ecdddfa3924",
         "surface": "같아",
@@ -4249,10 +4195,10 @@
         "pos": "adjective",
         "reason_code": "context_supports_reading",
         "source_digest": "4baec2e00664a385281d8ec467ca6fff9c4ae7d5578c80146d08cce8b0505a7c",
-        "decision_sha256": "95dfc1c4c9bd569f2375840fefb1ac33d28a45224f21b703dc399ee148a811a2"
+        "decision_sha256": "cc6a1ce45da5666bc684e70850f958b4d9070bfc94210d2fef99bae278b48f8f"
       },
       {
-        "decision_id": "D0010",
+        "decision_id": "D0011",
         "observation_digest": "ba78054086d64b54e1de86b2e7a94b2ad9046510e60068c20d47df89ad1e91d5",
         "trace_digest": "f70fd4ccb727afde24be0895b442fe03eeda8a7c0ce7f85af9850e1ff61c1328",
         "surface": "그러고",
@@ -4290,33 +4236,25 @@
         "pos": "verb",
         "reason_code": "context_supports_reading",
         "source_digest": "a57cfc2a630e848651b58a900fc218f74ca12930f9f5c73bb52958e26701fab3",
-        "decision_sha256": "1205e7257d79555b30b37bb420fec4cc0040bd73c5215aecd810a51897da5955"
+        "decision_sha256": "112cc93e40780ad9793c0157b5463be177cad8b4d5932740f451606d2f71c96d"
       },
       {
-        "decision_id": "D0011",
-        "observation_digest": "f5f7c099bab0b9c2f10fab471fdfe6bc87b611cb738faddbf486ce0bb88c82c1",
-        "trace_digest": "dbd6a3e334624782803cb0f1e9defc218376e792e6d52d159b1961f2db7e0c4f",
-        "surface": "걸릴",
+        "decision_id": "D0012",
+        "observation_digest": "ea331aad9d72d218024bba8338d20e3ecb09a4c003cf08399964b0defcf46b27",
+        "trace_digest": "6aa1c350560958af25791b05c1684ac0d383b193556267b2bf23e365676bd26d",
+        "surface": "따른",
         "evidence": {
           "kind": "corpus-paragraph",
-          "ref": "WARW2500000091.1#WARW2500000091.1.247"
+          "ref": "WARW2500000101.1#WARW2500000101.1.1496"
         },
         "considered": [
           {
-            "lemma": "걸리다",
+            "lemma": "따르다",
             "pos": "verb",
             "supporters": [
               "khaiii",
               "kiwi_alt",
-              "kiwi_top",
               "mecab"
-            ]
-          },
-          {
-            "lemma": "걸릴",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_alt"
             ]
           }
         ],
@@ -4328,14 +4266,56 @@
         "independent": false,
         "human_reviewed": false,
         "outcome": "context_confirmed",
-        "lemma": "걸리다",
+        "lemma": "따르다",
         "pos": "verb",
         "reason_code": "context_supports_reading",
-        "source_digest": "9cfb80c66921d2cc22821c6a8917e7e426ce979695beceb15bc80738eabc9da0",
-        "decision_sha256": "b0a2d466c9cd24d657234ba5829b68cfe6110968c427fde5044fe8d48c83ac99"
+        "source_digest": "b1d6ab004905c5a1c062def1798185945b491f83a75e6021b88b9ce281b8bf77",
+        "decision_sha256": "31df62eca89919454a9569bf94b55a0ae2ea16ad1b25ce71e58bd40f22f354cc"
       },
       {
-        "decision_id": "D0012",
+        "decision_id": "D0013",
+        "observation_digest": "ecf597ebb7ee273e80bb51768c0fc33b95eeacb5a14c68bf21001cd40ecdc645",
+        "trace_digest": "0c52837d21389534ada2031bec9dbdfcf8b5081efcd685df1a65ba382259f686",
+        "surface": "따라",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.337"
+        },
+        "considered": [
+          {
+            "lemma": "따다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "따르다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "따르다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "3acdf04729106a8786468986ff078907876c3c355d8c21e1cbbaccaae31ab2fb",
+        "decision_sha256": "2199a33317ca5d9c7b84d61bbf3a868cce57a7e531df13cc1916653c2d6ae863"
+      },
+      {
+        "decision_id": "D0014",
         "observation_digest": "fd53f3eb081ba081ab7c249c9e7c9348a3f9d914c214da0ddf2f75aeea5a90db",
         "trace_digest": "62ad1039addf3c9ad1547ba1ca978713d03676a16bb4fdeb263a5825b6b5393e",
         "surface": "대해",
@@ -4374,53 +4354,12 @@
         "pos": "verb",
         "reason_code": "context_supports_reading",
         "source_digest": "56601967063667037f3633cd7ff0ce5fbc941a80b5e147387512698da2589e54",
-        "decision_sha256": "ea892162f2e7965458c2e412280ef02368f4e9c63bf831de137fe15de762a9b9"
-      },
-      {
-        "decision_id": "D0013",
-        "observation_digest": "ff7c1caf453d4f1873e4864b97640ce41bbbc0859274cbe4980258a87b0100b6",
-        "trace_digest": "95795818003bcb5c954c374b9c2614e72a7ddc50e8a1aaa6791843ad3c71ea1c",
-        "surface": "걸린",
-        "evidence": {
-          "kind": "corpus-paragraph",
-          "ref": "WARW2500000091.1#WARW2500000091.1.129"
-        },
-        "considered": [
-          {
-            "lemma": "걸리다",
-            "pos": "verb",
-            "supporters": [
-              "khaiii",
-              "kiwi_top",
-              "mecab"
-            ]
-          },
-          {
-            "lemma": "린",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_alt"
-            ]
-          }
-        ],
-        "method": "m9-local-context-review-v1",
-        "author": {
-          "kind": "agent-self-check",
-          "agent": "claude"
-        },
-        "independent": false,
-        "human_reviewed": false,
-        "outcome": "context_confirmed",
-        "lemma": "걸리다",
-        "pos": "verb",
-        "reason_code": "context_supports_reading",
-        "source_digest": "4ddddf5fb5e729b489f24852bb6ddc91a687e7267c111393bf7eda24e6af04e4",
-        "decision_sha256": "b05237286c607d25c37c611bf185e5744ca88b7e7c3326014456e37974182b0f"
+        "decision_sha256": "88088f7b08e00b09d2166c85a1fb0d37652458c5f6adce4467cf0766133834a9"
       }
     ],
-    "decisions_sha256": "af6465d307740f2e7399fe9148067d0751850c7aa9d71ebb973b3b38ce722207"
+    "decisions_sha256": "86552d6920b7f9741e8293409b4de1a1167f4b05adeccc9af15ec0d12a75e829"
   },
-  "source_evidence_sha256": "fa317b267d6d03e6b08af8325d04f6dec28910d7e74f563311b0f8d7943b3572",
-  "candidates_sha256": "99142a919f95fea735096cd320e78fcfd160cf7c28a04454b78abd7748c815e6",
+  "source_evidence_sha256": "0f88aeef1b3e7016084349602780e79d427e5c1caf00b8fc0e40f448c6097810",
+  "candidates_sha256": "dc241ea4eea5178224891b93f36c5e8edf9437a03086eb7174befc69df4058a8",
   "status": "created"
 }

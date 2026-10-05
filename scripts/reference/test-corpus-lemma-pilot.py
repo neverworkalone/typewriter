@@ -269,6 +269,39 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             self.assertIn("바라다", excluded_candidates)
             self.assertEqual(excluded["selection"]["excluded_candidate_lemma_count"], 1)
 
+    def test_factory_mode_keeps_exact_canonical_lemmas_for_stage_one_comparison(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            index_path = root / "index.sqlite"
+            dictionary_path = root / "dictionary.sqlite"
+            permission_path = root / "permission.md"
+            create_index(index_path)
+            create_dictionary(dictionary_path)
+            create_permission(permission_path)
+            results = {}
+            for name, include in (("default", False), ("factory", True)):
+                results[name] = pilot.run_extraction(
+                    index_path=index_path,
+                    dictionary_path=dictionary_path,
+                    staging_path=root / f"{name}-staging.sqlite",
+                    candidate_output_path=root / f"{name}-candidates.json",
+                    permission_record_path=permission_path,
+                    analyzer=FakeAnalyzer(),
+                    sample_every=1,
+                    candidate_limit=10,
+                    batch_size=2,
+                    include_canonical_lemmas=include,
+                )
+            default_lemmas = {row["proposed_lemma"] for row in results["default"]["candidates"]}
+            factory = {row["proposed_lemma"]: row for row in results["factory"]["candidates"]}
+            # Historical M9 behaviour is unchanged; the opt-in factory mode no longer drops an exact
+            # canonical lemma before Stage 1/2 can compare its evidence-backed POS and senses.
+            self.assertNotIn("녹음", default_lemmas)
+            self.assertNotIn("include_canonical_lemmas", results["default"]["selection"])
+            self.assertEqual(factory["녹음"]["coverage_status"], "exact_canonical_lemma")
+            self.assertTrue(results["factory"]["selection"]["include_canonical_lemmas"])
+            self.assertEqual(default_lemmas | {"녹음"}, set(factory))
+
     def test_candidate_limit_is_bounded(self):
         self.assertEqual(pilot.TARGET_CANDIDATES, 200)
         self.assertEqual(pilot.MAX_CANDIDATE_LIMIT, 500)
