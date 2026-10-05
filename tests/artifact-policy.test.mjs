@@ -241,6 +241,31 @@ test('artifact policy classifies projections before they can become tracked data
   );
 });
 
+test('artifact policy tracks only the four Stage 2 review artifacts per batch directory', async () => {
+  const policy = await readArtifactPolicy();
+  const options = {
+    deterministicProjectionPatterns: policy.deterministic_projection_patterns,
+    relocatableProjectionPatterns: policy.relocatable_projection_patterns,
+    durableProjectionPatterns: policy.durable_projection_patterns,
+    durableTrackedPatterns: policy.durable_tracked_patterns,
+    protectedRoots: policy.protected_roots,
+  };
+  const legitimate = classifyTrackedArtifacts(
+    ['manifest.json', 'decisions.jsonl', 'semantic-decisions.json', 'intake-handoff.json'].map((name) => `data/reviews/C000417/${name}`),
+    options,
+  );
+  assert.deepEqual([...legitimate.generated, ...legitimate.unclassified], []);
+  const stray = [
+    'data/reviews/C000417/raw-evidence.json',
+    'data/reviews/C000417/decisions.jsonl.bak',
+    'data/reviews/C000417/nested/manifest.json',
+    'data/reviews/manifest.json',
+    'data/reviews/D000417/manifest.json',
+  ];
+  const strays = classifyTrackedArtifacts(stray, options);
+  assert.deepEqual([...strays.unclassified, ...strays.generated].sort(), [...stray].sort());
+});
+
 test('artifact policy tracks only the two immutable candidate artifacts per batch directory', async () => {
   const policy = await readArtifactPolicy();
   const options = {
