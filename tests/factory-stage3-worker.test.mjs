@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -709,5 +710,38 @@ test('applyStage3Admission leaves the worktree untouched when a surface-form jud
       (error) => error.category === 'lexical' && error.code === 'STAGE3_SURFACE_FORM_JUDGMENT',
     );
     assert.equal(await snapshot(), before, 'no canonical, manifest or authority file changed');
+
+    // Same gap through processStage3Attempt with the real apply step: the draft is rejected from a clean tree.
+    const events = [];
+    const claim = { batchId: 'C000001', attempt: 1, claimRef: 'refs/heads/stage3-claims/C000001-a1', branchName: 'codex/stage3/C000001-a1', rejectionBranchName: 'codex/stage3-status/C000001-a1', baseSha: 'head', prNumber: 75 };
+    const processManifestPath = path.join(root, 'data/reviews/C000001/manifest.json');
+    await mkdir(path.dirname(processManifestPath), { recursive: true });
+    await writeFile(processManifestPath, JSON.stringify(manifests([]).reviewManifest));
+    const snapshotSync = () => JSON.stringify([
+      readdirSync(path.join(root, 'data/canonical')),
+      ...[processManifestPath, ...['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json', 'canonical-semantic-decision-source.json'].map((name) => path.join(root, 'data/validation', name))]
+        .map((file) => readFileSync(file, 'utf8')),
+    ]);
+    const processBefore = snapshotSync();
+    const github = {
+      async getPullRequest() { return { number: 75, state: 'open', draft: true, base: { ref: 'master' }, head: { ref: claim.branchName } }; },
+      async getBranchHead() { return 'head'; },
+      async updatePullRequestBody() { events.push('disposition'); },
+      async closePullRequest() { events.push('close'); },
+      async createPullRequest(payload) { events.push('status-pr'); return { number: 76, html_url: 'https://example.test/76' }; },
+    };
+    const git = {
+      async fetchMaster() {}, resolveRef() { return 'head'; },
+      // The rejection-status branch is created only from an unchanged worktree.
+      createBranch() { events.push(snapshotSync() === processBefore ? 'status-branch:clean' : 'status-branch:DIRTY'); },
+      async commitAndPush() {}, async deleteBranch() {},
+    };
+    const result = await processStage3Attempt({
+      github, git, root, claim, runGates: false,
+      prepare: async () => ({ plan, reviewManifestPath, canonicalRecords, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' }),
+    });
+    assert.equal(result.prState, 'rejection-status');
+    assert.equal(result.prNumber, 76);
+    assert.deepEqual(events.slice(0, 4), ['disposition', 'close', 'status-branch:clean', 'status-pr']);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
