@@ -1,3 +1,4 @@
+import { restorePreFactoryDecisionSource } from '../validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -523,7 +524,7 @@ function validatePromotionLedgerPrefix({ currentEntries, expectedPrefixEntries, 
 
 function deriveBaseDecisionSource(currentDecisionSource, baseRecords) {
   const baseIds = new Set(baseRecords.map(({ id }) => id));
-  const source = structuredClone(currentDecisionSource);
+  const source = restorePreFactoryDecisionSource(currentDecisionSource, baseRecords);
   const baseDigest = canonicalRecordsSha256(baseRecords.map((record, index) => asRecordInfo(record, 'base-canonical', index + 1)));
   source.source.canonical_records_sha256 = baseDigest;
   source.authored_review = {

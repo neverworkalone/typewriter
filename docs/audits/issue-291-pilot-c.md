@@ -79,3 +79,17 @@ commit. The worker now pins a local admission checkpoint before CI, pushes only
 a validated checkpoint, and preserves a local ahead-of-remote checkpoint on
 restart. Recovery refuses dirty or divergent trees instead of resetting them.
 No `allowDirty` build bypass is used.
+
+The next normal run confirmed one parent / zero child current-revision SQLite
+builds, then exposed an isolated M5-11 historical test source that retained
+future factory events after removing their canonical records. Shared historical
+snapshot reconstruction now restores hash-bound pre-admission review rows and
+rejects snapshots that do not match the retained history. The same reconstruction
+is used by the existing M5-13/14/15 historical base-source paths. The live
+semantic source and historical batch artifacts remain unchanged by reconstruction.
+
+A Stage 1 `+1` submitted at 08:58:44 on #303 explicitly applies only to the
+starter SHA `5775353650e22b8a8ad911b97ff8cde26eeb45b3`; it is not consumed as
+review approval for subsequent implementation/admission commits. The remote
+CI failure on `667663c` was the still-present temporary starter's artifact-policy
+classification; successful admission removes that starter as required.

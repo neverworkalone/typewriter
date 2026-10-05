@@ -2717,3 +2717,43 @@ if (isMainModule) {
       process.exitCode = 1;
     });
 }
+
+/** Reconstruct a retained pre-factory snapshot; never use this for current admission. */
+export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) {
+  const source = structuredClone(currentSource);
+  const snapshotById = new Map(snapshotRecords.map((info) => {
+    const record = recordOf(info); return [record.id, record];
+  }));
+  const reviews = new Map(source.authored_review.records.map((row) => [row.record_id, row]));
+  const restored = new Set();
+  for (const event of [...(source.factory_admissions ?? [])].reverse()) {
+    const unsigned = { ...event }; delete unsigned.sha256;
+    if (sha256Json(unsigned) !== event.sha256) {
+      fail('historical snapshot cannot rewind an unbound factory event', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    }
+    for (const change of event.changes) {
+      const target = snapshotById.get(change.entry_id);
+      if (change.operation === 'create') {
+        if (target) fail('pre-factory snapshot contains a factory-created record', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        reviews.delete(change.entry_id);
+      } else if (target) {
+        if (sha256Json(change.previous_semantic_review) !== change.previous_semantic_review_sha256
+          || sha256Json(change.previous_record) !== change.before_sha256
+          || change.previous_semantic_review?.record_sha256 !== change.before_sha256) {
+          fail('historical snapshot lacks a bound pre-admission record and review', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+        reviews.set(change.entry_id, structuredClone(change.previous_semantic_review));
+        restored.add(change.entry_id);
+      }
+    }
+  }
+  for (const id of restored) {
+    if (reviews.get(id)?.record_sha256 !== sha256Json(snapshotById.get(id))) {
+      fail(`pre-factory snapshot for ${id} does not match the retained admission history`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    }
+  }
+  source.authored_review.records = [...reviews.values()];
+  delete source.factory_admissions;
+  source.authored_review_sha256 = sha256Json(source.authored_review);
+  return source;
+}
