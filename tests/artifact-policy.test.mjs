@@ -241,6 +241,31 @@ test('artifact policy classifies projections before they can become tracked data
   );
 });
 
+test('artifact policy tracks only the four Stage 2 review artifacts per batch directory', async () => {
+  const policy = await readArtifactPolicy();
+  const options = {
+    deterministicProjectionPatterns: policy.deterministic_projection_patterns,
+    relocatableProjectionPatterns: policy.relocatable_projection_patterns,
+    durableProjectionPatterns: policy.durable_projection_patterns,
+    durableTrackedPatterns: policy.durable_tracked_patterns,
+    protectedRoots: policy.protected_roots,
+  };
+  const legitimate = classifyTrackedArtifacts(
+    ['manifest.json', 'decisions.jsonl', 'semantic-decisions.json', 'intake-handoff.json'].map((name) => `data/reviews/C000417/${name}`),
+    options,
+  );
+  assert.deepEqual([...legitimate.generated, ...legitimate.unclassified], []);
+  const stray = [
+    'data/reviews/C000417/raw-evidence.json',
+    'data/reviews/C000417/decisions.jsonl.bak',
+    'data/reviews/C000417/nested/manifest.json',
+    'data/reviews/manifest.json',
+    'data/reviews/D000417/manifest.json',
+  ];
+  const strays = classifyTrackedArtifacts(stray, options);
+  assert.deepEqual([...strays.unclassified, ...strays.generated].sort(), [...stray].sort());
+});
+
 test('artifact policy tracks only the two immutable candidate artifacts per batch directory', async () => {
   const policy = await readArtifactPolicy();
   const options = {
@@ -897,6 +922,85 @@ test('artifact policy closes the compact canonical decision source against deriv
       }),
       (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
     );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy accepts a factory decision row addressed by source_candidate_id without inventory identity or rank', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-factory-decision-policy-'));
+  const relativePath = 'data/reviews/C000002/semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const source = {
+  review_binding_contract_version: 'source-bound-semantic-review-v2',
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "kind": "separately-authored-semantic-decision-source",
+  "batch_id": "C000001",
+  "authoring_mode": "agent-authored-decision",
+  "provenance": {
+    "human_reviewed": false
+  },
+  "review": {
+    "status": "complete",
+    "reviewer": "claude-agent-self-check",
+    "reviewed_candidate_count": 1
+  },
+  "decisions": [
+    {
+      "source_candidate_id": "C000001-0002",
+      "candidate_record_id": "C000001-0002",
+      "candidate_record_sha256": "b03b910e85b36f4fa4f84aa6197d7fa04046ab91b8f1fcb0079a941ef04835fe",
+      "decision": "included",
+      "decision_rationale": "C000001-0002: 어휘 정체성, 품사, 뜻풀이 적합성, 뜻 경계를 근거 문맥으로 확인했다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000001-0002-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000001-0002: 대동사 쓰임 하나로 한정된다.",
+          "semantic_rationale": "C000001-0002: 앞선 말이나 행동을 이어받아 그렇게 하다를 뜻한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000001-0002 C000001-0002-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        }
+      ],
+      "boundary_pairs": [],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000001-0002",
+        "candidate_record_sha256": "b03b910e85b36f4fa4f84aa6197d7fa04046ab91b8f1fcb0079a941ef04835fe",
+        "decision_evidence_sha256": "70a058c5440c2ff76d7828565ff3404a6be4836149a1be923c83fd95a6472cb5",
+        "sense_evidence": [
+          {
+            "sense_id": "C000001-0002-s1",
+            "sense_sha256": "073437d3b745d4d7ba79610c11efe8f3dd8b195b27d5c427131c505b5bd2e9e7",
+            "gloss_sha256": "f9f10992d0570a4eb9d1027449de4102ffb8a27350d47db14aed41a64f4f4098",
+            "evidence_sha256": "db96925e9f9f9303e4e1db4c7d39348b1844e4d0955878a0cfce68e14117ddf6"
+          }
+        ]
+      }
+    }
+  ]
+};
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(source)}\n`, 'utf8');
+    await assert.doesNotReject(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }));
+    // An M5/M9 selection row (no source_candidate_id) still needs inventory identity and rank.
+    const legacy = structuredClone(source);
+    delete legacy.decisions[0].source_candidate_id;
+    await writeFile(filePath, `${JSON.stringify(legacy)}\n`, 'utf8');
+    await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }), /missing compact field inventory_id/u);
+    // The exemption is bound to the factory review path: an M5/M9 batch decision source cannot opt out
+    // of inventory identity and rank by adding source_candidate_id.
+    const batchPath = 'data/batches/m9-synthetic-semantic-decisions.json';
+    await mkdir(path.dirname(path.join(repositoryDirectory, batchPath)), { recursive: true });
+    await writeFile(path.join(repositoryDirectory, batchPath), `${JSON.stringify(source)}\n`, 'utf8');
+    await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [batchPath] }), /missing compact field inventory_id/u);
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }

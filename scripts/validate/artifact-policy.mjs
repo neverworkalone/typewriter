@@ -410,6 +410,9 @@ function validateCompactGateArtifact(value, filePath, semantics) {
   }
 }
 
+const FACTORY_REVIEW_DECISION_PATH = /(?:^|\/)data\/reviews\/C\d{6}\/semantic-decisions\.json$/u;
+const FACTORY_EXEMPT_FIELDS = new Set(['inventory_id', 'rank']);
+
 function validateCompactDecisionSource(value, filePath, semantics) {
   if (!semantics.batch_decision_contract_versions.includes(value.contract_version)
     || !Array.isArray(value.decisions)) return;
@@ -426,7 +429,13 @@ function validateCompactDecisionSource(value, filePath, semantics) {
     const requiredFields = value.contract_version === SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION
       ? [...semantics.batch_decision_required_fields, 'review_binding']
       : semantics.batch_decision_required_fields;
+    // A Stage 2 factory row is addressed by its Stage 1 candidate id; inventory identity and selection
+    // rank are M5/M9 selection concepts it does not have. The exemption needs the factory review path
+    // as well as the field, so an M5/M9 batch row cannot opt out by adding source_candidate_id.
+    const factoryRow = FACTORY_REVIEW_DECISION_PATH.test(filePath.split(path.sep).join('/'))
+      && Object.hasOwn(row, 'source_candidate_id');
     for (const field of requiredFields) {
+      if (factoryRow && FACTORY_EXEMPT_FIELDS.has(field)) continue;
       if (!Object.hasOwn(row, field)) {
         fail(
           `${filePath} decision ${index} is missing compact field ${field}`,

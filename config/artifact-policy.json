@@ -50,6 +50,10 @@
     "data/batches/**",
     "data/candidates/C*/manifest.json",
     "data/candidates/C*/candidates.jsonl",
+    "data/reviews/C*/manifest.json",
+    "data/reviews/C*/decisions.jsonl",
+    "data/reviews/C*/semantic-decisions.json",
+    "data/reviews/C*/intake-handoff.json",
     "data/timing/*.jsonl",
     "data/timing/m10-b-short-search-comparison-*.json",
     "data/inventory/m5-target-seed.json",
@@ -811,6 +815,7 @@
             "selection_rationale": "string"
           },
           "$.decisions.*": {
+            "source_candidate_id": "string",
             "candidate_record_id": "string",
             "inventory_id": "string",
             "candidate_record_sha256": "string",
@@ -1046,6 +1051,7 @@
           }
         },
         "decision_allowed_fields": [
+          "source_candidate_id",
           "candidate_record_id",
           "inventory_id",
           "candidate_record_sha256",
@@ -1123,7 +1129,7 @@
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
           "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "coverage_field", "coverage_basis", "selection_rationale"],
-          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "selection_axis", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "hold_basis", "rejection_basis", "sense_reviews", "review_binding", "correction", "boundary_pairs", "lexical_unit_review"],
+          "$.decisions.*": ["source_candidate_id", "candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "selection_axis", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "hold_basis", "rejection_basis", "sense_reviews", "review_binding", "correction", "boundary_pairs", "lexical_unit_review"],
           "$.decisions.*.lexical_unit_review": ["contract_version", "judgment", "rationale", "evidence"],
           "$.decisions.*.lexical_unit_review.evidence.*": ["source", "observation"],
           "$.decisions.*.review_binding": ["contract_version", "candidate_record_id", "candidate_record_sha256", "decision_evidence_sha256", "sense_evidence"],
