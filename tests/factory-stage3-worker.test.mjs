@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
+import { inspectSenseBoundaryPairs, sha256Json } from '../scripts/validate/semantic-audit.mjs';
+import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 import { applySurfaceFormDispositions, planSurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
 
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
+  applyStage3Admission,
   claimNextStage3Batch,
   createStage3Draft,
   eligibleStage3Batches,
@@ -641,5 +645,69 @@ test('planning surface-form dispositions from projected records writes nothing, 
     assert.deepEqual(plan.map(({ path: relativePath }) => relativePath), ['data/validation/m6-3-surface-form-review.json']);
     const after = await Promise.all([canonicalFile, path.join(root, 'data/validation/m6-3-surface-form-review.json'), path.join(root, 'data/validation/m6-2-inflection-exceptions.json')].map((file) => readFile(file, 'utf8')));
     assert.deepEqual(after, before, 'planning never writes');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+// Real applyStage3Admission: a surface-form judgment gap must stop it before any canonical or manifest write.
+test('applyStage3Admission leaves the worktree untouched when a surface-form judgment gap is found', async () => {
+  const canonicalRecords = [];
+  const recordPathById = new Map();
+  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
+    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      canonicalRecords.push(record);
+      recordPathById.set(record.id, 'data/canonical/' + name);
+    }
+  }
+  const id = 'C900001-0001';
+  // A verb whose final coda needs a reviewer's regular/irregular judgment cannot be decided by the rule.
+  const decision = {
+    source_candidate_id: id, disposition: 'included', target: { kind: 'new_entry' },
+    reviewed_record: { lemma: '합성놓다', senses: [{ pos: 'verb', gloss: '합성 시험에서 쓰는 단일 뜻풀이.' }] },
+  };
+  const record = reviewedCandidateRecord(decision);
+  const row = {
+    source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+    decision_rationale: id + ': 합성 시험 결정.', gloss_judgment: 'fit',
+    sense_reviews: record.senses.map((sense) => ({
+      sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+      boundary_rationale: id + ' ' + sense.id + ': 한 가지 뜻으로 한정된다.', semantic_rationale: id + ' ' + sense.id + ': ' + sense.gloss,
+      relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: id + ' ' + sense.id + ': 관계 없음.',
+    })),
+    boundary_pairs: inspectSenseBoundaryPairs(record).map(() => { throw new Error('single sense has no pairs'); }),
+  };
+  row.review_binding = authorSemanticReviewBinding(row, record);
+  const digest = 'a'.repeat(64);
+  const plan = planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-apply-gap-'));
+  try {
+    for (const file of ['data/validation/canonical-semantic-decision-source.json', 'data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']) {
+      await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+      await writeFile(path.join(root, file), await readFile(file, 'utf8'));
+    }
+    await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+    await mkdir(path.join(root, 'data/reviews/C900001'), { recursive: true });
+    const reviewManifestPath = path.join(root, 'data/reviews/C900001/manifest.json');
+    await writeFile(reviewManifestPath, '{"status":"ready"}\n');
+    const snapshot = async () => JSON.stringify([
+      await readdir(path.join(root, 'data/canonical')),
+      ...await Promise.all([reviewManifestPath, ...['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json', 'canonical-semantic-decision-source.json'].map((name) => path.join(root, 'data/validation', name))]
+        .map((file) => readFile(file, 'utf8'))),
+    ]);
+    const before = await snapshot();
+    // The projected canonical revision is used for planning, but the base records are never rewritten here.
+    await assert.rejects(
+      applyStage3Admission({
+        root, claim: { batchId: 'C900001', attempt: 1 },
+        prepared: { plan, reviewManifestPath, canonicalRecords, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' },
+      }),
+      (error) => error.category === 'lexical' && error.code === 'STAGE3_SURFACE_FORM_JUDGMENT',
+    );
+    assert.equal(await snapshot(), before, 'no canonical, manifest or authority file changed');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
