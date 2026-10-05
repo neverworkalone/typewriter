@@ -377,6 +377,7 @@ export async function buildStage3SemanticAuthority({
     changes.push({
       ...change,
       previous_semantic_review_sha256: previous ? sha256Json(previous) : null,
+      ...(previous ? { previous_semantic_review: structuredClone(previous), previous_record: structuredClone(beforeRecord) } : {}),
       semantic_review_sha256: sha256Json(reviewed),
     });
   }

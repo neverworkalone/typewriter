@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
 } from '../validate/canonical-jsonl.mjs';
+import { validateFactoryAdmissionLedger } from '../validate/semantic-audit.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -102,11 +103,11 @@ function selectionFlagsForSeed(seedEntry) {
   return seedEntry.flags.filter((flag) => !CANONICAL_DERIVED_FLAGS.has(flag));
 }
 
-function canonicalEntry(recordInfo) {
+function canonicalEntry(recordInfo, factoryMapping) {
   const { record } = recordInfo;
   const reasonCode = categoryForCanonicalId(record.id);
 
-  if (record.role === 'start' && !reasonCode) {
+  if (record.role === 'start' && !reasonCode && !factoryMapping) {
     throw new TargetInventoryGenerationError(
       `canonical start ${record.id} needs a promoted inventory mapping before it can enter the target inventory`,
       'UNMAPPED_CANONICAL_START',
@@ -115,6 +116,7 @@ function canonicalEntry(recordInfo) {
 
   return {
     inventory_id: `canonical-${record.id}`,
+    ...(factoryMapping ? { admitted_from: factoryMapping } : {}),
     source: 'canonical',
     canonical_id: record.id,
     status: 'current',
@@ -320,6 +322,7 @@ export function validatePromotionLedgerBindings({
     );
   }
   const reviewById = new Map(reviewRecords.map((review) => [review.record_id, review]));
+  const factoryEvents = validateFactoryAdmissionLedger(decisionSource, canonicalRecords, 'promotion authority');
   for (const [index, entry] of entries.entries()) {
     const label = `promotion ledger[${index}]`;
     const record = canonicalById.get(entry.canonical_id);
@@ -329,8 +332,25 @@ export function validatePromotionLedgerBindings({
         'PROMOTION_LEDGER_BINDING_MISMATCH',
       );
     }
-    const recordDigest = sha256Json(record);
-    const review = reviewById.get(entry.canonical_id);
+    let recordDigest = sha256Json(record);
+    let review = reviewById.get(entry.canonical_id);
+    const amendments = factoryEvents.flatMap((event) => event.changes).filter((change) => change.entry_id === entry.canonical_id);
+    if (amendments.length) {
+      const first = amendments[0];
+      if (first.operation !== 'append_senses' || !first.previous_semantic_review || !first.previous_record) {
+        throw new TargetInventoryGenerationError(`${label} lacks preserved original promotion authority`, 'PROMOTION_LEDGER_BINDING_MISMATCH');
+      }
+      recordDigest = first.before_sha256;
+      review = first.previous_semantic_review;
+      // Admission is additive: the historical promoted payload must survive unchanged.
+      const original = first.previous_record;
+      const { senses: oldSenses, ...oldIdentity } = original;
+      const { senses: currentSenses, ...currentIdentity } = record;
+      if (JSON.stringify(oldIdentity) !== JSON.stringify(currentIdentity)
+        || oldSenses.some((sense, index) => JSON.stringify(sense) !== JSON.stringify(currentSenses[index]))) {
+        throw new TargetInventoryGenerationError(`${label} admission rewrote the original promoted payload`, 'PROMOTION_LEDGER_BINDING_MISMATCH');
+      }
+    }
     const binding = review?.authored_batch_decision;
     if (!review || !binding
       || review.record_sha256 !== recordDigest
@@ -401,8 +421,8 @@ export async function buildTargetInventory({
   const promotionLedger = effectivePromotionPath
     ? await readPromotionLedger(effectivePromotionPath)
     : [];
+  let decisionSource;
   if (promotionLedger.length > 0) {
-    let decisionSource;
     try {
       decisionSource = JSON.parse(await readFile(decisionSourcePath, 'utf8'));
     } catch (error) {
@@ -427,6 +447,7 @@ export async function buildTargetInventory({
     });
   }
 
+  const factoryMappings = factoryInventoryMappings(decisionSource, canonical.records);
   const embeddedPromotions = seed.targets.filter((entry) => {
     validateSeedPromotion(entry);
     return entry.status === 'promoted';
@@ -485,7 +506,7 @@ export async function buildTargetInventory({
       const promotion = promotionsByCanonicalId.get(recordInfo.record.id);
       return promotion
         ? promotedCanonicalEntry(recordInfo, promotion)
-        : canonicalEntry(recordInfo);
+        : canonicalEntry(recordInfo, factoryMappings.get(recordInfo.record.id));
     })
     .sort((left, right) => left.canonical_id.localeCompare(right.canonical_id));
 
@@ -561,4 +582,15 @@ if (isMainModule) {
     console.error(error.message);
     process.exitCode = 1;
   });
+}
+
+/** Source-bound creations enter the inventory without inventing M5 selection axes. */
+export function factoryInventoryMappings(decisionSource, canonicalRecords) {
+  const mappings = new Map();
+  for (const event of validateFactoryAdmissionLedger(decisionSource ?? {}, canonicalRecords, 'factory inventory authority')) {
+    for (const change of event.changes.filter((change) => change.operation === 'create')) {
+      mappings.set(change.entry_id, `${event.batch_id}-a${event.attempt}`);
+    }
+  }
+  return mappings;
 }

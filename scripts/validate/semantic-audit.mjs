@@ -2372,7 +2372,7 @@ export function validateSemanticDecisionSource(
   return materializedReview;
 }
 
-function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
+export function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
   if (decisionSource.factory_admissions === undefined) return [];
   const events = requireArray(decisionSource.factory_admissions, `${label}.factory_admissions`);
   const canonicalById = new Map(recordInfos.map((recordInfo) => {
@@ -2430,6 +2430,15 @@ function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
         fail(`${changeLabel}.previous_semantic_review_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       requireDigest(change.semantic_review_sha256, `${changeLabel}.semantic_review_sha256`);
+      if (change.previous_semantic_review !== undefined || change.previous_record !== undefined) {
+        if (change.operation !== 'append_senses'
+          || sha256Json(change.previous_semantic_review) !== change.previous_semantic_review_sha256
+          || sha256Json(change.previous_record) !== change.before_sha256
+          || change.previous_semantic_review?.record_sha256 !== change.before_sha256
+          || change.previous_record?.id !== change.entry_id) {
+          fail(`${changeLabel} does not bind its preserved pre-admission record and review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+      }
       const mappingSources = requireArray(change.source_candidate_ids, `${changeLabel}.source_candidate_ids`);
       if (mappingSources.length === 0 || mappingSources.some((sourceCandidateId) => mappings.get(sourceCandidateId)?.record_id !== change.entry_id)) {
         fail(`${changeLabel}.source_candidate_ids do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
