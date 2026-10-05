@@ -7,11 +7,173 @@
   "semantic_decisions_sha256": "aae95f5a8ffac4f710c6997821bf22b4d942acb76aa6c21499eee1d2aa1c7c91",
   "handoff_sha256": "ab7e605a5f975a3f243eb738cfb70abb72e0aa205b0f5fd9325bb776c7549ce3",
   "attempt": 2,
-  "status": "ready",
+  "status": "complete",
   "history": [
     {
       "attempt": 1,
       "rejected_pr": 305
     }
-  ]
+  ],
+  "admission": {
+    "contract": "lexical-factory-admission-v1",
+    "attempt": 2,
+    "admission_pr": 308,
+    "base_canonical_snapshot_digest": "9b884315ab7912075bce399ff7ff09307ac3b12e536c4255d1ce59a2f2acdb92",
+    "canonical_snapshot_digest": "43269c02940ba52619da19cadbcee63268ada4217a5320213fc4c915f047dd73",
+    "entries": [
+      {
+        "source_candidate_id": "C000002-0002",
+        "record_id": "w5362",
+        "sense_ids": [
+          "w5362-s2"
+        ]
+      },
+      {
+        "source_candidate_id": "C000002-0004",
+        "record_id": "w12547",
+        "sense_ids": [
+          "w12547-s1",
+          "w12547-s2"
+        ]
+      },
+      {
+        "source_candidate_id": "C000002-0006",
+        "record_id": "w12548",
+        "sense_ids": [
+          "w12548-s1",
+          "w12548-s2"
+        ]
+      },
+      {
+        "source_candidate_id": "C000002-0008",
+        "record_id": "w12549",
+        "sense_ids": [
+          "w12549-s1",
+          "w12549-s2"
+        ]
+      },
+      {
+        "source_candidate_id": "C000002-0009",
+        "record_id": "w12550",
+        "sense_ids": [
+          "w12550-s1"
+        ]
+      },
+      {
+        "source_candidate_id": "C000002-0010",
+        "record_id": "w12551",
+        "sense_ids": [
+          "w12551-s1"
+        ]
+      },
+      {
+        "source_candidate_id": "C000002-0011",
+        "record_id": "w12552",
+        "sense_ids": [
+          "w12552-s1"
+        ]
+      }
+    ],
+    "changes": [
+      {
+        "entry_id": "w12547",
+        "operation": "create",
+        "path": "data/canonical/factory-C000002-a2.jsonl",
+        "source_candidate_ids": [
+          "C000002-0004"
+        ],
+        "added_sense_ids": [
+          "w12547-s1",
+          "w12547-s2"
+        ],
+        "before_sha256": null,
+        "after_sha256": "f688843ca0b4db46390e7f5a9275f9f0d38cf5802508d3e43d581841e8408a33"
+      },
+      {
+        "entry_id": "w12548",
+        "operation": "create",
+        "path": "data/canonical/factory-C000002-a2.jsonl",
+        "source_candidate_ids": [
+          "C000002-0006"
+        ],
+        "added_sense_ids": [
+          "w12548-s1",
+          "w12548-s2"
+        ],
+        "before_sha256": null,
+        "after_sha256": "29666cde3922eb1996d5032d99ff707724c8cb041f2c1f77d1ba162b9011b726"
+      },
+      {
+        "entry_id": "w12549",
+        "operation": "create",
+        "path": "data/canonical/factory-C000002-a2.jsonl",
+        "source_candidate_ids": [
+          "C000002-0008"
+        ],
+        "added_sense_ids": [
+          "w12549-s1",
+          "w12549-s2"
+        ],
+        "before_sha256": null,
+        "after_sha256": "6d8c61f6d256723eab738cef59e7308ca2fd6aaaac9fac0122f8c7c6777b9add"
+      },
+      {
+        "entry_id": "w12550",
+        "operation": "create",
+        "path": "data/canonical/factory-C000002-a2.jsonl",
+        "source_candidate_ids": [
+          "C000002-0009"
+        ],
+        "added_sense_ids": [
+          "w12550-s1"
+        ],
+        "before_sha256": null,
+        "after_sha256": "4b4640484fc26b3ecb6ad9e8cd91fbf245c73daa87585b5184a1121b991fc263"
+      },
+      {
+        "entry_id": "w12551",
+        "operation": "create",
+        "path": "data/canonical/factory-C000002-a2.jsonl",
+        "source_candidate_ids": [
+          "C000002-0010"
+        ],
+        "added_sense_ids": [
+          "w12551-s1"
+        ],
+        "before_sha256": null,
+        "after_sha256": "ccfd6b74aa2a2710664fb9e34968a18c061b2c6f5b9eeda57536ec0b9951eeff"
+      },
+      {
+        "entry_id": "w12552",
+        "operation": "create",
+        "path": "data/canonical/factory-C000002-a2.jsonl",
+        "source_candidate_ids": [
+          "C000002-0011"
+        ],
+        "added_sense_ids": [
+          "w12552-s1"
+        ],
+        "before_sha256": null,
+        "after_sha256": "3fd30f13ef0eba6bbd59336b5e0bcd9dbde17e2c510f129fc68bf53631a3905f"
+      },
+      {
+        "entry_id": "w5362",
+        "operation": "append_senses",
+        "path": "data/canonical/issue-211-bounded-recovery.jsonl",
+        "source_candidate_ids": [
+          "C000002-0002"
+        ],
+        "added_sense_ids": [
+          "w5362-s2"
+        ],
+        "before_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12",
+        "after_sha256": "6504ea2856388c5a6295244223e057fcc787ad7e29953d6b8fa185c019fdbc3a"
+      }
+    ],
+    "semantic_authority": {
+      "path": "data/validation/canonical-semantic-decision-source.json",
+      "source_id": "canonical-semantic-decision-source-20260914",
+      "admission_sha256": "38d3ed3574ec27971c55989ccbb20d281454f7d2662dd0691e440debe15bdfc2"
+    }
+  }
 }

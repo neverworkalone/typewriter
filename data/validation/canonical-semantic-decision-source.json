@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "6a1617adaad1164aa539a1250e5fc53e9b97e5a1ea42ebcba2fd48be18662e06"
+    "canonical_records_sha256": "885770c9658e2ccd9f8ca10686757fc9775a26df152e87d3d14882e50d0bf569"
   },
-  "authored_review_sha256": "394b6434d9721dc6e15b265a4a458006bac8c2000cfdc1e2f4979434049124e2",
+  "authored_review_sha256": "bfdc3d50e45e4ecbb0361a8872d2aa089e95dc6274acc142ee90e231c70232cb",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "6a1617adaad1164aa539a1250e5fc53e9b97e5a1ea42ebcba2fd48be18662e06"
+      "canonical_records_sha256": "885770c9658e2ccd9f8ca10686757fc9775a26df152e87d3d14882e50d0bf569"
     },
     "records": [
       {
@@ -100430,19 +100430,52 @@
       },
       {
         "record_id": "w5362",
-        "record_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12",
-        "authored_batch_decision": {
-          "source_id": "issue-211-authored-semantic-decisions-20260928-r1",
-          "source_sha256": "f55f82ba211c68a4c427f2a133ab1f36ab4b0fcada315d692c239ffe13cf6262",
-          "artifact_sha256": "bd442e66adf3472db2819f2e2b532ad555eceac27fadfcb5214b2d176f3dd7c2",
-          "decision_row_sha256": "776d819a0b4936bceb9306a217c40fc10fdac378744c8d65c540a5bdb0604511",
-          "candidate_record_id": "w5362",
-          "candidate_record_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12",
-          "decision": "included",
-          "selection_rank": 4,
-          "selection_axis": "A",
-          "reviewed_record_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12"
-        }
+        "record_sha256": "6504ea2856388c5a6295244223e057fcc787ad7e29953d6b8fa185c019fdbc3a",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000002-a2:w5362:boundary",
+          "decision": "split",
+          "classification": "separated",
+          "evidence": [
+            {
+              "sense_id": "w5362-s1",
+              "evidence_basis": "m5-5404 w5362 w5362-s1 eadd85cdf584: 만들다의 작성된 뜻풀이는 “재료나 요소를 모으고 손질해 새 물건이나 결과를 이루는 동작.”라는 writer-facing lexical reading 하나에 대응한다.",
+              "rationale": "m5-5404 w5362 w5362-s1 eadd85cdf584: m5-5404 w5362: 재료나 요소를 새 물건 또는 결과로 이루는 동사로 생산 행위를 하나의 중심 뜻으로 설명한다."
+            },
+            {
+              "sense_id": "w5362-s2",
+              "evidence_basis": "w5362 w5362-s2 ce8c4df5bd8c [C000002-0002]: C000002-0002: o02는 행위자가 어떤 행동을 하도록 이끄는 쓰임이며 새 물건 제작과 구분된다.",
+              "rationale": "w5362 w5362-s2 ce8c4df5bd8c [C000002-0002]: C000002-0002: 사동 쓰임으로 한정되며 기존 물건을 이루는 뜻과 구분된다."
+            }
+          ],
+          "pairwise": [
+            {
+              "left_sense_id": "w5362-s1",
+              "right_sense_id": "w5362-s2",
+              "relationship": "distinct",
+              "decision": "retain",
+              "evidence_basis": "w5362 w5362-s1 w5362-s2: w5362 w5362-s1 reviewed gloss eadd85cdf584 from the bound authored batch decision. C000002-0002: o02는 행위자가 어떤 행동을 하도록 이끄는 쓰임이며 새 물건 제작과 구분된다.",
+              "distinguishing_feature": "w5362 w5362-s1 w5362-s2: Stage 2 new_sense_on_existing_entry context w5362-s1; the source-bound Stage 2 target is distinct from the existing canonical sense.",
+              "rationale": "w5362 w5362-s1 w5362-s2 eadd85cdf584 ce8c4df5bd8c [C000002-0002]: Stage 2 new_sense_on_existing_entry context w5362-s1; C000002-0002: o02는 행위자가 어떤 행동을 하도록 이끄는 쓰임이며 새 물건 제작과 구분된다."
+            }
+          ],
+          "rationale": "w5362: source-bound Stage 3 admission combines the preserved canonical review with C000002-0002 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w5362-s1",
+            "relation_decision": "no-relations",
+            "relation_rationale": "w5362 w5362-s1 relation tuples were reviewed against canonical content.",
+            "no_relation_rationale": "w5362 w5362-s1 relation tuples were reviewed against canonical content."
+          },
+          {
+            "sense_id": "w5362-s2",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w5362 w5362-s2 ce8c4df5bd8c [C000002-0002]: C000002-0002: o02는 행위자가 어떤 행동을 하도록 이끄는 쓰임이며 새 물건 제작과 구분된다.",
+            "boundary_rationale": "w5362 w5362-s2 ce8c4df5bd8c [C000002-0002]: C000002-0002: 사동 쓰임으로 한정되며 기존 물건을 이루는 뜻과 구분된다.",
+            "relation_rationale": "w5362 w5362-s2 ce8c4df5bd8c [C000002-0002]: C000002-0002 C000002-0002-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w5362 w5362-s2 ce8c4df5bd8c [C000002-0002]: C000002-0002 C000002-0002-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
       },
       {
         "record_id": "w5363",
@@ -215048,6 +215081,243 @@
             "no_relation_rationale": "w12546 w12546-s2 ab626bbc0ae2 [C000001-0011]: C000001-0011 C000001-0011-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
           }
         ]
+      },
+      {
+        "record_id": "w12547",
+        "record_sha256": "f688843ca0b4db46390e7f5a9275f9f0d38cf5802508d3e43d581841e8408a33",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000002-a2:w12547:boundary",
+          "decision": "split",
+          "classification": "separated",
+          "evidence": [
+            {
+              "sense_id": "w12547-s1",
+              "evidence_basis": "w12547 w12547-s1 ee508b32d55d [C000002-0004]: C000002-0004: o01과 앞뒤 대화를 확인한 o02는 진술의 옳음을 인정하는 뜻이다.",
+              "rationale": "w12547 w12547-s1 ee508b32d55d [C000002-0004]: C000002-0004: 사실에 비추어 옳음을 인정하는 쓰임으로 한정된다."
+            },
+            {
+              "sense_id": "w12547-s2",
+              "evidence_basis": "w12547 w12547-s2 6a471cd56c52 [C000002-0004]: C000002-0004: o03은 취향과 부합하는지를 평가하며 사실의 옳음 판정과 다르다.",
+              "rationale": "w12547 w12547-s2 6a471cd56c52 [C000002-0004]: C000002-0004: 에 맞다 꼴의 어울림 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [
+            {
+              "left_sense_id": "w12547-s1",
+              "right_sense_id": "w12547-s2",
+              "relationship": "distinct",
+              "decision": "retain",
+              "evidence_basis": "w12547 w12547-s1 w12547-s2: C000002-0004: C000002-0004.o01,C000002-0004.o02 / C000002-0004.o03의 원본 근거를 attempt 2에서 다시 대조했다.",
+              "distinguishing_feature": "w12547 w12547-s1 w12547-s2: C000002-0004: 옳음의 인정 대 기준과의 어울림로 구분된다.",
+              "rationale": "w12547 w12547-s1 w12547-s2 ee508b32d55d 6a471cd56c52 [C000002-0004]: C000002-0004: o01/o02는 명제의 옳음을 인정하고 o03은 취향과의 적합성을 평가한다. 두 동사 뜻을 유지한다."
+            }
+          ],
+          "rationale": "w12547: source-bound Stage 3 admission combines the preserved canonical review with C000002-0004 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12547-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12547 w12547-s1 ee508b32d55d [C000002-0004]: C000002-0004: o01과 앞뒤 대화를 확인한 o02는 진술의 옳음을 인정하는 뜻이다.",
+            "boundary_rationale": "w12547 w12547-s1 ee508b32d55d [C000002-0004]: C000002-0004: 사실에 비추어 옳음을 인정하는 쓰임으로 한정된다.",
+            "relation_rationale": "w12547 w12547-s1 ee508b32d55d [C000002-0004]: C000002-0004 C000002-0004-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12547 w12547-s1 ee508b32d55d [C000002-0004]: C000002-0004 C000002-0004-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          },
+          {
+            "sense_id": "w12547-s2",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12547 w12547-s2 6a471cd56c52 [C000002-0004]: C000002-0004: o03은 취향과 부합하는지를 평가하며 사실의 옳음 판정과 다르다.",
+            "boundary_rationale": "w12547 w12547-s2 6a471cd56c52 [C000002-0004]: C000002-0004: 에 맞다 꼴의 어울림 쓰임으로 한정된다.",
+            "relation_rationale": "w12547 w12547-s2 6a471cd56c52 [C000002-0004]: C000002-0004 C000002-0004-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12547 w12547-s2 6a471cd56c52 [C000002-0004]: C000002-0004 C000002-0004-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12548",
+        "record_sha256": "29666cde3922eb1996d5032d99ff707724c8cb041f2c1f77d1ba162b9011b726",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000002-a2:w12548:boundary",
+          "decision": "split",
+          "classification": "separated",
+          "evidence": [
+            {
+              "sense_id": "w12548-s1",
+              "evidence_basis": "w12548 w12548-s1 3286ba8cfc09 [C000002-0006]: C000002-0006: o01은 자신의 변화를 의식하지 못하고 o02는 방법을 알지 못한다. 모두 앎의 부재라는 뜻 안에서 유지한다.",
+              "rationale": "w12548 w12548-s1 3286ba8cfc09 [C000002-0006]: C000002-0006: 사실이나 방법을 알지 못하는 쓰임으로 한정된다."
+            },
+            {
+              "sense_id": "w12548-s2",
+              "evidence_basis": "w12548 w12548-s2 54a09852112a [C000002-0006]: C000002-0006: o03은 -ㄹ지도 모르다 구성의 가능성 추측이다. 이 단일 관찰의 구성 범위를 넘는 독립 용법을 주장하지 않는다.",
+              "rationale": "w12548 w12548-s2 54a09852112a [C000002-0006]: C000002-0006: -ㄹ지도 모르다 꼴의 가능성 추측 쓰임으로 한정되며, 근거 관찰이 하나뿐인 구성 표현의 용법이다."
+            }
+          ],
+          "pairwise": [
+            {
+              "left_sense_id": "w12548-s1",
+              "right_sense_id": "w12548-s2",
+              "relationship": "distinct",
+              "decision": "retain",
+              "evidence_basis": "w12548 w12548-s1 w12548-s2: C000002-0006: C000002-0006.o01,C000002-0006.o02 / C000002-0006.o03의 원본 근거를 attempt 2에서 다시 대조했다.",
+              "distinguishing_feature": "w12548 w12548-s1 w12548-s2: C000002-0006: 앎의 부재 대 가능성의 추측로 구분된다.",
+              "rationale": "w12548 w12548-s1 w12548-s2 3286ba8cfc09 54a09852112a [C000002-0006]: C000002-0006: o01/o02의 인지·방법 지식 부재와 o03의 구성 표현에 한정된 가능성 추측은 구별한다. 빈도나 유용성은 입장 판단 근거로 쓰지 않는다."
+            }
+          ],
+          "rationale": "w12548: source-bound Stage 3 admission combines the preserved canonical review with C000002-0006 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12548-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12548 w12548-s1 3286ba8cfc09 [C000002-0006]: C000002-0006: o01은 자신의 변화를 의식하지 못하고 o02는 방법을 알지 못한다. 모두 앎의 부재라는 뜻 안에서 유지한다.",
+            "boundary_rationale": "w12548 w12548-s1 3286ba8cfc09 [C000002-0006]: C000002-0006: 사실이나 방법을 알지 못하는 쓰임으로 한정된다.",
+            "relation_rationale": "w12548 w12548-s1 3286ba8cfc09 [C000002-0006]: C000002-0006 C000002-0006-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12548 w12548-s1 3286ba8cfc09 [C000002-0006]: C000002-0006 C000002-0006-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          },
+          {
+            "sense_id": "w12548-s2",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12548 w12548-s2 54a09852112a [C000002-0006]: C000002-0006: o03은 -ㄹ지도 모르다 구성의 가능성 추측이다. 이 단일 관찰의 구성 범위를 넘는 독립 용법을 주장하지 않는다.",
+            "boundary_rationale": "w12548 w12548-s2 54a09852112a [C000002-0006]: C000002-0006: -ㄹ지도 모르다 꼴의 가능성 추측 쓰임으로 한정되며, 근거 관찰이 하나뿐인 구성 표현의 용법이다.",
+            "relation_rationale": "w12548 w12548-s2 54a09852112a [C000002-0006]: C000002-0006 C000002-0006-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12548 w12548-s2 54a09852112a [C000002-0006]: C000002-0006 C000002-0006-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12549",
+        "record_sha256": "6d8c61f6d256723eab738cef59e7308ca2fd6aaaac9fac0122f8c7c6777b9add",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000002-a2:w12549:boundary",
+          "decision": "split",
+          "classification": "separated",
+          "evidence": [
+            {
+              "sense_id": "w12549-s1",
+              "evidence_basis": "w12549 w12549-s1 d93d2c544b26 [C000002-0008]: C000002-0008: o01은 사람을 목적지로 이동하게 한다. 시간을 지내는 뜻과 구분한다.",
+              "rationale": "w12549 w12549-s1 d93d2c544b26 [C000002-0008]: C000002-0008: 이동의 대상이 있는 쓰임으로 한정된다."
+            },
+            {
+              "sense_id": "w12549-s2",
+              "evidence_basis": "w12549 w12549-s2 e4ade3eb1cb0 [C000002-0008]: C000002-0008: o02/o03은 시간 구간을 목적어로 하여 지냄을 나타낸다. 이동 목적지를 전제하지 않는다.",
+              "rationale": "w12549 w12549-s2 e4ade3eb1cb0 [C000002-0008]: C000002-0008: 시간 표현을 목적어로 하는 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [
+            {
+              "left_sense_id": "w12549-s1",
+              "right_sense_id": "w12549-s2",
+              "relationship": "distinct",
+              "decision": "retain",
+              "evidence_basis": "w12549 w12549-s1 w12549-s2: C000002-0008: C000002-0008.o01 / C000002-0008.o02,C000002-0008.o03의 원본 근거를 attempt 2에서 다시 대조했다.",
+              "distinguishing_feature": "w12549 w12549-s1 w12549-s2: C000002-0008: 다른 곳으로 가게 함 대 시간을 지냄로 구분된다.",
+              "rationale": "w12549 w12549-s1 w12549-s2 d93d2c544b26 e4ade3eb1cb0 [C000002-0008]: C000002-0008: o01의 사람 이동 유발과 o02/o03의 시간 경과를 구분해 두 뜻을 유지한다."
+            }
+          ],
+          "rationale": "w12549: source-bound Stage 3 admission combines the preserved canonical review with C000002-0008 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12549-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12549 w12549-s1 d93d2c544b26 [C000002-0008]: C000002-0008: o01은 사람을 목적지로 이동하게 한다. 시간을 지내는 뜻과 구분한다.",
+            "boundary_rationale": "w12549 w12549-s1 d93d2c544b26 [C000002-0008]: C000002-0008: 이동의 대상이 있는 쓰임으로 한정된다.",
+            "relation_rationale": "w12549 w12549-s1 d93d2c544b26 [C000002-0008]: C000002-0008 C000002-0008-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12549 w12549-s1 d93d2c544b26 [C000002-0008]: C000002-0008 C000002-0008-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          },
+          {
+            "sense_id": "w12549-s2",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12549 w12549-s2 e4ade3eb1cb0 [C000002-0008]: C000002-0008: o02/o03은 시간 구간을 목적어로 하여 지냄을 나타낸다. 이동 목적지를 전제하지 않는다.",
+            "boundary_rationale": "w12549 w12549-s2 e4ade3eb1cb0 [C000002-0008]: C000002-0008: 시간 표현을 목적어로 하는 쓰임으로 한정된다.",
+            "relation_rationale": "w12549 w12549-s2 e4ade3eb1cb0 [C000002-0008]: C000002-0008 C000002-0008-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12549 w12549-s2 e4ade3eb1cb0 [C000002-0008]: C000002-0008 C000002-0008-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12550",
+        "record_sha256": "4b4640484fc26b3ecb6ad9e8cd91fbf245c73daa87585b5184a1121b991fc263",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000002-a2:w12550:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w12550-s1",
+              "evidence_basis": "w12550 w12550-s1 25c7bc72a7e1 [C000002-0009]: C000002-0009: o01/o02는 형용사 뒤, o03은 명사+으로 뒤에서 성질이나 인상이 어떠하게 비침을 나타낸다. 눈에 단순히 나타남이나 타인에게 보여 주는 사동 뜻은 이 관찰에 없다.",
+              "rationale": "w12550 w12550-s1 25c7bc72a7e1 [C000002-0009]: C000002-0009: 성질·평가나 명사+으로 뒤에서 인상이 비치는 쓰임이다. o01/o02/o03을 모두 포함하되 단순 가시성과 보여 줌의 뜻은 포함하지 않는다."
+            }
+          ],
+          "pairwise": [],
+          "rationale": "w12550: source-bound Stage 3 admission combines the preserved canonical review with C000002-0009 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12550-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12550 w12550-s1 25c7bc72a7e1 [C000002-0009]: C000002-0009: o01/o02는 형용사 뒤, o03은 명사+으로 뒤에서 성질이나 인상이 어떠하게 비침을 나타낸다. 눈에 단순히 나타남이나 타인에게 보여 주는 사동 뜻은 이 관찰에 없다.",
+            "boundary_rationale": "w12550 w12550-s1 25c7bc72a7e1 [C000002-0009]: C000002-0009: 성질·평가나 명사+으로 뒤에서 인상이 비치는 쓰임이다. o01/o02/o03을 모두 포함하되 단순 가시성과 보여 줌의 뜻은 포함하지 않는다.",
+            "relation_rationale": "w12550 w12550-s1 25c7bc72a7e1 [C000002-0009]: C000002-0009 C000002-0009-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12550 w12550-s1 25c7bc72a7e1 [C000002-0009]: C000002-0009 C000002-0009-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12551",
+        "record_sha256": "ccfd6b74aa2a2710664fb9e34968a18c061b2c6f5b9eeda57536ec0b9951eeff",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000002-a2:w12551:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w12551-s1",
+              "evidence_basis": "w12551 w12551-s1 ba26bb1efc71 [C000002-0010]: C000002-0010: o01은 수량 표현과 조리용 그릇이라는 문맥으로 명사 볼을 확인한다. 보다의 관형형이나 신체 부위 뜻과 다르다.",
+              "rationale": "w12551 w12551-s1 ba26bb1efc71 [C000002-0010]: C000002-0010: 수를 세는 명사 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [],
+          "rationale": "w12551: source-bound Stage 3 admission combines the preserved canonical review with C000002-0010 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12551-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12551 w12551-s1 ba26bb1efc71 [C000002-0010]: C000002-0010: o01은 수량 표현과 조리용 그릇이라는 문맥으로 명사 볼을 확인한다. 보다의 관형형이나 신체 부위 뜻과 다르다.",
+            "boundary_rationale": "w12551 w12551-s1 ba26bb1efc71 [C000002-0010]: C000002-0010: 수를 세는 명사 쓰임으로 한정된다.",
+            "relation_rationale": "w12551 w12551-s1 ba26bb1efc71 [C000002-0010]: C000002-0010 C000002-0010-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12551 w12551-s1 ba26bb1efc71 [C000002-0010]: C000002-0010 C000002-0010-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
+      },
+      {
+        "record_id": "w12552",
+        "record_sha256": "3fd30f13ef0eba6bbd59336b5e0bcd9dbde17e2c510f129fc68bf53631a3905f",
+        "boundary_review": {
+          "review_id": "factory-stage3:C000002-a2:w12552:boundary",
+          "decision": "retain",
+          "classification": "atomic",
+          "evidence": [
+            {
+              "sense_id": "w12552-s1",
+              "evidence_basis": "w12552 w12552-s1 97c9b2298a89 [C000002-0011]: C000002-0011: o01은 물건의 구입을 나타내는 동사 사다의 연결형이다. 직업 명사 사서 해석을 배제한다.",
+              "rationale": "w12552 w12552-s1 97c9b2298a89 [C000002-0011]: C000002-0011: 물건을 목적어로 하는 쓰임으로 한정된다."
+            }
+          ],
+          "pairwise": [],
+          "rationale": "w12552: source-bound Stage 3 admission combines the preserved canonical review with C000002-0011 Stage 2 evidence."
+        },
+        "sense_reviews": [
+          {
+            "sense_id": "w12552-s1",
+            "relation_decision": "no-relations",
+            "semantic_rationale": "w12552 w12552-s1 97c9b2298a89 [C000002-0011]: C000002-0011: o01은 물건의 구입을 나타내는 동사 사다의 연결형이다. 직업 명사 사서 해석을 배제한다.",
+            "boundary_rationale": "w12552 w12552-s1 97c9b2298a89 [C000002-0011]: C000002-0011: 물건을 목적어로 하는 쓰임으로 한정된다.",
+            "relation_rationale": "w12552 w12552-s1 97c9b2298a89 [C000002-0011]: C000002-0011 C000002-0011-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+            "no_relation_rationale": "w12552 w12552-s1 97c9b2298a89 [C000002-0011]: C000002-0011 C000002-0011-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+          }
+        ]
       }
     ],
     "changes": [],
@@ -215385,6 +215655,209 @@
         }
       ],
       "sha256": "e2f79d8d13fe467c9051b30785428df5b85dc2bbd49a905bc16e739d55e15bee"
+    },
+    {
+      "batch_id": "C000002",
+      "attempt": 2,
+      "semantic_decisions_sha256": "aae95f5a8ffac4f710c6997821bf22b4d942acb76aa6c21499eee1d2aa1c7c91",
+      "entries": [
+        {
+          "source_candidate_id": "C000002-0002",
+          "record_id": "w5362",
+          "sense_ids": [
+            "w5362-s2"
+          ]
+        },
+        {
+          "source_candidate_id": "C000002-0004",
+          "record_id": "w12547",
+          "sense_ids": [
+            "w12547-s1",
+            "w12547-s2"
+          ]
+        },
+        {
+          "source_candidate_id": "C000002-0006",
+          "record_id": "w12548",
+          "sense_ids": [
+            "w12548-s1",
+            "w12548-s2"
+          ]
+        },
+        {
+          "source_candidate_id": "C000002-0008",
+          "record_id": "w12549",
+          "sense_ids": [
+            "w12549-s1",
+            "w12549-s2"
+          ]
+        },
+        {
+          "source_candidate_id": "C000002-0009",
+          "record_id": "w12550",
+          "sense_ids": [
+            "w12550-s1"
+          ]
+        },
+        {
+          "source_candidate_id": "C000002-0010",
+          "record_id": "w12551",
+          "sense_ids": [
+            "w12551-s1"
+          ]
+        },
+        {
+          "source_candidate_id": "C000002-0011",
+          "record_id": "w12552",
+          "sense_ids": [
+            "w12552-s1"
+          ]
+        }
+      ],
+      "changes": [
+        {
+          "entry_id": "w12547",
+          "operation": "create",
+          "path": "data/canonical/factory-C000002-a2.jsonl",
+          "source_candidate_ids": [
+            "C000002-0004"
+          ],
+          "added_sense_ids": [
+            "w12547-s1",
+            "w12547-s2"
+          ],
+          "before_sha256": null,
+          "after_sha256": "f688843ca0b4db46390e7f5a9275f9f0d38cf5802508d3e43d581841e8408a33",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "039c4ebd7fb20a78eb5044778ec892b2a00a60584a7e079618471d1353d105e7"
+        },
+        {
+          "entry_id": "w12548",
+          "operation": "create",
+          "path": "data/canonical/factory-C000002-a2.jsonl",
+          "source_candidate_ids": [
+            "C000002-0006"
+          ],
+          "added_sense_ids": [
+            "w12548-s1",
+            "w12548-s2"
+          ],
+          "before_sha256": null,
+          "after_sha256": "29666cde3922eb1996d5032d99ff707724c8cb041f2c1f77d1ba162b9011b726",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "a4b82aa5e5f790bfbba9e805bdbcb79227566a9bd8209f89d0c4903385abefca"
+        },
+        {
+          "entry_id": "w12549",
+          "operation": "create",
+          "path": "data/canonical/factory-C000002-a2.jsonl",
+          "source_candidate_ids": [
+            "C000002-0008"
+          ],
+          "added_sense_ids": [
+            "w12549-s1",
+            "w12549-s2"
+          ],
+          "before_sha256": null,
+          "after_sha256": "6d8c61f6d256723eab738cef59e7308ca2fd6aaaac9fac0122f8c7c6777b9add",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "0c7b2cd436f3f4a02103c22446ec80ab8e811042ba3b063c62d405fc4309cd7b"
+        },
+        {
+          "entry_id": "w12550",
+          "operation": "create",
+          "path": "data/canonical/factory-C000002-a2.jsonl",
+          "source_candidate_ids": [
+            "C000002-0009"
+          ],
+          "added_sense_ids": [
+            "w12550-s1"
+          ],
+          "before_sha256": null,
+          "after_sha256": "4b4640484fc26b3ecb6ad9e8cd91fbf245c73daa87585b5184a1121b991fc263",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "511b8ef9028fcf7915c0decbf4f0b7193e80f8d6eba8fa8baa371c4435c45560"
+        },
+        {
+          "entry_id": "w12551",
+          "operation": "create",
+          "path": "data/canonical/factory-C000002-a2.jsonl",
+          "source_candidate_ids": [
+            "C000002-0010"
+          ],
+          "added_sense_ids": [
+            "w12551-s1"
+          ],
+          "before_sha256": null,
+          "after_sha256": "ccfd6b74aa2a2710664fb9e34968a18c061b2c6f5b9eeda57536ec0b9951eeff",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "07ed30f0fb63771dedb03f5174abcad42cdf53d84ef225ecf81ef6eb856ca17b"
+        },
+        {
+          "entry_id": "w12552",
+          "operation": "create",
+          "path": "data/canonical/factory-C000002-a2.jsonl",
+          "source_candidate_ids": [
+            "C000002-0011"
+          ],
+          "added_sense_ids": [
+            "w12552-s1"
+          ],
+          "before_sha256": null,
+          "after_sha256": "3fd30f13ef0eba6bbd59336b5e0bcd9dbde17e2c510f129fc68bf53631a3905f",
+          "previous_semantic_review_sha256": null,
+          "semantic_review_sha256": "bfdda8fd4411b53a40c5d7c8e5be9fda68ce23bfe94266fa27571506bd245371"
+        },
+        {
+          "entry_id": "w5362",
+          "operation": "append_senses",
+          "path": "data/canonical/issue-211-bounded-recovery.jsonl",
+          "source_candidate_ids": [
+            "C000002-0002"
+          ],
+          "added_sense_ids": [
+            "w5362-s2"
+          ],
+          "before_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12",
+          "after_sha256": "6504ea2856388c5a6295244223e057fcc787ad7e29953d6b8fa185c019fdbc3a",
+          "previous_semantic_review_sha256": "b2dda7b1a30be8c2b3093460039509a46a5feaa7807617d195068fdde464815c",
+          "previous_semantic_review": {
+            "record_id": "w5362",
+            "record_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12",
+            "authored_batch_decision": {
+              "source_id": "issue-211-authored-semantic-decisions-20260928-r1",
+              "source_sha256": "f55f82ba211c68a4c427f2a133ab1f36ab4b0fcada315d692c239ffe13cf6262",
+              "artifact_sha256": "bd442e66adf3472db2819f2e2b532ad555eceac27fadfcb5214b2d176f3dd7c2",
+              "decision_row_sha256": "776d819a0b4936bceb9306a217c40fc10fdac378744c8d65c540a5bdb0604511",
+              "candidate_record_id": "w5362",
+              "candidate_record_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12",
+              "decision": "included",
+              "selection_rank": 4,
+              "selection_axis": "A",
+              "reviewed_record_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12"
+            }
+          },
+          "previous_record": {
+            "id": "w5362",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w5362",
+            "lemma": "만들다",
+            "search_forms": [
+              "만들다"
+            ],
+            "senses": [
+              {
+                "id": "w5362-s1",
+                "pos": "verb",
+                "gloss": "재료나 요소를 모으고 손질해 새 물건이나 결과를 이루는 동작."
+              }
+            ]
+          },
+          "semantic_review_sha256": "0844d04130c34b9381298566df24baac2ad150fe0ec7ccd5662ac046e5b1f4c7"
+        }
+      ],
+      "sha256": "38d3ed3574ec27971c55989ccbb20d281454f7d2662dd0691e440debe15bdfc2"
     }
   ]
 }
