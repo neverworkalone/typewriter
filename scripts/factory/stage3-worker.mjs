@@ -6,7 +6,7 @@ import path from 'node:path';
 import { canonicalSnapshotDigest } from './stage1.mjs';
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from './admission.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
-import { applySurfaceFormDispositions } from './surface-form-dispositions.mjs';
+import { planSurfaceFormDispositions, writeSurfaceFormDispositions } from './surface-form-dispositions.mjs';
 import { loadFactorySnapshot } from './stage2-worker.mjs';
 import { validateFactoryRepository, loadBaseManifests } from './validate.mjs';
 
@@ -303,8 +303,14 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
     root, baseCanonicalRecords: prepared.canonicalRecords, plan,
     semanticDecisions: prepared.semanticDecisions, semanticDecisionsText: prepared.semanticDecisionsText,
   });
+  // Every judgment gap is decided before the first file write, so a lexical rejection leaves a clean worktree.
+  const projectedRecords = [
+    ...prepared.canonicalRecords.map((record) => plan.records.get(record.id)?.record ?? record),
+    ...[...plan.records.values()].filter((update) => !update.before).map((update) => update.record),
+  ];
+  const surfaceFormPlan = await planSurfaceFormDispositions({ root, records: projectedRecords });
   await applyStage3FileChanges(plan, { root, reviewManifestPath });
-  const surfaceFormFiles = await applySurfaceFormDispositions({ root });
+  const surfaceFormFiles = await writeSurfaceFormDispositions(surfaceFormPlan);
   await writeFile(path.join(root, semanticAuthority.sourcePath), semanticAuthority.sourceText, 'utf8');
   const digest = await canonicalSnapshotDigest(root);
   plan.reviewManifest.admission.canonical_snapshot_digest = digest;

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { applySurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
+import { applySurfaceFormDispositions, planSurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
 
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
@@ -627,5 +627,19 @@ test('Stage 3 extends an existing collision review when a later sense joins its 
     const next = JSON.parse(await readFile(file, 'utf8')).reviewed_collisions.ambiguous_generated.find(({ form }) => form === '같은');
     assert.deepEqual(next.candidates.map(({ sense_id }) => sense_id), ['w1-s1', 'w1-s2', 'w1-s3']);
     assert.equal(next.reason, 'Reviewer wording kept.');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('planning surface-form dispositions from projected records writes nothing, so a judgment gap leaves the worktree untouched', async () => {
+  const root = await surfaceFormRoot([predicate('w1', '그러다')]);
+  try {
+    const canonicalFile = path.join(root, 'data/canonical/x.jsonl');
+    const before = await Promise.all([canonicalFile, path.join(root, 'data/validation/m6-3-surface-form-review.json'), path.join(root, 'data/validation/m6-2-inflection-exceptions.json')].map((file) => readFile(file, 'utf8')));
+    const projected = [predicate('w1', '그러다'), predicate('w2', '그러다'), predicate('w3', '좋다', 'adjective')];
+    await assert.rejects(planSurfaceFormDispositions({ root, records: projected }), (error) => error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');
+    const plan = await planSurfaceFormDispositions({ root, records: projected.slice(0, 2) });
+    assert.deepEqual(plan.map(({ path: relativePath }) => relativePath), ['data/validation/m6-3-surface-form-review.json']);
+    const after = await Promise.all([canonicalFile, path.join(root, 'data/validation/m6-3-surface-form-review.json'), path.join(root, 'data/validation/m6-2-inflection-exceptions.json')].map((file) => readFile(file, 'utf8')));
+    assert.deepEqual(after, before, 'planning never writes');
   } finally { await rm(root, { recursive: true, force: true }); }
 });

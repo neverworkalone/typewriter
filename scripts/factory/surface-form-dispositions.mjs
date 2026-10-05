@@ -27,14 +27,14 @@ async function canonicalRecords(root) {
  * Stage 3 writes new canonical predicate senses, so it also owns the sense-bound M6-2/M6-3
  * surface-form dispositions and collision reviews those senses need. Only an entry the rule itself dictates (`fix`)
  * is added; a gap that needs a reviewer's judgment fails as a lexical blocker instead of being guessed.
- * Returns the repository-relative manifest paths that changed.
+ * `plan…` computes the manifest rewrites without writing anything; `write…` applies them.
  */
-export async function applySurfaceFormDispositions({ root }) {
+export async function planSurfaceFormDispositions({ root, records: projected }) {
   const exceptionPath = path.join(root, 'data/validation/m6-2-inflection-exceptions.json');
   const reviewPath = path.join(root, 'data/validation/m6-3-surface-form-review.json');
   const exceptionManifest = await loadSurfaceFormExceptionManifest(exceptionPath);
   const reviewManifest = await loadSurfaceFormReviewManifest(reviewPath);
-  const gaps = listSurfaceFormDispositionGaps(await canonicalRecords(root), { exceptionManifest, reviewManifest });
+  const gaps = listSurfaceFormDispositionGaps(projected ?? await canonicalRecords(root), { exceptionManifest, reviewManifest });
   const changed = new Set();
   for (const gap of gaps) {
     if (!gap.fix) {
@@ -54,7 +54,7 @@ export async function applySurfaceFormDispositions({ root }) {
   // New senses can also create, or extend the candidate set of, exact/generated and generated/generated
   // collisions. The policy is fixed (exact lookup keeps precedence; every sense-bound candidate is
   // retained), so these entries are dictated by the rule rather than judged here; reasons are kept.
-  const records = await canonicalRecords(root);
+  const records = projected ?? await canonicalRecords(root);
   const { collisions } = buildSurfaceFormProjection(records, { exceptionManifest, reviewManifest });
   const reviewed = reviewManifest.reviewed_collisions;
   const reasonOf = (entries) => new Map(entries.map((entry) => [entry.form, entry.reason]));
@@ -80,7 +80,18 @@ export async function applySurfaceFormDispositions({ root }) {
     reviewed.ambiguous_generated = nextAmbiguous;
     changed.add(reviewPath);
   }
-  if (changed.has(reviewPath)) await writeFile(reviewPath, `${JSON.stringify(reviewManifest, null, 2)}\n`, 'utf8');
-  if (changed.has(exceptionPath)) await writeFile(exceptionPath, `${JSON.stringify(exceptionManifest, null, 2)}\n`, 'utf8');
-  return [...changed].map((file) => path.relative(root, file).split(path.sep).join('/')).sort();
+  const files = [];
+  if (changed.has(exceptionPath)) files.push({ file: exceptionPath, text: `${JSON.stringify(exceptionManifest, null, 2)}\n` });
+  if (changed.has(reviewPath)) files.push({ file: reviewPath, text: `${JSON.stringify(reviewManifest, null, 2)}\n` });
+  return files.map(({ file, text }) => ({ file, path: path.relative(root, file).split(path.sep).join('/'), text }));
+}
+
+// Writes a plan produced before any canonical change, so a judgment gap never leaves a partial write.
+export async function writeSurfaceFormDispositions(plan) {
+  for (const { file, text } of plan) await writeFile(file, text, 'utf8');
+  return plan.map(({ path: relativePath }) => relativePath).sort();
+}
+
+export async function applySurfaceFormDispositions({ root, records }) {
+  return writeSurfaceFormDispositions(await planSurfaceFormDispositions({ root, records }));
 }
