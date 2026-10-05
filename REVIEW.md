@@ -71,27 +71,36 @@ CI must remain nested: `ci:fast` (early), `ci:normal` (full merge), `ci:all` (de
 
 ## 6. Review record — Stages 1 and 2
 
-### Mandatory review format
+### Mandatory review format — strict machine-readable prefix
 
-Every GitHub PR review MUST begin with exactly two lines:
+The first two lines of each **submitted GitHub PR Review COMMENT** are a protocol, not a descriptive label. **Only the following exact two-line shapes are valid.** Replace the placeholder with the actual complete 40-character PR HEAD SHA. The code fences below illustrate the format; **do not submit the fences**.
 
-Line 1: Review result
-- +1 : Stage 1 PASS (code/fix review only, independent of CI)
-- +2 : Stage 2 PASS (full independent review, Stage 1 and CI verified)
-- -1 : FAIL (blocker found)
+Stage 1 PASS:
+```text
++1
+HEAD: <40-character HEAD SHA>
+```
 
-Line 2: Reviewed commit
-- HEAD: <full 40-character SHA>
+Stage 2 PASS:
+```text
++2
+HEAD: <40-character HEAD SHA>
+```
+
+Stage 1 or Stage 2 BLOCKER:
+```text
+-1
+HEAD: <40-character HEAD SHA>
+```
+
+**Meanings (documentation only, NEVER part of the first line):** Stage 1 PASS means a fast AI code/fix review passed independently of CI; Stage 2 PASS means a comprehensive independent code review and Stage 1/CI evidence passed; BLOCKER means a failed review.
 
 Rules:
-- The result marker MUST occupy the entire first line.
-- No text, whitespace, or blank lines before the result marker.
-- Use exactly one result marker per review.
-- The HEAD line MUST immediately follow the result marker.
-- The HEAD must identify the exact commit actually reviewed.
-- Do not wrap either line in Markdown or a code block.
-- Write review details after these two lines.
-- Submit exactly one final result per review run.
+- **The entire first line must be exactly `+1`, `+2`, or `-1` and nothing else.** Never append a colon, `PASS`, `FAIL`, `First review passed`, `Second review passed`, `Blocker found`, or any explanation. For example, `-1 : FAIL (blocker found)` is INVALID.
+- **The entire second line must be `HEAD: ` followed immediately by the full 40-character lowercase hexadecimal SHA.** Never use a short SHA, a Markdown link or extra explanation in the original review body. GitHub may render an unformatted full SHA as a shortened hyperlink in its UI; this display transformation is not an error.
+- No leading Markdown bullet, title, fenced code block, whitespace, or empty line before the marker. No blank line between first and second lines.
+- Put all human-language descriptions, evidence, CI results, blockers and conclusions **after** the second line. A blank line after the HEAD is allowed.
+- Submit exactly one final review result per run.
 
 ### Review submission
 
