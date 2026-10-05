@@ -173,3 +173,10 @@ the strict clean-tree/revision requirement of the SQLite builder. It pushes and
 marks the Draft ready only after the gates pass. Recovery preserves an owned
 local checkpoint ahead of the remote Draft; dirty or divergent worktrees fail
 closed without resetting or discarding work.
+
+Frozen pre-factory payload checks reconstruct the original record set from the
+validated append/create history, enforcing preservation of existing identities
+and sense prefixes. Historical admission contexts scope already-reviewed surface
+collision candidates to the retained senses without disabling collision or
+semantic gates. The existing #219/#220 producers refresh their live checkpoint
+fields as part of Stage 3 output; authored historical decisions stay immutable.

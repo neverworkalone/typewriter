@@ -344,7 +344,7 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
 // Synthetic records exercise the shared promotion/admission boundary without modifying historical ledgers.
 test('factory admission preserves original promotion bindings and fails closed on rewritten history', async () => {
   const { validatePromotionLedgerBindings, factoryInventoryMappings } = await import('../scripts/inventory/generate-target-inventory.mjs');
-  const { sha256Json, restorePreFactoryDecisionSource } = await import('../scripts/validate/semantic-audit.mjs');
+  const { sha256Json, restorePreFactoryDecisionSource, canonicalRecordsBeforeFactoryAdmissions } = await import('../scripts/validate/semantic-audit.mjs');
   const original = { id: 'w90001', role: 'start', lemma: '합성어', senses: [{ id: 'w90001-s1', pos: 'noun', gloss: '첫째 뜻' }] };
   const current = { ...original, senses: [...original.senses, { id: 'w90001-s2', pos: 'noun', gloss: '둘째 뜻' }] };
   const binding = { source_id: 'original-source', artifact_sha256: 'a'.repeat(64), decision_row_sha256: 'b'.repeat(64), candidate_record_id: original.id, decision: 'included', reviewed_record_sha256: sha256Json(original) };
@@ -357,6 +357,8 @@ test('factory admission preserves original promotion bindings and fails closed o
   const entry = { canonical_id: current.id, record_sha256: sha256Json(original), decision_source_id: binding.source_id, decision_source_sha256: binding.artifact_sha256, decision_row_sha256: binding.decision_row_sha256, decision: 'included' };
   const check = (authority = source, ledger = entry, record = current) => validatePromotionLedgerBindings({ entries: [ledger], canonicalRecords: [record], decisionSource: authority });
   assert.equal(check(), true);
+  assert.deepEqual(canonicalRecordsBeforeFactoryAdmissions([current], source), [original]);
+  assert.deepEqual(canonicalRecordsBeforeFactoryAdmissions([{ record: current, filePath: 'synthetic.jsonl' }], source), [{ record: original, filePath: 'synthetic.jsonl' }]);
   const historical = restorePreFactoryDecisionSource(source, [original]);
   assert.deepEqual(historical.authored_review.records, [previousReview]);
   assert.equal(historical.factory_admissions, undefined);
@@ -378,6 +380,7 @@ test('factory admission preserves original promotion bindings and fails closed o
   const unsigned = { ...rewritten.factory_admissions[0] }; delete unsigned.sha256;
   rewritten.factory_admissions[0].sha256 = sha256Json(unsigned);
   assert.throws(() => check(rewritten, entry, changed), /rewrote the original promoted payload/);
+  assert.throws(() => canonicalRecordsBeforeFactoryAdmissions([changed], rewritten), /rewrote an existing canonical payload/);
 });
 
 test('factory inventory mappings require digest-bound canonical creations', async () => {

@@ -1,3 +1,5 @@
+import { historicalAdmissionContext } from './historical-canonical.mjs';
+import { loadCanonicalBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -623,7 +625,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
     m513SourceBytes,
     m513DecisionBytes,
   });
-  const currentById = new Map(currentRecords.map((record) => [record.id, record]));
+  const currentById = new Map((await loadCanonicalBeforeFactoryAdmissions(currentCanonical.records)).map((info) => [recordOf(info).id, recordOf(info)]));
   const historicalIds = new Set(historicalRecords.map((record) => record.id));
   for (const record of historicalRecords) {
     assert.deepEqual(currentById.get(record.id), record, `${record.id} frozen Issue #220 baseline remains unchanged`);
@@ -758,6 +760,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
       baseRecords: historicalCanonical.records,
       prospectiveRecords: batchProspectiveRecords,
       semanticAudit: batchSemanticAudit,
+      canonicalContext: historicalAdmissionContext(batchProspectiveRecords, batchSemanticAudit),
       stageEvidence: productionStageEvidence({
         candidateSourceBytes: batch.candidateSourceBytes,
         semanticSourceBytes: batch.semanticSourceBytes,

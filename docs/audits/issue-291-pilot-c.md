@@ -93,3 +93,18 @@ starter SHA `5775353650e22b8a8ad911b97ff8cde26eeb45b3`; it is not consumed as
 review approval for subsequent implementation/admission commits. The remote
 CI failure on `667663c` was the still-present temporary starter's artifact-policy
 classification; successful admission removes that starter as required.
+
+The existing #211/#219/#220 frozen-payload checks now reconstruct the original
+canonical view from validated factory events and reject any rewrite of the
+original identity or sense prefix. Their historical semantic projections also
+restore the preserved original review rows. #219/#220 keep all current lexical
+admission gates enabled; a scoped copy of already-reviewed surface evidence
+removes only candidates absent from the historical record set, with strict
+collision matching still enforced. No replay/disposition bypass was added.
+
+The #219/#220 report producers passed after refreshing their explicitly live
+canonical/search/SQLite checkpoint fields. Their original authored decisions,
+counts and source lineage remain intact. Stage 3 now invokes these existing
+report producers so subsequent admissions do not leave stale live reports.
+Standalone report reproduction remains separate from the normal CI shared
+one-build gate; it is not reported as a real lifecycle or independent review.

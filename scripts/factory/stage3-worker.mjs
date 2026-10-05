@@ -330,7 +330,20 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
   await writeFile(reviewManifestPath, JSON.stringify(plan.reviewManifest, null, 2) + '\n', 'utf8');
   const marker = path.join(root, MARKER_NAME(claim.batchId, claim.attempt));
   await rm(marker, { force: true });
-  return { ...prepared, semanticAuthority, plan, files: [...new Set([...surfaceFiles, ...plan.changes.map((change) => change.path), semanticAuthority.sourcePath, `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
+  const reportFiles = refreshStage3ReportCheckpoints(root);
+  return { ...prepared, semanticAuthority, plan, files: [...new Set([...reportFiles, ...surfaceFiles, ...plan.changes.map((change) => change.path), semanticAuthority.sourcePath, `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
+}
+
+// Existing M9 reports contain live canonical/search/SQLite checkpoint fields.
+// Refresh them through their ordinary source-bound report producers before pinning CI's tree.
+export function refreshStage3ReportCheckpoints(root, run = execFileSync) {
+  for (const script of ['batch:issue-219:report', 'batch:issue-220:report']) {
+    run('npm', ['run', script], { cwd: root, stdio: 'inherit' });
+  }
+  return [
+    'docs/issue-219-m9-a-recovery.md', 'data/validation/issue-219-m9-lexical-batch-report.json',
+    'docs/issue-220-m9-b-checkpoint.md', 'data/validation/issue-220-m9-b-checkpoint-report.json',
+  ];
 }
 
 export function runStage3PreflightCi(root, run = execFileSync) {

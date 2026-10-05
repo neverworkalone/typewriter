@@ -2757,3 +2757,38 @@ export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) 
   source.authored_review_sha256 = sha256Json(source.authored_review);
   return source;
 }
+
+/** Historical payload checks use this view; current semantic/build gates still use current records. */
+export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSource) {
+  const events = validateFactoryAdmissionLedger(decisionSource, recordInfos, 'historical canonical authority');
+  const records = new Map(recordInfos.map((info) => [recordOf(info).id, info]));
+  for (const event of [...events].reverse()) {
+    for (const change of event.changes) {
+      const info = records.get(change.entry_id);
+      const current = recordOf(info);
+      if (!current || sha256Json(current) !== change.after_sha256) {
+        fail('historical canonical reconstruction has a discontinuous admission chain', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      if (change.operation === 'create') {
+        records.delete(change.entry_id);
+        continue;
+      }
+      const original = change.previous_record;
+      if (!original || sha256Json(original) !== change.before_sha256) {
+        fail('historical canonical reconstruction lacks the bound original record', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      const { senses: oldSenses, ...oldIdentity } = original;
+      const { senses: newSenses, ...newIdentity } = current;
+      if (JSON.stringify(oldIdentity) !== JSON.stringify(newIdentity)
+        || oldSenses.some((sense, index) => JSON.stringify(sense) !== JSON.stringify(newSenses[index]))) {
+        fail('factory admission rewrote an existing canonical payload', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      records.set(change.entry_id, info.record ? { ...info, record: structuredClone(original) } : structuredClone(original));
+    }
+  }
+  return [...records.values()];
+}
+
+export async function loadCanonicalBeforeFactoryAdmissions(recordInfos) {
+  return canonicalRecordsBeforeFactoryAdmissions(recordInfos, await readSemanticDecisionSourceArtifact());
+}

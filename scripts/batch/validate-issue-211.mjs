@@ -1,3 +1,4 @@
+import { loadCanonicalBeforeFactoryAdmissions, restorePreFactoryDecisionSource } from '../validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -106,7 +107,7 @@ function semanticDecisionConfig(candidateSource, semanticSource) {
 }
 
 export function projectDecisionSourceToCanonical(sourceValue, recordInfos) {
-  const source = structuredClone(sourceValue);
+  const source = restorePreFactoryDecisionSource(sourceValue, recordInfos);
   const recordIds = new Set(recordInfos.map((recordInfo) => recordOf(recordInfo).id));
   const digest = canonicalRecordsSha256(recordInfos);
   source.source.canonical_records_sha256 = digest;
@@ -583,7 +584,7 @@ export async function validateIssue211({ writeReport = false } = {}) {
 
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const historicalCanonical = await readCanonicalRecords(M9_BASE_CANONICAL_DIRECTORY);
-  const currentCanonicalById = new Map(currentCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
+  const currentCanonicalById = new Map((await loadCanonicalBeforeFactoryAdmissions(currentCanonical.records)).map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
   for (const recordInfo of historicalCanonical.records) {
     const record = recordOf(recordInfo);
     assert.deepEqual(currentCanonicalById.get(record.id), record, `${record.id} frozen Issue #219 base record is unchanged`);

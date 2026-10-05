@@ -24,6 +24,7 @@ import {
   processStage3Attempt,
   recoverStage3Attempt,
   releaseStage3Claim,
+  refreshStage3ReportCheckpoints,
   runStage3PreflightCi,
   runStage3Session,
 } from '../scripts/factory/stage3-worker.mjs';
@@ -853,4 +854,32 @@ test('real Git recovery preserves unpushed admission commits and refuses dirty t
     assert.equal(await readFile(file, 'utf8'), 'uncommitted work');
     assert.equal(git.resolveRef('HEAD'), checkpoint);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('historical collision evidence is scoped to retained senses while strict collision gates remain enforced', async () => {
+  const { projectHistoricalSurfaceFormReview } = await import('../scripts/batch/historical-canonical.mjs');
+  const { buildSurfaceFormProjection } = await import('../scripts/inflection/surface-form-projection.mjs');
+  const one = predicate('w1', '같다', 'adjective');
+  const two = { ...one, senses: [...one.senses, { ...one.senses[0], id: 'w1-s2', gloss: '두번째 합성 뜻.' }] };
+  const root = await surfaceFormRoot([two]);
+  try {
+    await applySurfaceFormDispositions({ root });
+    const review = JSON.parse(await readFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), 'utf8'));
+    const before = JSON.stringify(review);
+    const projected = projectHistoricalSurfaceFormReview(review, [one]);
+    const exceptionManifest = JSON.parse(await readFile(path.join(root, 'data/validation/m6-2-inflection-exceptions.json'), 'utf8'));
+    assert.equal(JSON.stringify(review), before, 'the current review evidence is not edited');
+    assert.doesNotThrow(() => buildSurfaceFormProjection([one], { exceptionManifest, reviewManifest: projected, requireCollisionReview: true }));
+    assert.throws(() => buildSurfaceFormProjection([two], { exceptionManifest, reviewManifest: projected, requireCollisionReview: true }), (error) => error.code === 'SURFACE_FORM_COLLISION_REVIEW_MISMATCH');
+    assert.deepEqual(projectHistoricalSurfaceFormReview(review, [two]), review);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('Stage 3 refreshes its live dependent checkpoints through existing source-bound report producers', () => {
+  const commands = [];
+  const files = refreshStage3ReportCheckpoints('/repo', (file, args, options) => commands.push({ file, args, options }));
+  assert.deepEqual(commands.map(({ args }) => args), [['run', 'batch:issue-219:report'], ['run', 'batch:issue-220:report']]);
+  assert.equal(files.length, 4);
+  assert.ok(files.every((file) => file.startsWith('docs/') || file.startsWith('data/validation/')));
 });

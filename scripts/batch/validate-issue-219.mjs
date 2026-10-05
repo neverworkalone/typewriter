@@ -1,3 +1,5 @@
+import { historicalAdmissionContext } from './historical-canonical.mjs';
+import { loadCanonicalBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -338,7 +340,7 @@ export async function validateIssue219({ writeReport = false } = {}) {
   assert.equal(canonicalRecordsSha256(historicalCanonical.records), selection.baseline.canonical_records_sha256, 'frozen pre-admission canonical digest');
   const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const historicalById = new Map(historicalCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
-  const currentById = new Map(currentCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
+  const currentById = new Map((await loadCanonicalBeforeFactoryAdmissions(currentCanonical.records)).map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
   for (const [id, record] of historicalById) {
     assert.deepEqual(currentById.get(id), record, `${id} frozen baseline record remains unchanged`);
   }
@@ -409,6 +411,7 @@ export async function validateIssue219({ writeReport = false } = {}) {
     baseRecords: historicalCanonical.records,
     prospectiveRecords,
     semanticAudit,
+    canonicalContext: historicalAdmissionContext(prospectiveRecords, semanticAudit),
     stageEvidence: productionStageEvidence({
       candidateSourceBytes,
       semanticSourceBytes,
