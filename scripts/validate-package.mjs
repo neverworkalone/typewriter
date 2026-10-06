@@ -489,17 +489,31 @@ function validateVueRuntimeNotice(projectRoot, notice) {
     return errors;
   }
 
-  // pnpm only links direct dependencies at the top level; resolve the @vue/* siblings
-  // from the real location of the installed Vue package.
+  // pnpm only links direct dependencies at the top level; resolve each transitive Vue package
+  // from the real location of its dependent, as Node would (vue -> runtime-dom -> runtime-core -> reactivity).
+  const resolveFrom = (dependentRoot, packageName) => {
+    const modules = dependentRoot.slice(0, dependentRoot.lastIndexOf(`${path.sep}node_modules${path.sep}`) + '/node_modules'.length);
+    const candidate = path.join(modules, packageName);
+    return existsSync(candidate) ? realpathSync(candidate) : undefined;
+  };
   const vueRoot = path.join(projectRoot, 'node_modules/vue');
-  const installedRoot = existsSync(vueRoot) ? realpathSync(vueRoot) : undefined;
+  const installedRoots = new Map();
+  if (existsSync(vueRoot)) {
+    const vueReal = realpathSync(vueRoot);
+    installedRoots.set('vue', vueReal);
+    installedRoots.set('@vue/runtime-dom', resolveFrom(vueReal, '@vue/runtime-dom'));
+    installedRoots.set('@vue/shared', resolveFrom(vueReal, '@vue/shared'));
+    const runtimeCore = installedRoots.get('@vue/runtime-dom') && resolveFrom(installedRoots.get('@vue/runtime-dom'), '@vue/runtime-core');
+    installedRoots.set('@vue/runtime-core', runtimeCore);
+    installedRoots.set('@vue/reactivity', runtimeCore && resolveFrom(runtimeCore, '@vue/reactivity'));
+  }
   for (const packageName of vuePackages) {
-    const lockedKey = new RegExp(`^ {2}'?${packageName.replace(/[/@.]/gu, '\\$&')}@${vueVersion.replace(/\./gu, '\\.')}'?:$`, 'mu');
-    const installedManifest = installedRoot
-      ? path.join(packageName === 'vue' ? installedRoot : path.join(path.dirname(installedRoot), packageName), 'package.json')
+    const lockedKey = lockfile.split('\n').some((line) => line === `  ${packageName}@${vueVersion}:` || line === `  '${packageName}@${vueVersion}':`);
+    const installedManifest = installedRoots.get(packageName)
+      ? path.join(installedRoots.get(packageName), 'package.json')
       : undefined;
     const installed = installedManifest && existsSync(installedManifest) ? readJson(installedManifest) : undefined;
-    if (!lockedKey.test(lockfile) || !installed || installed.version !== vueVersion || installed.license !== 'MIT') {
+    if (!lockedKey || !installed || installed.version !== vueVersion || installed.license !== 'MIT') {
       errors.push(`Locked ${packageName} must be Vue ${vueVersion} under MIT.`);
       continue;
     }
