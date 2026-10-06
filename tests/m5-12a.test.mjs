@@ -778,3 +778,23 @@ test('M5-12A rejects a mutated frozen base seed by bytes, ordering, or record co
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
 });
+
+test('M5-12A prospective inventory binds its own frozen authority, not later factory admissions', async () => {
+  const { validatePromotionLedgerBindings, DEFAULT_DECISION_SOURCE_PATH } = await import('../scripts/inventory/generate-target-inventory.mjs');
+  const liveSource = JSON.parse(await readFile(DEFAULT_DECISION_SOURCE_PATH, 'utf8'));
+  assert.ok(liveSource.factory_admissions?.length > 0, 'live authority must have later factory admissions for this regression');
+
+  const result = await buildM512A();
+  const frozenSource = JSON.parse(result.decisionSourceBytes.toString('utf8'));
+  assert.equal(frozenSource.factory_admissions, undefined);
+  const entries = result.promotionLedger;
+  const canonicalRecords = result.prospective.canonical.records;
+
+  // valid: the frozen prospective canonical binds its own prospective authority
+  validatePromotionLedgerBindings({ entries, canonicalRecords, decisionSource: frozenSource });
+  // invalid: mixing the frozen canonical with current factory authority still fails closed
+  assert.throws(
+    () => validatePromotionLedgerBindings({ entries, canonicalRecords, decisionSource: liveSource }),
+    { code: 'SEMANTIC_AUDIT_FACTORY_ADMISSION' },
+  );
+});

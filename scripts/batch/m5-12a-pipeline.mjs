@@ -1367,12 +1367,14 @@ async function buildProspectiveWorkspace({
   baseSeed,
   promotionLedger,
   importedRecords,
+  decisionSource,
 } = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-'));
   const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
   const seedPath = path.join(temporaryDirectory, 'm5-target-seed.json');
   const promotionPath = path.join(temporaryDirectory, 'm5-target-promotions.jsonl');
   const inventoryPath = path.join(temporaryDirectory, 'm5-target-inventory.json');
+  const decisionSourcePath = path.join(temporaryDirectory, 'canonical-semantic-decisions.json');
   await cp(baseCanonicalDirectory, canonicalDirectory, { recursive: true });
   const importBytes = jsonlBytes(importedRecords);
   await writeFile(path.join(canonicalDirectory, path.basename(CANONICAL_IMPORT_PATH)), importBytes);
@@ -1380,10 +1382,14 @@ async function buildProspectiveWorkspace({
   await writeFile(seedPath, seedBytes);
   const promotionLedgerBytes = serializePromotionLedger(promotionLedger);
   await writeFile(promotionPath, promotionLedgerBytes);
+  // Bind the prospective canonical to its own prospective authority, never to the live
+  // decision source that later factory admissions have extended.
+  await writeFile(decisionSourcePath, `${JSON.stringify(decisionSource, null, 2)}\n`, 'utf8');
   const inventory = await generateTargetInventory({
     canonicalDirectory,
     seedPath,
     promotionPath,
+    decisionSourcePath,
     generatedFromCanonicalDirectory: baseCanonicalDirectory,
     generatedFromSeedPath: seedPath,
     canonicalScopeDirectory: canonicalDirectory,
@@ -1712,6 +1718,7 @@ export async function buildM512A({
     baseSeed: seed,
     promotionLedger,
     importedRecords,
+    decisionSource,
   });
   assert.deepEqual(canonicalSummary(prospective.canonical.records), M5_12A_FINAL_SUMMARY);
   const semanticAuditCoverage = validateSemanticAuditCoverage(prospectiveInfos, semanticAudit, {
