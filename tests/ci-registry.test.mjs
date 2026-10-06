@@ -266,6 +266,22 @@ test('CI changed-path gate skips only documentation-only PRs', async (t) => {
   await scenario('no-changed-files', null, true);
 });
 
+test('CI factory transitions use the exact pull request base SHA', async () => {
+  const workflow = await readFile(
+    path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'),
+    'utf8',
+  );
+  const block = workflow.split('      - name: Normal validation (fast checkpoint + continuation)\n')[1]
+    ?.split('\n      - ')[0];
+  assert.ok(block, 'normal CI step must exist');
+  assert.match(
+    block,
+    /FACTORY_BASE_REF:\s*\$\{\{\s*github\.event\.pull_request\.base\.sha\s*\}\}/u,
+    'non-master PRs must validate factory transitions from their exact event base',
+  );
+  assert.match(block, /run: npm run ci:normal/u);
+});
+
 test('CI and Pages workflows keep their trigger responsibilities separate', async () => {
   const workflow = await readFile(
     path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'),

@@ -66,4 +66,7 @@ jobs:
 
       - name: Normal validation (fast checkpoint + continuation)
         if: steps.changes.outputs.run_normal == 'true'
+        env:
+          # Factory transition checks compare against the PR's actual base snapshot.
+          FACTORY_BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: npm run ci:normal
