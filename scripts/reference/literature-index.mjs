@@ -765,7 +765,8 @@ async function realTarget(target) {
 }
 
 /** DB and manifest must be different real files, and neither may sit in the publish backup. */
-async function assertDistinctPublishTargets(databaseTo, manifestTo) {
+async function assertDistinctPublishTargets(databaseTo, manifestTo, fileSystem = {}) {
+  const statPath = fileSystem.stat ?? stat;
   const [database, manifest] = [await realTarget(databaseTo), await realTarget(manifestTo)];
   const backup = publishBackupDirectory(database);
   if (
@@ -778,7 +779,7 @@ async function assertDistinctPublishTargets(databaseTo, manifestTo) {
   const identical = (a, b) => a.ino === b.ino && a.dev === b.dev;
   const statOrNull = async (target) => {
     try {
-      return await stat(target);
+      return await statPath(target);
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
       return null;
@@ -940,7 +941,7 @@ export async function buildFullLiteratureIndex({
   const absoluteManifest = path.resolve(manifestPath);
   assertOutputLocation(absoluteInput, absoluteOutput);
   assertOutputLocation(absoluteInput, absoluteManifest);
-  await assertDistinctPublishTargets(absoluteOutput, absoluteManifest);
+  await assertDistinctPublishTargets(absoluteOutput, absoluteManifest, hooks.fileSystem);
   assertLiteratureFts5Support();
   await recoverLiteraturePublish({ databasePath: absoluteOutput });
   const paths = await listLiteratureSourcePaths(absoluteInput);

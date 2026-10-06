@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { link, mkdir, mkdtemp, readdir, rename, symlink, readFile, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, readdir, rename, stat, symlink, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -478,16 +478,19 @@ test('full build rejects identical or aliased DB and manifest paths before touch
   }
 });
 
-test('full build rejects a not-yet-existing case alias of the manifest path', needsFts5, async (t) => {
+test('full build rejects a not-yet-existing case alias of the manifest path', needsFts5, async () => {
   const { input } = await makeCollection();
   const directory = await makeDirectory();
-  await writeFile(path.join(directory, 'probe.TXT'), 'x');
-  const caseInsensitive = await readFile(path.join(directory, 'probe.txt')).then(() => true, () => false);
-  if (!caseInsensitive) return t.skip('case-sensitive filesystem: no case aliases exist');
   const target = path.join(directory, 'fresh/index.sqlite');
+  const aliased = path.join(directory, 'fresh/INDEX.SQLITE');
+  // Emulates a case-insensitive filesystem so the probe path runs on any runner.
+  const caseInsensitiveStat = (candidate) => stat(candidate.replace(/INDEX\.SQLITE$/u, 'index.sqlite'));
   await assert.rejects(
-    buildFullLiteratureIndex({ inputDirectory: input, outputPath: target, manifestPath: path.join(directory, 'fresh/INDEX.SQLITE') }),
-    /must be different files/u,
+    buildFullLiteratureIndex({
+      inputDirectory: input, outputPath: target, manifestPath: aliased,
+      hooks: { fileSystem: { stat: caseInsensitiveStat } },
+    }),
+    /must be different files \(alias of one file\)/u,
   );
   assert.deepEqual(await readdir(path.join(directory, 'fresh')), []);
 });
