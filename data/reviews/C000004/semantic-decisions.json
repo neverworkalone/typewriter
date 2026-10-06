@@ -2847,9 +2847,9 @@
     {
       "source_candidate_id": "C000004-0235",
       "candidate_record_id": "C000004-0235",
-      "candidate_record_sha256": "551fd875076d55dea5057cffccaf6d7982fac78f4be9eb1bb0e76a75d7b4ac59",
+      "candidate_record_sha256": "8bb768e5d5a82346614769f92e1c1289eb7169a1406a23a6f5d3a6ef19d16833",
       "decision": "included",
-      "decision_rationale": "C000004-0235 Claude agent self-check: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다. o02 빛나는 꿈은 밝고 훌륭하여 희망에 찬 꿈을 가리키는 쓰임으로 o01·o03의 두드러짐과 구별된다.",
+      "decision_rationale": "C000004-0235 Claude agent self-check: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다. o02 빛나는 꿈은 밝고 눈부시게 훌륭한 꿈을 가리키는 쓰임으로 원문 문맥(가상현실에서 꾸는 꿈)에서 희망이라는 추가 의미는 확인되지 않고 o01·o03의 두드러짐과 구별된다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -2869,8 +2869,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0235: \"밝고 훌륭하여 희망에 차 있다.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0235: o02 빛나는 꿈은 밝고 훌륭하여 희망에 찬 꿈을 가리키는 쓰임으로 o01·o03의 두드러짐과 구별된다.",
+          "boundary_rationale": "C000004-0235: \"밝고 눈부시게 훌륭하다.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0235: o02 빛나는 꿈은 밝고 눈부시게 훌륭한 꿈을 가리키는 쓰임으로 원문 문맥(가상현실에서 꾸는 꿈)에서 희망이라는 추가 의미는 확인되지 않고 o01·o03의 두드러짐과 구별된다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -2884,17 +2884,17 @@
           "relationship": "distinct",
           "decision": "retain",
           "left_gloss_sha256": "f96a9be9ddd9c5e67465c55eccf141108d4b4134bf1d7f257eb292caa849f909",
-          "right_gloss_sha256": "479080670eacc3e1c05d011034b35066735f73ff0ebde2be150a3e9278873b57",
+          "right_gloss_sha256": "d1d94180abcd312ac0813311c993c7f2027527369babdc5d864ee71866f93954",
           "evidence_basis": "C000004-0235: o01,o03 / o02의 원본 문맥을 각각 대조했다.",
-          "distinguishing_feature": "C000004-0235: \"훌륭하거나 뛰어나 두드러져 보이다.\" 대 \"밝고 훌륭하여 희망에 차 있다.\"로 구분된다.",
-          "rationale": "C000004-0235: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다. / o02 빛나는 꿈은 밝고 훌륭하여 희망에 찬 꿈을 가리키는 쓰임으로 o01·o03의 두드러짐과 구별된다."
+          "distinguishing_feature": "C000004-0235: \"훌륭하거나 뛰어나 두드러져 보이다.\" 대 \"밝고 눈부시게 훌륭하다.\"로 구분된다.",
+          "rationale": "C000004-0235: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다. / o02 빛나는 꿈은 밝고 눈부시게 훌륭한 꿈을 가리키는 쓰임으로 원문 문맥(가상현실에서 꾸는 꿈)에서 희망이라는 추가 의미는 확인되지 않고 o01·o03의 두드러짐과 구별된다."
         }
       ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000004-0235",
-        "candidate_record_sha256": "551fd875076d55dea5057cffccaf6d7982fac78f4be9eb1bb0e76a75d7b4ac59",
-        "decision_evidence_sha256": "9fb5003999eba56dc0817a07e8e3b7f94d8855c55b2773883a1bb2af5f740e6a",
+        "candidate_record_sha256": "8bb768e5d5a82346614769f92e1c1289eb7169a1406a23a6f5d3a6ef19d16833",
+        "decision_evidence_sha256": "778e7269cd114c2ba926b1cd4b748d3f2b0f0a9704672d7e55761a4039f7c6a3",
         "sense_evidence": [
           {
             "sense_id": "C000004-0235-s1",
@@ -2904,9 +2904,9 @@
           },
           {
             "sense_id": "C000004-0235-s2",
-            "sense_sha256": "12516277537699d5cd74303094e8a6305224d0cfea5c2afe94c307374da5871b",
-            "gloss_sha256": "479080670eacc3e1c05d011034b35066735f73ff0ebde2be150a3e9278873b57",
-            "evidence_sha256": "0a2ab96690b5ab6a733e40bed25a6bf9dc26829e548d348ff2a5491d1bec2773"
+            "sense_sha256": "4957aed7175d52c4bc15d5231b4a3db35b2d039ec1ebd559f5eddfea0a5fd8ff",
+            "gloss_sha256": "d1d94180abcd312ac0813311c993c7f2027527369babdc5d864ee71866f93954",
+            "evidence_sha256": "64316e82d6c3665ffe04952154fb6c66db8943e4fd333cc2ef901a128a60115e"
           }
         ]
       }
