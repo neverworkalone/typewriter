@@ -70,7 +70,16 @@ function validateEnsembleProviders(list) {
 }
 
 // Operational fields: excluded from every content digest (design §7.3).
-export const MUTABLE_MANIFEST_FIELDS = Object.freeze(['status', 'rejected_pr', 'attempt', 'history']);
+export const MUTABLE_MANIFEST_FIELDS = Object.freeze(['status', 'rejected_pr', 'attempt', 'history', 'contract_repairs']);
+
+// Shared-contract changes that may legitimately require an already merged `ready` review to be
+// re-bound without a new attempt (see validateContractRepair in transitions.mjs). Each kind names
+// the only authored fields that repair may add.
+export const CONTRACT_REPAIR_KINDS = Object.freeze(['scope_declaration']);
+
+// Paths whose change on master can invalidate a Stage 2 result that was authored against the older
+// contract. A result PR whose branch point predates such a change must be re-synchronised before merge.
+export const SHARED_FACTORY_CONTRACT_PATHS = Object.freeze(['scripts/factory/', 'scripts/validate/', 'scripts/batch/', 'schema/']);
 
 const BATCH_ID = /^C\d{6}$/u;
 const CANDIDATE_ID = /^(C\d{6})-(\d{4})$/u;
@@ -198,6 +207,7 @@ export function validateReviewManifest(manifest, { candidateManifest, decisionsT
     if (!isSha256(manifest[key])) errors.push(`review manifest: ${key} must be sha256 hex`);
   }
   errors.push(...validateHistory(manifest));
+  errors.push(...validateContractRepairs(manifest));
   if (manifest.status === 'rejected') {
     if (!isPositiveInteger(manifest.rejected_pr)) errors.push('review manifest: rejected requires a numeric rejected_pr');
   } else if (manifest.rejected_pr !== undefined) {
@@ -219,6 +229,27 @@ export function validateReviewManifest(manifest, { candidateManifest, decisionsT
     if (typeof text !== 'string') errors.push(`${label} is missing`);
     else if (sha256Hex(text) !== manifest[key]) errors.push(`${label} bytes do not match ${key}`);
   }
+  return errors;
+}
+
+// `contract_repairs` is an append-only chain of semantic-decision re-bindings after a shared
+// contract change; its last link must be the current semantic_decisions_sha256.
+export function validateContractRepairs(manifest) {
+  if (manifest.contract_repairs === undefined) return [];
+  if (!Array.isArray(manifest.contract_repairs) || manifest.contract_repairs.length === 0) return ['review manifest: contract_repairs must be a non-empty array when present'];
+  const errors = [];
+  let expectedBefore = null;
+  manifest.contract_repairs.forEach((entry, index) => {
+    const at = `review manifest: contract_repairs[${index}]`;
+    if (!isPlainObject(entry) || Object.keys(entry).sort().join() !== 'contract,previous_semantic_decisions_sha256,semantic_decisions_sha256'
+      || !CONTRACT_REPAIR_KINDS.includes(entry.contract) || !isSha256(entry.previous_semantic_decisions_sha256) || !isSha256(entry.semantic_decisions_sha256)) {
+      errors.push(`${at} must be {contract (${CONTRACT_REPAIR_KINDS.join('|')}), previous_semantic_decisions_sha256, semantic_decisions_sha256}`);
+      return;
+    }
+    if (expectedBefore !== null && entry.previous_semantic_decisions_sha256 !== expectedBefore) errors.push(`${at} does not continue the previous repair`);
+    expectedBefore = entry.semantic_decisions_sha256;
+  });
+  if (expectedBefore !== null && expectedBefore !== manifest.semantic_decisions_sha256) errors.push('review manifest: the last contract repair must produce the current semantic_decisions_sha256');
   return errors;
 }
 

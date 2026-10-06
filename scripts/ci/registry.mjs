@@ -150,6 +150,8 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/production-entrypoints.test.mjs', 'Test declared canonical-writer entrypoints and the mandatory intake hand-off policy'),
       testCheck('tests/intake-kiwi-service.test.mjs', 'Test shared Kiwi batch service'),
       commandCheck('Validate factory candidate/review batch contracts', ['scripts/factory/validate.mjs'], []),
+      commandCheck('Require factory results to be current with the shared factory contract on master', ['scripts/factory/freshness.mjs'], []),
+      testCheck('tests/factory-freshness.test.mjs', 'Test factory contract freshness gate and contract-repair transition'),
       testCheck('tests/factory-contracts.test.mjs', 'Test factory contracts, state machines, identity adapter, and typed handoff'),
       testCheck('tests/factory-stage1.test.mjs', 'Test factory Stage 1 lemma-centered candidate batch producer'),
       testCheck('tests/corpus-lemma-pilot-python.test.mjs', 'Test Python corpus extractor and cached selection (factory opt-in keeps canonical lemmas and every POS; default M9 behavior; stale cache rejected)'),

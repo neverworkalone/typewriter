@@ -1,4 +1,4 @@
-import { MUTABLE_MANIFEST_FIELDS } from './contract.mjs';
+import { CONTRACT_REPAIR_KINDS, MUTABLE_MANIFEST_FIELDS } from './contract.mjs';
 
 // Durable state exists only in merged manifests (design §7). Each function compares
 // the manifests on the base (merged `master`) with those in a candidate merge result and
@@ -35,7 +35,53 @@ export function validateCandidateTransition(before, after) {
   return errors;
 }
 
-export function validateReviewTransition(before, after) {
+// The authored fields each repair kind may add; everything else must stay byte-for-byte equal.
+// `review_binding` is derived from the authored evidence, so it is re-bound, never compared.
+const REPAIR_ADDED_SENSE_FIELDS = Object.freeze({ scope_declaration: ['scope_declaration'] });
+
+function withoutRepairFields(semanticText, kind) {
+  const source = JSON.parse(semanticText);
+  for (const row of source.decisions ?? []) {
+    delete row.review_binding;
+    for (const sense of row.sense_reviews ?? []) for (const field of REPAIR_ADDED_SENSE_FIELDS[kind]) delete sense[field];
+  }
+  return JSON.stringify(source);
+}
+
+// A merged `ready` review authored against an older shared contract is re-bound in place (same
+// attempt, no rejection) only when the shared contract added a required authored field. The
+// lexical decisions must be untouched, which is proved from the semantic source text itself.
+function validateContractRepair(before, after, evidence) {
+  const errors = [];
+  const repairs = after.contract_repairs ?? [];
+  const prior = before.contract_repairs ?? [];
+  if (repairs.length !== prior.length + 1 || prior.some((entry, index) => !same(entry, repairs[index]))) {
+    return [`illegal review transition ${before.status} → ${after.status}`];
+  }
+  const repair = repairs.at(-1);
+  if (before.status !== 'ready' || after.status !== 'ready') errors.push('a contract repair applies only to a ready review');
+  if (!CONTRACT_REPAIR_KINDS.includes(repair.contract)) errors.push(`unknown contract repair ${repair.contract}`);
+  if (after.attempt !== before.attempt || !same(before.history, after.history)) errors.push('a contract repair must not change attempt or history');
+  const strip = (manifest) => withoutMutable(Object.fromEntries(Object.entries(manifest).filter(([key]) => key !== 'semantic_decisions_sha256')));
+  if (!same(strip(before), strip(after))) errors.push('a contract repair may change only semantic_decisions_sha256');
+  if (repair.previous_semantic_decisions_sha256 !== before.semantic_decisions_sha256 || repair.semantic_decisions_sha256 !== after.semantic_decisions_sha256) {
+    errors.push('contract repair must link the previous and the new semantic_decisions_sha256');
+  }
+  if (typeof evidence?.semanticBefore !== 'string' || typeof evidence?.semanticAfter !== 'string') {
+    errors.push('a contract repair requires the merged and the new semantic-decisions.json to prove no authored decision changed');
+  } else {
+    try {
+      if (withoutRepairFields(evidence.semanticBefore, repair.contract) !== withoutRepairFields(evidence.semanticAfter, repair.contract)) {
+        errors.push(`a ${repair.contract} repair may only add ${repair.contract}; no other authored semantic decision may change`);
+      }
+    } catch {
+      errors.push('a contract repair requires parseable semantic-decisions.json');
+    }
+  }
+  return errors;
+}
+
+export function validateReviewTransition(before, after, evidence) {
   if (before === null || before === undefined) {
     if (after?.status !== 'ready') return [`new review manifest must start as ready, got ${after?.status}`];
     return after.attempt === 1 && after.history.length === 0 ? [] : ['first review must be attempt 1 with empty history'];
@@ -44,6 +90,8 @@ export function validateReviewTransition(before, after) {
   const key = `${before.status} → ${after.status}`;
   if (before.history.some((entry, index) => !same(entry, after.history[index]))) errors.push('attempt history may not be rewritten');
   switch (key) {
+    case 'ready → ready':
+      return [...errors, ...validateContractRepair(before, after, evidence)];
     case 'ready → complete':
       if (after.attempt !== before.attempt) errors.push('admission must not change attempt');
       if (!same(before.history, after.history)) errors.push('admission must not change history');
@@ -74,10 +122,10 @@ export function validateReviewTransition(before, after) {
 //   first attempt: candidate created → complete AND review (new) → ready
 //   rework:        candidate stays complete AND review rejected → ready (attempt + 1)
 // Stage 3 changes only the review (ready → complete / ready → rejected) and never the candidate.
-export function validateLinkedTransition({ candidateBefore = null, candidateAfter, reviewBefore = null, reviewAfter }) {
+export function validateLinkedTransition({ candidateBefore = null, candidateAfter, reviewBefore = null, reviewAfter, evidence }) {
   const errors = [
     ...validateCandidateTransition(candidateBefore, candidateAfter),
-    ...validateReviewTransition(reviewBefore, reviewAfter),
+    ...validateReviewTransition(reviewBefore, reviewAfter, evidence),
   ];
   const candidateStep = `${candidateBefore?.status ?? 'new'} → ${candidateAfter.status}`;
   const reviewStep = `${reviewBefore?.status ?? 'new'} → ${reviewAfter.status}`;
@@ -86,6 +134,9 @@ export function validateLinkedTransition({ candidateBefore = null, candidateAfte
   }
   if (candidateStep === 'created → complete' && reviewStep !== 'new → ready') {
     errors.push(`candidate created → complete requires a new ready review in the same PR, got ${reviewStep}`);
+  }
+  if (reviewStep === 'ready → ready' && candidateStep !== 'complete → complete') {
+    errors.push('a contract repair must not change the candidate manifest');
   }
   if (reviewStep === 'rejected → ready' && candidateBefore?.status !== 'complete') {
     errors.push('rework requires an already complete candidate manifest');
