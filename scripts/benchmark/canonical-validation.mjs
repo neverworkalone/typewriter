@@ -193,6 +193,21 @@ function recordOf(recordInfo) {
   return recordInfo?.record ?? recordInfo;
 }
 
+const BENCHMARK_PAIRWISE_TEMPLATES = [
+  {
+    code: 'benchmark-pairwise-evidence',
+    template: 'synthetic benchmark gloss evidence {{left_gloss_sha256_prefix}} and {{right_gloss_sha256_prefix}} for {{left_sense_id}} and {{right_sense_id}}',
+  },
+  {
+    code: 'benchmark-pairwise-feature',
+    template: 'synthetic benchmark pair {{left_sense_id}} and {{right_sense_id}} differ in their canonical gloss',
+  },
+  {
+    code: 'benchmark-pairwise-rationale',
+    template: '{{record_id}} {{left_sense_id}} {{right_sense_id}} {{left_gloss_sha256_prefix}} {{right_gloss_sha256_prefix}} synthetic benchmark pair review',
+  },
+];
+
 function createSyntheticDecisionSource(recordInfos, template, scale, hashCache) {
   const records = recordInfos.map(recordOf);
   const canonicalDigest = hashCache?.canonicalDigest ?? canonicalRecordsSha256(recordInfos);
@@ -233,12 +248,12 @@ function createSyntheticDecisionSource(recordInfos, template, scale, hashCache) 
       ?? findCode(templateReview.records, 'relation_rationale_code'),
     noRelationRationale: templateSense?.no_relation_rationale_code
       ?? findCode(templateReview.records, 'no_relation_rationale_code'),
-    pairwiseEvidence: templatePairwise?.evidence_basis_code
-      ?? findCode(templateReview.records, 'evidence_basis_code'),
-    pairwiseDistinguishingFeature: templatePairwise?.distinguishing_feature_code
-      ?? findCode(templateReview.records, 'distinguishing_feature_code'),
-    pairwiseRationale: templatePairwise?.rationale_code
-      ?? findCode(templateReview.records, 'rationale_code'),
+    // The pairwise text must cite the reviewed sense pair and gloss evidence. A borrowed
+    // template code is not guaranteed to (the first pairwise record may carry inline text),
+    // so the benchmark registers its own token-bearing pairwise templates.
+    pairwiseEvidence: BENCHMARK_PAIRWISE_TEMPLATES[0].code,
+    pairwiseDistinguishingFeature: BENCHMARK_PAIRWISE_TEMPLATES[1].code,
+    pairwiseRationale: BENCHMARK_PAIRWISE_TEMPLATES[2].code,
   };
   const senseCount = records.reduce((count, record) => count + record.senses.length, 0);
   const authoredReview = {
@@ -314,7 +329,10 @@ function createSyntheticDecisionSource(recordInfos, template, scale, hashCache) 
       }),
     })),
     changes: [],
-    rationale_templates: structuredClone(templateReview.rationale_templates ?? []),
+    rationale_templates: [
+      ...structuredClone(templateReview.rationale_templates ?? []),
+      ...BENCHMARK_PAIRWISE_TEMPLATES.map((entry) => ({ ...entry })),
+    ],
   };
 
   return {
