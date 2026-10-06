@@ -456,7 +456,12 @@ test('full build rejects identical or aliased DB and manifest paths before touch
   await symlink(output, alias);
   const hard = path.join(directory, 'hard.json');
   await link(output, hard);
+  const realDirectory = path.join(directory, 'real');
+  await mkdir(realDirectory);
+  await symlink(realDirectory, path.join(directory, 'via'));
   for (const [dbPath, manifestPath] of [
+    [path.join(directory, 'via/not-yet/deeper/index.sqlite'), path.join(realDirectory, 'not-yet/deeper/index.sqlite')],
+    [path.join(directory, 'via/a/b/index.sqlite'), path.join(realDirectory, 'a/b/index.sqlite')],
     [output, output],
     [output, path.join(directory, '.', path.basename(output))],
     [output, alias],
@@ -469,6 +474,7 @@ test('full build rejects identical or aliased DB and manifest paths before touch
     );
     assert.deepEqual([await readFile(output), await readFile(manifest)], before);
     assert.deepEqual((await readdir(directory)).filter((name) => name.startsWith('.literature') || name.endsWith('.publish-backup')), []);
+    assert.deepEqual(await readdir(realDirectory), []);
   }
 });
 

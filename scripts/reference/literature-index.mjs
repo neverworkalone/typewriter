@@ -746,12 +746,20 @@ export function summarizeLiteratureInventory(entries) {
   return { by_genre: byGenre, error_reasons: errorReasons };
 }
 
+/** Real path through the nearest existing ancestor, with the not-yet-created remainder appended. */
 async function realTarget(target) {
-  try {
-    return await realpath(target);
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-    return path.join(await realpath(path.dirname(target)).catch(() => path.dirname(target)), path.basename(target));
+  const missing = [];
+  let current = path.resolve(target);
+  for (;;) {
+    try {
+      return path.join(await realpath(current), ...missing.reverse());
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      const parent = path.dirname(current);
+      if (parent === current) return path.resolve(target);
+      missing.push(path.basename(current));
+      current = parent;
+    }
   }
 }
 
