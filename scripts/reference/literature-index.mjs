@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   mkdir,
   mkdtemp,
+  open,
   readFile,
   readdir,
   realpath,
@@ -774,15 +775,44 @@ async function assertDistinctPublishTargets(databaseTo, manifestTo) {
   ) {
     throw new Error('SQLite output and manifest must be different files: ' + databaseTo + ' / ' + manifestTo);
   }
-  for (const [first, second] of [[databaseTo, manifestTo], [manifestTo, databaseTo]]) {
+  const identical = (a, b) => a.ino === b.ino && a.dev === b.dev;
+  const statOrNull = async (target) => {
     try {
-      const [a, b] = [await stat(first), await stat(second)];
-      if (a.ino === b.ino && a.dev === b.dev) {
-        throw new Error('SQLite output and manifest must be different files (same inode): ' + databaseTo + ' / ' + manifestTo);
-      }
+      return await stat(target);
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
+      return null;
     }
+  };
+  const [existingDatabase, existingManifest] = [await statOrNull(databaseTo), await statOrNull(manifestTo)];
+  if (existingDatabase && existingManifest) {
+    if (identical(existingDatabase, existingManifest)) {
+      throw new Error('SQLite output and manifest must be different files (same inode): ' + databaseTo + ' / ' + manifestTo);
+    }
+    return;
+  }
+  if (existingDatabase || existingManifest) {
+    // Exactly one exists: a case/normalization alias of it would have been found by stat above.
+    return;
+  }
+  // Neither exists, so names that differ only by filesystem case or Unicode
+  // normalization cannot be told apart from strings: probe by creating one
+  // target exclusively and checking whether the other name now resolves.
+  await mkdir(path.dirname(databaseTo), { recursive: true });
+  await mkdir(path.dirname(manifestTo), { recursive: true });
+  let probe;
+  try {
+    probe = await open(databaseTo, 'wx');
+  } catch (error) {
+    throw new Error('cannot probe SQLite output location ' + databaseTo + ' (' + error.message + ')');
+  }
+  try {
+    await probe.close();
+    if (await statOrNull(manifestTo)) {
+      throw new Error('SQLite output and manifest must be different files (alias of one file): ' + databaseTo + ' / ' + manifestTo);
+    }
+  } finally {
+    await rm(databaseTo, { force: true });
   }
 }
 

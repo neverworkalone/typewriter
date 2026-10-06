@@ -478,6 +478,20 @@ test('full build rejects identical or aliased DB and manifest paths before touch
   }
 });
 
+test('full build rejects a not-yet-existing case alias of the manifest path', needsFts5, async (t) => {
+  const { input } = await makeCollection();
+  const directory = await makeDirectory();
+  await writeFile(path.join(directory, 'probe.TXT'), 'x');
+  const caseInsensitive = await readFile(path.join(directory, 'probe.txt')).then(() => true, () => false);
+  if (!caseInsensitive) return t.skip('case-sensitive filesystem: no case aliases exist');
+  const target = path.join(directory, 'fresh/index.sqlite');
+  await assert.rejects(
+    buildFullLiteratureIndex({ inputDirectory: input, outputPath: target, manifestPath: path.join(directory, 'fresh/INDEX.SQLITE') }),
+    /must be different files/u,
+  );
+  assert.deepEqual(await readdir(path.join(directory, 'fresh')), []);
+});
+
 test('full verification detects changed, removed, added and tampered sources', needsFts5, async () => {
   const { input, paths } = await makeCollection(BAD_FILES);
   const { output, manifest } = await fullPaths();
