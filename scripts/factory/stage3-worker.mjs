@@ -8,6 +8,7 @@ import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } fro
 import { planSurfaceFormDispositions, writeSurfaceFormDispositions } from './surface-form-dispositions.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
 import { loadFactorySnapshot } from './stage2-worker.mjs';
+import { validateReviewArtifacts } from './artifacts.mjs';
 import { validateFactoryRepository, loadBaseManifests } from './validate.mjs';
 
 const MASTER = 'master';
@@ -130,6 +131,22 @@ function branchNameFor(agent, batchId, attempt) {
 }
 function rejectionBranchName(agent, batchId, attempt) { return `${agent}/stage3-status/${batchId}-a${attempt}`; }
 const claimRefFor = (batchId, attempt) => CLAIM_PREFIX + batchId + '-a' + attempt;
+
+// Every path that starts or resumes an admission (new claim, --resume-batch recovery, a draft with
+// a complete checkpoint) must refuse a review authored under an older shared contract: a complete
+// checkpoint is no longer a pending review, so only this strict check can still see the staleness.
+export function assertStage3ContractCurrent(claim, snapshot) {
+  const at = `${claim.batchId}-a${claim.attempt}`;
+  const advice = 'needs a contract repair (a systemic re-binding of the ready review, not a rejection) before it can be admitted';
+  if ((snapshot?.staleContractBatches ?? []).includes(claim.batchId)) throw new Stage3WorkerError(`${at} ${advice}`, { batchId: claim.batchId, attempt: claim.attempt });
+  if (claim.reviewManifest?.status === 'complete') return;
+  if (!Array.isArray(claim.candidates) || typeof claim.semanticDecisionsText !== 'string' || typeof claim.handoffText !== 'string' || !Array.isArray(claim.decisions) || !claim.candidateManifest) return;
+  const errors = validateReviewArtifacts({
+    batchId: claim.batchId, adapterId: claim.candidateManifest.source_adapter, candidates: claim.candidates, decisions: claim.decisions,
+    semanticDecisionsText: claim.semanticDecisionsText, handoffText: claim.handoffText, requireScopeDeclaration: true,
+  });
+  if (errors.some((error) => error.includes('scope_declaration is required'))) throw new Stage3WorkerError(`${at} ${advice}`, { batchId: claim.batchId, attempt: claim.attempt });
+}
 
 export function eligibleStage3Batches(snapshot, claimRefs = [], openPullRequests = []) {
   if (!snapshot?.validated || !Array.isArray(snapshot.reviews) || !Array.isArray(snapshot.candidates)) {
@@ -429,6 +446,7 @@ export async function processStage3Attempt({
   github, git, root, claim, runGates = true, log = () => {},
   prepare = preflightStage3Admission, apply = applyStage3Admission, validate = validatePreparedStage3Admission,
 } = {}) {
+  assertStage3ContractCurrent(claim);
   const draftPr = await github.getPullRequest(claim.prNumber);
   if (draftPr.state !== 'open' || draftPr.draft !== true || draftPr.base?.ref !== MASTER || draftPr.head?.ref !== claim.branchName) {
     throw new Stage3WorkerError('Stage 3 must preflight the actual open draft PR for this claim', { ...claim, claimCreated: true, prNumber: claim.prNumber });

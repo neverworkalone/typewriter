@@ -14,6 +14,7 @@ import { buildCanonicalIndex, buildSearchFormSupport, candidateViews, intakeCand
 import { validateLemmaDecision } from '../scripts/factory/lemma-decisions.mjs';
 import { expectedScopes } from '../scripts/factory/scope-declaration.mjs';
 import { produceCandidateBatch } from '../scripts/factory/stage1.mjs';
+import { assertStage3ContractCurrent } from '../scripts/factory/stage3-worker.mjs';
 import { validateCandidateTransition } from '../scripts/factory/transitions.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { buildProductionHandoff } from '../scripts/intake/production-handoff.mjs';
@@ -601,6 +602,16 @@ test('a merged review authored under an older contract is tolerated on master, r
   assert.deepEqual(await validateFactoryRepository({ root, mergedMaster: true, report }), []);
   assert.deepEqual(report.staleContractReviews.map((entry) => entry.batch), ['C000002']);
   assert.match(report.staleContractReviews[0].errors[0], /scope_declaration is required/);
+
+  // Resume/recovery of an attempt (including a draft with a complete checkpoint) is bound to master's
+  // ready review and must refuse the stale one; the repaired review passes.
+  const claimOf = (semanticDecisionsText) => ({
+    batchId: 'C000002', attempt: 1, candidates: rows, decisions, candidateManifest: manifest, semanticDecisionsText,
+    handoffText: `${artifacts.handoffText}\n`, reviewManifest: { status: 'ready' },
+  });
+  assert.throws(() => assertStage3ContractCurrent(claimOf(`${JSON.stringify(stripped)}\n`)), /needs a contract repair/);
+  assert.throws(() => assertStage3ContractCurrent({ batchId: 'C000002', attempt: 1 }, { staleContractBatches: ['C000002'] }), /needs a contract repair/);
+  assert.doesNotThrow(() => assertStage3ContractCurrent(claimOf(`${artifacts.semanticDecisionsText}\n`), { staleContractBatches: [] }));
 
   // A changed review is strict again; the contract repair that adds the declaration is accepted.
   git('checkout', '-q', '-b', 'repair');

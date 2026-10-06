@@ -7,6 +7,7 @@ import { createGitHubClient, githubToken, repositoryFromRemote } from './github-
 import { loadFactorySnapshot } from './stage2-worker.mjs';
 import {
   Stage3WorkerError,
+  assertStage3ContractCurrent,
   claimNextStage3Batch,
   createStage3Draft,
   createStage3GitRepository,
@@ -72,6 +73,8 @@ function claimFromSnapshot(snapshot, { batchId, attempt, agent, branchName, base
   if (!review || !candidate || review.manifest.attempt !== attempt || review.manifest.status !== 'ready') {
     throw new Stage3WorkerError(`${batchId}-a${attempt} cannot resume against the current master factory snapshot`);
   }
+  // Closing an already interrupted attempt (status-only rejection) must stay possible.
+  if (prState !== 'starter') assertStage3ContractCurrent({ batchId, attempt }, snapshot);
   return {
     batchId, attempt, agent, branchName, prNumber, prState, admissionPr, activeLock,
     claimRef: `refs/heads/stage3-claims/${batchId}-a${attempt}`,
