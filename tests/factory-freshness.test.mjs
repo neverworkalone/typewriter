@@ -123,4 +123,13 @@ test('a ready review is re-bound in place only by adding the required contract f
   has(validateReviewTransition(oldManifest, { ...oldManifest }, evidence), 'illegal review transition ready → ready');
   has(validateContractRepairs({ ...repaired, semantic_decisions_sha256: HEX('other') }), 'last contract repair');
   has(validateContractRepairs({ ...repaired, contract_repairs: [] }), 'non-empty');
+
+  // An existing declaration is an authored judgment: changing it is not a repair, adding the missing one is.
+  const declared = (terms) => semantic({ scope_declaration: { admitted_observation_ids: ['o1'], excluded_observation_ids: ['o2'], excluded_terms: terms } }, 'b3');
+  const previous = declared(['가']);
+  const changed = declared(['나']);
+  const base = ready(previous);
+  const rebound = (text) => ({ ...base, semantic_decisions_sha256: sha256Hex(text), contract_repairs: [{ contract: 'scope_declaration', previous_semantic_decisions_sha256: base.semantic_decisions_sha256, semantic_decisions_sha256: sha256Hex(text) }] });
+  has(validateReviewTransition(base, rebound(changed), { semanticBefore: previous, semanticAfter: changed }), 'no other authored semantic decision may change');
+  assert.deepEqual(validateReviewTransition(base, rebound(declared(['가']).replace('b3', 'b4')), { semanticBefore: previous, semanticAfter: declared(['가']).replace('b3', 'b4') }), []);
 });

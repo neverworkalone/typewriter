@@ -39,11 +39,25 @@ export function validateCandidateTransition(before, after) {
 // `review_binding` is derived from the authored evidence, so it is re-bound, never compared.
 const REPAIR_ADDED_SENSE_FIELDS = Object.freeze({ scope_declaration: ['scope_declaration'] });
 
-function withoutRepairFields(semanticText, kind) {
+// Fields the merged source already carries are authored judgments and stay in the comparison, so
+// a repair may only add the field where it was missing, never change a declaration that exists.
+function preservedRepairFields(semanticText, kind) {
+  const preserved = new Set();
+  for (const row of JSON.parse(semanticText).decisions ?? []) {
+    (row.sense_reviews ?? []).forEach((sense, index) => {
+      for (const field of REPAIR_ADDED_SENSE_FIELDS[kind]) if (Object.hasOwn(sense, field)) preserved.add(`${row.source_candidate_id}:${index}:${field}`);
+    });
+  }
+  return preserved;
+}
+
+function withoutRepairFields(semanticText, kind, preserved) {
   const source = JSON.parse(semanticText);
   for (const row of source.decisions ?? []) {
     delete row.review_binding;
-    for (const sense of row.sense_reviews ?? []) for (const field of REPAIR_ADDED_SENSE_FIELDS[kind]) delete sense[field];
+    (row.sense_reviews ?? []).forEach((sense, index) => {
+      for (const field of REPAIR_ADDED_SENSE_FIELDS[kind]) if (!preserved.has(`${row.source_candidate_id}:${index}:${field}`)) delete sense[field];
+    });
   }
   return JSON.stringify(source);
 }
@@ -71,7 +85,8 @@ function validateContractRepair(before, after, evidence) {
     errors.push('a contract repair requires the merged and the new semantic-decisions.json to prove no authored decision changed');
   } else {
     try {
-      if (withoutRepairFields(evidence.semanticBefore, repair.contract) !== withoutRepairFields(evidence.semanticAfter, repair.contract)) {
+      const preserved = preservedRepairFields(evidence.semanticBefore, repair.contract);
+      if (withoutRepairFields(evidence.semanticBefore, repair.contract, preserved) !== withoutRepairFields(evidence.semanticAfter, repair.contract, preserved)) {
         errors.push(`a ${repair.contract} repair may only add ${repair.contract}; no other authored semantic decision may change`);
       }
     } catch {
