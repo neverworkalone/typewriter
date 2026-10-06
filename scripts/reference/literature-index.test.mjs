@@ -16,6 +16,7 @@ import {
   decodeLiteratureText,
   inventoryLiterature,
   literatureManifestDigest,
+  recoverLiteraturePublish,
   reconstructLiteratureText,
   reconstructWorkFromDatabase,
   searchLiteratureIndex,
@@ -401,6 +402,48 @@ test('failed publish of the DB/manifest pair keeps the previous pair verifiable'
   }
   await rm(path.join(input, 'poem/new.txt'));
   assert.deepEqual((await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest })).problems, []);
+});
+
+test('a publish killed mid-way is recovered to a verifiable pair on the next run', needsFts5, async () => {
+  const { input } = await makeCollection();
+  const { output, manifest } = await fullPaths();
+  await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const before = [await readFile(output), await readFile(manifest)];
+  await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+  const moduleUrl = new URL('./literature-index.mjs', import.meta.url).href;
+  for (const [step, after] of [[1, false], [2, false], [3, false], [4, false], [4, true]]) {
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
+      import { rename } from 'node:fs/promises';
+      import { buildFullLiteratureIndex } from ${JSON.stringify(moduleUrl)};
+      let calls = 0;
+      await buildFullLiteratureIndex({
+        inputDirectory: ${JSON.stringify(input)}, outputPath: ${JSON.stringify(output)}, manifestPath: ${JSON.stringify(manifest)},
+        hooks: { renameFile: async (from, to) => {
+          calls += 1;
+          if (calls === ${step} && !${after}) process.exit(42);
+          await rename(from, to);
+          if (calls === ${step} && ${after}) process.exit(42);
+        } },
+      });
+    `], { encoding: 'utf8' });
+    assert.equal(child.status, 42, child.stderr);
+    const outcome = await recoverLiteraturePublish({ databasePath: output });
+    assert.equal(outcome, step === 4 && after ? 'kept' : step === 1 ? 'kept' : 'restored', 'step ' + step);
+    if (step === 4 && after) {
+      // The fully published new pair is kept and is mutually bound; restore the old sources/pair.
+      assert.notDeepEqual(await readFile(manifest), before[1]);
+      await rm(path.join(input, 'poem/new.txt'));
+      assert.equal((await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest })).ok, false);
+      await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+      await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+    } else {
+      assert.deepEqual([await readFile(output), await readFile(manifest)], before, 'step ' + step);
+      await rm(path.join(input, 'poem/new.txt'));
+      assert.deepEqual((await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest })).problems, [], 'step ' + step);
+      await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+    }
+    assert.deepEqual((await readdir(path.dirname(output))).filter((name) => name.endsWith('.publish-backup')), []);
+  }
 });
 
 test('full verification detects changed, removed, added and tampered sources', needsFts5, async () => {

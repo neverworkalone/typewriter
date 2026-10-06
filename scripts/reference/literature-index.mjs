@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   mkdir,
   mkdtemp,
@@ -744,18 +745,84 @@ export function summarizeLiteratureInventory(entries) {
   return { by_genre: byGenre, error_reasons: errorReasons };
 }
 
+function publishBackupDirectory(databaseTo) {
+  return databaseTo + '.publish-backup';
+}
+
+function pairIsConsistent(databaseTo, manifestTo) {
+  try {
+    const manifest = JSON.parse(readFileSync(manifestTo, 'utf8'));
+    const database = new DatabaseSync(databaseTo, { readOnly: true });
+    try {
+      const value = (key) => database.prepare('SELECT value FROM index_metadata WHERE key = ?').get(key)?.value;
+      return manifest.input_manifest_sha256 === value('input_manifest_sha256')
+        && manifest.logical_rows_sha256 === value('logical_rows_sha256');
+    } finally {
+      database.close();
+    }
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Publish the verified DB + manifest pair. Previous files are parked inside the
- * staging directory first; any failure restores them so the old pair stays
- * mutually verifiable.
+ * Finish or undo a publish that was interrupted by process death. Previous
+ * files are parked in `<db>.publish-backup` with a journal; if the published
+ * pair is complete and mutually bound the backup is dropped, otherwise the
+ * previous pair is restored. Safe to call at any time (no-op without a backup).
+ */
+export async function recoverLiteraturePublish({
+  databasePath = DEFAULT_FULL_LITERATURE_INDEX_PATH,
+} = {}) {
+  const databaseTo = path.resolve(databasePath);
+  const backupDirectory = publishBackupDirectory(databaseTo);
+  let journal;
+  try {
+    journal = JSON.parse(await readFile(path.join(backupDirectory, 'journal.json'), 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      await rm(backupDirectory, { recursive: true, force: true });
+      return 'none';
+    }
+    throw new Error(backupDirectory + ': unreadable publish journal (' + error.message + ')');
+  }
+  if (journal.database !== databaseTo) throw new Error(backupDirectory + ': journal targets a different database');
+  if (pairIsConsistent(databaseTo, journal.manifest)) {
+    await rm(backupDirectory, { recursive: true, force: true });
+    return 'kept';
+  }
+  for (const [name, target] of [['database', databaseTo], ['manifest', journal.manifest]]) {
+    const parked = path.join(backupDirectory, name);
+    let exists = true;
+    try { await stat(parked); } catch { exists = false; }
+    if (exists) {
+      await rm(target, { force: true });
+      await rename(parked, target);
+    }
+  }
+  await rm(backupDirectory, { recursive: true, force: true });
+  return 'restored';
+}
+
+/**
+ * Publish the verified DB + manifest pair. Previous files are parked in a
+ * journaled backup directory first; an in-process failure restores them
+ * immediately and a process death is repaired by `recoverLiteraturePublish`
+ * on the next build/verify, so the old pair stays verifiable either way.
  */
 async function publishLiteraturePair({ directory, databaseFrom, databaseTo, manifestValue, manifestTo, renameFile }) {
   renameFile ??= rename;
   const stagedManifest = path.join(directory, 'manifest.json');
   await writeFile(stagedManifest, JSON.stringify(manifestValue, null, 2) + '\n');
+  const backupDirectory = publishBackupDirectory(databaseTo);
+  await mkdir(backupDirectory);
+  await writeFile(
+    path.join(backupDirectory, 'journal.json'),
+    JSON.stringify({ database: databaseTo, manifest: manifestTo }),
+  );
   const targets = [
-    { from: stagedManifest, to: manifestTo, backup: path.join(directory, 'previous-manifest') },
-    { from: databaseFrom, to: databaseTo, backup: path.join(directory, 'previous-database') },
+    { from: stagedManifest, to: manifestTo, backup: path.join(backupDirectory, 'manifest') },
+    { from: databaseFrom, to: databaseTo, backup: path.join(backupDirectory, 'database') },
   ];
   const parked = [];
   const placed = [];
@@ -775,8 +842,10 @@ async function publishLiteraturePair({ directory, databaseFrom, databaseTo, mani
   } catch (error) {
     for (const target of placed) await rm(target.to, { force: true });
     for (const target of parked) await rename(target.backup, target.to);
+    await rm(backupDirectory, { recursive: true, force: true });
     throw error;
   }
+  await rm(backupDirectory, { recursive: true, force: true });
 }
 
 /**
@@ -801,6 +870,7 @@ export async function buildFullLiteratureIndex({
   assertOutputLocation(absoluteInput, absoluteOutput);
   assertOutputLocation(absoluteInput, absoluteManifest);
   assertLiteratureFts5Support();
+  await recoverLiteraturePublish({ databasePath: absoluteOutput });
   const paths = await listLiteratureSourcePaths(absoluteInput);
   if (paths.length === 0) throw new Error('No TXT sources found under ' + absoluteInput);
   paths.forEach(validateRelativePath);
@@ -943,6 +1013,7 @@ export async function verifyFullLiteratureIndex({
 } = {}) {
   const startedAt = process.hrtime.bigint();
   const problems = [];
+  await recoverLiteraturePublish({ databasePath });
   let manifest;
   try {
     manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
