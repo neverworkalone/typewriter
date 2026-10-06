@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -20,7 +20,7 @@ import {
 import { partitionByWriterSupport, validateDecisionRow } from '../scripts/factory/handoff.mjs';
 import { buildCanonicalIndex, classifyAgainstCanonical, intakeCandidates, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { validateCandidateTransition, validateLinkedTransition, validateReviewTransition } from '../scripts/factory/transitions.mjs';
-import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
+import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { validateReviewArtifacts } from '../scripts/factory/artifacts.mjs';
 import { toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
@@ -430,4 +430,23 @@ test('registered validator accepts a new Stage 1 batch and a complete Stage 2 tr
   // Review without the candidate transition is rejected by the linked gate.
   await f.write('data/candidates/C000001/manifest.json', JSON.stringify(f.batch.manifest));
   assert.notEqual(f.run().status, 0);
+});
+
+test('factory base loading supports candidate manifests larger than the Node subprocess default', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-large-base-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+  git('init', '-q', '-b', 'master');
+  git('config', 'user.email', 't@example.com');
+  git('config', 'user.name', 't');
+  const manifest = { large_source_bound_payload: 'x'.repeat(2 * 1024 * 1024) };
+  const manifestPath = path.join(root, 'data/candidates/C000001/manifest.json');
+  await mkdir(path.dirname(manifestPath), { recursive: true });
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  git('add', '-A');
+  git('commit', '-qm', 'large stage 1 manifest');
+  git('checkout', '-q', '-b', 'work');
+
+  const base = loadBaseManifests('master', root);
+  assert.equal(base.candidate.C000001.large_source_bound_payload.length, 2 * 1024 * 1024);
 });

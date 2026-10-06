@@ -348,7 +348,13 @@ function validateAgainstBase({ base, candidates, reviews }) {
   return errors;
 }
 
-const git = (args, root) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+const MAX_GIT_OUTPUT_BYTES = 64 * 1024 * 1024;
+const git = (args, root) => execFileSync('git', args, {
+  cwd: root,
+  encoding: 'utf8',
+  maxBuffer: MAX_GIT_OUTPUT_BYTES,
+  stdio: ['ignore', 'pipe', 'ignore'],
+}).trim();
 
 // Manifests of the merge-base of `ref` and HEAD (the state this change builds on).
 export function loadBaseManifests(ref, root = REPOSITORY_DIRECTORY) {
