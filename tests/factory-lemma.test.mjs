@@ -12,6 +12,7 @@ import {
 } from '../scripts/factory/contract.mjs';
 import { buildCanonicalIndex, buildSearchFormSupport, candidateViews, intakeCandidates, toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
 import { validateLemmaDecision } from '../scripts/factory/lemma-decisions.mjs';
+import { expectedScopes } from '../scripts/factory/scope-declaration.mjs';
 import { produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { validateCandidateTransition } from '../scripts/factory/transitions.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
@@ -247,9 +248,19 @@ test('covered and search_coverage are canonical proofs, never assumptions from s
 });
 
 // Review artifacts for a lemma batch: semantic rows, hand-off and per-group hold resolution.
-function semanticRow(decision) {
+// Pending reviews must declare the scope of each gloss; the default fixture names, for each sense, the first
+// reason word of an excluded observation that its gloss does not use.
+function defaultScope(decision, candidate) {
+  return expectedScopes(decision, candidate).map(({ admitted, excluded, reasons }, index) => {
+    const gloss = decision.reviewed_record.senses[index].gloss;
+    const term = reasons.flatMap((reason) => reason.split(/[\s.,]+/u)).find((word) => word.length > 1 && !gloss.includes(word));
+    return { admitted_observation_ids: admitted, excluded_observation_ids: excluded, excluded_terms: excluded.length ? [term] : [] };
+  });
+}
+function semanticRow(decision, candidate) {
   const id = decision.source_candidate_id;
   const record = reviewedCandidateRecord(decision);
+  const scopes = defaultScope(decision, candidate);
   const row = {
     source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: decision.disposition,
     decision_rationale: `${id}: the lemma, POS and glosses form one coherent writer-facing unit.`, gloss_judgment: 'fit',
@@ -257,6 +268,7 @@ function semanticRow(decision) {
       sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
       boundary_rationale: `${id} ${sense.id}: bounded single meaning.`, semantic_rationale: `${id} ${sense.id}: denotes ${sense.gloss}`,
       relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: `${id} ${sense.id}: no authored relation tuple.`,
+      scope_declaration: scopes[record.senses.indexOf(sense)],
     })),
     boundary_pairs: inspectSenseBoundaryPairs(record).map((pair) => {
       const left = record.senses.find(({ id: senseId }) => senseId === pair.left_sense_id);
@@ -275,11 +287,11 @@ function semanticRow(decision) {
   row.review_binding = authorSemanticReviewBinding(row, record);
   return row;
 }
-const semantic = (decisions, count) => ({
+const semantic = (decisions, count, rows) => ({
   schema_version: '1', contract_version: 'lexical-semantic-decision-source-v4', kind: 'separately-authored-semantic-decision-source',
   batch_id: 'C000002', authoring_mode: 'agent-authored-decision', provenance: { human_reviewed: false },
   review: { status: 'complete', reviewer: 'claude-agent', reviewed_candidate_count: count },
-  decisions: decisions.filter((row) => ['included', 'corrected'].includes(row.disposition)).map(semanticRow),
+  decisions: decisions.filter((row) => ['included', 'corrected'].includes(row.disposition)).map((decision) => semanticRow(decision, rows.find((row) => row.candidate_id === decision.source_candidate_id))),
 });
 async function artifactsFor(rows, decisions) {
   const handoff = await buildProductionHandoff({
@@ -287,7 +299,7 @@ async function artifactsFor(rows, decisions) {
   });
   return {
     batchId: 'C000002', adapterId: 'corpus-adapter', candidates: rows, decisions,
-    semanticDecisionsText: JSON.stringify(semantic(decisions, rows.length)), handoffText: JSON.stringify(handoff),
+    semanticDecisionsText: JSON.stringify(semantic(decisions, rows.length, rows)), handoffText: JSON.stringify(handoff),
   };
 }
 
@@ -301,6 +313,60 @@ test('review artifacts bind a lemma candidate: one semantic decision per candida
   const handoff = JSON.parse(good.handoffText);
   handoff.entries = handoff.entries.filter((entry) => !entry.key.startsWith('가다'));
   has({ ...good, handoffText: JSON.stringify(handoff) }, 'intake-handoff.json');
+});
+
+// A gloss may only describe the observations its included groups claim: the author states the scope and
+// the shared contract binds it to the usage-group decisions (admitted gloss vs deferred meaning).
+test('a gloss cannot widen to a deferred observation: scope declaration is source-bound and checked', async () => {
+  const { rows, go, goDecision, pangDecision } = await lemmaFixture();
+  const reason = '시간의 흐름을 가리키는 용법은 별도 판단이 필요해 보류한다.';
+  const scoped = (gloss) => goDecision({
+    reviewed_record: { lemma: '가다', senses: [{ pos: 'verb', gloss }] },
+    group_decisions: [
+      { group_id: go.usage_groups[0].group_id, disposition: 'included', reason: '이동의 방향이 분명하다.', sense_indexes: [0] },
+      { group_id: go.usage_groups[1].group_id, disposition: 'deferred', reason },
+    ],
+  });
+  const withScope = async (decision, mutate = () => {}) => {
+    const decisions = [decision, pangDecision()];
+    const base = await artifactsFor(rows, decisions);
+    const source = JSON.parse(base.semanticDecisionsText);
+    for (const row of source.decisions) {
+      const owner = decisions.find((d) => d.source_candidate_id === row.source_candidate_id);
+      const candidate = rows.find((r) => r.candidate_id === row.source_candidate_id);
+      row.sense_reviews.forEach((review, index) => {
+        const { admitted, excluded } = expectedScopes(owner, candidate)[index];
+        review.scope_declaration = { admitted_observation_ids: admitted, excluded_observation_ids: excluded, excluded_terms: excluded.length ? ['시간'] : [] };
+        mutate(row, review, index);
+      });
+      row.review_binding = authorSemanticReviewBinding(row, reviewedCandidateRecord(owner));
+    }
+    return { ...base, decisions, semanticDecisionsText: JSON.stringify(source), requireScopeDeclaration: true };
+  };
+  const errorsOf = (input) => validateReviewArtifacts(input);
+  const has = (input, fragment) => assert.ok(errorsOf(input).some((e) => e.includes(fragment)), `${fragment}: ${errorsOf(input).join(' | ')}`);
+
+  // The gloss stays inside the included observations: accepted.
+  assert.deepEqual(errorsOf(await withScope(scoped('다른 곳으로 옮겨 가다.'))), []);
+  // The same row widened to the deferred meaning is refused, and the declaration cannot hide it.
+  has(await withScope(scoped('다른 곳으로 옮겨 가거나 시간이 지나가다.')), 'the gloss contains the excluded term 시간');
+  // The term must be source-bound to the reason that judges the excluded observation.
+  has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = ['전혀없는말']; }), 'does not occur in the reason that judges an excluded observation');
+  has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = []; }), 'require excluded_terms');
+  // The declared scope must be exactly what the group decisions admit.
+  const claimed = go.observations.filter((o) => o.group_id === go.usage_groups[0].group_id).map((o) => o.observation_id);
+  const leaked = go.observations.find((o) => o.group_id === go.usage_groups[1].group_id).observation_id;
+  has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.admitted_observation_ids = [...claimed, leaked].sort(); review.scope_declaration.excluded_observation_ids = []; }), 'admitted_observation_ids must be exactly');
+  // A pending review must carry the declaration; the field is optional only for already admitted reviews.
+  const missing = await withScope(scoped('다른 곳으로 옮겨 가다.'));
+  const stripped = JSON.parse(missing.semanticDecisionsText);
+  stripped.decisions.forEach((row) => { row.sense_reviews.forEach((review) => { delete review.scope_declaration; }); row.review_binding = authorSemanticReviewBinding(row, reviewedCandidateRecord(missing.decisions.find((d) => d.source_candidate_id === row.source_candidate_id))); });
+  has({ ...missing, semanticDecisionsText: JSON.stringify(stripped) }, 'scope_declaration is required');
+  assert.deepEqual(errorsOf({ ...missing, semanticDecisionsText: JSON.stringify(stripped), requireScopeDeclaration: false }), []);
+  // Without excluded observations the term list must stay empty.
+  const pang = rows.find((row) => row.candidate_id === pangDecision().source_candidate_id);
+  const full = await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { if (row.source_candidate_id === pang.candidate_id) review.scope_declaration.excluded_terms = ['시간']; });
+  has(full, 'excluded_terms must be empty while no observation is excluded');
 });
 
 test('a held observation requires a resolution only in the included group that contains it', async () => {
