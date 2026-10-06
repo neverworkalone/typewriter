@@ -830,9 +830,9 @@
     {
       "source_candidate_id": "C000003-0087",
       "candidate_record_id": "C000003-0087",
-      "candidate_record_sha256": "8bce9332cdd37efa87822166d031ac23b5a60f7d615a8bb02fccde882c0b82ae",
+      "candidate_record_sha256": "ae9ae50482ced4a335dc93fc0eca4606a42f588f312bd9a855cc75e4dc179dcc",
       "decision": "included",
-      "decision_rationale": "C000003-0087 attempt 1 Claude agent self-check: o01은 학교에 정해진 때마다 오가며 배우는 쓰임이다.",
+      "decision_rationale": "C000003-0087 attempt 1 Claude agent self-check: o01은 학교에 정해진 때마다 오가며 배우는 쓰임에 한정된다. 직장에 오가는 용법은 관찰되지 않아 이 뜻에 포함하지 않는다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -840,8 +840,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000003-0087: o01은 학교에 정해진 때마다 오가며 배우는 쓰임이다.",
-          "semantic_rationale": "C000003-0087: o01은 학교에 정해진 때마다 오가며 배우는 쓰임이다.",
+          "boundary_rationale": "C000003-0087: o01은 학교에 정해진 때마다 오가며 배우는 쓰임에 한정된다. 직장에 오가는 용법은 관찰되지 않아 이 뜻에 포함하지 않는다.",
+          "semantic_rationale": "C000003-0087: o01은 학교에 정해진 때마다 오가며 배우는 쓰임에 한정된다. 직장에 오가는 용법은 관찰되지 않아 이 뜻에 포함하지 않는다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -851,14 +851,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000003-0087",
-        "candidate_record_sha256": "8bce9332cdd37efa87822166d031ac23b5a60f7d615a8bb02fccde882c0b82ae",
-        "decision_evidence_sha256": "cd86351ef1e3a807c0558d057aa3d282fef1f337c2955c6e28dcb903665c763a",
+        "candidate_record_sha256": "ae9ae50482ced4a335dc93fc0eca4606a42f588f312bd9a855cc75e4dc179dcc",
+        "decision_evidence_sha256": "ca0c42e706d3b805a143479aab7d2ddbc17df5b50117b01efc9e3b352b14f2e3",
         "sense_evidence": [
           {
             "sense_id": "C000003-0087-s1",
-            "sense_sha256": "e20a55af8e092f8ab4d522f96cca3c8865f59420287cce8ceeb3776c9af55d1b",
-            "gloss_sha256": "68e3e2f733bf472150fb543ce9f87692b5b6be309ac6b760da8363a4e0018a1c",
-            "evidence_sha256": "7e6726f909e83fd0fb612d035421659a5ec5a5ca37aa18e4a09803bce962e64f"
+            "sense_sha256": "ad393abbd8028cf1db535c250b89434995dc78211aedd2890087cde48c33cc9d",
+            "gloss_sha256": "8b3952d79fd9ca7e3cdbceb776854d789146b6a906ca0d7303e3915ce46f404a",
+            "evidence_sha256": "815af2d3c1d9a88bc0927bba5815af02b70425e59c8697f6324783769a652875"
           }
         ]
       }
@@ -4452,9 +4452,9 @@
     {
       "source_candidate_id": "C000003-0360",
       "candidate_record_id": "C000003-0360",
-      "candidate_record_sha256": "036657cd105fcb61a71b246d416adc0a255e1e4af2501238fcd72db4a9a60578",
+      "candidate_record_sha256": "76336def602201ef5df9fd14074df40512fc179c6d14149bda6535f1c80f6f2a",
       "decision": "included",
-      "decision_rationale": "C000003-0360 attempt 1 Claude agent self-check: o01은 목소리가 보통보다 세다는 형용사 용법이다.",
+      "decision_rationale": "C000003-0360 attempt 1 Claude agent self-check: o01은 목소리의 세기가 보통보다 센 용법에 한정된다. 물리적 크기나 성장 용법은 이 뜻에 포함하지 않는다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -4462,8 +4462,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000003-0360: o01은 목소리가 보통보다 세다는 형용사 용법이다.",
-          "semantic_rationale": "C000003-0360: o01은 목소리가 보통보다 세다는 형용사 용법이다.",
+          "boundary_rationale": "C000003-0360: o01은 목소리의 세기가 보통보다 센 용법에 한정된다. 물리적 크기나 성장 용법은 이 뜻에 포함하지 않는다.",
+          "semantic_rationale": "C000003-0360: o01은 목소리의 세기가 보통보다 센 용법에 한정된다. 물리적 크기나 성장 용법은 이 뜻에 포함하지 않는다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -4473,14 +4473,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000003-0360",
-        "candidate_record_sha256": "036657cd105fcb61a71b246d416adc0a255e1e4af2501238fcd72db4a9a60578",
-        "decision_evidence_sha256": "4e4ba4ff206c3eeab69d8ae6d9792abce00c954ea576109a4fb542953e428cf1",
+        "candidate_record_sha256": "76336def602201ef5df9fd14074df40512fc179c6d14149bda6535f1c80f6f2a",
+        "decision_evidence_sha256": "5b7fce38dc6cfe603cdec5da140b04da48cd1ea6b6bffd48118e1618be27b7c7",
         "sense_evidence": [
           {
             "sense_id": "C000003-0360-s1",
-            "sense_sha256": "51c1fd9ff7f56d1ddad85838ef59271a7294bec717942440080976cb1c608d5f",
-            "gloss_sha256": "212e33e37a874c853bcb552016b1a490a6e24a5e490e2fd8851f99015b4f0818",
-            "evidence_sha256": "e7bd77228bab8cc7c226eb6b2576a631ab40a1db0a420f3d03b5df6111aaabb2"
+            "sense_sha256": "0dd50f7024e9c40e29243deb3092788cf776e01bb69dcaf3e904af66d3332392",
+            "gloss_sha256": "8684287d02e98c7f637d62e3fc189ec01276e5d480deb1606301ff1dbcd62abe",
+            "evidence_sha256": "883c0e6c7f489c72d98d3222024af4b7166c689a9f75b0fd7bf60f5d0a4e9a8a"
           }
         ]
       }
