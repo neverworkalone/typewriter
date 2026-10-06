@@ -581,10 +581,26 @@ export const batchMetrics = (rows, { unresolved, repeatsMerged }) => {
   };
 };
 
+// A producer run can resolve context for more lemma groups than fit in its bounded batch. Only
+// decisions linked from retained observations belong in the batch manifest; truth_unknown decisions
+// remain linked to their verification-queue entries. Deferred groups can be processed by a later run
+// from the same source evidence without making this batch claim unretained observations.
+function contextDecisionsForBatch(grouped, rows) {
+  const retained = new Set(rows.flatMap((row) => row.observations
+    .map((observation) => observation.ensemble.context_decision)
+    .filter(Boolean)));
+  const queuedUnknown = new Set(grouped.unresolved
+    .filter((entry) => entry.verification.state === 'truth_unknown')
+    .map((entry) => entry.verification.decision_id));
+  return grouped.contextRecords.filter((decision) => RESOLVING_OUTCOMES.includes(decision.outcome)
+    ? retained.has(decision.decision_id)
+    : queuedUnknown.has(decision.decision_id));
+}
+
 // Manifest blocks of an ensemble batch: the trace digest binds the three provider identities, every
 // observation's text-free trace, the unresolved queue and the recorded context decisions.
-function ensembleManifestFields({ grouped, rows, providers }) {
-  const contextDecisionsDigest = contextDecisionsSha256(grouped.contextRecords);
+function ensembleManifestFields({ grouped, rows, providers, contextRecords }) {
+  const contextDecisionsDigest = contextDecisionsSha256(contextRecords);
   const categories = { concordant: 0, supported_alternative: 0, conflicted: 0, unsupported_or_unknown: 0 };
   for (const row of rows) for (const [category, count] of Object.entries(row.review.categories)) categories[category] += count;
   for (const entry of grouped.unresolved) categories[entry.category] += 1;
@@ -599,7 +615,7 @@ function ensembleManifestFields({ grouped, rows, providers }) {
         contextDecisionsSha256: contextDecisionsDigest,
       }),
     },
-    context_fallback: { contract: CONTEXT_CONTRACT, decisions: grouped.contextRecords, decisions_sha256: contextDecisionsDigest },
+    context_fallback: { contract: CONTEXT_CONTRACT, decisions: contextRecords, decisions_sha256: contextDecisionsDigest },
   };
 }
 
@@ -710,7 +726,8 @@ export async function produceCandidateBatch({
   // Default [kiwi] omits the provider fields: byte-identical to the pre-provider manifest.
   const providerFields = ids.length === 1 && !ensemble ? {} : { analyzer_providers: ordered.map(providerDescriptor), resolution_policy: policy };
   const anchor = { analyzer_version: `kiwipiepy==${PINNED_ANALYZER.kiwipiepy_version}`, proposal_contract: REQUIRED_PROPOSAL_CONTRACT, ...providerFields };
-  const ensembleFields = ensemble ? ensembleManifestFields({ grouped, rows, providers: providerFields.analyzer_providers }) : {};
+  const contextRecords = ensemble ? contextDecisionsForBatch(grouped, rows) : [];
+  const ensembleFields = ensemble ? ensembleManifestFields({ grouped, rows, providers: providerFields.analyzer_providers, contextRecords }) : {};
   const manifest = {
     contract: LEMMA_CANDIDATE_MANIFEST_CONTRACT,
     lemma_policy: LEMMA_POLICY,

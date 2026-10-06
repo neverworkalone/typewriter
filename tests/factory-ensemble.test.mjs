@@ -293,6 +293,33 @@ test('12: recorded decisions replay deterministically without raw paragraphs; ta
   await assert.rejects(() => produceCandidateBatch({ evidence: evidenceDoc(fallbackEvidence), providers: [kiwi(FALLBACK.k)], canonicalEntries: [], canonicalDigest: HEX, batchId: 'C000002', taskId: 'T000001', contextReplay: decisions }), /only valid under/);
 });
 
+test('bounded batches record only resolving context decisions linked to retained lemma rows', async () => {
+  const evidence = [
+    cand('가다', 'verb', [h('d1', '가는')]),
+    cand('갈다', 'verb', [h('d3', '갈')]),
+  ];
+  const providers = triple(FALLBACK);
+  const first = await produce(evidence, providers);
+  const [entry] = queueOf(first);
+  const contextProposals = [proposal(entry, { outcome: 'context_confirmed', lemma: '갈다', pos: 'verb' })];
+  const contextSource = source({ 'd3#p1': { status: 'ok', text: '밭을 갈 수 있다.' } });
+  const bounded = await produce(evidence, providers, {
+    maxCandidates: 1, contextProposals, contextSource, contextAgent: 'codex',
+  });
+  assert.deepEqual(bounded.rows.map((row) => row.input), ['가다']);
+  assert.deepEqual(bounded.summary.deferredLemmas, ['갈다']);
+  assert.deepEqual(bounded.manifest.context_fallback.decisions, [], 'deferred context recovery is not claimed by this batch');
+  assert.deepEqual(validateCandidateBatch({ manifest: bounded.manifest, candidatesText: bounded.candidatesText }), []);
+
+  const deferred = await produce(evidence, providers, {
+    maxCandidates: 1, producedLemmas: new Set(['가다']), contextProposals, contextSource, contextAgent: 'codex',
+  });
+  assert.deepEqual(deferred.rows.map((row) => row.input), ['갈다']);
+  assert.equal(deferred.manifest.context_fallback.decisions.length, 1, 'the decision is recorded when its lemma is retained');
+  assert.equal(deferred.rows[0].observations[0].ensemble.context_decision, deferred.manifest.context_fallback.decisions[0].decision_id);
+  assert.deepEqual(validateCandidateBatch({ manifest: deferred.manifest, candidatesText: deferred.candidatesText }), []);
+});
+
 test('fallback is not a bypass: blocked holds, missing source reference and assignable observations are never routed to context', async () => {
   const k = { 갈: [p('갈', 'noun')], 짠한: [p('짠하다', 'adjective', '짠하')] };
   const hh = { 갈: [p('갈다', 'verb', '갈')], 짠한: [p('짠하다', 'adjective', '짠하')] };
