@@ -413,7 +413,7 @@ function createLiteratureSchema(database) {
   `);
 }
 
-const PROVIDER_LABEL = 'owner-supplied local TXT collection (provider terms unverified by tooling)';
+const PROVIDER_LABEL = '공유마당 (owner-supplied local TXT collection; terms not verified by tooling)';
 const PUBLIC_DOMAIN_BASIS = 'owner-asserted in issue #332; see docs/external-material-review-public-domain-literature.md';
 
 function logicalRowsDigest(database) {
