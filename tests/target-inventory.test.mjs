@@ -404,20 +404,49 @@ test('historical surface-form views drop exception bindings of later factory adm
   assert.equal(manifest.exceptions.length, 4, 'the live manifest is not mutated');
 });
 
-test('every historical batch validator that runs shared admission uses the projected historical context', async () => {
-  const { readFile } = await import('node:fs/promises');
-  for (const file of ['scripts/batch/validate-issue-221.mjs']) {
-    assert.match(await readFile(file, 'utf8'), /canonicalContext: historicalAdmissionContext\(currentCanonical\.records, semanticAudit\)/u, `${file} must not apply live surface-form manifests to historical records`);
-  }
+test('shared admission accepts the projected historical surface-form view and still fails on missing or tampered evidence', async () => {
   const { applyHistoricalSurfaceFormViews } = await import('../scripts/batch/historical-canonical.mjs');
-  const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
+  const { readCanonicalRecords, DEFAULT_CANONICAL_DIRECTORY } = await import('../scripts/validate/canonical-jsonl.mjs');
   const { loadCanonicalBeforeFactoryAdmissions } = await import('../scripts/validate/semantic-audit.mjs');
-  const live = (await readCanonicalRecords()).records;
-  const historical = await loadCanonicalBeforeFactoryAdmissions(live);
-  const ids = new Set(historical.map((info) => (info.record ?? info).id));
-  const context = applyHistoricalSurfaceFormViews({ derived: {} }, historical);
-  assert.ok(context.derived.surfaceFormReviewManifest.dispositions.every((entry) => ids.has(entry.record_id)));
-  assert.ok(context.derived.surfaceFormExceptionManifest.exceptions.every((entry) => ids.has(entry.record_id)));
+  const { validateDatasetRecords } = await import('../scripts/validate/dataset-integrity.mjs');
+  const { loadSurfaceFormExceptionManifestSync, loadSurfaceFormReviewManifestSync } = await import('../scripts/inflection/surface-form-projection.mjs');
+  const historical = await loadCanonicalBeforeFactoryAdmissions((await readCanonicalRecords()).records);
+  const review = loadSurfaceFormReviewManifestSync();
+  const exceptions = loadSurfaceFormExceptionManifestSync();
+  const liveBefore = JSON.stringify({ review, exceptions });
+  const strict = { requireSurfaceFormProjection: true, requireSurfaceFormClassifications: true, requireSurfaceFormCollisionReview: true, requireSemanticAudit: false, requireDecisionSource: false, requireTopicAnalysis: false };
+  const run = (derived) => validateDatasetRecords(historical, { context: { canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY, derived }, ...strict });
+  // Master already holds factory admissions (C000001/C000002): the live manifests do not fit the historical records.
+  assert.throws(() => run({ surfaceFormReviewManifest: review, surfaceFormExceptionManifest: exceptions }), /missing record/u);
+  assert.doesNotThrow(() => run(applyHistoricalSurfaceFormViews({ derived: {} }, historical).derived), 'the projected real historical view is valid');
+
+  // Later factory admissions add review dispositions and exception bindings for records and senses
+  // that the historical record set does not contain.
+  const sample = exceptions.exceptions[0];
+  const later = {
+    review: { ...structuredClone(review), dispositions: [...review.dispositions, { ...review.dispositions[0], record_id: 'w99999', sense_id: 'w99999-s1' }, { ...review.dispositions[0], record_id: review.dispositions[0].record_id, sense_id: `${review.dispositions[0].record_id}-s9` }] },
+    exceptions: { ...structuredClone(exceptions), exceptions: [...exceptions.exceptions, { ...sample, record_id: 'w99999', sense_id: 'w99999-s1' }, { ...sample, sense_id: `${sample.record_id}-s9` }] },
+  };
+  assert.throws(() => run({ surfaceFormReviewManifest: later.review, surfaceFormExceptionManifest: later.exceptions }), /missing (record|sense)/u, 'live manifests applied to historical records fail');
+  const projected = applyHistoricalSurfaceFormViews({ derived: {} }, historical, later);
+  assert.doesNotThrow(() => run(projected.derived), 'the projected historical view passes shared admission');
+
+  // Required historical evidence is not dropped by the projection: removing it still fails.
+  const missingReview = structuredClone(projected.derived);
+  missingReview.surfaceFormReviewManifest.dispositions = missingReview.surfaceFormReviewManifest.dispositions.filter((entry) => !(entry.record_id === review.dispositions[0].record_id && entry.sense_id === review.dispositions[0].sense_id));
+  assert.throws(() => run(missingReview), 'a missing historical disposition fails');
+  const missingException = structuredClone(projected.derived);
+  missingException.surfaceFormExceptionManifest.exceptions = missingException.surfaceFormExceptionManifest.exceptions.filter((entry) => !(entry.record_id === sample.record_id && entry.sense_id === sample.sense_id));
+  assert.throws(() => run(missingException), 'a missing historical exception binding fails');
+  const tampered = structuredClone(projected.derived);
+  tampered.surfaceFormExceptionManifest.exceptions[0].class_id = 'm6-unknown-class';
+  assert.throws(() => run(tampered), 'a tampered exception class fails');
+  assert.equal(JSON.stringify({ review, exceptions }), liveBefore, 'the live manifests are not mutated');
+
+  // The historical batch validators must pass exactly this projected context to shared admission.
+  const { readFile } = await import('node:fs/promises');
+  assert.match(await readFile('scripts/batch/validate-issue-221.mjs', 'utf8'), /canonicalContext: historicalAdmissionContext\(currentCanonical\.records, semanticAudit\)/u);
+  assert.match(await readFile('scripts/batch/validate-issue-222.mjs', 'utf8'), /applyHistoricalSurfaceFormViews\(admissionContext, currentCanonical\.records\)/u);
 });
 
 test('factory inventory mappings require digest-bound canonical creations', async () => {

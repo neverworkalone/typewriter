@@ -31,9 +31,10 @@ export function projectHistoricalSurfaceFormExceptions(manifest, records) {
 }
 
 /** Both surface-form inputs of one historical record set, so neither can reference a later admission. */
-export function applyHistoricalSurfaceFormViews(context, records) {
-  context.derived.surfaceFormReviewManifest = projectHistoricalSurfaceFormReview(loadSurfaceFormReviewManifestSync(), records);
-  context.derived.surfaceFormExceptionManifest = projectHistoricalSurfaceFormExceptions(loadSurfaceFormExceptionManifestSync(), records);
+export function applyHistoricalSurfaceFormViews(context, records, { review = loadSurfaceFormReviewManifestSync(), exceptions = loadSurfaceFormExceptionManifestSync() } = {}) {
+  context.derived ??= {};
+  context.derived.surfaceFormReviewManifest = projectHistoricalSurfaceFormReview(review, records);
+  context.derived.surfaceFormExceptionManifest = projectHistoricalSurfaceFormExceptions(exceptions, records);
   return context;
 }
 
