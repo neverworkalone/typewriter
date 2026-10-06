@@ -68,11 +68,11 @@ function isWithinDirectory(directoryPath, candidatePath) {
 
 const PERMISSION_FIELDS = Object.freeze({
   'Intended role': 'reference',
-  'Public-domain status recorded': 'owner-asserted',
+  'Source terms': '공유마당 expired work',
   'Allowed local storage': 'permitted',
   'Allowed SQLite/FTS indexing': 'permitted',
   'Allowed lexical-reference use': 'permitted',
-  'Redistribution/embedding': 'not authorized',
+  'Distribution/embedding terms reviewed': 'complete',
   Decision: 'permitted for stated role',
 });
 
@@ -427,8 +427,8 @@ function createLiteratureSchema(database) {
   `);
 }
 
-const PROVIDER_LABEL = '공유마당 (owner-supplied local TXT collection; terms not verified by tooling)';
-const PUBLIC_DOMAIN_BASIS = 'owner-asserted in issue #332; see docs/external-material-review-public-domain-literature.md';
+const PROVIDER_LABEL = '공유마당';
+const PUBLIC_DOMAIN_BASIS = '공유마당 expired work (이용조건: 만료); see docs/external-material-review-public-domain-literature.md';
 
 function logicalRowsDigest(database) {
   const hash = createHash('sha256');

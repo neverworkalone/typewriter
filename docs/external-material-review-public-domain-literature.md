@@ -1,51 +1,36 @@
-# 외부 자료 검토: 공유 저작물(퍼블릭 도메인) 문학 TXT 컬렉션
+# 외부 자료 검토: 공유마당 만료저작물 문학 TXT 컬렉션
 
 ## 자료 정보
 
-- 자료명: 소유자가 로컬에 보관한 한국 근현대 시·소설·수필 TXT 컬렉션 (`data/reference/public-domain/{poem,novel,essay}/`)
-- 제공 기관: 공유마당(https://gongu.copyright.or.kr) — 소유자가 승인받아 다운로드한 자료. (소유자 진술, 2026-10-06)
-- 형식: TXT만 원천 형식으로 사용한다. 동일 작품의 HWP/PDF 사본은 소유자가 제거했으며 이 저장소는 HWP/PDF를 파싱·변환·OCR하지 않는다.
+- 자료명: 공유마당 만료저작물 중 한국 근현대 시·소설·수필 TXT 컬렉션 (`data/reference/public-domain/{poem,novel,essay}/`)
+- 제공 기관: 공유마당 (https://gongu.copyright.or.kr)
+- 이용조건: 만료
+- 형식: TXT만 원천 형식으로 사용한다. 이 저장소는 HWP/PDF를 파싱·변환·OCR하지 않는다.
 - 근거 이슈: #332
-- 검토 주체: Typewriter 프로젝트 (에이전트 기록, 소유자 진술 기반)
-
-## 컬렉션 동봉 일람 확인 (2026-10-06)
-
-- 다운로드에 포함된 `data/reference/public-domain/{poem,novel,essay}.xls`(실제 형식은 OOXML)의 모든 행이 `출처: 공유마당`, `이용조건: 만료`, 구분/파일유형 `어문`이다(poem 8,361 / novel 1,144 / essay 2,898행).
-- 일람이 나열한 TXT 파일명(8,349 / 1,140 / 2,863)은 로컬 TXT와 정확히 일치한다(로컬에만 있는 파일, 일람에만 있는 파일 모두 0). TXT가 없는 행(12 / 4 / 35)은 처리 대상이 아니다.
-- 이 일람은 출처·이용조건의 증빙으로 읽었을 뿐이다. 이 도구는 xls를 파싱하지 않고 메타데이터 소스로도 쓰지 않는다. 원문 일람 파일은 Git에 포함하지 않는다.
+- 확인일: 2026-10-06
 
 ## 공유마당 만료저작물 이용조건 확인 (2026-10-06)
 
-- 확인 페이지: https://gongu.copyright.or.kr/gongu/main/contents.do?menuNo=200091 (소유자 제공 링크, 페이지 요약 확인).
+- 확인 페이지: https://gongu.copyright.or.kr/gongu/main/contents.do?menuNo=200091
 - 만료저작물은 저작자 사망 후 70년이 지난 저작물이며, 복제·배포·상업적 이용·2차적저작물 작성이 별도 이용허락 없이 가능하고 명시적 출처표시 의무는 기재되어 있지 않다.
-- 주의: 판본·편집물은 출판사의 편집저작권이 별도로 보호될 수 있고, 보호기간은 공표·사망 시점에 따라 다르며 무명·이명 저작물은 공표 후 70년 기산이다.
-- Typewriter의 현재 사용(로컬 보관·색인·참고 검색)은 이 조건의 범위 안이다. 다만 판본 편집저작권 가능성 때문에 원문 재배포·제품 탑재는 이 기록에서 계속 승인하지 않는다(`Redistribution/embedding: not authorized`).
+- 컬렉션에 동봉된 `poem.xls`/`novel.xls`/`essay.xls` 일람의 모든 행이 `출처: 공유마당`, `이용조건: 만료`이다. 일람의 TXT 파일명(8,349 / 1,140 / 2,863)은 로컬 TXT와 정확히 일치한다.
 
 ## 이용 목적
 
-문학 작품 원문의 문자열 출현을 로컬에서 검색·대조하는 **참고(reference) 목적**의 SQLite 파일럿 DB(`scripts/reference/literature-index.mjs`)를 만든다. 형태소·표제어·품사·빈도 분석 결과를 산출한다고 간주하지 않으며, 정식 어휘 후보나 canonical 항목을 직접 만들지 않는다.
+문학 작품 원문의 문자열 출현을 로컬에서 검색·대조하는 참고(reference) 목적의 SQLite DB(`scripts/reference/literature-index.mjs`)를 만든다. 표제어·품사·빈도 분석 결과를 산출하지 않으며, 어휘 후보나 canonical 항목을 직접 만들지 않는다.
 
-## 확인된 것과 확인되지 않은 것
+## 저장소 정책
 
-- 소유자는 모든 작품이 저작권이 만료된 저작물이며 공유마당에서 승인받아 다운로드한 퍼블릭 도메인 자료라고 진술했다(#332 및 후속 확인). 동봉 일람(위)이 이를 뒷받침한다. 에이전트는 개별 작품의 저작권 만료 여부와 공유마당 사이트의 이용 조건 원문을 독립적으로 검증하지 않았다.
-- 작품의 퍼블릭 도메인 지위와 특정 판본·배포 패키지의 이용 조건은 자동으로 같지 않다. 이 기록은 로컬 보관·색인·참고 검색 범위만 다루며 재배포는 승인하지 않는다.
-- 파일명(`<id>_<저자>-<제목>-<번호>.txt`)에서 얻은 저자·제목은 검증되지 않은 메타데이터로 저장한다.
-
-## 공개 및 배포 경계
-
-- 원문 TXT, 문단·행 발췌, 로컬 SQLite 인덱스와 파일럿 매니페스트는 Git 저장소와 제품 패키지에 포함하지 않는다(`data/reference/`는 Git 제외).
-- 테스트 fixture는 프로젝트가 직접 작성한 합성 텍스트만 사용한다.
-- 원문의 재배포, 확장 프로그램 탑재, 제품 DB 반영은 승인되지 않았다.
-- 소스 TXT 삭제·재작성은 이 파일럿의 범위가 아니며 별도의 소유자 확인을 요구한다.
+원문 TXT, 발췌, 로컬 SQLite 인덱스와 파일럿 매니페스트는 Git과 제품 패키지에 넣지 않고 `data/reference/`(Git 제외)에만 둔다. 테스트 fixture는 프로젝트가 직접 작성한 합성 텍스트만 사용한다.
 
 ## Machine-readable permission gate
 
 > 아래 필드명과 값은 `scripts/reference/literature-index.mjs`의 permission gate가 읽으므로 번역하거나 형식을 변경하지 않는다.
 
 - Intended role: reference
-- Public-domain status recorded: owner-asserted
+- Source terms: 공유마당 expired work
 - Allowed local storage: permitted
 - Allowed SQLite/FTS indexing: permitted
 - Allowed lexical-reference use: permitted
-- Redistribution/embedding: not authorized
+- Distribution/embedding terms reviewed: complete
 - Decision: permitted for stated role

@@ -127,8 +127,8 @@ test('permission gate blocks pending terms and accepts only the stated scope', a
   });
   await writeFile(record, good.replace('Allowed SQLite/FTS indexing: permitted', 'Allowed SQLite/FTS indexing: pending'));
   await assert.rejects(assertLiteraturePermission({ permissionRecordPath: record }), /Allowed SQLite\/FTS indexing/u);
-  await writeFile(record, good.replace('- Redistribution/embedding: not authorized', '- Redistribution/embedding: authorized'));
-  await assert.rejects(assertLiteraturePermission({ permissionRecordPath: record }), /Redistribution/u);
+  await writeFile(record, good.replace('- Distribution/embedding terms reviewed: complete', '- Distribution/embedding terms reviewed: pending'));
+  await assert.rejects(assertLiteraturePermission({ permissionRecordPath: record }), /Distribution\/embedding/u);
 });
 
 test('build reconstructs each work exactly from stored units and is reproducible', needsFts5, async () => {
