@@ -213,6 +213,10 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/reference/corpus-candidate-review.test.mjs'],
       ),
       commandCheck(
+        'Test Issue #332 literature TXT pilot index',
+        ['--test', 'scripts/reference/literature-index.test.mjs'],
+      ),
+      commandCheck(
         'Test Issue #223 review-only import boundary',
         ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
       ),
