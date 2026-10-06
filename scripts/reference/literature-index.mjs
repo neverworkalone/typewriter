@@ -402,9 +402,7 @@ function createLiteratureSchema(database) {
       title TEXT,
       author TEXT,
       metadata_origin TEXT NOT NULL,
-      title_in_first_unit INTEGER NOT NULL CHECK (title_in_first_unit IN (0, 1)),
-      provider TEXT NOT NULL,
-      public_domain_basis TEXT NOT NULL
+      title_in_first_unit INTEGER NOT NULL CHECK (title_in_first_unit IN (0, 1))
     );
     CREATE TABLE text_units (
       unit_rowid INTEGER PRIMARY KEY,
@@ -427,9 +425,6 @@ function createLiteratureSchema(database) {
   `);
 }
 
-const PROVIDER_LABEL = '공유마당';
-const PUBLIC_DOMAIN_BASIS = '공유마당 expired work (이용조건: 만료); see docs/external-material-review-public-domain-literature.md';
-
 function logicalRowsDigest(database) {
   const hash = createHash('sha256');
   const feed = (label, sql) => {
@@ -439,7 +434,7 @@ function logicalRowsDigest(database) {
     }
   };
   feed('source_files', 'SELECT * FROM source_files ORDER BY relative_path');
-  feed('works', 'SELECT w.genre, f.relative_path, w.source_id, w.title, w.author, w.metadata_origin, w.title_in_first_unit, w.provider, w.public_domain_basis FROM works w JOIN source_files f USING (file_id) ORDER BY f.relative_path');
+  feed('works', 'SELECT w.genre, f.relative_path, w.source_id, w.title, w.author, w.metadata_origin, w.title_in_first_unit FROM works w JOIN source_files f USING (file_id) ORDER BY f.relative_path');
   feed('text_units', 'SELECT f.relative_path, u.ordinal, u.kind, u.block_ordinal, u.text, u.eol FROM text_units u JOIN source_files f USING (file_id) ORDER BY f.relative_path, u.ordinal');
   return hash.digest('hex');
 }
@@ -578,7 +573,7 @@ export async function buildLiteratureIndex({
     createLiteratureSchema(database);
     database.exec('BEGIN IMMEDIATE');
     const insertFile = database.prepare(`INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-    const insertWork = database.prepare(`INSERT INTO works VALUES (?,?,?,?,?,?,?,?,?,?)`);
+    const insertWork = database.prepare(`INSERT INTO works VALUES (?,?,?,?,?,?,?,?)`);
     const insertUnit = database.prepare(`INSERT INTO text_units (file_id, ordinal, kind, block_ordinal, text, eol) VALUES (?,?,?,?,?,?)`);
     for (const [index, analysis] of analyses.entries()) {
       const fileId = index + 1;
@@ -596,7 +591,6 @@ export async function buildLiteratureIndex({
       insertWork.run(
         fileId, genre, fileId, meta.sourceId, meta.title, meta.author,
         meta.title === null ? 'none' : 'filename (unverified)', titleSeen ? 1 : 0,
-        PROVIDER_LABEL, PUBLIC_DOMAIN_BASIS,
       );
       for (const unit of analysis.units) {
         insertUnit.run(fileId, unit.ordinal, unit.kind, unit.blockOrdinal, unit.text, unit.eol);

@@ -6,7 +6,7 @@
 
 - `scripts/reference/literature-index.mjs` (+ `build-literature-index.mjs` `select|build|verify`, `search-literature-index.mjs`). `npm run reference:literature:{select,build,verify,search}`.
 - 출력: `data/reference/indexes/literature-pilot-2026.sqlite`(Git 제외). `written-corpus-2025.sqlite`와 NIKL 파서는 건드리지 않는다.
-- 스키마(v1): `source_files`(상대경로, SHA-256, bytes, 인코딩, BOM, 개행 규약, 말미 개행, NFC 여부, 상태/경고), `works`(장르, 파일명 유래·**미검증** 저자/제목, 제목이 첫 텍스트 행에 나오는지 여부, 출처/퍼블릭도메인 근거), `text_units`, 외부 콘텐츠 FTS5 trigram `unit_fts`, `index_metadata`(스키마/빌더 버전, 입력 매니페스트 digest, 개수, 정렬된 논리 행 digest, 도구 식별자).
+- 스키마(v1): `source_files`(상대경로, SHA-256, bytes, 인코딩, BOM, 개행 규약, 말미 개행, NFC 여부, 상태/경고), `works`(장르, 파일명 유래·**미검증** 저자/제목, 제목이 첫 텍스트 행에 나오는지 여부), `text_units`, 외부 콘텐츠 FTS5 trigram `unit_fts`, `index_metadata`(스키마/빌더 버전, 입력 매니페스트 digest, 개수, 정렬된 논리 행 digest, 도구 식별자).
 - 충실(faithful) 계층: `text_units`는 물리적 한 줄 = 한 단위이며 행별 종결자(`\r\n`/`\n`/`\r`/없음)를 그대로 저장한다. 의미 문단은 만들지 않는다. `block_ordinal`은 빈 줄로 구분되는 연(stanza)/덩어리 번호일 뿐이다. UTF-8 BOM만 `source_files.has_bom`으로 분리 기록한다. 정규화(NFC 포함), 철자·문장부호 변경은 없다. 파생 검색 계층은 **없음**(FTS5 trigram이 충실 텍스트를 직접 색인하고, 결과는 `instr()`로 재검증).
 - 빌드: 명시적 경로 목록(매니페스트)만 처리, 파일 하나라도 오류면 기존 DB를 건드리지 않고 중단, 임시 디렉터리에서 quick_check/foreign_key_check/FTS integrity-check 후 원자적 `rename`. 모든 작품을 DB 단위에서 재구성해 디코드된 TXT와 정확히 비교한 뒤에만 완료한다.
 - 검색: 1–2자 literal scan, 3자 이상 FTS5+`instr`. 한도 1–200, 정렬은 장르(poem→novel→essay)·상대경로·행 번호. 결과는 literal 문자열 일치 증거이며 표제어/품사/단어 빈도가 아니다.
