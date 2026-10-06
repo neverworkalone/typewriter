@@ -215,7 +215,7 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/reference/corpus-candidate-review.test.mjs'],
       ),
       commandCheck(
-        'Test Issue #332 literature TXT pilot index',
+        'Test Issues #332 and #334 literature TXT pilot and full index',
         ['--test', 'scripts/reference/literature-index.test.mjs'],
       ),
       commandCheck(

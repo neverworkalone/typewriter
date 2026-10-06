@@ -7,6 +7,7 @@ import {
   rename,
   rm,
   stat,
+  writeFile,
 } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
@@ -33,6 +34,14 @@ export const DEFAULT_LITERATURE_MANIFEST_PATH = path.join(
   REPOSITORY_INDEX_DIRECTORY,
   'literature-pilot-2026.manifest.json',
 );
+export const DEFAULT_FULL_LITERATURE_INDEX_PATH = path.join(
+  REPOSITORY_INDEX_DIRECTORY,
+  'public-domain-literature.sqlite',
+);
+export const DEFAULT_FULL_LITERATURE_MANIFEST_PATH = path.join(
+  REPOSITORY_INDEX_DIRECTORY,
+  'public-domain-literature.manifest.json',
+);
 export const DEFAULT_LITERATURE_PERMISSION_RECORD_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'docs/external-material-review-public-domain-literature.md',
@@ -45,6 +54,8 @@ export const LITERATURE_TOOL_IDENTITY = 'typewriter/scripts/reference/literature
 const DEFAULT_SEARCH_LIMIT = 50;
 const MAX_SEARCH_LIMIT = 200;
 const MAX_PILOT_WORKS_PER_GENRE = 5;
+const DEFAULT_CONTEXT_UNITS = 2;
+const MAX_CONTEXT_UNITS = 3;
 
 const UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const CP949 = new TextDecoder('euc-kr', { fatal: true, ignoreBOM: true });
@@ -376,7 +387,7 @@ export function assertLiteratureFts5Support() {
   }
 }
 
-function createLiteratureSchema(database) {
+export function createLiteratureSchema(database) {
   database.exec(`
     CREATE TABLE source_files (
       file_id INTEGER PRIMARY KEY,
@@ -425,7 +436,7 @@ function createLiteratureSchema(database) {
   `);
 }
 
-function logicalRowsDigest(database) {
+export function logicalRowsDigest(database) {
   const hash = createHash('sha256');
   const feed = (label, sql) => {
     hash.update('#' + label + '\n');
@@ -439,7 +450,7 @@ function logicalRowsDigest(database) {
   return hash.digest('hex');
 }
 
-function counts(database) {
+export function counts(database) {
   const one = (sql) => database.prepare(sql).get().n;
   return {
     files: one('SELECT count(*) AS n FROM source_files'),
@@ -448,7 +459,7 @@ function counts(database) {
   };
 }
 
-function requireIntegrity(database, label) {
+export function requireIntegrity(database, label) {
   const quick = database.prepare('PRAGMA quick_check').all();
   if (quick.length !== 1 || quick[0].quick_check !== 'ok') {
     throw new Error(label + ': SQLite quick_check failed');
@@ -474,7 +485,7 @@ export function reconstructWorkFromDatabase(database, relativePath) {
   return reconstructLiteratureText(units);
 }
 
-function normalizeSpaces(value) {
+export function normalizeSpaces(value) {
   return value.replace(/\s+/gu, '');
 }
 
@@ -495,7 +506,7 @@ export async function readLiteratureManifest(manifestPath = DEFAULT_LITERATURE_M
   return paths.sort(compareLexically);
 }
 
-function validateRelativePath(relativePath) {
+export function validateRelativePath(relativePath) {
   const parts = relativePath.split('/');
   if (
     parts.length !== 2
@@ -505,6 +516,47 @@ function validateRelativePath(relativePath) {
     || !parts[1].toLowerCase().endsWith('.txt')
   ) {
     throw new Error(relativePath + ': expected <poem|novel|essay>/<name>.txt');
+  }
+}
+
+export function prepareLiteratureInserts(database) {
+  return {
+    file: database.prepare('INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'),
+    work: database.prepare('INSERT INTO works VALUES (?,?,?,?,?,?,?,?)'),
+    unit: database.prepare('INSERT INTO text_units (file_id, ordinal, kind, block_ordinal, text, eol) VALUES (?,?,?,?,?,?)'),
+  };
+}
+
+export function insertLiteratureAnalysis(inserts, fileId, analysis) {
+  const genre = analysis.relative_path.split('/')[0];
+  inserts.file.run(
+    fileId, genre, analysis.relative_path, analysis.source_sha256, analysis.source_bytes,
+    analysis.encoding, analysis.has_bom, analysis.newline_convention, analysis.final_newline,
+    analysis.nfc, analysis.char_count, analysis.unit_count, analysis.status,
+    JSON.stringify(analysis.warnings),
+  );
+  const meta = parseLiteratureFilename(path.posix.basename(analysis.relative_path));
+  const firstText = analysis.units.find((unit) => unit.kind === 'text')?.text ?? '';
+  const titleSeen = meta.title !== null
+    && normalizeSpaces(firstText).includes(normalizeSpaces(meta.title));
+  inserts.work.run(
+    fileId, genre, fileId, meta.sourceId, meta.title, meta.author,
+    meta.title === null ? 'none' : 'filename (unverified)', titleSeen ? 1 : 0,
+  );
+  for (const unit of analysis.units) {
+    inserts.unit.run(fileId, unit.ordinal, unit.kind, unit.blockOrdinal, unit.text, unit.eol);
+  }
+}
+
+function assertOutputLocation(absoluteInput, absoluteOutput) {
+  if (isWithinDirectory(absoluteInput, absoluteOutput)) {
+    throw new Error('SQLite output must be outside the TXT input directory: ' + absoluteOutput);
+  }
+  if (
+    isWithinDirectory(REPOSITORY_DIRECTORY, absoluteOutput)
+    && !isWithinDirectory(REPOSITORY_INDEX_DIRECTORY, absoluteOutput)
+  ) {
+    throw new Error('Repository-local SQLite output is restricted to ' + REPOSITORY_INDEX_DIRECTORY);
   }
 }
 
@@ -522,15 +574,7 @@ export async function buildLiteratureIndex({
   const startedAt = process.hrtime.bigint();
   const absoluteInput = path.resolve(inputDirectory);
   const absoluteOutput = path.resolve(outputPath);
-  if (isWithinDirectory(absoluteInput, absoluteOutput)) {
-    throw new Error('SQLite output must be outside the TXT input directory: ' + absoluteOutput);
-  }
-  if (
-    isWithinDirectory(REPOSITORY_DIRECTORY, absoluteOutput)
-    && !isWithinDirectory(REPOSITORY_INDEX_DIRECTORY, absoluteOutput)
-  ) {
-    throw new Error('Repository-local SQLite output is restricted to ' + REPOSITORY_INDEX_DIRECTORY);
-  }
+  assertOutputLocation(absoluteInput, absoluteOutput);
   if (!relativePaths || relativePaths.length === 0) {
     throw new Error('A non-empty explicit TXT path list is required (pilot only; no bulk scan).');
   }
@@ -572,29 +616,9 @@ export async function buildLiteratureIndex({
     database.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = DELETE;');
     createLiteratureSchema(database);
     database.exec('BEGIN IMMEDIATE');
-    const insertFile = database.prepare(`INSERT INTO source_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-    const insertWork = database.prepare(`INSERT INTO works VALUES (?,?,?,?,?,?,?,?)`);
-    const insertUnit = database.prepare(`INSERT INTO text_units (file_id, ordinal, kind, block_ordinal, text, eol) VALUES (?,?,?,?,?,?)`);
+    const inserts = prepareLiteratureInserts(database);
     for (const [index, analysis] of analyses.entries()) {
-      const fileId = index + 1;
-      const genre = analysis.relative_path.split('/')[0];
-      insertFile.run(
-        fileId, genre, analysis.relative_path, analysis.source_sha256, analysis.source_bytes,
-        analysis.encoding, analysis.has_bom, analysis.newline_convention, analysis.final_newline,
-        analysis.nfc, analysis.char_count, analysis.unit_count, analysis.status,
-        JSON.stringify(analysis.warnings),
-      );
-      const meta = parseLiteratureFilename(path.posix.basename(analysis.relative_path));
-      const firstText = analysis.units.find((unit) => unit.kind === 'text')?.text ?? '';
-      const titleSeen = meta.title !== null
-        && normalizeSpaces(firstText).includes(normalizeSpaces(meta.title));
-      insertWork.run(
-        fileId, genre, fileId, meta.sourceId, meta.title, meta.author,
-        meta.title === null ? 'none' : 'filename (unverified)', titleSeen ? 1 : 0,
-      );
-      for (const unit of analysis.units) {
-        insertUnit.run(fileId, unit.ordinal, unit.kind, unit.blockOrdinal, unit.text, unit.eol);
-      }
+      insertLiteratureAnalysis(inserts, index + 1, analysis);
     }
     database.exec("INSERT INTO unit_fts(unit_fts) VALUES ('rebuild')");
 
@@ -691,6 +715,290 @@ export async function verifyLiteratureIndex({
   }
 }
 
+// ----------------------------------------------------------- full production DB
+
+function inventoryEntry(analysis) {
+  const entry = {
+    genre: analysis.relative_path.split('/')[0],
+    relative_path: analysis.relative_path,
+    source_bytes: analysis.source_bytes,
+    source_sha256: analysis.source_sha256,
+    status: analysis.status,
+  };
+  if (analysis.status === 'error') return { ...entry, error: analysis.error };
+  return { ...entry, encoding: analysis.encoding, warnings: analysis.warnings };
+}
+
+/** Aggregate, text-free accounting of an inventory: genre → status counts and error reasons. */
+export function summarizeLiteratureInventory(entries) {
+  const byGenre = {};
+  const errorReasons = {};
+  for (const entry of entries) {
+    const genre = (byGenre[entry.genre] ??= { ok: 0, warning: 0, error: 0 });
+    genre[entry.status] += 1;
+    if (entry.status === 'error') {
+      const reason = entry.error.replace(/ \(.*$/u, '');
+      errorReasons[reason] = (errorReasons[reason] ?? 0) + 1;
+    }
+  }
+  return { by_genre: byGenre, error_reasons: errorReasons };
+}
+
+async function writeJsonAtomically(targetPath, directory, value) {
+  const staged = path.join(directory, 'manifest.json');
+  await writeFile(staged, JSON.stringify(value, null, 2) + '\n');
+  await rename(staged, targetPath);
+}
+
+/**
+ * Build the full DB from every TXT under the genre directories. Files are
+ * decoded and inserted one at a time (no corpus-wide retention); `error` files
+ * are excluded from the DB but kept in the manifest. Everything is staged and
+ * replaced atomically only after integrity, reconstruction and source-stability
+ * checks pass.
+ */
+export async function buildFullLiteratureIndex({
+  inputDirectory = DEFAULT_LITERATURE_INPUT_DIRECTORY,
+  outputPath = DEFAULT_FULL_LITERATURE_INDEX_PATH,
+  manifestPath = DEFAULT_FULL_LITERATURE_MANIFEST_PATH,
+  permissionRecordPath,
+  hooks = {},
+} = {}) {
+  await assertLiteraturePermission(permissionRecordPath ? { permissionRecordPath } : {});
+  const startedAt = process.hrtime.bigint();
+  const absoluteInput = path.resolve(inputDirectory);
+  const absoluteOutput = path.resolve(outputPath);
+  const absoluteManifest = path.resolve(manifestPath);
+  assertOutputLocation(absoluteInput, absoluteOutput);
+  assertOutputLocation(absoluteInput, absoluteManifest);
+  assertLiteratureFts5Support();
+  const paths = await listLiteratureSourcePaths(absoluteInput);
+  if (paths.length === 0) throw new Error('No TXT sources found under ' + absoluteInput);
+  paths.forEach(validateRelativePath);
+
+  const outputDirectory = path.dirname(absoluteOutput);
+  await mkdir(outputDirectory, { recursive: true });
+  await mkdir(path.dirname(absoluteManifest), { recursive: true });
+  const temporaryDirectory = await mkdtemp(path.join(outputDirectory, '.literature-index-build-'));
+  const temporaryPath = path.join(temporaryDirectory, 'index.sqlite');
+  let database;
+  try {
+    database = new DatabaseSync(temporaryPath);
+    database.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = DELETE;');
+    createLiteratureSchema(database);
+    database.exec('BEGIN IMMEDIATE');
+    const inserts = prepareLiteratureInserts(database);
+    const entries = [];
+    let fileId = 0;
+    for (const relativePath of paths) {
+      let bytes;
+      try {
+        bytes = await readFile(path.join(absoluteInput, relativePath));
+      } catch (error) {
+        throw new Error(relativePath + ': cannot read source file (' + error.message + ')');
+      }
+      const analysis = analyzeLiteratureBytes(bytes, relativePath);
+      entries.push(inventoryEntry(analysis));
+      if (hooks.afterRead) await hooks.afterRead(relativePath);
+      if (analysis.status === 'error') continue;
+      if (reconstructLiteratureText(analysis.units) !== analysis.text) {
+        throw new Error(relativePath + ': unit split is not reversible');
+      }
+      fileId += 1;
+      insertLiteratureAnalysis(inserts, fileId, analysis);
+      if (reconstructWorkFromDatabase(database, relativePath) !== analysis.text) {
+        throw new Error(relativePath + ': stored units do not reconstruct the source text');
+      }
+    }
+    if (fileId === 0) throw new Error('No ingestable (ok|warning) TXT sources; refusing to build an empty index.');
+    database.exec("INSERT INTO unit_fts(unit_fts) VALUES ('rebuild')");
+
+    const included = entries.filter((entry) => entry.status !== 'error');
+    const rowCounts = counts(database);
+    const expectedUnits = database.prepare('SELECT coalesce(sum(unit_count), 0) AS n FROM source_files').get().n;
+    if (rowCounts.files !== included.length || rowCounts.works !== included.length || rowCounts.units !== expectedUnits) {
+      throw new Error('stored row counts differ from the ingestion results');
+    }
+    const manifestSha256 = literatureManifestDigest(entries);
+    const logicalDigest = logicalRowsDigest(database);
+    const inventory = summarizeLiteratureInventory(entries);
+    const metadata = {
+      schema_version: LITERATURE_SCHEMA_VERSION,
+      builder_version: LITERATURE_BUILDER_VERSION,
+      tool_identity: LITERATURE_TOOL_IDENTITY,
+      build_kind: 'full',
+      input_manifest_sha256: manifestSha256,
+      inventory_file_count: String(entries.length),
+      excluded_file_count: String(entries.length - included.length),
+      file_count: String(rowCounts.files),
+      work_count: String(rowCounts.works),
+      unit_count: String(rowCounts.units),
+      logical_rows_sha256: logicalDigest,
+      sqlite_version: database.prepare('SELECT sqlite_version() AS v').get().v,
+      search_layer: 'none: FTS5 trigram over faithful text; matches re-verified with instr(); no normalization applied',
+    };
+    const insertMetadata = database.prepare('INSERT INTO index_metadata VALUES (?, ?)');
+    for (const [key, value] of Object.entries(metadata)) insertMetadata.run(key, value);
+    requireIntegrity(database, 'staged database');
+    database.exec('COMMIT');
+    database.close();
+    database = undefined;
+
+    // The source set must be exactly what was ingested: same paths, same bytes.
+    const currentPaths = await listLiteratureSourcePaths(absoluteInput);
+    if (currentPaths.length !== paths.length || currentPaths.some((entry, index) => entry !== paths[index])) {
+      throw new Error('TXT source set changed during build (files added or removed)');
+    }
+    for (const entry of entries) {
+      const bytes = await readFile(path.join(absoluteInput, entry.relative_path));
+      if (sha256Hex(bytes) !== entry.source_sha256) {
+        throw new Error(entry.relative_path + ': source changed during build');
+      }
+    }
+    const readOnly = new DatabaseSync(temporaryPath, { readOnly: true });
+    try {
+      if (logicalRowsDigest(readOnly) !== logicalDigest) throw new Error('logical digest changed after commit');
+    } finally {
+      readOnly.close();
+    }
+    const outputBytes = (await stat(temporaryPath)).size;
+    const sourceBytes = entries.reduce((total, entry) => total + entry.source_bytes, 0);
+    const includedBytes = included.reduce((total, entry) => total + entry.source_bytes, 0);
+    const summary = {
+      build_kind: 'full',
+      inventory_file_count: entries.length,
+      included_work_count: included.length,
+      excluded_file_count: entries.length - included.length,
+      ...inventory,
+      unit_count: rowCounts.units,
+      source_bytes_total: sourceBytes,
+      source_bytes_included: includedBytes,
+      output_bytes: outputBytes,
+      db_overhead_ratio: Number((outputBytes / includedBytes).toFixed(2)),
+      input_manifest_sha256: manifestSha256,
+      logical_rows_sha256: logicalDigest,
+    };
+    await writeJsonAtomically(absoluteManifest, temporaryDirectory, { ...summary, files: entries });
+    await rename(temporaryPath, absoluteOutput);
+    return {
+      output_path: absoluteOutput,
+      manifest_path: absoluteManifest,
+      ...summary,
+      build_ms: Number((process.hrtime.bigint() - startedAt) / 1_000_000n),
+      peak_rss_bytes: process.resourceUsage().maxRSS * 1024,
+    };
+  } finally {
+    if (database) {
+      try { database.exec('ROLLBACK'); } catch { /* keep original error */ }
+      database.close();
+    }
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Verify a full DB against its manifest and the current TXT collection:
+ * manifest ↔ DB binding, source set and bytes, exact reconstruction of every
+ * included work, absence of excluded files, and SQLite/FTS integrity.
+ */
+export async function verifyFullLiteratureIndex({
+  inputDirectory = DEFAULT_LITERATURE_INPUT_DIRECTORY,
+  databasePath = DEFAULT_FULL_LITERATURE_INDEX_PATH,
+  manifestPath = DEFAULT_FULL_LITERATURE_MANIFEST_PATH,
+} = {}) {
+  const startedAt = process.hrtime.bigint();
+  const problems = [];
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch (error) {
+    throw new Error(manifestPath + ': cannot read full manifest (' + error.message + ')');
+  }
+  if (!Array.isArray(manifest.files) || manifest.files.length === 0) {
+    throw new Error(manifestPath + ': manifest must list a non-empty files array');
+  }
+  // FTS5 'integrity-check' is an INSERT command, so the connection is writable
+  // but everything runs inside one transaction that is always rolled back.
+  const database = new DatabaseSync(path.resolve(databasePath));
+  database.exec('BEGIN');
+  try {
+    const metadata = Object.fromEntries(
+      database.prepare('SELECT key, value FROM index_metadata').all().map((row) => [row.key, row.value]),
+    );
+    if (metadata.build_kind !== 'full') problems.push('database is not a full build');
+    if (literatureManifestDigest(manifest.files) !== manifest.input_manifest_sha256) {
+      problems.push('manifest digest does not match its own file list');
+    }
+    if (metadata.input_manifest_sha256 !== manifest.input_manifest_sha256) {
+      problems.push('manifest is not bound to this database (input_manifest_sha256 differs)');
+    }
+    try {
+      requireIntegrity(database, 'database');
+    } catch (error) {
+      problems.push(error.message);
+    }
+    if (logicalRowsDigest(database) !== metadata.logical_rows_sha256) {
+      problems.push('logical row digest differs from index_metadata');
+    }
+    const stored = new Map(
+      database.prepare('SELECT relative_path, source_sha256 FROM source_files').all()
+        .map((row) => [row.relative_path, row.source_sha256]),
+    );
+    const manifestByPath = new Map(manifest.files.map((entry) => [entry.relative_path, entry]));
+    const currentPaths = await listLiteratureSourcePaths(path.resolve(inputDirectory));
+    for (const current of currentPaths) {
+      if (!manifestByPath.has(current)) problems.push(current + ': TXT present on disk but not in manifest');
+    }
+    const currentSet = new Set(currentPaths);
+    let reconstructed = 0;
+    let excludedAbsent = 0;
+    for (const entry of manifest.files) {
+      if (!currentSet.has(entry.relative_path)) {
+        problems.push(entry.relative_path + ': listed in manifest but missing on disk');
+        continue;
+      }
+      const bytes = await readFile(path.join(inputDirectory, entry.relative_path));
+      const analysis = analyzeLiteratureBytes(bytes, entry.relative_path);
+      if (analysis.source_sha256 !== entry.source_sha256) {
+        problems.push(entry.relative_path + ': source bytes changed since the build');
+        continue;
+      }
+      if (entry.status === 'error') {
+        if (analysis.status !== 'error') problems.push(entry.relative_path + ': manifest error file now decodes');
+        if (stored.has(entry.relative_path)) problems.push(entry.relative_path + ': excluded error file present in database');
+        else excludedAbsent += 1;
+        continue;
+      }
+      if (analysis.status === 'error' || stored.get(entry.relative_path) !== entry.source_sha256) {
+        problems.push(entry.relative_path + ': included work missing from or inconsistent with database');
+        continue;
+      }
+      if (reconstructWorkFromDatabase(database, entry.relative_path) !== analysis.text) {
+        problems.push(entry.relative_path + ': stored units do not reconstruct the decoded text');
+        continue;
+      }
+      reconstructed += 1;
+    }
+    const included = manifest.files.filter((entry) => entry.status !== 'error').length;
+    if (stored.size !== included) problems.push('database holds ' + stored.size + ' works, manifest includes ' + included);
+    return {
+      ok: problems.length === 0,
+      inventory_file_count: manifest.files.length,
+      included_work_count: included,
+      reconstructed_exactly: reconstructed,
+      excluded_confirmed_absent: excludedAbsent,
+      input_manifest_sha256: manifest.input_manifest_sha256,
+      logical_rows_sha256: metadata.logical_rows_sha256,
+      verify_ms: Number((process.hrtime.bigint() - startedAt) / 1_000_000n),
+      peak_rss_bytes: process.resourceUsage().maxRSS * 1024,
+      problems,
+    };
+  } finally {
+    database.exec('ROLLBACK');
+    database.close();
+  }
+}
+
 // --------------------------------------------------------------------- search
 
 function validateQuery(query) {
@@ -714,15 +1022,21 @@ function validateLimit(limit) {
  * Literal substring probe over faithful line units. Matches never span lines
  * (hard-wrapped text can hide a term split across a wrap). Evidence is not
  * lemma, POS or word frequency. Order: genre, relative path, unit ordinal.
+ * Each hit carries ±`context` neighbouring physical lines in file order; they
+ * are physical units, not semantic paragraphs. Title/author are unverified.
  */
 export function searchLiteratureIndex({
   databasePath = DEFAULT_LITERATURE_INDEX_PATH,
   query,
   limit,
   genre,
+  context = DEFAULT_CONTEXT_UNITS,
 } = {}) {
   const useFts = validateQuery(query);
   const effectiveLimit = validateLimit(limit);
+  if (!Number.isSafeInteger(context) || context < 0 || context > MAX_CONTEXT_UNITS) {
+    throw new TypeError('Search context must be an integer from 0 to ' + MAX_CONTEXT_UNITS + '.');
+  }
   if (genre !== undefined && !LITERATURE_GENRES.includes(genre)) {
     throw new TypeError('genre must be one of ' + LITERATURE_GENRES.join(', '));
   }
@@ -738,17 +1052,34 @@ export function searchLiteratureIndex({
     const from = `FROM text_units u JOIN source_files f USING (file_id) ${useFts ? 'JOIN unit_fts ON unit_fts.rowid = u.unit_rowid' : ''}`;
     const total = database.prepare(`SELECT count(*) AS n ${from} WHERE ${where}`).get(...parameters).n;
     const rows = database.prepare(`
-      SELECT f.genre, f.relative_path, u.ordinal AS unit_ordinal, u.block_ordinal, u.text
+      SELECT f.genre, f.file_id, f.relative_path, u.ordinal AS unit_ordinal, u.block_ordinal, u.text, u.eol
       ${from} WHERE ${where}
       ORDER BY CASE f.genre WHEN 'poem' THEN 0 WHEN 'novel' THEN 1 ELSE 2 END, f.relative_path, u.ordinal
       LIMIT ?
     `).all(...parameters, effectiveLimit);
+    const workStatement = database.prepare('SELECT work_id, title, author, metadata_origin FROM works WHERE file_id = ?');
+    const neighborStatement = database.prepare(`
+      SELECT ordinal, kind, block_ordinal, text, eol FROM text_units
+      WHERE file_id = ? AND ordinal BETWEEN ? AND ? ORDER BY ordinal
+    `);
     return {
       evidence_type: 'literal_text_matches',
       search_mode: useFts ? 'fts5-trigram+instr' : 'literal-scan',
       match_unit_count: total,
       returned: rows.length,
-      results: rows.map((row) => ({ ...row })),
+      context_units: context,
+      results: rows.map(({ file_id: fileId, ...row }) => {
+        const work = workStatement.get(fileId);
+        return {
+          ...row,
+          work_id: work.work_id,
+          title: work.title,
+          author: work.author,
+          metadata_origin: work.metadata_origin,
+          context: neighborStatement.all(fileId, row.unit_ordinal - context, row.unit_ordinal + context)
+            .map((unit) => ({ ...unit, is_hit: unit.ordinal === row.unit_ordinal })),
+        };
+      }),
     };
   } finally {
     database.close();
