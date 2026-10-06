@@ -54,6 +54,18 @@ test('a factory result branched before a shared contract change on master is ref
   assert.deepEqual(checkFactoryFreshness({ root, base: 'master', head: run('rev-parse', 'HEAD') }), []);
 });
 
+test('a stale result is refused when master changed a validator dependency under scripts/intake', () => {
+  for (const file of ['scripts/intake/production-handoff.mjs', 'scripts/intake/pipeline.mjs', 'scripts/intake/candidate-contract.mjs']) {
+    const { root, run, commit } = repository();
+    commit({ [file]: 'v1' }, 'base');
+    run('checkout', '-q', '-b', 'result');
+    const head = commit({ 'data/reviews/C000009/manifest.json': '{}' }, 'stage 2 result');
+    run('checkout', '-q', 'master');
+    commit({ [file]: 'v2' }, 'intake contract change');
+    assert.match(checkFactoryFreshness({ root, base: 'master', head })[0], new RegExp(file.replace(/[.]/gu, '\\.'), 'u'));
+  }
+});
+
 test('a change that touches no factory data is never blocked by the freshness gate', () => {
   const { root, run, commit } = repository();
   commit({ 'scripts/factory/a.mjs': '1' }, 'base');

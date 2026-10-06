@@ -79,7 +79,7 @@ export const CONTRACT_REPAIR_KINDS = Object.freeze(['scope_declaration']);
 
 // Paths whose change on master can invalidate a Stage 2 result that was authored against the older
 // contract. A result PR whose branch point predates such a change must be re-synchronised before merge.
-export const SHARED_FACTORY_CONTRACT_PATHS = Object.freeze(['scripts/factory/', 'scripts/validate/', 'scripts/batch/', 'schema/']);
+export const SHARED_FACTORY_CONTRACT_PATHS = Object.freeze(['scripts/factory/', 'scripts/validate/', 'scripts/batch/', 'scripts/intake/', 'schema/']);
 
 const BATCH_ID = /^C\d{6}$/u;
 const CANDIDATE_ID = /^(C\d{6})-(\d{4})$/u;
