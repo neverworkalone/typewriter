@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   analyzeLiteratureBytes,
+  assertLiteratureFts5Support,
   assertLiteraturePermission,
   buildLiteratureIndex,
   decodeLiteratureText,
@@ -21,6 +22,15 @@ import {
   splitLiteratureUnits,
   verifyLiteratureIndex,
 } from './literature-index.mjs';
+
+let fts5Error;
+try {
+  assertLiteratureFts5Support();
+} catch (error) {
+  fts5Error = error;
+}
+// Builds need SQLite FTS5 trigram; some CI Node builds ship SQLite without it.
+const needsFts5 = { skip: fts5Error ? fts5Error.message : false };
 
 const directories = [];
 after(async () => {
@@ -121,7 +131,7 @@ test('permission gate blocks pending terms and accepts only the stated scope', a
   await assert.rejects(assertLiteraturePermission({ permissionRecordPath: record }), /Redistribution/u);
 });
 
-test('build reconstructs each work exactly from stored units and is reproducible', async () => {
+test('build reconstructs each work exactly from stored units and is reproducible', needsFts5, async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   const first = await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -142,7 +152,7 @@ test('build reconstructs each work exactly from stored units and is reproducible
     .every((r) => r.source_unchanged && r.text_identical));
 });
 
-test('changed or removed source changes the manifest digest and verification', async () => {
+test('changed or removed source changes the manifest digest and verification', needsFts5, async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   const built = await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -158,7 +168,7 @@ test('changed or removed source changes the manifest digest and verification', a
   await assert.rejects(buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths }), /cannot read source file.*3_/u);
 });
 
-test('failed build leaves the previous index intact and names the offending path', async () => {
+test('failed build leaves the previous index intact and names the offending path', needsFts5, async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -184,7 +194,7 @@ test('failed build leaves the previous index intact and names the offending path
   await assert.rejects(buildLiteratureIndex({ inputDirectory: input, outputPath: path.join(input, 'x.sqlite'), relativePaths: paths }), /outside the TXT input/u);
 });
 
-test('duplicate titles and file names across genres stay distinct works', async () => {
+test('duplicate titles and file names across genres stay distinct works', needsFts5, async () => {
   const { input, paths } = await makeCollection({
     'poem/5_작가-같은제목-1.txt': Buffer.from('같은 시\r\n'),
     'poem/6_작가-같은제목-2.txt': Buffer.from('같은 시\r\n'),
@@ -198,7 +208,7 @@ test('duplicate titles and file names across genres stay distinct works', async 
   ]);
 });
 
-test('search is literal, bounded, deterministic and covers 1-2 character queries', async () => {
+test('search is literal, bounded, deterministic and covers 1-2 character queries', needsFts5, async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -225,7 +235,7 @@ test('search is literal, bounded, deterministic and covers 1-2 character queries
   assert.throws(() => searchLiteratureIndex({ databasePath: output, query: '문', genre: 'x' }), /genre/u);
 });
 
-test('SQLite integrity, foreign keys and FTS are consistent', async () => {
+test('SQLite integrity, foreign keys and FTS are consistent', needsFts5, async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
