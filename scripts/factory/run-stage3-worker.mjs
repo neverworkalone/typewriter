@@ -58,8 +58,8 @@ export function parseArguments(argv) {
 export const HELP = [
   'Run the serial Stage 3 admission worker until master has no unclaimed ready reviews.',
   '',
-  'Usage: npm run factory:stage3 -- --agent codex|claude [--repo owner/name] [--dry-run]',
-  '       npm run factory:stage3 -- --agent codex|claude --resume-batch C000001 --attempt 1',
+  'Usage: pnpm run factory:stage3 --agent codex|claude [--repo owner/name] [--dry-run]',
+  '       pnpm run factory:stage3 --agent codex|claude --resume-batch C000001 --attempt 1',
   '',
   'A singleton GitHub lock makes all worker sessions serial; each attempt claims one ready review, commits an attempt marker, and opens a real Draft PR before preflight.',
   'The worker revalidates against latest master, prepares canonical JSONL, and marks that same PR ready only after the required gates pass.',

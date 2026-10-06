@@ -1402,8 +1402,8 @@ async function main() {
     readFile(INVENTORY_PATH, 'utf8'),
     readFile(REPORT_PATH, 'utf8'),
   ]);
-  assert.equal(currentInventory, serializedInventory, 'Issue #210 JSON inventory is stale; run npm run inventory:issue-210:write');
-  assert.equal(currentReport, report, 'Issue #210 summary report is stale; run npm run inventory:issue-210:write');
+  assert.equal(currentInventory, serializedInventory, 'Issue #210 JSON inventory is stale; run pnpm run inventory:issue-210:write');
+  assert.equal(currentReport, report, 'Issue #210 summary report is stale; run pnpm run inventory:issue-210:write');
   console.log(`Issue #210 inventory is current: ${inventory.recovery_candidates.length} recovery candidates; ${inventory.summary.current_non_searchable_lexical_record_count} non-searchable canonical records.`);
 }
 

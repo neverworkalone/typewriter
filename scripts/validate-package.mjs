@@ -8,6 +8,7 @@ import {
   readFileSync,
   readSync,
   readdirSync,
+  realpathSync,
   rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -30,7 +31,7 @@ import { createPackageReleaseInfo } from './build/release-info.mjs';
 
 const FORBIDDEN_PACKAGE_PATHS = [
   /^(src|tests|node_modules|\.git)(\/|$)/,
-  /(^|\/)(package\.json|package-lock\.json|vite\.config\.js|pack\.sh|pack\.py)$/,
+  /(^|\/)(package\.json|package-lock\.json|pnpm-lock\.yaml|vite\.config\.js|pack\.sh|pack\.py)$/,
   /(^|\/)\.DS_Store$/,
   /(^|\/)favicon\.ico$/,
   /\.map$/,
@@ -462,19 +463,20 @@ function validatePackageReleaseInfo({ packageDir, projectRoot }) {
 function validateVueRuntimeNotice(projectRoot, notice) {
   const errors = [];
   const packageJsonPath = path.join(projectRoot, 'package.json');
-  const packageLockPath = path.join(projectRoot, 'package-lock.json');
-  if (!existsSync(packageJsonPath) || !existsSync(packageLockPath)) {
-    return ['Vue runtime notice cannot be checked without package.json and package-lock.json.'];
+  const lockfilePath = path.join(projectRoot, 'pnpm-lock.yaml');
+  if (!existsSync(packageJsonPath) || !existsSync(lockfilePath)) {
+    return ['Vue runtime notice cannot be checked without package.json and pnpm-lock.yaml.'];
   }
 
   const packageJson = readJson(packageJsonPath);
-  const packageLock = readJson(packageLockPath);
+  const lockfile = readFileSync(lockfilePath, 'utf8');
   if (!packageJson.dependencies?.vue) {
     errors.push('Vue must be declared as a direct runtime dependency.');
     return errors;
   }
 
-  const vueVersion = packageLock.packages?.['node_modules/vue']?.version;
+  // Root importer's resolved Vue version (pnpm-lock.yaml importers["."].dependencies.vue).
+  const vueVersion = /^ {6}vue:\n {8}specifier: .+\n {8}version: (\d+\.\d+\.\d+)/mu.exec(lockfile)?.[1];
   const vuePackages = [
     'vue',
     '@vue/runtime-core',
@@ -483,13 +485,35 @@ function validateVueRuntimeNotice(projectRoot, notice) {
     '@vue/shared',
   ];
   if (!vueVersion) {
-    errors.push('package-lock.json does not pin the Vue runtime dependency.');
+    errors.push('pnpm-lock.yaml does not pin the Vue runtime dependency.');
     return errors;
   }
 
+  // pnpm only links direct dependencies at the top level; resolve each transitive Vue package
+  // from the real location of its dependent, as Node would (vue -> runtime-dom -> runtime-core -> reactivity).
+  const resolveFrom = (dependentRoot, packageName) => {
+    const modules = dependentRoot.slice(0, dependentRoot.lastIndexOf(`${path.sep}node_modules${path.sep}`) + '/node_modules'.length);
+    const candidate = path.join(modules, packageName);
+    return existsSync(candidate) ? realpathSync(candidate) : undefined;
+  };
+  const vueRoot = path.join(projectRoot, 'node_modules/vue');
+  const installedRoots = new Map();
+  if (existsSync(vueRoot)) {
+    const vueReal = realpathSync(vueRoot);
+    installedRoots.set('vue', vueReal);
+    installedRoots.set('@vue/runtime-dom', resolveFrom(vueReal, '@vue/runtime-dom'));
+    installedRoots.set('@vue/shared', resolveFrom(vueReal, '@vue/shared'));
+    const runtimeCore = installedRoots.get('@vue/runtime-dom') && resolveFrom(installedRoots.get('@vue/runtime-dom'), '@vue/runtime-core');
+    installedRoots.set('@vue/runtime-core', runtimeCore);
+    installedRoots.set('@vue/reactivity', runtimeCore && resolveFrom(runtimeCore, '@vue/reactivity'));
+  }
   for (const packageName of vuePackages) {
-    const lockedPackage = packageLock.packages?.[`node_modules/${packageName}`];
-    if (!lockedPackage || lockedPackage.version !== vueVersion || lockedPackage.license !== 'MIT') {
+    const lockedKey = lockfile.split('\n').some((line) => line === `  ${packageName}@${vueVersion}:` || line === `  '${packageName}@${vueVersion}':`);
+    const installedManifest = installedRoots.get(packageName)
+      ? path.join(installedRoots.get(packageName), 'package.json')
+      : undefined;
+    const installed = installedManifest && existsSync(installedManifest) ? readJson(installedManifest) : undefined;
+    if (!lockedKey || !installed || installed.version !== vueVersion || installed.license !== 'MIT') {
       errors.push(`Locked ${packageName} must be Vue ${vueVersion} under MIT.`);
       continue;
     }

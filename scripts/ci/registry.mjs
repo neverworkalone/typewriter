@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 
-const NPM_EXECUTABLE = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const PNPM_EXECUTABLE = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 function nodeCommand(args) {
   return {
@@ -14,10 +14,11 @@ function nodeCommand(args) {
   };
 }
 
-function npmCommand(script, args = []) {
+export function pnpmCommand(script, args = []) {
   return {
-    executable: NPM_EXECUTABLE,
-    args: ['run', script, ...(args.length > 0 ? ['--', ...args] : [])],
+    executable: PNPM_EXECUTABLE,
+    // pnpm forwards arguments after the script name as-is, and passes a literal `--` through to the script.
+    args: ['run', script, ...args],
   };
 }
 
@@ -45,10 +46,10 @@ function globalCanonicalAuditCheck() {
   };
 }
 
-function npmCheck(label, script, args = [], testFiles = []) {
+function pnpmCheck(label, script, args = [], testFiles = []) {
   return {
     label,
-    command: () => npmCommand(script, args),
+    command: () => pnpmCommand(script, args),
     testFiles,
   };
 }
@@ -64,7 +65,7 @@ function testCheck(file, label = `Run ${file}`) {
 }
 
 function contractCheck(label, script, testFile) {
-  return npmCheck(label, script, [], [testFile]);
+  return pnpmCheck(label, script, [], [testFile]);
 }
 
 export const CI_CATEGORY_ORDER = Object.freeze([
@@ -117,7 +118,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m6-5-correction-calibration.test.mjs', 'Test M6-5 correction calibration evidence'),
       inProcessCheck('Validate frozen M6-4 quality audit snapshot', 'm6-4-frozen-snapshot'),
       testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
-      npmCheck('Validate lexical rule inventory', 'validate:rules'),
+      pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
       testCheck('tests/ci-registry.test.mjs', 'Test CI check ownership registry'),
@@ -169,25 +170,25 @@ export const CI_CATEGORIES = Object.freeze({
   batch: {
     label: 'Batch process, contract, recovery, and authorization validation',
     checks: [
-      npmCheck('Validate M5-8 process contract', 'batch:process:check'),
-      npmCheck('Validate M5-9A repair authorization', 'batch:repair:check'),
-      npmCheck('Validate M5-10A candidate-generation calibration', 'batch:m5-10a:calibration:check'),
-      npmCheck('Validate M5-10A process correction', 'batch:m5-10a:process:check'),
-      npmCheck('Validate M5-10A repair authorization', 'batch:m5-10a:repair:check'),
+      pnpmCheck('Validate M5-8 process contract', 'batch:process:check'),
+      pnpmCheck('Validate M5-9A repair authorization', 'batch:repair:check'),
+      pnpmCheck('Validate M5-10A candidate-generation calibration', 'batch:m5-10a:calibration:check'),
+      pnpmCheck('Validate M5-10A process correction', 'batch:m5-10a:process:check'),
+      pnpmCheck('Validate M5-10A repair authorization', 'batch:m5-10a:repair:check'),
       contractCheck(
         'Run M5-10C recovery contract tests',
         'batch:m5-10c:contract:check',
         'tests/m5-10c-recovery.test.mjs',
       ),
-      npmCheck('Validate M5-10C recovery and authorization contract', 'batch:m5-10c:recovery:contract:check'),
+      pnpmCheck('Validate M5-10C recovery and authorization contract', 'batch:m5-10c:recovery:contract:check'),
       contractCheck(
         'Run M5-10D workload contract tests',
         'batch:m5-10d:contract:check',
         'tests/m5-10d-workload.test.mjs',
       ),
-      npmCheck('Validate M5-10D recovery and authorization contract', 'batch:m5-10d:recovery:contract:check'),
-      npmCheck('Validate committed M5-10D recovery artifact', 'batch:m5-10d:recovery:check'),
-      npmCheck('Validate committed M5-10D authorization artifact', 'batch:m5-10d:authorization:check'),
+      pnpmCheck('Validate M5-10D recovery and authorization contract', 'batch:m5-10d:recovery:contract:check'),
+      pnpmCheck('Validate committed M5-10D recovery artifact', 'batch:m5-10d:recovery:check'),
+      pnpmCheck('Validate committed M5-10D authorization artifact', 'batch:m5-10d:authorization:check'),
       testCheck('tests/batch-workflow.test.mjs', 'Test shared batch workflow'),
       testCheck('tests/m5-8-process.test.mjs', 'Test M5-8 process contract'),
       testCheck('tests/m5-9a-repair.test.mjs', 'Test M5-9A repair authorization'),
@@ -202,12 +203,12 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m5-11-admission.test.mjs', 'Test M5-11 admission'),
       testCheck('tests/m5-12.test.mjs', 'Test M5-12 historical pre-admission boundary'),
       testCheck('tests/issue-204-review-regressions.test.mjs', 'Test Issue #204 review evidence regressions'),
-      npmCheck('Validate Issue #204 corpus pilot admission', 'batch:issue-204:check'),
-      npmCheck('Validate Issue #211 bounded lexical recovery', 'batch:issue-211:check'),
+      pnpmCheck('Validate Issue #204 corpus pilot admission', 'batch:issue-204:check'),
+      pnpmCheck('Validate Issue #211 bounded lexical recovery', 'batch:issue-211:check'),
       testCheck('tests/issue-219-content-digest.test.mjs', 'Test Issue #219 portable logical-content digest'),
-      npmCheck('Validate Issue #219 M9 bounded lexical recovery', 'batch:issue-219:check'),
-      npmCheck('Validate Issue #220 M9 historical recovery checkpoint', 'batch:issue-220:check'),
-      npmCheck('Validate every tracked M9 corpus candidate review', 'validate:corpus-candidate-review'),
+      pnpmCheck('Validate Issue #219 M9 bounded lexical recovery', 'batch:issue-219:check'),
+      pnpmCheck('Validate Issue #220 M9 historical recovery checkpoint', 'batch:issue-220:check'),
+      pnpmCheck('Validate every tracked M9 corpus candidate review', 'validate:corpus-candidate-review'),
       commandCheck(
         'Test M9 corpus candidate-review disposition regressions',
         ['--test', 'scripts/reference/corpus-candidate-review.test.mjs'],
@@ -229,13 +230,13 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/batch/issue-223-tracked-artifacts.test.mjs'],
       ),
       testCheck('tests/intake-batch-boundary.test.mjs', 'Test B16+ review-only, canonical-import review, intake artifact verification and a real builder run (no complete-canonical validator rerun)'),
-      npmCheck('Validate Issue #223 committed M9-E checkpoint artifacts', 'batch:issue-223:check'),
+      pnpmCheck('Validate Issue #223 committed M9-E checkpoint artifacts', 'batch:issue-223:check'),
       commandCheck(
         'Test Issue #223 source-bound paragraph references',
         ['--test', 'scripts/batch/build-issue-223-corpus-batch.test.mjs'],
       ),
       testCheck('tests/issue-222-report.test.mjs', 'Test Issue #222 checkpoint audit and M9-E handoff'),
-      npmCheck('Validate portable Issue #222 checkpoint regeneration', 'batch:issue-222:report:check'),
+      pnpmCheck('Validate portable Issue #222 checkpoint regeneration', 'batch:issue-222:report:check'),
       testCheck('tests/m9-production-progress.test.mjs', 'Test M9 production checkpoint progress'),
       commandCheck(
         'Test M10 per-batch stage timing ledger',
@@ -258,7 +259,7 @@ export const CI_CATEGORIES = Object.freeze({
     checks: [
       {
         label: 'Validate M5-10A Wave A2 stage',
-        command: ({ historicalInputs }) => npmCommand('batch:m5-10a:wave-a2:check', [
+        command: ({ historicalInputs }) => pnpmCommand('batch:m5-10a:wave-a2:check', [
           `--staged=${historicalInputs.waveA2Reviewed}`,
           `--semantic-audit=${historicalInputs.waveA2SemanticAudit}`,
           '--canonical-dir=data/batches/m5-10-wave-b-base-canonical',
@@ -268,7 +269,7 @@ export const CI_CATEGORIES = Object.freeze({
       },
       {
         label: 'Validate M5-10 Wave B stage',
-        command: ({ historicalInputs }) => npmCommand('batch:m5-10:wave-b:check', [
+        command: ({ historicalInputs }) => pnpmCommand('batch:m5-10:wave-b:check', [
           `--staged=${historicalInputs.waveBReviewed}`,
           `--semantic-audit=${historicalInputs.waveBSemanticAudit}`,
         ]),
@@ -315,10 +316,10 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/issue-211-search.test.mjs', 'Test Issue #211 exact search and workflow'),
       testCheck('tests/issue-219-search.test.mjs', 'Test Issue #219 exact search and workflow'),
       testCheck('tests/m6-2-inflection-contract.test.mjs', 'Test M6-2 inflection search contract'),
-      npmCheck('Run product unit tests', 'test:unit'),
-      npmCheck('Build product extension', 'build'),
-      npmCheck('Build Typewriter Web', 'build:web'),
-      npmCheck('Validate built product output contracts', 'validate:product-outputs'),
+      pnpmCheck('Run product unit tests', 'test:unit'),
+      pnpmCheck('Build product extension', 'build'),
+      pnpmCheck('Build Typewriter Web', 'build:web'),
+      pnpmCheck('Validate built product output contracts', 'validate:product-outputs'),
     ],
   },
 
@@ -342,23 +343,23 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
       inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
       testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
-      independentBuildProof(npmCheck(
+      independentBuildProof(pnpmCheck(
         'Prove independent two-build determinism for Issue #219 checkpoint',
         'batch:issue-219:check',
       )),
-      independentBuildProof(npmCheck(
+      independentBuildProof(pnpmCheck(
         'Prove independent two-build determinism for Issue #220 checkpoint',
         'batch:issue-220:check',
       )),
-      independentBuildProof(npmCheck(
+      independentBuildProof(pnpmCheck(
         'Prove independent two-build determinism for Issue #222 checkpoint report',
         'batch:issue-222:report:check',
       )),
-      independentBuildProof(npmCheck(
+      independentBuildProof(pnpmCheck(
         'Prove independent two-build determinism for Issue #223 checkpoint',
         'batch:issue-223:check:deep',
       )),
-      npmCheck(
+      pnpmCheck(
         'Run 100K/500K/1M release-shaped performance and scale benchmark',
         'benchmark:release',
         [

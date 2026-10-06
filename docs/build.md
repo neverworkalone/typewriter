@@ -74,7 +74,7 @@ deterministic source/ID ties; it does not use frequency or generated scores.
 
 ## Product dictionary runtime
 
-`npm run build` also assembles the product runtime under `dist/`:
+`pnpm run build` also assembles the product runtime under `dist/`:
 
 - `dictionary.sqlite` is generated from the canonical JSONL pilot data;
 - `runtime/dictionary-worker.mjs` is the dedicated module worker;
@@ -120,7 +120,7 @@ builder. During local development with uncommitted changes, use the explicit
 escape hatch:
 
 ```sh
-TYPEWRITER_ALLOW_DIRTY=true npm run build
+TYPEWRITER_ALLOW_DIRTY=true pnpm run build
 ```
 
 The generated product database and runtime assets are build output; canonical JSONL
@@ -131,7 +131,7 @@ remains the editable source of truth.
 The Pages workflow builds the separate web source under web/ at the repository path
 /typewriter/. It emits a dictionary page at `/typewriter/` and a product introduction
 page at `/typewriter/about/`; both pages load directly from the Pages artifact and
-share the site navigation. The command `npm run validate:pages-artifact` rejects
+share the site navigation. The command `pnpm run validate:pages-artifact` rejects
 unknown files, extension-only assets, remote page assets, incorrect base paths,
 changed legal files, and dictionaries whose verified Git or canonical revision
 differs from the checked-out source.
@@ -150,13 +150,13 @@ deployment.
 
 ## Product release package
 
-`npm run package` creates the default non-minified Chrome release package. The
-optional `npm run package:minify` command uses the same inputs and validator with
+`pnpm run package` creates the default non-minified Chrome release package. The
+optional `pnpm run package:minify` command uses the same inputs and validator with
 Vite/esbuild minification enabled. Both commands rebuild `dist/`, then create
 `<repository>_<manifest-version>.zip` in `TYPEWRITER_ZIP_DIR` or, by default, in
 `~/Downloads`.
 The Chrome extension release version is read only from
-`public/manifest.json#version`. It is independent from the npm package version,
+`public/manifest.json#version`. It is independent from the package.json version,
 which remains `1.0.0`.
 
 The package contains only the MV3 product surface: `manifest.json`, `popup.html`,
@@ -178,7 +178,7 @@ identity, legal files, file modes, and ZIP integrity and byte-for-byte contents.
 `release-info.json` binds the app and extension versions, dictionary and schema
 versions, canonical/source revision, generated database digest, manifest digest,
 and dependency-lock digest. Package archives use sorted paths, fixed timestamps,
-and fixed file modes; `npm run validate:release` builds twice and requires identical
+and fixed file modes; `pnpm run validate:release` builds twice and requires identical
 ZIP bytes. The pack script writes to a temporary ZIP and moves it atomically only
 after creation. `TYPEWRITER_ALLOW_DIRTY=true` remains an explicit local-development
 escape hatch and its provenance is marked `dirty-allowed`.
@@ -189,8 +189,8 @@ From a clean checkout, install the lockfile dependencies and run one command wit
 the Chrome for Testing executable and an output directory outside the repository:
 
 ```sh
-npm ci --ignore-scripts --no-audit --no-fund
-npm run validate:release -- \
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm run validate:release \
   --chrome="/path/to/Google Chrome for Testing" \
   --output-dir="/tmp/typewriter-release"
 ```
@@ -214,7 +214,7 @@ generated package and loads both the working `dist/` and a temporary extraction 
 the exact ZIP through isolated Chrome profiles:
 
 ```sh
-npm run test:mv3:package -- \
+pnpm run test:mv3:package \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
   --zip=/path/to/generated-package.zip

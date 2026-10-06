@@ -359,7 +359,7 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
 // Refresh them through their ordinary source-bound report producers before pinning CI's tree.
 export function refreshStage3ReportCheckpoints(root, run = execFileSync) {
   for (const script of ['inventory:issue-210:write', 'batch:issue-219:report', 'batch:issue-220:report', 'batch:issue-222:report']) {
-    run('npm', ['run', script], { cwd: root, stdio: 'inherit' });
+    run('pnpm', ['run', script], { cwd: root, stdio: 'inherit' });
   }
   return [
     'docs/issue-210-historical-exclusion-report.md', 'data/inventory/issue-210-recovery-inventory.json',
@@ -370,7 +370,7 @@ export function refreshStage3ReportCheckpoints(root, run = execFileSync) {
 }
 
 export function runStage3PreflightCi(root, run = execFileSync) {
-  run('npm', ['run', 'ci:normal'], { cwd: root, stdio: 'inherit' });
+  run('pnpm', ['run', 'ci:normal'], { cwd: root, stdio: 'inherit' });
 }
 
 export async function validatePreparedStage3Admission({ root, git, claim, prepared, runGates = true } = {}) {

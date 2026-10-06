@@ -20,13 +20,17 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22.13.x
+          cache: pnpm
 
       - name: Install pinned dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Complete validation (normal + deep)
-        run: npm run ci:all
+        run: pnpm run ci:all
