@@ -33,7 +33,11 @@ try {
 } catch (error) {
   fts5Error = error;
 }
-// Builds need SQLite FTS5 trigram; some CI Node builds ship SQLite without it.
+// Builds need SQLite FTS5 trigram; some Node builds (e.g. 22.13) ship SQLite without it.
+// The dedicated CI step sets TYPEWRITER_REQUIRE_FTS5 so a missing FTS5 fails instead of skipping.
+if (fts5Error && process.env.TYPEWRITER_REQUIRE_FTS5 === '1') {
+  throw new Error('TYPEWRITER_REQUIRE_FTS5 is set but FTS5 is unavailable: ' + fts5Error.message);
+}
 const needsFts5 = { skip: fts5Error ? fts5Error.message : false };
 
 const directories = [];
@@ -478,7 +482,7 @@ test('full build rejects identical or aliased DB and manifest paths before touch
   }
 });
 
-test('full build rejects a not-yet-existing case alias of the manifest path', needsFts5, async () => {
+test('full build rejects a not-yet-existing case alias of the manifest path', async () => {
   const { input } = await makeCollection();
   const directory = await makeDirectory();
   const target = path.join(directory, 'fresh/index.sqlite');
