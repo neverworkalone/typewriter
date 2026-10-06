@@ -190,7 +190,7 @@ the Chrome for Testing executable and an output directory outside the repository
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
-pnpm run validate:release -- \
+pnpm run validate:release \
   --chrome="/path/to/Google Chrome for Testing" \
   --output-dir="/tmp/typewriter-release"
 ```
@@ -214,7 +214,7 @@ generated package and loads both the working `dist/` and a temporary extraction 
 the exact ZIP through isolated Chrome profiles:
 
 ```sh
-pnpm run test:mv3:package -- \
+pnpm run test:mv3:package \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
   --zip=/path/to/generated-package.zip

@@ -159,7 +159,6 @@ function main(args = process.argv.slice(2)) {
       runPnpm([
         'run',
         'test:mv3:package',
-        '--',
         `--chrome=${chromePath}`,
         `--extension=${DIST_DIRECTORY}`,
         `--zip=${candidatePackagePath}`,

@@ -17,7 +17,8 @@ function nodeCommand(args) {
 function pnpmCommand(script, args = []) {
   return {
     executable: PNPM_EXECUTABLE,
-    args: ['run', script, ...(args.length > 0 ? ['--', ...args] : [])],
+    // pnpm forwards arguments after the script name as-is, and passes a literal `--` through to the script.
+    args: ['run', script, ...args],
   };
 }
 

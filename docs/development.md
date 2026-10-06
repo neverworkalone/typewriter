@@ -20,7 +20,7 @@ Use the following commands while working on the product shell:
 pnpm run dev          # Vite development server
 pnpm run build        # production MV3 assets in dist/, minified by esbuild
 pnpm run test:unit    # Vitest component/unit tests
-pnpm run test:mv3:product -- --chrome="/path/to/Google Chrome for Testing" # popup/options CFT check
+pnpm run test:mv3:product --chrome="/path/to/Google Chrome for Testing" # popup/options CFT check
 ```
 
 Create the release ZIP in the default non-minified form, or explicitly request the
@@ -30,7 +30,7 @@ and ZIP before returning:
 ```sh
 TYPEWRITER_ZIP_DIR=/tmp/typewriter-package pnpm run package
 TYPEWRITER_ZIP_DIR=/tmp/typewriter-package-minified pnpm run package:minify
-pnpm run validate:package -- \
+pnpm run validate:package \
   --project-root="$PWD" \
   --dir=dist \
   --zip=/tmp/typewriter-package/generated-package.zip
@@ -52,7 +52,7 @@ bytes reproduce, and exercises the exact package in Chrome for Testing:
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
-pnpm run validate:release -- \
+pnpm run validate:release \
   --chrome="/path/to/Google Chrome for Testing" \
   --output-dir="/tmp/typewriter-release"
 ```
@@ -70,7 +70,7 @@ When Chrome for Testing is available, verify both the unpacked build and the exa
 ZIP contents after extraction:
 
 ```sh
-pnpm run test:mv3:package -- \
+pnpm run test:mv3:package \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
   --zip=/tmp/typewriter-package/generated-package.zip
@@ -91,7 +91,7 @@ then verifies the new source revision, exact, search-form, and generated-surface
 lookups, and saved settings:
 
 ```sh
-pnpm run test:mv3:package -- \
+pnpm run test:mv3:package \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
   --zip=/tmp/typewriter-package/generated-package.zip \
@@ -165,7 +165,7 @@ node --test tests/reproducibility.test.mjs
 
 For the complete CI-equivalent sequence, use `pnpm run ci:all` from a clean
 checkout. Focused work can run one responsibility at a time with
-`pnpm run ci:category -- <category>`; the category runner replaces the old full
+`pnpm run ci:category <category>`; the category runner replaces the old full
 CI test glob and keeps each test file in one declared ownership group.
 
 The one-command M2 audit runs the schema and dataset checks, normalization, two
@@ -185,11 +185,11 @@ an external temporary workspace. Validate the metadata manifest and staged rows
 before a deliberate canonical import:
 
 ```sh
-pnpm run batch:validate -- \
+pnpm run batch:validate \
   --manifest=/tmp/typewriter-m5-2/batch.json \
   --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
   --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json
-pnpm run batch:import -- \
+pnpm run batch:import \
   --manifest=/tmp/typewriter-m5-2/batch.json \
   --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
   --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json \
@@ -205,18 +205,18 @@ pnpm run batch:m5-10d:recovery:contract:check
 pnpm run batch:m5-10d:recovery:check
 pnpm run batch:m5-10d:authorization:check
 # Start and stop each calibration pass explicitly; the command persists its session.
-pnpm run batch:m5-10a:calibration:timing -- \
+pnpm run batch:m5-10a:calibration:timing \
   --action=start --pass=target-preparation --output=/tmp/typewriter-m5-10a-timing-session.json
-pnpm run batch:m5-10a:calibration:timing -- \
+pnpm run batch:m5-10a:calibration:timing \
   --action=stop --pass=target-preparation \
   --input=/tmp/typewriter-m5-10a-timing-session.json \
   --output=/tmp/typewriter-m5-10a-timing-session.json
-pnpm run batch:m5-10a:calibration:timing -- \
+pnpm run batch:m5-10a:calibration:timing \
   --action=start --pass=final-audit \
   --input=/tmp/typewriter-m5-10a-timing-session.json \
   --output=/tmp/typewriter-m5-10a-timing-session.json
 # Stop final-audit only after reviewing all 20 cases; include the generated raw-proposal digest.
-pnpm run batch:m5-10a:calibration:timing -- \
+pnpm run batch:m5-10a:calibration:timing \
   --action=stop --pass=final-audit \
   --case-ids=m5-10a-cal-001,...,m5-10a-cal-020 \
   --raw-proposal-sha256=<sha256> \
@@ -229,14 +229,14 @@ pnpm run batch:m5-10a:calibration:build
 pnpm run batch:m5-10a:calibration:check
 pnpm run batch:m5-10a:process:check
 pnpm run batch:m5-10a:repair:check
-pnpm run batch:timing:feedback -- \
+pnpm run batch:timing:feedback \
   --manifest=/tmp/typewriter-wave/manifest.json \
   --output=/tmp/typewriter-wave/feedback.json
-pnpm run batch:timing:start -- \
+pnpm run batch:timing:start \
   --manifest=/tmp/typewriter-wave/feedback.json \
   --output=/tmp/typewriter-wave/audit-started.json \
   --pass=post-review-audit
-pnpm run batch:timing:stop -- \
+pnpm run batch:timing:stop \
   --manifest=/tmp/typewriter-wave/audit-started.json \
   --output=/tmp/typewriter-wave/audit-complete.json \
   --pass=post-review-audit
@@ -289,12 +289,12 @@ needs the full validation path.
 
 The normal category order is:
 
-1. `pnpm run ci:category -- canonical` — manifest, canonical, dataset, inventory, and rule checks;
-2. `pnpm run ci:category -- lexical` — shared lexical and semantic validation;
-3. `pnpm run ci:category -- toolchain` — normalization, SQLite, and integrated M2 checks;
-4. `pnpm run ci:category -- batch` — batch process, contract, recovery, and authorization checks;
-5. `pnpm run ci:category -- product` — shared search, unit tests, and extension build;
-6. `pnpm run ci:category -- artifacts` — package/artifact tests and the final clean-checkout policy.
+1. `pnpm run ci:category canonical` — manifest, canonical, dataset, inventory, and rule checks;
+2. `pnpm run ci:category lexical` — shared lexical and semantic validation;
+3. `pnpm run ci:category toolchain` — normalization, SQLite, and integrated M2 checks;
+4. `pnpm run ci:category batch` — batch process, contract, recovery, and authorization checks;
+5. `pnpm run ci:category product` — shared search, unit tests, and extension build;
+6. `pnpm run ci:category artifacts` — package/artifact tests and the final clean-checkout policy.
 
 The deep-only additions are `historical` replay and the `deep` category. To run the
 complete sequence locally, use `pnpm run ci:all`.

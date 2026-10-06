@@ -19,7 +19,7 @@ node --test tests/lexical-quality.test.mjs
 pnpm run ci:fast
 pnpm run ci:normal
 pnpm run ci:all
-pnpm run benchmark:canonical -- --sizes=500000,1000000 --sqlite-scale=500000,1000000 --fixed-level-evidence=config/ci-level-evidence.json
+pnpm run benchmark:canonical --sizes=500000,1000000 --sqlite-scale=500000,1000000 --fixed-level-evidence=config/ci-level-evidence.json
 ```
 
 The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
