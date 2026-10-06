@@ -43,7 +43,7 @@ export function parseArguments(argv) {
 export const HELP = [
   'Run the serial Stage 2 worker until master has no unclaimed batches.',
   '',
-  'Usage: npm run factory:stage2 -- --agent codex|claude [--repo owner/name] [--dry-run]',
+  'Usage: pnpm run factory:stage2 -- --agent codex|claude [--repo owner/name] [--dry-run]',
   '',
   'The command claims a batch, then pauses for the active primary agent to complete full QA and create its result PR.',
   'It monitors that PR, releases the claim only after the result is present on master, and then claims the next batch.',

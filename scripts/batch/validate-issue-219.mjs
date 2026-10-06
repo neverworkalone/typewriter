@@ -568,8 +568,8 @@ export async function validateIssue219({ writeReport = false } = {}) {
       readFile(REPORT_PATH, 'utf8'),
       readFile(MACHINE_REPORT_PATH, 'utf8'),
     ]);
-    assert.equal(storedReport, renderedReport, 'Issue #219 Markdown report is stale; run npm run batch:issue-219:report');
-    assert.equal(storedMachineReport, `${JSON.stringify(report, null, 2)}\n`, 'Issue #219 machine report is stale; run npm run batch:issue-219:report');
+    assert.equal(storedReport, renderedReport, 'Issue #219 Markdown report is stale; run pnpm run batch:issue-219:report');
+    assert.equal(storedMachineReport, `${JSON.stringify(report, null, 2)}\n`, 'Issue #219 machine report is stale; run pnpm run batch:issue-219:report');
   }
 
   return {

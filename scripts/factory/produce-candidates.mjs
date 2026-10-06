@@ -26,8 +26,8 @@ import {
 
 // Factory Stage 1 entry point (issue #264): one serial task, one bounded candidate batch per run.
 // Since issue #275 the bound (`--max-candidates`, default 500) counts distinct citation-form lemmas.
-//   npm run factory:stage1 -- --evidence data/reference/<run>/candidate-evidence.json --task-id T000001
-// Input is the text-free output of `npm run reference:corpus:candidates`. Output is
+//   pnpm run factory:stage1 -- --evidence data/reference/<run>/candidate-evidence.json --task-id T000001
+// Input is the text-free output of `pnpm run reference:corpus:candidates`. Output is
 // data/candidates/C…/{manifest.json,candidates.jsonl} with status `created`; nothing else is written.
 
 // Providers selectable by `--providers`; adding one is a registry entry (docs/lexical-factory-contracts.md).

@@ -579,9 +579,9 @@ export async function main() {
       readFile(REPORT_DOC_PATH, 'utf8'),
     ]);
     assert.equal(storedMachineReport, machineReport,
-      'Issue #222 machine checkpoint report is stale; run npm run batch:issue-222:report');
+      'Issue #222 machine checkpoint report is stale; run pnpm run batch:issue-222:report');
     assert.equal(storedMarkdown, markdown,
-      'Issue #222 Markdown checkpoint report is stale; run npm run batch:issue-222:report');
+      'Issue #222 Markdown checkpoint report is stale; run pnpm run batch:issue-222:report');
   } else {
     await Promise.all([
       writeFile(REPORT_PATH, machineReport),

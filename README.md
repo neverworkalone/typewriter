@@ -84,8 +84,8 @@ lockfile, and `package-lock.json` must not be regenerated. From a clean clone:
 
     pnpm install --frozen-lockfile --ignore-scripts
     pnpm test
-    ppnpm run build
-    TYPEWRITER_ZIP_DIR=/tmp/typewriter-package ppnpm run package
+    pnpm run build
+    TYPEWRITER_ZIP_DIR=/tmp/typewriter-package pnpm run package
 
 For every newly created Git worktree, run one command; pnpm reuses the
 machine-wide content-addressed store and only links a worktree-local
@@ -95,7 +95,7 @@ machine-wide content-addressed store and only links a worktree-local
 
 The default test command runs the normal CI gate, including repository
 validation, regression and unit tests, product builds, and product output
-contract checks. It is equivalent to `ppnpm run ci:normal`. The build command creates
+contract checks. It is equivalent to `pnpm run ci:normal`. The build command creates
 extension files in dist/, and the package command creates and validates an
 extension ZIP. For the clean-checkout release candidate flow, install Chrome for
 Testing and run `pnpm run validate:release`; see [Build and reproducibility](docs/build.md).
