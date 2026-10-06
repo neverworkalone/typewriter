@@ -645,7 +645,8 @@ async function loadStage3CanonicalImports(currentCanonical) {
   try { batchNames = await readdir(reviewDirectory); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   if (batchNames.length === 0) return [];
-  const factoryErrors = await validateFactoryCli({ root: ROOT, ref: 'origin/master' });
+  const factoryBaseRef = process.env.FACTORY_BASE_REF ?? 'origin/master';
+  const factoryErrors = await validateFactoryCli({ root: ROOT, ref: factoryBaseRef });
   assert.deepEqual(factoryErrors, [], 'Stage 3 admission records must satisfy the shared factory transition and source validators');
   const canonicalById = new Map(currentCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
   const admitted = [];
