@@ -2847,9 +2847,9 @@
     {
       "source_candidate_id": "C000004-0235",
       "candidate_record_id": "C000004-0235",
-      "candidate_record_sha256": "8bb768e5d5a82346614769f92e1c1289eb7169a1406a23a6f5d3a6ef19d16833",
+      "candidate_record_sha256": "c88dd9b470eac16982f5b8aa46768a789ec596cf885303be2e81da53de09c2d7",
       "decision": "included",
-      "decision_rationale": "C000004-0235 Claude agent self-check: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다. o02 빛나는 꿈은 밝고 눈부시게 훌륭한 꿈을 가리키는 쓰임으로 원문 문맥(가상현실에서 꾸는 꿈)에서 희망이라는 추가 의미는 확인되지 않고 o01·o03의 두드러짐과 구별된다.",
+      "decision_rationale": "C000004-0235 Claude agent self-check: o01 네가 빛나고 있었다, o02 빛나는 꿈, o03 가장 빛났다는 모두 훌륭하거나 뛰어나 돋보인다는 같은 비유 쓰임이다. o02의 밝고 눈부신 꿈은 같은 비유를 강조한 표현일 뿐 구별되는 뜻 기준이 없어 하나로 둔다. 빛을 내는 w5662-s1과는 구별된다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -2857,56 +2857,26 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0235: \"훌륭하거나 뛰어나 두드러져 보이다.\" 한 가지 쓰임으로 한정되며 o01·o03의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0235: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다.",
+          "boundary_rationale": "C000004-0235: \"훌륭하거나 뛰어나 두드러져 보이다.\" 한 가지 쓰임으로 한정되며 o01·o02·o03의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0235: o01 네가 빛나고 있었다, o02 빛나는 꿈, o03 가장 빛났다는 모두 훌륭하거나 뛰어나 돋보인다는 같은 비유 쓰임이다. o02의 밝고 눈부신 꿈은 같은 비유를 강조한 표현일 뿐 구별되는 뜻 기준이 없어 하나로 둔다. 빛을 내는 w5662-s1과는 구별된다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000004-0235 C000004-0235-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
-        },
-        {
-          "sense_id": "C000004-0235-s2",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0235: \"밝고 눈부시게 훌륭하다.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0235: o02 빛나는 꿈은 밝고 눈부시게 훌륭한 꿈을 가리키는 쓰임으로 원문 문맥(가상현실에서 꾸는 꿈)에서 희망이라는 추가 의미는 확인되지 않고 o01·o03의 두드러짐과 구별된다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000004-0235 C000004-0235-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
         }
       ],
-      "boundary_pairs": [
-        {
-          "left_sense_id": "C000004-0235-s1",
-          "right_sense_id": "C000004-0235-s2",
-          "relationship": "distinct",
-          "decision": "retain",
-          "left_gloss_sha256": "f96a9be9ddd9c5e67465c55eccf141108d4b4134bf1d7f257eb292caa849f909",
-          "right_gloss_sha256": "d1d94180abcd312ac0813311c993c7f2027527369babdc5d864ee71866f93954",
-          "evidence_basis": "C000004-0235: o01,o03 / o02의 원본 문맥을 각각 대조했다.",
-          "distinguishing_feature": "C000004-0235: \"훌륭하거나 뛰어나 두드러져 보이다.\" 대 \"밝고 눈부시게 훌륭하다.\"로 구분된다.",
-          "rationale": "C000004-0235: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다. / o02 빛나는 꿈은 밝고 눈부시게 훌륭한 꿈을 가리키는 쓰임으로 원문 문맥(가상현실에서 꾸는 꿈)에서 희망이라는 추가 의미는 확인되지 않고 o01·o03의 두드러짐과 구별된다."
-        }
-      ],
+      "boundary_pairs": [],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000004-0235",
-        "candidate_record_sha256": "8bb768e5d5a82346614769f92e1c1289eb7169a1406a23a6f5d3a6ef19d16833",
-        "decision_evidence_sha256": "778e7269cd114c2ba926b1cd4b748d3f2b0f0a9704672d7e55761a4039f7c6a3",
+        "candidate_record_sha256": "c88dd9b470eac16982f5b8aa46768a789ec596cf885303be2e81da53de09c2d7",
+        "decision_evidence_sha256": "98338b2d1c64b5753b98abc1a092b987e3b9055542fee10bcb164b49c6fb42b2",
         "sense_evidence": [
           {
             "sense_id": "C000004-0235-s1",
             "sense_sha256": "989a994eac9baa476c7d826a4ca8d65261ae1cc96c852846c904e74a4f6c02f0",
             "gloss_sha256": "f96a9be9ddd9c5e67465c55eccf141108d4b4134bf1d7f257eb292caa849f909",
-            "evidence_sha256": "df1f35dcf7d8709b5e7eefdbb82604b2e9652292112de111d88d91b8c69096d6"
-          },
-          {
-            "sense_id": "C000004-0235-s2",
-            "sense_sha256": "4957aed7175d52c4bc15d5231b4a3db35b2d039ec1ebd559f5eddfea0a5fd8ff",
-            "gloss_sha256": "d1d94180abcd312ac0813311c993c7f2027527369babdc5d864ee71866f93954",
-            "evidence_sha256": "64316e82d6c3665ffe04952154fb6c66db8943e4fd333cc2ef901a128a60115e"
+            "evidence_sha256": "0b57ccff2f9577770e81f66a0244735f4c1cfe12243875d92ada690d59c835c8"
           }
         ]
       }
