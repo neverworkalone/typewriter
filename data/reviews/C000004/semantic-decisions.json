@@ -602,9 +602,9 @@
     {
       "source_candidate_id": "C000004-0046",
       "candidate_record_id": "C000004-0046",
-      "candidate_record_sha256": "505a036d4deec06353763eb92e4dd70544662df28f41a6247b91eb794b444afc",
+      "candidate_record_sha256": "54b864f998dd432b4793d0547a7c23e117e37eefbca8fccba4e631183742d5d5",
       "decision": "included",
-      "decision_rationale": "C000004-0046 Claude agent self-check: o01 안경을 고쳐 썼다는 어긋난 것을 바로잡는 쓰임이고 o02 컴퓨터를 고칠 수 없다는 고장을 바로잡는 쓰임이다.",
+      "decision_rationale": "C000004-0046 Claude agent self-check: o02 컴퓨터의 상태를 고칠 수 없었다는 고장 난 것을 손보는 쓰임이다. o01 안경을 고쳐 썼다는 어긋난 안경을 바르게 되도록 하는 쓰임으로 고장을 손보는 o02와 구별된다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -612,26 +612,56 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0046: \"고장 나거나 잘못된 것을 바로잡다.\" 한 가지 쓰임으로 한정되며 o01·o02의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0046: o01 안경을 고쳐 썼다는 어긋난 것을 바로잡는 쓰임이고 o02 컴퓨터를 고칠 수 없다는 고장을 바로잡는 쓰임이다.",
+          "boundary_rationale": "C000004-0046: \"고장 나거나 탈이 난 것을 쓸 수 있게 손보다.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0046: o02 컴퓨터의 상태를 고칠 수 없었다는 고장 난 것을 손보는 쓰임이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000004-0046 C000004-0046-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000004-0046-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000004-0046: \"어긋나거나 흐트러진 것을 바르게 되도록 하다.\" 한 가지 쓰임으로 한정되며 o01의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0046: o01 안경을 고쳐 썼다는 어긋난 안경을 바르게 되도록 하는 쓰임으로 고장을 손보는 o02와 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000004-0046 C000004-0046-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
         }
       ],
-      "boundary_pairs": [],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000004-0046-s1",
+          "right_sense_id": "C000004-0046-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "e7b09a4afd8fcaa9fcb74c94e6a75c2b943d03a4b48c5f3c1ffce00f0ea319d3",
+          "right_gloss_sha256": "172c2abb4fbeac5797a752228f56043642513aa900c5e08929f1ade07e13b57a",
+          "evidence_basis": "C000004-0046: o02 / o01의 원본 문맥을 각각 대조했다.",
+          "distinguishing_feature": "C000004-0046: \"고장 나거나 탈이 난 것을 쓸 수 있게 손보다.\" 대 \"어긋나거나 흐트러진 것을 바르게 되도록 하다.\"로 구분된다.",
+          "rationale": "C000004-0046: o02 컴퓨터의 상태를 고칠 수 없었다는 고장 난 것을 손보는 쓰임이다. / o01 안경을 고쳐 썼다는 어긋난 안경을 바르게 되도록 하는 쓰임으로 고장을 손보는 o02와 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000004-0046",
-        "candidate_record_sha256": "505a036d4deec06353763eb92e4dd70544662df28f41a6247b91eb794b444afc",
-        "decision_evidence_sha256": "201745f5f2ee519f829f828cb6b4e18234ece4415379e493212f4aca5bd0b37e",
+        "candidate_record_sha256": "54b864f998dd432b4793d0547a7c23e117e37eefbca8fccba4e631183742d5d5",
+        "decision_evidence_sha256": "c27ffab6e4e942ad20b74ee05b49119266f8cf2da70c196041fb3a6d00e8b171",
         "sense_evidence": [
           {
             "sense_id": "C000004-0046-s1",
-            "sense_sha256": "06a03c557394d4dbd5009807c72b3372f04b0a99aab3214d597e9d4164dc542b",
-            "gloss_sha256": "e855c69ca9e298e73d15b43e03bc1809baf57bae03f93b97c87404f0b0dceedc",
-            "evidence_sha256": "76581bbf98045e1b12275e499cce910a70dbd7f2e937f2dad8be0bbe02e4f340"
+            "sense_sha256": "4ae0bf1ab58e4b1609ae4a6a74a7968fe996c755d3aea225ee89b70fa34772e2",
+            "gloss_sha256": "e7b09a4afd8fcaa9fcb74c94e6a75c2b943d03a4b48c5f3c1ffce00f0ea319d3",
+            "evidence_sha256": "ed472f7ae38d2212d202cac25a85b394efcee37b2a633bd7108dd66e07e20ce6"
+          },
+          {
+            "sense_id": "C000004-0046-s2",
+            "sense_sha256": "fda55e9fa932f194ed39293cc43e86b35c6418d7f9939bf20e1b8a37adc429c6",
+            "gloss_sha256": "172c2abb4fbeac5797a752228f56043642513aa900c5e08929f1ade07e13b57a",
+            "evidence_sha256": "3a3796b8c51447013066cecb7cb5a242ac560f5aa526a1c0cf0684a1788626a5"
           }
         ]
       }
@@ -935,9 +965,9 @@
     {
       "source_candidate_id": "C000004-0082",
       "candidate_record_id": "C000004-0082",
-      "candidate_record_sha256": "80800ca8992f81bdf417c818c9e10f04aaafec0867a7a99b914ed905abb4e461",
+      "candidate_record_sha256": "c16e538f9c1743e6e5e240d99eaebc57a771024058dd7151348a862f88a28c8f",
       "decision": "included",
-      "decision_rationale": "C000004-0082 Claude agent self-check: o01 기술을 개발하다와 o02 소통 기술은 일을 해내는 방법이나 능력을 가리킨다.",
+      "decision_rationale": "C000004-0082 Claude agent self-check: o01 장비를 위해 기술을 개발 중은 지식을 응용해 물건을 만드는 방법을 가리킨다. o02 소통 기술이 별로 좋지 않다는 일을 잘 해내는 솜씨를 가리켜 o01의 과학 기술과 구별된다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -945,26 +975,56 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0082: \"어떤 일을 잘 해내는 방법이나 능력.\" 한 가지 쓰임으로 한정되며 o01·o02의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0082: o01 기술을 개발하다와 o02 소통 기술은 일을 해내는 방법이나 능력을 가리킨다.",
+          "boundary_rationale": "C000004-0082: \"과학 지식을 응용해 물건을 만들거나 일을 해내는 방법.\" 한 가지 쓰임으로 한정되며 o01의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0082: o01 장비를 위해 기술을 개발 중은 지식을 응용해 물건을 만드는 방법을 가리킨다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000004-0082 C000004-0082-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000004-0082-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000004-0082: \"어떤 일을 잘 해내는 솜씨나 능력.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0082: o02 소통 기술이 별로 좋지 않다는 일을 잘 해내는 솜씨를 가리켜 o01의 과학 기술과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000004-0082 C000004-0082-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
         }
       ],
-      "boundary_pairs": [],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000004-0082-s1",
+          "right_sense_id": "C000004-0082-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "0ebf1472fec68da6e81edf67e1783a6e87d64aad74088210c85d2c5a75dbb15d",
+          "right_gloss_sha256": "3d8a524f8e64a06bd370c373c4c29496f908434068734e65ff7e0e5dab063745",
+          "evidence_basis": "C000004-0082: o01 / o02의 원본 문맥을 각각 대조했다.",
+          "distinguishing_feature": "C000004-0082: \"과학 지식을 응용해 물건을 만들거나 일을 해내는 방법.\" 대 \"어떤 일을 잘 해내는 솜씨나 능력.\"로 구분된다.",
+          "rationale": "C000004-0082: o01 장비를 위해 기술을 개발 중은 지식을 응용해 물건을 만드는 방법을 가리킨다. / o02 소통 기술이 별로 좋지 않다는 일을 잘 해내는 솜씨를 가리켜 o01의 과학 기술과 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000004-0082",
-        "candidate_record_sha256": "80800ca8992f81bdf417c818c9e10f04aaafec0867a7a99b914ed905abb4e461",
-        "decision_evidence_sha256": "04c878062a7fa560a3b7302bdd809b171f01089fc170b253c89ec439aa126090",
+        "candidate_record_sha256": "c16e538f9c1743e6e5e240d99eaebc57a771024058dd7151348a862f88a28c8f",
+        "decision_evidence_sha256": "f18cbcc8784bc32848e7207f2a1815a87c6e9dc303c806895d4a1eb89005faeb",
         "sense_evidence": [
           {
             "sense_id": "C000004-0082-s1",
-            "sense_sha256": "a8d0753efbab42572d23380e4afd4bda7db619fd514ef8804fc0a82ad462689c",
-            "gloss_sha256": "acf1e607a3a057e15bc7adbb580bb1f90c2774fd4f77a0bf785550495b0ee154",
-            "evidence_sha256": "eedec8a5ab9d1d35c925db4820a32a74c3b00e2c5e082cd2fd26a3090f1fa05f"
+            "sense_sha256": "af049fa9ac840468fdbe3d838bb099203226135220c85751035fb35b71247029",
+            "gloss_sha256": "0ebf1472fec68da6e81edf67e1783a6e87d64aad74088210c85d2c5a75dbb15d",
+            "evidence_sha256": "e87b8344dd8bfb87df7450b62fdd086a2996deb1ac176765e190dc1c6414883e"
+          },
+          {
+            "sense_id": "C000004-0082-s2",
+            "sense_sha256": "4ae54573856806fbbb129e9eb94f2badd8b3d15a19166689f2ab9ee39d3e14be",
+            "gloss_sha256": "3d8a524f8e64a06bd370c373c4c29496f908434068734e65ff7e0e5dab063745",
+            "evidence_sha256": "682f753093c78614f104a9f2059f3d351a2e7e049d08697302118bf37f22f92b"
           }
         ]
       }
@@ -1046,9 +1106,9 @@
     {
       "source_candidate_id": "C000004-0088",
       "candidate_record_id": "C000004-0088",
-      "candidate_record_sha256": "b269f517495f30968938d3854cd6f90a2c686c173c6b4c2c7c7b8fb8f308e64f",
+      "candidate_record_sha256": "7f15dd255afd1bd3cbeb7d1cb54fa7868c92d891d71fc6115ff2f42041e71514",
       "decision": "included",
-      "decision_rationale": "C000004-0088 Claude agent self-check: o01 이야기를 꾸며 내다와 o02 문화공간으로 꾸밀 생각은 모두 어떤 모양을 이루게 만드는 쓰임이다.",
+      "decision_rationale": "C000004-0088 Claude agent self-check: o01 이야기를 꾸며 냈다는 있지 않은 이야기를 지어내는 쓰임이다. o02 문화공간으로 꾸밀 생각은 어떤 곳을 용도에 맞게 갖추어 만드는 쓰임으로 o01의 지어내기와 구별된다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -1056,26 +1116,56 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0088: \"일정한 모양이나 모습이 되도록 만들다.\" 한 가지 쓰임으로 한정되며 o01·o02의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0088: o01 이야기를 꾸며 내다와 o02 문화공간으로 꾸밀 생각은 모두 어떤 모양을 이루게 만드는 쓰임이다.",
+          "boundary_rationale": "C000004-0088: \"이야기나 사실을 거짓으로 지어내다.\" 한 가지 쓰임으로 한정되며 o01의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0088: o01 이야기를 꾸며 냈다는 있지 않은 이야기를 지어내는 쓰임이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000004-0088 C000004-0088-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000004-0088-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000004-0088: \"어떤 곳을 일정한 용도에 맞게 갖추어 만들다.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0088: o02 문화공간으로 꾸밀 생각은 어떤 곳을 용도에 맞게 갖추어 만드는 쓰임으로 o01의 지어내기와 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000004-0088 C000004-0088-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
         }
       ],
-      "boundary_pairs": [],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000004-0088-s1",
+          "right_sense_id": "C000004-0088-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "eb872b828028b32f07225542e333769b47f3213a8b1053b270b7bbc98d2410de",
+          "right_gloss_sha256": "35ac819a1ea4be3708e7f3b12fe5a0c406a91878678bbd69fe022009f15632ac",
+          "evidence_basis": "C000004-0088: o01 / o02의 원본 문맥을 각각 대조했다.",
+          "distinguishing_feature": "C000004-0088: \"이야기나 사실을 거짓으로 지어내다.\" 대 \"어떤 곳을 일정한 용도에 맞게 갖추어 만들다.\"로 구분된다.",
+          "rationale": "C000004-0088: o01 이야기를 꾸며 냈다는 있지 않은 이야기를 지어내는 쓰임이다. / o02 문화공간으로 꾸밀 생각은 어떤 곳을 용도에 맞게 갖추어 만드는 쓰임으로 o01의 지어내기와 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000004-0088",
-        "candidate_record_sha256": "b269f517495f30968938d3854cd6f90a2c686c173c6b4c2c7c7b8fb8f308e64f",
-        "decision_evidence_sha256": "cfadc207835e081af37c5dd2bb8990224886f4df2707e9fa39189e19a92fcb10",
+        "candidate_record_sha256": "7f15dd255afd1bd3cbeb7d1cb54fa7868c92d891d71fc6115ff2f42041e71514",
+        "decision_evidence_sha256": "dffae90d6a3aaf5f75ac122fbde7c354c9b66dcb6127a05f79be91c1e61e7b2c",
         "sense_evidence": [
           {
             "sense_id": "C000004-0088-s1",
-            "sense_sha256": "0973adafecd96e2b39bf02d15a5c1101fb895901a6ba8ab56080841788aa5cd7",
-            "gloss_sha256": "b98a5981bad3568deb4a4fda7960afcb4f66285b4f6ec85d8baf713a17468016",
-            "evidence_sha256": "7cca4f3594a465e506c33771bc71830f7666c8e3f65092f77e5da922396c9b08"
+            "sense_sha256": "4b204ce84f393468899fda1fe05fdff52f2e6c87d7501ca1b43e0e85ad23d482",
+            "gloss_sha256": "eb872b828028b32f07225542e333769b47f3213a8b1053b270b7bbc98d2410de",
+            "evidence_sha256": "ec76d3eda52746bbf6d549c8ddbe72e6d0558b448cd7c7df415f0c6040a31af1"
+          },
+          {
+            "sense_id": "C000004-0088-s2",
+            "sense_sha256": "d60c9bcb5805cab00e2ab7e208fccdad67d0a5b3d2c4aaf0d775e4e0e2972116",
+            "gloss_sha256": "35ac819a1ea4be3708e7f3b12fe5a0c406a91878678bbd69fe022009f15632ac",
+            "evidence_sha256": "9f210768c253e1f1c5015164d1245c56ff14603f03fbb508a2cfbc5a262bd362"
           }
         ]
       }
@@ -2757,9 +2847,9 @@
     {
       "source_candidate_id": "C000004-0235",
       "candidate_record_id": "C000004-0235",
-      "candidate_record_sha256": "c88dd9b470eac16982f5b8aa46768a789ec596cf885303be2e81da53de09c2d7",
+      "candidate_record_sha256": "551fd875076d55dea5057cffccaf6d7982fac78f4be9eb1bb0e76a75d7b4ac59",
       "decision": "included",
-      "decision_rationale": "C000004-0235 Claude agent self-check: o01~o03의 네가 빛나고 있었다, 빛나는 꿈, 가장 빛났다는 모두 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다.",
+      "decision_rationale": "C000004-0235 Claude agent self-check: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다. o02 빛나는 꿈은 밝고 훌륭하여 희망에 찬 꿈을 가리키는 쓰임으로 o01·o03의 두드러짐과 구별된다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -2767,26 +2857,56 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0235: \"훌륭하거나 뛰어나 두드러져 보이다.\" 한 가지 쓰임으로 한정되며 o01·o02·o03의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0235: o01~o03의 네가 빛나고 있었다, 빛나는 꿈, 가장 빛났다는 모두 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다.",
+          "boundary_rationale": "C000004-0235: \"훌륭하거나 뛰어나 두드러져 보이다.\" 한 가지 쓰임으로 한정되며 o01·o03의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0235: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000004-0235 C000004-0235-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000004-0235-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000004-0235: \"밝고 훌륭하여 희망에 차 있다.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0235: o02 빛나는 꿈은 밝고 훌륭하여 희망에 찬 꿈을 가리키는 쓰임으로 o01·o03의 두드러짐과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000004-0235 C000004-0235-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
         }
       ],
-      "boundary_pairs": [],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000004-0235-s1",
+          "right_sense_id": "C000004-0235-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "f96a9be9ddd9c5e67465c55eccf141108d4b4134bf1d7f257eb292caa849f909",
+          "right_gloss_sha256": "479080670eacc3e1c05d011034b35066735f73ff0ebde2be150a3e9278873b57",
+          "evidence_basis": "C000004-0235: o01,o03 / o02의 원본 문맥을 각각 대조했다.",
+          "distinguishing_feature": "C000004-0235: \"훌륭하거나 뛰어나 두드러져 보이다.\" 대 \"밝고 훌륭하여 희망에 차 있다.\"로 구분된다.",
+          "rationale": "C000004-0235: o01 네가 빛나고 있었다와 o03 너무 오래 말할 필요가 없을 때 가장 빛났다는 뛰어나 두드러져 보이는 비유 쓰임으로 빛을 내는 w5662-s1과 구별된다. / o02 빛나는 꿈은 밝고 훌륭하여 희망에 찬 꿈을 가리키는 쓰임으로 o01·o03의 두드러짐과 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000004-0235",
-        "candidate_record_sha256": "c88dd9b470eac16982f5b8aa46768a789ec596cf885303be2e81da53de09c2d7",
-        "decision_evidence_sha256": "e96034daa0a6187bebd80828ed07796f5b12e43531c644e584049e748896ae03",
+        "candidate_record_sha256": "551fd875076d55dea5057cffccaf6d7982fac78f4be9eb1bb0e76a75d7b4ac59",
+        "decision_evidence_sha256": "9fb5003999eba56dc0817a07e8e3b7f94d8855c55b2773883a1bb2af5f740e6a",
         "sense_evidence": [
           {
             "sense_id": "C000004-0235-s1",
             "sense_sha256": "989a994eac9baa476c7d826a4ca8d65261ae1cc96c852846c904e74a4f6c02f0",
             "gloss_sha256": "f96a9be9ddd9c5e67465c55eccf141108d4b4134bf1d7f257eb292caa849f909",
-            "evidence_sha256": "5a67cefa20e1fd6059ecc64a6c9d07a2631e4affcde50197ff246685daea8973"
+            "evidence_sha256": "df1f35dcf7d8709b5e7eefdbb82604b2e9652292112de111d88d91b8c69096d6"
+          },
+          {
+            "sense_id": "C000004-0235-s2",
+            "sense_sha256": "12516277537699d5cd74303094e8a6305224d0cfea5c2afe94c307374da5871b",
+            "gloss_sha256": "479080670eacc3e1c05d011034b35066735f73ff0ebde2be150a3e9278873b57",
+            "evidence_sha256": "0a2ab96690b5ab6a733e40bed25a6bf9dc26829e548d348ff2a5491d1bec2773"
           }
         ]
       }
@@ -5185,9 +5305,9 @@
     {
       "source_candidate_id": "C000004-0469",
       "candidate_record_id": "C000004-0469",
-      "candidate_record_sha256": "72f853b82870d9cd4ecedfa50d71201049f785920f618a8a131867c6440568da",
+      "candidate_record_sha256": "336e395da276aa758c50cd538eb476cb43fd25916b9ddf3bf1b19b2fa90e54fe",
       "decision": "included",
-      "decision_rationale": "C000004-0469 Claude agent self-check: o01 소문이 순식간에 퍼져와 o02 화끈거리는 기운이 온몸에 퍼졌다는 소문과 기운이 널리 번지는 쓰임으로 액체나 소리가 번지는 w2766-s1과 구별된다.",
+      "decision_rationale": "C000004-0469 Claude agent self-check: o01 소문이 순식간에 퍼져는 소문이 널리 알려지는 쓰임으로 액체나 소리가 번지는 w2766-s1과 구별된다. o02 화끈거리는 기운이 온몸에 퍼졌다는 기운이 몸에 번지는 쓰임으로 소문이 알려지는 o01과 구별된다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -5195,26 +5315,56 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0469: \"소문이나 기운이 널리 번져 알려지거나 미치다.\" 한 가지 쓰임으로 한정되며 o01·o02의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0469: o01 소문이 순식간에 퍼져와 o02 화끈거리는 기운이 온몸에 퍼졌다는 소문과 기운이 널리 번지는 쓰임으로 액체나 소리가 번지는 w2766-s1과 구별된다.",
+          "boundary_rationale": "C000004-0469: \"소문이나 소식이 널리 알려지다.\" 한 가지 쓰임으로 한정되며 o01의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0469: o01 소문이 순식간에 퍼져는 소문이 널리 알려지는 쓰임으로 액체나 소리가 번지는 w2766-s1과 구별된다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000004-0469 C000004-0469-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000004-0469-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000004-0469: \"어떤 기운이나 느낌이 몸에 번져 미치다.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0469: o02 화끈거리는 기운이 온몸에 퍼졌다는 기운이 몸에 번지는 쓰임으로 소문이 알려지는 o01과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000004-0469 C000004-0469-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
         }
       ],
-      "boundary_pairs": [],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000004-0469-s1",
+          "right_sense_id": "C000004-0469-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "041ecbe12371318c82ff356621aa1c5ff4292513f5d0765de07063c6ecfead26",
+          "right_gloss_sha256": "55094b7af77d649b7e8652aa4f09096f164c4146223fb0d5a762c87f87c970fc",
+          "evidence_basis": "C000004-0469: o01 / o02의 원본 문맥을 각각 대조했다.",
+          "distinguishing_feature": "C000004-0469: \"소문이나 소식이 널리 알려지다.\" 대 \"어떤 기운이나 느낌이 몸에 번져 미치다.\"로 구분된다.",
+          "rationale": "C000004-0469: o01 소문이 순식간에 퍼져는 소문이 널리 알려지는 쓰임으로 액체나 소리가 번지는 w2766-s1과 구별된다. / o02 화끈거리는 기운이 온몸에 퍼졌다는 기운이 몸에 번지는 쓰임으로 소문이 알려지는 o01과 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000004-0469",
-        "candidate_record_sha256": "72f853b82870d9cd4ecedfa50d71201049f785920f618a8a131867c6440568da",
-        "decision_evidence_sha256": "6a337eb9205912c898f787ded211aadb721a82d0d436ebc717cd616f83778090",
+        "candidate_record_sha256": "336e395da276aa758c50cd538eb476cb43fd25916b9ddf3bf1b19b2fa90e54fe",
+        "decision_evidence_sha256": "f68cf3b4d27dce2c7ba8d8d256586ce630b611661bece05b72d0e4c883deecd7",
         "sense_evidence": [
           {
             "sense_id": "C000004-0469-s1",
-            "sense_sha256": "aefe42a900cd3f50a6c35b17d559a3f201e4c618f23ef4f6027f38833715cb1a",
-            "gloss_sha256": "c4c68602ea4602ba1f540f48c109677ecf81cb6bc187934a8e668dae438c04ae",
-            "evidence_sha256": "c0d9a4e34c4b5a780e5de45f01f836dc1a5888ad70ce16de2c24daaa7ac9a1d4"
+            "sense_sha256": "0510cbfd51a3a3efe69cd9055aa785c24cff6f3b80b1928cae59fce04609833e",
+            "gloss_sha256": "041ecbe12371318c82ff356621aa1c5ff4292513f5d0765de07063c6ecfead26",
+            "evidence_sha256": "5eec0c764a307859b56ddc0a4cd9d58abe3890653f07082b008aa6e3be800e47"
+          },
+          {
+            "sense_id": "C000004-0469-s2",
+            "sense_sha256": "b782a5d5c8efda591092e507c1a716641570f3312680dbb6e3b86e80b1307614",
+            "gloss_sha256": "55094b7af77d649b7e8652aa4f09096f164c4146223fb0d5a762c87f87c970fc",
+            "evidence_sha256": "e367a7b6d48ea5147dba25b768e64af7da8bd6d2baa48ec93786d73d60920f5e"
           }
         ]
       }
@@ -5222,9 +5372,9 @@
     {
       "source_candidate_id": "C000004-0470",
       "candidate_record_id": "C000004-0470",
-      "candidate_record_sha256": "d5641dd16ce288d70a37158984ab10338e692f6731db58099d0ee645f78d2998",
+      "candidate_record_sha256": "2c1c0729daddf6eda8fd1e882bba0492f65d25173e3eeb898e894cab31f5c660",
       "decision": "included",
-      "decision_rationale": "C000004-0470 Claude agent self-check: o01 허리를 펴고와 o02 움켜쥔 손을 폈다는 굽힌 것을 곧게 하거나 벌리는 쓰임이다.",
+      "decision_rationale": "C000004-0470 Claude agent self-check: o01 허리를 펴고는 굽은 허리를 곧게 하는 쓰임이다. o02 움켜쥔 손을 폈다는 쥐었던 것을 벌리는 쓰임으로 굽은 것을 곧게 하는 o01과 구별된다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -5232,26 +5382,56 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000004-0470: \"굽거나 접힌 것을 곧게 하거나 넓게 벌리다.\" 한 가지 쓰임으로 한정되며 o01·o02의 원문 문맥과 맞는다.",
-          "semantic_rationale": "C000004-0470: o01 허리를 펴고와 o02 움켜쥔 손을 폈다는 굽힌 것을 곧게 하거나 벌리는 쓰임이다.",
+          "boundary_rationale": "C000004-0470: \"굽은 것을 곧게 하다.\" 한 가지 쓰임으로 한정되며 o01의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0470: o01 허리를 펴고는 굽은 허리를 곧게 하는 쓰임이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000004-0470 C000004-0470-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        },
+        {
+          "sense_id": "C000004-0470-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000004-0470: \"쥐거나 접은 것을 벌려 넓게 하다.\" 한 가지 쓰임으로 한정되며 o02의 원문 문맥과 맞는다.",
+          "semantic_rationale": "C000004-0470: o02 움켜쥔 손을 폈다는 쥐었던 것을 벌리는 쓰임으로 굽은 것을 곧게 하는 o01과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000004-0470 C000004-0470-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
         }
       ],
-      "boundary_pairs": [],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000004-0470-s1",
+          "right_sense_id": "C000004-0470-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "ae1e0f6fae7e581b269e828d8ff5234e8f30ac0e6fd423d964f4e321db2275de",
+          "right_gloss_sha256": "f4962e7057a54cba2dfd439af2585b97bde2c4bf4c46eb15531e22c3cae0b9b8",
+          "evidence_basis": "C000004-0470: o01 / o02의 원본 문맥을 각각 대조했다.",
+          "distinguishing_feature": "C000004-0470: \"굽은 것을 곧게 하다.\" 대 \"쥐거나 접은 것을 벌려 넓게 하다.\"로 구분된다.",
+          "rationale": "C000004-0470: o01 허리를 펴고는 굽은 허리를 곧게 하는 쓰임이다. / o02 움켜쥔 손을 폈다는 쥐었던 것을 벌리는 쓰임으로 굽은 것을 곧게 하는 o01과 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000004-0470",
-        "candidate_record_sha256": "d5641dd16ce288d70a37158984ab10338e692f6731db58099d0ee645f78d2998",
-        "decision_evidence_sha256": "3ced541be2a45310d6f970f8e7afbb8cdb3a0b6bb43c39f09406c3d9fce356ba",
+        "candidate_record_sha256": "2c1c0729daddf6eda8fd1e882bba0492f65d25173e3eeb898e894cab31f5c660",
+        "decision_evidence_sha256": "33b018c8dc3a2bbc49b3c49d530722464488ad801c36832019229a95cec64932",
         "sense_evidence": [
           {
             "sense_id": "C000004-0470-s1",
-            "sense_sha256": "29d89fc6a68307cd54fb022d87dda727390806e184fb95987d86ce2e2449cfdf",
-            "gloss_sha256": "b76df9b4e0c0325747d4c211efeae56138ff721f948a459fa6e3a8c8a35b63cc",
-            "evidence_sha256": "e31b1a640aec955630e7694881d60ec3544ed5b8976c09aa68f76a73bf1fce80"
+            "sense_sha256": "9993d3f61efa97f0ffc6dd0ac8b2b7d3428969ab1a9d6d4ad83e180c340e7e5e",
+            "gloss_sha256": "ae1e0f6fae7e581b269e828d8ff5234e8f30ac0e6fd423d964f4e321db2275de",
+            "evidence_sha256": "4cf05dc129d26543822566cb742d8e38dcc740fa1906f57f4b92b4eaf500fb98"
+          },
+          {
+            "sense_id": "C000004-0470-s2",
+            "sense_sha256": "419c8f250b3305736bcab9aa59b712f27a48788ffb595cb9cc74956004319d0f",
+            "gloss_sha256": "f4962e7057a54cba2dfd439af2585b97bde2c4bf4c46eb15531e22c3cae0b9b8",
+            "evidence_sha256": "c274d5c79ab8a5d0565427e7470ea71c72b2770629af069372f1f0d116ab3a74"
           }
         ]
       }
