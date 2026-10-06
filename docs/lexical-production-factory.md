@@ -506,6 +506,18 @@ its own disposition, reason, `hold_resolution` / sense claims and (for `covered`
 `search_coverage`) its own search-form proof. A group with a single entry and no
 `observation_ids` covers all of its observations.
 
+**Gloss scope (source-bound, lemma-centered reviews).** An admitted gloss may only describe the
+observations its included groups claim, so a deferred, rejected or already-covered meaning
+cannot leak into it. Every `sense_reviews[i]` of a pending (not yet Stage 3 `complete`) review
+carries `scope_declaration: {admitted_observation_ids, excluded_observation_ids, excluded_terms}`.
+Both id lists must equal what the decision's `group_decisions` derive for that sense; while
+observations are excluded, `excluded_terms` must name the excluded meaning, each term must occur
+in the authored `reason` of an entry that judges an excluded observation, and no term may occur
+in the gloss. Whether a gloss otherwise stays within its evidence remains a source-bound semantic
+judgment; the contract makes the scope explicit and refuses the mechanically detectable widening
+(`scripts/factory/scope-declaration.mjs`, enforced by `validate.mjs` and the shared review artifact
+validator). Reviews already `complete` predate the field and are not rewritten.
+
 `disposition` takes the existing meanings: included / corrected / held /
 rejected / deferred. `target.kind` is `new_entry`, `new_pos_on_existing_lemma`
 or `new_sense_on_existing_entry` (the last two carry the existing canonical `id`

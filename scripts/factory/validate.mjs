@@ -162,6 +162,8 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
       if (typeof semanticDecisionsText === 'string' && typeof handoffText === 'string') {
         errors.push(...validateReviewArtifacts({
           batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText,
+          // Stage 3-admitted reviews predate the scope declaration; every pending review must carry it.
+          requireScopeDeclaration: manifest.status !== 'complete',
         }).map((error) => `${batch}: ${error}`));
       }
     }

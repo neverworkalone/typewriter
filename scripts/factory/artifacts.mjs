@@ -2,6 +2,7 @@ import { REVIEWABLE_HOLDS, verifyProductionHandoff } from '../intake/production-
 import { candidateViews, intakeCandidates, toRawCandidate } from './identity-adapter.mjs';
 import { isLemmaRow } from './lemma-contract.mjs';
 import { resolveGroupEntries } from './lemma-decisions.mjs';
+import { validateScopeDeclarations } from './scope-declaration.mjs';
 import { inspectSenseBoundaryPairs, sha256Json } from '../validate/semantic-audit.mjs';
 import { decisionSenseReviews, validateAuthoredDecisionDisposition, validateDistinctSenseSemanticRationales, validateSenseReviews } from '../batch/authored-semantic-decision-source.mjs';
 import { SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION, validateAuthoredSemanticReviewBinding } from '../validate/semantic-decision-row.mjs';
@@ -26,7 +27,7 @@ export const reviewedCandidateRecord = (decision) => ({
   senses: decision.reviewed_record.senses.map((sense, index) => ({ id: `${decision.source_candidate_id}-s${index + 1}`, pos: sense.pos, gloss: sense.gloss })),
 });
 
-function validateSemanticRow(row, decision, batchId, errors) {
+function validateSemanticRow(row, decision, batchId, errors, { candidate, requireScopeDeclaration } = {}) {
   const id = decision.source_candidate_id;
   const at = `semantic decision ${id}`;
   const record = reviewedCandidateRecord(decision);
@@ -46,6 +47,8 @@ function validateSemanticRow(row, decision, batchId, errors) {
   } catch (error) {
     fail(error.message);
   }
+  // The evidence scope of a lemma-centered candidate is checked against its own usage-group decisions.
+  if (candidate && isLemmaRow(candidate)) errors.push(...validateScopeDeclarations({ decision, candidate, senseReviews: row.sense_reviews, required: requireScopeDeclaration }));
 }
 
 function parse(text, label, errors) {
@@ -57,7 +60,7 @@ function parse(text, label, errors) {
   }
 }
 
-export function validateReviewArtifacts({ batchId, adapterId, candidates, decisions, semanticDecisionsText, handoffText }) {
+export function validateReviewArtifacts({ batchId, adapterId, candidates, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration = false }) {
   const errors = [];
   const admitted = decisions.filter((row) => ADMITTED.has(row.disposition));
   const candidateById = new Map(candidates.map((candidate) => [candidate.candidate_id, candidate]));
@@ -81,7 +84,7 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
         for (const decision of admitted) {
           if (typeof decision.reviewed_record?.lemma !== 'string' || !Array.isArray(decision.reviewed_record.senses)) continue;
           const row = rowById.get(decision.source_candidate_id);
-          validateSemanticRow(row, decision, batchId, errors);
+          validateSemanticRow(row, decision, batchId, errors, { candidate: candidateById.get(decision.source_candidate_id), requireScopeDeclaration });
           validateFactoryBoundaryPairs(row, decision, errors);
         }
       }
