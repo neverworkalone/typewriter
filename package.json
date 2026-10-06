@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.34.6",
   "engines": {
     "node": ">=22.13.0"
   },
@@ -13,7 +14,7 @@
     "build:web": "vite build --config vite.web.config.js",
     "test:web:integration": "node scripts/test-web-runtime-integration.mjs",
     "validate:product-outputs": "node scripts/validate/product-output-contract-cli.mjs",
-    "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs && node scripts/validate/target-inventory.mjs && node scripts/validate/rule-inventory.mjs && npm run validate:lexical && npm run validate:surface-forms",
+    "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs && node scripts/validate/target-inventory.mjs && node scripts/validate/rule-inventory.mjs && pnpm run validate:lexical && pnpm run validate:surface-forms",
     "validate:lexical": "node scripts/validate/lexical-quality.mjs && node scripts/validate/semantic-audit.mjs",
     "validate:semantic-audit": "node scripts/validate/semantic-audit.mjs",
     "validate:artifacts": "node scripts/validate/artifact-policy.mjs",
@@ -144,7 +145,7 @@
     "ci:normal": "node scripts/ci/run-category.mjs normal",
     "ci:all": "node scripts/ci/run-category.mjs all",
     "ci:deep": "node scripts/ci/run-category.mjs deep",
-    "test": "npm run ci:normal",
+    "test": "pnpm run ci:normal",
     "test:khaiii:docker": "node --test tests/manual/khaiii-docker.test.mjs",
     "python:bootstrap": "node scripts/python/bootstrap.mjs",
     "python:check": "node scripts/python/run.mjs --print",

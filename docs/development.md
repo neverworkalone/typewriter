@@ -8,7 +8,7 @@ Node.js 22.13.0 or newer; CI uses Node.js 22.13.x.
 Install the pinned runtime before running the commands:
 
 ```sh
-npm ci --ignore-scripts --no-audit --no-fund
+pnpm install --frozen-lockfile --ignore-scripts
 ```
 
 The product MV3 shell uses Vue 3 with Vite. The two product entrypoints are
@@ -17,10 +17,10 @@ The product MV3 shell uses Vue 3 with Vite. The two product entrypoints are
 Use the following commands while working on the product shell:
 
 ```sh
-npm run dev          # Vite development server
-npm run build        # production MV3 assets in dist/, minified by esbuild
-npm run test:unit    # Vitest component/unit tests
-npm run test:mv3:product -- --chrome="/path/to/Google Chrome for Testing" # popup/options CFT check
+pnpm run dev          # Vite development server
+pnpm run build        # production MV3 assets in dist/, minified by esbuild
+pnpm run test:unit    # Vitest component/unit tests
+pnpm run test:mv3:product --chrome="/path/to/Google Chrome for Testing" # popup/options CFT check
 ```
 
 Create the release ZIP in the default non-minified form, or explicitly request the
@@ -28,9 +28,9 @@ minified form. Both commands rebuild the product and validate the unpacked direc
 and ZIP before returning:
 
 ```sh
-TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package
-TYPEWRITER_ZIP_DIR=/tmp/typewriter-package-minified npm run package:minify
-npm run validate:package -- \
+TYPEWRITER_ZIP_DIR=/tmp/typewriter-package pnpm run package
+TYPEWRITER_ZIP_DIR=/tmp/typewriter-package-minified pnpm run package:minify
+pnpm run validate:package \
   --project-root="$PWD" \
   --dir=dist \
   --zip=/tmp/typewriter-package/generated-package.zip
@@ -44,15 +44,15 @@ builds into `dist/`, removes development-only output, copies the privacy,
 release-identity, and license notices, creates an archive with stable paths,
 timestamps, and file modes, then atomically moves the completed ZIP into place.
 During local development, a dirty-worktree build must be explicit:
-`TYPEWRITER_ALLOW_DIRTY=true TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package`.
+`TYPEWRITER_ALLOW_DIRTY=true TYPEWRITER_ZIP_DIR=/tmp/typewriter-package pnpm run package`.
 
 For the release candidate, start from a clean checkout and use the single M8
 handoff validation command. It runs normal CI, builds twice to prove that the ZIP
 bytes reproduce, and exercises the exact package in Chrome for Testing:
 
 ```sh
-npm ci --ignore-scripts --no-audit --no-fund
-npm run validate:release -- \
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm run validate:release \
   --chrome="/path/to/Google Chrome for Testing" \
   --output-dir="/tmp/typewriter-release"
 ```
@@ -70,7 +70,7 @@ When Chrome for Testing is available, verify both the unpacked build and the exa
 ZIP contents after extraction:
 
 ```sh
-npm run test:mv3:package -- \
+pnpm run test:mv3:package \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
   --zip=/tmp/typewriter-package/generated-package.zip
@@ -91,7 +91,7 @@ then verifies the new source revision, exact, search-form, and generated-surface
 lookups, and saved settings:
 
 ```sh
-npm run test:mv3:package -- \
+pnpm run test:mv3:package \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
   --zip=/tmp/typewriter-package/generated-package.zip \
@@ -105,30 +105,30 @@ foreign-key-invalid and incomplete database copies in CFT, including a fresh
 worker retry from each load failure. Those fixture edits stay in temporary copies
 and never change canonical data or the release package.
 
-`npm run build` generates the product's packaged `dictionary.sqlite` and the
+`pnpm run build` generates the product's packaged `dictionary.sqlite` and the
 `runtime/` SQLite WASM worker assets after the Vite bundle. If the worktree is
-dirty, use `TYPEWRITER_ALLOW_DIRTY=true npm run build` explicitly.
+dirty, use `TYPEWRITER_ALLOW_DIRTY=true pnpm run build` explicitly.
 
-npm test runs the current normal CI gate and is equivalent to
-npm run ci:normal. The category registry selects the active validation and test
+pnpm test runs the current normal CI gate and is equivalent to
+pnpm run ci:normal. The category registry selects the active validation and test
 suite instead of running every historical test file as one unfiltered glob. The
-normal gate includes the product output contract checks. Use npm run test:unit
+normal gate includes the product output contract checks. Use pnpm run test:unit
 for Vue unit tests. Product/package verification runs through
-npm run test:mv3:package.
+pnpm run test:mv3:package.
 
 The browser-based runtime check is an optional debugging tool for web-page or
-runtime issues; it does not run in `npm test` or CI. Build both products, install
+runtime issues; it does not run in `pnpm test` or CI. Build both products, install
 Chromium once, then run the check:
 
 ```sh
-npm run build
-npm run build:web
-npx playwright install chromium
-npm run test:web:integration
+pnpm run build
+pnpm run build:web
+pnpm exec playwright install chromium
+pnpm run test:web:integration
 ```
 
 On Linux systems missing browser libraries, install them with
-`npx playwright install --with-deps chromium`.
+`pnpm exec playwright install --with-deps chromium`.
 
 The product popup and options page use only extension-local assets and the
 storage permission. When Chrome for Testing is available, the product CFT check
@@ -163,9 +163,9 @@ node --test tests/build-dictionary.test.mjs
 node --test tests/reproducibility.test.mjs
 ```
 
-For the complete CI-equivalent sequence, use `npm run ci:all` from a clean
+For the complete CI-equivalent sequence, use `pnpm run ci:all` from a clean
 checkout. Focused work can run one responsibility at a time with
-`npm run ci:category -- <category>`; the category runner replaces the old full
+`pnpm run ci:category <category>`; the category runner replaces the old full
 CI test glob and keeps each test file in one declared ownership group.
 
 The one-command M2 audit runs the schema and dataset checks, normalization, two
@@ -185,38 +185,38 @@ an external temporary workspace. Validate the metadata manifest and staged rows
 before a deliberate canonical import:
 
 ```sh
-npm run batch:validate -- \
+pnpm run batch:validate \
   --manifest=/tmp/typewriter-m5-2/batch.json \
   --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
   --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json
-npm run batch:import -- \
+pnpm run batch:import \
   --manifest=/tmp/typewriter-m5-2/batch.json \
   --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
   --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json \
   --output=/tmp/typewriter-m5-2/canonical-import.jsonl
 
-npm run batch:process:check
-npm run batch:repair:check
-npm run batch:m5-10d:contract:check
+pnpm run batch:process:check
+pnpm run batch:repair:check
+pnpm run batch:m5-10d:contract:check
 # M5-10D keeps its calibration-only proposal separate from canonical data.
-npm run batch:m5-10d:calibration:prepare
+pnpm run batch:m5-10d:calibration:prepare
 # After initial-review judgment rows are complete, freeze the recorder-owned follow-up source.
-npm run batch:m5-10d:recovery:contract:check
-npm run batch:m5-10d:recovery:check
-npm run batch:m5-10d:authorization:check
+pnpm run batch:m5-10d:recovery:contract:check
+pnpm run batch:m5-10d:recovery:check
+pnpm run batch:m5-10d:authorization:check
 # Start and stop each calibration pass explicitly; the command persists its session.
-npm run batch:m5-10a:calibration:timing -- \
+pnpm run batch:m5-10a:calibration:timing \
   --action=start --pass=target-preparation --output=/tmp/typewriter-m5-10a-timing-session.json
-npm run batch:m5-10a:calibration:timing -- \
+pnpm run batch:m5-10a:calibration:timing \
   --action=stop --pass=target-preparation \
   --input=/tmp/typewriter-m5-10a-timing-session.json \
   --output=/tmp/typewriter-m5-10a-timing-session.json
-npm run batch:m5-10a:calibration:timing -- \
+pnpm run batch:m5-10a:calibration:timing \
   --action=start --pass=final-audit \
   --input=/tmp/typewriter-m5-10a-timing-session.json \
   --output=/tmp/typewriter-m5-10a-timing-session.json
 # Stop final-audit only after reviewing all 20 cases; include the generated raw-proposal digest.
-npm run batch:m5-10a:calibration:timing -- \
+pnpm run batch:m5-10a:calibration:timing \
   --action=stop --pass=final-audit \
   --case-ids=m5-10a-cal-001,...,m5-10a-cal-020 \
   --raw-proposal-sha256=<sha256> \
@@ -225,18 +225,18 @@ npm run batch:m5-10a:calibration:timing -- \
 # Commit a separately authored per-case audit input before building. The builder
 # refuses a missing audit and derives counts/rates/gate status from its decisions.
 # The default path is data/batches/m5-10a-relation-calibration-audit.json.
-npm run batch:m5-10a:calibration:build
-npm run batch:m5-10a:calibration:check
-npm run batch:m5-10a:process:check
-npm run batch:m5-10a:repair:check
-npm run batch:timing:feedback -- \
+pnpm run batch:m5-10a:calibration:build
+pnpm run batch:m5-10a:calibration:check
+pnpm run batch:m5-10a:process:check
+pnpm run batch:m5-10a:repair:check
+pnpm run batch:timing:feedback \
   --manifest=/tmp/typewriter-wave/manifest.json \
   --output=/tmp/typewriter-wave/feedback.json
-npm run batch:timing:start -- \
+pnpm run batch:timing:start \
   --manifest=/tmp/typewriter-wave/feedback.json \
   --output=/tmp/typewriter-wave/audit-started.json \
   --pass=post-review-audit
-npm run batch:timing:stop -- \
+pnpm run batch:timing:stop \
   --manifest=/tmp/typewriter-wave/audit-started.json \
   --output=/tmp/typewriter-wave/audit-complete.json \
   --pass=post-review-audit
@@ -247,7 +247,7 @@ the repository. See [`m5-batch-workflow.md`](m5-batch-workflow.md) for the manif
 ID allocation, reference-closure, and reproducibility contract.
 
 When a review event creates a follow-up cycle, run
-`npm run batch:timing:feedback` at the event. It records the current UTC clock,
+`pnpm run batch:timing:feedback` at the event. It records the current UTC clock,
 generates the paired cycle automatically, and writes a new manifest to the
 `--output` path. Use `batch:timing:start` and `batch:timing:stop` around every
 editorial session; stop derives wall-clock and editor seconds from the recorded
@@ -275,13 +275,13 @@ commands themselves should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It
 checks out the revision under review, installs the pinned dependencies with
-`npm ci --ignore-scripts --no-audit --no-fund`, selects Node.js 22.13.x, then
-runs `npm run ci:normal` in one process. The normal runner emits the `ci:fast`
+`pnpm install --frozen-lockfile --ignore-scripts`, selects Node.js 22.13.x, then
+runs `pnpm run ci:normal` in one process. The normal runner emits the `ci:fast`
 checkpoint and then continues with the remaining normal checks; the fast
 checkpoint is not started as a second GitHub Actions workflow.
 
 `.github/workflows/deep.yml` owns scheduled and manual full validation. Manual
-dispatch validates the selected branch or commit. It runs `npm run ci:all`, which
+dispatch validates the selected branch or commit. It runs `pnpm run ci:all`, which
 includes normal validation followed by historical replay, reproducibility, and the
 scale benchmark. Its weekly schedule is Sunday 22:00 UTC (Monday 07:00 KST). Deep
 CI does not run automatically for pull requests; use the manual dispatch when a PR
@@ -289,15 +289,15 @@ needs the full validation path.
 
 The normal category order is:
 
-1. `npm run ci:category -- canonical` — manifest, canonical, dataset, inventory, and rule checks;
-2. `npm run ci:category -- lexical` — shared lexical and semantic validation;
-3. `npm run ci:category -- toolchain` — normalization, SQLite, and integrated M2 checks;
-4. `npm run ci:category -- batch` — batch process, contract, recovery, and authorization checks;
-5. `npm run ci:category -- product` — shared search, unit tests, and extension build;
-6. `npm run ci:category -- artifacts` — package/artifact tests and the final clean-checkout policy.
+1. `pnpm run ci:category canonical` — manifest, canonical, dataset, inventory, and rule checks;
+2. `pnpm run ci:category lexical` — shared lexical and semantic validation;
+3. `pnpm run ci:category toolchain` — normalization, SQLite, and integrated M2 checks;
+4. `pnpm run ci:category batch` — batch process, contract, recovery, and authorization checks;
+5. `pnpm run ci:category product` — shared search, unit tests, and extension build;
+6. `pnpm run ci:category artifacts` — package/artifact tests and the final clean-checkout policy.
 
 The deep-only additions are `historical` replay and the `deep` category. To run the
-complete sequence locally, use `npm run ci:all`.
+complete sequence locally, use `pnpm run ci:all`.
 
 The M7-1 deep benchmark measures the real 5K release baseline and deterministic
 100K/500K/1M workloads. See the [recorded method and scale results](m7-1-scale-benchmark.md)
@@ -311,8 +311,8 @@ check starts. Historical runner inputs are copied to an external temporary direc
 materialization. A representative future batch check should be added to the
 appropriate registry category rather than to a workflow file.
 
-Release ZIP creation (`npm run package` and `npm run package:minify`) and Chrome for
-Testing package verification (`npm run test:mv3:package`) are intentionally deferred
+Release ZIP creation (`pnpm run package` and `pnpm run package:minify`) and Chrome for
+Testing package verification (`pnpm run test:mv3:package`) are intentionally deferred
 from ordinary pre-1.0 PR/push CI to keep feedback focused and inexpensive. The
 underlying scripts remain available for explicit manual execution and future
 release-oriented automation; this is a scheduling decision, not deprecation. The

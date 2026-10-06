@@ -725,7 +725,7 @@ export async function validateIssue211({ writeReport = false } = {}) {
     await writeFile(REPORT_PATH, renderedReport, 'utf8');
   } else {
     const reportBytes = await readFile(REPORT_PATH, 'utf8');
-    assert.equal(reportBytes, renderedReport, 'Issue #211 report is stale; run npm run batch:issue-211:report');
+    assert.equal(reportBytes, renderedReport, 'Issue #211 report is stale; run pnpm run batch:issue-211:report');
   }
 
   return {

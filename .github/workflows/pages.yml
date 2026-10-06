@@ -25,22 +25,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22.13.x
-          cache: npm
+          cache: pnpm
 
       - name: Install pinned dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build web product at the repository Pages path
-        run: npm run build:web
+        run: pnpm run build:web
         env:
           TYPEWRITER_WEB_BASE_PATH: /typewriter/
 
       - name: Validate artifact allowlist and provenance
-        run: npm run validate:pages-artifact
+        run: pnpm run validate:pages-artifact
         env:
           TYPEWRITER_EXPECTED_SOURCE_REVISION: ${{ github.sha }}
 

@@ -16,7 +16,7 @@ DIST_DIR="$PROJECT_ROOT/dist"
 VITE_BIN="$PROJECT_ROOT/node_modules/.bin/vite"
 
 if [[ ! -x "$VITE_BIN" ]]; then
-  echo "Missing local build dependencies. Run npm ci first." >&2
+  echo "Missing local build dependencies. Run pnpm install --frozen-lockfile first." >&2
   exit 1
 fi
 
@@ -26,7 +26,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 cd "$PROJECT_ROOT"
-TYPEWRITER_BUILD_MINIFY="$typewriterMinify" npm run build
+TYPEWRITER_BUILD_MINIFY="$typewriterMinify" pnpm run build
 
 node "$PROJECT_ROOT/scripts/build/prepare-product-package.mjs" "$DIST_DIR"
 
