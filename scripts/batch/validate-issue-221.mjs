@@ -1,3 +1,4 @@
+import { historicalAdmissionContext } from './historical-canonical.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -28,7 +29,9 @@ import { validateCorpusCandidateReviewDispositions } from '../validate/corpus-ca
 import {
   productionReviewRows,
   productionStageEvidence,
+  projectDecisionSourceToCanonical,
 } from './validate-issue-211.mjs';
+import { loadCanonicalBeforeFactoryAdmissions, restoreImportRecordsBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -354,11 +357,14 @@ export async function validateIssue221() {
   });
   const includedIds = new Set(semanticDecisionSource.selection.selected.map(({ candidate_record_id: id }) => id));
   const expectedImportRecords = semanticSource.candidate_records.filter(({ id }) => includedIds.has(id));
-  const importRecords = readJsonl(importBytes, 'Issue #221 canonical import');
+  // Batch admissions are validated against the canonical as of their own time: later factory admissions
+  // may append senses to their records, so the live canonical is rewound through the bound ledger.
+  const liveCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const currentCanonical = { ...liveCanonical, records: await loadCanonicalBeforeFactoryAdmissions(liveCanonical.records) };
+  const importRecords = await restoreImportRecordsBeforeFactoryAdmissions(readJsonl(importBytes, 'Issue #221 canonical import'), liveCanonical.records);
   assert.deepEqual(importRecords, expectedImportRecords, 'canonical import contains only source-bound admitted candidates');
   assert.equal(importRecords.length, admittedRows.length);
 
-  const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const importIds = new Set(importRecords.map(({ id }) => id));
   assert.equal(importIds.size, importRecords.length, 'canonical import record IDs are unique');
   for (const record of importRecords) {
@@ -369,7 +375,7 @@ export async function validateIssue221() {
   const baseRecords = currentCanonical.records.filter((recordInfo) => !importIds.has(recordOf(recordInfo).id));
   assert.equal(baseRecords.length + importRecords.length, currentCanonical.records.length);
 
-  const rootDecisionSource = await readSemanticDecisionSourceArtifact(ROOT_SEMANTIC_SOURCE_PATH);
+  const rootDecisionSource = projectDecisionSourceToCanonical(await readSemanticDecisionSourceArtifact(ROOT_SEMANTIC_SOURCE_PATH), currentCanonical.records);
   const currentDigest = canonicalRecordsSha256(currentCanonical.records);
   assert.equal(rootDecisionSource.source.canonical_records_sha256, currentDigest, 'complete canonical semantic source digest');
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
@@ -389,6 +395,8 @@ export async function validateIssue221() {
     baseRecords,
     prospectiveRecords: currentCanonical.records,
     semanticAudit,
+    // Surface-form review and exception bindings are projected onto the same historical record set.
+    canonicalContext: historicalAdmissionContext(currentCanonical.records, semanticAudit),
     stageEvidence: productionStageEvidence({
       candidateSourceBytes: candidateReviewBytes,
       semanticSourceBytes,
