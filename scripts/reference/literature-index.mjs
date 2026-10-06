@@ -133,9 +133,22 @@ export function decodeLiteratureText(bytes) {
   }
   let encoding = 'utf-8';
   let text;
+  let ambiguityNote = null;
   try {
     text = UTF8.decode(body);
-  } catch {
+    // Valid UTF-8 that is also valid CP949 is ambiguous unless UTF-8 is clearly
+    // the better reading (true UTF-8 Korean decodes to fewer Hangul as CP949).
+    let alternative = null;
+    try { alternative = CP949.decode(body); } catch { /* not CP949: unambiguous */ }
+    if (alternative !== null && /[^\u0000-\u007F]/u.test(text)) {
+      const hangul = (value) => (value.match(/[\uAC00-\uD7A3]/gu) ?? []).length;
+      if (hangul(text) < hangul(alternative)) {
+        throw new Error('ambiguous encoding: bytes are valid UTF-8 and valid CP949 and the CP949 reading has more Hangul');
+      }
+      ambiguityNote = 'also valid CP949; UTF-8 chosen because it yields at least as many Hangul syllables';
+    }
+  } catch (error) {
+    if (error.message.startsWith('ambiguous encoding')) throw error;
     if (hasBom) {
       throw new Error('invalid UTF-8 sequence after UTF-8 BOM');
     }
@@ -153,7 +166,7 @@ export function decodeLiteratureText(bytes) {
   if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(text)) {
     throw new Error('decoded text contains control characters (garbled or binary source)');
   }
-  if (/[-]/u.test(text)) {
+  if (/[\uE000-\uF8FF\u{F0000}-\u{FFFFD}\u{100000}-\u{10FFFD}]/u.test(text)) {
     throw new Error('decoded text contains private-use code points (unmapped glyph substitutes or wrong encoding; not faithfully interpretable)');
   }
   if (text.trim().length === 0) {
@@ -162,7 +175,7 @@ export function decodeLiteratureText(bytes) {
   if (encoding === 'cp949' && !/[가-힣]/u.test(text)) {
     throw new Error('CP949 decode produced no Hangul (ambiguous encoding)');
   }
-  return { text, encoding, hasBom };
+  return { text, encoding, hasBom, ambiguityNote };
 }
 
 /** Faithful, reversible line units: each unit keeps its exact terminator. */
@@ -232,10 +245,11 @@ export function analyzeLiteratureBytes(bytes, relativePath) {
   } catch (error) {
     return { ...result, status: 'error', error: error.message };
   }
-  const { text, encoding, hasBom } = decoded;
+  const { text, encoding, hasBom, ambiguityNote } = decoded;
   const units = splitLiteratureUnits(text);
   const warnings = [];
   if (encoding === 'cp949') warnings.push('decoded as CP949; no independent check of the encoding choice');
+  if (ambiguityNote) warnings.push(ambiguityNote);
   if (hasBom) warnings.push('UTF-8 BOM recorded and excluded from text units');
   if (!text.endsWith('\n') && !text.endsWith('\r')) warnings.push('missing terminal newline');
   const convention = newlineConvention(text);

@@ -68,7 +68,7 @@ test('decoding records UTF-8, BOM and CP949 and rejects lossy or ambiguous bytes
   const bom = decodeLiteratureText(Buffer.concat([BOM, Buffer.from('가나')]));
   assert.deepEqual([bom.hasBom, bom.text], [true, '가나']);
   assert.deepEqual(decodeLiteratureText(Buffer.from([0xb0, 0xa1, 0xb3, 0xaa])), {
-    text: '가나', encoding: 'cp949', hasBom: false,
+    text: '가나', encoding: 'cp949', hasBom: false, ambiguityNote: null,
   });
   for (const bad of [
     Buffer.alloc(0),
@@ -84,6 +84,14 @@ test('decoding records UTF-8, BOM and CP949 and rejects lossy or ambiguous bytes
   ]) {
     assert.throws(() => decodeLiteratureText(bad), undefined, JSON.stringify([...bad]));
   }
+});
+
+test('UTF-8 that is also valid CP949 is accepted only with an explicit warning when UTF-8 is clearly better', () => {
+  const placeholder = Buffer.from('<그림>\r\n');
+  assert.equal(decodeLiteratureText(placeholder).encoding, 'utf-8');
+  assert.match(decodeLiteratureText(placeholder).ambiguityNote, /also valid CP949/u);
+  assert.match(analyzeLiteratureBytes(placeholder, 'poem/p.txt').warnings.join('|'), /also valid CP949/u);
+  assert.equal(decodeLiteratureText(Buffer.from('가나다')).ambiguityNote, null);
 });
 
 test('analysis flags warnings without altering text and keeps non-NFC text as-is', () => {
@@ -109,7 +117,7 @@ test('permission gate blocks pending terms and accepts only the stated scope', a
   });
   await writeFile(record, good.replace('Allowed SQLite/FTS indexing: permitted', 'Allowed SQLite/FTS indexing: pending'));
   await assert.rejects(assertLiteraturePermission({ permissionRecordPath: record }), /Allowed SQLite\/FTS indexing/u);
-  await writeFile(record, good.replace('not authorized', 'authorized'));
+  await writeFile(record, good.replace('- Redistribution/embedding: not authorized', '- Redistribution/embedding: authorized'));
   await assert.rejects(assertLiteraturePermission({ permissionRecordPath: record }), /Redistribution/u);
 });
 
@@ -159,6 +167,9 @@ test('failed build leaves the previous index intact and names the offending path
     ['poem/9_작가-빈-9.txt', Buffer.alloc(0), /poem\/9_작가-빈-9\.txt: empty file/u],
     ['novel/9_작가-깨짐-9.txt', Buffer.from([0xea, 0xb0]), /novel\/9_.*: (undecodable|CP949 decode produced no Hangul)/u],
     ['essay/9_작가-널-9.txt', Buffer.from('가\u0000'), /essay\/9_.*control characters/u],
+    ['poem/9_작가-보조-9.txt', Buffer.from('가\u{F0000}'), /poem\/9_작가-보조-9\.txt: .*private-use/u],
+    ['novel/9_작가-보조-8.txt', Buffer.from('가\u{10FFFD}'), /novel\/9_작가-보조-8\.txt: .*private-use/u],
+    ['essay/9_작가-모호-9.txt', Buffer.from([0xc2, 0xa1, 0x0a]), /essay\/9_작가-모호-9\.txt: ambiguous encoding/u],
   ]) {
     await mkdir(path.dirname(path.join(input, name)), { recursive: true });
     await writeFile(path.join(input, name), bytes);
