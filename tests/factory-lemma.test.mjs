@@ -542,3 +542,73 @@ test('tracked v2 artifacts can never carry corpus phrases: surfaces and referenc
   await assert.rejects(() => batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는 길에 만난 사람')])])), /single bounded word form/);
   await assert.rejects(() => batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1 문장 전체', 'p1', '가는')])])), /opaque token/);
 });
+
+// A stale sibling can merge after its CI ran (no server-side merge gate). Merged master must stay
+// valid and Stage 3 must skip the review, while the same stale content in a PR is refused.
+test('a merged review authored under an older contract is tolerated on master, reported stale, and refused in a PR', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stale-'));
+  const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+  git('init', '-q', '-b', 'master');
+  git('config', 'user.email', 't@example.com');
+  git('config', 'user.name', 't');
+  const write = async (name, content) => { await mkdir(path.dirname(path.join(root, name)), { recursive: true }); await writeFile(path.join(root, name), content); };
+  const run = () => spawnSync(process.execPath, ['scripts/factory/validate.mjs'], {
+    cwd: path.resolve('.'), encoding: 'utf8', env: { ...process.env, FACTORY_ROOT: root, FACTORY_BASE_REF: 'master' },
+  });
+  await write('data/canonical/fixture.jsonl', jsonl(ENTRIES));
+  const old = v1Batch();
+  await write('data/candidates/C000001/manifest.json', JSON.stringify(old.manifest));
+  await write('data/candidates/C000001/candidates.jsonl', old.candidatesText);
+  const { manifest, candidatesText, rows } = await batchOf();
+  await write('data/candidates/C000002/manifest.json', JSON.stringify(manifest));
+  await write('data/candidates/C000002/candidates.jsonl', candidatesText);
+  git('add', '-A'); git('commit', '-qm', 'stage1');
+
+  const { goDecision, pangDecision } = await lemmaFixture();
+  const decisions = [goDecision(), pangDecision()];
+  const artifacts = await artifactsFor(rows, decisions);
+  const decisionsText = jsonl(decisions);
+  const stripped = JSON.parse(artifacts.semanticDecisionsText);
+  stripped.decisions.forEach((row) => {
+    row.sense_reviews.forEach((review) => { delete review.scope_declaration; });
+    row.review_binding = authorSemanticReviewBinding(row, reviewedCandidateRecord(decisions.find((d) => d.source_candidate_id === row.source_candidate_id)));
+  });
+  const stage2 = async (semanticText, extra = {}) => {
+    const text = `${semanticText}\n`;
+    await write('data/candidates/C000002/manifest.json', JSON.stringify({ ...manifest, status: 'complete' }));
+    await write('data/reviews/C000002/decisions.jsonl', decisionsText);
+    await write('data/reviews/C000002/semantic-decisions.json', text);
+    await write('data/reviews/C000002/intake-handoff.json', `${artifacts.handoffText}\n`);
+    await write('data/reviews/C000002/manifest.json', JSON.stringify({
+      contract: REVIEW_MANIFEST_CONTRACT, batch_id: 'C000002', candidates_sha256: manifest.candidates_sha256, canonical_snapshot_digest: HEX,
+      decisions_sha256: sha256Hex(decisionsText), semantic_decisions_sha256: sha256Hex(text),
+      handoff_sha256: sha256Hex(`${artifacts.handoffText}\n`), attempt: 1, status: 'ready', history: [], ...extra,
+    }));
+  };
+
+  // In a PR the stale result is refused (new against the base).
+  git('checkout', '-q', '-b', 'pr');
+  await stage2(JSON.stringify(stripped));
+  const refused = run();
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /scope_declaration is required/);
+
+  // Once it is on master (merged after its CI ran), master stays valid and the batch is reported stale.
+  git('add', '-A'); git('commit', '-qm', 'stale sibling result');
+  git('checkout', '-q', 'master'); git('merge', '-q', '--ff-only', 'pr');
+  assert.equal(run().status, 0, run().stderr);
+  const report = {};
+  assert.deepEqual(await validateFactoryRepository({ root, mergedMaster: true, report }), []);
+  assert.deepEqual(report.staleContractReviews.map((entry) => entry.batch), ['C000002']);
+  assert.match(report.staleContractReviews[0].errors[0], /scope_declaration is required/);
+
+  // A changed review is strict again; the contract repair that adds the declaration is accepted.
+  git('checkout', '-q', '-b', 'repair');
+  const repairedText = `${artifacts.semanticDecisionsText}\n`;
+  await stage2(artifacts.semanticDecisionsText, {
+    semantic_decisions_sha256: sha256Hex(repairedText),
+    contract_repairs: [{ contract: 'scope_declaration', previous_semantic_decisions_sha256: sha256Hex(`${JSON.stringify(stripped)}\n`), semantic_decisions_sha256: sha256Hex(repairedText) }],
+  });
+  const repaired = run();
+  assert.equal(repaired.status, 0, repaired.stderr);
+});

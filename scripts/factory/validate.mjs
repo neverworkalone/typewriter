@@ -74,7 +74,14 @@ export async function loadCanonicalEntries(root) {
 // Validates every factory batch under data/candidates and data/reviews. `base` (manifests of
 // the merge-base with merged master) enables transition, immutability and deletion checks;
 // the CLI always supplies it and fails closed when the base cannot be resolved.
-export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries } = {}) {
+// A pending review that is byte-identical to merged master was authored under the contract of its
+// time. A later shared-contract change must not turn merged master invalid (a stale sibling PR can
+// still land after its CI ran, with no server-side merge gate), so such a review is tolerated and
+// reported in `report.staleContractReviews`; Stage 3 never admits it until a contract repair
+// re-binds it. A review that is new or changed against the base is validated strictly, which keeps
+// stale results out of every PR. `mergedMaster` marks the worker's view, where all content is merged.
+export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries, mergedMaster = false, report = {} } = {}) {
+  report.staleContractReviews = [];
   const errors = [];
   const candidateBatches = await subdirectories(path.join(root, 'data/candidates'));
   const reviewBatches = await subdirectories(path.join(root, 'data/reviews'));
@@ -161,11 +168,19 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
         }
       }
       if (typeof semanticDecisionsText === 'string' && typeof handoffText === 'string') {
-        errors.push(...validateReviewArtifacts({
-          batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText,
-          // Stage 3-admitted reviews predate the scope declaration; every pending review must carry it.
-          requireScopeDeclaration: manifest.status !== 'complete',
-        }).map((error) => `${batch}: ${error}`));
+        // Stage 3-admitted reviews predate the scope declaration; every pending review must carry it.
+        const artifacts = (requireScopeDeclaration) => validateReviewArtifacts({
+          batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration,
+        }).map((error) => `${batch}: ${error}`);
+        const pending = manifest.status !== 'complete';
+        const merged = mergedMaster || (base && JSON.stringify(base.review[batch]) === JSON.stringify(manifest) && base.semantic?.[batch] !== undefined
+          && JSON.stringify(JSON.parse(base.semantic[batch])) === JSON.stringify(JSON.parse(semanticDecisionsText)));
+        if (pending && merged) {
+          const lenient = artifacts(false);
+          errors.push(...lenient);
+          const strict = artifacts(true).filter((error) => !lenient.includes(error));
+          if (strict.length) report.staleContractReviews.push({ batch, errors: strict });
+        } else errors.push(...artifacts(pending));
       }
     }
     reviews.set(batch, manifest);

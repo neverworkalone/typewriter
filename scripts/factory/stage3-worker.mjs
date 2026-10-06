@@ -138,7 +138,11 @@ export function eligibleStage3Batches(snapshot, claimRefs = [], openPullRequests
   const claimed = new Set(claimRefs.map((value) => typeof value === 'string' ? value : value.ref).filter(Boolean));
   const open = openPullRequests.map((value) => value.pullRequest ?? value);
   const candidatesById = new Map(snapshot.candidates.map((entry) => [entry.batchId, entry]));
+  // A ready review authored under an older shared contract needs a contract repair (a systemic
+  // re-binding, never a rejection) before it can be admitted; the serial agent moves to the next one.
+  const stale = new Set(snapshot.staleContractBatches ?? []);
   return snapshot.reviews.flatMap((review) => {
+    if (stale.has(review.batchId)) return [];
     const candidate = candidatesById.get(review.batchId);
     if (!candidate || candidate.manifest.status !== 'complete' || review.manifest.status !== 'ready') return [];
     const attempt = review.manifest.attempt;

@@ -135,6 +135,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
     canonicalEntries.push(...parseCanonicalEntries(text, file));
   }
 
+  const report = {};
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-stage2-master-'));
   try {
     for (const [file, content] of sourceFiles) {
@@ -142,7 +143,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
       await mkdir(path.dirname(target), { recursive: true });
       await writeFile(target, content, 'utf8');
     }
-    const errors = await validateFactoryRepository({ root, canonicalEntries });
+    const errors = await validateFactoryRepository({ root, canonicalEntries, mergedMaster: true, report });
     if (errors.length) throw new Stage2WorkerError('merged master factory data failed validation:\n' + errors.join('\n'));
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -174,7 +175,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
       files: Object.fromEntries(paths), candidate: candidatesByBatch.get(batchId),
     });
   }
-  return { headSha, candidates, reviews, canonicalEntries, validated: true };
+  return { headSha, candidates, reviews, canonicalEntries, validated: true, staleContractBatches: report.staleContractReviews.map((entry) => entry.batch) };
 }
 
 function naturalBatchOrder(left, right) {
