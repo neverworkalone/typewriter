@@ -1,3 +1,4 @@
+import { historicalAdmissionContext } from './historical-canonical.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -394,6 +395,8 @@ export async function validateIssue221() {
     baseRecords,
     prospectiveRecords: currentCanonical.records,
     semanticAudit,
+    // Surface-form review and exception bindings are projected onto the same historical record set.
+    canonicalContext: historicalAdmissionContext(currentCanonical.records, semanticAudit),
     stageEvidence: productionStageEvidence({
       candidateSourceBytes: candidateReviewBytes,
       semanticSourceBytes,

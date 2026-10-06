@@ -404,6 +404,22 @@ test('historical surface-form views drop exception bindings of later factory adm
   assert.equal(manifest.exceptions.length, 4, 'the live manifest is not mutated');
 });
 
+test('every historical batch validator that runs shared admission uses the projected historical context', async () => {
+  const { readFile } = await import('node:fs/promises');
+  for (const file of ['scripts/batch/validate-issue-221.mjs']) {
+    assert.match(await readFile(file, 'utf8'), /canonicalContext: historicalAdmissionContext\(currentCanonical\.records, semanticAudit\)/u, `${file} must not apply live surface-form manifests to historical records`);
+  }
+  const { applyHistoricalSurfaceFormViews } = await import('../scripts/batch/historical-canonical.mjs');
+  const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
+  const { loadCanonicalBeforeFactoryAdmissions } = await import('../scripts/validate/semantic-audit.mjs');
+  const live = (await readCanonicalRecords()).records;
+  const historical = await loadCanonicalBeforeFactoryAdmissions(live);
+  const ids = new Set(historical.map((info) => (info.record ?? info).id));
+  const context = applyHistoricalSurfaceFormViews({ derived: {} }, historical);
+  assert.ok(context.derived.surfaceFormReviewManifest.dispositions.every((entry) => ids.has(entry.record_id)));
+  assert.ok(context.derived.surfaceFormExceptionManifest.exceptions.every((entry) => ids.has(entry.record_id)));
+});
+
 test('factory inventory mappings require digest-bound canonical creations', async () => {
   const { factoryInventoryMappings } = await import('../scripts/inventory/generate-target-inventory.mjs');
   const { sha256Json } = await import('../scripts/validate/semantic-audit.mjs');
