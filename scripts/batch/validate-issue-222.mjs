@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
+import { projectHistoricalSurfaceFormReview } from './historical-canonical.mjs';
+import { loadSurfaceFormReviewManifestSync } from '../inflection/surface-form-projection.mjs';
 import { assertCompleteRevisionChecksReused, createSharedAdmissionContext } from './shared-admission-context.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import {
@@ -30,7 +32,9 @@ import { validateCorpusCandidateReviewDispositions } from '../validate/corpus-ca
 import {
   productionReviewRows,
   productionStageEvidence,
+  projectDecisionSourceToCanonical,
 } from './validate-issue-211.mjs';
+import { loadCanonicalBeforeFactoryAdmissions, restoreImportRecordsBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -188,7 +192,7 @@ async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
   );
 }
 
-async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence = true } = {}) {
+async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence = true, liveRecords } = {}) {
   const batchDirectory = path.join(ROOT, 'data/batches');
   const candidateReviewNames = (await readdir(batchDirectory))
     .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-candidate-review\.json$/u.test(name))
@@ -405,7 +409,7 @@ async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCo
     assert.equal(semanticSource.candidate_records_sha256, sha256Json(semanticSource.candidate_records));
     const includedIds = new Set(semanticDecisionSource.selection.selected.map(({ candidate_record_id: id }) => id));
     const expectedImportRecords = semanticSource.candidate_records.filter(({ id }) => includedIds.has(id));
-    const importRecords = readJsonl(importBytes, `${candidateLabel} canonical import`);
+    const importRecords = await restoreImportRecordsBeforeFactoryAdmissions(readJsonl(importBytes, `${candidateLabel} canonical import`), liveRecords);
     assert.deepEqual(importRecords, expectedImportRecords, `${candidateLabel} canonical import contains only source-bound admissions`);
     assert.equal(importRecords.length, admittedRows.length);
     for (const record of importRecords) {
@@ -702,7 +706,11 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   });
   const includedIds = new Set(semanticDecisionSource.selection.selected.map(({ candidate_record_id: id }) => id));
   const expectedImportRecords = semanticSource.candidate_records.filter(({ id }) => includedIds.has(id));
-  const importRecords = readJsonl(importBytes, 'Issue #222 canonical import');
+  // Batch admissions are validated against the canonical as of their own time: later factory admissions
+  // may append senses to their records, so the live canonical is rewound through the bound ledger.
+  const liveCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const currentCanonical = { ...liveCanonical, records: await loadCanonicalBeforeFactoryAdmissions(liveCanonical.records) };
+  const importRecords = await restoreImportRecordsBeforeFactoryAdmissions(readJsonl(importBytes, 'Issue #222 canonical import'), liveCanonical.records);
   assert.deepEqual(importRecords, expectedImportRecords, 'canonical import contains only source-bound admitted candidates');
   assert.equal(importRecords.length, admittedRows.length);
 
@@ -790,12 +798,11 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   });
   const historicalIncludedIds = new Set(historicalSemanticDecisionSource.selection.selected.map(({ candidate_record_id: id }) => id));
   const expectedHistoricalImportRecords = historicalSemanticSource.candidate_records.filter(({ id }) => historicalIncludedIds.has(id));
-  const historicalImportRecords = readJsonl(historicalImportBytes, 'Issue #222 historical canonical import');
+  const historicalImportRecords = await restoreImportRecordsBeforeFactoryAdmissions(readJsonl(historicalImportBytes, 'Issue #222 historical canonical import'), liveCanonical.records);
   assert.deepEqual(historicalImportRecords, expectedHistoricalImportRecords, 'historical canonical import contains only source-bound admitted candidates');
   assert.equal(historicalImportRecords.length, 20);
 
-  const currentCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  const additionalCorpusBatches = await validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence });
+  const additionalCorpusBatches = await validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence, liveRecords: liveCanonical.records });
   const allCorpusImportRecords = [
     ...importRecords,
     ...additionalCorpusBatches.flatMap(({ importRecords: records }) => records),
@@ -822,7 +829,7 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   const historicalBaseRecords = currentCanonical.records.filter((recordInfo) => !historicalImportIds.has(recordOf(recordInfo).id));
   assert.equal(allIssue222BaseRecords.length + allImportRecords.length, currentCanonical.records.length);
 
-  const rootDecisionSource = await readSemanticDecisionSourceArtifact(ROOT_SEMANTIC_SOURCE_PATH);
+  const rootDecisionSource = projectDecisionSourceToCanonical(await readSemanticDecisionSourceArtifact(ROOT_SEMANTIC_SOURCE_PATH), currentCanonical.records);
   const currentDigest = canonicalRecordsSha256(currentCanonical.records);
   assert.equal(rootDecisionSource.source.canonical_records_sha256, currentDigest, 'complete canonical semantic source digest');
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
@@ -834,6 +841,8 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   const admissionContext = createSharedAdmissionContext(currentCanonical, semanticAudit, {
     canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
   });
+  // The reviewed surface-form collisions of later factory admissions do not belong to this historical view.
+  admissionContext.derived.surfaceFormReviewManifest = projectHistoricalSurfaceFormReview(loadSurfaceFormReviewManifestSync(), currentCanonical.records);
   const reviewRows = productionReviewRows(identities, semanticSource.candidate_records, semanticDecisionSource, {
     semanticReviewSourcePath: 'data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json',
     verificationPassId: semanticSource.provenance.verification_pass_id,

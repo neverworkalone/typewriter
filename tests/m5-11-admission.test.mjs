@@ -1,3 +1,4 @@
+import { readImportBytesBeforeFactoryAdmissions } from '../scripts/validate/historical-import.mjs';
 import { restorePreFactoryDecisionSource } from '../scripts/validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -93,12 +94,12 @@ async function createM511PromotionTransactionFixture() {
 
   await cp('data/batches/m5-11-base-canonical', currentCanonicalDirectory, { recursive: true });
   await cp('data/batches/m5-11-base-canonical', prospectiveCanonicalDirectory, { recursive: true });
-  const importBytes = await readFile('data/canonical/m5-11-expansion.jsonl');
+  const importBytes = await readImportBytesBeforeFactoryAdmissions('data/canonical/m5-11-expansion.jsonl');
   const currentSeed = JSON.parse(await readFile('data/inventory/m5-target-seed.json', 'utf8'));
   currentSeed.revision = 'm5-11';
   const m511BaseCanonical = await readCanonicalRecords('data/batches/m5-11-base-canonical');
   const m511BaseCanonicalIds = new Set(m511BaseCanonical.records.map(({ record }) => record.id));
-  const m511ImportRecords = (await readFile('data/canonical/m5-11-expansion.jsonl', 'utf8'))
+  const m511ImportRecords = importBytes.toString('utf8')
     .trim()
     .split('\n')
     .map((line) => JSON.parse(line));

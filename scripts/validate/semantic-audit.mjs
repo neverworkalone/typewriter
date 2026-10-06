@@ -2789,6 +2789,22 @@ export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSou
   return [...records.values()];
 }
 
+/**
+ * A batch import file holds the records of its own admission. Later factory admissions may append
+ * senses to them, so its source-bound comparison uses each file record's pre-factory original, but only
+ * where the file record is exactly the current canonical record (a divergent file stays divergent).
+ */
+export async function restoreImportRecordsBeforeFactoryAdmissions(importRecords, currentRecordInfos, decisionSource) {
+  const before = new Map((decisionSource
+    ? canonicalRecordsBeforeFactoryAdmissions(currentRecordInfos, decisionSource)
+    : await loadCanonicalBeforeFactoryAdmissions(currentRecordInfos)).map((info) => [recordOf(info).id, recordOf(info)]));
+  const current = new Map(currentRecordInfos.map((info) => [recordOf(info).id, recordOf(info)]));
+  return importRecords.map((record) => {
+    const stored = current.get(record.id);
+    return stored && before.has(record.id) && sha256Json(stored) === sha256Json(record) ? structuredClone(before.get(record.id)) : record;
+  });
+}
+
 export async function loadCanonicalBeforeFactoryAdmissions(recordInfos) {
   return canonicalRecordsBeforeFactoryAdmissions(recordInfos, await readSemanticDecisionSourceArtifact());
 }

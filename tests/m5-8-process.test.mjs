@@ -1,3 +1,4 @@
+import { loadCanonicalBeforeFactoryAdmissions } from '../scripts/validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -189,7 +190,7 @@ async function createStageFixture({
     const canonicalDirectory = path.join(directory, 'canonical');
     await mkdir(canonicalDirectory, { recursive: true });
     const baseCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-    const baselineRecords = baseCanonical.records.filter(isM58BaselineRecord);
+    const baselineRecords = (await loadCanonicalBeforeFactoryAdmissions(baseCanonical.records)).filter(isM58BaselineRecord);
     const approvedCount = included + corrected;
     const syntheticIds = Array.from({ length: approvedCount }, (_, index) => (
       `w${String(1000 + index).padStart(3, '0')}`

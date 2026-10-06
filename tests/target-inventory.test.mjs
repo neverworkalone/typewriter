@@ -381,6 +381,14 @@ test('factory admission preserves original promotion bindings and fails closed o
   rewritten.factory_admissions[0].sha256 = sha256Json(unsigned);
   assert.throws(() => check(rewritten, entry, changed), /rewrote the original promoted payload/);
   assert.throws(() => canonicalRecordsBeforeFactoryAdmissions([changed], rewritten), /rewrote an existing canonical payload/);
+
+  // A historical batch import file is compared as it was admitted, but only while the file record is
+  // still exactly the live canonical record; a file that diverges from canonical stays divergent.
+  const { restoreImportRecordsBeforeFactoryAdmissions } = await import('../scripts/validate/semantic-audit.mjs');
+  assert.deepEqual(await restoreImportRecordsBeforeFactoryAdmissions([current], [current], source), [original]);
+  assert.deepEqual(await restoreImportRecordsBeforeFactoryAdmissions([original], [current], source), [original], 'an already original file record is unchanged');
+  const edited = { ...current, lemma: '다른어' };
+  assert.deepEqual(await restoreImportRecordsBeforeFactoryAdmissions([edited], [current], source), [edited], 'a divergent file record is not rewound');
 });
 
 test('factory inventory mappings require digest-bound canonical creations', async () => {
