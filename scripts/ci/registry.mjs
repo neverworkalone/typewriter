@@ -14,7 +14,7 @@ function nodeCommand(args) {
   };
 }
 
-function pnpmCommand(script, args = []) {
+export function pnpmCommand(script, args = []) {
   return {
     executable: PNPM_EXECUTABLE,
     // pnpm forwards arguments after the script name as-is, and passes a literal `--` through to the script.

@@ -15,6 +15,7 @@ import {
   CI_LEVEL_CATEGORY_ORDER,
   CI_NORMAL_CATEGORY_ORDER,
   collectTestOwnership,
+  pnpmCommand,
 } from '../scripts/ci/registry.mjs';
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
@@ -323,4 +324,30 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
     readme,
     /!\[Deep CI\]\(https:\/\/github\.com\/neverworkalone\/typewriter\/actions\/workflows\/deep\.yml\/badge\.svg\)/u,
   );
+});
+
+// pnpm forwards a literal `--` to the script (npm consumed it), so assert against the
+// real package manager that a script receives exactly the intended arguments.
+test('pnpm script commands deliver exactly the intended arguments to the script', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-pnpm-args-'));
+  try {
+    await writeFile(path.join(directory, 'argv.mjs'), 'process.stdout.write(`\\nARGV=${JSON.stringify(process.argv.slice(2))}\\n`);\n');
+    await writeFile(path.join(directory, 'package.json'), JSON.stringify({
+      name: 'pnpm-args-probe',
+      private: true,
+      scripts: { probe: 'node argv.mjs' },
+    }));
+    const run = (script, args) => {
+      const { executable, args: commandArgs } = pnpmCommand(script, args);
+      const output = execFileSync(executable, commandArgs, { cwd: directory, encoding: 'utf8' });
+      return JSON.parse(/ARGV=(\[.*\])/u.exec(output)[1]);
+    };
+    assert.deepEqual(run('probe', []), []);
+    assert.deepEqual(run('probe', ['--staged=/tmp/a b.jsonl', '--semantic-audit=/tmp/c.json']), [
+      '--staged=/tmp/a b.jsonl',
+      '--semantic-audit=/tmp/c.json',
+    ]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
