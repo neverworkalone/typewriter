@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readdir, rename, readFile, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, readdir, rename, symlink, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -443,6 +443,32 @@ test('a publish killed mid-way is recovered to a verifiable pair on the next run
       await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
     }
     assert.deepEqual((await readdir(path.dirname(output))).filter((name) => name.endsWith('.publish-backup')), []);
+  }
+});
+
+test('full build rejects identical or aliased DB and manifest paths before touching anything', needsFts5, async () => {
+  const { input } = await makeCollection();
+  const { output, manifest } = await fullPaths();
+  await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const before = [await readFile(output), await readFile(manifest)];
+  const directory = path.dirname(output);
+  const alias = path.join(directory, 'alias.sqlite');
+  await symlink(output, alias);
+  const hard = path.join(directory, 'hard.json');
+  await link(output, hard);
+  for (const [dbPath, manifestPath] of [
+    [output, output],
+    [output, path.join(directory, '.', path.basename(output))],
+    [output, alias],
+    [output, hard],
+    [output, path.join(output + '.publish-backup', 'manifest')],
+  ]) {
+    await assert.rejects(
+      buildFullLiteratureIndex({ inputDirectory: input, outputPath: dbPath, manifestPath }),
+      /must be different files/u,
+    );
+    assert.deepEqual([await readFile(output), await readFile(manifest)], before);
+    assert.deepEqual((await readdir(directory)).filter((name) => name.startsWith('.literature') || name.endsWith('.publish-backup')), []);
   }
 });
 

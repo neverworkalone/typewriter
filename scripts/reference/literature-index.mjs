@@ -5,6 +5,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  realpath,
   rename,
   rm,
   stat,
@@ -745,6 +746,38 @@ export function summarizeLiteratureInventory(entries) {
   return { by_genre: byGenre, error_reasons: errorReasons };
 }
 
+async function realTarget(target) {
+  try {
+    return await realpath(target);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return path.join(await realpath(path.dirname(target)).catch(() => path.dirname(target)), path.basename(target));
+  }
+}
+
+/** DB and manifest must be different real files, and neither may sit in the publish backup. */
+async function assertDistinctPublishTargets(databaseTo, manifestTo) {
+  const [database, manifest] = [await realTarget(databaseTo), await realTarget(manifestTo)];
+  const backup = publishBackupDirectory(database);
+  if (
+    database === manifest
+    || isWithinDirectory(backup, manifest)
+    || isWithinDirectory(publishBackupDirectory(databaseTo), manifestTo)
+  ) {
+    throw new Error('SQLite output and manifest must be different files: ' + databaseTo + ' / ' + manifestTo);
+  }
+  for (const [first, second] of [[databaseTo, manifestTo], [manifestTo, databaseTo]]) {
+    try {
+      const [a, b] = [await stat(first), await stat(second)];
+      if (a.ino === b.ino && a.dev === b.dev) {
+        throw new Error('SQLite output and manifest must be different files (same inode): ' + databaseTo + ' / ' + manifestTo);
+      }
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+}
+
 function publishBackupDirectory(databaseTo) {
   return databaseTo + '.publish-backup';
 }
@@ -869,6 +902,7 @@ export async function buildFullLiteratureIndex({
   const absoluteManifest = path.resolve(manifestPath);
   assertOutputLocation(absoluteInput, absoluteOutput);
   assertOutputLocation(absoluteInput, absoluteManifest);
+  await assertDistinctPublishTargets(absoluteOutput, absoluteManifest);
   assertLiteratureFts5Support();
   await recoverLiteraturePublish({ databasePath: absoluteOutput });
   const paths = await listLiteratureSourcePaths(absoluteInput);
