@@ -744,10 +744,39 @@ export function summarizeLiteratureInventory(entries) {
   return { by_genre: byGenre, error_reasons: errorReasons };
 }
 
-async function writeJsonAtomically(targetPath, directory, value) {
-  const staged = path.join(directory, 'manifest.json');
-  await writeFile(staged, JSON.stringify(value, null, 2) + '\n');
-  await rename(staged, targetPath);
+/**
+ * Publish the verified DB + manifest pair. Previous files are parked inside the
+ * staging directory first; any failure restores them so the old pair stays
+ * mutually verifiable.
+ */
+async function publishLiteraturePair({ directory, databaseFrom, databaseTo, manifestValue, manifestTo, renameFile }) {
+  renameFile ??= rename;
+  const stagedManifest = path.join(directory, 'manifest.json');
+  await writeFile(stagedManifest, JSON.stringify(manifestValue, null, 2) + '\n');
+  const targets = [
+    { from: stagedManifest, to: manifestTo, backup: path.join(directory, 'previous-manifest') },
+    { from: databaseFrom, to: databaseTo, backup: path.join(directory, 'previous-database') },
+  ];
+  const parked = [];
+  const placed = [];
+  try {
+    for (const target of targets) {
+      try {
+        await renameFile(target.to, target.backup);
+        parked.push(target);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
+    for (const target of targets) {
+      await renameFile(target.from, target.to);
+      placed.push(target);
+    }
+  } catch (error) {
+    for (const target of placed) await rm(target.to, { force: true });
+    for (const target of parked) await rename(target.backup, target.to);
+    throw error;
+  }
 }
 
 /**
@@ -878,8 +907,14 @@ export async function buildFullLiteratureIndex({
       input_manifest_sha256: manifestSha256,
       logical_rows_sha256: logicalDigest,
     };
-    await writeJsonAtomically(absoluteManifest, temporaryDirectory, { ...summary, files: entries });
-    await rename(temporaryPath, absoluteOutput);
+    await publishLiteraturePair({
+      directory: temporaryDirectory,
+      databaseFrom: temporaryPath,
+      databaseTo: absoluteOutput,
+      manifestValue: { ...summary, files: entries },
+      manifestTo: absoluteManifest,
+      renameFile: hooks.renameFile,
+    });
     return {
       output_path: absoluteOutput,
       manifest_path: absoluteManifest,

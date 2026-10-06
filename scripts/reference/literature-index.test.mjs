@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rename, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -377,6 +377,30 @@ test('full build failure leaves the previous full index and manifest untouched',
   await assert.rejects(buildFullLiteratureIndex({ inputDirectory: empty, outputPath: output, manifestPath: manifest }), /refusing to build an empty/u);
   await assert.rejects(buildFullLiteratureIndex({ inputDirectory: input, outputPath: path.join(input, 'x.sqlite'), manifestPath: manifest }), /outside the TXT input/u);
   assert.deepEqual([await readFile(output), await readFile(manifest)], before);
+});
+
+test('failed publish of the DB/manifest pair keeps the previous pair verifiable', needsFts5, async () => {
+  const { input } = await makeCollection();
+  const { output, manifest } = await fullPaths();
+  await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const before = [await readFile(output), await readFile(manifest)];
+  await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+  for (const failAt of [1, 2, 3, 4]) {
+    let calls = 0;
+    await assert.rejects(buildFullLiteratureIndex({
+      inputDirectory: input, outputPath: output, manifestPath: manifest,
+      hooks: {
+        renameFile: async (from, to) => {
+          calls += 1;
+          if (calls === failAt) throw new Error('simulated rename failure ' + failAt);
+          return rename(from, to);
+        },
+      },
+    }), /simulated rename failure/u);
+    assert.deepEqual([await readFile(output), await readFile(manifest)], before);
+  }
+  await rm(path.join(input, 'poem/new.txt'));
+  assert.deepEqual((await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest })).problems, []);
 });
 
 test('full verification detects changed, removed, added and tampered sources', needsFts5, async () => {
