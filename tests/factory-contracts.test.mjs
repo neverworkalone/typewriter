@@ -20,7 +20,7 @@ import {
 import { partitionByWriterSupport, validateDecisionRow } from '../scripts/factory/handoff.mjs';
 import { buildCanonicalIndex, classifyAgainstCanonical, intakeCandidates, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { validateCandidateTransition, validateLinkedTransition, validateReviewTransition } from '../scripts/factory/transitions.mjs';
-import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
+import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { validateReviewArtifacts } from '../scripts/factory/artifacts.mjs';
 import { toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
@@ -400,6 +400,18 @@ test('registered validator fails closed on merged-batch mutation, deletion, held
   });
   assert.notEqual(unresolved.status, 0);
   assert.match(unresolved.stderr, /cannot resolve factory base/);
+});
+
+test('loadBaseManifests reads base manifests larger than the 1 MiB default exec buffer', async () => {
+  const f = await gitFixture();
+  const big = { ...f.batch.manifest, padding: 'x'.repeat(2 * 1024 * 1024) };
+  f.git('checkout', '-q', 'master');
+  await f.write('data/candidates/C000001/manifest.json', JSON.stringify(big));
+  f.git('add', '-A'); f.git('commit', '-qm', 'large manifest');
+  f.git('checkout', '-q', 'work');
+  f.git('merge', '-q', '--ff-only', 'master');
+  const base = loadBaseManifests('master', f.root);
+  assert.equal(base.candidate.C000001.padding.length, 2 * 1024 * 1024);
 });
 
 test('registered validator accepts a new Stage 1 batch and a complete Stage 2 transition', async () => {
