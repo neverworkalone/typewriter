@@ -295,28 +295,40 @@ test('12: recorded decisions replay deterministically without raw paragraphs; ta
 
 test('bounded batches record only resolving context decisions linked to retained lemma rows', async () => {
   const evidence = [
-    cand('가다', 'verb', [h('d1', '가는')]),
-    cand('갈다', 'verb', [h('d3', '갈')]),
+    cand('가다', 'verb', [h('d1', '가는'), h('d3', '갈'), h('d4', '갈'), h('d5', '갈')]),
   ];
   const providers = triple(FALLBACK);
   const first = await produce(evidence, providers);
-  const [entry] = queueOf(first);
-  const contextProposals = [proposal(entry, { outcome: 'context_confirmed', lemma: '갈다', pos: 'verb' })];
-  const contextSource = source({ 'd3#p1': { status: 'ok', text: '밭을 갈 수 있다.' } });
+  const ordered = [...queueOf(first)].sort((left, right) => left.observation_digest.localeCompare(right.observation_digest));
+  const [deferredEntry, retainedEntry, unknownEntry] = ordered;
+  const contextProposals = [
+    proposal(deferredEntry, { outcome: 'context_confirmed', lemma: '갈다', pos: 'verb' }),
+    proposal(retainedEntry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' }),
+    proposal(unknownEntry, { outcome: 'truth_unknown', reason_code: 'conflicting_readings' }),
+  ];
+  const contextSource = source({
+    [deferredEntry.evidence.ref]: { status: 'ok', text: '밭을 갈 수 있다.' },
+    [retainedEntry.evidence.ref]: { status: 'ok', text: '그는 갈 길을 찾았다.' },
+  });
   const bounded = await produce(evidence, providers, {
     maxCandidates: 1, contextProposals, contextSource, contextAgent: 'codex',
   });
   assert.deepEqual(bounded.rows.map((row) => row.input), ['가다']);
   assert.deepEqual(bounded.summary.deferredLemmas, ['갈다']);
-  assert.deepEqual(bounded.manifest.context_fallback.decisions, [], 'deferred context recovery is not claimed by this batch');
+  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002']);
+  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.outcome), ['context_confirmed', 'truth_unknown']);
+  assert.equal(bounded.rows[0].observations.find((observation) => observation.ensemble.resolution === 'context').ensemble.context_decision, 'D0001');
+  assert.equal(queueOf(bounded)[0].verification.decision_id, 'D0002');
   assert.deepEqual(validateCandidateBatch({ manifest: bounded.manifest, candidatesText: bounded.candidatesText }), []);
 
   const deferred = await produce(evidence, providers, {
     maxCandidates: 1, producedLemmas: new Set(['가다']), contextProposals, contextSource, contextAgent: 'codex',
   });
   assert.deepEqual(deferred.rows.map((row) => row.input), ['갈다']);
-  assert.equal(deferred.manifest.context_fallback.decisions.length, 1, 'the decision is recorded when its lemma is retained');
+  assert.deepEqual(deferred.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002']);
+  assert.equal(deferred.manifest.context_fallback.decisions[0].lemma, '갈다', 'the deferred decision is recorded when its lemma is selected');
   assert.equal(deferred.rows[0].observations[0].ensemble.context_decision, deferred.manifest.context_fallback.decisions[0].decision_id);
+  assert.equal(queueOf(deferred)[0].verification.decision_id, 'D0002');
   assert.deepEqual(validateCandidateBatch({ manifest: deferred.manifest, candidatesText: deferred.candidatesText }), []);
 });
 

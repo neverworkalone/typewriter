@@ -30,6 +30,7 @@ import {
   ContextFallbackError,
   RESOLVING_OUTCOMES,
   contextDecisionsSha256,
+  decisionSha256,
   fallbackBlockers,
   recordContextDecisions,
   replayContextDecisions,
@@ -592,9 +593,23 @@ function contextDecisionsForBatch(grouped, rows) {
   const queuedUnknown = new Set(grouped.unresolved
     .filter((entry) => entry.verification.state === 'truth_unknown')
     .map((entry) => entry.verification.decision_id));
-  return grouped.contextRecords.filter((decision) => RESOLVING_OUTCOMES.includes(decision.outcome)
+  const retainedRecords = grouped.contextRecords.filter((decision) => RESOLVING_OUTCOMES.includes(decision.outcome)
     ? retained.has(decision.decision_id)
     : queuedUnknown.has(decision.decision_id));
+  const remappedIds = new Map(retainedRecords.map((decision, index) => [
+    decision.decision_id,
+    `D${String(index + 1).padStart(4, '0')}`,
+  ]));
+  for (const row of rows) for (const observation of row.observations) {
+    if (observation.ensemble.context_decision) observation.ensemble.context_decision = remappedIds.get(observation.ensemble.context_decision);
+  }
+  for (const entry of grouped.unresolved) {
+    if (entry.verification.state === 'truth_unknown') entry.verification.decision_id = remappedIds.get(entry.verification.decision_id);
+  }
+  return retainedRecords.map((decision) => {
+    const remapped = { ...decision, decision_id: remappedIds.get(decision.decision_id) };
+    return { ...remapped, decision_sha256: decisionSha256(remapped) };
+  });
 }
 
 // Manifest blocks of an ensemble batch: the trace digest binds the three provider identities, every
@@ -722,11 +737,11 @@ export async function produceCandidateBatch({
   }
   const { selected, deferred, skippedProduced } = selectLemmas({ lemmas: grouped.lemmas, maxCandidates, producedLemmas });
   const rows = selected.map((lemma, index) => buildLemmaRow({ lemma, observations: grouped.lemmas.get(lemma), candidateId: candidateIdFor(batchId, index + 1), ensemble }));
+  const contextRecords = ensemble ? contextDecisionsForBatch(grouped, rows) : [];
   const candidatesText = serializeCandidates(rows);
   // Default [kiwi] omits the provider fields: byte-identical to the pre-provider manifest.
   const providerFields = ids.length === 1 && !ensemble ? {} : { analyzer_providers: ordered.map(providerDescriptor), resolution_policy: policy };
   const anchor = { analyzer_version: `kiwipiepy==${PINNED_ANALYZER.kiwipiepy_version}`, proposal_contract: REQUIRED_PROPOSAL_CONTRACT, ...providerFields };
-  const contextRecords = ensemble ? contextDecisionsForBatch(grouped, rows) : [];
   const ensembleFields = ensemble ? ensembleManifestFields({ grouped, rows, providers: providerFields.analyzer_providers, contextRecords }) : {};
   const manifest = {
     contract: LEMMA_CANDIDATE_MANIFEST_CONTRACT,
