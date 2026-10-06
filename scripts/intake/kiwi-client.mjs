@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { BOOTSTRAP_COMMAND, sharedPythonPath } from '../python/env.mjs';
+import { BOOTSTRAP_COMMAND, resolveManagedPython } from '../python/env.mjs';
 
 export const KIWI_SERVICE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'kiwi_service.py');
 export const KIWI_BATCH_SIZE = 200;
@@ -11,12 +11,14 @@ export const KIWI_BATCH_SIZE = 200;
 // Real local analyzer: one Python process per bounded batch, never per word.
 // Returns the same shape as kiwi_service.analyze_batch; an analyzer injected
 // into the pipeline must match it (tests use a synthetic one).
-export function createKiwiAnalyzer({ python = sharedPythonPath(), batchSize = KIWI_BATCH_SIZE } = {}) {
+export function createKiwiAnalyzer({ python, batchSize = KIWI_BATCH_SIZE } = {}) {
+  // No injected `python`: use the managed shared environment, verified (contract marker + pins) on every run.
   return async function analyze(requests) {
+    const interpreter = python ?? resolveManagedPython();
     const results = [];
     let metadata = null;
     for (let offset = 0; offset < requests.length; offset += batchSize) {
-      const response = await runBatch(python, requests.slice(offset, offset + batchSize));
+      const response = await runBatch(interpreter, requests.slice(offset, offset + batchSize));
       metadata ??= response.metadata;
       results.push(...response.results);
     }

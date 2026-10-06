@@ -44,3 +44,32 @@ test('missing, wrong-version and stale environments fail closed with the bootstr
   fakePython(dir, { kiwipiepy: '0.24.0' });
   assert.match(checkPython(python).join(), /kiwipiepy_model is not installed/);
 });
+
+// Default (non-injected) Kiwi/factory execution must go through the managed resolver, not just a path.
+test('default Kiwi and factory Python resolution rejects a stale shared venv and accepts a valid one', async () => {
+  const { createKiwiAnalyzer } = await import('../scripts/intake/kiwi-client.mjs');
+  const { PROVIDER_REGISTRY } = await import('../scripts/factory/produce-candidates.mjs');
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'tw-python-default-'));
+  mkdirSync(path.join(dir, 'bin'), { recursive: true });
+  const python = path.join(dir, 'bin', 'python');
+  const packages = JSON.stringify({ kiwipiepy: '0.24.0', kiwipiepy_model: '0.24.0' });
+  writeFileSync(python, `#!/bin/sh\nif [ "$1" = "-c" ]; then echo '${packages}'; else cat >/dev/null; echo '{"metadata":{"m":1},"results":[]}'; fi\n`);
+  chmodSync(python, 0o755);
+  const saved = { venv: process.env.TYPEWRITER_PYTHON_VENV, python: process.env.TYPEWRITER_PYTHON };
+  process.env.TYPEWRITER_PYTHON_VENV = dir;
+  delete process.env.TYPEWRITER_PYTHON;
+  try {
+    const request = [{ id: 'a', text: '푸르다' }];
+    writeFileSync(path.join(dir, CONTRACT_MARKER), 'stale\n');
+    await assert.rejects(() => createKiwiAnalyzer()(request), /scripts\/python\/bootstrap\.mjs/);
+    await assert.rejects(() => PROVIDER_REGISTRY.kiwi({ python: undefined }).analyze(request), /scripts\/python\/bootstrap\.mjs/);
+
+    writeFileSync(path.join(dir, CONTRACT_MARKER), `${contractHash()}\n`);
+    assert.deepEqual((await createKiwiAnalyzer()(request)).metadata, { m: 1 });
+    assert.deepEqual((await PROVIDER_REGISTRY.kiwi({ python: undefined }).analyze(request)).metadata, { m: 1 });
+  } finally {
+    for (const [key, name] of [['venv', 'TYPEWRITER_PYTHON_VENV'], ['python', 'TYPEWRITER_PYTHON']]) {
+      if (saved[key] === undefined) delete process.env[name]; else process.env[name] = saved[key];
+    }
+  }
+});
