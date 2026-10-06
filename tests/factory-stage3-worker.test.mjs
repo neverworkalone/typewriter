@@ -65,7 +65,7 @@ test('Stage 3 preflight runs one normal CI command with its nested fast checkpoi
   const commands = [];
   runStage3PreflightCi('/repo', (file, args, options) => commands.push({ file, args, options }));
   assert.deepEqual(commands, [{
-    file: 'npm', args: ['run', 'ci:normal'], options: { cwd: '/repo', stdio: 'inherit' },
+    file: 'pnpm', args: ['run', 'ci:normal'], options: { cwd: '/repo', stdio: 'inherit' },
   }]);
 });
 

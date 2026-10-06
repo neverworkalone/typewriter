@@ -56,8 +56,8 @@ function sourceRevision() {
   }).trim();
 }
 
-function runNpm(args, environment) {
-  const executable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+function runPnpm(args, environment) {
+  const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   const result = spawnSync(executable, args, {
     cwd: PROJECT_ROOT,
     env: environment,
@@ -65,7 +65,7 @@ function runNpm(args, environment) {
   });
   if (result.error) throw result.error;
   if (result.status !== 0) {
-    throw new Error(`npm ${args.join(' ')} failed with exit status ${result.status ?? 'unknown'}.`);
+    throw new Error(`pnpm ${args.join(' ')} failed with exit status ${result.status ?? 'unknown'}.`);
   }
 }
 
@@ -137,12 +137,12 @@ function main(args = process.argv.slice(2)) {
     }) => {
       console.log(`Release source: ${revision}`);
       console.log('Running the normal CI gate on the clean checkout.');
-      runNpm(['run', 'ci:normal'], cleanBuildEnvironment());
+      runPnpm(['run', 'ci:normal'], cleanBuildEnvironment());
       requireCleanWorktree();
 
       console.log('Building and validating the production package twice.');
-      runNpm(['run', 'package'], cleanBuildEnvironment(candidateDirectory));
-      runNpm(['run', 'package'], cleanBuildEnvironment(repeatedDirectory));
+      runPnpm(['run', 'package'], cleanBuildEnvironment(candidateDirectory));
+      runPnpm(['run', 'package'], cleanBuildEnvironment(repeatedDirectory));
       if (sha256File(candidatePackagePath) !== sha256File(repeatedPackagePath)) {
         throw new Error('Two production package builds from the same clean checkout produced different ZIP bytes.');
       }
@@ -156,7 +156,7 @@ function main(args = process.argv.slice(2)) {
       }
 
       console.log('Checking the exact ZIP and unpacked package in Chrome for Testing.');
-      runNpm([
+      runPnpm([
         'run',
         'test:mv3:package',
         '--',

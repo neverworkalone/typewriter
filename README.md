@@ -77,31 +77,40 @@ See the [editorial model](docs/editorial-model.md), [lexical quality pipeline](d
 
 ## Development
 
-Requirements: Node.js 22.13 or newer and npm. From a clean clone:
+Requirements: Node.js 22.13 or newer and pnpm 10.34.6 (pinned in
+`package.json#packageManager`; activate it with `corepack enable` or
+`npm install -g pnpm@10.34.6`). Use pnpm only: `pnpm-lock.yaml` is the sole
+lockfile, and `package-lock.json` must not be regenerated. From a clean clone:
 
-    npm ci --ignore-scripts --no-audit --no-fund
-    npm test
-    npm run build
-    TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package
+    pnpm install --frozen-lockfile --ignore-scripts
+    pnpm test
+    ppnpm run build
+    TYPEWRITER_ZIP_DIR=/tmp/typewriter-package ppnpm run package
+
+For every newly created Git worktree, run one command; pnpm reuses the
+machine-wide content-addressed store and only links a worktree-local
+`node_modules`:
+
+    pnpm install --frozen-lockfile --prefer-offline
 
 The default test command runs the normal CI gate, including repository
 validation, regression and unit tests, product builds, and product output
-contract checks. It is equivalent to npm run ci:normal. The build command creates
+contract checks. It is equivalent to `ppnpm run ci:normal`. The build command creates
 extension files in dist/, and the package command creates and validates an
 extension ZIP. For the clean-checkout release candidate flow, install Chrome for
-Testing and run `npm run validate:release`; see [Build and reproducibility](docs/build.md).
+Testing and run `pnpm run validate:release`; see [Build and reproducibility](docs/build.md).
 
 To build the separate GitHub Pages web candidate locally, run
-`npm run build:web`. It writes `dist-web/` for the repository base path
+`pnpm run build:web`. It writes `dist-web/` for the repository base path
 `/typewriter/` and uses the same deterministic SQLite builder and browser runtime
 as the extension. The output includes the product license texts and third-party
 notices linked from the web product. It contains the current canonical corpus
 and remains subject to the data redistribution hold described above.
 
 The optional Chromium runtime check is for debugging web-page or runtime issues;
-it is not part of `npm test` or CI. After building both products, install
-Chromium once with `npx playwright install chromium`, then run
-`npm run test:web:integration`.
+it is not part of `pnpm test` or CI. After building both products, install
+Chromium once with `pnpm exec playwright install chromium`, then run
+`pnpm run test:web:integration`.
 
 Build and package commands are useful for local engineering checks, but the
 resulting files contain the current held dictionary corpus. Do not publish,

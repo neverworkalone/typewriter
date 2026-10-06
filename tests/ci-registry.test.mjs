@@ -64,7 +64,7 @@ test('normal batch CI owns the M9 corpus candidate-review gate and regressions',
 
   assert.ok(CI_NORMAL_CATEGORY_ORDER.includes('batch'));
   assert.ok(commands.some(({ executable, args }) => (
-    executable === 'npm' && args.includes('validate:corpus-candidate-review')
+    executable === 'pnpm' && args.includes('validate:corpus-candidate-review')
   )));
   assert.ok(commands.some(({ executable, args }) => (
     executable === process.execPath
@@ -187,15 +187,15 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
 test('CI changed-path gate skips only documentation-only PRs', async (t) => {
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   const block = workflow.split('      - name: Classify changed files\n')[1]
-    ?.split('      - name: Set up Node.js\n')[0];
-  assert.ok(block, 'workflow must classify PR changes before Node setup');
+    ?.split('      - name: Set up pnpm\n')[0];
+  assert.ok(block, 'workflow must classify PR changes before pnpm and Node setup');
   const script = block.split('        run: |\n')[1]
     ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
   assert.equal(
     (workflow.match(/if: steps\.changes\.outputs\.run_normal == 'true'/gu) ?? []).length,
-    3,
-    'Node setup, dependencies and the full normal run must all use the same classifier result',
+    4,
+    'pnpm and Node setup, dependencies and the full normal run must all use the same classifier result',
   );
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
@@ -287,16 +287,16 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /pull_request:/u);
   assert.doesNotMatch(workflow, /^\s+push:/mu, 'normal CI runs on PRs, not on master pushes');
   assert.match(workflow, /name: Normal validation \(fast checkpoint \+ continuation\)/u);
-  assert.match(workflow, /run: npm run ci:normal/u);
-  assert.equal((workflow.match(/run: npm run ci:normal/gu) ?? []).length, 1);
+  assert.match(workflow, /run: pnpm run ci:normal/u);
+  assert.equal((workflow.match(/run: pnpm run ci:normal/gu) ?? []).length, 1);
   assert.match(workflow, /runs-on: ubuntu-24\.04/u);
   assert.match(workflow, /actions\/checkout@v7/u);
   assert.match(workflow, /actions\/setup-node@v7/u);
   assert.match(workflow, /node-version: 22\.13\.x/u);
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
-  assert.doesNotMatch(workflow, /npm run ci:fast/u);
-  assert.doesNotMatch(workflow, /npm run ci:all/u);
+  assert.doesNotMatch(workflow, /pnpm run ci:fast/u);
+  assert.doesNotMatch(workflow, /pnpm run ci:all/u);
 
   assert.match(deepWorkflow, /^name: Deep CI$/mu);
   assert.match(deepWorkflow, /schedule:\n\s+- cron: '0 22 \* \* 0'/u);
@@ -304,8 +304,8 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.doesNotMatch(deepWorkflow, /^\s+pull_request:/mu);
   assert.doesNotMatch(deepWorkflow, /^\s+push:/mu);
   assert.match(deepWorkflow, /name: Deep validation/u);
-  assert.match(deepWorkflow, /run: npm run ci:all/u);
-  assert.equal((deepWorkflow.match(/run: npm run ci:all/gu) ?? []).length, 1);
+  assert.match(deepWorkflow, /run: pnpm run ci:all/u);
+  assert.equal((deepWorkflow.match(/run: pnpm run ci:all/gu) ?? []).length, 1);
   assert.match(deepWorkflow, /runs-on: ubuntu-24\.04/u);
   assert.match(deepWorkflow, /actions\/checkout@v7/u);
   assert.match(deepWorkflow, /actions\/setup-node@v7/u);

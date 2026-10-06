@@ -16,10 +16,10 @@ node scripts/validate/semantic-audit.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
 node --test tests/lexical-quality.test.mjs
-npm run ci:fast
-npm run ci:normal
-npm run ci:all
-npm run benchmark:canonical -- --sizes=500000,1000000 --sqlite-scale=500000,1000000 --fixed-level-evidence=config/ci-level-evidence.json
+pnpm run ci:fast
+pnpm run ci:normal
+pnpm run ci:all
+pnpm run benchmark:canonical -- --sizes=500000,1000000 --sqlite-scale=500000,1000000 --fixed-level-evidence=config/ci-level-evidence.json
 ```
 
 The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
@@ -92,7 +92,7 @@ same temporary database to schema, fidelity, query verification, search
 regressions, and the product extension build. The product build copies that
 exact current-revision artifact instead of rebuilding the canonical directory.
 The two-independent-build reproducibility check is intentionally moved to
-the deep portion of `npm run ci:all`, which is the manual/scheduled
+the deep portion of `pnpm run ci:all`, which is the manual/scheduled
 deep-validation path. The full M5-12A admission/preflight replay is also deep
 validation; normal CI retains the shared global audit and promoted-canonical
 regressions without replaying admission-time product/package work.

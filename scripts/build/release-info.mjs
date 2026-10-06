@@ -32,7 +32,7 @@ export function createPackageReleaseInfo({
     readFileSync(path.join(projectRoot, 'package.json'), 'utf8'),
   );
   const databaseBytes = readFileSync(path.join(packageDirectory, 'dictionary.sqlite'));
-  const lockfileBytes = readFileSync(path.join(projectRoot, 'package-lock.json'));
+  const lockfileBytes = readFileSync(path.join(projectRoot, 'pnpm-lock.yaml'));
 
   return {
     format_version: 1,
@@ -60,7 +60,7 @@ export function createPackageReleaseInfo({
     },
     build_inputs: {
       manifest_sha256: sha256(manifestBytes),
-      package_lock_sha256: sha256(lockfileBytes),
+      lockfile_sha256: sha256(lockfileBytes),
     },
   };
 }
