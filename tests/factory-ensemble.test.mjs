@@ -14,7 +14,7 @@ import {
   ENSEMBLE_PROVIDER_ORDER,
   verifyEnsembleTraces,
 } from '../scripts/factory/ensemble-resolver.mjs';
-import { createCorpusContextSource } from '../scripts/factory/corpus-context-source.mjs';
+import { CONTEXT_PARAGRAPH_LOOKUP_SQL, createCorpusContextSource } from '../scripts/factory/corpus-context-source.mjs';
 import { createMecabProvider, pinnedMetadata as mecabMetadata } from '../scripts/factory/mecab-provider.mjs';
 import { POLICY_ALIASES, parseArguments, runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { Stage1Error, compareResolutionPolicies, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
@@ -685,13 +685,17 @@ test('review fix: local trace verification accepts correct queue/context records
 
 // A real (temporary, synthetic) SQLite index with the corpus index schema subset the source reads.
 let indexCounter = 0;
-function syntheticIndex(dir, { manifest = HEX, rows = 'b'.repeat(64), text = '그는 천천히 갈 길을 정했다.', skipMetadata = false } = {}) {
+function syntheticIndex(dir, { manifest = HEX, rows = 'b'.repeat(64), text = '그는 천천히 갈 길을 정했다.', skipMetadata = false, duplicateDocumentId = false } = {}) {
   const file = path.join(dir, `index-${indexCounter += 1}.sqlite`);
   const db = new DatabaseSync(file);
-  db.exec('CREATE TABLE index_metadata (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE documents (document_rowid INTEGER PRIMARY KEY, document_id TEXT); CREATE TABLE paragraphs (paragraph_rowid INTEGER PRIMARY KEY, document_rowid INTEGER, paragraph_id TEXT, form TEXT);');
+  db.exec('CREATE TABLE index_metadata (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE documents (document_rowid INTEGER PRIMARY KEY, document_id TEXT); CREATE TABLE paragraphs (paragraph_rowid INTEGER PRIMARY KEY, document_rowid INTEGER, paragraph_id TEXT, form TEXT); CREATE INDEX idx_paragraphs_document_id ON paragraphs(document_rowid, paragraph_id);');
   if (!skipMetadata) db.prepare('INSERT INTO index_metadata(key, value) VALUES (?, ?), (?, ?)').run('input_manifest_sha256', manifest, 'logical_rows_sha256', rows);
   db.prepare('INSERT INTO documents VALUES (1, ?)').run('d3');
   db.prepare('INSERT INTO paragraphs VALUES (1, 1, ?, ?)').run('p1', text);
+  if (duplicateDocumentId) {
+    db.prepare('INSERT INTO documents VALUES (2, ?)').run('d3');
+    db.prepare('INSERT INTO paragraphs VALUES (2, 2, ?, ?)').run('p1', text);
+  }
   db.close();
   return file;
 }
@@ -700,10 +704,20 @@ test('review fix: the corpus context source verifies the real index metadata aga
   const dir = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-index-'));
   const snapshot = `corpus:${HEX}:${'b'.repeat(64)}`;
   const permission = async () => {};
-  const good = createCorpusContextSource({ databasePath: syntheticIndex(dir), permission, expectedSnapshot: snapshot });
+  const goodIndexPath = syntheticIndex(dir);
+  const planDatabase = new DatabaseSync(goodIndexPath, { readOnly: true });
+  const plan = planDatabase.prepare(`EXPLAIN QUERY PLAN ${CONTEXT_PARAGRAPH_LOOKUP_SQL}`).all('d3', 'p1');
+  planDatabase.close();
+  assert.ok(plan.some(({ detail }) => /SEARCH p USING (?:COVERING )?INDEX idx_paragraphs_document_id/u.test(detail)), JSON.stringify(plan));
+  assert.ok(!plan.some(({ detail }) => /SCAN p/u.test(detail)), JSON.stringify(plan));
+
+  const good = createCorpusContextSource({ databasePath: goodIndexPath, permission, expectedSnapshot: snapshot });
   assert.deepEqual(await good.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' }), { status: 'ok', text: '그는 천천히 갈 길을 정했다.' });
   assert.deepEqual(await good.lookup({ kind: 'corpus-paragraph', ref: 'd3#p9' }), { status: 'absent' });
   good.close();
+  const ambiguous = createCorpusContextSource({ databasePath: syntheticIndex(dir, { duplicateDocumentId: true }), permission, expectedSnapshot: snapshot });
+  assert.deepEqual(await ambiguous.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' }), { status: 'absent' }, 'duplicate document ids remain fail-closed');
+  ambiguous.close();
   // Same document/paragraph ids and even the same text, but a different index snapshot: refused.
   const rebuilt = createCorpusContextSource({ databasePath: syntheticIndex(dir, { rows: 'c'.repeat(64) }), permission, expectedSnapshot: snapshot });
   assert.deepEqual(await rebuilt.lookup({ kind: 'corpus-paragraph', ref: 'd3#p1' }), { status: 'snapshot_mismatch' });
