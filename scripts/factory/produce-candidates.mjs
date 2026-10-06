@@ -47,7 +47,7 @@ const DEFAULT_BASE_REF = 'origin/master';
 export const POLICY_ALIASES = Object.freeze({ ensemble: ENSEMBLE_POLICY, v1: RESOLUTION_POLICY, [ENSEMBLE_POLICY]: ENSEMBLE_POLICY, [RESOLUTION_POLICY]: RESOLUTION_POLICY });
 
 export function parseArguments(argv) {
-  const options = { maxCandidates: DEFAULT_MAX_CANDIDATES, baseRef: DEFAULT_BASE_REF, dryRun: false, python: process.env.TYPEWRITER_PYTHON || 'python3', providers: null, attemptLog: null,
+  const options = { maxCandidates: DEFAULT_MAX_CANDIDATES, baseRef: DEFAULT_BASE_REF, dryRun: false, python: undefined, providers: null, attemptLog: null,
     policy: ENSEMBLE_POLICY, ensembleTrace: null, contextProposals: null, contextReplay: null, contextReviewPack: null, compareKiwiOnly: false };
   const value = (index, flag) => {
     const next = argv[index + 1];

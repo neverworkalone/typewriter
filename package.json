@@ -147,6 +147,8 @@
     "ci:deep": "node scripts/ci/run-category.mjs deep",
     "test": "pnpm run ci:normal",
     "test:khaiii:docker": "node --test tests/manual/khaiii-docker.test.mjs",
+    "python:bootstrap": "node scripts/python/bootstrap.mjs",
+    "python:check": "node scripts/python/run.mjs --print",
     "intake:kiwi:test": "python3 scripts/intake/test_kiwi_service.py",
     "intake:validator:integration": "node scripts/intake/integration/validator-b16.manual.mjs",
     "test:unit": "vitest run",
