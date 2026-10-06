@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { createCanonicalContext } from '../validate/canonical-context.mjs';
-import { loadSurfaceFormReviewManifestSync } from '../inflection/surface-form-projection.mjs';
+import { loadSurfaceFormExceptionManifestSync, loadSurfaceFormReviewManifestSync } from '../inflection/surface-form-projection.mjs';
 
 const recordOf = (info) => info.record ?? info;
 
@@ -22,11 +22,26 @@ export function projectHistoricalSurfaceFormReview(manifest, records) {
   return result;
 }
 
+/** The exception bindings of a later factory admission must not target records this view rewinds past. */
+export function projectHistoricalSurfaceFormExceptions(manifest, records) {
+  const senseIdsByRecord = new Map(records.map((info) => [recordOf(info).id, new Set(recordOf(info).senses.map((sense) => sense.id))]));
+  const result = structuredClone(manifest);
+  result.exceptions = result.exceptions.filter((entry) => senseIdsByRecord.get(entry.record_id)?.has(entry.sense_id));
+  return result;
+}
+
+/** Both surface-form inputs of one historical record set, so neither can reference a later admission. */
+export function applyHistoricalSurfaceFormViews(context, records) {
+  context.derived.surfaceFormReviewManifest = projectHistoricalSurfaceFormReview(loadSurfaceFormReviewManifestSync(), records);
+  context.derived.surfaceFormExceptionManifest = projectHistoricalSurfaceFormExceptions(loadSurfaceFormExceptionManifestSync(), records);
+  return context;
+}
+
 export function historicalAdmissionContext(records, semanticAudit) {
   const context = createCanonicalContext({ records }, {
     canonicalDirectory: path.resolve('data/batches'), source: 'retained-historical-canonical',
   });
   context.semanticAudit = semanticAudit;
-  context.derived.surfaceFormReviewManifest = projectHistoricalSurfaceFormReview(loadSurfaceFormReviewManifestSync(), records);
+  applyHistoricalSurfaceFormViews(context, records);
   return context;
 }

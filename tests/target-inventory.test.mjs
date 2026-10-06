@@ -391,6 +391,19 @@ test('factory admission preserves original promotion bindings and fails closed o
   assert.deepEqual(await restoreImportRecordsBeforeFactoryAdmissions([edited], [current], source), [edited], 'a divergent file record is not rewound');
 });
 
+test('historical surface-form views drop exception bindings of later factory admissions', async () => {
+  const { projectHistoricalSurfaceFormExceptions } = await import('../scripts/batch/historical-canonical.mjs');
+  const records = [{ id: 'w1', senses: [{ id: 'w1-s1' }] }, { record: { id: 'w2', senses: [{ id: 'w2-s1' }] } }];
+  const manifest = { exceptions: [
+    { record_id: 'w1', sense_id: 'w1-s1', class_id: 'a' },
+    { record_id: 'w1', sense_id: 'w1-s2', class_id: 'a' },
+    { record_id: 'w2', sense_id: 'w2-s1', class_id: 'a' },
+    { record_id: 'w3', sense_id: 'w3-s1', class_id: 'a' },
+  ] };
+  assert.deepEqual(projectHistoricalSurfaceFormExceptions(manifest, records).exceptions.map((entry) => entry.sense_id), ['w1-s1', 'w2-s1']);
+  assert.equal(manifest.exceptions.length, 4, 'the live manifest is not mutated');
+});
+
 test('factory inventory mappings require digest-bound canonical creations', async () => {
   const { factoryInventoryMappings } = await import('../scripts/inventory/generate-target-inventory.mjs');
   const { sha256Json } = await import('../scripts/validate/semantic-audit.mjs');

@@ -8,8 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 import { prepareCurrentRevisionDatabases } from '../ci/current-revision-database.mjs';
-import { projectHistoricalSurfaceFormReview } from './historical-canonical.mjs';
-import { loadSurfaceFormReviewManifestSync } from '../inflection/surface-form-projection.mjs';
+import { applyHistoricalSurfaceFormViews } from './historical-canonical.mjs';
 import { assertCompleteRevisionChecksReused, createSharedAdmissionContext } from './shared-admission-context.mjs';
 import { readLogicalDatabaseSnapshot } from '../build/query.mjs';
 import {
@@ -841,8 +840,8 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   const admissionContext = createSharedAdmissionContext(currentCanonical, semanticAudit, {
     canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
   });
-  // The reviewed surface-form collisions of later factory admissions do not belong to this historical view.
-  admissionContext.derived.surfaceFormReviewManifest = projectHistoricalSurfaceFormReview(loadSurfaceFormReviewManifestSync(), currentCanonical.records);
+  // Reviewed collisions and exception bindings of later factory admissions do not belong to this historical view.
+  applyHistoricalSurfaceFormViews(admissionContext, currentCanonical.records);
   const reviewRows = productionReviewRows(identities, semanticSource.candidate_records, semanticDecisionSource, {
     semanticReviewSourcePath: 'data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json',
     verificationPassId: semanticSource.provenance.verification_pass_id,
