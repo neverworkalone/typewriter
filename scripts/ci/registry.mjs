@@ -149,6 +149,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/intake-production-e2e.test.mjs', 'Test production hand-off to canonical, SQLite and direct search (both adapters)'),
       testCheck('tests/production-entrypoints.test.mjs', 'Test declared canonical-writer entrypoints and the mandatory intake hand-off policy'),
       testCheck('tests/intake-kiwi-service.test.mjs', 'Test shared Kiwi batch service'),
+      testCheck('tests/python-env.test.mjs', 'Test shared Typewriter Python venv contract, launcher and staleness checks (synthetic interpreter)'),
       commandCheck('Validate factory candidate/review batch contracts', ['scripts/factory/validate.mjs'], []),
       commandCheck('Require factory results to be current with the shared factory contract on master', ['scripts/factory/freshness.mjs'], []),
       testCheck('tests/factory-freshness.test.mjs', 'Test factory contract freshness gate and contract-repair transition'),

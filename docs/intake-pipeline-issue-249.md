@@ -148,7 +148,7 @@ consistency only and cannot re-authenticate the analysis.
 ### Real-route smoke (not CI)
 
 ```bash
-TYPEWRITER_PYTHON=data/reference/venv-kiwi024/bin/python \
+node scripts/python/bootstrap.mjs   # once per machine / after requirements change
 node scripts/intake/smoke-production-route.mjs \
   --batch-id=issue-223-m9-e-corpus-batch-15-20261003 \
   --analysis-directory=data/reference/production/issue-247/corpus-batch-15

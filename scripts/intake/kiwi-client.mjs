@@ -1,6 +1,9 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { BOOTSTRAP_COMMAND, sharedPythonPath } from '../python/env.mjs';
 
 export const KIWI_SERVICE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'kiwi_service.py');
 export const KIWI_BATCH_SIZE = 200;
@@ -8,7 +11,7 @@ export const KIWI_BATCH_SIZE = 200;
 // Real local analyzer: one Python process per bounded batch, never per word.
 // Returns the same shape as kiwi_service.analyze_batch; an analyzer injected
 // into the pipeline must match it (tests use a synthetic one).
-export function createKiwiAnalyzer({ python = process.env.TYPEWRITER_PYTHON || 'python3', batchSize = KIWI_BATCH_SIZE } = {}) {
+export function createKiwiAnalyzer({ python = sharedPythonPath(), batchSize = KIWI_BATCH_SIZE } = {}) {
   return async function analyze(requests) {
     const results = [];
     let metadata = null;
@@ -23,6 +26,10 @@ export function createKiwiAnalyzer({ python = process.env.TYPEWRITER_PYTHON || '
 
 function runBatch(python, requests) {
   return new Promise((resolve, reject) => {
+    if (path.isAbsolute(python) && !existsSync(python)) {
+      reject(new Error(`Typewriter Python environment not found at ${python}; bootstrap it with: ${BOOTSTRAP_COMMAND}`));
+      return;
+    }
     const child = spawn(python, [KIWI_SERVICE_PATH], { stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
