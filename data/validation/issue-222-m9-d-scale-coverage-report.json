@@ -14,40 +14,40 @@
     "searchable_record_count": 7500
   },
   "current": {
-    "canonical_revision": "66798167a3b7050758746d35aa14ca4d810eb9257b8daf11394b0972f80f3d27",
-    "canonical_records_sha256": "885770c9658e2ccd9f8ca10686757fc9775a26df152e87d3d14882e50d0bf569",
-    "canonical_record_count": 12216,
-    "records_added_after_issue_222_checkpoint": 4695,
-    "directly_searchable_record_count": 12216,
-    "exact_search_key_count": 12473,
+    "canonical_revision": "7a361756e63acd68bd0678ed5d5c172a2a619252f03370ddca1217c0310c0c63",
+    "canonical_records_sha256": "a9b24588e5d2a020ab92c962ad539f166f5675de0723a0abda112077e5a452f9",
+    "canonical_record_count": 12312,
+    "records_added_after_issue_222_checkpoint": 4791,
+    "directly_searchable_record_count": 12312,
+    "exact_search_key_count": 12569,
     "non_searchable_record_count": 0,
     "record_type_counts": {
-      "entry": 11062,
+      "entry": 11158,
       "expression": 1154
     },
     "role_counts": {
       "reference-only": 42,
-      "start": 12174
+      "start": 12270
     },
     "sense_pos_counts": {
-      "adjective": 530,
-      "adverb": 12,
+      "adjective": 546,
+      "adverb": 13,
       "expression": 1176,
-      "noun": 9188,
-      "verb": 1580
+      "noun": 9216,
+      "verb": 1669
     },
-    "sense_count": 12486,
+    "sense_count": 12620,
     "relation_count": 487,
-    "canonical_search_form_count": 12473,
-    "relation_empty_searchable_record_count": 11880,
+    "canonical_search_form_count": 12569,
+    "relation_empty_searchable_record_count": 11976,
     "exact_search_coverage": {
-      "expected_lemma_count": 12216,
-      "covered_lemma_count": 12216,
+      "expected_lemma_count": 12312,
+      "covered_lemma_count": 12312,
       "non_searchable_record_count": 0,
       "non_searchable_records": [],
-      "distinct_search_form_count": 12473,
-      "expected_form_owner_key_count": 12473,
-      "covered_form_owner_key_count": 12473,
+      "distinct_search_form_count": 12569,
+      "expected_form_owner_key_count": 12569,
+      "covered_form_owner_key_count": 12569,
       "missing_form_owner_key_count": 0,
       "unexpected_form_owner_key_count": 0,
       "cross_record_collision_key_count": 0
@@ -297,7 +297,7 @@
     "recovered_in_issue_222_count": 20,
     "potentially_recoverable_before_count": 527,
     "potentially_recoverable_after_count": 507,
-    "recovery_ceiling": 12723,
+    "recovery_ceiling": 12819,
     "remaining_count": 522,
     "remaining_counts_by_disposition": [
       {
@@ -439,14 +439,14 @@
     "command": "npm run ci:normal",
     "check_name": "Validate and test Typewriter",
     "status_source": "external-exact-head-pr-check",
-    "canonical_sha256": "885770c9658e2ccd9f8ca10686757fc9775a26df152e87d3d14882e50d0bf569"
+    "canonical_sha256": "a9b24588e5d2a020ab92c962ad539f166f5675de0723a0abda112077e5a452f9"
   },
   "runtime_package_impact": {
     "status": "dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured",
     "baseline_dictionary_record_count": 5105,
-    "current_dictionary_record_count": 12216,
-    "dictionary_record_delta": 7111,
-    "dictionary_record_growth_rate": 1.3929480901077376,
+    "current_dictionary_record_count": 12312,
+    "dictionary_record_delta": 7207,
+    "dictionary_record_growth_rate": 1.4117531831537709,
     "dictionary_package_bytes_measured": false,
     "runtime_contract_changed": false,
     "rationale": "Issue #222 and later checkpointed work add canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately.",
