@@ -1,0 +1,5 @@
+# Typewriter Python tooling contract (issue #336).
+# The shared venv (default ~/.cache/typewriter/venv) is a cache; this file is the source of truth.
+# After editing, rerun: node scripts/python/bootstrap.mjs
+kiwipiepy==0.24.0
+kiwipiepy_model==0.24.0

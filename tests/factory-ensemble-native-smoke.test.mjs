@@ -9,6 +9,7 @@ import { CATEGORIES, ENSEMBLE_POLICY } from '../scripts/factory/ensemble-resolve
 import { createKhaiiiProvider, defaultNativeRoot } from '../scripts/factory/khaiii-provider.mjs';
 import { createMecabProvider, defaultMecabPython } from '../scripts/factory/mecab-provider.mjs';
 import { produceCandidateBatch } from '../scripts/factory/stage1.mjs';
+import { defaultVenvDir, venvPython } from '../scripts/python/env.mjs';
 import { HEX, cand, hit } from './support/khaiii-fixtures.mjs';
 
 // REAL three-native-Provider smoke (issue #285): the pinned Kiwi, Khaiii v0.4 native release and
@@ -16,7 +17,7 @@ import { HEX, cand, hit } from './support/khaiii-fixtures.mjs';
 // runtime is missing — never replaced by a mock, and never claimed as evidence then. It proves the
 // native providers are genuinely invoked and the batch validates; it does NOT claim analyzer
 // agreement is correct (accuracy is `not_established`).
-const kiwiPython = process.env.TYPEWRITER_PYTHON || (existsSync('data/reference/venv-kiwi024/bin/python') ? path.resolve('data/reference/venv-kiwi024/bin/python') : null);
+const kiwiPython = process.env.TYPEWRITER_PYTHON || (existsSync(venvPython(defaultVenvDir())) ? venvPython(defaultVenvDir()) : null);
 const khaiiiRoot = process.env.TYPEWRITER_KHAIII_NATIVE_ROOT || defaultNativeRoot();
 const mecabPython = process.env.TYPEWRITER_MECAB_PYTHON || defaultMecabPython();
 const missing = [
