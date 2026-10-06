@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  benchmarkCanonicalValidation,
   createSyntheticBenchmarkRecord,
   runBenchmarkCli,
 } from '../scripts/benchmark/canonical-validation.mjs';
@@ -713,4 +714,11 @@ test('release benchmark CLI prints diagnostics and fails closed for incomplete s
     assert.deepEqual(exitCodes, [1]);
     assert.equal(benchmarkWasCalled, false);
   });
+});
+
+test('synthetic benchmark decision source passes the shared semantic audit against the current live authority', async () => {
+  const report = await benchmarkCanonicalValidation({ sizes: [1000], sqliteScales: [], releasePerformance: false });
+  assert.equal(report.results.length, 1);
+  assert.equal(report.results[0].failure_stage, null);
+  assert.equal(report.results[0].error, null);
 });
