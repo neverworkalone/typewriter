@@ -99,11 +99,20 @@ function validateContractRepair(before, after, evidence) {
 export function validateReviewTransition(before, after, evidence) {
   if (before === null || before === undefined) {
     if (after?.status !== 'ready') return [`new review manifest must start as ready, got ${after?.status}`];
+    if (after.contract_repairs !== undefined) return ['a new review cannot carry contract_repairs; a repair records re-binding a merged ready review'];
     return after.attempt === 1 && after.history.length === 0 ? [] : ['first review must be attempt 1 with empty history'];
   }
   const errors = [];
   const key = `${before.status} → ${after.status}`;
   if (before.history.some((entry, index) => !same(entry, after.history[index]))) errors.push('attempt history may not be rewritten');
+  // The repair chain is provenance of merged content: only a repair appends to it, no other
+  // transition may drop, rewrite or invent it. A rework authors new decisions, which supersede the
+  // repaired source of the rejected attempt (its repair stays auditable in Git), so it starts clean.
+  if (key === 'rejected → ready') {
+    if (after.contract_repairs !== undefined) errors.push('a rework authors new decisions and must not carry contract_repairs');
+  } else if (key !== 'ready → ready' && !same(before.contract_repairs, after.contract_repairs)) {
+    errors.push('contract_repairs is provenance of merged content and must be preserved exactly');
+  }
   switch (key) {
     case 'ready → ready':
       return [...errors, ...validateContractRepair(before, after, evidence)];

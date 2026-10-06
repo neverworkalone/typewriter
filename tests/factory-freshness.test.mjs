@@ -132,4 +132,19 @@ test('a ready review is re-bound in place only by adding the required contract f
   const rebound = (text) => ({ ...base, semantic_decisions_sha256: sha256Hex(text), contract_repairs: [{ contract: 'scope_declaration', previous_semantic_decisions_sha256: base.semantic_decisions_sha256, semantic_decisions_sha256: sha256Hex(text) }] });
   has(validateReviewTransition(base, rebound(changed), { semanticBefore: previous, semanticAfter: changed }), 'no other authored semantic decision may change');
   assert.deepEqual(validateReviewTransition(base, rebound(declared(['가']).replace('b3', 'b4')), { semanticBefore: previous, semanticAfter: declared(['가']).replace('b3', 'b4') }), []);
+
+  // The repair chain is provenance: it cannot be invented, dropped or rewritten by any other transition.
+  const chain = repaired.contract_repairs;
+  has(validateReviewTransition(null, { ...repaired, attempt: 1 }), 'cannot carry contract_repairs');
+  const done = { ...repaired, status: 'complete', admission: { contract: 'lexical-factory-admission-v1' } };
+  assert.deepEqual(validateReviewTransition(repaired, done), []);
+  const { contract_repairs: dropped, ...withoutChain } = done;
+  has(validateReviewTransition(repaired, withoutChain), 'must be preserved exactly');
+  has(validateReviewTransition(repaired, { ...done, contract_repairs: [{ ...chain[0], previous_semantic_decisions_sha256: HEX('forged') }] }), 'must be preserved exactly');
+  const rejected = { ...repaired, status: 'rejected', rejected_pr: 5, history: [{ attempt: 1, rejected_pr: 5 }] };
+  assert.deepEqual(validateReviewTransition(repaired, rejected), []);
+  has(validateReviewTransition(repaired, { ...rejected, contract_repairs: undefined }), 'must be preserved exactly');
+  const rework = { ...rejected, status: 'ready', attempt: 2, rejected_pr: undefined, decisions_sha256: HEX('d2'), semantic_decisions_sha256: HEX('s2'), contract_repairs: undefined };
+  assert.deepEqual(validateReviewTransition(rejected, rework), []);
+  has(validateReviewTransition(rejected, { ...rework, contract_repairs: chain }), 'must not carry contract_repairs');
 });
