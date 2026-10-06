@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, readdir, rename, stat, symlink, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -11,15 +11,19 @@ import {
   analyzeLiteratureBytes,
   assertLiteratureFts5Support,
   assertLiteraturePermission,
+  buildFullLiteratureIndex,
   buildLiteratureIndex,
   decodeLiteratureText,
   inventoryLiterature,
   literatureManifestDigest,
+  recoverLiteraturePublish,
   reconstructLiteratureText,
   reconstructWorkFromDatabase,
   searchLiteratureIndex,
   selectLiteraturePilotSample,
   splitLiteratureUnits,
+  summarizeLiteratureInventory,
+  verifyFullLiteratureIndex,
   verifyLiteratureIndex,
 } from './literature-index.mjs';
 
@@ -29,7 +33,11 @@ try {
 } catch (error) {
   fts5Error = error;
 }
-// Builds need SQLite FTS5 trigram; some CI Node builds ship SQLite without it.
+// Builds need SQLite FTS5 trigram; some Node builds (e.g. 22.13) ship SQLite without it.
+// The dedicated CI step sets TYPEWRITER_REQUIRE_FTS5 so a missing FTS5 fails instead of skipping.
+if (fts5Error && process.env.TYPEWRITER_REQUIRE_FTS5 === '1') {
+  throw new Error('TYPEWRITER_REQUIRE_FTS5 is set but FTS5 is unavailable: ' + fts5Error.message);
+}
 const needsFts5 = { skip: fts5Error ? fts5Error.message : false };
 
 const directories = [];
@@ -273,4 +281,283 @@ test('CLI refuses a missing manifest and prints usage', async () => {
   assert.notEqual(missing.status, 0);
   assert.match(missing.stderr, /cannot read pilot manifest/u);
   assert.match(spawnSync(process.execPath, [script, '--help'], { encoding: 'utf8' }).stdout, /Usage/u);
+});
+
+const BAD_FILES = {
+  'poem/7_작가-빈-7.txt': Buffer.alloc(0),
+  'novel/7_작가-보조-7.txt': Buffer.from('가\u{F0000}'),
+  'essay/7_작가-대체-7.txt': Buffer.from('가�나'),
+  'poem/8_작가-사설-8.txt': Buffer.from('가'),
+  'poem/8_작가-끝사설-9.txt': Buffer.from('가'),
+  'essay/8_작가-널-8.txt': Buffer.from('가\u0000'),
+};
+
+async function fullPaths() {
+  const directory = await makeDirectory();
+  return { output: path.join(directory, 'full.sqlite'), manifest: path.join(directory, 'full.manifest.json') };
+}
+
+test('full build inventories every TXT, excludes errors from the DB and keeps them in the manifest', needsFts5, async () => {
+  const { input, paths } = await makeCollection({
+    ...BAD_FILES,
+    'poem/9_작가-엘에프-9.txt': Buffer.from('가\n나\n\n다'),
+    'poem/9_작가-시코드-9.txt': Buffer.from([0xb0, 0xa1, 0x0d, 0x0a, 0xb3, 0xaa, 0x0d, 0x0a]),
+    'novel/9_작가-씨알-9.txt': Buffer.from('가\r나\r\n다\n라'),
+    'poem/9_작가-비정규-9.txt': Buffer.from('가나'.normalize('NFD') + '\r\n'),
+    'essay/9_작가-끝없음-9.txt': Buffer.from('끝 줄 없음'),
+  });
+  const { output, manifest } = await fullPaths();
+  const built = await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const total = paths.length;
+  assert.equal(built.inventory_file_count, total);
+  assert.equal(built.excluded_file_count, Object.keys(BAD_FILES).length);
+  assert.equal(built.included_work_count, total - Object.keys(BAD_FILES).length);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  assert.equal(saved.files.length, total);
+  assert.deepEqual(
+    saved.files.filter((f) => f.status === 'error').map((f) => f.relative_path).sort(),
+    Object.keys(BAD_FILES).sort(),
+  );
+  assert(saved.files.every((f) => f.source_sha256 && (f.status !== 'error' || f.error)));
+  const reasons = summarizeLiteratureInventory(saved.files).error_reasons;
+  assert.equal(Object.values(reasons).reduce((a, b) => a + b, 0), Object.keys(BAD_FILES).length);
+  const database = new DatabaseSync(output, { readOnly: true });
+  const stored = database.prepare('SELECT relative_path FROM source_files').all().map((r) => r.relative_path);
+  assert.equal(stored.length, built.included_work_count);
+  assert(Object.keys(BAD_FILES).every((name) => !stored.includes(name)));
+  assert.equal(reconstructWorkFromDatabase(database, 'novel/9_작가-씨알-9.txt'), '가\r나\r\n다\n라');
+  assert.equal(reconstructWorkFromDatabase(database, 'poem/9_작가-비정규-9.txt'), '가나'.normalize('NFD') + '\r\n');
+  assert.equal(database.prepare('SELECT value FROM index_metadata WHERE key = ?').get('build_kind').value, 'full');
+  database.close();
+  const verified = await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest });
+  assert.deepEqual(verified.problems, []);
+  assert.equal(verified.reconstructed_exactly, built.included_work_count);
+  assert.equal(verified.excluded_confirmed_absent, built.excluded_file_count);
+});
+
+test('full build digests are independent of enumeration order and repeat exactly', needsFts5, async () => {
+  const { input } = await makeCollection(BAD_FILES);
+  const first = await fullPaths();
+  const second = await fullPaths();
+  const a = await buildFullLiteratureIndex({ inputDirectory: input, outputPath: first.output, manifestPath: first.manifest });
+  // Same bytes written in a different creation order give the same digests.
+  const other = await makeDirectory();
+  for (const genre of ['essay', 'novel', 'poem']) {
+    await mkdir(path.join(other, genre));
+    for (const name of (await readdir(path.join(input, genre))).reverse()) {
+      await writeFile(path.join(other, genre, name), await readFile(path.join(input, genre, name)));
+    }
+  }
+  const b = await buildFullLiteratureIndex({ inputDirectory: other, outputPath: second.output, manifestPath: second.manifest });
+  assert.equal(b.logical_rows_sha256, a.logical_rows_sha256);
+  assert.equal(b.input_manifest_sha256, a.input_manifest_sha256);
+  assert.equal(literatureManifestDigest(JSON.parse(await readFile(first.manifest, 'utf8')).files.reverse()), a.input_manifest_sha256);
+});
+
+test('full build failure leaves the previous full index and manifest untouched', needsFts5, async () => {
+  const { input } = await makeCollection();
+  const { output, manifest } = await fullPaths();
+  await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const before = [await readFile(output), await readFile(manifest)];
+  await assert.rejects(buildFullLiteratureIndex({
+    inputDirectory: input, outputPath: output, manifestPath: manifest,
+    hooks: { afterRead: async (relativePath) => { if (relativePath.startsWith('novel/')) throw new Error('simulated crash'); } },
+  }), /simulated crash/u);
+  // A source changing while the build runs is detected before replacement.
+  await assert.rejects(buildFullLiteratureIndex({
+    inputDirectory: input, outputPath: output, manifestPath: manifest,
+    hooks: { afterRead: async (relativePath) => { if (relativePath.startsWith('poem/')) await writeFile(path.join(input, 'essay/3_작가-제목 하나-3.txt'), '바뀜\n'); } },
+  }), /source changed during build/u);
+  await writeFile(path.join(input, 'essay/3_작가-제목 하나-3.txt'), ESSAY);
+  await assert.rejects(buildFullLiteratureIndex({
+    inputDirectory: input, outputPath: output, manifestPath: manifest,
+    hooks: { afterRead: async (relativePath) => { if (relativePath.startsWith('poem/')) await writeFile(path.join(input, 'poem/late.txt'), '늦음\r\n'); } },
+  }), /source set changed/u);
+  await rm(path.join(input, 'poem/late.txt'));
+  assert.deepEqual([await readFile(output), await readFile(manifest)], before);
+  assert.deepEqual((await readdir(path.dirname(output))).filter((name) => name.startsWith('.literature')), []);
+  const empty = await makeDirectory();
+  await mkdir(path.join(empty, 'poem'));
+  await writeFile(path.join(empty, 'poem/1_작가-빈-1.txt'), '');
+  await assert.rejects(buildFullLiteratureIndex({ inputDirectory: empty, outputPath: output, manifestPath: manifest }), /refusing to build an empty/u);
+  await assert.rejects(buildFullLiteratureIndex({ inputDirectory: input, outputPath: path.join(input, 'x.sqlite'), manifestPath: manifest }), /outside the TXT input/u);
+  assert.deepEqual([await readFile(output), await readFile(manifest)], before);
+});
+
+test('failed publish of the DB/manifest pair keeps the previous pair verifiable', needsFts5, async () => {
+  const { input } = await makeCollection();
+  const { output, manifest } = await fullPaths();
+  await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const before = [await readFile(output), await readFile(manifest)];
+  await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+  for (const failAt of [1, 2, 3, 4]) {
+    let calls = 0;
+    await assert.rejects(buildFullLiteratureIndex({
+      inputDirectory: input, outputPath: output, manifestPath: manifest,
+      hooks: {
+        renameFile: async (from, to) => {
+          calls += 1;
+          if (calls === failAt) throw new Error('simulated rename failure ' + failAt);
+          return rename(from, to);
+        },
+      },
+    }), /simulated rename failure/u);
+    assert.deepEqual([await readFile(output), await readFile(manifest)], before);
+  }
+  await rm(path.join(input, 'poem/new.txt'));
+  assert.deepEqual((await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest })).problems, []);
+});
+
+test('a publish killed mid-way is recovered to a verifiable pair on the next run', needsFts5, async () => {
+  const { input } = await makeCollection();
+  const { output, manifest } = await fullPaths();
+  await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const before = [await readFile(output), await readFile(manifest)];
+  await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+  const moduleUrl = new URL('./literature-index.mjs', import.meta.url).href;
+  for (const [step, after] of [[1, false], [2, false], [3, false], [4, false], [4, true]]) {
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
+      import { rename } from 'node:fs/promises';
+      import { buildFullLiteratureIndex } from ${JSON.stringify(moduleUrl)};
+      let calls = 0;
+      await buildFullLiteratureIndex({
+        inputDirectory: ${JSON.stringify(input)}, outputPath: ${JSON.stringify(output)}, manifestPath: ${JSON.stringify(manifest)},
+        hooks: { renameFile: async (from, to) => {
+          calls += 1;
+          if (calls === ${step} && !${after}) process.exit(42);
+          await rename(from, to);
+          if (calls === ${step} && ${after}) process.exit(42);
+        } },
+      });
+    `], { encoding: 'utf8' });
+    assert.equal(child.status, 42, child.stderr);
+    const outcome = await recoverLiteraturePublish({ databasePath: output });
+    assert.equal(outcome, step === 4 && after ? 'kept' : step === 1 ? 'kept' : 'restored', 'step ' + step);
+    if (step === 4 && after) {
+      // The fully published new pair is kept and is mutually bound; restore the old sources/pair.
+      assert.notDeepEqual(await readFile(manifest), before[1]);
+      await rm(path.join(input, 'poem/new.txt'));
+      assert.equal((await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest })).ok, false);
+      await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+      await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+    } else {
+      assert.deepEqual([await readFile(output), await readFile(manifest)], before, 'step ' + step);
+      await rm(path.join(input, 'poem/new.txt'));
+      assert.deepEqual((await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest })).problems, [], 'step ' + step);
+      await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+    }
+    assert.deepEqual((await readdir(path.dirname(output))).filter((name) => name.endsWith('.publish-backup')), []);
+  }
+});
+
+test('full build rejects identical or aliased DB and manifest paths before touching anything', needsFts5, async () => {
+  const { input } = await makeCollection();
+  const { output, manifest } = await fullPaths();
+  await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const before = [await readFile(output), await readFile(manifest)];
+  const directory = path.dirname(output);
+  const alias = path.join(directory, 'alias.sqlite');
+  await symlink(output, alias);
+  const hard = path.join(directory, 'hard.json');
+  await link(output, hard);
+  const realDirectory = path.join(directory, 'real');
+  await mkdir(realDirectory);
+  await symlink(realDirectory, path.join(directory, 'via'));
+  for (const [dbPath, manifestPath] of [
+    [path.join(directory, 'via/not-yet/deeper/index.sqlite'), path.join(realDirectory, 'not-yet/deeper/index.sqlite')],
+    [path.join(directory, 'via/a/b/index.sqlite'), path.join(realDirectory, 'a/b/index.sqlite')],
+    [output, output],
+    [output, path.join(directory, '.', path.basename(output))],
+    [output, alias],
+    [output, hard],
+    [output, path.join(output + '.publish-backup', 'manifest')],
+  ]) {
+    await assert.rejects(
+      buildFullLiteratureIndex({ inputDirectory: input, outputPath: dbPath, manifestPath }),
+      /must be different files/u,
+    );
+    assert.deepEqual([await readFile(output), await readFile(manifest)], before);
+    assert.deepEqual((await readdir(directory)).filter((name) => name.startsWith('.literature') || name.endsWith('.publish-backup')), []);
+    assert.deepEqual(await readdir(realDirectory), []);
+  }
+});
+
+test('full build rejects a not-yet-existing case alias of the manifest path', async () => {
+  const { input } = await makeCollection();
+  const directory = await makeDirectory();
+  const target = path.join(directory, 'fresh/index.sqlite');
+  const aliased = path.join(directory, 'fresh/INDEX.SQLITE');
+  // Emulates a case-insensitive filesystem so the probe path runs on any runner.
+  const caseInsensitiveStat = (candidate) => stat(candidate.replace(/INDEX\.SQLITE$/u, 'index.sqlite'));
+  await assert.rejects(
+    buildFullLiteratureIndex({
+      inputDirectory: input, outputPath: target, manifestPath: aliased,
+      hooks: { fileSystem: { stat: caseInsensitiveStat } },
+    }),
+    /must be different files \(alias of one file\)/u,
+  );
+  assert.deepEqual(await readdir(path.join(directory, 'fresh')), []);
+});
+
+test('full verification detects changed, removed, added and tampered sources', needsFts5, async () => {
+  const { input, paths } = await makeCollection(BAD_FILES);
+  const { output, manifest } = await fullPaths();
+  await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
+  const verify = () => verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest });
+  assert.equal((await verify()).ok, true);
+  await writeFile(path.join(input, paths[0]), POEM + '추가\r\n');
+  assert.match((await verify()).problems.join('|'), /source bytes changed/u);
+  await writeFile(path.join(input, paths[0]), POEM);
+  await writeFile(path.join(input, 'poem/new.txt'), '새 글\r\n');
+  assert.match((await verify()).problems.join('|'), /present on disk but not in manifest/u);
+  await rm(path.join(input, 'poem/new.txt'));
+  await writeFile(path.join(input, 'poem/7_작가-빈-7.txt'), '이제 내용\r\n');
+  assert.match((await verify()).problems.join('|'), /source bytes changed/u);
+  await writeFile(path.join(input, 'poem/7_작가-빈-7.txt'), '');
+  await rm(path.join(input, paths[1]));
+  assert.match((await verify()).problems.join('|'), /missing on disk/u);
+  await writeFile(path.join(input, paths[1]), Buffer.concat([BOM, Buffer.from(NOVEL)]));
+  assert.equal((await verify()).ok, true);
+  // Tampering with the faithful layer or the manifest binding is caught.
+  const tampered = new DatabaseSync(output);
+  tampered.exec("UPDATE text_units SET text = '변조' WHERE file_id = 1 AND ordinal = 0");
+  tampered.close();
+  const result = await verify();
+  assert.equal(result.ok, false);
+  assert.match(result.problems.join('|'), /reconstruct|logical row digest/u);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  saved.input_manifest_sha256 = 'f'.repeat(64);
+  await writeFile(manifest, JSON.stringify(saved));
+  assert.match((await verify()).problems.join('|'), /manifest digest does not match/u);
+});
+
+test('search returns bounded neighbouring-line context with source traceability', needsFts5, async () => {
+  const { input, paths } = await makeCollection();
+  const output = path.join(await makeDirectory(), 'lit.sqlite');
+  await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
+  const { results } = searchLiteratureIndex({ databasePath: output, query: '둘째 문단', context: 2 });
+  assert.equal(results.length, 1);
+  const [hit] = results;
+  assert.deepEqual([hit.genre, hit.relative_path, hit.unit_ordinal, hit.block_ordinal, hit.eol], ['novel', 'novel/2_작가-소설하나-2.txt', 3, 2, '\r\n']);
+  assert.equal(hit.title, '소설하나');
+  assert.equal(hit.metadata_origin, 'filename (unverified)');
+  assert.deepEqual(hit.context.map((u) => u.ordinal), [1, 2, 3, 4]);
+  assert.deepEqual(hit.context.map((u) => u.is_hit), [false, false, true, false]);
+  assert.equal(hit.context.map((u) => u.text + u.eol).join(''), NOVEL.split('\r\n').slice(1).join('\r\n'));
+  // File boundaries are never crossed; context 0 is the hit alone.
+  const first = searchLiteratureIndex({ databasePath: output, query: '가나다', context: 3 }).results[0];
+  assert.deepEqual(first.context.map((u) => u.ordinal), [0, 1, 2, 3]);
+  assert.deepEqual(searchLiteratureIndex({ databasePath: output, query: '가나다', context: 0 }).results[0].context.map((u) => u.ordinal), [0]);
+  assert(searchLiteratureIndex({ databasePath: output, query: '가' }).results.every((r) => r.context.length >= 1));
+  for (const context of [-1, 4, 1.5]) {
+    assert.throws(() => searchLiteratureIndex({ databasePath: output, query: '가', context }), /context/u);
+  }
+});
+
+test('full CLI commands print usage and refuse a missing manifest', async () => {
+  const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'build-literature-index.mjs');
+  assert.match(spawnSync(process.execPath, [script, '--help'], { encoding: 'utf8' }).stdout, /full-build/u);
+  const missing = spawnSync(process.execPath, [script, 'full-verify', '--manifest', '/nonexistent/m.json'], { encoding: 'utf8' });
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stderr, /cannot read full manifest/u);
 });

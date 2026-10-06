@@ -136,6 +136,8 @@
     "reference:literature:select": "node scripts/reference/build-literature-index.mjs select",
     "reference:literature:build": "node scripts/reference/build-literature-index.mjs build",
     "reference:literature:verify": "node scripts/reference/build-literature-index.mjs verify",
+    "reference:literature:full-build": "node scripts/reference/build-literature-index.mjs full-build",
+    "reference:literature:full-verify": "node scripts/reference/build-literature-index.mjs full-verify",
     "reference:literature:search": "node scripts/reference/search-literature-index.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
