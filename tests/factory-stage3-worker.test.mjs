@@ -116,6 +116,16 @@ test('eligibility excludes claimed batches and open admission or rejection statu
   assert.equal(eligibleStage3Batches(snapshot, [], [{ head: { ref: 'claude/stage3-status/C000001-a2' } }]).length, 0);
 });
 
+test('a ready review authored under an older shared contract is skipped, not rejected, and the next one is taken', () => {
+  const snapshot = {
+    validated: true,
+    staleContractBatches: ['C000001'],
+    candidates: ['C000001', 'C000002'].map((batchId) => ({ batchId, manifest: { status: 'complete' } })),
+    reviews: ['C000001', 'C000002'].map((batchId) => ({ batchId, manifest: { status: 'ready', attempt: 1 } })),
+  };
+  assert.deepEqual(eligibleStage3Batches(snapshot).map((entry) => entry.batchId), ['C000002']);
+});
+
 test('a batch claim conflict does not fall through to a different ready review', async () => {
   const events = [];
   const snapshot = {

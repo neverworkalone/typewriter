@@ -74,7 +74,14 @@ export async function loadCanonicalEntries(root) {
 // Validates every factory batch under data/candidates and data/reviews. `base` (manifests of
 // the merge-base with merged master) enables transition, immutability and deletion checks;
 // the CLI always supplies it and fails closed when the base cannot be resolved.
-export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries } = {}) {
+// A pending review that is byte-identical to merged master was authored under the contract of its
+// time. A later shared-contract change must not turn merged master invalid (a stale sibling PR can
+// still land after its CI ran, with no server-side merge gate), so such a review is tolerated and
+// reported in `report.staleContractReviews`; Stage 3 never admits it until a contract repair
+// re-binds it. A review that is new or changed against the base is validated strictly, which keeps
+// stale results out of every PR. `mergedMaster` marks the worker's view, where all content is merged.
+export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries, mergedMaster = false, report = {} } = {}) {
+  report.staleContractReviews = [];
   const errors = [];
   const candidateBatches = await subdirectories(path.join(root, 'data/candidates'));
   const reviewBatches = await subdirectories(path.join(root, 'data/reviews'));
@@ -119,6 +126,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     }
   }
   const reviews = new Map();
+  const semanticTexts = new Map();
   const reviewArtifacts = new Map();
   // The generated-surface projection is only built when a decision needs a canonical proof.
   let canonicalForSupport;
@@ -160,15 +168,24 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
         }
       }
       if (typeof semanticDecisionsText === 'string' && typeof handoffText === 'string') {
-        errors.push(...validateReviewArtifacts({
-          batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText,
-          // Stage 3-admitted reviews predate the scope declaration; every pending review must carry it.
-          requireScopeDeclaration: manifest.status !== 'complete',
-        }).map((error) => `${batch}: ${error}`));
+        // Stage 3-admitted reviews predate the scope declaration; every pending review must carry it.
+        const artifacts = (requireScopeDeclaration) => validateReviewArtifacts({
+          batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration,
+        }).map((error) => `${batch}: ${error}`);
+        const pending = manifest.status !== 'complete';
+        const merged = mergedMaster || (base && JSON.stringify(base.review[batch]) === JSON.stringify(manifest) && base.semantic?.[batch] !== undefined
+          && JSON.stringify(JSON.parse(base.semantic[batch])) === JSON.stringify(JSON.parse(semanticDecisionsText)));
+        if (pending && merged) {
+          const lenient = artifacts(false);
+          errors.push(...lenient);
+          const strict = artifacts(true).filter((error) => !lenient.includes(error));
+          if (strict.length) report.staleContractReviews.push({ batch, errors: strict });
+        } else errors.push(...artifacts(pending));
       }
     }
     reviews.set(batch, manifest);
-    reviewArtifacts.set(batch, { manifest, decisionsText, decisions: typeof decisionsText === 'string' ? parseJsonl(decisionsText, `${batch}/decisions.jsonl`, []) : [] });
+    semanticTexts.set(batch, semanticDecisionsText);
+    reviewArtifacts.set(batch, { manifest, decisionsText, semanticDecisionsText, decisions: typeof decisionsText === 'string' ? parseJsonl(decisionsText, `${batch}/decisions.jsonl`, []) : [] });
   }
   for (const [batch, { manifest }] of candidates) {
     const review = reviews.get(batch) ?? null;
@@ -178,7 +195,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   errors.push(...await validateStage3SemanticAuthorityLinks({ root, reviewArtifacts }));
   errors.push(...validateStage3RecordChanges(reviewArtifacts, canonicalById));
   errors.push(...validateStage3RelationMappings(reviewArtifacts, canonicalById));
-  if (base) errors.push(...validateAgainstBase({ base, candidates, reviews }));
+  if (base) errors.push(...validateAgainstBase({ base, candidates, reviews, semanticTexts }));
   return errors;
 }
 
@@ -327,7 +344,7 @@ function validateStage3RelationMappings(reviewArtifacts, canonicalById) {
 
 // Candidate transitions are checked independently of any review, and any batch present on the
 // base but missing now (deleted) fails: merged manifests/evidence are immutable.
-function validateAgainstBase({ base, candidates, reviews }) {
+function validateAgainstBase({ base, candidates, reviews, semanticTexts }) {
   const errors = [];
   for (const batch of Object.keys(base.candidate)) {
     if (!candidates.has(batch)) errors.push(`${batch}: merged candidate batch was deleted`);
@@ -344,7 +361,7 @@ function validateAgainstBase({ base, candidates, reviews }) {
     if (same) continue;
     const found = review === null
       ? validateCandidateTransition(candidateBefore, manifest)
-      : validateLinkedTransition({ candidateBefore, candidateAfter: manifest, reviewBefore, reviewAfter: review });
+      : validateLinkedTransition({ candidateBefore, candidateAfter: manifest, reviewBefore, reviewAfter: review, evidence: { semanticBefore: base.semantic?.[batch], semanticAfter: semanticTexts.get(batch) } });
     errors.push(...found.map((error) => `${batch}: ${error}`));
   }
   return errors;
@@ -361,9 +378,12 @@ export function loadBaseManifests(ref, root = REPOSITORY_DIRECTORY) {
   const show = (file) => JSON.parse(git(['show', `${baseCommit}:${file}`], root));
   const list = (directory) => git(['ls-tree', '--name-only', baseCommit, `${directory}/`], root)
     .split('\n').filter(Boolean).map((entry) => path.basename(entry));
-  const base = { candidate: {}, review: {}, commit: baseCommit };
+  const base = { candidate: {}, review: {}, semantic: {}, commit: baseCommit };
   for (const batch of list('data/candidates')) base.candidate[batch] = show(`data/candidates/${batch}/manifest.json`);
-  for (const batch of list('data/reviews')) base.review[batch] = show(`data/reviews/${batch}/manifest.json`);
+  for (const batch of list('data/reviews')) {
+    base.review[batch] = show(`data/reviews/${batch}/manifest.json`);
+    try { base.semantic[batch] = git(['show', `${baseCommit}:data/reviews/${batch}/semantic-decisions.json`], root); } catch { /* absent on base */ }
+  }
   return base;
 }
 

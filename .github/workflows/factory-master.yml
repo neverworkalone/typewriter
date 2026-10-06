@@ -1,0 +1,33 @@
+name: Factory master validation
+
+# Post-merge safety net for the pre-merge freshness gate (scripts/factory/freshness.mjs): a merge
+# that nevertheless leaves the factory data invalid on master fails loudly here at once, instead of
+# being discovered when Stage 2 or Stage 3 next starts.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'data/candidates/**'
+      - 'data/reviews/**'
+      - 'scripts/factory/**'
+      - 'scripts/validate/**'
+      - 'scripts/batch/**'
+      - 'scripts/intake/**'
+      - 'schema/**'
+
+permissions:
+  contents: read
+
+jobs:
+  factory:
+    name: Validate factory data on master
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.x
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/factory/validate.mjs
