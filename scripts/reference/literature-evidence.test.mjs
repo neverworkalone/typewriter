@@ -22,10 +22,8 @@ import {
   writeEvidencePack,
 } from './literature-evidence.mjs';
 
-let fts5Error;
-try { assertLiteratureFts5Support(); } catch (error) { fts5Error = error; }
-if (fts5Error && process.env.TYPEWRITER_REQUIRE_FTS5 === '1') throw fts5Error;
-const needsFts5 = { skip: fts5Error ? fts5Error.message : false };
+// Node 24 ships node:sqlite with FTS5; fail loudly instead of skipping if that regresses.
+assertLiteratureFts5Support();
 
 const directories = [];
 after(async () => { await Promise.all(directories.map((d) => rm(d, { recursive: true, force: true }))); });
@@ -108,7 +106,7 @@ test('module has no network or extra literature-API dependency', async () => {
   assert.doesNotMatch(source, /fetch\(|https?:\/\/|node:http|node:net/u);
 });
 
-test('de-duplicates unit hits across forms, same-block hits and suppresses same-work repeats', needsFts5, async () => {
+test('de-duplicates unit hits across forms, same-block hits and suppresses same-work repeats', async () => {
   const blockA = ['푸른 하늘이 열렸다', '푸르러 가는 들판', '다음 줄'];
   const files = [
     { genre: 'novel', author: 'A', blocks: [blockA, ['푸른 바다', '푸른 산']] }, // 3 unit hits, 2 blocks
@@ -142,7 +140,7 @@ test('selection is deterministic, bounded and prefers work/genre diversity', () 
   assert.throws(() => selectRepresentativeHits(hits, { maxPerWork: 0 }), TypeError);
 });
 
-test('no useful evidence is reported without a verdict', needsFts5, async () => {
+test('no useful evidence is reported without a verdict', async () => {
   const databasePath = await makeDatabase([{ genre: 'poem', blocks: [['아무 상관 없는 줄']] }]);
   const { summary, contexts } = retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms: forms('푸른') });
   assert.equal(contexts.length, 0);
@@ -152,7 +150,7 @@ test('no useful evidence is reported without a verdict', needsFts5, async () => 
   for (const key of ['pos', 'sense', 'disposition', 'decision', 'relation']) assert.equal(key in summary, false);
 });
 
-test('context expansion stays within the block and file; large blocks fall back to neighbours', needsFts5, async () => {
+test('context expansion stays within the block and file; large blocks fall back to neighbours', async () => {
   const big = Array.from({ length: MAX_BLOCK_UNITS + 8 }, (_, i) => (i === 10 ? '푸른 표적' : '줄 ' + i));
   const databasePath = await makeDatabase([
     { genre: 'novel', blocks: [['앞 문단'], big, ['뒤 문단']] },
@@ -175,7 +173,7 @@ test('context expansion stays within the block and file; large blocks fall back 
   }
 });
 
-test('summary binds DB identity and text-free location digests; text only in the local pack', needsFts5, async () => {
+test('summary binds DB identity and text-free location digests; text only in the local pack', async () => {
   const databasePath = await makeDatabase([{ genre: 'poem', blocks: [['푸른 합성 시']] }, { genre: 'essay', blocks: [['푸른 합성 글']] }]);
   const result = retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms: forms('푸른') });
   assert.equal(result.summary.literature_index.logical_rows_sha256, 'l'.repeat(64));
@@ -200,14 +198,14 @@ test('evidence packs can only be written under ignored data/reference', async ()
   assert.ok(EVIDENCE_OUTPUT_DIRECTORY.startsWith(path.join(REPOSITORY_DIRECTORY, 'data/reference') + path.sep));
 });
 
-test('existing literature search behaviour is unchanged by retrieval', needsFts5, async () => {
+test('existing literature search behaviour is unchanged by retrieval', async () => {
   const databasePath = await makeDatabase([{ genre: 'poem', blocks: [['푸른 시', '둘째 줄']] }]);
   const before = JSON.stringify(searchLiteratureIndex({ databasePath, query: '푸른' }));
   retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms: forms('푸른') });
   assert.equal(JSON.stringify(searchLiteratureIndex({ databasePath, query: '푸른' })), before);
 });
 
-test('totals stay exact when the fetch cap is reached; summary and rendering distinguish sampled from total', needsFts5, async () => {
+test('totals stay exact when the fetch cap is reached; summary and rendering distinguish sampled from total', async () => {
   const files = Array.from({ length: 6 }, (_, i) => ({
     genre: ['poem', 'novel', 'essay'][i % 3],
     blocks: Array.from({ length: 5 }, (_, b) => ['푸른 줄 ' + i + '-' + b, '푸르러 줄 ' + i + '-' + b]),
