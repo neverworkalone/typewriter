@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { assertLiteraturePermission, DEFAULT_FULL_LITERATURE_INDEX_PATH, REPOSITORY_DIRECTORY } from './literature-index.mjs';
 import { EVIDENCE_OUTPUT_DIRECTORY } from './literature-evidence.mjs';
+import { deferralCategory } from './literature-evidence-selfcheck.mjs';
 import { evidenceForCandidate, loadEvidenceContext } from './literature-evidence-run.mjs';
 
 // Bounded replay measurement for #391: every historical `deferred` Stage 2 decision plus a
@@ -12,14 +13,6 @@ import { evidenceForCandidate, loadEvidenceContext } from './literature-evidence
 
 const COMPARISON_SAMPLE = 40;
 const sha = (value) => createHash('sha256').update(value).digest('hex');
-
-// Keyword buckets over the recorded deferral reason (a heuristic label, not a ruling).
-export function deferralCategory(reason = '') {
-  if (/하드 홀드|공유 계약|coverage_collision|계약/u.test(reason)) return 'shared_contract_hold';
-  if (/별도 판단|경계|비유|관용|고정|연어|구성/u.test(reason)) return 'sense_or_expression_boundary';
-  if (/근거|증거|불충분|확인할 수 없|판단할 수 없/u.test(reason)) return 'evidence_insufficient';
-  return 'other';
-}
 
 async function collect(root) {
   const deferred = [];

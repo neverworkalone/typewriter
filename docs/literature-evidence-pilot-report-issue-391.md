@@ -27,7 +27,7 @@
 
 ## 탐색적 self-check (측정, 정확도 아님)
 
-기록: [`scripts/reference/literature-evidence-selfcheck-391.json`](../scripts/reference/literature-evidence-selfcheck-391.json) (후보 id·열거값만, 원문 없음; 회귀: `literature-evidence-selfcheck.test.mjs`). 과거 deferred 사례 50건(휴리스틱 분류 기준 뜻/표현 경계 36, 근거 부족 4, 기타 10, 각 분류 내 해시 순)과 정본 기존 엔트리에 `included`된 비교 10건에 대해, 주 구현 에이전트(Sonnet 5.5)가 근거 팩(최대 5개 문맥)을 읽고 과거 deferral 사유와 대조해 "근거가 있었다면 어떤 결과로 갈 수 있었는가"를 탐색적으로 표시했다. **에이전트 self-check이며 독립 판정·인간 승인·정답 집합이 아니고, 어떤 정본/과거 결정도 바꾸지 않았다.**
+기록은 최상위에 조회 조건·DB digest·코호트 선택 규칙을, 각 행에 과거 결정 digest와 검토한 근거의 `selected_location_digests`(5개 조건으로 결정적 재생성)를 묶고, 회귀가 코호트·결정 digest·group/category·발표 집계를 고정한다. 기록: [`scripts/reference/literature-evidence-selfcheck-391.json`](../scripts/reference/literature-evidence-selfcheck-391.json) (후보 id·열거값만, 원문 없음; 회귀: `literature-evidence-selfcheck.test.mjs`). 과거 deferred 사례 50건(휴리스틱 분류 기준 뜻/표현 경계 36, 근거 부족 4, 기타 10, 각 분류 내 해시 순)과 정본 기존 엔트리에 `included`된 비교 10건에 대해, 주 구현 에이전트(Sonnet 5.5)가 근거 팩(`max_contexts=5`, `max_per_work=1`; 위 재현 표의 8개 문맥 기본값과 다른 조건)을 읽고 과거 deferral 사유와 대조해 "근거가 있었다면 어떤 결과로 갈 수 있었는가"를 탐색적으로 표시했다. **에이전트 self-check이며 독립 판정·인간 승인·정답 집합이 아니고, 어떤 정본/과거 결정도 바꾸지 않았다.**
 
 | 과거 deferred 50건의 self-check 결과 | 건수 |
 |---|---|
