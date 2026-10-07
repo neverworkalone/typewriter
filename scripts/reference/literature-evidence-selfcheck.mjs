@@ -12,6 +12,8 @@ export const SELFCHECK_RECORD_URL = new URL('./literature-evidence-selfcheck-391
 export const REPOSITORY_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 const HEX64 = /^[0-9a-f]{64}$/u;
+const BATCH_ID = /^C\d{6}$/u;
+const CANDIDATE_ID = /^C\d{6}-\d{4}$/u;
 export const sha256Hex = (value) => createHash('sha256').update(value).digest('hex');
 
 // Keyword buckets over the recorded deferral reason (a heuristic label, not a ruling).
@@ -34,6 +36,12 @@ export function validateSelfCheck(record) {
   const cohort = record.cohort;
   if (!Array.isArray(cohort?.universe_batches) || !Array.isArray(cohort?.excluded_no_context_ids) || !cohort?.deferred_per_category || !Number.isSafeInteger(cohort?.comparison_count)) {
     errors.push('cohort (universe_batches, excluded_no_context_ids, deferred_per_category, comparison_count) is required');
+  }
+  if (Array.isArray(cohort?.universe_batches) && !cohort.universe_batches.every((batch) => typeof batch === 'string' && BATCH_ID.test(batch))) {
+    errors.push('cohort.universe_batches entries must look like C000001');
+  }
+  if (Array.isArray(cohort?.excluded_no_context_ids) && !cohort.excluded_no_context_ids.every((id) => typeof id === 'string' && CANDIDATE_ID.test(id))) {
+    errors.push('cohort.excluded_no_context_ids entries must look like C000001-0001');
   }
   if (typeof record.cohort_selection !== 'string' || record.cohort_selection.length === 0) errors.push('cohort_selection is required');
   const seen = new Set();
@@ -65,6 +73,7 @@ export async function validateCohortBinding(record, root = REPOSITORY_ROOT) {
   const deferred = [];
   const clear = [];
   for (const batch of batches) {
+    if (!BATCH_ID.test(batch)) { errors.push(`${JSON.stringify(batch)}: universe batch id must look like C000001`); continue; }
     let text;
     try {
       text = await readFile(path.join(root, 'data/reviews', batch, 'decisions.jsonl'), 'utf8');

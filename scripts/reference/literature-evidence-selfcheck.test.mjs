@@ -117,6 +117,28 @@ test('cohort binding fails closed when a declared universe batch is missing or u
   }
 });
 
+test('universe batch ids cannot escape data/reviews', async () => {
+  const record = await loadSelfCheck();
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-selfcheck-'));
+  try {
+    const repository = new URL('../../', import.meta.url).pathname;
+    await cp(path.join(repository, 'data/reviews'), path.join(root, 'data/reviews'), { recursive: true });
+    // A readable sibling directory that a traversing id would reach.
+    await cp(path.join(root, 'data/reviews/C000003'), path.join(root, 'data/other'), { recursive: true });
+    for (const batch of ['../other', '../../data/other', 'C000003/../C000004', '/etc', 'c000003', 'C00003']) {
+      const mutated = JSON.parse(JSON.stringify(record));
+      mutated.cohort.universe_batches.push(batch);
+      assert.ok(validateSelfCheck(mutated).some((error) => /universe_batches entries/u.test(error)), batch);
+      assert.ok((await validateCohortBinding(mutated, root)).some((error) => /universe batch id must look like/u.test(error)), batch);
+    }
+    const badExclusion = JSON.parse(JSON.stringify(record));
+    badExclusion.cohort.excluded_no_context_ids.push('../x');
+    assert.ok(validateSelfCheck(badExclusion).some((error) => /excluded_no_context_ids/u.test(error)));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('the published report states exactly the pinned aggregate and the reviewed retrieval condition', async () => {
   const report = await readFile(new URL('../../docs/literature-evidence-pilot-report-issue-391.md', import.meta.url), 'utf8');
   const { deferred_outcomes: o, deferred_evidence_use: u, comparison_evidence_use: c } = PINNED;
