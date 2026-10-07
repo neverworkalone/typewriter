@@ -2973,3 +2973,17 @@ test('confusable-headword hints are advisory: they name the counterpart but neve
   assert.doesNotThrow(() => validateLexicalRecord(record('맞추다', '총의 조준점을 과녁에 맞게 조절하다.'), { mode: 'candidate' }));
   assert.doesNotThrow(() => validateLexicalRecord(record('잃다', '사고로 기억을 완전히 상실하다.'), { mode: 'candidate' }));
 });
+
+test('a different part of speech is a sense boundary: token overlap between POS never makes a duplicate or nested pair (issue #393)', () => {
+  const pair = (leftPos, rightPos, leftGloss, rightGloss) => inspectSenseBoundaryPairs({
+    id: 'w1', record_type: 'entry', lemma: '잠시',
+    senses: [{ id: 'w1-s1', pos: leftPos, gloss: leftGloss }, { id: 'w1-s2', pos: rightPos, gloss: rightGloss }],
+  })[0].relationship;
+  // A new adverb whose gloss contains every token of the noun gloss is a distinct sense, with no paraphrase games.
+  assert.equal(pair('noun', 'adverb', '짧은 시간 동안.', '아주 짧은 시간 동안에.'), 'distinct');
+  assert.equal(pair('noun', 'adverb', '짧은 시간 동안.', '짧은 시간 동안.'), 'distinct');
+  // The same overlap inside one POS is still a blocker.
+  assert.equal(pair('noun', 'noun', '짧은 시간 동안.', '아주 짧은 시간 동안에.'), 'nested');
+  assert.equal(pair('noun', 'noun', '짧은 시간 동안.', '짧은 시간 동안.'), 'duplicate');
+  assert.equal(pair('adverb', 'adverb', '짧은 시간 동안.', '아주 짧은 시간 동안에.'), 'nested');
+});
