@@ -1132,7 +1132,7 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0126",
         "candidate_record_sha256": "4ac5607d68728663f3cc6062e1b46dd8b8a57443683babdadcdc4db746a0bd5e",
-        "decision_evidence_sha256": "3098bf8410d699c4f53b12ae26a7c9440bf710dd8b0dbd6ecffbcce7ad9ae5f2",
+        "decision_evidence_sha256": "7ae7dcea25a5856dd2f3b94a9f64ce8e54415337d40dd8b0b9c57282167c3bc9",
         "sense_evidence": [
           {
             "sense_id": "C000009-0126-s1",
@@ -1141,7 +1141,31 @@
             "evidence_sha256": "ff1f3770d31566b5b957e84e707856a6f260ece7a75ac7b36b5d86ece64ab9f5"
           }
         ]
-      }
+      },
+      "existing_sense_pairs": [
+        {
+          "existing_sense_id": "w373-s1",
+          "new_sense_id": "C000009-0126-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "943a77962d28e28904bd87e2d93d0ff63c9ef0653cca469288049c2509bc03ee",
+          "new_gloss_sha256": "c00838c51b893595ac41f255336988510cb4857a9a229bda79596c712ad93def",
+          "evidence_basis": "C000009-0126: 원문 관찰의 쓰임을 w373-s1의 뜻풀이와 대조했다. 집 안 방과 방 사이의 널바닥 공간인 마루와 달리 이 뜻은 고개나 산의 가장 높은 곳이다.",
+          "distinguishing_feature": "C000009-0126: w373-s1(집 안에서 방과 방 사이를 잇는 널바닥 공간)와 새 뜻(산이나 고개에서 가장 높은 곳.)은 가리키는 대상이 다르다.",
+          "rationale": "C000009-0126: w373-s1와 별개의 뜻으로 유지한다. 집 안 방과 방 사이의 널바닥 공간인 마루와 달리 이 뜻은 고개나 산의 가장 높은 곳이다."
+        },
+        {
+          "existing_sense_id": "w373-s2",
+          "new_sense_id": "C000009-0126-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "808b7eeed4fe78594a23eb7a9a333d7a4b6ddcb7e44b4c11b884ab616bbf7757",
+          "new_gloss_sha256": "c00838c51b893595ac41f255336988510cb4857a9a229bda79596c712ad93def",
+          "evidence_basis": "C000009-0126: 원문 관찰의 쓰임을 w373-s2의 뜻풀이와 대조했다. 사람이 앉고 생활하는 집 안의 바닥인 마루와 달리 이 뜻은 고개 위의 지형이다.",
+          "distinguishing_feature": "C000009-0126: w373-s2(사람이 앉거나 물건을 놓고 생활하는 집 안의 바닥)와 새 뜻(산이나 고개에서 가장 높은 곳.)은 가리키는 대상이 다르다.",
+          "rationale": "C000009-0126: w373-s2와 별개의 뜻으로 유지한다. 사람이 앉고 생활하는 집 안의 바닥인 마루와 달리 이 뜻은 고개 위의 지형이다."
+        }
+      ]
     },
     {
       "source_candidate_id": "C000009-0129",
@@ -1357,7 +1381,7 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0145",
         "candidate_record_sha256": "c5e3a63ef7b833fe51590a7a20ef3fa7b6415262811acde424b165f88ca588f8",
-        "decision_evidence_sha256": "1c43ca44bc8c02649038c34cce3829e57b08b6ad5f00f4fbf531acebcf9d2028",
+        "decision_evidence_sha256": "c03314c498ab9b4d430ba2184ef6bd3416513fb302ac6d8f83c82cc3425c5d79",
         "sense_evidence": [
           {
             "sense_id": "C000009-0145-s1",
@@ -1366,7 +1390,31 @@
             "evidence_sha256": "3d21a6d9c05d375495abd1230af2ff525a231d2767425e39bce04732cd1f6249"
           }
         ]
-      }
+      },
+      "existing_sense_pairs": [
+        {
+          "existing_sense_id": "w753-s1",
+          "new_sense_id": "C000009-0145-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "c0595bcb3d33badd735009d8e3d38ced836d20351b46466d23b0628bcb6d9d9f",
+          "new_gloss_sha256": "986b6d6bdd8420e3eb5d7edb2ea8e3baeeb1607d4fb64b7de94a0495d88d9fe7",
+          "evidence_basis": "C000009-0145: 원문 관찰의 쓰임을 w753-s1의 뜻풀이와 대조했다. 실을 꿰어 천을 꿰매는 바느질 도구와 달리 이 뜻은 주사나 전축처럼 기구 끝에 달린 쇠붙이다.",
+          "distinguishing_feature": "C000009-0145: w753-s1(실을 꿰어 천을 꿰매는 가느다란 도구.)와 새 뜻(주사기나 전축 같은 기구 끝에 달린 가늘고 뾰족한 쇠붙이.)은 가리키는 대상이 다르다.",
+          "rationale": "C000009-0145: w753-s1와 별개의 뜻으로 유지한다. 실을 꿰어 천을 꿰매는 바느질 도구와 달리 이 뜻은 주사나 전축처럼 기구 끝에 달린 쇠붙이다."
+        },
+        {
+          "existing_sense_id": "w753-s2",
+          "new_sense_id": "C000009-0145-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "98e07afa4cf87b722c752ffed4335dcb5f7200b9df7c1c4a93aff1431a8447c8",
+          "new_gloss_sha256": "986b6d6bdd8420e3eb5d7edb2ea8e3baeeb1607d4fb64b7de94a0495d88d9fe7",
+          "evidence_basis": "C000009-0145: 원문 관찰의 쓰임을 w753-s2의 뜻풀이와 대조했다. 시계나 계기의 눈금을 가리키는 막대와 달리 이 뜻은 몸에 꽂거나 음반에 닿는 기구 끝의 쇠붙이다.",
+          "distinguishing_feature": "C000009-0145: w753-s2(시계나 계기의 눈금을 가리키는 뾰족한 막대.)와 새 뜻(주사기나 전축 같은 기구 끝에 달린 가늘고 뾰족한 쇠붙이.)은 가리키는 대상이 다르다.",
+          "rationale": "C000009-0145: w753-s2와 별개의 뜻으로 유지한다. 시계나 계기의 눈금을 가리키는 막대와 달리 이 뜻은 몸에 꽂거나 음반에 닿는 기구 끝의 쇠붙이다."
+        }
+      ]
     },
     {
       "source_candidate_id": "C000009-0146",
@@ -1593,9 +1641,9 @@
     {
       "source_candidate_id": "C000009-0262",
       "candidate_record_id": "C000009-0262",
-      "candidate_record_sha256": "1fc78e9ba492ce9bdce7d0ead4ecf8f7fbc8e21f32dea7f51530a5399e081e4c",
+      "candidate_record_sha256": "4336dd3aa7a4d88ffe4c4b559ca578b8559ef6ca9e8722af54838eaec595c475",
       "decision": "included",
-      "decision_rationale": "C000009-0262 attempt 1 Claude agent self-check: o01은 잠시 망설이다 다가갔다는 쓰임으로 짧은 시간 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
+      "decision_rationale": "C000009-0262 attempt 1 Claude agent self-check: o01은 잠시 망설이다 다가갔다는 쓰임으로 얼마 되지 않는 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -1603,8 +1651,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000009-0262: o01은 잠시 망설이다 다가갔다는 쓰임으로 짧은 시간 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
-          "semantic_rationale": "C000009-0262: o01은 잠시 망설이다 다가갔다는 쓰임으로 짧은 시간 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
+          "boundary_rationale": "C000009-0262: o01은 잠시 망설이다 다가갔다는 쓰임으로 얼마 되지 않는 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
+          "semantic_rationale": "C000009-0262: o01은 잠시 망설이다 다가갔다는 쓰임으로 얼마 되지 않는 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -1621,14 +1669,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0262",
-        "candidate_record_sha256": "1fc78e9ba492ce9bdce7d0ead4ecf8f7fbc8e21f32dea7f51530a5399e081e4c",
-        "decision_evidence_sha256": "52af7c9ac297f56c5055ffe8484a9e857f3b86557e03b4bf183a7da5c74b2536",
+        "candidate_record_sha256": "4336dd3aa7a4d88ffe4c4b559ca578b8559ef6ca9e8722af54838eaec595c475",
+        "decision_evidence_sha256": "07c279cb22f7573d177bf88ca665d3a17013e340b6c5a44bd5e8deb9ba3b2d48",
         "sense_evidence": [
           {
             "sense_id": "C000009-0262-s1",
-            "sense_sha256": "76ed46ccaa3db2e99f342494174f340b40eb8da6487bc780fe1beb24c5ba9f89",
-            "gloss_sha256": "b932d78cc25c2a7faadbc2a199f82931d2ce87eed0cfe4a9c33dc639e21bda01",
-            "evidence_sha256": "bb21175535691511b04e3080cf283b7e3e975a30e70d579c255cdc0d4c7baf07"
+            "sense_sha256": "002efad34d9035d754d1e7f0bb7eebd6fe684734bfcc0161bbcc047a370dc015",
+            "gloss_sha256": "dbf17cf126e4acb4f33531557b321f2deec9eecd4bd289ca54779a8c00459589",
+            "evidence_sha256": "b7f9ee62b84a68569f2dc7b6523abb296f6f3f1e36aa8fbbfd4040ca6bd54763"
           }
         ]
       }
