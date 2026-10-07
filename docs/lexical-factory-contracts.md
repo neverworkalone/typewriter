@@ -192,3 +192,22 @@ for historical snapshot reconstruction. Their field contracts remain closed,
 including nested sense/relation and compact review evidence objects. Full
 semantic validation independently verifies the retained hashes and live record
 binding; this artifact-policy allowance does not replace admission validation.
+
+## Stage 2 → Stage 3 surface-form judgments (issue #365)
+
+Predicate senses whose inflection class is a judgment (a ㅂ/ㄷ/ㅅ/ㅎ-final coda, regular or irregular) used to stop
+Stage 3 with `STAGE3_SURFACE_FORM_JUDGMENT` because a Stage 2 result had no way to carry that judgment. A decision
+row now carries an optional `surface_form_judgments: [{sense_index, class_id, reason}]` (see
+[`lexical-production-factory.md`](lexical-production-factory.md) §5.1).
+
+- `resolveSurfaceFormJudgments(records, judgments, manifests)` (shared projection) accepts a judgment only if the
+  existing M6-2/M6-3 manifest validators accept its class for that exact sense and the sense really has an open
+  judgment gap; it returns `errors`, `missing` senses and the remaining mechanical gaps. It never mutates the manifests.
+- `validateSurfaceFormJudgments(decision, {required})` applies it to the prospective record of a Stage 2 decision.
+  `validateReviewArtifacts({requireSurfaceFormJudgments})` and `validate.mjs` require the judgments of every new or
+  changed pending review; a merged review that predates the field stays eligible and is blocked fail-closed by Stage 3.
+- `planSurfaceFormDispositions({root, records, judgments})` records the judgments, addressed by the allocated
+  canonical ids (`stage3SurfaceFormJudgments`), in the same manifests as a rule-dictated fix. Without a judgment the
+  gap still fails closed; with an invalid one the lexical error is `STAGE3_SURFACE_FORM_JUDGMENT_INVALID` and nothing is written.
+- Whether a ㅂ-final adjective is regular or irregular remains a Stage 2 judgment; the shared rule checks that the
+  class fits the sense, not that the linguistic choice is right.

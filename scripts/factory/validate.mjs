@@ -168,9 +168,13 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
         }
       }
       if (typeof semanticDecisionsText === 'string' && typeof handoffText === 'string') {
-        // Stage 3-admitted reviews predate the scope declaration; every pending review must carry it.
-        const artifacts = (requireScopeDeclaration) => validateReviewArtifacts({
-          batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration,
+        // Stage 3-admitted reviews predate the scope declaration and surface-form judgments; every pending review must carry them.
+        // A merged review that lacks a needed surface-form judgment stays eligible: Stage 3 blocks it
+        // fail-closed (STAGE3_SURFACE_FORM_JUDGMENT) and returns it through the rejection process, so
+        // only a new or changed review is required to carry the judgments.
+        const artifacts = (strict, judged = strict) => validateReviewArtifacts({
+          batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText,
+          requireScopeDeclaration: strict, requireSurfaceFormJudgments: judged,
         }).map((error) => `${batch}: ${error}`);
         const pending = manifest.status !== 'complete';
         const merged = mergedMaster || (base && JSON.stringify(base.review[batch]) === JSON.stringify(manifest) && base.semantic?.[batch] !== undefined
@@ -178,7 +182,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
         if (pending && merged) {
           const lenient = artifacts(false);
           errors.push(...lenient);
-          const strict = artifacts(true).filter((error) => !lenient.includes(error));
+          const strict = artifacts(true, false).filter((error) => !lenient.includes(error));
           if (strict.length) report.staleContractReviews.push({ batch, errors: strict });
         } else errors.push(...artifacts(pending));
       }

@@ -1121,6 +1121,71 @@ export function listSurfaceFormDispositionGaps(records, { exceptionManifest, rev
   return collectClassDispositionGaps(allRelevantRecords(records), exceptionsBySense, dispositionsBySense);
 }
 
+const EMPTY_SURFACE_FORM_EXCEPTION_MANIFEST = Object.freeze({
+  schema_version: 1,
+  contract_id: 'm6-2-inflection-exceptions-v1',
+  source_issue: 174,
+  exceptions: Object.freeze([]),
+});
+
+/** Which manifest owns a surface-form class: `exception` (irregular classes), `review` (regular/exclusion), or null. */
+export function surfaceFormClassManifest(classId) {
+  if (EXCEPTION_CLASS_IDS.has(classId)) return 'exception';
+  if (REVIEW_DISPOSITION_CLASS_IDS.has(classId)) return 'review';
+  return null;
+}
+
+/**
+ * Applies explicit, author-supplied surface-form judgments `{record_id, sense_id, class_id, reason}`
+ * to the senses that need one (a gap whose `fix` is null) and re-evaluates the shared rule.
+ *
+ * Nothing here knows any lemma: a judgment is accepted only if the existing manifest validators
+ * accept its class for that exact sense (class/POS/coda match, no conflicting classification) and it
+ * is the only judgment for a sense that actually lacks one. Judgments for senses that need none,
+ * unknown classes, duplicates and class/sense mismatches are returned as `errors`; senses that still
+ * lack a judgment are returned as `missing`; mechanical gaps (`fix` set) remain in `gaps` for the
+ * caller to apply. The input manifests are never mutated.
+ */
+export function resolveSurfaceFormJudgments(records, judgments, {
+  exceptionManifest = EMPTY_SURFACE_FORM_EXCEPTION_MANIFEST,
+  reviewManifest = EMPTY_SURFACE_FORM_REVIEW_MANIFEST,
+} = {}) {
+  const errors = [];
+  const needed = new Map(listSurfaceFormDispositionGaps(records, { exceptionManifest, reviewManifest })
+    .filter((gap) => !gap.fix)
+    .map((gap) => [sourceKey(gap.record_id, gap.sense_id), gap]));
+  const exceptions = [];
+  const dispositions = [];
+  const seen = new Set();
+  for (const judgment of judgments) {
+    const label = judgment?.record_id + '/' + judgment?.sense_id;
+    const key = sourceKey(judgment?.record_id, judgment?.sense_id);
+    if (seen.has(key)) { errors.push('duplicate surface-form judgment for ' + label); continue; }
+    seen.add(key);
+    if (!needed.has(key)) { errors.push('surface-form judgment for ' + label + ' is not required: the sense has no open judgment gap'); continue; }
+    const manifest = surfaceFormClassManifest(judgment.class_id);
+    if (!manifest) { errors.push('unknown surface-form class ' + judgment.class_id + ' for ' + label); continue; }
+    if (manifest === 'exception') {
+      exceptions.push({ class_id: judgment.class_id, record_id: judgment.record_id, sense_id: judgment.sense_id });
+    } else {
+      if (typeof judgment.reason !== 'string' || judgment.reason.trim().length === 0) { errors.push('surface-form judgment for ' + label + ' needs a reason'); continue; }
+      dispositions.push({ class_id: judgment.class_id, record_id: judgment.record_id, sense_id: judgment.sense_id, reason: judgment.reason });
+    }
+  }
+  const nextExceptionManifest = { ...exceptionManifest, exceptions: [...exceptionManifest.exceptions, ...exceptions] };
+  const nextReviewManifest = { ...reviewManifest, dispositions: [...reviewManifest.dispositions, ...dispositions] };
+  let gaps = [];
+  try {
+    gaps = listSurfaceFormDispositionGaps(records, { exceptionManifest: nextExceptionManifest, reviewManifest: nextReviewManifest });
+  } catch (error) {
+    if (!(error instanceof SurfaceFormProjectionError)) throw error;
+    errors.push(error.message);
+    return { errors, missing: [...needed.values()], gaps, exceptionManifest, reviewManifest };
+  }
+  const missing = gaps.filter((gap) => !gap.fix && needed.has(sourceKey(gap.record_id, gap.sense_id)));
+  return { errors, missing, gaps, exceptionManifest: nextExceptionManifest, reviewManifest: nextReviewManifest };
+}
+
 export function buildSurfaceFormProjection(
   records,
   {
