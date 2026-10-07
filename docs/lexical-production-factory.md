@@ -506,6 +506,15 @@ its own disposition, reason, `hold_resolution` / sense claims and (for `covered`
 `search_coverage`) its own search-form proof. A group with a single entry and no
 `observation_ids` covers all of its observations.
 
+**Observation fit of `covered`/`search_coverage` (C000008 onward, #366).** The structural proof
+does not show that each observation's meaning lies inside the existing gloss. From C000008 on, the
+`reason` of a `covered`/`search_coverage` entry must name every observation it judges (`o01`); that
+mechanical provenance check is a hard rule. Whether the meaning fits stays a source-bound semantic
+judgment: an observation outside the existing gloss is split off by `observation_ids` and deferred, or
+authored as its own sense. A reason that mentions 비유·빗대·은유·상징·관용·몸짓 is only reported as a
+non-blocking advisory (the word can be literal, e.g. the lemma 상징, or describe a sense the canonical
+entry already holds). Merged earlier batches stay as recorded.
+
 **Gloss scope (source-bound, lemma-centered reviews).** An admitted gloss may only describe the
 observations its included groups claim, so a deferred, rejected or already-covered meaning
 cannot leak into it. Every `sense_reviews[i]` of a pending (not yet Stage 3 `complete`) review

@@ -72,7 +72,8 @@ policy, the before/after data shape and the operator note: **"500" counts unique
 - **Stage 2.** A v2 decision row keeps one row per `C…` id and adds `group_decisions` (entries per
   usage group; a group may be split by `observation_ids` into independently judged sense opportunities, see design §5.1). The real extractor emits no `usage_group`, so this split is how Stage 2 separates senses. `validateLemmaDecision` binds `included` groups to reviewed senses of
   the same POS, per-group `hold_resolution`s, and the canonical proofs of `covered`/`search_coverage`
-  (checked while the review is `ready`). The shared intake and hand-off receive per-observation views
+  (checked while the review is `ready`). From C000008 on, a `covered`/`search_coverage` reason must also name every
+  judged observation (#366); figurative markers are advisory only. The shared intake and hand-off receive per-observation views
   (`candidateViews`), so a hand-off entry per lemma+POS still exists and holds stay isolated.
 - **Compatibility statement.** #265/#266 (Stage 2 loop and Stage 3 admission) consume
   `source_candidate_id`/`C…` identities, the typed decision rows and the hand-off unchanged; the only

@@ -11,7 +11,7 @@ import {
   CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, REVIEW_MANIFEST_CONTRACT, expectedAnalyzerDigest, sha256Hex, validateCandidateBatch,
 } from '../scripts/factory/contract.mjs';
 import { buildCanonicalIndex, buildSearchFormSupport, candidateViews, intakeCandidates, toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
-import { validateLemmaDecision } from '../scripts/factory/lemma-decisions.mjs';
+import { nonliteralCoverageAdvisories, validateLemmaDecision } from '../scripts/factory/lemma-decisions.mjs';
 import { expectedScopes, validateScopeDeclarations } from '../scripts/factory/scope-declaration.mjs';
 import { produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { assertStage3ContractCurrent } from '../scripts/factory/stage3-worker.mjs';
@@ -248,6 +248,62 @@ test('covered and search_coverage are canonical proofs, never assumptions from s
   has(validateLemmaDecision(rejectAll([{ ...coveredMove, existing_entry_id: 'w1' }, searchPass]), go, { canonicalIndex: INDEX, support: support('가는') }), 'requires an existing verb sense');
 });
 
+// Observation fit (#366): from C000008 on, a covered/search_coverage reason names every judged
+// observation; figurative markers are advisory only; merged earlier batches stay as recorded.
+test('covered/search_coverage reasons name each judged observation from C000008; figurative markers are advisory only', async () => {
+  const has = (errors, fragment) => assert.ok(errors.some((e) => e.includes(fragment)), `${fragment}: ${errors.join(' | ')}`);
+  const lacks = (errors, fragment) => assert.ok(!errors.some((e) => e.includes(fragment)), errors.join(' | '));
+  const existing = { existing_entry_id: 'w3', existing_sense_id: 'w3-s1' };
+  const verdict = (go, groupDecisions) => validateLemmaDecision(
+    { source_candidate_id: go.candidate_id, disposition: 'rejected', reason: '기존 항목이 이미 포괄한다.', group_decisions: groupDecisions }, go,
+    { canonicalIndex: INDEX, support: buildSearchFormSupport(['가는', '가서'].map((form) => ({ record_id: 'w3', sense_id: 'w3-s1', form, rule_id: 'r' }))) },
+  );
+  const { rows: [go] } = await batchOf(EVIDENCE, 'C000008');
+  const [move, pass] = go.usage_groups;
+  const stated = { disposition: 'covered', ...existing };
+
+  // The old decision: a vague reason that never names the observation it judges.
+  const old = [{ group_id: move.group_id, ...stated, reason: '같은 뜻의 기존 동사 가다.' }, { group_id: pass.group_id, ...stated, reason: '같은 뜻의 기존 동사 가다.' }];
+  has(verdict(go, old), 'must name every judged observation (missing o01)');
+  has(verdict(go, old), 'must name every judged observation (missing o02)');
+  // Naming the observation passes (`o1`-style prefixes of another id do not count).
+  const named = [{ group_id: move.group_id, ...stated, reason: 'o01은 다른 곳으로 옮겨 가는 쓰임으로 w3-s1에 포함된다.' }, { group_id: pass.group_id, ...stated, reason: 'o02는 때가 지나가는 쓰임으로 w3-s1에 포함된다.' }];
+  assert.deepEqual(verdict(go, named), []);
+  for (const token of ['o02x는', 'o02foo는', 'o02_foo는', 'xo02는', 'o2는']) {
+    has(verdict(go, [named[0], { ...named[1], reason: `${token} 때가 지나가는 쓰임으로 w3-s1에 포함된다.` }]), 'missing o02');
+  }
+  for (const token of ['o02', 'o02은', '(o02)', 'o02,']) {
+    assert.deepEqual(verdict(go, [named[0], { ...named[1], reason: `${token} 때가 지나가는 쓰임으로 w3-s1에 포함된다.` }]), [], token);
+  }
+  has(verdict(go, [named[0], { ...named[1], reason: 'o020은 때가 지나가는 쓰임으로 w3-s1에 포함된다.' }]), 'missing o02');
+  assert.deepEqual(verdict(go, [named[0], { ...named[1], reason: `${go.observations[1].observation_id}는 때가 지나가는 쓰임으로 w3-s1에 포함된다.` }]), []);
+
+  // A figurative marker never blocks: the word may be the literal lemma (상징) or describe a sense the
+  // canonical entry already holds. It is only surfaced as an advisory for the reviewer.
+  for (const reason of ['o01은 분단의 상징이라는 쓰임으로 w3-s1에 포함된다.', 'o01은 기존 비유적 뜻과 같은 쓰임으로 w3-s1에 포함된다.']) {
+    const decision = { source_candidate_id: go.candidate_id, disposition: 'rejected', reason: 'r', group_decisions: [{ group_id: move.group_id, ...stated, reason }, named[1]] };
+    assert.deepEqual(verdict(go, decision.group_decisions), []);
+    assert.equal(nonliteralCoverageAdvisories(decision, go).length, 1);
+  }
+  assert.deepEqual(nonliteralCoverageAdvisories({ source_candidate_id: go.candidate_id, group_decisions: named }, go), []);
+  // The same split into a deferred observation passes: the figurative evidence is judged on its own.
+  const [oneGroup] = (await batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는'), hit('d2', 'p1', '가는')])]), 'C000008')).rows;
+  const [first, second] = oneGroup.observations.map((o) => o.observation_id);
+  const split = [
+    { group_id: oneGroup.usage_groups[0].group_id, observation_ids: [first], ...stated, reason: 'o01은 다른 곳으로 옮겨 가는 쓰임으로 w3-s1에 포함된다.' },
+    { group_id: oneGroup.usage_groups[0].group_id, observation_ids: [second], disposition: 'deferred', reason: 'o02는 마음의 이동에 빗댄 쓰임이라 w3-s1 밖이다.' },
+  ];
+  assert.deepEqual(verdict(oneGroup, split), []);
+  // A covered claim naming only one of two judged observations is incomplete.
+  has(verdict(oneGroup, [{ group_id: oneGroup.usage_groups[0].group_id, ...stated, reason: 'o01은 다른 곳으로 옮겨 가는 쓰임으로 w3-s1에 포함된다.' }]), 'missing o02');
+
+  // Merged earlier batches (C000007 and before) are exempt, exactly as recorded.
+  const { rows: [earlier] } = await batchOf(EVIDENCE, 'C000007');
+  const exempt = [{ group_id: earlier.usage_groups[0].group_id, ...stated, reason: 'o01은 비유적 쓰임이다.' }, { group_id: earlier.usage_groups[1].group_id, ...stated, reason: '같은 뜻.' }];
+  lacks(verdict(earlier, exempt), 'must name every judged observation');
+  assert.deepEqual(nonliteralCoverageAdvisories({ source_candidate_id: earlier.candidate_id, group_decisions: exempt }, earlier), []);
+});
+
 // Review artifacts for a lemma batch: semantic rows, hand-off and per-group hold resolution.
 // Pending reviews must declare the scope of each gloss. The fixture names the excluded MEANING explicitly
 // (a word that denotes it); it never picks "the first reason word", which would let a vacuous or incidental
@@ -290,19 +346,19 @@ function semanticRow(decision, candidate) {
   row.review_binding = authorSemanticReviewBinding(row, record);
   return row;
 }
-const semantic = (decisions, count, rows) => ({
+const semantic = (decisions, count, rows, batchId = 'C000002') => ({
   schema_version: '1', contract_version: 'lexical-semantic-decision-source-v4', kind: 'separately-authored-semantic-decision-source',
-  batch_id: 'C000002', authoring_mode: 'agent-authored-decision', provenance: { human_reviewed: false },
+  batch_id: batchId, authoring_mode: 'agent-authored-decision', provenance: { human_reviewed: false },
   review: { status: 'complete', reviewer: 'claude-agent', reviewed_candidate_count: count },
   decisions: decisions.filter((row) => ['included', 'corrected'].includes(row.disposition)).map((decision) => semanticRow(decision, rows.find((row) => row.candidate_id === decision.source_candidate_id))),
 });
-async function artifactsFor(rows, decisions) {
+async function artifactsFor(rows, decisions, batchId = 'C000002') {
   const handoff = await buildProductionHandoff({
-    batchId: 'C000002', rawCandidates: intakeCandidates(candidateViews(rows)).map(toRawCandidate), analyzer: lemmaAnalyzer, adapterId: 'corpus-adapter',
+    batchId, rawCandidates: intakeCandidates(candidateViews(rows)).map(toRawCandidate), analyzer: lemmaAnalyzer, adapterId: 'corpus-adapter',
   });
   return {
-    batchId: 'C000002', adapterId: 'corpus-adapter', candidates: rows, decisions,
-    semanticDecisionsText: JSON.stringify(semantic(decisions, rows.length, rows)), handoffText: JSON.stringify(handoff),
+    batchId, adapterId: 'corpus-adapter', candidates: rows, decisions,
+    semanticDecisionsText: JSON.stringify(semantic(decisions, rows.length, rows, batchId)), handoffText: JSON.stringify(handoff),
   };
 }
 
@@ -785,4 +841,41 @@ test('a needed surface-form judgment is required of a new or changed review, not
   await stage2(judged, JSON.stringify(changed));
   assert.doesNotMatch(run().stderr, /surface_form_judgments/);
   await rm(root, { recursive: true, force: true });
+});
+
+// Observation fit through the registered repository validator (#366): applied to C000008, not to merged C000007.
+test('the repository validator applies the observation-fit rule to C000008 but leaves C000007 as recorded', async () => {
+  for (const [batch, expectRefused] of [['C000008', true], ['C000007', false]]) {
+    const root = await mkdtemp(path.join(tmpdir(), `factory-fit-${batch}-`));
+    const write = async (name, content) => { await mkdir(path.dirname(path.join(root, name)), { recursive: true }); await writeFile(path.join(root, name), content); };
+    await write('data/canonical/fixture.jsonl', jsonl(ENTRIES));
+    const { manifest, candidatesText, rows } = await batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는')])]), batch);
+    const [row] = rows;
+    const groupId = row.usage_groups[0].group_id;
+    const decisionFor = (reason) => ({
+      source_candidate_id: row.candidate_id, disposition: 'rejected', reason: '기존 항목이 이미 포괄한다.',
+      group_decisions: [{ group_id: groupId, disposition: 'covered', existing_entry_id: 'w3', existing_sense_id: 'w3-s1', reason }],
+    });
+    const stage2 = async (decision) => {
+      const artifacts = await artifactsFor(rows, [decision], batch);
+      const decisionsText = jsonl([decision]);
+      const text = `${artifacts.semanticDecisionsText}\n`;
+      await write(`data/candidates/${batch}/manifest.json`, JSON.stringify({ ...manifest, status: 'complete' }));
+      await write(`data/candidates/${batch}/candidates.jsonl`, candidatesText);
+      await write(`data/reviews/${batch}/decisions.jsonl`, decisionsText);
+      await write(`data/reviews/${batch}/semantic-decisions.json`, text);
+      await write(`data/reviews/${batch}/intake-handoff.json`, `${artifacts.handoffText}\n`);
+      await write(`data/reviews/${batch}/manifest.json`, JSON.stringify({
+        contract: REVIEW_MANIFEST_CONTRACT, batch_id: batch, candidates_sha256: manifest.candidates_sha256, canonical_snapshot_digest: HEX,
+        decisions_sha256: sha256Hex(decisionsText), semantic_decisions_sha256: sha256Hex(text),
+        handoff_sha256: sha256Hex(`${artifacts.handoffText}\n`), attempt: 1, status: 'ready', history: [],
+      }));
+      return (await validateFactoryRepository({ root, canonicalEntries: ENTRIES })).filter((error) => /must name every judged observation/.test(error));
+    };
+    const old = await stage2(decisionFor('같은 뜻의 기존 동사 가다.'));
+    assert.equal(old.length > 0, expectRefused, `${batch}: ${old.join(' | ')}`);
+    assert.deepEqual(await stage2(decisionFor('o01은 다른 곳으로 옮겨 가는 쓰임으로 w3-s1에 포함된다.')), [], batch);
+    // A literal 상징 in a reason never blocks, in C000008 as in C000007.
+    assert.deepEqual(await stage2(decisionFor('o01은 분단의 상징이라는 쓰임으로 w3-s1에 포함된다.')), [], batch);
+  }
 });
