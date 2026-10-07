@@ -9378,9 +9378,9 @@
     {
       "source_candidate_id": "C000006-0190",
       "candidate_record_id": "C000006-0190",
-      "candidate_record_sha256": "f9e2f14cf9cfec5f87f2ff8096298f3ac24a960456aff9c9288a4c58fe2c5f09",
+      "candidate_record_sha256": "beb2cf6331a8cfc84b26eff272cbc4102e8a770ad6e95df4d23408459ba5e332",
       "decision": "included",
-      "decision_rationale": "C000006-0190 attempt 1 Claude agent self-check: o01은 필름을 꺼내 단어를 찾아본다, o02는 필름이 사라지면서 암실 과정이 생략되었다로 사진을 찍는 데 쓰는 막을 뜻한다.",
+      "decision_rationale": "C000006-0190 attempt 1 Claude agent self-check: o02는 필름이 사라지면서 현상과 인화와 암실 과정이 생략되었다는 쓰임으로 사진을 찍는 데 쓰는 얇고 투명한 막을 뜻한다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -9388,33 +9388,36 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0190: o01은 필름을 꺼내 단어를 찾아본다, o02는 필름이 사라지면서 암실 과정이 생략되었다로 사진을 찍는 데 쓰는 막을 뜻한다.",
-          "semantic_rationale": "C000006-0190: o01은 필름을 꺼내 단어를 찾아본다, o02는 필름이 사라지면서 암실 과정이 생략되었다로 사진을 찍는 데 쓰는 막을 뜻한다.",
+          "boundary_rationale": "C000006-0190: o02는 필름이 사라지면서 현상과 인화와 암실 과정이 생략되었다는 쓰임으로 사진을 찍는 데 쓰는 얇고 투명한 막을 뜻한다.",
+          "semantic_rationale": "C000006-0190: o02는 필름이 사라지면서 현상과 인화와 암실 과정이 생략되었다는 쓰임으로 사진을 찍는 데 쓰는 얇고 투명한 막을 뜻한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000006-0190 C000006-0190-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
           "scope_declaration": {
             "admitted_observation_ids": [
-              "C000006-0190.o01",
               "C000006-0190.o02"
             ],
-            "excluded_observation_ids": [],
-            "excluded_terms": []
+            "excluded_observation_ids": [
+              "C000006-0190.o01"
+            ],
+            "excluded_terms": [
+              "마이크로필름"
+            ]
           }
         }
       ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000006-0190",
-        "candidate_record_sha256": "f9e2f14cf9cfec5f87f2ff8096298f3ac24a960456aff9c9288a4c58fe2c5f09",
-        "decision_evidence_sha256": "1cfba435bbc067c9ebcf3d0b2bc9575c673587bca2cfc22548b3963e8587fdec",
+        "candidate_record_sha256": "beb2cf6331a8cfc84b26eff272cbc4102e8a770ad6e95df4d23408459ba5e332",
+        "decision_evidence_sha256": "592e5d4e53cb313e636b4726b355a978ef96b05a270fa5a2f310772f06d49ae7",
         "sense_evidence": [
           {
             "sense_id": "C000006-0190-s1",
-            "sense_sha256": "c6676b0d4ed66239be7cf4be5b9576056c8d388ec8b8f21d6bfc0aefe151dcd3",
-            "gloss_sha256": "b8d20b293afac52d84f21938e1251f955034e8d445997b5f387a1bf0fbc17626",
-            "evidence_sha256": "873949a3cac95bc732ad913f20970571d55497564d36fcb16029c73b72742c7a"
+            "sense_sha256": "d4a40b230cb0d785af4edc1fe2d0e1c4357a0e7d5e41f64d9fc0f034a3d46e37",
+            "gloss_sha256": "cb07707c6015e3cedbcb99d6f8e4c1eaf21524475673c34b1c17104e61c0f8e1",
+            "evidence_sha256": "d53fe8bac915cd289c9d375fe1681c9ca281818d0225ef3d762d23e39cd01f3a"
           }
         ]
       }
