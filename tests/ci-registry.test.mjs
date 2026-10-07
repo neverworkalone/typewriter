@@ -194,8 +194,8 @@ test('CI changed-path gate skips only documentation-only PRs', async (t) => {
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
   assert.equal(
     (workflow.match(/if: steps\.changes\.outputs\.run_normal == 'true'/gu) ?? []).length,
-    6,
-    'pnpm and Node setup, dependencies, the full normal run and the FTS5 literature regression steps must all use the same classifier result',
+    4,
+    'pnpm and Node setup, dependencies and the full normal run must all use the same classifier result',
   );
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
@@ -292,7 +292,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /runs-on: ubuntu-24\.04/u);
   assert.match(workflow, /actions\/checkout@v7/u);
   assert.match(workflow, /actions\/setup-node@v7/u);
-  assert.match(workflow, /node-version: 22\.13\.x/u);
+  assert.match(workflow, /node-version: 24\.x/u);
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
   assert.doesNotMatch(workflow, /pnpm run ci:fast/u);
@@ -309,7 +309,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(deepWorkflow, /runs-on: ubuntu-24\.04/u);
   assert.match(deepWorkflow, /actions\/checkout@v7/u);
   assert.match(deepWorkflow, /actions\/setup-node@v7/u);
-  assert.match(deepWorkflow, /node-version: 22\.13\.x/u);
+  assert.match(deepWorkflow, /node-version: 24\.x/u);
   assert.match(deepWorkflow, /ref: \$\{\{ github\.sha \}\}/u);
   assert.doesNotMatch(deepWorkflow, /Deep CI Gate|Resolve deep validation target/u);
 
@@ -349,5 +349,38 @@ test('pnpm script commands deliver exactly the intended arguments to the script'
     ]);
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+// The Node baseline in package.json must agree with every active document that states it.
+test('documented Node baseline matches package.json engines', async () => {
+  const root = path.resolve(TEST_DIRECTORY, '..');
+  const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+  const minimum = pkg.engines.node.replace(/^>=/u, '');
+  assert.match(minimum, /^24\.\d+\.\d+$/u);
+  const [major, minor] = minimum.split('.');
+  const workflowDirectory = path.join(root, '.github/workflows');
+  let nodeWorkflows = 0;
+  for (const workflow of (await readdir(workflowDirectory)).filter((name) => /\.ya?ml$/u.test(name))) {
+    const text = await readFile(path.join(workflowDirectory, workflow), 'utf8');
+    if (!text.includes('actions/setup-node')) continue;
+    nodeWorkflows += 1;
+    const versions = [...text.matchAll(/node-version: (\S+)/gu)].map((match) => match[1]);
+    assert.deepEqual([...new Set(versions)], [`${major}.x`], `${workflow} must use the Node ${major} baseline only`);
+    assert.equal(versions.length, (text.match(/actions\/setup-node/gu) ?? []).length, `${workflow} must pin every setup-node step`);
+  }
+  assert.ok(nodeWorkflows >= 4, 'expected every Node workflow to be scanned');
+  for (const file of ['README.md', 'docs/build.md', 'docs/development.md', 'docs/corpus-index-design.md']) {
+    const text = await readFile(path.join(root, file), 'utf8');
+    assert.ok(
+      text.includes(minimum) || text.includes(`${major}.${minor}`),
+      `${file} must state the Node ${minimum} minimum`,
+    );
+    assert.doesNotMatch(text, /22\.13/u, `${file} must not describe Node 22.13 as the baseline`);
+    assert.doesNotMatch(
+      text,
+      /minimum Node[^.]*\bmay not (?:provide|support|include)|Node 22[^.]*(?:lacks?|without|no) FTS5|FTS5[^.]*(?:lacks?|missing)[^.]*Node 22/iu,
+      `${file} must not describe FTS5 as possibly missing on the supported Node baseline`,
+    );
   }
 });

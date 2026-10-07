@@ -77,7 +77,7 @@ See the [editorial model](docs/editorial-model.md), [lexical quality pipeline](d
 
 ## Development
 
-Requirements: Node.js 22.13 or newer and pnpm 10.34.6 (pinned in
+Requirements: Node.js 24.19 or newer (Node 24 LTS) and pnpm 10.34.6 (pinned in
 `package.json#packageManager`; activate it with `corepack enable` or
 `npm install -g pnpm@10.34.6`). Use pnpm only: `pnpm-lock.yaml` is the sole
 lockfile, and `package-lock.json` must not be regenerated. From a clean clone:

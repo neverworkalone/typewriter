@@ -29,13 +29,8 @@ import {
   shortPostingsPathFor,
 } from './short-query-postings.mjs';
 
-let fts5TrigramError;
-try {
-  assertFts5TrigramSupport();
-} catch (error) {
-  fts5TrigramError = error;
-}
-const hasFts5Trigram = fts5TrigramError === undefined;
+// Node 24 ships node:sqlite with FTS5 trigram; fail loudly instead of skipping if that regresses.
+assertFts5TrigramSupport();
 
 const temporaryDirectories = new Set();
 
@@ -231,20 +226,11 @@ function readLogicalRows(databasePath) {
   }
 }
 
-test('runtime reports FTS5 trigram availability with a useful error', () => {
-  if (hasFts5Trigram) {
-    assert.doesNotThrow(assertFts5TrigramSupport);
-  } else {
-    assert.match(
-      fts5TrigramError.message,
-      /requires SQLite FTS5 with the trigram tokenizer \(SQLite [^)]+\):/u,
-    );
-  }
+test('runtime provides FTS5 trigram support', () => {
+  assert.doesNotThrow(assertFts5TrigramSupport);
 });
 
-test('valid sources build positional rows, metadata joins, and a trigram FTS index', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('valid sources build positional rows, metadata joins, and a trigram FTS index', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const { outputPath, summary } = await buildFixtureIndex(directory, corpusDirectory);
@@ -291,9 +277,7 @@ test('valid sources build positional rows, metadata joins, and a trigram FTS ind
   }
 });
 
-test('three-character FTS and one/two-character fallbacks return literal matches in source order', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('three-character FTS and one/two-character fallbacks return literal matches in source order', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);
@@ -336,9 +320,7 @@ test('three-character FTS and one/two-character fallbacks return literal matches
   );
 });
 
-test('persistent corpus index reader returns bounded evidence over one open index', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('persistent corpus index reader returns bounded evidence over one open index', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);
@@ -364,9 +346,7 @@ test('persistent corpus index reader returns bounded evidence over one open inde
   assert.throws(() => reader.count('바람빛'), /reader is closed/u);
 });
 
-test('corpus search defaults to 50 and caps FTS and one/two-character fallback at 200', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('corpus search defaults to 50 and caps FTS and one/two-character fallback at 200', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeManyMatchingCorpus(directory);
   const { outputPath, summary } = await buildFixtureIndex(directory, corpusDirectory);
@@ -443,9 +423,7 @@ test('corpus search rejects limits outside the supported range', () => {
   }
 });
 
-test('repeated source, document, and paragraph IDs remain separate positional evidence rows', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('repeated source, document, and paragraph IDs remain separate positional evidence rows', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);
@@ -514,9 +492,7 @@ test('source edits and deletions change the sorted input manifest digest', async
   assert.equal(deleted.source_count, 1);
 });
 
-test('identical fixture rebuilds produce identical sorted rows and logical digests', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('identical fixture rebuilds produce identical sorted rows and logical digests', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const first = await buildFixtureIndex(directory, corpusDirectory);
@@ -531,9 +507,7 @@ test('identical fixture rebuilds produce identical sorted rows and logical diges
   assert.deepEqual(readLogicalRows(first.outputPath), readLogicalRows(secondPath));
 });
 
-test('failed build leaves an existing valid target index untouched', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('failed build leaves an existing valid target index untouched', async () => {
   const directory = await makeTemporaryDirectory();
   const validCorpus = await makeCorpus(directory);
   const { outputPath } = await buildFixtureIndex(directory, validCorpus);
@@ -617,9 +591,7 @@ test('permission record blocks pending terms and accepts the stated reference sc
   );
 });
 
-test('a literal quote is safely searched through the trigram phrase path', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('a literal quote is safely searched through the trigram phrase path', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);
@@ -629,9 +601,7 @@ test('a literal quote is safely searched through the trigram phrase path', {
   assert.equal(hits[0].paragraph_id, 'quoted-paragraph');
 });
 
-test('two-character counts from the sidecar equal the exact scan and ignore a stale sidecar', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('two-character counts from the sidecar equal the exact scan and ignore a stale sidecar', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);
@@ -690,9 +660,7 @@ test('posting codec round-trips ascending rowids, truncates at the limit and rej
   assert.throws(() => encodePostings([5, 4]), RangeError);
 });
 
-test('two-character search through postings equals the exact scan for every bigram, limit and threshold', {
-  skip: hasFts5Trigram ? false : fts5TrigramError.message,
-}, async () => {
+test('two-character search through postings equals the exact scan for every bigram, limit and threshold', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const { outputPath } = await buildFixtureIndex(directory, corpusDirectory);

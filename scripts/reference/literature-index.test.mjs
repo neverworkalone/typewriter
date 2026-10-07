@@ -27,18 +27,8 @@ import {
   verifyLiteratureIndex,
 } from './literature-index.mjs';
 
-let fts5Error;
-try {
-  assertLiteratureFts5Support();
-} catch (error) {
-  fts5Error = error;
-}
-// Builds need SQLite FTS5 trigram; some Node builds (e.g. 22.13) ship SQLite without it.
-// The dedicated CI step sets TYPEWRITER_REQUIRE_FTS5 so a missing FTS5 fails instead of skipping.
-if (fts5Error && process.env.TYPEWRITER_REQUIRE_FTS5 === '1') {
-  throw new Error('TYPEWRITER_REQUIRE_FTS5 is set but FTS5 is unavailable: ' + fts5Error.message);
-}
-const needsFts5 = { skip: fts5Error ? fts5Error.message : false };
+// Node 24 ships node:sqlite with FTS5; fail loudly instead of skipping if that regresses.
+assertLiteratureFts5Support();
 
 const directories = [];
 after(async () => {
@@ -139,7 +129,7 @@ test('permission gate blocks pending terms and accepts only the stated scope', a
   await assert.rejects(assertLiteraturePermission({ permissionRecordPath: record }), /Distribution\/embedding/u);
 });
 
-test('build reconstructs each work exactly from stored units and is reproducible', needsFts5, async () => {
+test('build reconstructs each work exactly from stored units and is reproducible', async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   const first = await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -160,7 +150,7 @@ test('build reconstructs each work exactly from stored units and is reproducible
     .every((r) => r.source_unchanged && r.text_identical));
 });
 
-test('changed or removed source changes the manifest digest and verification', needsFts5, async () => {
+test('changed or removed source changes the manifest digest and verification', async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   const built = await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -176,7 +166,7 @@ test('changed or removed source changes the manifest digest and verification', n
   await assert.rejects(buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths }), /cannot read source file.*3_/u);
 });
 
-test('failed build leaves the previous index intact and names the offending path', needsFts5, async () => {
+test('failed build leaves the previous index intact and names the offending path', async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -202,7 +192,7 @@ test('failed build leaves the previous index intact and names the offending path
   await assert.rejects(buildLiteratureIndex({ inputDirectory: input, outputPath: path.join(input, 'x.sqlite'), relativePaths: paths }), /outside the TXT input/u);
 });
 
-test('duplicate titles and file names across genres stay distinct works', needsFts5, async () => {
+test('duplicate titles and file names across genres stay distinct works', async () => {
   const { input, paths } = await makeCollection({
     'poem/5_작가-같은제목-1.txt': Buffer.from('같은 시\r\n'),
     'poem/6_작가-같은제목-2.txt': Buffer.from('같은 시\r\n'),
@@ -216,7 +206,7 @@ test('duplicate titles and file names across genres stay distinct works', needsF
   ]);
 });
 
-test('search is literal, bounded, deterministic and covers 1-2 character queries', needsFts5, async () => {
+test('search is literal, bounded, deterministic and covers 1-2 character queries', async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -243,7 +233,7 @@ test('search is literal, bounded, deterministic and covers 1-2 character queries
   assert.throws(() => searchLiteratureIndex({ databasePath: output, query: '문', genre: 'x' }), /genre/u);
 });
 
-test('SQLite integrity, foreign keys and FTS are consistent', needsFts5, async () => {
+test('SQLite integrity, foreign keys and FTS are consistent', async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });
@@ -297,7 +287,7 @@ async function fullPaths() {
   return { output: path.join(directory, 'full.sqlite'), manifest: path.join(directory, 'full.manifest.json') };
 }
 
-test('full build inventories every TXT, excludes errors from the DB and keeps them in the manifest', needsFts5, async () => {
+test('full build inventories every TXT, excludes errors from the DB and keeps them in the manifest', async () => {
   const { input, paths } = await makeCollection({
     ...BAD_FILES,
     'poem/9_작가-엘에프-9.txt': Buffer.from('가\n나\n\n다'),
@@ -335,7 +325,7 @@ test('full build inventories every TXT, excludes errors from the DB and keeps th
   assert.equal(verified.excluded_confirmed_absent, built.excluded_file_count);
 });
 
-test('full build digests are independent of enumeration order and repeat exactly', needsFts5, async () => {
+test('full build digests are independent of enumeration order and repeat exactly', async () => {
   const { input } = await makeCollection(BAD_FILES);
   const first = await fullPaths();
   const second = await fullPaths();
@@ -354,7 +344,7 @@ test('full build digests are independent of enumeration order and repeat exactly
   assert.equal(literatureManifestDigest(JSON.parse(await readFile(first.manifest, 'utf8')).files.reverse()), a.input_manifest_sha256);
 });
 
-test('full build failure leaves the previous full index and manifest untouched', needsFts5, async () => {
+test('full build failure leaves the previous full index and manifest untouched', async () => {
   const { input } = await makeCollection();
   const { output, manifest } = await fullPaths();
   await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
@@ -384,7 +374,7 @@ test('full build failure leaves the previous full index and manifest untouched',
   assert.deepEqual([await readFile(output), await readFile(manifest)], before);
 });
 
-test('failed publish of the DB/manifest pair keeps the previous pair verifiable', needsFts5, async () => {
+test('failed publish of the DB/manifest pair keeps the previous pair verifiable', async () => {
   const { input } = await makeCollection();
   const { output, manifest } = await fullPaths();
   await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
@@ -408,7 +398,7 @@ test('failed publish of the DB/manifest pair keeps the previous pair verifiable'
   assert.deepEqual((await verifyFullLiteratureIndex({ inputDirectory: input, databasePath: output, manifestPath: manifest })).problems, []);
 });
 
-test('a publish killed mid-way is recovered to a verifiable pair on the next run', needsFts5, async () => {
+test('a publish killed mid-way is recovered to a verifiable pair on the next run', async () => {
   const { input } = await makeCollection();
   const { output, manifest } = await fullPaths();
   await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
@@ -450,7 +440,7 @@ test('a publish killed mid-way is recovered to a verifiable pair on the next run
   }
 });
 
-test('full build rejects identical or aliased DB and manifest paths before touching anything', needsFts5, async () => {
+test('full build rejects identical or aliased DB and manifest paths before touching anything', async () => {
   const { input } = await makeCollection();
   const { output, manifest } = await fullPaths();
   await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
@@ -499,7 +489,7 @@ test('full build rejects a not-yet-existing case alias of the manifest path', as
   assert.deepEqual(await readdir(path.join(directory, 'fresh')), []);
 });
 
-test('full verification detects changed, removed, added and tampered sources', needsFts5, async () => {
+test('full verification detects changed, removed, added and tampered sources', async () => {
   const { input, paths } = await makeCollection(BAD_FILES);
   const { output, manifest } = await fullPaths();
   await buildFullLiteratureIndex({ inputDirectory: input, outputPath: output, manifestPath: manifest });
@@ -531,7 +521,7 @@ test('full verification detects changed, removed, added and tampered sources', n
   assert.match((await verify()).problems.join('|'), /manifest digest does not match/u);
 });
 
-test('search returns bounded neighbouring-line context with source traceability', needsFts5, async () => {
+test('search returns bounded neighbouring-line context with source traceability', async () => {
   const { input, paths } = await makeCollection();
   const output = path.join(await makeDirectory(), 'lit.sqlite');
   await buildLiteratureIndex({ inputDirectory: input, outputPath: output, relativePaths: paths });

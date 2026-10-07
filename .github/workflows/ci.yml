@@ -62,7 +62,7 @@ jobs:
         if: steps.changes.outputs.run_normal == 'true'
         uses: actions/setup-node@v7
         with:
-          node-version: 22.13.x
+          node-version: 24.x
           cache: pnpm
 
       - name: Install pinned dependencies
@@ -72,18 +72,3 @@ jobs:
       - name: Normal validation (fast checkpoint + continuation)
         if: steps.changes.outputs.run_normal == 'true'
         run: pnpm run ci:normal
-
-      # node:sqlite in Node 22.13 ships without FTS5, so the literature index
-      # regressions skip there. Run them on a Node whose SQLite has FTS5 and
-      # fail if any is skipped.
-      - name: Literature index regressions with FTS5 (no skips allowed)
-        if: steps.changes.outputs.run_normal == 'true'
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.x
-
-      - name: Run literature index regressions
-        if: steps.changes.outputs.run_normal == 'true'
-        env:
-          TYPEWRITER_REQUIRE_FTS5: '1'
-        run: node --test scripts/reference/literature-index.test.mjs
