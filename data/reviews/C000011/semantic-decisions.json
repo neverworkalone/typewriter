@@ -503,54 +503,6 @@
       }
     },
     {
-      "source_candidate_id": "C000011-0030",
-      "candidate_record_id": "C000011-0030",
-      "candidate_record_sha256": "0bc748ed6a7c771b97ec84d4f5160a7f9ebcb30a102d9688b457aea0570802e6",
-      "decision": "included",
-      "decision_rationale": "C000011-0030 attempt 1 Claude agent self-check: o01은 풍선이 게으르게 떠올라가는 것으로 성향이 아니라 움직임이 느릿하고 느긋한 모양을 나타내는 쓰임이다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000011-0030-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000011-0030: o01은 풍선이 게으르게 떠올라가는 것으로 성향이 아니라 움직임이 느릿하고 느긋한 모양을 나타내는 쓰임이다.",
-          "semantic_rationale": "C000011-0030: o01은 풍선이 게으르게 떠올라가는 것으로 성향이 아니라 움직임이 느릿하고 느긋한 모양을 나타내는 쓰임이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000011-0030 C000011-0030-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000011-0030.o01"
-            ],
-            "excluded_observation_ids": [
-              "C000011-0030.o02",
-              "C000011-0030.o03"
-            ],
-            "excluded_terms": [
-              "우둔하고"
-            ]
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000011-0030",
-        "candidate_record_sha256": "0bc748ed6a7c771b97ec84d4f5160a7f9ebcb30a102d9688b457aea0570802e6",
-        "decision_evidence_sha256": "b00941d81822b76565b8ec6323622e70be03d7807e35d6c7d22b4eb05b0270f3",
-        "sense_evidence": [
-          {
-            "sense_id": "C000011-0030-s1",
-            "sense_sha256": "7dba489c2971e9b87c515e206afd3b884e3e8b93b91cfd6e063cd67d26e4e056",
-            "gloss_sha256": "0e6ac1e2078db11cef79d594ab7ff4d00a92d3d543dc7ad95ba6b38c52ca110e",
-            "evidence_sha256": "d7700056574b75d35175df2154377e8b3e3e2af26284b92a73ea589b899e2bc6"
-          }
-        ]
-      }
-    },
-    {
       "source_candidate_id": "C000011-0035",
       "candidate_record_id": "C000011-0035",
       "candidate_record_sha256": "6797220d002e8a552af1740d2a61b77e9c4c53d43e4d73e7d645f00c9940f3b5",
@@ -1148,53 +1100,6 @@
       }
     },
     {
-      "source_candidate_id": "C000011-0139",
-      "candidate_record_id": "C000011-0139",
-      "candidate_record_sha256": "5042324772a2993d312e5e1dddd71923c34fa1a3af5ec77ce845bd6957dafaea",
-      "decision": "included",
-      "decision_rationale": "C000011-0139 attempt 1 Claude agent self-check: o01은 그 말에 벼락을 맞은 것 같았습니다로 번개 자체가 아니라 갑자기 받는 강한 충격을 빗댄 쓰임이다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000011-0139-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000011-0139: o01은 그 말에 벼락을 맞은 것 같았습니다로 번개 자체가 아니라 갑자기 받는 강한 충격을 빗댄 쓰임이다.",
-          "semantic_rationale": "C000011-0139: o01은 그 말에 벼락을 맞은 것 같았습니다로 번개 자체가 아니라 갑자기 받는 강한 충격을 빗댄 쓰임이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000011-0139 C000011-0139-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000011-0139.o01"
-            ],
-            "excluded_observation_ids": [
-              "C000011-0139.o02"
-            ],
-            "excluded_terms": [
-              "머리카락"
-            ]
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000011-0139",
-        "candidate_record_sha256": "5042324772a2993d312e5e1dddd71923c34fa1a3af5ec77ce845bd6957dafaea",
-        "decision_evidence_sha256": "cdb9901dcaa74f1dd866faa03037db8245fd26d33b3755eb7d91f01cd1203abe",
-        "sense_evidence": [
-          {
-            "sense_id": "C000011-0139-s1",
-            "sense_sha256": "51ad0c9b4b1e60db4a60eea59c8c2d12eac8f490ce670d4937d798251c914ec8",
-            "gloss_sha256": "1cf829835065240b4b287e91497c2f2f67c395ecae13e99124773ca97471eb88",
-            "evidence_sha256": "59232033b4a2efc2b1322f3ad8db65aeed3b0bb85edd0947a5c1f16bf83382de"
-          }
-        ]
-      }
-    },
-    {
       "source_candidate_id": "C000011-0152",
       "candidate_record_id": "C000011-0152",
       "candidate_record_sha256": "185e3668d55e34ecb49f742d39081de29e06231610e4c5dce2d3aa00dc351cd0",
@@ -1280,53 +1185,6 @@
             "sense_sha256": "2de7ae9edc13b4ad5c5021aa9e26e2e5ede93282889977121a1cf2a0dd570994",
             "gloss_sha256": "8064a53b22f847355bfdf2c1ba33cb195a687578bbccda73458f99384eb8889b",
             "evidence_sha256": "3998b77d84c3e4f6240ef1b8a3d7630e77b605a5baf938205207b664939b7b89"
-          }
-        ]
-      }
-    },
-    {
-      "source_candidate_id": "C000011-0163",
-      "candidate_record_id": "C000011-0163",
-      "candidate_record_sha256": "7220d3385d3f3981a94d2788291f4ecbcf1523f238ae05be023ff5d1d7562512",
-      "decision": "included",
-      "decision_rationale": "C000011-0163 attempt 1 Claude agent self-check: o02는 차세대 영화인의 성장 사다리를 놓겠다로 도구가 아니라 높은 자리로 올라가는 단계나 수단을 비유한 쓰임이다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000011-0163-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000011-0163: o02는 차세대 영화인의 성장 사다리를 놓겠다로 도구가 아니라 높은 자리로 올라가는 단계나 수단을 비유한 쓰임이다.",
-          "semantic_rationale": "C000011-0163: o02는 차세대 영화인의 성장 사다리를 놓겠다로 도구가 아니라 높은 자리로 올라가는 단계나 수단을 비유한 쓰임이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000011-0163 C000011-0163-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000011-0163.o02"
-            ],
-            "excluded_observation_ids": [
-              "C000011-0163.o01"
-            ],
-            "excluded_terms": [
-              "도서관용"
-            ]
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000011-0163",
-        "candidate_record_sha256": "7220d3385d3f3981a94d2788291f4ecbcf1523f238ae05be023ff5d1d7562512",
-        "decision_evidence_sha256": "cc1fc13d118439c0c571a95fdc5aabc76f79dc35c9d0c0d79beac52873305d27",
-        "sense_evidence": [
-          {
-            "sense_id": "C000011-0163-s1",
-            "sense_sha256": "755512f62219638be233953cf62ac7f687a3e5cbb190d7343f170babf803182f",
-            "gloss_sha256": "52c9006c547ee2142b78c9ac8978678e787b18028d3832c284d5e48d62659fdc",
-            "evidence_sha256": "d5f0bc174205870f9c067267f1a0e0bed71604eec16309856f2a62254e9c4a4b"
           }
         ]
       }
@@ -1456,53 +1314,6 @@
             "sense_sha256": "66bea84e252781f6a15b57d00195d98ae748e2762a5c2c470608c1daa311dceb",
             "gloss_sha256": "a7309756b60998eeb81814e8d56287fd4f7a0f16dbdf414249e1936389605375",
             "evidence_sha256": "c2978e50177862deb59f02713b833ac4b3dd840405429e13de52ee91f4cf9ba1"
-          }
-        ]
-      }
-    },
-    {
-      "source_candidate_id": "C000011-0200",
-      "candidate_record_id": "C000011-0200",
-      "candidate_record_sha256": "4917124a7240cd1a1943e7ab2b54986b6c38fb292288ffac60352a62c82b1db2",
-      "decision": "included",
-      "decision_rationale": "C000011-0200 attempt 1 Claude agent self-check: o01은 거리는 이상할 정도로 적막에 싸였다로 물질이 아니라 분위기나 기운에 휩싸이는 비유적 쓰임이다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000011-0200-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000011-0200: o01은 거리는 이상할 정도로 적막에 싸였다로 물질이 아니라 분위기나 기운에 휩싸이는 비유적 쓰임이다.",
-          "semantic_rationale": "C000011-0200: o01은 거리는 이상할 정도로 적막에 싸였다로 물질이 아니라 분위기나 기운에 휩싸이는 비유적 쓰임이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000011-0200 C000011-0200-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000011-0200.o01"
-            ],
-            "excluded_observation_ids": [
-              "C000011-0200.o02"
-            ],
-            "excluded_terms": [
-              "갓난아기"
-            ]
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000011-0200",
-        "candidate_record_sha256": "4917124a7240cd1a1943e7ab2b54986b6c38fb292288ffac60352a62c82b1db2",
-        "decision_evidence_sha256": "7d1281b2b552e302d7a482444d7e0ce6420fd01f66f4a4ff544dbc5212853fbd",
-        "sense_evidence": [
-          {
-            "sense_id": "C000011-0200-s1",
-            "sense_sha256": "62e39d4aa728db29cbc13a01ce6004021997bf052bbfeb49e51df9dbe55686f0",
-            "gloss_sha256": "8e369c577301dee4815b62b998f0e46c634bdb696e7186dd3f9a8b87f3781a38",
-            "evidence_sha256": "7c317241fa349e588931facecfa9c36894b82e7b792ae96e72b9549a8d19c2c4"
           }
         ]
       }
@@ -1783,7 +1594,7 @@
     {
       "source_candidate_id": "C000011-0284",
       "candidate_record_id": "C000011-0284",
-      "candidate_record_sha256": "cca3ee8bd3d51de5f788a8ee4b9ef8e25224bed49a1ce02b09a9d34121c283dd",
+      "candidate_record_sha256": "9c7a1dfd05d47b28f4fa553e2f229e300845ceff7833f9043b75bea1ccf84b96",
       "decision": "included",
       "decision_rationale": "C000011-0284 attempt 1 Claude agent self-check: o03은 평생 짓누르던 생각들이 다시 튀어나오기 시작했다로 물리적 누름이 아니라 생각이 마음을 무겁게 억누르는 비유적 쓰임이다.",
       "gloss_judgment": "fit",
@@ -1816,13 +1627,13 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000011-0284",
-        "candidate_record_sha256": "cca3ee8bd3d51de5f788a8ee4b9ef8e25224bed49a1ce02b09a9d34121c283dd",
+        "candidate_record_sha256": "9c7a1dfd05d47b28f4fa553e2f229e300845ceff7833f9043b75bea1ccf84b96",
         "decision_evidence_sha256": "9c1e63e11673768ef5c476ed5f9fe3a455396ca8aeec461a40b860639fc9aed0",
         "sense_evidence": [
           {
             "sense_id": "C000011-0284-s1",
-            "sense_sha256": "3ac75405b58b27bd6f503ad25a9779a47bc2a70610ddb408fa1d8ee23cc83cce",
-            "gloss_sha256": "a763e93d3a192f9d22c481d4ff39d4343022a3da541623015e9f2298ab746f95",
+            "sense_sha256": "68af1cb81419b93ad80ee2f30fbf017c10b3e035402afbec93473956817a85ee",
+            "gloss_sha256": "5bc5106b18df33628932e8f29904c67f058cdccd1c20239e54d29ce9b042fb0d",
             "evidence_sha256": "44daa97e4078cc6421c2bb7d87652a527a5fe4a0e98ac9494f7495b14beeeb21"
           }
         ]
@@ -1915,54 +1726,6 @@
             "sense_sha256": "09493b18c0c20d327f18dad66c9c63321a08aa4248de2346c9869317db5101c4",
             "gloss_sha256": "559760f746a1c2bb15d5e8f541681ce1636ae638786c81b2dc430604d3f6b3ac",
             "evidence_sha256": "b47639be3f25280c1d1351bc998c3ee7ca63123460bf2f9518f1612475a0e7d9"
-          }
-        ]
-      }
-    },
-    {
-      "source_candidate_id": "C000011-0321",
-      "candidate_record_id": "C000011-0321",
-      "candidate_record_sha256": "b72a95a5ec2749b8f4c1183d4d2c8a70fd411dfafe6a9f7f88944b29f677c5fb",
-      "decision": "included",
-      "decision_rationale": "C000011-0321 attempt 1 Claude agent self-check: o03은 의원이 사고를 치면 폭탄이 터졌다고 표현한다로 무기가 아니라 갑자기 터져 큰 피해를 주는 사건을 빗댄 쓰임이다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000011-0321-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000011-0321: o03은 의원이 사고를 치면 폭탄이 터졌다고 표현한다로 무기가 아니라 갑자기 터져 큰 피해를 주는 사건을 빗댄 쓰임이다.",
-          "semantic_rationale": "C000011-0321: o03은 의원이 사고를 치면 폭탄이 터졌다고 표현한다로 무기가 아니라 갑자기 터져 큰 피해를 주는 사건을 빗댄 쓰임이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000011-0321 C000011-0321-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000011-0321.o03"
-            ],
-            "excluded_observation_ids": [
-              "C000011-0321.o01",
-              "C000011-0321.o02"
-            ],
-            "excluded_terms": [
-              "폭격기"
-            ]
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000011-0321",
-        "candidate_record_sha256": "b72a95a5ec2749b8f4c1183d4d2c8a70fd411dfafe6a9f7f88944b29f677c5fb",
-        "decision_evidence_sha256": "ac43a5b787981cb414e9fcebff0ef2fd81923a09b470e9d47d966583e66bc90f",
-        "sense_evidence": [
-          {
-            "sense_id": "C000011-0321-s1",
-            "sense_sha256": "f29002d7e2b0f1c3d2d5de8c207408941921f1eb36ba41936969dd7e093fc3e1",
-            "gloss_sha256": "6de781cb4ba1dfc00986ab70f1031cc16150831e4af9f83626f9302dfd4d3d01",
-            "evidence_sha256": "dcfbb2979cca718a9898b8cd75eb2cff653129a9227f43a2259c58156e8af0d9"
           }
         ]
       }
