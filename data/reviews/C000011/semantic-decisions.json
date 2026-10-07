@@ -1,0 +1,1548 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "kind": "separately-authored-semantic-decision-source",
+  "batch_id": "C000011",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "authoring_mode": "agent-authored-decision",
+  "provenance": {
+    "human_reviewed": false
+  },
+  "review": {
+    "status": "complete",
+    "reviewer": "claude-agent-self-check",
+    "reviewed_candidate_count": 339
+  },
+  "decisions": [
+    {
+      "source_candidate_id": "C000011-0005",
+      "candidate_record_id": "C000011-0005",
+      "candidate_record_sha256": "7285826b4768482f6b7e7e66264a8bbadff2be542efff0b06eaf59dbdb0a9f35",
+      "decision": "included",
+      "decision_rationale": "C000011-0005 attempt 1 Claude agent self-check: o01은 가파르게 성장하고 있었다, o03은 가파른 퇴행기에 접어들었다로 변화의 속도나 정도가 몹시 급하다는 비유적 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0005-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0005: o01은 가파르게 성장하고 있었다, o03은 가파른 퇴행기에 접어들었다로 변화의 속도나 정도가 몹시 급하다는 비유적 쓰임이다.",
+          "semantic_rationale": "C000011-0005: o01은 가파르게 성장하고 있었다, o03은 가파른 퇴행기에 접어들었다로 변화의 속도나 정도가 몹시 급하다는 비유적 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0005 C000011-0005-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0005.o01",
+              "C000011-0005.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0005.o02"
+            ],
+            "excluded_terms": [
+              "길"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0005",
+        "candidate_record_sha256": "7285826b4768482f6b7e7e66264a8bbadff2be542efff0b06eaf59dbdb0a9f35",
+        "decision_evidence_sha256": "6e1f02e5597c456957070f99357c7bad12c22d68395c008a427c49a7e4804ed4",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0005-s1",
+            "sense_sha256": "37b4932aa97ce016ea7f4e3fecdc738a60b184e4f19e38f290804f9cb719f71e",
+            "gloss_sha256": "036b71bff5aa627048ff03fb3512509817264b9c37c605092d9a7e26bd0c8a41",
+            "evidence_sha256": "8412dce2638ed3909489658395d49e97549f72b092c57f996d9e79f4e6220cd4"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0007",
+      "candidate_record_id": "C000011-0007",
+      "candidate_record_sha256": "6a8ea7106b8cdcd0d363fad1759e4aafb882139b1a2d877eac42595493d30137",
+      "decision": "included",
+      "decision_rationale": "C000011-0007 attempt 1 Claude agent self-check: o01은 브리디가 그 일에 간섭할 상황도 아니었다로 남의 일에 끼어드는 쓰임이며 명사 간섭이 아닌 동사 활용형이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0007-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0007: o01은 브리디가 그 일에 간섭할 상황도 아니었다로 남의 일에 끼어드는 쓰임이며 명사 간섭이 아닌 동사 활용형이다.",
+          "semantic_rationale": "C000011-0007: o01은 브리디가 그 일에 간섭할 상황도 아니었다로 남의 일에 끼어드는 쓰임이며 명사 간섭이 아닌 동사 활용형이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0007 C000011-0007-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0007.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0007",
+        "candidate_record_sha256": "6a8ea7106b8cdcd0d363fad1759e4aafb882139b1a2d877eac42595493d30137",
+        "decision_evidence_sha256": "31bd5ef1ceba0bfa1c4636b0a89d833c0212f3e273541026c6e5110c82a06b6a",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0007-s1",
+            "sense_sha256": "e9bac5020673a17c761c621b13c63e092e1e017e77b8a30b75bee62f188dbec9",
+            "gloss_sha256": "e4aeb926dd03d6becba3973d43aa1a8cc06c8e0fde039cd604788233f48c9283",
+            "evidence_sha256": "fafc2452b5bb423b7965b3d3408bd2d2f3f8cfd5396f698e2dbfdd32840e7dba"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0009",
+      "candidate_record_id": "C000011-0009",
+      "candidate_record_sha256": "16c90f825d9985badc239c3d8ea1cc94e7ea5387752d0b42948892b9264bc033",
+      "decision": "included",
+      "decision_rationale": "C000011-0009 attempt 1 Claude agent self-check: o01은 중대한 범죄로 간주하고, o02는 텔레비전을 보는 걸로 간주할 수 있을 것 같았다, o03은 반역으로 간주해로 무엇을 어떠하다고 보아 여기는 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0009-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0009: o01은 중대한 범죄로 간주하고, o02는 텔레비전을 보는 걸로 간주할 수 있을 것 같았다, o03은 반역으로 간주해로 무엇을 어떠하다고 보아 여기는 쓰임이다.",
+          "semantic_rationale": "C000011-0009: o01은 중대한 범죄로 간주하고, o02는 텔레비전을 보는 걸로 간주할 수 있을 것 같았다, o03은 반역으로 간주해로 무엇을 어떠하다고 보아 여기는 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0009 C000011-0009-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0009.o01",
+              "C000011-0009.o02",
+              "C000011-0009.o03"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0009",
+        "candidate_record_sha256": "16c90f825d9985badc239c3d8ea1cc94e7ea5387752d0b42948892b9264bc033",
+        "decision_evidence_sha256": "e63cb1171f153a5e1090abb9c240e243896d8b8f7a78c35c998185a7be79653f",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0009-s1",
+            "sense_sha256": "a90281513f30010561064f8c615451e8108795aa977396d4833bbb08ee84aade",
+            "gloss_sha256": "baf28a583a10086993725121bc86a4371bedd6b736cd3ea43870323f72cdd1a0",
+            "evidence_sha256": "6798335d02ac81dc429a05d4cb8c624e696017e6efbeb038c3d7bdeed0aca447"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0011",
+      "candidate_record_id": "C000011-0011",
+      "candidate_record_sha256": "85c1f1b46d362c6f210e129d254c726c460e8835caa437a13745e0a8536b8c2c",
+      "decision": "included",
+      "decision_rationale": "C000011-0011 attempt 1 Claude agent self-check: o01은 간호병이 말했다로 환자나 부상자를 돌보는 병사를 가리키는 일반 명사이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0011-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0011: o01은 간호병이 말했다로 환자나 부상자를 돌보는 병사를 가리키는 일반 명사이다.",
+          "semantic_rationale": "C000011-0011: o01은 간호병이 말했다로 환자나 부상자를 돌보는 병사를 가리키는 일반 명사이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0011 C000011-0011-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0011.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0011",
+        "candidate_record_sha256": "85c1f1b46d362c6f210e129d254c726c460e8835caa437a13745e0a8536b8c2c",
+        "decision_evidence_sha256": "c4378064b9345190731c23f06848c2fd0254b804a3113d80ed9d3e4b49fba041",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0011-s1",
+            "sense_sha256": "b1302eed10936297b6e1457a2b1d3bf936afc20a595821f96413ea467192cfa3",
+            "gloss_sha256": "69c9ec58a6eaf7c77f565384796c55c7a4ddb221f80bbbc84ba58a0663192fda",
+            "evidence_sha256": "6968cf81145dce90bee586c0f94d9f1bbc580a1baa873ed608289e2b2e2324fd"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0012",
+      "candidate_record_id": "C000011-0012",
+      "candidate_record_sha256": "a470f1fb73c04fdf49e99c854caf28f85e79eaf3e885fd6573cde3ec7c4e615b",
+      "decision": "included",
+      "decision_rationale": "C000011-0012 attempt 1 Claude agent self-check: o01은 의지박약의 나이롱환자를 억지로 간호하는 보모가 된 기분이었다로 환자를 돌보는 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0012-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0012: o01은 의지박약의 나이롱환자를 억지로 간호하는 보모가 된 기분이었다로 환자를 돌보는 쓰임이다.",
+          "semantic_rationale": "C000011-0012: o01은 의지박약의 나이롱환자를 억지로 간호하는 보모가 된 기분이었다로 환자를 돌보는 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0012 C000011-0012-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0012.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0012",
+        "candidate_record_sha256": "a470f1fb73c04fdf49e99c854caf28f85e79eaf3e885fd6573cde3ec7c4e615b",
+        "decision_evidence_sha256": "fae0a4699fc890e7f755e1d5cb8b728beb5de916c5a5e028bead93b58d603bb2",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0012-s1",
+            "sense_sha256": "2a747ecbf369fc2a3191a75c76a334f3d4d39d6108e3c1d0c4c292a6efca526c",
+            "gloss_sha256": "76cfcf4ade5ccb6ae07fa6decf52fc086c7ca69e4a93ca5d901756109be8a7db",
+            "evidence_sha256": "e7aab783d5e9dfc1fe1a2dfbf73f76f6e99808afab1a2a0d860dc316e58aa024"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0020",
+      "candidate_record_id": "C000011-0020",
+      "candidate_record_sha256": "f84c9b3d6ddf4704db6a37a7b0ce3846ef3502efbadf83e92b3e66db7d5b5cce",
+      "decision": "included",
+      "decision_rationale": "C000011-0020 attempt 1 Claude agent self-check: o01은 거만하게 굴면서, o02는 거만하고 뻣뻣한 스웨덴 사람, o03은 거만한 얼굴로 잘난 체하며 남을 낮추어 보는 태도를 나타낸다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0020-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0020: o01은 거만하게 굴면서, o02는 거만하고 뻣뻣한 스웨덴 사람, o03은 거만한 얼굴로 잘난 체하며 남을 낮추어 보는 태도를 나타낸다.",
+          "semantic_rationale": "C000011-0020: o01은 거만하게 굴면서, o02는 거만하고 뻣뻣한 스웨덴 사람, o03은 거만한 얼굴로 잘난 체하며 남을 낮추어 보는 태도를 나타낸다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0020 C000011-0020-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0020.o01",
+              "C000011-0020.o02",
+              "C000011-0020.o03"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0020",
+        "candidate_record_sha256": "f84c9b3d6ddf4704db6a37a7b0ce3846ef3502efbadf83e92b3e66db7d5b5cce",
+        "decision_evidence_sha256": "d5a6e0f9eea51675ef99103419a89227c3b54329eabf95ad419d1257a8a4b306",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0020-s1",
+            "sense_sha256": "c3e53cc5df4eedb9b53d16fa35d04c4477a9326965b30b7f5d2af0ead1792c25",
+            "gloss_sha256": "dc3f644d7b41fe05b47301b785144b291d7f4a96c112d8d2280260cf72ef3878",
+            "evidence_sha256": "9a70d55a6e721fc7a1a0dab64e11b62d2f0c309b27afcfe9712aa6572ba9b3c7"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0023",
+      "candidate_record_id": "C000011-0023",
+      "candidate_record_sha256": "25e1c62190e415bd352b516023b183319cefdd4d24c9c54416698a10914dbcd6",
+      "decision": "included",
+      "decision_rationale": "C000011-0023 attempt 1 Claude agent self-check: o01은 워싱턴에 거주하며, 캔자스에 거주하는 피해자의 부모, o02는 프로그램이 거주할 수 있는 가상 세계로 일정한 곳에 머물러 사는 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0023-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0023: o01은 워싱턴에 거주하며, 캔자스에 거주하는 피해자의 부모, o02는 프로그램이 거주할 수 있는 가상 세계로 일정한 곳에 머물러 사는 쓰임이다.",
+          "semantic_rationale": "C000011-0023: o01은 워싱턴에 거주하며, 캔자스에 거주하는 피해자의 부모, o02는 프로그램이 거주할 수 있는 가상 세계로 일정한 곳에 머물러 사는 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0023 C000011-0023-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0023.o01",
+              "C000011-0023.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0023",
+        "candidate_record_sha256": "25e1c62190e415bd352b516023b183319cefdd4d24c9c54416698a10914dbcd6",
+        "decision_evidence_sha256": "420e1816366435a85c2acbeda222903f3a03c3642fd9e46c1e6eb75b597dfc7f",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0023-s1",
+            "sense_sha256": "27ff49799132f60444eb954be1cbe45a801cced6d6b08478b73baf31a78603e1",
+            "gloss_sha256": "15c15b405e7794b1ebb85d2500cab1f9f437c81cc759206954bd5d153ea6b3a2",
+            "evidence_sha256": "8c8a3cb70b66645a38245e719e0366a06c893b5047038e5c7ccf6f54d791b1ca"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0024",
+      "candidate_record_id": "C000011-0024",
+      "candidate_record_sha256": "f4df5ce15be4bf40de0a3674722938d8fe6ff63e27c20b149f4140e0b342fc35",
+      "decision": "included",
+      "decision_rationale": "C000011-0024 attempt 1 Claude agent self-check: o01은 인화 건조 중인 사진으로 물기를 없애 말리는 일을 가리켜 마른 상태를 뜻하는 기존 뜻과 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0024-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0024: o01은 인화 건조 중인 사진으로 물기를 없애 말리는 일을 가리켜 마른 상태를 뜻하는 기존 뜻과 구별된다.",
+          "semantic_rationale": "C000011-0024: o01은 인화 건조 중인 사진으로 물기를 없애 말리는 일을 가리켜 마른 상태를 뜻하는 기존 뜻과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0024 C000011-0024-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0024.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0024",
+        "candidate_record_sha256": "f4df5ce15be4bf40de0a3674722938d8fe6ff63e27c20b149f4140e0b342fc35",
+        "decision_evidence_sha256": "46d433e457317198a57c54fb4574745c83a4ebc749264c77b4854f36aa3d3dc8",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0024-s1",
+            "sense_sha256": "e88c4daf6af3684cfe9a4653094004d764980dbef2c86c1a3d15e2194885e4c2",
+            "gloss_sha256": "e3785c698bfce8ce1e50fe835ce31d7455e77cc9b8c5c3f893ef733cc955fadb",
+            "evidence_sha256": "ee9100aea182349907b5bb0578c649efe084366fea4dd29253c2038a2b89c3ef"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0025",
+      "candidate_record_id": "C000011-0025",
+      "candidate_record_sha256": "085ff969e8f27afe379269bf833bd7624f0678dea9e0a5697f13253623272bc8",
+      "decision": "included",
+      "decision_rationale": "C000011-0025 attempt 1 Claude agent self-check: o01은 조용하고 건조한 장소, o02는 먼지 낀 뼈다귀처럼 건조해 보였다로 물기나 습기가 적어 말라 있다는 뜻이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0025-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0025: o01은 조용하고 건조한 장소, o02는 먼지 낀 뼈다귀처럼 건조해 보였다로 물기나 습기가 적어 말라 있다는 뜻이다.",
+          "semantic_rationale": "C000011-0025: o01은 조용하고 건조한 장소, o02는 먼지 낀 뼈다귀처럼 건조해 보였다로 물기나 습기가 적어 말라 있다는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0025 C000011-0025-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0025.o01",
+              "C000011-0025.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0025",
+        "candidate_record_sha256": "085ff969e8f27afe379269bf833bd7624f0678dea9e0a5697f13253623272bc8",
+        "decision_evidence_sha256": "8927a3891479c1332c81793fa4c83d93d4726eea6f0260031e04ea13b6db61ce",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0025-s1",
+            "sense_sha256": "8b39d198a9db97b78dac35ebdd9f09005c6aec3d01fc576bf90cc3fefc760d51",
+            "gloss_sha256": "08e206d60dccc93ad57dcd9168f112c0bedd6ed19290c4a514e300be4f3d4fc3",
+            "evidence_sha256": "cdd73b01798dbc520f3f577d7d73d4f91fd2de4ecfc52e3e8e98825da4c2c4a3"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0028",
+      "candidate_record_id": "C000011-0028",
+      "candidate_record_sha256": "1be09d98c5701938ad303cb947f801566ab88215eaa3f54457715c0c8d8230c0",
+      "decision": "included",
+      "decision_rationale": "C000011-0028 attempt 1 Claude agent self-check: o01은 검정색 잠바를 입고 있었다로 검은 빛깔을 가리키는 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0028-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0028: o01은 검정색 잠바를 입고 있었다로 검은 빛깔을 가리키는 쓰임이다.",
+          "semantic_rationale": "C000011-0028: o01은 검정색 잠바를 입고 있었다로 검은 빛깔을 가리키는 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0028 C000011-0028-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0028.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0028",
+        "candidate_record_sha256": "1be09d98c5701938ad303cb947f801566ab88215eaa3f54457715c0c8d8230c0",
+        "decision_evidence_sha256": "11b372c3c4074b967f0d556693481b67d876589e94f4a7ad9e9c22cb240249f2",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0028-s1",
+            "sense_sha256": "0581e4e72efd3a338609ee2160f0f266e77adbc14d8641c01cc3c4196ecab101",
+            "gloss_sha256": "4554912c582dead21a0cdce4cd8cc6bbcc0c3c131aaf419638792c0d89c64477",
+            "evidence_sha256": "9aa7201a00001831a198eb9eaad37d1162e299a7f5ba4208dc5001e2292f22ae"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0035",
+      "candidate_record_id": "C000011-0035",
+      "candidate_record_sha256": "6797220d002e8a552af1740d2a61b77e9c4c53d43e4d73e7d645f00c9940f3b5",
+      "decision": "included",
+      "decision_rationale": "C000011-0035 attempt 1 Claude agent self-check: o01은 곁눈질로 눈짓만 교환했다로 고개를 돌리지 않고 슬쩍 보는 일을 가리킨다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0035-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0035: o01은 곁눈질로 눈짓만 교환했다로 고개를 돌리지 않고 슬쩍 보는 일을 가리킨다.",
+          "semantic_rationale": "C000011-0035: o01은 곁눈질로 눈짓만 교환했다로 고개를 돌리지 않고 슬쩍 보는 일을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0035 C000011-0035-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0035.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0035",
+        "candidate_record_sha256": "6797220d002e8a552af1740d2a61b77e9c4c53d43e4d73e7d645f00c9940f3b5",
+        "decision_evidence_sha256": "144d94ee087944465b3e6762e30c3fa520cc2e87139d729fa3a802b6c69e5575",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0035-s1",
+            "sense_sha256": "8cf0dc3f527fb51e4b467d5ad1fd1bd71fd38bbbc1b22f8736116eb3e8cf95eb",
+            "gloss_sha256": "99de99b9b97a5b1eb25cf7b0e18b616bbffcafe0e7489d8d05fbbf3880ef547a",
+            "evidence_sha256": "3d145dd53eed08e619a5cedf7bb343bda846066e36426195b68048a88e932f0c"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0044",
+      "candidate_record_id": "C000011-0044",
+      "candidate_record_sha256": "9402561cb0139f9d1e9d0e8f350cf9c606855132f643ecee1663a6a7377fb46d",
+      "decision": "included",
+      "decision_rationale": "C000011-0044 attempt 1 Claude agent self-check: o01은 여름 교정에 서늘한 그늘을 드리우고 있다로 학교의 마당이나 운동장을 가리켜 바로잡는 일과 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0044-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0044: o01은 여름 교정에 서늘한 그늘을 드리우고 있다로 학교의 마당이나 운동장을 가리켜 바로잡는 일과 구별된다.",
+          "semantic_rationale": "C000011-0044: o01은 여름 교정에 서늘한 그늘을 드리우고 있다로 학교의 마당이나 운동장을 가리켜 바로잡는 일과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0044 C000011-0044-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0044.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0044.o02"
+            ],
+            "excluded_terms": [
+              "치아"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0044",
+        "candidate_record_sha256": "9402561cb0139f9d1e9d0e8f350cf9c606855132f643ecee1663a6a7377fb46d",
+        "decision_evidence_sha256": "58b980820b23590dcf1a6b60488d108a816e3a75039ef1b3813d51bee9fb39e3",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0044-s1",
+            "sense_sha256": "5ce8a105081c329f5bc2dccd041f9545b5d650746acf8cba522a6f60e3f02a65",
+            "gloss_sha256": "a946b4f68326f38901a561cd670d0f7ffac9b67a2676ef92961140a2d1456190",
+            "evidence_sha256": "6b5597af468fef0a7913aa47e657920e31fd715cb6ffdd657e352076ad99c4f6"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0059",
+      "candidate_record_id": "C000011-0059",
+      "candidate_record_sha256": "dffb20068fe471b0faeb74ff8df76bbb36960b3a3780aeebff063cd69b19deb3",
+      "decision": "included",
+      "decision_rationale": "C000011-0059 attempt 1 Claude agent self-check: o01은 지혈대가 균형을 깨뜨려, o02는 습관적인 사고를 깨뜨리고로 물건을 부수는 것이 아니라 균형이나 틀을 무너뜨리는 비유적 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0059-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0059: o01은 지혈대가 균형을 깨뜨려, o02는 습관적인 사고를 깨뜨리고로 물건을 부수는 것이 아니라 균형이나 틀을 무너뜨리는 비유적 쓰임이다.",
+          "semantic_rationale": "C000011-0059: o01은 지혈대가 균형을 깨뜨려, o02는 습관적인 사고를 깨뜨리고로 물건을 부수는 것이 아니라 균형이나 틀을 무너뜨리는 비유적 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0059 C000011-0059-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0059.o01",
+              "C000011-0059.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0059",
+        "candidate_record_sha256": "dffb20068fe471b0faeb74ff8df76bbb36960b3a3780aeebff063cd69b19deb3",
+        "decision_evidence_sha256": "ba970128f350d49969486695a8cc5b7b44c794c12d3e9b468e49e5082d2c5887",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0059-s1",
+            "sense_sha256": "02c7fb73cbdf3d6ed091335d5efd05314c9b76eb616b31f9981be68f2774b595",
+            "gloss_sha256": "65db61770100aeca3e8502a06c9752e1b41975a8da78e80d9c5c7fd8e2b40811",
+            "evidence_sha256": "79274da21e22decef1ccfa44efd9a6b4995118ad79beb5d7d2405e633aa88405"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0063",
+      "candidate_record_id": "C000011-0063",
+      "candidate_record_sha256": "6b3ccf11f97697286b3754982a8cda67d6f4d27c23b465a4ff979d807e190381",
+      "decision": "included",
+      "decision_rationale": "C000011-0063 attempt 1 Claude agent self-check: o01은 반항심 같은 게 꿈틀거렸다로 감정이 속에서 일어나 움직이는 비유적 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0063-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0063: o01은 반항심 같은 게 꿈틀거렸다로 감정이 속에서 일어나 움직이는 비유적 쓰임이다.",
+          "semantic_rationale": "C000011-0063: o01은 반항심 같은 게 꿈틀거렸다로 감정이 속에서 일어나 움직이는 비유적 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0063 C000011-0063-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0063.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0063.o02",
+              "C000011-0063.o03"
+            ],
+            "excluded_terms": [
+              "아래",
+              "헤일로"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0063",
+        "candidate_record_sha256": "6b3ccf11f97697286b3754982a8cda67d6f4d27c23b465a4ff979d807e190381",
+        "decision_evidence_sha256": "c926c2b8b0ced7f4ec63ef019174cf216aa56386f7336129161b7ab108470147",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0063-s1",
+            "sense_sha256": "1972eae8ae0f62cbeca900f97e8c18f4a7ffb824d6bedd1b2694df0a9c1c6de4",
+            "gloss_sha256": "f703dbf5dc3abea6dd59c9b9be3f5e494667fee0c3042f4c703acf217fe3646c",
+            "evidence_sha256": "86e32114649ea1272faf5013f237008cdccae67c7e13a6f99c29e157096c797f"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0073",
+      "candidate_record_id": "C000011-0073",
+      "candidate_record_sha256": "7fb16749160fe7f0892a8d3629cef77df7954a628f11f7943d26c27c72d83c36",
+      "decision": "included",
+      "decision_rationale": "C000011-0073 attempt 1 Claude agent self-check: o01은 내리닫이 목책이 낮게 내려져 있었다로 성문의 목책이 아래로 내려와 있는 상태를 나타내며 결정이나 명령의 전달과는 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0073-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0073: o01은 내리닫이 목책이 낮게 내려져 있었다로 성문의 목책이 아래로 내려와 있는 상태를 나타내며 결정이나 명령의 전달과는 구별된다.",
+          "semantic_rationale": "C000011-0073: o01은 내리닫이 목책이 낮게 내려져 있었다로 성문의 목책이 아래로 내려와 있는 상태를 나타내며 결정이나 명령의 전달과는 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0073 C000011-0073-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0073.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0073",
+        "candidate_record_sha256": "7fb16749160fe7f0892a8d3629cef77df7954a628f11f7943d26c27c72d83c36",
+        "decision_evidence_sha256": "6511ed21777a48f0aedef9a0eeee1cf06bb1c8dc8570a7ffa4e88c860b4c474d",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0073-s1",
+            "sense_sha256": "d95a9943c415b475b79223ffd90f353e2ca2d82e22944a9748c6e59d845d76ec",
+            "gloss_sha256": "c3afb0ad3ce45db48840c6b57c0a6a45f0e8450a741f8fbc6cef9b2b3bdf22a2",
+            "evidence_sha256": "d348ba26bc665b49a05e76b1f4aedcadec0b36c4aef003e5ec6365a20e828d02"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0078",
+      "candidate_record_id": "C000011-0078",
+      "candidate_record_sha256": "30e47c1cb2fbc9e8cad4d62e55d24047e8ad93a5e21b63d4e0d55692a48a25a4",
+      "decision": "included",
+      "decision_rationale": "C000011-0078 attempt 1 Claude agent self-check: o03은 몇 주간 에이더가 보인 냉랭함을 녹일 기회로 굳어진 마음이나 분위기를 풀리게 하는 비유적 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0078-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0078: o03은 몇 주간 에이더가 보인 냉랭함을 녹일 기회로 굳어진 마음이나 분위기를 풀리게 하는 비유적 쓰임이다.",
+          "semantic_rationale": "C000011-0078: o03은 몇 주간 에이더가 보인 냉랭함을 녹일 기회로 굳어진 마음이나 분위기를 풀리게 하는 비유적 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0078 C000011-0078-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0078.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0078.o01",
+              "C000011-0078.o02"
+            ],
+            "excluded_terms": [
+              "버터",
+              "보도자료"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0078",
+        "candidate_record_sha256": "30e47c1cb2fbc9e8cad4d62e55d24047e8ad93a5e21b63d4e0d55692a48a25a4",
+        "decision_evidence_sha256": "6103a971dad47ebb20eed9f4eed6c7f380b7e0b55e1b7abc1224322a1c4896c4",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0078-s1",
+            "sense_sha256": "db18897f0d2c2bcc996657a6124130f6348818181cfebd191b6e86f1faba15fc",
+            "gloss_sha256": "6f61f067a6f89847afe601a4be5edeb26cb37a8f01a9a616af20506377689418",
+            "evidence_sha256": "fd1bedd5cedf3dc5ef9f4a19d377e4d2e3684215b5cd106cd9fca3ad0fc10b8f"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0083",
+      "candidate_record_id": "C000011-0083",
+      "candidate_record_sha256": "cf41059b1f8346443827e6ade4d4db7da7f525bb587982f8c2dd5a8c0674e5be",
+      "decision": "included",
+      "decision_rationale": "C000011-0083 attempt 1 Claude agent self-check: o01은 한없이 단조롭게 펼친 모랫빛으로 변화 없이 한결같은 모습을 나타낸다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0083-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0083: o01은 한없이 단조롭게 펼친 모랫빛으로 변화 없이 한결같은 모습을 나타낸다.",
+          "semantic_rationale": "C000011-0083: o01은 한없이 단조롭게 펼친 모랫빛으로 변화 없이 한결같은 모습을 나타낸다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0083 C000011-0083-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0083.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0083",
+        "candidate_record_sha256": "cf41059b1f8346443827e6ade4d4db7da7f525bb587982f8c2dd5a8c0674e5be",
+        "decision_evidence_sha256": "7fea978aee8a5c0cae27f176e28e5c98b5d961fd5f913f6ba61373411d2f6f70",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0083-s1",
+            "sense_sha256": "2dac6ae95426097291271e019691bef6642557453ed051224785e8cab70a7c41",
+            "gloss_sha256": "e3abf59219a25860004cf22cffd3ad0d3946b7e0842ceb2436128b5a2a5d6ca4",
+            "evidence_sha256": "6f0585bf1af969608a0fe71d44b836f3c47e62689661cc9b15f65db90be4c1e7"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0098",
+      "candidate_record_id": "C000011-0098",
+      "candidate_record_sha256": "32e58faeea5b74295065c2456f81987ea575bcf0b816ae0e3c3ee5af471bf66d",
+      "decision": "included",
+      "decision_rationale": "C000011-0098 attempt 1 Claude agent self-check: o02는 데이비드는 딸을 등지고 있었다, o03은 가로등 불빛을 등진 현도와 성기로 등을 향해 뒤쪽에 두는 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0098-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0098: o02는 데이비드는 딸을 등지고 있었다, o03은 가로등 불빛을 등진 현도와 성기로 등을 향해 뒤쪽에 두는 쓰임이다.",
+          "semantic_rationale": "C000011-0098: o02는 데이비드는 딸을 등지고 있었다, o03은 가로등 불빛을 등진 현도와 성기로 등을 향해 뒤쪽에 두는 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0098 C000011-0098-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0098.o02",
+              "C000011-0098.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0098.o01"
+            ],
+            "excluded_terms": [
+              "세상"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0098",
+        "candidate_record_sha256": "32e58faeea5b74295065c2456f81987ea575bcf0b816ae0e3c3ee5af471bf66d",
+        "decision_evidence_sha256": "e31d9926e9319a00dc23a98f4a5c725214c7a3ee50edf84fedac0a5e0fb81d93",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0098-s1",
+            "sense_sha256": "6e7886147c457732e4ba8b9b39c1b1afdd95be31cd3b113358376be8d2934adf",
+            "gloss_sha256": "f010b631a2c49d59837fd1f896177d7416ec9ba7357ebc45413de0f09668eb5e",
+            "evidence_sha256": "1048c7333eb78a25178d2018cdc0af492f5db54003084728640b8e51253a549e"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0100",
+      "candidate_record_id": "C000011-0100",
+      "candidate_record_sha256": "276c8a2143313cfd014df9704c65bc60a69389e72f2261859afb8e01f7bb3ab4",
+      "decision": "included",
+      "decision_rationale": "C000011-0100 attempt 1 Claude agent self-check: o01은 식솔이 둘이나 딸려 있었던 걸까, o02는 집이 추방되면서 딸려온 거야로 어떤 것에 덧붙어 함께 따르는 쓰임이며 기준에 미치지 못하는 뜻과 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0100-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0100: o01은 식솔이 둘이나 딸려 있었던 걸까, o02는 집이 추방되면서 딸려온 거야로 어떤 것에 덧붙어 함께 따르는 쓰임이며 기준에 미치지 못하는 뜻과 구별된다.",
+          "semantic_rationale": "C000011-0100: o01은 식솔이 둘이나 딸려 있었던 걸까, o02는 집이 추방되면서 딸려온 거야로 어떤 것에 덧붙어 함께 따르는 쓰임이며 기준에 미치지 못하는 뜻과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0100 C000011-0100-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0100.o01",
+              "C000011-0100.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0100",
+        "candidate_record_sha256": "276c8a2143313cfd014df9704c65bc60a69389e72f2261859afb8e01f7bb3ab4",
+        "decision_evidence_sha256": "bb3528f624ab3c9f3d73372dcb743641b9ce372c0cba13834c6927fb7db6d9a5",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0100-s1",
+            "sense_sha256": "316ef71a8937025ae73bf32e2c683652d7e7e3ba22c064944745b7817749ce6d",
+            "gloss_sha256": "2e382f34243ad8bed63a803869bcb83d321ec4732db5618d7e9ee325b3d91557",
+            "evidence_sha256": "2911ac43e0cbaa6b7a2a9383fa47d9b80b0faa36dd8e2e93c98804541a68be23"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0110",
+      "candidate_record_id": "C000011-0110",
+      "candidate_record_sha256": "373d6c67287fe73f5f276c6d26003fd5f8bfc82edc1a9649f8aa2a7cc76ca79b",
+      "decision": "included",
+      "decision_rationale": "C000011-0110 attempt 1 Claude agent self-check: o01은 앨런이 칼로 그 동물을 맞혀 쓰러뜨렸다로 던지거나 쏜 것이 목표에 닿게 하는 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0110-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0110: o01은 앨런이 칼로 그 동물을 맞혀 쓰러뜨렸다로 던지거나 쏜 것이 목표에 닿게 하는 쓰임이다.",
+          "semantic_rationale": "C000011-0110: o01은 앨런이 칼로 그 동물을 맞혀 쓰러뜨렸다로 던지거나 쏜 것이 목표에 닿게 하는 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0110 C000011-0110-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0110.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0110.o02"
+            ],
+            "excluded_terms": [
+              "문제"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0110",
+        "candidate_record_sha256": "373d6c67287fe73f5f276c6d26003fd5f8bfc82edc1a9649f8aa2a7cc76ca79b",
+        "decision_evidence_sha256": "1c8af4a66bfb1690dee8a36d540b2991eaf2129db55e712480f344a882842a74",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0110-s1",
+            "sense_sha256": "38c2160fb7a2fb8805099a4d2fe322efa9f777c5ab60772fd48b58051efe8cbb",
+            "gloss_sha256": "6e366ac3ae81184e95df06b9a9c20efb155b90ad84ba61c33618f545871c95a7",
+            "evidence_sha256": "b21238cd9c723afd63f095a2077ab00ad3ad0d95b4e0db08009e7af6a7b742a2"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0115",
+      "candidate_record_id": "C000011-0115",
+      "candidate_record_sha256": "48aa1dbfb99fbc025cb0deeed3e5a03cb31d3e280ea4d6fd8fe7de209cbd90d0",
+      "decision": "included",
+      "decision_rationale": "C000011-0115 attempt 1 Claude agent self-check: o01은 브리디가 메뉴 버튼을 눌렀다로 계기반 화면에서 고를 수 있게 늘어놓은 기능의 목록을 가리킨다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0115-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0115: o01은 브리디가 메뉴 버튼을 눌렀다로 계기반 화면에서 고를 수 있게 늘어놓은 기능의 목록을 가리킨다.",
+          "semantic_rationale": "C000011-0115: o01은 브리디가 메뉴 버튼을 눌렀다로 계기반 화면에서 고를 수 있게 늘어놓은 기능의 목록을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0115 C000011-0115-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0115.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0115.o02",
+              "C000011-0115.o03"
+            ],
+            "excluded_terms": [
+              "영어"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0115",
+        "candidate_record_sha256": "48aa1dbfb99fbc025cb0deeed3e5a03cb31d3e280ea4d6fd8fe7de209cbd90d0",
+        "decision_evidence_sha256": "2a51e4bafaafc5b9fdc4f284f29bed41423269e0936bb8df4010d0dd433e3506",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0115-s1",
+            "sense_sha256": "fa0d10fcc9cfbbd6b12b665c445905ee7c7e8bc0995a6de8385add635d8ed780",
+            "gloss_sha256": "e7f05bea945b2aefaa4ca1090fba8a1047a53cde0157425fe3dc02b8ff3beff8",
+            "evidence_sha256": "c7a4ea815977733cb5490356e67b22cb16809d3c53168b011a21411f8b18733b"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0138",
+      "candidate_record_id": "C000011-0138",
+      "candidate_record_sha256": "7a5d3a0dc39f42dee35eff73c7cb9183af60524e738aee74a2c074b18d02fd61",
+      "decision": "included",
+      "decision_rationale": "C000011-0138 attempt 1 Claude agent self-check: o03은 가끔 번쩍이는 위트를 뽐냈다로 재치가 순간적으로 두드러지게 드러나는 비유적 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0138-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0138: o03은 가끔 번쩍이는 위트를 뽐냈다로 재치가 순간적으로 두드러지게 드러나는 비유적 쓰임이다.",
+          "semantic_rationale": "C000011-0138: o03은 가끔 번쩍이는 위트를 뽐냈다로 재치가 순간적으로 두드러지게 드러나는 비유적 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0138 C000011-0138-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0138.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0138.o01",
+              "C000011-0138.o02"
+            ],
+            "excluded_terms": [
+              "입",
+              "불꽃"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0138",
+        "candidate_record_sha256": "7a5d3a0dc39f42dee35eff73c7cb9183af60524e738aee74a2c074b18d02fd61",
+        "decision_evidence_sha256": "7e186bb988df0d978b80c4f5dc7455fe617311c5504bd930506d75a6840f7758",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0138-s1",
+            "sense_sha256": "83df34bd5779d30886a3774b4f7bca7b109a4493b0b8a2aacc3779a69b55eb1a",
+            "gloss_sha256": "fb6f617a536693197871c4bea3e93ab6fac66f489235a1968de15dc20766daa4",
+            "evidence_sha256": "b06bbd48b65666a921f245cff54dd776a606b6b251a4951e3a5f7e317ae306d1"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0152",
+      "candidate_record_id": "C000011-0152",
+      "candidate_record_sha256": "185e3668d55e34ecb49f742d39081de29e06231610e4c5dce2d3aa00dc351cd0",
+      "decision": "included",
+      "decision_rationale": "C000011-0152 attempt 1 Claude agent self-check: o01은 선생님 몇 분이 부채를 연신 흔들어대고 있다로 바람을 일으키는 도구이며 갚아야 할 돈을 뜻하는 부채와 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0152-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0152: o01은 선생님 몇 분이 부채를 연신 흔들어대고 있다로 바람을 일으키는 도구이며 갚아야 할 돈을 뜻하는 부채와 구별된다.",
+          "semantic_rationale": "C000011-0152: o01은 선생님 몇 분이 부채를 연신 흔들어대고 있다로 바람을 일으키는 도구이며 갚아야 할 돈을 뜻하는 부채와 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0152 C000011-0152-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0152.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0152",
+        "candidate_record_sha256": "185e3668d55e34ecb49f742d39081de29e06231610e4c5dce2d3aa00dc351cd0",
+        "decision_evidence_sha256": "d3f8461a7ef62f84a4e92784c822fc7c0ca6add0f3f4b3d9a86221aab84afbfe",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0152-s1",
+            "sense_sha256": "af3e290a5a9e82f7dd1e29239766249816a434ddfe5d6b46bd1de2b53cb9015e",
+            "gloss_sha256": "4c7267a38ba7dc7e52101c3ad480171f99c9fa868f1f5c7f892e3149ed7e4f7e",
+            "evidence_sha256": "e0af7266f1e24289c5f562d22c231e337e71f08aa18150dcc9b34b1ab48c88eb"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0159",
+      "candidate_record_id": "C000011-0159",
+      "candidate_record_sha256": "eda91182e8cc8b559d314f795181b5eca725a49f0259fd584af5f08175dbd220",
+      "decision": "included",
+      "decision_rationale": "C000011-0159 attempt 1 Claude agent self-check: o02는 네 자매들에게 큰 문제를 불러들일 거야로 어떤 일이나 결과가 생기게 하는 비유적 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0159-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0159: o02는 네 자매들에게 큰 문제를 불러들일 거야로 어떤 일이나 결과가 생기게 하는 비유적 쓰임이다.",
+          "semantic_rationale": "C000011-0159: o02는 네 자매들에게 큰 문제를 불러들일 거야로 어떤 일이나 결과가 생기게 하는 비유적 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0159 C000011-0159-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0159.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0159.o01"
+            ],
+            "excluded_terms": [
+              "친구"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0159",
+        "candidate_record_sha256": "eda91182e8cc8b559d314f795181b5eca725a49f0259fd584af5f08175dbd220",
+        "decision_evidence_sha256": "aa6326d8bc655893c988f6ee66cacfb0b9775feba1501299b7e93db5d7cd2e4c",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0159-s1",
+            "sense_sha256": "2de7ae9edc13b4ad5c5021aa9e26e2e5ede93282889977121a1cf2a0dd570994",
+            "gloss_sha256": "8064a53b22f847355bfdf2c1ba33cb195a687578bbccda73458f99384eb8889b",
+            "evidence_sha256": "3998b77d84c3e4f6240ef1b8a3d7630e77b605a5baf938205207b664939b7b89"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0168",
+      "candidate_record_id": "C000011-0168",
+      "candidate_record_sha256": "67593ada5bac3aa1111970788140f3b5ec9a27a84b4ff56a0ce7d5bdd1d27b80",
+      "decision": "included",
+      "decision_rationale": "C000011-0168 attempt 1 Claude agent self-check: o01은 병원에서 불임의 선고를 내린 날로 의사가 진단 결과를 단정하여 알리는 일이며 법원이 재판 결론을 알리는 기존 뜻과 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0168-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0168: o01은 병원에서 불임의 선고를 내린 날로 의사가 진단 결과를 단정하여 알리는 일이며 법원이 재판 결론을 알리는 기존 뜻과 구별된다.",
+          "semantic_rationale": "C000011-0168: o01은 병원에서 불임의 선고를 내린 날로 의사가 진단 결과를 단정하여 알리는 일이며 법원이 재판 결론을 알리는 기존 뜻과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0168 C000011-0168-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0168.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0168",
+        "candidate_record_sha256": "67593ada5bac3aa1111970788140f3b5ec9a27a84b4ff56a0ce7d5bdd1d27b80",
+        "decision_evidence_sha256": "38ac67b7e7bbb1fa61c9fef13d0f81119c31633e01dd292892fea433d7e4f038",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0168-s1",
+            "sense_sha256": "85e83b1fa6f8e76ae22dd160b452d38d5e11911a60de8ef4e7ebbc2ae1e26bd1",
+            "gloss_sha256": "63ec200d9cb205c242a096f5b4afb275c0616c2c4715b2aa34f1842711226d33",
+            "evidence_sha256": "e273d95f7f3c253014ff71fef09f39d7d8d2bf1d862a60700b4410184e8e9f5e"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0177",
+      "candidate_record_id": "C000011-0177",
+      "candidate_record_sha256": "53d7547a1769931f674f3949e2625aaa7058108c58d7a5aefa9045721c23caa8",
+      "decision": "included",
+      "decision_rationale": "C000011-0177 attempt 1 Claude agent self-check: o01은 김신엽 DS연구소 소장은으로 연구소를 책임지는 사람을 가리키며 군대 계급을 뜻하는 소장과 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0177-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0177: o01은 김신엽 DS연구소 소장은으로 연구소를 책임지는 사람을 가리키며 군대 계급을 뜻하는 소장과 구별된다.",
+          "semantic_rationale": "C000011-0177: o01은 김신엽 DS연구소 소장은으로 연구소를 책임지는 사람을 가리키며 군대 계급을 뜻하는 소장과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0177 C000011-0177-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0177.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0177",
+        "candidate_record_sha256": "53d7547a1769931f674f3949e2625aaa7058108c58d7a5aefa9045721c23caa8",
+        "decision_evidence_sha256": "a2e2738f73912a967335c51a64b670971dd4b5cf30068d98be15083e4193f934",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0177-s1",
+            "sense_sha256": "baedf5eb4a8a54219e2093bee0f7238b68d23bfa30fb5c2092de9278da393753",
+            "gloss_sha256": "2660f91f18ca267823a46895aec8cc70160f1acc922b7823f8bbd316819a9834",
+            "evidence_sha256": "aae07c2833ee69d7cd5bf652d8b6e51d85f18c5bf2c0df2b9848e8141c1c3240"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0189",
+      "candidate_record_id": "C000011-0189",
+      "candidate_record_sha256": "2d8cd6d46f5409e183935890615e0eec26f62e4dbde7814e378d6dd6d7e46668",
+      "decision": "included",
+      "decision_rationale": "C000011-0189 attempt 1 Claude agent self-check: o01은 이 숙제는 언젠가는 풀릴 것이다로 학교 과제가 아니라 풀어야 할 문제를 비유하는 쓰임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0189-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0189: o01은 이 숙제는 언젠가는 풀릴 것이다로 학교 과제가 아니라 풀어야 할 문제를 비유하는 쓰임이다.",
+          "semantic_rationale": "C000011-0189: o01은 이 숙제는 언젠가는 풀릴 것이다로 학교 과제가 아니라 풀어야 할 문제를 비유하는 쓰임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0189 C000011-0189-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0189.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0189",
+        "candidate_record_sha256": "2d8cd6d46f5409e183935890615e0eec26f62e4dbde7814e378d6dd6d7e46668",
+        "decision_evidence_sha256": "3d161b1d100b0d06f27f9b25e83e840b4743a460b9fcf16142125d8d7b98333e",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0189-s1",
+            "sense_sha256": "66bea84e252781f6a15b57d00195d98ae748e2762a5c2c470608c1daa311dceb",
+            "gloss_sha256": "a7309756b60998eeb81814e8d56287fd4f7a0f16dbdf414249e1936389605375",
+            "evidence_sha256": "c2978e50177862deb59f02713b833ac4b3dd840405429e13de52ee91f4cf9ba1"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0202",
+      "candidate_record_id": "C000011-0202",
+      "candidate_record_sha256": "eb1b16a6252620fce1abe3f635709aad4fbe786fac161703b4783a2e344c68e4",
+      "decision": "included",
+      "decision_rationale": "C000011-0202 attempt 1 Claude agent self-check: o01은 모래는 큼직한 빗방울에 씻겨 한결 더 정갈해 보였다로 비에 닦여 깨끗해지는 쓰임이며 남의 몸을 씻어 주는 뜻과 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0202-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0202: o01은 모래는 큼직한 빗방울에 씻겨 한결 더 정갈해 보였다로 비에 닦여 깨끗해지는 쓰임이며 남의 몸을 씻어 주는 뜻과 구별된다.",
+          "semantic_rationale": "C000011-0202: o01은 모래는 큼직한 빗방울에 씻겨 한결 더 정갈해 보였다로 비에 닦여 깨끗해지는 쓰임이며 남의 몸을 씻어 주는 뜻과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0202 C000011-0202-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0202.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0202",
+        "candidate_record_sha256": "eb1b16a6252620fce1abe3f635709aad4fbe786fac161703b4783a2e344c68e4",
+        "decision_evidence_sha256": "c9aeacb8e38b7bdf49d8a4ded30259c396d22bdf4933d0a4192e7739fa6efdb8",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0202-s1",
+            "sense_sha256": "2d394432e1fccf0279ced02dbb9d5d601a09e23bc74b1f50ac2c902718e5c924",
+            "gloss_sha256": "635d0f4d5141bc577b5e69ea8e140f2419fede18304ecd88c64540fe6beaebba",
+            "evidence_sha256": "f4137c5d66e312c0e1c2d4a0008d02703cd616b8e1e3325ddc23ae9e6a0acf8b"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0211",
+      "candidate_record_id": "C000011-0211",
+      "candidate_record_sha256": "2f488e17ff19726a4639d6f7b8a332a3c8794966dba03a62481a1bc572eec203",
+      "decision": "included",
+      "decision_rationale": "C000011-0211 attempt 1 Claude agent self-check: o01은 야단맞고 자란 사람은 야단맞지 않으려면으로 꾸지람을 듣는 쓰임이며 명사나 다른 단어의 분석 오류가 아닌 동사 야단맞다의 활용형이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0211-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0211: o01은 야단맞고 자란 사람은 야단맞지 않으려면으로 꾸지람을 듣는 쓰임이며 명사나 다른 단어의 분석 오류가 아닌 동사 야단맞다의 활용형이다.",
+          "semantic_rationale": "C000011-0211: o01은 야단맞고 자란 사람은 야단맞지 않으려면으로 꾸지람을 듣는 쓰임이며 명사나 다른 단어의 분석 오류가 아닌 동사 야단맞다의 활용형이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0211 C000011-0211-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0211.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0211",
+        "candidate_record_sha256": "2f488e17ff19726a4639d6f7b8a332a3c8794966dba03a62481a1bc572eec203",
+        "decision_evidence_sha256": "bffa7734ed7b718697d9457606b3ae96e7fff03efa8bf954d7ec3eaddec84a65",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0211-s1",
+            "sense_sha256": "645cc7be000c7333ed0a02fcaa82c96cea602f4d60cec0591c7fe88dd5a71c6e",
+            "gloss_sha256": "f610d5de4e87368a361e54404f3fd7d0df1c1672868b944f6a4020083b4e2ad5",
+            "evidence_sha256": "17e37ad6fb883338b0081d1aaf6c3be097fd5ff040803bd3ddc50d6bb5ca235b"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0259",
+      "candidate_record_id": "C000011-0259",
+      "candidate_record_sha256": "766c9a26b94fa1c6264a1367eb9ed65464cb34950eae21defec568f799172727",
+      "decision": "included",
+      "decision_rationale": "C000011-0259 attempt 1 Claude agent self-check: o02는 다음 해에 아르바이트하면서 재수를 했습니다로 대학 입시에서 떨어져 다음 해에 다시 시험을 준비하는 일을 가리킨다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0259-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0259: o02는 다음 해에 아르바이트하면서 재수를 했습니다로 대학 입시에서 떨어져 다음 해에 다시 시험을 준비하는 일을 가리킨다.",
+          "semantic_rationale": "C000011-0259: o02는 다음 해에 아르바이트하면서 재수를 했습니다로 대학 입시에서 떨어져 다음 해에 다시 시험을 준비하는 일을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0259 C000011-0259-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0259.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0259.o01"
+            ],
+            "excluded_terms": [
+              "운"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0259",
+        "candidate_record_sha256": "766c9a26b94fa1c6264a1367eb9ed65464cb34950eae21defec568f799172727",
+        "decision_evidence_sha256": "94b41d374b5ce48784443efb4fb81c100f368603a3bcf66ce06dc50a47ec9234",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0259-s1",
+            "sense_sha256": "5af3f5c2645bfd99836f05dd19b95f9e9fcc7d081f819aebf2916097b2054b99",
+            "gloss_sha256": "41afb07352538c50272fd456a1e7bca8e2da79d2a9a5a95aabe6bebf7746b6d9",
+            "evidence_sha256": "34ba58083029d7f39fe291b81d2262f3e534ab2dbef1db879c9c6601e640b863"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0278",
+      "candidate_record_id": "C000011-0278",
+      "candidate_record_sha256": "72139930a2a719cfb54e12b340ead7b0adb5301d373cf9ac920586e70ad4b1c6",
+      "decision": "included",
+      "decision_rationale": "C000011-0278 attempt 1 Claude agent self-check: o02는 영적 세계가 지각이 미치지 못하는 초월의 세계로 감각으로 어떤 것을 알아차림을 가리킨다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0278-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0278: o02는 영적 세계가 지각이 미치지 못하는 초월의 세계로 감각으로 어떤 것을 알아차림을 가리킨다.",
+          "semantic_rationale": "C000011-0278: o02는 영적 세계가 지각이 미치지 못하는 초월의 세계로 감각으로 어떤 것을 알아차림을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0278 C000011-0278-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0278.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0278.o01"
+            ],
+            "excluded_terms": [
+              "집"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0278",
+        "candidate_record_sha256": "72139930a2a719cfb54e12b340ead7b0adb5301d373cf9ac920586e70ad4b1c6",
+        "decision_evidence_sha256": "9c4239f171611a713fbee0b8f978cb3310ec8e223e099d415cd4db8a8ad5339c",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0278-s1",
+            "sense_sha256": "c3f1e4bbb146f806444d10c64f0859805865e08271f31cb50c5a1c1f0c033212",
+            "gloss_sha256": "c343f098a426b76c6b4735e8b78024d4de482ce9e1b1f2faa592ca0654b03e4a",
+            "evidence_sha256": "ebdf932bcbc85a086d2b25cc46a0dabc8342fa7c99b14eacfc5eccdfbb9b0f4d"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0282",
+      "candidate_record_id": "C000011-0282",
+      "candidate_record_sha256": "eab72c3877ca6aecd64dbe6363c2b4408aa7e0ce78520a1dd8e567e0eb6a2b87",
+      "decision": "included",
+      "decision_rationale": "C000011-0282 attempt 1 Claude agent self-check: o01은 스타이너 연구소의 집사 지브스, o02는 그리고 집사가 있습니다, o03은 집사는 없었다로 집이나 건물의 살림을 맡아 돌보는 사람을 가리키며 교회의 직분을 뜻하는 집사와 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0282-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0282: o01은 스타이너 연구소의 집사 지브스, o02는 그리고 집사가 있습니다, o03은 집사는 없었다로 집이나 건물의 살림을 맡아 돌보는 사람을 가리키며 교회의 직분을 뜻하는 집사와 구별된다.",
+          "semantic_rationale": "C000011-0282: o01은 스타이너 연구소의 집사 지브스, o02는 그리고 집사가 있습니다, o03은 집사는 없었다로 집이나 건물의 살림을 맡아 돌보는 사람을 가리키며 교회의 직분을 뜻하는 집사와 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0282 C000011-0282-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0282.o01",
+              "C000011-0282.o02",
+              "C000011-0282.o03"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0282",
+        "candidate_record_sha256": "eab72c3877ca6aecd64dbe6363c2b4408aa7e0ce78520a1dd8e567e0eb6a2b87",
+        "decision_evidence_sha256": "8adb2c74db9df796a64173059c616d0860d23035a93eec12fce5cd9e914539f7",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0282-s1",
+            "sense_sha256": "b929de6608cb714ba1f02fa9483960ba542eb24de440ab89b59491d34a636b68",
+            "gloss_sha256": "c7c22d721b543c0789393ca5a501f206277df6701ea94626a2fa39730e3281c0",
+            "evidence_sha256": "004a83fca0433cf6e8d87bd69419278d552c5f5b65aadb3e4ca23af08659f32b"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0301",
+      "candidate_record_id": "C000011-0301",
+      "candidate_record_sha256": "7b425fd73feb10b74bccee913d68749d7788db9c41212e484ad74b61ed6880d7",
+      "decision": "included",
+      "decision_rationale": "C000011-0301 attempt 1 Claude agent self-check: o01은 크림색 서류함으로 크림처럼 누르스름한 흰색을 가리키는 색 이름이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0301-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0301: o01은 크림색 서류함으로 크림처럼 누르스름한 흰색을 가리키는 색 이름이다.",
+          "semantic_rationale": "C000011-0301: o01은 크림색 서류함으로 크림처럼 누르스름한 흰색을 가리키는 색 이름이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0301 C000011-0301-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0301.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0301",
+        "candidate_record_sha256": "7b425fd73feb10b74bccee913d68749d7788db9c41212e484ad74b61ed6880d7",
+        "decision_evidence_sha256": "cd36d50e9908fb16c810c30ad13cccf2ebc9bfa7e7170b9990ddfe70048bdd90",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0301-s1",
+            "sense_sha256": "09493b18c0c20d327f18dad66c9c63321a08aa4248de2346c9869317db5101c4",
+            "gloss_sha256": "559760f746a1c2bb15d5e8f541681ce1636ae638786c81b2dc430604d3f6b3ac",
+            "evidence_sha256": "b47639be3f25280c1d1351bc998c3ee7ca63123460bf2f9518f1612475a0e7d9"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000011-0328",
+      "candidate_record_id": "C000011-0328",
+      "candidate_record_sha256": "5d98d6b3ec056ba6f018a080b7f915becbc99ad916cb3216daf70f9e4382313e",
+      "decision": "included",
+      "decision_rationale": "C000011-0328 attempt 1 Claude agent self-check: o01은 수건은 향수 비슷한 냄새가 나고, o03은 몸에 향수를 뿌리고로 좋은 냄새를 내려고 쓰는 액체를 가리킨다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000011-0328-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000011-0328: o01은 수건은 향수 비슷한 냄새가 나고, o03은 몸에 향수를 뿌리고로 좋은 냄새를 내려고 쓰는 액체를 가리킨다.",
+          "semantic_rationale": "C000011-0328: o01은 수건은 향수 비슷한 냄새가 나고, o03은 몸에 향수를 뿌리고로 좋은 냄새를 내려고 쓰는 액체를 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000011-0328 C000011-0328-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000011-0328.o01",
+              "C000011-0328.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000011-0328.o02"
+            ],
+            "excluded_terms": [
+              "키보드"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000011-0328",
+        "candidate_record_sha256": "5d98d6b3ec056ba6f018a080b7f915becbc99ad916cb3216daf70f9e4382313e",
+        "decision_evidence_sha256": "58ebffc61a9d92d66db80d14525e59842ede917f8b3d50b5dba9e0df51c62a6f",
+        "sense_evidence": [
+          {
+            "sense_id": "C000011-0328-s1",
+            "sense_sha256": "2f58cbda46fe49d56f1c233d61e8c23b4ba99190db919c64cb67a38397a115e6",
+            "gloss_sha256": "b4bb57bd8a16d5319e9063ffca0110c57f049c3a63888ac6570637117c98a441",
+            "evidence_sha256": "cc23975608567b2d37962b5715f93bf6f626284839c7f0879b9016e272b29b91"
+          }
+        ]
+      }
+    }
+  ]
+}
