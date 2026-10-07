@@ -359,12 +359,17 @@ test('documented Node baseline matches package.json engines', async () => {
   const minimum = pkg.engines.node.replace(/^>=/u, '');
   assert.match(minimum, /^24\.\d+\.\d+$/u);
   const [major, minor] = minimum.split('.');
-  for (const workflow of ['ci.yml', 'deep.yml', 'pages.yml', 'factory-master.yml']) {
-    const text = await readFile(path.join(root, '.github/workflows', workflow), 'utf8');
+  const workflowDirectory = path.join(root, '.github/workflows');
+  let nodeWorkflows = 0;
+  for (const workflow of (await readdir(workflowDirectory)).filter((name) => /\.ya?ml$/u.test(name))) {
+    const text = await readFile(path.join(workflowDirectory, workflow), 'utf8');
+    if (!text.includes('actions/setup-node')) continue;
+    nodeWorkflows += 1;
     const versions = [...text.matchAll(/node-version: (\S+)/gu)].map((match) => match[1]);
-    assert.ok(versions.length > 0, `${workflow} must set up Node.js`);
     assert.deepEqual([...new Set(versions)], [`${major}.x`], `${workflow} must use the Node ${major} baseline only`);
+    assert.equal(versions.length, (text.match(/actions\/setup-node/gu) ?? []).length, `${workflow} must pin every setup-node step`);
   }
+  assert.ok(nodeWorkflows >= 4, 'expected every Node workflow to be scanned');
   for (const file of ['README.md', 'docs/build.md', 'docs/development.md', 'docs/corpus-index-design.md']) {
     const text = await readFile(path.join(root, file), 'utf8');
     assert.ok(
