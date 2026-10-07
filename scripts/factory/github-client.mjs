@@ -209,12 +209,19 @@ export function createGitHubClient({
       if (!['open', 'closed', 'all'].includes(state)) throw new Error('pull request state must be open, closed, or all');
       return allPages('repos/' + repoPath + '/pulls?state=' + state + '&per_page=100');
     },
+    async getPullRequestFiles(prNumber) {
+      return allPages('repos/' + repoPath + '/pulls/' + prNumber + '/files?per_page=100');
+    },
     async createPullRequest({ title, body, head, base = 'master', draft = false }) {
       const result = await request('POST', 'repos/' + repoPath + '/pulls', { title, body, head, base, draft });
       return result.data;
     },
     async closePullRequest(prNumber) {
       const result = await request('PATCH', 'repos/' + repoPath + '/pulls/' + prNumber, { state: 'closed' });
+      return result.data;
+    },
+    async reopenPullRequest(prNumber) {
+      const result = await request('PATCH', 'repos/' + repoPath + '/pulls/' + prNumber, { state: 'open' });
       return result.data;
     },
     async updatePullRequestBody(prNumber, body) {

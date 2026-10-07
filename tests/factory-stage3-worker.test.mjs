@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { applySurfaceFormDispositions, planSurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
 import { stage3SurfaceFormJudgments, validateSurfaceFormJudgments } from '../scripts/factory/surface-form-judgments.mjs';
+import { validateExistingSensePairs } from '../scripts/factory/existing-sense-pairs.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
@@ -21,9 +22,11 @@ import {
   applyStage3Admission,
   claimNextStage3Batch,
   createStage3Draft,
+  createRejectionStatusPullRequest,
   eligibleStage3Batches,
   processStage3Attempt,
   recoverStage3Attempt,
+  supersedeStage3RejectionForRetry,
   releaseStage3Claim,
   refreshStage3ReportCheckpoints,
   runStage3PreflightCi,
@@ -264,6 +267,38 @@ test('Draft PR exists before lexical preflight failure, then creates a separate 
   }
 });
 
+test('retry keeps an earlier rejection code intact and does not route a new blocker through its old status PR', async () => {
+  const events = [];
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-rejection-code-change-'));
+  try {
+    const reviewPath = path.join(root, 'data/reviews/C000001/manifest.json');
+    await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify(manifests([]).reviewManifest));
+    const claim = {
+      batchId: 'C000001', attempt: 1, claimRef: 'refs/heads/stage3-claims/C000001-a1',
+      branchName: 'codex/stage3/C000001-a1', rejectionBranchName: 'codex/stage3-status/C000001-a1',
+      baseSha: 'head', prNumber: 75,
+    };
+    const github = {
+      async getPullRequest() { return {
+        number: 75, state: 'open', draft: true, base: { ref: 'master' }, head: { ref: claim.branchName },
+        body: `Claim ref: ${claim.claimRef}\n\nStage 3 disposition: lexical-rejection (STAGE3_BOUNDARY_CONTEXT_MISSING).`,
+      }; },
+      async getBranchHead() { return 'head'; },
+      async updatePullRequestBody() { events.push('updated-body'); },
+      async closePullRequest() { events.push('closed-admission'); },
+      async createPullRequest() { events.push('created-status'); },
+    };
+    const git = { async fetchMaster() {}, resolveRef() { return 'head'; } };
+    await assert.rejects(processStage3Attempt({
+      github, git, root, claim, runGates: false,
+      prepare: async () => { throw new Stage3AdmissionError('new conflict', { category: 'lexical', code: 'STAGE3_CANONICAL_CONFLICT' }); },
+    }), /existing Draft records STAGE3_BOUNDARY_CONTEXT_MISSING/u);
+    assert.deepEqual(events, []);
+    assert.equal(JSON.parse(await readFile(reviewPath, 'utf8')).status, 'ready');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('recovery reuses an open admission PR and creates status only when it is missing', async () => {
   const claimRef = 'refs/heads/stage3-claims/C000001-a1';
   const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId: 'C000001', attempt: 1, baseSha: 'head', ownerToken: 'owner-token-0001' };
@@ -301,6 +336,7 @@ test('recovery reuses an open admission PR and creates status only when it is mi
   });
   assert.equal(result.status, 'create-rejection');
   assert.equal(result.admissionPr, 92);
+  assert.equal(result.rejectionCode, 'STAGE3_CANONICAL_CONFLICT');
   assert.deepEqual(createCalls, []);
   await assert.rejects(() => recoverStage3Attempt({
     github: { ...github, async listPullRequests() { return [
@@ -308,6 +344,184 @@ test('recovery reuses an open admission PR and creates status only when it is mi
     ]; } },
     git: {}, batchId: 'C000001', attempt: 1,
   }), /without a recorded lexical-rejection disposition/u);
+  await assert.rejects(() => recoverStage3Attempt({
+    github: { ...github, async listPullRequests() { return [{
+      number: 96, state: 'closed', merged: false, body: `Claim ref: ${claimRef}\n\nStage 3 disposition: lexical-rejection (STAGE3_CANONICAL_CONFLICT).\nStage 3 disposition: lexical-rejection (STAGE3_BOUNDARY_CONTEXT_MISSING).`,
+      head: { ref: 'codex/stage3/C000001-a1' },
+    }]; } },
+    git: {}, batchId: 'C000001', attempt: 1,
+  }), /ambiguous lexical-rejection codes/u);
+});
+
+function stage3RetryFixture({ statusPrNumber = 96, statusState = 'open', admissionState = 'closed', admissionAgent = 'codex', statusAgent = admissionAgent } = {}) {
+  const batchId = 'C900001';
+  const attempt = 1;
+  const claimRef = `refs/heads/stage3-claims/${batchId}-a${attempt}`;
+  const admissionBranch = `${admissionAgent}/stage3/${batchId}-a${attempt}`;
+  const statusBranch = `${statusAgent}/stage3-status/${batchId}-a${attempt}`;
+  const manifestPath = `data/reviews/${batchId}/manifest.json`;
+  const reviewManifest = { batch_id: batchId, status: 'ready', attempt, history: [], candidates_sha256: digest };
+  const rejectedManifest = {
+    ...reviewManifest, status: 'rejected', rejected_pr: 95, history: [{ attempt, rejected_pr: 95 }],
+  };
+  const admission = {
+    number: 95, state: admissionState, merged: false, draft: true, base: { ref: 'master' },
+    head: { ref: admissionBranch, sha: 'admission-sha' },
+    body: `Stage 3 attempt: ${batchId}-a${attempt}\nClaim ref: ${claimRef}\n\nStage 3 disposition: lexical-rejection (STAGE3_BOUNDARY_CONTEXT_MISSING).`,
+  };
+  const rejection = {
+    number: statusPrNumber, state: statusState, merged: false, base: { ref: 'master' },
+    head: { ref: statusBranch, sha: 'status-sha' },
+    body: `Status-only rejection for ${batchId} attempt ${attempt}.\nClaim ref: ${claimRef}\nClosed admission draft: #95\nThis PR changes only the review manifest to rejected and records the closed admission PR number.`,
+  };
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId, attempt, baseSha: 'old-master-sha', ownerToken: 'owner-token-0001' };
+  const snapshot = {
+    headSha: 'master-sha', validated: true, reviews: [{ batchId, manifest: reviewManifest }],
+    candidates: [{ batchId, manifest: { batch_id: batchId, status: 'complete' } }],
+  };
+  const events = [];
+  const github = {
+    async listStage3ClaimRefs() { return [claimRef]; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listPullRequests() { return [admission, rejection]; },
+    async getBranchHead() { return 'master-sha'; },
+    async getPullRequestFiles(number) { assert.equal(number, statusPrNumber); return [{ filename: manifestPath }]; },
+    async closePullRequest(number) { events.push(`close:${number}`); rejection.state = 'closed'; return rejection; },
+    async reopenPullRequest(number) {
+      events.push(`reopen:${number}`);
+      const pr = number === admission.number ? admission : rejection;
+      pr.state = 'open';
+      return pr;
+    },
+    async getPullRequest(number) { return number === admission.number ? admission : rejection; },
+  };
+  const git = {
+    resolveRef(ref) { return ref === 'origin/master' ? 'master-sha' : ref === `origin/${statusBranch}` ? 'status-sha' : null; },
+    async fetchRemoteBranch(branch) { events.push(`fetch-status:${branch}`); },
+    show(ref, file) { assert.equal(ref, `origin/${statusBranch}`); assert.equal(file, manifestPath); return JSON.stringify(rejectedManifest); },
+    restorePullRequestBranch(number, branch, sha) { events.push(`restore:${number}:${branch}`); assert.equal(sha, 'admission-sha'); return sha; },
+    async fetchMaster() {},
+    createBranch() { throw new Error('a matching superseded PR should be reused'); },
+    async commitAndPush() { throw new Error('a matching superseded PR should be reused'); },
+  };
+  return { batchId, attempt, claimRef, admissionBranch, statusBranch, manifestPath, reviewManifest, rejectedManifest, admission, rejection, activeLock, snapshot, events, github, git };
+}
+
+test('an explicit retry supersedes only the matching open rejection PR and reopens its linked admission draft', async () => {
+  const fixture = stage3RetryFixture({ admissionAgent: 'claude', statusAgent: 'claude' });
+  const unrelatedHistory = {
+    number: 94, state: 'closed', merged: false, draft: true, base: { ref: 'master' },
+    head: { ref: 'codex/stage3/C900002-a1' },
+    body: 'Stage 3 attempt: C900002-a1\nClaim ref: refs/heads/stage3-claims/C900002-a1',
+  };
+  fixture.github.listPullRequests = async () => [unrelatedHistory, fixture.admission, fixture.rejection];
+  const result = await supersedeStage3RejectionForRetry({
+    github: fixture.github, git: fixture.git, snapshot: fixture.snapshot, batchId: fixture.batchId,
+    attempt: fixture.attempt, rejectionPrNumber: 96,
+  });
+  assert.equal(result.status, 'retry-ready');
+  assert.equal(fixture.admission.state, 'open');
+  assert.equal(fixture.rejection.state, 'closed');
+  assert.deepEqual(fixture.events.slice(-3), [
+    `restore:95:${fixture.admissionBranch}`, 'close:96', 'reopen:95',
+  ]);
+});
+
+test('retry dry-run validates the exact status diff but changes no PR state or branch', async () => {
+  const fixture = stage3RetryFixture();
+  const result = await supersedeStage3RejectionForRetry({
+    github: fixture.github, git: fixture.git, snapshot: fixture.snapshot, batchId: fixture.batchId,
+    attempt: fixture.attempt, rejectionPrNumber: 96, dryRun: true,
+  });
+  assert.equal(result.status, 'retry-ready');
+  assert.equal(fixture.events.some((event) => event.startsWith('restore:') || event.startsWith('close:') || event.startsWith('reopen:')), false);
+  assert.equal(fixture.admission.state, 'closed');
+  assert.equal(fixture.rejection.state, 'open');
+});
+
+test('retry refuses stale, merged, mismatched, or competing state before changing PRs', async () => {
+  const cases = [
+    ['wrong status PR number', (fixture) => { fixture.rejection.number = 97; }],
+    ['merged status PR', (fixture) => { fixture.rejection.merged_at = '2026-10-07T00:00:00Z'; fixture.rejection.state = 'closed'; }],
+    ['non-ready master review', (fixture) => { fixture.snapshot.reviews[0].manifest.status = 'rejected'; }],
+    ['extra attempt claim', (fixture) => { fixture.github.listStage3ClaimRefs = async () => [`${fixture.claimRef}-other`]; }],
+    ['tampered status manifest', (fixture) => { fixture.git.show = () => JSON.stringify({ ...fixture.rejectedManifest, rejected_pr: 999 }); }],
+    ['status PR with extra files', (fixture) => { fixture.github.getPullRequestFiles = async () => [{ filename: fixture.manifestPath }, { filename: 'README.md' }]; }],
+    ['duplicate rejection-code markers', (fixture) => { fixture.rejection.body += '\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.'; }],
+    ['conflicting rejection-code markers', (fixture) => { fixture.rejection.body += '\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.\nStage 3 rejection code: STAGE3_CANONICAL_CONFLICT.'; }],
+    ['competing open Stage 3 PR', (fixture) => { fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, { number: 98, state: 'open', head: { ref: 'claude/stage3/C900002-a1' } }]; }],
+    ['second closed same-attempt admission Draft', (fixture) => {
+      fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, {
+        number: 99, state: 'closed', merged: false, draft: true, base: { ref: 'master' },
+        head: { ref: 'claude/stage3/C900001-a1' }, body: `Claim ref: ${fixture.claimRef}`,
+      }];
+    }],
+    ['second closed same-attempt status PR', (fixture) => {
+      fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, {
+        number: 99, state: 'closed', merged: false, base: { ref: 'master' },
+        head: { ref: 'claude/stage3-status/C900001-a1' }, body: `Claim ref: ${fixture.claimRef}`,
+      }];
+    }],
+    ['merged same-attempt status PR competitor', (fixture) => {
+      fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, {
+        number: 99, state: 'closed', merged: true, merged_at: '2026-10-07T00:00:00Z', base: { ref: 'master' },
+        head: { ref: 'claude/stage3-status/C900001-a1' }, body: `Claim ref: ${fixture.claimRef}`,
+      }];
+    }],
+  ];
+  for (const [label, mutate] of cases) {
+    const fixture = stage3RetryFixture();
+    mutate(fixture);
+    await assert.rejects(supersedeStage3RejectionForRetry({
+      github: fixture.github, git: fixture.git, snapshot: fixture.snapshot, batchId: fixture.batchId,
+      attempt: fixture.attempt, rejectionPrNumber: 96,
+    }), undefined, label);
+    assert.equal(fixture.events.some((event) => event.startsWith('restore:') || event.startsWith('close:') || event.startsWith('reopen:')), false, label);
+  }
+});
+
+test('a retried identical lexical rejection reopens the exact prior status PR instead of creating a duplicate', async () => {
+  const fixture = stage3RetryFixture({ statusState: 'closed', admissionAgent: 'claude', statusAgent: 'claude' });
+  fixture.rejection.body += '\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.';
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-reuse-rejection-'));
+  try {
+    const reviewPath = path.join(root, 'data/reviews', fixture.batchId, 'manifest.json');
+    await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify(fixture.reviewManifest));
+    const result = await createRejectionStatusPullRequest({
+      github: fixture.github, git: fixture.git, root,
+      claim: {
+        batchId: fixture.batchId, attempt: fixture.attempt, claimRef: fixture.claimRef,
+        agent: 'codex', rejectionBranchName: fixture.statusBranch, supersededRejectionPr: 96,
+        supersededRejectionCode: 'STAGE3_BOUNDARY_CONTEXT_MISSING',
+      },
+      admissionPr: 95, rejectionCode: 'STAGE3_BOUNDARY_CONTEXT_MISSING',
+    });
+    assert.equal(result.prNumber, 96);
+    assert.equal(result.branchName, fixture.statusBranch, 'the prior status PR owner branch is preserved across agents');
+    assert.equal(fixture.rejection.state, 'open');
+    assert.equal(fixture.events.some((event) => event.startsWith('reopen:96')), true);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('a different rejection reason never reopens the previous status PR', async () => {
+  const fixture = stage3RetryFixture({ statusState: 'closed' });
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-reuse-rejection-code-'));
+  try {
+    const reviewPath = path.join(root, 'data/reviews', fixture.batchId, 'manifest.json');
+    await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify(fixture.reviewManifest));
+    await assert.rejects(createRejectionStatusPullRequest({
+      github: fixture.github, git: fixture.git, root,
+      claim: {
+        batchId: fixture.batchId, attempt: fixture.attempt, claimRef: fixture.claimRef,
+        agent: 'codex', rejectionBranchName: fixture.statusBranch, supersededRejectionPr: 96,
+        supersededRejectionCode: 'STAGE3_BOUNDARY_CONTEXT_MISSING',
+      },
+      admissionPr: 95, rejectionCode: 'STAGE3_CANONICAL_CONFLICT',
+    }), /differs from superseded code/u);
+    assert.equal(fixture.events.some((event) => event.startsWith('reopen:96')), false);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('an owned global lock recovers a crash before the per-batch claim was written', async () => {
@@ -436,8 +650,107 @@ test('resume command requires one explicit batch and attempt', () => {
   assert.deepEqual(parseArguments(['--resume-batch', 'C000019', '--attempt', '2']), {
     agent: 'codex', dryRun: false, resumeBatch: 'C000019', resumeAttempt: 2,
   });
+  assert.deepEqual(parseArguments(['--resume-batch', 'C000019', '--attempt', '2', '--supersede-rejection-pr', '275']), {
+    agent: 'codex', dryRun: false, resumeBatch: 'C000019', resumeAttempt: 2, supersedeRejectionPr: 275,
+  });
   assert.throws(() => parseArguments(['--resume-batch', 'C000019']), /supplied together/u);
   assert.throws(() => parseArguments(['--resume-batch', 'C000019', '--attempt', '0']), /positive integer/u);
+  assert.throws(() => parseArguments(['--supersede-rejection-pr', '275']), /requires --resume-batch/u);
+  assert.throws(() => parseArguments(['--resume-batch', 'C000019', '--attempt', '2', '--supersede-rejection-pr', '0']), /positive PR number/u);
+});
+
+test('CLI supersedes only the named rejection PR before resuming its same admission attempt', async () => {
+  const fixture = stage3RetryFixture({ admissionAgent: 'claude', statusAgent: 'claude' });
+  const events = fixture.events;
+  const git = {
+    ...fixture.git,
+    originRemote() { return 'https://github.com/o/r.git'; },
+    async fetchMaster() { events.push('fetch-master'); },
+    async refreshBranch(branch) { events.push(`refresh:${branch}`); },
+  };
+  const github = {
+    ...fixture.github,
+    async getBranchHead() { return 'master-sha'; },
+    async listPullRequests() { return [fixture.admission, fixture.rejection]; },
+  };
+  const snapshot = {
+    ...fixture.snapshot,
+    validated: true,
+    candidates: [{
+      batchId: fixture.batchId, manifest: { status: 'complete' }, rows: [], files: [],
+    }],
+    reviews: [{
+      batchId: fixture.batchId, manifest: fixture.reviewManifest, decisions: [], files: [],
+    }],
+  };
+  const result = await runStage3Cli([
+    '--resume-batch', fixture.batchId, '--attempt', '1', '--supersede-rejection-pr', '96',
+  ], {
+    env: { GH_TOKEN: 'fixture-token' }, makeGit: () => git, makeGithub: () => github,
+    loadSnapshot: async () => snapshot,
+    processAttempt: async ({ claim }) => { events.push(`process:${claim.rejectionBranchName}`); return claim; },
+    callbacks: { async waitForMerge() { return { status: 'stopped-by-primary' }; }, close() {} },
+    log: () => {},
+  });
+  assert.equal(result.status, 'stopped-by-primary');
+  assert.ok(events.indexOf('close:96') < events.indexOf('reopen:95'));
+  assert.ok(events.indexOf('reopen:95') < events.indexOf(`refresh:${fixture.admissionBranch}`));
+  assert.ok(events.includes(`process:${fixture.statusBranch}`));
+});
+
+test('closed-admission crash recovery carries its actual rejection code into the status PR', async () => {
+  const batchId = 'C900002';
+  const attempt = 1;
+  const claimRef = `refs/heads/stage3-claims/${batchId}-a${attempt}`;
+  const admissionBranch = `codex/stage3/${batchId}-a${attempt}`;
+  const rejectionCode = 'STAGE3_BOUNDARY_CONTEXT_MISSING';
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId, attempt, baseSha: 'master-sha', ownerToken: 'owner-token-0001' };
+  const reviewManifest = { batch_id: batchId, status: 'ready', attempt, history: [], candidates_sha256: digest };
+  const snapshot = {
+    headSha: 'master-sha', validated: true,
+    candidates: [{ batchId, manifest: { batch_id: batchId, status: 'complete' }, rows: [], files: [] }],
+    reviews: [{ batchId, manifest: reviewManifest, decisions: [], files: [] }],
+    canonicalEntries: [],
+  };
+  const admission = {
+    number: 95, state: 'closed', merged: false, draft: true, base: { ref: 'master' },
+    head: { ref: admissionBranch, sha: 'draft-sha' },
+    body: `Stage 3 attempt: ${batchId}-a${attempt}\nClaim ref: ${claimRef}\n\nStage 3 disposition: lexical-rejection (${rejectionCode}).`,
+  };
+  const events = [];
+  let statusBody;
+  const github = {
+    async getBranchHead() { return 'master-sha'; },
+    async listStage3ClaimRefs() { return [claimRef]; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listPullRequests(state) { assert.equal(state, 'all'); return [admission]; },
+    async createPullRequest(payload) { statusBody = payload.body; events.push('create-status'); return { number: 96, html_url: 'https://example.test/96' }; },
+  };
+  const git = {
+    originRemote() { return 'https://github.com/o/r.git'; },
+    async fetchMaster() {},
+    resolveRef() { return 'master-sha'; },
+    createBranch(branch, base) { events.push(`create:${branch}:${base}`); },
+    async commitAndPush({ files }) { assert.deepEqual(files, [`data/reviews/${batchId}/manifest.json`]); events.push('commit-status'); },
+  };
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-crash-rejection-'));
+  try {
+    const reviewPath = path.join(root, 'data/reviews', batchId, 'manifest.json');
+    await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify(reviewManifest));
+    const result = await runStage3Cli(['--resume-batch', batchId, '--attempt', String(attempt)], {
+      root, env: { GH_TOKEN: 'fixture-token' }, makeGit: () => git, makeGithub: () => github,
+      loadSnapshot: async () => snapshot,
+      callbacks: { async waitForMerge() { return { status: 'stopped-by-primary' }; }, close() {} },
+      log: () => {},
+    });
+    assert.equal(result.status, 'stopped-by-primary');
+    assert.match(statusBody, new RegExp(`Stage 3 rejection code: ${rejectionCode}\\.`));
+    assert.deepEqual(JSON.parse(await readFile(reviewPath, 'utf8')), {
+      ...reviewManifest, status: 'rejected', rejected_pr: 95, history: [{ attempt, rejected_pr: 95 }],
+    });
+    assert.ok(events.includes('create-status'));
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 for (const { label, remoteBranchExists } of [
@@ -1040,4 +1353,169 @@ test('a Stage 2 judgment on a planned admission closes the surface-form gap unde
       { class_id: 'm6-3-regular-h-verb', sense_id: record.senses[0].id },
     ]);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+// Pairwise boundary evidence against every existing same-POS sense (issue #379). Real canonical entries are read
+// (never written): w753 has two noun senses, w6468 exactly one.
+const realCanonical = async () => {
+  const canonicalRecords = [];
+  const recordPathById = new Map();
+  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
+    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      canonicalRecords.push(record);
+      recordPathById.set(record.id, 'data/canonical/' + name);
+    }
+  }
+  return { canonicalRecords, recordPathById };
+};
+const NEW_GLOSSES = ['합성 시험에서 쓰는 첫째 새 뜻풀이.', '합성 시험에서 쓰는 완전히 다른 둘째 새 뜻풀이.'];
+async function appendSenseScenario({ entryId, newCount = 1, context, pairs }) {
+  const { canonicalRecords, recordPathById } = await realCanonical();
+  const target = canonicalRecords.find((record) => record.id === entryId);
+  const id = 'C900001-0001';
+  const decision = {
+    source_candidate_id: id, disposition: 'included', target: { kind: 'new_sense_on_existing_entry', entry_id: entryId, context_sense_id: context ?? target.senses[0].id },
+    reviewed_record: { lemma: target.lemma, senses: NEW_GLOSSES.slice(0, newCount).map((gloss) => ({ pos: 'noun', gloss })) },
+  };
+  const record = reviewedCandidateRecord(decision);
+  const pairBase = (existing, index) => ({
+    existing_sense_id: existing.id, new_sense_id: `${id}-s${index + 1}`, relationship: 'distinct', decision: 'retain',
+    existing_gloss_sha256: sha256Json(existing.gloss), new_gloss_sha256: sha256Json(NEW_GLOSSES[index]),
+    evidence_basis: `${id}: ${existing.id}와 새 뜻 ${index + 1}은 쓰임이 다르다.`, distinguishing_feature: `${id}: ${existing.id}와 구별되는 쓰임이다.`, rationale: `${id}: ${existing.id}와 별개의 뜻으로 유지한다.`,
+  });
+  const row = {
+    source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+    decision_rationale: id + ': 합성 시험 결정.', gloss_judgment: 'fit',
+    sense_reviews: record.senses.map((sense) => ({
+      sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+      boundary_rationale: id + ' ' + sense.id + ': 한 가지 뜻으로 한정된다.', semantic_rationale: id + ' ' + sense.id + ': ' + sense.gloss,
+      relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: id + ' ' + sense.id + ': 관계 없음.',
+    })),
+    boundary_pairs: inspectSenseBoundaryPairs(record).map((pair) => ({
+      left_sense_id: pair.left_sense_id, right_sense_id: pair.right_sense_id, relationship: pair.relationship, decision: 'retain',
+      left_gloss_sha256: sha256Json(record.senses.find((sense) => sense.id === pair.left_sense_id).gloss),
+      right_gloss_sha256: sha256Json(record.senses.find((sense) => sense.id === pair.right_sense_id).gloss),
+      evidence_basis: id + ': 두 새 뜻은 서로 다른 쓰임이다.', distinguishing_feature: id + ': 쓰임이 다르다.', rationale: id + ': 별개의 뜻으로 유지한다.',
+    })),
+  };
+  const all = target.senses.flatMap((existing) => record.senses.map((_, index) => ({ existing, index })));
+  if (pairs) row.existing_sense_pairs = pairs(all.map(({ existing, index }) => pairBase(existing, index)));
+  row.review_binding = authorSemanticReviewBinding(row, record);
+  const digest = 'a'.repeat(64);
+  const plan = planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  const authority = () => buildStage3SemanticAuthority({ root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' });
+  return { authority, decision, row, target, plan, canonicalRecords };
+}
+const rejectsWith = (code) => (error) => error instanceof Stage3AdmissionError && error.category === 'lexical' && error.code === code;
+
+test('an existing entry with two same-POS senses needs pair evidence for each; a single context id no longer suffices', async () => {
+  const { authority } = await appendSenseScenario({ entryId: 'w753' });
+  await assert.rejects(authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+});
+
+test('two existing same-POS senses plus one new sense pass with both pairs, and Stage 3 consumes exactly Stage 2 evidence', async () => {
+  const { authority, target, plan } = await appendSenseScenario({ entryId: 'w753', pairs: (all) => all });
+  const result = await authority();
+  const reviewed = result.sourceObject.authored_review.records.find((review) => review.record_id === 'w753');
+  const newId = plan.records.get('w753').record.senses.at(-1).id;
+  const pairs = reviewed.boundary_review.pairwise.filter((pair) => pair.left_sense_id === newId || pair.right_sense_id === newId);
+  assert.equal(pairs.length, target.senses.length);
+  for (const pair of pairs) assert.match(pair.evidence_basis, /쓰임은 다르다|쓰임이 다르다/u);
+});
+
+test('a missing, duplicated, forged, foreign-entry or wrong-POS existing-sense pair fails closed', async () => {
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.slice(0, 1) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all, all[0]] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all.slice(0, 1), { ...all[1], existing_sense_id: 'w753-s9' }] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all.slice(0, 1), { ...all[1], existing_sense_id: 'w6468-s1' }] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.map((pair) => ({ ...pair, existing_gloss_sha256: 'b'.repeat(64) })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.map((pair) => ({ ...pair, decision: 'merge' })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+});
+
+test('a single existing same-POS sense keeps working with the context id alone', async () => {
+  const { authority } = await appendSenseScenario({ entryId: 'w6468' });
+  assert.ok((await authority()).sourceObject);
+});
+
+test('several new senses need the full existing × new coverage', async () => {
+  const full = await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all });
+  assert.equal(full.row.existing_sense_pairs.length, 4);
+  assert.ok((await full.authority()).sourceObject);
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all.slice(0, 3) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all.filter(({ new_sense_id: id }) => id.endsWith('-s1')) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+});
+
+test('Stage 2 validation computes the required pairs from the canonical entry and rejects every incomplete or invalid set', async () => {
+  const { row, decision, target } = await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all });
+  const ok = validateExistingSensePairs(decision, row, { existingSenses: target.senses, required: true });
+  assert.deepEqual(ok, []);
+  const withPairs = (pairs) => ({ ...row, existing_sense_pairs: pairs });
+  const check = (pairs, pattern, existingSenses = target.senses) => assert.ok(validateExistingSensePairs(decision, withPairs(pairs), { existingSenses, required: true }).some((error) => pattern.test(error)), pattern.source);
+  check(row.existing_sense_pairs.slice(1), /missing existing_sense_pairs/u);
+  check([...row.existing_sense_pairs, row.existing_sense_pairs[0]], /duplicate pair/u);
+  check([...row.existing_sense_pairs.slice(1), { ...row.existing_sense_pairs[0], existing_sense_id: 'w753-s9' }], /not a sense of the target entry/u);
+  check([...row.existing_sense_pairs.slice(1), { ...row.existing_sense_pairs[0], new_sense_id: 'C900001-0001-s9' }], /must name a reviewed sense/u);
+  check(row.existing_sense_pairs.map((pair) => ({ ...pair, existing_gloss_sha256: 'b'.repeat(64) })), /does not bind the canonical gloss/u);
+  check(row.existing_sense_pairs, /is verb, the new sense is noun/u, target.senses.map((sense) => ({ ...sense, pos: 'verb' })));
+  check(row.existing_sense_pairs.map((pair) => ({ ...pair, rationale: '근거.' })), /candidate-specific/u);
+  // One existing same-POS sense: nothing is required, but pairs that are given must still be valid.
+  const single = await appendSenseScenario({ entryId: 'w6468' });
+  assert.deepEqual(validateExistingSensePairs(single.decision, single.row, { existingSenses: single.target.senses, required: true }), []);
+  assert.deepEqual(validateExistingSensePairs({ ...decision, target: { kind: 'new_entry' } }, row, { required: true }).length, 1);
+  // Without a comparable canonical state (stale review) only the structure is checked.
+  assert.deepEqual(validateExistingSensePairs(decision, row, { existingSenses: null, required: true }), []);
+});
+
+// A new POS is proven absent from the entry by the decision hand-off; its gloss is not judged by token overlap
+// with the other POS (issue #393). Real canonical w6757 is the noun 잠시 "짧은 시간 동안.".
+async function newSenseScenario({ kind, pos, gloss }) {
+  const { canonicalRecords, recordPathById } = await realCanonical();
+  const target = canonicalRecords.find((record) => record.id === 'w6757');
+  const id = 'C900001-0001';
+  const decision = {
+    source_candidate_id: id, disposition: 'included',
+    target: kind === 'new_pos_on_existing_lemma' ? { kind, entry_id: 'w6757' } : { kind, entry_id: 'w6757', context_sense_id: 'w6757-s1' },
+    reviewed_record: { lemma: target.lemma, senses: [{ pos, gloss }] },
+  };
+  const record = reviewedCandidateRecord(decision);
+  const row = {
+    source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+    decision_rationale: id + ': 합성 시험 결정.', gloss_judgment: 'fit',
+    sense_reviews: record.senses.map((sense) => ({
+      sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+      boundary_rationale: id + ' ' + sense.id + ': 한 가지 뜻으로 한정된다.', semantic_rationale: id + ' ' + sense.id + ': ' + sense.gloss,
+      relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: id + ' ' + sense.id + ': 관계 없음.',
+    })),
+  };
+  row.review_binding = authorSemanticReviewBinding(row, record);
+  const digest = 'a'.repeat(64);
+  const plan = () => planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  return { plan, authority: () => buildStage3SemanticAuthority({ root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan: plan(), semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' }) };
+}
+
+test('a new POS whose gloss contains every token of another POS gloss is admitted without paraphrase games', async () => {
+  const adverb = await newSenseScenario({ kind: 'new_pos_on_existing_lemma', pos: 'adverb', gloss: '아주 짧은 시간 동안에.' });
+  assert.ok((await adverb.authority()).sourceObject);
+  const equivalent = await newSenseScenario({ kind: 'new_pos_on_existing_lemma', pos: 'adverb', gloss: '얼마 되지 않는 동안에.' });
+  assert.ok((await equivalent.authority()).sourceObject, 'the outcome no longer depends on the wording');
+});
+
+test('the same overlap inside one POS is still blocked, and a new_pos decision for an existing POS still fails', async () => {
+  const nested = await newSenseScenario({ kind: 'new_sense_on_existing_entry', pos: 'noun', gloss: '아주 짧은 시간 동안에.' });
+  await assert.rejects(nested.authority(), rejectsWith('STAGE3_CANONICAL_SENSE_CONFLICT'));
+  const duplicate = await newSenseScenario({ kind: 'new_sense_on_existing_entry', pos: 'noun', gloss: '짧은 시간 동안.' });
+  await assert.rejects(duplicate.authority(), rejectsWith('STAGE3_CANONICAL_SENSE_CONFLICT'));
+  const falsePos = await newSenseScenario({ kind: 'new_pos_on_existing_lemma', pos: 'noun', gloss: '전혀 다른 둘째 뜻풀이.' });
+  assert.throws(() => falsePos.plan(), rejectsWith('STAGE3_CANONICAL_CONFLICT'));
 });

@@ -8,7 +8,7 @@ import { isLemmaRow } from './lemma-contract.mjs';
 // distinct input+POS only to share Kiwi analysis, then fans each result back out to
 // every factory candidate, never passing `coveredLemmas`.
 
-// Index of canonical entries by lemma: Map<lemma, [{id, posList, senses}]>.
+// Index of canonical entries by lemma: Map<lemma, [{id, senses: [{id, pos, gloss}]}]>.
 export function buildCanonicalIndex(entries) {
   const byLemma = new Map();
   for (const entry of entries) {
@@ -16,7 +16,7 @@ export function buildCanonicalIndex(entries) {
     const list = byLemma.get(entry.lemma) ?? [];
     list.push({
       id: entry.id,
-      senses: (entry.senses ?? []).map((sense) => ({ id: sense.id, pos: sense.pos })),
+      senses: (entry.senses ?? []).map((sense) => ({ id: sense.id, pos: sense.pos, gloss: sense.gloss })),
     });
     byLemma.set(entry.lemma, list);
   }

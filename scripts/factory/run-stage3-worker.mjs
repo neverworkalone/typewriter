@@ -16,6 +16,7 @@ import {
   processStage3Attempt,
   createRejectionStatusPullRequest,
   recoverStage3Attempt,
+  supersedeStage3RejectionForRetry,
   releaseStage3Claim,
   runStage3Session,
   waitForStage3PullRequest,
@@ -45,6 +46,10 @@ export function parseArguments(argv) {
       const value = argument === '--attempt' ? argv[++index] : argument.slice('--attempt='.length);
       if (!value || value.startsWith('--')) throw new Error('--attempt requires a positive integer');
       options.resumeAttempt = Number(value);
+    } else if (argument === '--supersede-rejection-pr' || argument.startsWith('--supersede-rejection-pr=')) {
+      const value = argument === '--supersede-rejection-pr' ? argv[++index] : argument.slice('--supersede-rejection-pr='.length);
+      if (!value || value.startsWith('--')) throw new Error('--supersede-rejection-pr requires a positive PR number');
+      options.supersedeRejectionPr = Number(value);
     } else throw new Error('unknown argument ' + argument);
   }
   if (!['codex', 'claude'].includes(options.agent)) throw new Error('--agent must be codex or claude');
@@ -52,6 +57,8 @@ export function parseArguments(argv) {
   if ((options.resumeBatch === undefined) !== (options.resumeAttempt === undefined)) throw new Error('--resume-batch and --attempt must be supplied together');
   if (options.resumeBatch !== undefined && !/^C\d{6}$/u.test(options.resumeBatch)) throw new Error('--resume-batch must be C followed by six digits');
   if (options.resumeAttempt !== undefined && (!Number.isInteger(options.resumeAttempt) || options.resumeAttempt < 1)) throw new Error('--attempt must be a positive integer');
+  if (options.supersedeRejectionPr !== undefined && (!Number.isInteger(options.supersedeRejectionPr) || options.supersedeRejectionPr < 1)) throw new Error('--supersede-rejection-pr must be a positive PR number');
+  if (options.supersedeRejectionPr !== undefined && options.resumeBatch === undefined) throw new Error('--supersede-rejection-pr requires --resume-batch and --attempt');
   return options;
 }
 
@@ -60,6 +67,7 @@ export const HELP = [
   '',
   'Usage: pnpm run factory:stage3 --agent codex|claude [--repo owner/name] [--dry-run]',
   '       pnpm run factory:stage3 --agent codex|claude --resume-batch C000001 --attempt 1',
+  '       pnpm run factory:stage3 --agent codex --resume-batch C000001 --attempt 1 --supersede-rejection-pr 275',
   '',
   'A singleton GitHub lock makes all worker sessions serial; each attempt claims one ready review, commits an attempt marker, and opens a real Draft PR before preflight.',
   'The worker revalidates against latest master, prepares canonical JSONL, and marks that same PR ready only after the required gates pass.',
@@ -67,7 +75,10 @@ export const HELP = [
   'Interrupted attempts are resumed only when the exact batch and attempt are supplied with --resume-batch and --attempt.',
 ].join('\n');
 
-function claimFromSnapshot(snapshot, { batchId, attempt, agent, branchName, baseSha, prNumber, prState, admissionPr, activeLock }) {
+function claimFromSnapshot(snapshot, {
+  batchId, attempt, agent, branchName, baseSha, prNumber, prState, admissionPr, activeLock,
+  supersededRejectionPr, supersededRejectionCode, rejectionBranchName,
+}) {
   const review = snapshot.reviews.find((entry) => entry.batchId === batchId);
   const candidate = snapshot.candidates.find((entry) => entry.batchId === batchId);
   if (!review || !candidate || review.manifest.attempt !== attempt || review.manifest.status !== 'ready') {
@@ -77,9 +88,11 @@ function claimFromSnapshot(snapshot, { batchId, attempt, agent, branchName, base
   if (prState !== 'starter') assertStage3ContractCurrent({ batchId, attempt }, snapshot);
   return {
     batchId, attempt, agent, branchName, prNumber, prState, admissionPr, activeLock,
+    ...(supersededRejectionPr !== undefined ? { supersededRejectionPr } : {}),
+    ...(supersededRejectionCode !== undefined ? { supersededRejectionCode } : {}),
     claimRef: `refs/heads/stage3-claims/${batchId}-a${attempt}`,
     baseSha: baseSha || snapshot.headSha,
-    rejectionBranchName: `${agent}/stage3-status/${batchId}-a${attempt}`,
+    rejectionBranchName: rejectionBranchName ?? `${agent}/stage3-status/${batchId}-a${attempt}`,
     candidates: candidate.rows,
     candidateManifest: candidate.manifest,
     candidateFiles: candidate.files,
@@ -141,7 +154,11 @@ async function resumeStage3Cli({
   } else if (recovered.status === 'create-rejection') {
     claim = claimFromSnapshot(snapshot, { ...recovered, agent, prState: 'starter' });
   } else {
-    claim = claimFromSnapshot(snapshot, { ...recovered, agent });
+    claim = claimFromSnapshot(snapshot, {
+      ...recovered, agent, supersededRejectionPr: options.supersedeRejectionPr,
+      supersededRejectionCode: options.retryRecovery?.supersededRejectionCode,
+      rejectionBranchName: options.retryRecovery?.rejectionBranchName,
+    });
   }
 
   if (recovered.status === 'resume-admission' && recovered.draft) {
@@ -156,7 +173,7 @@ async function resumeStage3Cli({
     claim = await createRejectionStatusPullRequest({
       github, git, root,
       claim: { ...claim, rejectionBranchName: `${agent}/stage3-status/${batchId}-a${attempt}` },
-      admissionPr: recovered.admissionPr, log,
+      admissionPr: recovered.admissionPr, rejectionCode: recovered.rejectionCode, log,
     });
   }
 
@@ -232,6 +249,14 @@ export async function runStage3Cli(argv, {
   const headSha = await github.getBranchHead('master');
   if (git.resolveRef('origin/master') !== headSha) throw new Stage3WorkerError('local origin/master does not match GitHub master');
   const snapshot = await loadSnapshot({ git, headSha });
+  if (options.supersedeRejectionPr !== undefined) {
+    const retry = await supersedeStage3RejectionForRetry({
+      github, git, snapshot, batchId: options.resumeBatch, attempt: options.resumeAttempt,
+      rejectionPrNumber: options.supersedeRejectionPr, dryRun: options.dryRun, log,
+    });
+    options.retryRecovery = retry;
+    if (options.dryRun) { log(JSON.stringify(retry)); return retry; }
+  }
   if (options.resumeBatch !== undefined) {
     const interactive = options.dryRun
       ? callbacks || { waitForMerge: async () => { throw new Stage3WorkerError('dry-run cannot wait for a PR'); } }

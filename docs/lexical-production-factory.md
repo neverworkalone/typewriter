@@ -545,6 +545,18 @@ M6-2/M6-3 manifests it already owns; no word or suffix is special-cased. A merge
 is not rewritten: if its sense needs a judgment, Stage 3 fails closed (`STAGE3_SURFACE_FORM_JUDGMENT`) and returns
 it through the rejection process for a Stage 2 rework.
 
+**Pairwise evidence against existing same-POS senses.** A `new_sense_on_existing_entry` decision adds senses to a
+canonical entry. If that entry already has two or more senses of the same POS as a reviewed sense, the semantic
+decision row of the candidate must carry `existing_sense_pairs`, one entry per (existing same-POS sense × reviewed
+sense of that POS), each exactly once: `{existing_sense_id, new_sense_id, relationship: 'distinct', decision: 'retain',
+existing_gloss_sha256, new_gloss_sha256, evidence_basis, distinguishing_feature, rationale}` (texts cite the candidate id).
+The validator (`scripts/factory/existing-sense-pairs.mjs`, via `validateReviewArtifacts` and `validate.mjs`) computes
+the required set from the canonical target entry and rejects missing, duplicated, nonexistent, foreign-entry,
+wrong-POS or digest-unbound pairs; Stage 3 (`semantic-authority.mjs`) re-validates them against the latest canonical
+record and writes exactly that Stage 2 evidence as the pairwise boundary review. A single existing same-POS sense keeps
+working with `context_sense_id` alone. Merged historical reviews are not rewritten: the requirement applies to new or
+changed reviews, and an older review that needs pairs still fails closed in Stage 3 (`STAGE3_BOUNDARY_CONTEXT_MISSING`).
+
 `disposition` takes the existing meanings: included / corrected / held /
 rejected / deferred. `target.kind` is `new_entry`, `new_pos_on_existing_lemma`
 or `new_sense_on_existing_entry` (the last two carry the existing canonical `id`
@@ -615,6 +627,25 @@ crash-safe record:
   lock for another attempt, a second claim, or an unrelated open Stage 3 PR fails
   closed. Duplicate admission is prevented by the singleton ref plus the PR
   linkage, not by session identity.
+- **Owner-directed retry after a false rejection.** Only when the owner identifies
+  an unmerged status-only rejection as the result of a shared defect that is now
+  fixed, an operator may run the explicit
+  `--resume-batch C… --attempt N --supersede-rejection-pr <PR>` path. The worker
+  verifies the exact lock and claim, the still-ready master review and digests,
+  the linked closed lexical-rejection Draft, the open unmerged status PR, and its
+  manifest-only diff. The all-state PR inventory must contain exactly one
+  admission Draft and one status PR for that batch and attempt; any additional
+  same-attempt admission or status PR fails closed regardless of its state, while
+  unrelated closed historical PRs for other attempts are ignored. It binds the
+  retry to the original rejection code and the actual owner branch recorded by
+  the linked PR. It restores the Draft head from the PR ref, closes the
+  superseded status PR, and reopens that same Draft.
+  `--dry-run` validates these preconditions without changing PRs or refs. If the
+  retry reaches the same Stage 2-repairable evidence gap, the worker reopens the
+  existing status PR only when its branch still contains the exact expected
+  rejected manifest and the rejection code is unchanged; it never creates a
+  duplicate PR or edits Stage 2 evidence. A changed rejection code or any other
+  mismatch preserves the attempt refs and stops for owner recovery.
 - **Release.** Only after the admission PR merges (`complete`) or the rejection
   status-only PR merges (`rejected`) and that exact state is verified on current
   `master`, delete the attempt claim and then the matching global lock. If the
@@ -749,6 +780,7 @@ its `stage2-claims/C…` ref (§3). Systemic rejections do not enter the queue.
 | 5 | Stage 2 result PR fails CI or digest binding. | Not merged ⇒ manifests unchanged (`created`); the claim persists and the owner fixes the same PR. No state change is needed because nothing was committed to `master`. |
 | 6 | Rejection status PR is open when a Stage 2 agent looks for rework or when Stage 3 is restarted. | The batch is still `ready` on `master`, so it is not rework yet; Stage 2 takes other work. Stage 3 skips it (claim ref / open PR) and, if its own attempt was interrupted, resumes per §6.0. |
 | 6a | Stage 3 restarts after opening the admission PR; or preflight fails before any canonical change. | The claim ref and the draft PR identify one attempt; the restart resumes it (no duplicate admission). A preflight failure closes the draft and cites its number in `rejected_pr`. |
+| 6b | Owner authorizes retrying an unmerged status-only rejection after its shared defect is fixed. | Run the explicit `--supersede-rejection-pr` recovery after its dry-run. It verifies the exact status manifest and lock, closes only that status PR, and reopens the linked Draft. If the same valid Stage 2 evidence gap remains, reopen the unchanged status PR; otherwise continue the same attempt. |
 | 7 | The admission allocator emits colliding ids for several batches. | Systemic: halt, fix allocator, add a regression, resume the unchanged batches (§6.3). |
 | 8 | Assignee leaves. | Transfer by comment, keep ref/branch; stale rules in §3.1. |
 

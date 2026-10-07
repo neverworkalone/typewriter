@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -313,6 +314,31 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
   assert.deepEqual(next.rows.map((row) => [row.candidate_id, row.input]), [['C000002-0001', '걸음']]);
   assert.equal(next.summary.skippedProducedLemmas, 1);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
+});
+
+test('post-write validation is base-aware like CI: merged reviews are compared to the base, a new batch stays fail-closed', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
+  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])])));
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd: root, stdio: 'pipe' });
+  git('init', '-q');
+  git('add', 'data/canonical');
+  git('commit', '-q', '-m', 'base');
+  const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--policy', 'provider-resolution-v1'];
+  const seen = [];
+  const deps = { root, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, validate: async (options) => { seen.push(options.base); return validateFactoryRepository(options); } };
+  await runStage1([...args, '--base-ref', 'HEAD'], deps);
+  assert.equal(seen.length, 1);
+  assert.match(seen[0].commit, /^[0-9a-f]{40}$/u);
+  await rm(path.join(root, 'data/candidates'), { recursive: true });
+  await runStage1([...args, '--base-ref', 'none'], deps);
+  assert.equal(seen[1], null);
+  await rm(path.join(root, 'data/candidates'), { recursive: true });
+  const failing = { ...deps, validate: async () => ['C000001: new batch error'] };
+  await assert.rejects(() => runStage1([...args, '--base-ref', 'HEAD'], failing), /new batch error/);
+  await assert.rejects(() => readdir(path.join(root, 'data/candidates/C000001')), { code: 'ENOENT' });
 });
 
 test('CLI fails closed without permission, outside data/reference, on bad arguments and on a missing evidence file', async () => {
