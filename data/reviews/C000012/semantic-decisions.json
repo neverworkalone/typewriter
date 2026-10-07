@@ -1598,54 +1598,6 @@
           }
         ]
       }
-    },
-    {
-      "source_candidate_id": "C000012-0327",
-      "candidate_record_id": "C000012-0327",
-      "candidate_record_sha256": "244fb1446bdcee7ab1a484a57985b3ec167f1b28b138d30c06cad375ca8f059a",
-      "decision": "included",
-      "decision_rationale": "C000012-0327 attempt 1 Codex agent self-check: o01의 허리띠 졸라매기식 경제와 o02 빚을 갚으려 씀씀이를 줄이는 것은 경제적 어려움 속에서 절약하는 관용적 의미다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000012-0327-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000012-0327: o01의 허리띠 졸라매기식 경제와 o02 빚을 갚으려 씀씀이를 줄이는 것은 경제적 어려움 속에서 절약하는 관용적 의미다.",
-          "semantic_rationale": "C000012-0327: o01의 허리띠 졸라매기식 경제와 o02 빚을 갚으려 씀씀이를 줄이는 것은 경제적 어려움 속에서 절약하는 관용적 의미다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000012-0327 C000012-0327-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000012-0327.o01",
-              "C000012-0327.o02"
-            ],
-            "excluded_observation_ids": [
-              "C000012-0327.o03"
-            ],
-            "excluded_terms": [
-              "가운"
-            ]
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000012-0327",
-        "candidate_record_sha256": "244fb1446bdcee7ab1a484a57985b3ec167f1b28b138d30c06cad375ca8f059a",
-        "decision_evidence_sha256": "c31075f892a30f962c1bf713189de7c1b38e8738f36763159c6eea21fda67043",
-        "sense_evidence": [
-          {
-            "sense_id": "C000012-0327-s1",
-            "sense_sha256": "0f6a7f62ba22357859989418fcb98fa273d2b027eb5f8efc63627bb928ef8949",
-            "gloss_sha256": "2653da676eb0d8129befc574e5701f734b622ef8660d21b0bb80b70f79d339f7",
-            "evidence_sha256": "f0d98ee1b21d93ead5388b5fd2b961c7d5029f8461faa52bf071a22ec6ce9067"
-          }
-        ]
-      }
     }
   ]
 }
