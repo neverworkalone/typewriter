@@ -2949,8 +2949,6 @@ test('confusable headwords keep their own meanings: a gloss of the counterpart l
   assert.equal(codes('좇다', '달아나는 대상을 따라가 붙잡으려 하다.').length, 1);
   assert.equal(codes('가르치다', '손가락으로 방향을 나타내다.').length, 1);
   assert.equal(codes('가리키다', '지식이나 기술을 익히도록 알려 주다.').length, 1);
-  assert.equal(codes('틀리다', '서로 같지 않고 차이가 있다.').length, 1);
-  assert.equal(codes('늘이다', '수나 양을 더 많게 하다.').length, 1);
   assert.equal(codes('잃어버리다', '기억하고 있던 내용을 떠올리지 못하게 되다.').length, 1);
   assert.equal(codes('잊어버리다', '가졌던 것이 없어져 더 이상 가지지 못하게 되다.').length, 1);
   assert.equal(codes('잃다', '기억하고 있던 내용을 떠올리지 못하게 되다.').length, 1);
@@ -2960,16 +2958,24 @@ test('confusable headwords keep their own meanings: a gloss of the counterpart l
   assert.deepEqual(codes('쫓다', '달아나는 대상을 따라가 붙잡으려 하다.'), []);
   assert.deepEqual(codes('좇다', '목표나 대상을 따라가며 이루려 하다.'), []);
   assert.deepEqual(codes('가리키다', '손가락이나 말로 일정한 대상이나 방향을 나타내다.'), []);
-  assert.deepEqual(codes('다르다', '서로 같지 않고 차이가 있다.', 'adjective'), []);
   assert.deepEqual(codes('잊어버리다', '기억하고 있던 내용을 떠올리지 못하게 되다.'), []);
   assert.deepEqual(codes('잃어버리다', '가지고 있던 것을 어디에 두었는지 몰라 찾지 못하다.'), []);
   // Positive: valid meanings that share a common word with the counterpart's vocabulary are kept.
   assert.deepEqual(codes('잃다', '병이나 충격으로 기억하는 능력을 없애다.'), []);
   assert.deepEqual(codes('잃다', '사고로 기억을 완전히 상실하다.'), []);
   assert.deepEqual(codes('잃어버리다', '충격으로 기억 능력을 모두 잃다.'), []);
-  assert.deepEqual(codes('틀리다', '셈이나 사실이 실제와 같지 않다.'), []);
-  assert.deepEqual(codes('늘리다', '기간이나 시간을 더 길게 하다.'), []);
   assert.deepEqual(codes('잊다', '기억에서 없어져 떠올리지 못하게 되다.'), []);
+  assert.deepEqual(codes('가르치다', '손가락 쓰는 법을 익히도록 알려 주다.'), []);
+  assert.deepEqual(codes('벌리다', '좁은 간격을 넓게 열어 틈을 만들다.'), []);
+  assert.deepEqual(codes('벌이다', '일이나 놀이판을 차려 시작하다.'), []);
+  assert.deepEqual(codes('맞추다', '둘 이상의 위치나 모양을 서로 맞게 조절하다.'), []);
+  assert.deepEqual(codes('맞히다', '문제의 답이나 목표를 정확하게 알아내다.'), []);
+  // Pairs whose valid glosses overlap each other's vocabulary carry no rule at all.
+  assert.deepEqual(codes('늘리다', '소매 길이를 본디보다 더 길게 하다.'), []);
+  assert.deepEqual(codes('늘리다', '기간이나 시간을 더 길게 하다.'), []);
+  assert.deepEqual(codes('늘이다', '엿가락을 잡아당겨 길게 하다.'), []);
+  assert.deepEqual(codes('틀리다', '셈이나 사실이 실제와 같지 않다.'), []);
+  assert.deepEqual(codes('다르다', '서로 같지 않고 차이가 있다.', 'adjective'), []);
   assert.deepEqual(codes('쫓다', '파리를 쫓아 이상한 소리가 나는 곳으로 몰아내다.'), []);
   // Other POS or unrelated lemmas are unaffected.
   assert.deepEqual(codes('쫓다', '어떤 이상이나 목표를 이루려고 따르다.', 'noun'), []);
@@ -2982,7 +2988,8 @@ test('confusable headwords keep their own meanings: a gloss of the counterpart l
     assert.notEqual(rule.lemma, rule.counterpart);
     assert.ok(CONFUSABLE_LEMMA_RULES.some((other) => other.lemma === rule.counterpart && other.counterpart === rule.lemma));
     assert.ok(rule.forbidden.length > 0);
-    for (const group of rule.forbidden) assert.ok(Array.isArray(group) && group.length > 0);
+    // Every forbidden group is a conjunction of at least two terms: no single common word can reject a valid gloss.
+    for (const group of rule.forbidden) assert.ok(Array.isArray(group) && (group.length >= 2 || /\s/u.test(group[0])), JSON.stringify(group));
   }
 
   // The shared record validator applies the same rule to every candidate and canonical record.

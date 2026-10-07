@@ -1582,21 +1582,20 @@ export function validateLexicalRecord(record, options = {}) {
  * represented under the counterpart headword.  This is a deterministic tripwire for
  * the unambiguous gloss vocabulary of each pair, not a replacement for the
  * source-bound semantic review; every entry names its counterpart so a finding
- * tells the reviewer which canonical lemma to compare against.
+ * tells the reviewer which canonical lemma to compare against.  Design rule: every
+ * forbidden group is a conjunction of at least two terms, and a pair is listed only when
+ * the two headwords' meanings are cleanly separable (늘리다/늘이다 and 틀리다/다르다 are
+ * deliberately absent because valid glosses of each overlap the other's vocabulary).
  */
 export const CONFUSABLE_LEMMA_RULES = Object.freeze([
   { lemma: '쫓다', pos: 'verb', counterpart: '좇다', forbidden: [['이상', '이루'], ['목표', '이루'], ['이상', '따르'], ['목표', '따르'], ['이념', '따르']] },
   { lemma: '좇다', pos: 'verb', counterpart: '쫓다', forbidden: [['달아나', '붙잡'], ['도망', '붙잡']] },
-  { lemma: '가르치다', pos: 'verb', counterpart: '가리키다', forbidden: [['손가락'], ['지목']] },
+  { lemma: '가르치다', pos: 'verb', counterpart: '가리키다', forbidden: [['손가락', '방향'], ['손가락', '나타내'], ['지목', '대상']] },
   { lemma: '가리키다', pos: 'verb', counterpart: '가르치다', forbidden: [['지식', '익히'], ['기술', '익히'], ['지식', '배우']] },
-  { lemma: '틀리다', pos: 'verb', counterpart: '다르다', forbidden: [['서로', '같지 않'], ['서로 다르']] },
-  { lemma: '다르다', pos: 'adjective', counterpart: '틀리다', forbidden: [['맞지 않'], ['그르']] },
-  { lemma: '벌리다', pos: 'verb', counterpart: '벌이다', forbidden: [['일을', '시작'], ['판을']] },
+  { lemma: '벌리다', pos: 'verb', counterpart: '벌이다', forbidden: [['일을', '시작'], ['판', '차리'], ['잔치', '차리']] },
   { lemma: '벌이다', pos: 'verb', counterpart: '벌리다', forbidden: [['넓게', '열'], ['사이를', '넓']] },
-  { lemma: '늘리다', pos: 'verb', counterpart: '늘이다', forbidden: [['길이'], ['늘어지']] },
-  { lemma: '늘이다', pos: 'verb', counterpart: '늘리다', forbidden: [['더 많게'], ['많아지게'], ['수나 양']] },
-  { lemma: '맞추다', pos: 'verb', counterpart: '맞히다', forbidden: [['과녁'], ['적중']] },
-  { lemma: '맞히다', pos: 'verb', counterpart: '맞추다', forbidden: [['서로 맞게'], ['조절'], ['조정']] },
+  { lemma: '맞추다', pos: 'verb', counterpart: '맞히다', forbidden: [['과녁', '맞'], ['정답', '맞'], ['답', '알아내']] },
+  { lemma: '맞히다', pos: 'verb', counterpart: '맞추다', forbidden: [['서로 맞게', '조절'], ['서로', '조정']] },
   { lemma: '잃다', pos: 'verb', counterpart: '잊다', forbidden: [['기억', '떠올리지 못']] },
   { lemma: '잊다', pos: 'verb', counterpart: '잃다', forbidden: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
   { lemma: '잃어버리다', pos: 'verb', counterpart: '잊어버리다', forbidden: [['기억', '떠올리지 못']] },
