@@ -297,6 +297,30 @@ are distinct from the PR-review gates in `REVIEW.md`.
   sessions for lexical authoring or QA. The owner manually launching several
   independent Stage 2 agents is not prohibited.
 
+### Shared defects found while working a batch
+
+When a batch is blocked by a defect in shared factory, validator or Stage 3 code
+rather than by the batch data:
+
+1. Do not work around it in the batch data: no deferring or rejecting valid
+   records, no per-word exceptions, no weakening of validation.
+2. Do not put shared-code changes into the batch result PR. Record only the
+   dependency there and keep that PR waiting.
+3. Before writing anything, search open issues and PRs for the same defect. If
+   a fix already exists, link it and wait for it; do not open a duplicate.
+4. Otherwise open a separate issue and a separate PR from the latest remote
+   `master` (new worktree) that fixes the shared pipeline with a general
+   regression (no word-specific code), run the issue's CI locally, bind the PR
+   and enable auto-fix. Never merge it yourself.
+5. A regression for a shared contract must exercise the real production path
+   (real-shaped canonical data and the real validators), not only synthetic
+   inputs that omit the new field.
+6. After the owner merges it, bring the batch PR up to date with `master`, add
+   the data the new contract requires and re-run the prospective Stage 3
+   preflight.
+7. If a tool or the permission layer denies the shared-code change, stop and
+   report; do not retry another way.
+
 ## Validation
 
 Run the validation appropriate to the changed surface.
