@@ -506,6 +506,15 @@ its own disposition, reason, `hold_resolution` / sense claims and (for `covered`
 `search_coverage`) its own search-form proof. A group with a single entry and no
 `observation_ids` covers all of its observations.
 
+**Observation fit of `covered`/`search_coverage` (C000008 onward, #366).** The structural proof
+does not show that each observation's meaning lies inside the existing gloss. From C000008 on, the
+`reason` of a `covered`/`search_coverage` entry must name every observation it judges (`o01`); that
+mechanical provenance check is a hard rule. Whether the meaning fits stays a source-bound semantic
+judgment: an observation outside the existing gloss is split off by `observation_ids` and deferred, or
+authored as its own sense. A reason that mentions 비유·빗대·은유·상징·관용·몸짓 is only reported as a
+non-blocking advisory (the word can be literal, e.g. the lemma 상징, or describe a sense the canonical
+entry already holds). Merged earlier batches stay as recorded.
+
 **Gloss scope (source-bound, lemma-centered reviews).** An admitted gloss may only describe the
 observations its included groups claim, so a deferred, rejected or already-covered meaning
 cannot leak into it. Every `sense_reviews[i]` of a pending (not yet Stage 3 `complete`) review
@@ -513,10 +522,28 @@ carries `scope_declaration: {admitted_observation_ids, excluded_observation_ids,
 Both id lists must equal what the decision's `group_decisions` derive for that sense; while
 observations are excluded, `excluded_terms` must name the excluded meaning, each term must occur
 in the authored `reason` of an entry that judges an excluded observation, and no term may occur
-in the gloss. Whether a gloss otherwise stays within its evidence remains a source-bound semantic
+in the gloss. A term must denote the excluded meaning, not merely occur in a reason: a generic placeholder
+(쓰임, 뜻, 의미, …) or an observed surface form / the lemma (with or without a particle) is refused. Whether a
+gloss otherwise stays within its evidence remains a source-bound semantic
 judgment; the contract makes the scope explicit and refuses the mechanically detectable widening
 (`scripts/factory/scope-declaration.mjs`, enforced by `validate.mjs` and the shared review artifact
 validator). Reviews already `complete` predate the field and are not rewritten.
+
+**Surface-form (inflection class) judgments.** An admitted predicate sense whose final coda cannot be
+classified by a mechanical rule (for example a ㅂ-final adjective, regular or irregular) needs an explicit
+Stage 2 judgment, because Stage 3 never guesses it. The decision row of an `included`/`corrected` candidate
+carries `surface_form_judgments: [{sense_index, class_id, reason}]`: `sense_index` is the 0-based index in
+`reviewed_record.senses`, `class_id` is any M6-2/M6-3 class that the shared surface-form rule accepts for that
+exact sense (an irregular exception class, the regular risk-coda class, or the predicate exclusion) and `reason`
+is authored, candidate-specific text citing the candidate id. A judgment is allowed only for a sense that has an
+open judgment gap, and a sense with an open gap needs one; unknown or mismatched classes, duplicates and
+judgments for senses that need none are rejected by the shared validator
+(`scripts/factory/surface-form-judgments.mjs`, enforced by `validate.mjs` and `validateReviewArtifacts` for every
+new or changed review). Stage 3 re-checks the same judgments with `resolveSurfaceFormJudgments`
+(`scripts/inflection/surface-form-projection.mjs`) under the allocated canonical ids and records them in the
+M6-2/M6-3 manifests it already owns; no word or suffix is special-cased. A merged review that predates the field
+is not rewritten: if its sense needs a judgment, Stage 3 fails closed (`STAGE3_SURFACE_FORM_JUDGMENT`) and returns
+it through the rejection process for a Stage 2 rework.
 
 `disposition` takes the existing meanings: included / corrected / held /
 rejected / deferred. `target.kind` is `new_entry`, `new_pos_on_existing_lemma`

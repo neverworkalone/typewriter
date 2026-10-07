@@ -6,6 +6,7 @@ import {
   listSurfaceFormDispositionGaps,
   loadSurfaceFormExceptionManifest,
   loadSurfaceFormReviewManifest,
+  resolveSurfaceFormJudgments,
 } from '../inflection/surface-form-projection.mjs';
 import { Stage3AdmissionError } from './admission.mjs';
 
@@ -29,16 +30,31 @@ async function canonicalRecords(root) {
  * is added; a gap that needs a reviewer's judgment fails as a lexical blocker instead of being guessed.
  * `plan…` computes the manifest rewrites without writing anything; `write…` applies them.
  */
-export async function planSurfaceFormDispositions({ root, records: projected }) {
+export async function planSurfaceFormDispositions({ root, records: projected, judgments = [] }) {
   const exceptionPath = path.join(root, 'data/validation/m6-2-inflection-exceptions.json');
   const reviewPath = path.join(root, 'data/validation/m6-3-surface-form-review.json');
-  const exceptionManifest = await loadSurfaceFormExceptionManifest(exceptionPath);
-  const reviewManifest = await loadSurfaceFormReviewManifest(reviewPath);
-  const gaps = listSurfaceFormDispositionGaps(projected ?? await canonicalRecords(root), { exceptionManifest, reviewManifest });
+  let exceptionManifest = await loadSurfaceFormExceptionManifest(exceptionPath);
+  let reviewManifest = await loadSurfaceFormReviewManifest(reviewPath);
+  const projectedRecords = projected ?? await canonicalRecords(root);
   const changed = new Set();
+  let gaps;
+  if (judgments.length) {
+    // Stage 2's explicit surface-form judgments are re-validated by the same shared rule and then
+    // recorded in the same manifests as a mechanical fix; nothing is accepted that the manifest
+    // validators would reject, and a judgment for a sense that needs none fails closed.
+    const resolved = resolveSurfaceFormJudgments(projectedRecords, judgments, { exceptionManifest, reviewManifest });
+    if (resolved.errors.length) {
+      throw new Stage3AdmissionError(resolved.errors.join('\n'), { category: 'lexical', code: 'STAGE3_SURFACE_FORM_JUDGMENT_INVALID' });
+    }
+    if (resolved.exceptionManifest.exceptions.length !== exceptionManifest.exceptions.length) changed.add(exceptionPath);
+    if (resolved.reviewManifest.dispositions.length !== reviewManifest.dispositions.length) changed.add(reviewPath);
+    ({ exceptionManifest, reviewManifest, gaps } = resolved);
+  } else {
+    gaps = listSurfaceFormDispositionGaps(projectedRecords, { exceptionManifest, reviewManifest });
+  }
   for (const gap of gaps) {
     if (!gap.fix) {
-      throw new Stage3AdmissionError(`${gap.message} It needs a reviewer's surface-form judgment.`, { category: 'lexical', code: 'STAGE3_SURFACE_FORM_JUDGMENT' });
+      throw new Stage3AdmissionError(`${gap.message} It needs the reviewer's explicit surface-form judgment (surface_form_judgments in the Stage 2 decision).`, { category: 'lexical', code: 'STAGE3_SURFACE_FORM_JUDGMENT' });
     }
     const { manifest, class_id: classId } = gap.fix;
     if (manifest === 'review') {
@@ -54,7 +70,7 @@ export async function planSurfaceFormDispositions({ root, records: projected }) 
   // New senses can also create, or extend the candidate set of, exact/generated and generated/generated
   // collisions. The policy is fixed (exact lookup keeps precedence; every sense-bound candidate is
   // retained), so these entries are dictated by the rule rather than judged here; reasons are kept.
-  const records = projected ?? await canonicalRecords(root);
+  const records = projectedRecords;
   const { collisions } = buildSurfaceFormProjection(records, { exceptionManifest, reviewManifest });
   const reviewed = reviewManifest.reviewed_collisions;
   const reasonOf = (entries) => new Map(entries.map((entry) => [entry.form, entry.reason]));
@@ -92,6 +108,6 @@ export async function writeSurfaceFormDispositions(plan) {
   return plan.map(({ path: relativePath }) => relativePath).sort();
 }
 
-export async function applySurfaceFormDispositions({ root, records }) {
-  return writeSurfaceFormDispositions(await planSurfaceFormDispositions({ root, records }));
+export async function applySurfaceFormDispositions({ root, records, judgments }) {
+  return writeSurfaceFormDispositions(await planSurfaceFormDispositions({ root, records, judgments }));
 }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -17,7 +18,7 @@ import {
   validateDecisionRows,
   validateReviewManifest,
 } from '../scripts/factory/contract.mjs';
-import { partitionByWriterSupport, validateDecisionRow } from '../scripts/factory/handoff.mjs';
+import { confusableLemmaAdvisories, partitionByWriterSupport, validateDecisionRow } from '../scripts/factory/handoff.mjs';
 import { buildCanonicalIndex, classifyAgainstCanonical, intakeCandidates, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { validateCandidateTransition, validateLinkedTransition, validateReviewTransition } from '../scripts/factory/transitions.mjs';
 import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
@@ -101,6 +102,29 @@ test('decision rows must cover every candidate exactly once in order', () => {
   assert.deepEqual(validateDecisionRows([{ source_candidate_id: ids[0] }, { source_candidate_id: ids[1] }], ids), []);
   assert.ok(validateDecisionRows([{ source_candidate_id: ids[0] }], ids).some((e) => e.includes('missing decision row')));
   assert.ok(validateDecisionRows([{ source_candidate_id: ids[0] }, { source_candidate_id: ids[0] }], ids).some((e) => e.includes('duplicate')));
+});
+
+test('confusable-headword hints are advisory in Stage 2 validation, and C000007 keeps the mis-spelled observations out', () => {
+  const included = (reviewed) => ({ source_candidate_id: 'C000001-0001', disposition: 'included', target: { kind: 'new_entry' }, reviewed_record: reviewed });
+  const hinted = included({ lemma: '쫓다', senses: [{ pos: 'verb', gloss: '어떤 이상이나 목표를 이루려고 좇아 따르다.' }] });
+  const valid = included({ lemma: '맞추다', senses: [{ pos: 'verb', gloss: '총의 조준점을 과녁에 맞게 조절하다.' }] });
+  // The hard decision validator never rejects on this subjective ground ...
+  assert.deepEqual(validateDecisionRow(hinted, { canonicalIndex: INDEX }), []);
+  assert.deepEqual(validateDecisionRow(valid, { canonicalIndex: INDEX }), []);
+  // ... but the reviewer-facing advisory names the counterpart headword only for the hinted gloss.
+  const advisories = confusableLemmaAdvisories([hinted, valid]);
+  assert.equal(advisories.length, 1);
+  assert.equal(advisories[0].confusable_lemma, '좇다');
+
+  // Source-bound decision: the observations spelled 쫓다 / 부딪혀 in the sense of 좇다 / 부딪치다 stay rejected.
+  const rows = readFileSync(new URL('../data/reviews/C000007/decisions.jsonl', import.meta.url), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+  const row = (id) => rows.find((entry) => entry.source_candidate_id === id);
+  const groupFor = (id, observation) => row(id).group_decisions.find((group) => (group.observation_ids ?? []).includes(observation));
+  assert.equal(groupFor('C000007-0449', 'C000007-0449.o01').disposition, 'rejected');
+  assert.equal(groupFor('C000007-0449', 'C000007-0449.o02').disposition, 'rejected');
+  assert.equal(groupFor('C000007-0198', 'C000007-0198.o01').disposition, 'rejected');
+  assert.equal(row('C000007-0449').reviewed_record, undefined);
+  assert.equal(row('C000007-0198').reviewed_record, undefined);
 });
 
 test('status-only change never alters the manifest content digest', () => {

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { canonicalSnapshotDigest } from './stage1.mjs';
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from './admission.mjs';
 import { planSurfaceFormDispositions, writeSurfaceFormDispositions } from './surface-form-dispositions.mjs';
+import { stage3SurfaceFormJudgments } from './surface-form-judgments.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
 import { loadFactorySnapshot } from './stage2-worker.mjs';
 import { validateReviewArtifacts } from './artifacts.mjs';
@@ -342,7 +343,7 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
   });
   const projected = new Map(prepared.canonicalRecords.map((record) => [record.id, record]));
   for (const [id, update] of plan.records) projected.set(id, update.record);
-  const surfacePlan = await planSurfaceFormDispositions({ root, records: [...projected.values()] });
+  const surfacePlan = await planSurfaceFormDispositions({ root, records: [...projected.values()], judgments: stage3SurfaceFormJudgments(plan.decisions) });
   await applyStage3FileChanges(plan, { root, reviewManifestPath });
   const surfaceFiles = await writeSurfaceFormDispositions(surfacePlan);
   await writeFile(path.join(root, semanticAuthority.sourcePath), semanticAuthority.sourceText, 'utf8');

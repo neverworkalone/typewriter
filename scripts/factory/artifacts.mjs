@@ -3,6 +3,7 @@ import { candidateViews, intakeCandidates, toRawCandidate } from './identity-ada
 import { isLemmaRow } from './lemma-contract.mjs';
 import { resolveGroupEntries } from './lemma-decisions.mjs';
 import { validateScopeDeclarations } from './scope-declaration.mjs';
+import { validateSurfaceFormJudgments } from './surface-form-judgments.mjs';
 import { inspectSenseBoundaryPairs, sha256Json } from '../validate/semantic-audit.mjs';
 import { decisionSenseReviews, validateAuthoredDecisionDisposition, validateDistinctSenseSemanticRationales, validateSenseReviews } from '../batch/authored-semantic-decision-source.mjs';
 import { SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION, validateAuthoredSemanticReviewBinding } from '../validate/semantic-decision-row.mjs';
@@ -60,7 +61,7 @@ function parse(text, label, errors) {
   }
 }
 
-export function validateReviewArtifacts({ batchId, adapterId, candidates, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration = false }) {
+export function validateReviewArtifacts({ batchId, adapterId, candidates, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration = false, requireSurfaceFormJudgments = false }) {
   const errors = [];
   const admitted = decisions.filter((row) => ADMITTED.has(row.disposition));
   const candidateById = new Map(candidates.map((candidate) => [candidate.candidate_id, candidate]));
@@ -96,6 +97,9 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
       errors.push('semantic-decisions.json: review must be complete, name its reviewer and cover every candidate');
     }
   }
+
+  // Explicit surface-form (inflection class) judgments: Stage 3 can only record what Stage 2 judged.
+  for (const decision of decisions) errors.push(...validateSurfaceFormJudgments(decision, { required: requireSurfaceFormJudgments }));
 
   const handoff = parse(handoffText, 'intake-handoff.json', errors);
   if (handoff) {
