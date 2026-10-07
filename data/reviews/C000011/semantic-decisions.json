@@ -1783,9 +1783,9 @@
     {
       "source_candidate_id": "C000011-0284",
       "candidate_record_id": "C000011-0284",
-      "candidate_record_sha256": "85a5e261834660b450b08338895896d85104659f6f13053d3b4ce61c809bdb81",
+      "candidate_record_sha256": "cca3ee8bd3d51de5f788a8ee4b9ef8e25224bed49a1ce02b09a9d34121c283dd",
       "decision": "included",
-      "decision_rationale": "C000011-0284 attempt 1 Claude agent self-check: o02는 가청공간 가득 짓누르는 음압, o03은 평생 짓누르던 생각들로 물리적 누름이 아니라 소리나 생각이 마음을 무겁게 억누르는 비유적 쓰임이다.",
+      "decision_rationale": "C000011-0284 attempt 1 Claude agent self-check: o03은 평생 짓누르던 생각들이 다시 튀어나오기 시작했다로 물리적 누름이 아니라 생각이 마음을 무겁게 억누르는 비유적 쓰임이다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -1793,19 +1793,19 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000011-0284: o02는 가청공간 가득 짓누르는 음압, o03은 평생 짓누르던 생각들로 물리적 누름이 아니라 소리나 생각이 마음을 무겁게 억누르는 비유적 쓰임이다.",
-          "semantic_rationale": "C000011-0284: o02는 가청공간 가득 짓누르는 음압, o03은 평생 짓누르던 생각들로 물리적 누름이 아니라 소리나 생각이 마음을 무겁게 억누르는 비유적 쓰임이다.",
+          "boundary_rationale": "C000011-0284: o03은 평생 짓누르던 생각들이 다시 튀어나오기 시작했다로 물리적 누름이 아니라 생각이 마음을 무겁게 억누르는 비유적 쓰임이다.",
+          "semantic_rationale": "C000011-0284: o03은 평생 짓누르던 생각들이 다시 튀어나오기 시작했다로 물리적 누름이 아니라 생각이 마음을 무겁게 억누르는 비유적 쓰임이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000011-0284 C000011-0284-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
           "scope_declaration": {
             "admitted_observation_ids": [
-              "C000011-0284.o02",
               "C000011-0284.o03"
             ],
             "excluded_observation_ids": [
-              "C000011-0284.o01"
+              "C000011-0284.o01",
+              "C000011-0284.o02"
             ],
             "excluded_terms": [
               "다리"
@@ -1816,14 +1816,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000011-0284",
-        "candidate_record_sha256": "85a5e261834660b450b08338895896d85104659f6f13053d3b4ce61c809bdb81",
-        "decision_evidence_sha256": "85f27419f3b480fc615b48eab0a899aa2611569102cf9e7d6b919392adec0813",
+        "candidate_record_sha256": "cca3ee8bd3d51de5f788a8ee4b9ef8e25224bed49a1ce02b09a9d34121c283dd",
+        "decision_evidence_sha256": "9c1e63e11673768ef5c476ed5f9fe3a455396ca8aeec461a40b860639fc9aed0",
         "sense_evidence": [
           {
             "sense_id": "C000011-0284-s1",
-            "sense_sha256": "820aa9721cf346885a3b14373f6d057235214ca59f325d654659db8413bd1ac6",
-            "gloss_sha256": "e3aab8ed5226229e5ec1561ad762841a248d2f20e04e653396be5e8fc6612617",
-            "evidence_sha256": "94f6aab3f7c04225449104ef6394943b31d5ff9d60d926d9e73773f55a3e06e7"
+            "sense_sha256": "3ac75405b58b27bd6f503ad25a9779a47bc2a70610ddb408fa1d8ee23cc83cce",
+            "gloss_sha256": "a763e93d3a192f9d22c481d4ff39d4343022a3da541623015e9f2298ab746f95",
+            "evidence_sha256": "44daa97e4078cc6421c2bb7d87652a527a5fe4a0e98ac9494f7495b14beeeb21"
           }
         ]
       }
