@@ -545,20 +545,22 @@ M6-2/M6-3 manifests it already owns; no word or suffix is special-cased. A merge
 is not rewritten: if its sense needs a judgment, Stage 3 fails closed (`STAGE3_SURFACE_FORM_JUDGMENT`) and returns
 it through the rejection process for a Stage 2 rework.
 
+**Pairwise evidence against existing same-POS senses.** A `new_sense_on_existing_entry` decision adds senses to a
+canonical entry. If that entry already has two or more senses of the same POS as a reviewed sense, the semantic
+decision row of the candidate must carry `existing_sense_pairs`, one entry per (existing same-POS sense × reviewed
+sense of that POS), each exactly once: `{existing_sense_id, new_sense_id, relationship: 'distinct', decision: 'retain',
+existing_gloss_sha256, new_gloss_sha256, evidence_basis, distinguishing_feature, rationale}` (texts cite the candidate id).
+The validator (`scripts/factory/existing-sense-pairs.mjs`, via `validateReviewArtifacts` and `validate.mjs`) computes
+the required set from the canonical target entry and rejects missing, duplicated, nonexistent, foreign-entry,
+wrong-POS or digest-unbound pairs; Stage 3 (`semantic-authority.mjs`) re-validates them against the latest canonical
+record and writes exactly that Stage 2 evidence as the pairwise boundary review. A single existing same-POS sense keeps
+working with `context_sense_id` alone. Merged historical reviews are not rewritten: the requirement applies to new or
+changed reviews, and an older review that needs pairs still fails closed in Stage 3 (`STAGE3_BOUNDARY_CONTEXT_MISSING`).
+
 `disposition` takes the existing meanings: included / corrected / held /
 rejected / deferred. `target.kind` is `new_entry`, `new_pos_on_existing_lemma`
 or `new_sense_on_existing_entry` (the last two carry the existing canonical `id`
-and, for a sense, the existing sense context). When the entry already has
-several senses of the new sense's POS, `context_sense_id` names the primary one
-and `context_sense_ids` lists every compared same-POS sense; the new sense needs
-a distinguishing basis against each. Stage 2 authors that basis in the semantic
-decision row as `existing_boundary_pairs` (one source-bound pair per existing
-same-POS sense and new sense: ids, gloss digests, `distinct`/`retain`, and
-candidate-specific `evidence_basis`, `distinguishing_feature`, `rationale`);
-Stage 3 binds the existing gloss digest to canonical, fails closed when any
-same-POS pair is missing, and consumes the authored text as the pairwise
-boundary record. Reviews merged before this contract are reported stale, not
-rejected. Whether the current canonical
+and, for a sense, the existing sense context). Whether the current canonical
 import can express the last two is open (§10, §12).
 
 ### 5.2 One PR, two manifests

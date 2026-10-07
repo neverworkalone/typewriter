@@ -13,7 +13,7 @@ import { createMecabProvider } from './mecab-provider.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
 import { parseJsonl } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
-import { validateFactoryRepository, loadCanonicalEntries } from './validate.mjs';
+import { validateFactoryRepository, loadBaseManifests, loadCanonicalEntries } from './validate.mjs';
 import {
   DEFAULT_MAX_CANDIDATES,
   Stage1Error,
@@ -185,7 +185,7 @@ async function buildContextReviewPack({ queue, contextSource }) {
 }
 
 export async function runStage1(argv, {
-  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource, contextDatabasePath,
+  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource, contextDatabasePath, validate = validateFactoryRepository,
 } = {}) {
   const options = parseArguments(argv);
   const evidencePath = path.resolve(root, options.evidence);
@@ -279,7 +279,9 @@ export async function runStage1(argv, {
       await rm(staging, { recursive: true, force: true });
       throw error;
     }
-    const errors = await validateFactoryRepository({ root, canonicalEntries });
+    // Same base comparison as the CI validator, so already-merged reviews are not re-validated as new work.
+    const base = options.baseRef === 'none' ? null : loadBaseManifests(options.baseRef, root);
+    const errors = await validate({ root, base, canonicalEntries });
     if (errors.length) {
       await rm(target, { recursive: true, force: true });
       throw new Stage1Error(errors);

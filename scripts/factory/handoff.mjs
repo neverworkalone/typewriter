@@ -51,20 +51,6 @@ export function validateDecisionRow(row, { canonicalIndex }) {
     for (const sense of record.senses) if (existingPos.has(sense.pos)) errors.push(`${at}: pos ${sense.pos} already exists on ${target.id}`);
   } else {
     if (!target.senses.some((sense) => sense.id === row.target.context_sense_id)) errors.push(`${at}: new_sense_on_existing_entry requires context_sense_id of an existing sense`);
-    // Same-POS comparison: a new sense must be distinguished from EVERY existing same-POS sense.
-    // `context_sense_id` names the primary one; `context_sense_ids` lists the full compared set.
-    const extra = row.target.context_sense_ids;
-    if (extra !== undefined && (!Array.isArray(extra) || new Set(extra).size !== extra.length
-      || extra.some((id) => !target.senses.some((sense) => sense.id === id)))) {
-      errors.push(`${at}: context_sense_ids must be a duplicate-free list of existing sense ids of ${target.id}`);
-    } else {
-      const compared = new Set([row.target.context_sense_id, ...(extra ?? [])]);
-      for (const sense of target.senses) {
-        if (record.senses.some(({ pos }) => pos === sense.pos) && !compared.has(sense.id)) {
-          errors.push(`${at}: new sense is not compared against existing same-POS sense ${sense.id}; list it in context_sense_ids`);
-        }
-      }
-    }
     for (const sense of record.senses) if (!existingPos.has(sense.pos)) errors.push(`${at}: new sense pos ${sense.pos} is not on ${target.id}; use new_pos_on_existing_lemma`);
   }
   return errors;

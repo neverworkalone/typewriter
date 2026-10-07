@@ -343,16 +343,6 @@ function semanticRow(decision, candidate) {
       };
     }),
   };
-  if (decision.target?.kind === 'new_sense_on_existing_entry') {
-    row.existing_boundary_pairs = [decision.target.context_sense_id, ...(decision.target.context_sense_ids ?? [])]
-      .flatMap((existingId) => record.senses.map((sense) => ({
-        existing_sense_id: existingId, new_sense_id: sense.id, relationship: 'distinct', decision: 'retain',
-        existing_gloss_sha256: sha256Json(`existing ${existingId}`), new_gloss_sha256: sha256Json(sense.gloss),
-        evidence_basis: `${id}: compares ${sense.id} with existing ${existingId}.`,
-        distinguishing_feature: `${id}: ${sense.id} differs from existing ${existingId}.`,
-        rationale: `${id}: retain ${sense.id} as distinct from existing ${existingId}.`,
-      })));
-  }
   row.review_binding = authorSemanticReviewBinding(row, record);
   return row;
 }
@@ -888,4 +878,17 @@ test('the repository validator applies the observation-fit rule to C000008 but l
     // A literal 상징 in a reason never blocks, in C000008 as in C000007.
     assert.deepEqual(await stage2(decisionFor('o01은 분단의 상징이라는 쓰임으로 w3-s1에 포함된다.')), [], batch);
   }
+});
+
+// Pairwise evidence against every existing same-POS sense is required at the review-artifact boundary too (issue #379).
+test('review artifacts require pair evidence for each existing same-POS sense of the target entry, only for new or changed reviews', async () => {
+  const { rows, goDecision, pangDecision } = await lemmaFixture();
+  const decisions = [goDecision(), pangDecision()];
+  const good = await artifactsFor(rows, decisions);
+  const two = buildCanonicalIndex([{ id: 'w3', record_type: 'entry', lemma: '가다', senses: [{ id: 'w3-s1', pos: 'verb', gloss: 'g' }, { id: 'w3-s2', pos: 'verb', gloss: 'g2' }] }]);
+  const errorsOf = (extra) => validateReviewArtifacts({ ...good, ...extra });
+  assert.deepEqual(errorsOf({ canonicalIndex: INDEX, requireExistingSensePairs: true }), [], 'one existing same-POS sense keeps the context-id path');
+  assert.ok(errorsOf({ canonicalIndex: two, requireExistingSensePairs: true }).some((error) => /missing existing_sense_pairs for w3-s1 \/ C000002-0001-s1/u.test(error)));
+  assert.deepEqual(errorsOf({ canonicalIndex: two, requireExistingSensePairs: false }), [], 'an unchanged merged review is not required to carry pairs');
+  assert.deepEqual(errorsOf({ canonicalIndex: null, requireExistingSensePairs: true }), [], 'a review that is not bound to the current canonical state is only checked structurally');
 });
