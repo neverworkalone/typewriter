@@ -24,6 +24,21 @@ const ADMITTED = new Set(['included', 'corrected']);
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
 const formSupported = (lemma, surface, entryIds, support) => surface === lemma || entryIds.some((id) => support.get(id)?.has(surface));
 
+// Observation fit of `covered`/`search_coverage` (issue #366). Their structural proof (same lemma/POS
+// sense, supported forms) says nothing about whether each judged observation's meaning lies inside the
+// existing gloss, so from this batch on the reason must name every judged observation (`o01`): a
+// mechanical provenance invariant. Whether the meaning fits stays a source-bound semantic judgment; a
+// reason that mentions a figurative marker (비유·상징·관용 …) is only surfaced as a non-blocking advisory,
+// because the word can be literal (the lemma 상징) or describe a sense the canonical entry already holds.
+// Earlier merged batches stay as recorded.
+export const OBSERVATION_FIT_FIRST_BATCH = 8;
+const NONLITERAL_USE = /비유|빗대|은유|상징|관용|몸짓/;
+const batchNumber = (candidateId) => Number(/^C(\d{6})-/.exec(candidateId ?? '')?.[1] ?? 0);
+const mentionsObservation = (reason, observationId) => {
+  const short = observationId.split('.').pop();
+  return new RegExp(`(?<![0-9A-Za-z_])${short}(?![0-9A-Za-z_])`).test(reason);
+};
+
 // Pairs every decision entry with its group and the observations it judges. Returns
 // { errors, entries: [{entry, group, members}] }; entries of one group are contiguous and, if the
 // group is split, partition its observations exactly.
@@ -96,6 +111,11 @@ export function validateLemmaDecision(row, candidate, { canonicalIndex, support 
       errors.push(`${here}: only an included group carries sense_indexes or hold_resolution`);
     }
     if (entry.disposition === 'covered' || entry.disposition === 'search_coverage') {
+      if (batchNumber(candidate.candidate_id) >= OBSERVATION_FIT_FIRST_BATCH && isText(entry.reason)) {
+        const unnamed = members.map((observation) => observation.observation_id.split('.').pop())
+          .filter((id) => !mentionsObservation(entry.reason, id));
+        if (unnamed.length) errors.push(`${here}: ${entry.disposition} reason must name every judged observation (missing ${unnamed.join(', ')})`);
+      }
       if (!canonicalIndex) return;
       const entries = canonicalIndex.get(candidate.input) ?? [];
       const target = entries.find((record) => record.id === entry.existing_entry_id);
@@ -120,4 +140,13 @@ export function validateLemmaDecision(row, candidate, { canonicalIndex, support 
     errors.push(`${at}: ${row.disposition} candidate must not include a usage group`);
   }
   return errors;
+}
+
+// Non-blocking review hints: a covered/search_coverage reason that mentions a figurative marker may
+// describe an observation outside the existing gloss; the reviewer confirms or splits/defers it.
+export function nonliteralCoverageAdvisories(row, candidate) {
+  if (batchNumber(candidate.candidate_id) < OBSERVATION_FIT_FIRST_BATCH) return [];
+  return (row.group_decisions ?? [])
+    .filter((entry) => ['covered', 'search_coverage'].includes(entry?.disposition) && isText(entry.reason) && NONLITERAL_USE.test(entry.reason))
+    .map((entry) => `decision ${row.source_candidate_id} group ${entry.group_id}: ${entry.disposition} reason mentions ${NONLITERAL_USE.exec(entry.reason)[0]}; confirm the observation fits the existing gloss or split/defer it`);
 }

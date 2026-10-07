@@ -13,10 +13,10 @@ import {
   validateDecisionRows,
   validateReviewManifest,
 } from './contract.mjs';
-import { validateDecisionHandoff } from './handoff.mjs';
+import { confusableLemmaAdvisories, validateDecisionHandoff } from './handoff.mjs';
 import { buildCanonicalIndex } from './identity-adapter.mjs';
 import { isLemmaRow } from './lemma-contract.mjs';
-import { validateLemmaDecision } from './lemma-decisions.mjs';
+import { nonliteralCoverageAdvisories, validateLemmaDecision } from './lemma-decisions.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
@@ -82,6 +82,7 @@ export async function loadCanonicalEntries(root) {
 // stale results out of every PR. `mergedMaster` marks the worker's view, where all content is merged.
 export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries, mergedMaster = false, report = {} } = {}) {
   report.staleContractReviews = [];
+  report.advisories = [];
   const errors = [];
   const candidateBatches = await subdirectories(path.join(root, 'data/candidates'));
   const reviewBatches = await subdirectories(path.join(root, 'data/reviews'));
@@ -158,6 +159,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
       // Stage 3 revalidates a stale ready review against current master only after its Draft exists.
       const canonicalMatchesReview = manifest.canonical_snapshot_digest === currentCanonicalSnapshot;
       if (manifest.status === 'ready' && canonicalMatchesReview) errors.push(...validateDecisionHandoff(decisions, { canonicalIndex }).map((error) => `${batch}: ${error}`));
+      if (manifest.status === 'ready') report.advisories.push(...confusableLemmaAdvisories(decisions).map((hint) => `${batch}: ${hint.message}`));
       if (candidateRows.some(isLemmaRow)) {
         // Canonical proofs (covered / search_coverage) are bound only while admission is pending.
         const proofs = manifest.status === 'ready' && canonicalMatchesReview ? { canonicalIndex, support: await supportFor(decisions) } : {};
@@ -165,12 +167,17 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
         for (const decision of decisions) {
           const candidate = rowById.get(decision.source_candidate_id);
           if (candidate) errors.push(...validateLemmaDecision(decision, candidate, proofs).map((error) => `${batch}: ${error}`));
+          if (candidate) report.advisories.push(...nonliteralCoverageAdvisories(decision, candidate).map((hint) => `${batch}: ${hint}`));
         }
       }
       if (typeof semanticDecisionsText === 'string' && typeof handoffText === 'string') {
-        // Stage 3-admitted reviews predate the scope declaration; every pending review must carry it.
-        const artifacts = (requireScopeDeclaration) => validateReviewArtifacts({
-          batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration,
+        // Stage 3-admitted reviews predate the scope declaration and surface-form judgments; every pending review must carry them.
+        // A merged review that lacks a needed surface-form judgment stays eligible: Stage 3 blocks it
+        // fail-closed (STAGE3_SURFACE_FORM_JUDGMENT) and returns it through the rejection process, so
+        // only a new or changed review is required to carry the judgments.
+        const artifacts = (strict, judged = strict) => validateReviewArtifacts({
+          batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText,
+          requireScopeDeclaration: strict, requireSurfaceFormJudgments: judged,
         }).map((error) => `${batch}: ${error}`);
         const pending = manifest.status !== 'complete';
         const merged = mergedMaster || (base && JSON.stringify(base.review[batch]) === JSON.stringify(manifest) && base.semantic?.[batch] !== undefined
@@ -178,7 +185,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
         if (pending && merged) {
           const lenient = artifacts(false);
           errors.push(...lenient);
-          const strict = artifacts(true).filter((error) => !lenient.includes(error));
+          const strict = artifacts(true, false).filter((error) => !lenient.includes(error));
           if (strict.length) report.staleContractReviews.push({ batch, errors: strict });
         } else errors.push(...artifacts(pending));
       }
@@ -388,7 +395,7 @@ export function loadBaseManifests(ref, root = REPOSITORY_DIRECTORY) {
 }
 
 // `FACTORY_BASE_REF=none` is the only way to skip the comparison (explicit, never default).
-export async function runCli({ root = process.env.FACTORY_ROOT ?? REPOSITORY_DIRECTORY, ref = process.env.FACTORY_BASE_REF ?? DEFAULT_BASE_REF } = {}) {
+export async function runCli({ root = process.env.FACTORY_ROOT ?? REPOSITORY_DIRECTORY, ref = process.env.FACTORY_BASE_REF ?? DEFAULT_BASE_REF, report = {} } = {}) {
   let base = null;
   if (ref !== 'none') {
     try {
@@ -397,14 +404,16 @@ export async function runCli({ root = process.env.FACTORY_ROOT ?? REPOSITORY_DIR
       return [`cannot resolve factory base ${ref} (fetch master, or set FACTORY_BASE_REF); refusing to skip transition checks`];
     }
   }
-  return validateFactoryRepository({ root, base });
+  return validateFactoryRepository({ root, base, report });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const errors = await runCli();
+  const report = {};
+  const errors = await runCli({ report });
   if (errors.length) {
     console.error(errors.join('\n'));
     process.exit(1);
   }
+  if (report.advisories?.length) console.log(`Review hints (advisory, not failures):\n${report.advisories.join('\n')}`);
   console.log('Factory batch contracts valid.');
 }

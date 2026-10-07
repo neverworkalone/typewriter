@@ -72,7 +72,8 @@ policy, the before/after data shape and the operator note: **"500" counts unique
 - **Stage 2.** A v2 decision row keeps one row per `C…` id and adds `group_decisions` (entries per
   usage group; a group may be split by `observation_ids` into independently judged sense opportunities, see design §5.1). The real extractor emits no `usage_group`, so this split is how Stage 2 separates senses. `validateLemmaDecision` binds `included` groups to reviewed senses of
   the same POS, per-group `hold_resolution`s, and the canonical proofs of `covered`/`search_coverage`
-  (checked while the review is `ready`). The shared intake and hand-off receive per-observation views
+  (checked while the review is `ready`). From C000008 on, a `covered`/`search_coverage` reason must also name every
+  judged observation (#366); figurative markers are advisory only. The shared intake and hand-off receive per-observation views
   (`candidateViews`), so a hand-off entry per lemma+POS still exists and holds stay isolated.
 - **Compatibility statement.** #265/#266 (Stage 2 loop and Stage 3 admission) consume
   `source_candidate_id`/`C…` identities, the typed decision rows and the hand-off unchanged; the only
@@ -192,3 +193,22 @@ for historical snapshot reconstruction. Their field contracts remain closed,
 including nested sense/relation and compact review evidence objects. Full
 semantic validation independently verifies the retained hashes and live record
 binding; this artifact-policy allowance does not replace admission validation.
+
+## Stage 2 → Stage 3 surface-form judgments (issue #365)
+
+Predicate senses whose inflection class is a judgment (a ㅂ/ㄷ/ㅅ/ㅎ-final coda, regular or irregular) used to stop
+Stage 3 with `STAGE3_SURFACE_FORM_JUDGMENT` because a Stage 2 result had no way to carry that judgment. A decision
+row now carries an optional `surface_form_judgments: [{sense_index, class_id, reason}]` (see
+[`lexical-production-factory.md`](lexical-production-factory.md) §5.1).
+
+- `resolveSurfaceFormJudgments(records, judgments, manifests)` (shared projection) accepts a judgment only if the
+  existing M6-2/M6-3 manifest validators accept its class for that exact sense and the sense really has an open
+  judgment gap; it returns `errors`, `missing` senses and the remaining mechanical gaps. It never mutates the manifests.
+- `validateSurfaceFormJudgments(decision, {required})` applies it to the prospective record of a Stage 2 decision.
+  `validateReviewArtifacts({requireSurfaceFormJudgments})` and `validate.mjs` require the judgments of every new or
+  changed pending review; a merged review that predates the field stays eligible and is blocked fail-closed by Stage 3.
+- `planSurfaceFormDispositions({root, records, judgments})` records the judgments, addressed by the allocated
+  canonical ids (`stage3SurfaceFormJudgments`), in the same manifests as a rule-dictated fix. Without a judgment the
+  gap still fails closed; with an invalid one the lexical error is `STAGE3_SURFACE_FORM_JUDGMENT_INVALID` and nothing is written.
+- Whether a ㅂ-final adjective is regular or irregular remains a Stage 2 judgment; the shared rule checks that the
+  class fits the sense, not that the linguistic choice is right.

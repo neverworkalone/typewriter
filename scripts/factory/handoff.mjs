@@ -1,3 +1,4 @@
+import { findConfusableLemmaHints } from '../validate/lexical-quality.mjs';
 import { DISPOSITIONS, TARGET_KINDS } from './contract.mjs';
 
 // Typed Stage 2 → Stage 3 decision handoff (design §5.1). Pure validation against a
@@ -53,6 +54,17 @@ export function validateDecisionRow(row, { canonicalIndex }) {
     for (const sense of record.senses) if (!existingPos.has(sense.pos)) errors.push(`${at}: new sense pos ${sense.pos} is not on ${target.id}; use new_pos_on_existing_lemma`);
   }
   return errors;
+}
+
+// Non-blocking editorial hints (never validation errors): reviewed glosses that read like a
+// confusable counterpart headword, for the author and the independent reviewers to compare.
+export function confusableLemmaAdvisories(rows) {
+  return rows.flatMap((row) => (row?.reviewed_record
+    ? findConfusableLemmaHints({
+      lemma: row.reviewed_record.lemma,
+      senses: row.reviewed_record.senses,
+      label: `decision ${row.source_candidate_id} reviewed_record`,
+    }) : []));
 }
 
 export function validateDecisionHandoff(rows, { canonicalIndex }) {
