@@ -24,6 +24,20 @@ const ADMITTED = new Set(['included', 'corrected']);
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
 const formSupported = (lemma, surface, entryIds, support) => surface === lemma || entryIds.some((id) => support.get(id)?.has(surface));
 
+// Observation fit of `covered`/`search_coverage` (issue #366). Their structural proof (same lemma/POS
+// sense, supported forms) says nothing about whether each judged observation's meaning lies inside the
+// existing gloss, so from this batch on the reason must name every judged observation (`o01`) and must
+// not itself describe a non-literal use. Such an observation is split off by `observation_ids` and
+// deferred or authored as its own sense. Earlier merged batches stay as recorded. This catches only a
+// reason that describes the mismatch; an unmarked meaning mismatch remains a source-bound semantic call.
+export const OBSERVATION_FIT_FIRST_BATCH = 8;
+const NONLITERAL_USE = /비유|빗대|은유|상징|관용|몸짓/;
+const batchNumber = (candidateId) => Number(/^C(\d{6})-/.exec(candidateId ?? '')?.[1] ?? 0);
+const mentionsObservation = (reason, observationId) => {
+  const short = observationId.split('.').pop();
+  return new RegExp(`(?<![0-9A-Za-z])${short}(?![0-9])`).test(reason);
+};
+
 // Pairs every decision entry with its group and the observations it judges. Returns
 // { errors, entries: [{entry, group, members}] }; entries of one group are contiguous and, if the
 // group is split, partition its observations exactly.
@@ -96,6 +110,15 @@ export function validateLemmaDecision(row, candidate, { canonicalIndex, support 
       errors.push(`${here}: only an included group carries sense_indexes or hold_resolution`);
     }
     if (entry.disposition === 'covered' || entry.disposition === 'search_coverage') {
+      if (batchNumber(candidate.candidate_id) >= OBSERVATION_FIT_FIRST_BATCH && isText(entry.reason)) {
+        const unnamed = members.map((observation) => observation.observation_id.split('.').pop())
+          .filter((id) => !mentionsObservation(entry.reason, id));
+        if (unnamed.length) errors.push(`${here}: ${entry.disposition} reason must name every judged observation (missing ${unnamed.join(', ')})`);
+        const nonliteral = NONLITERAL_USE.exec(entry.reason)?.[0];
+        if (nonliteral) {
+          errors.push(`${here}: ${entry.disposition} reason describes a non-literal use (${nonliteral}); split that observation by observation_ids and defer it or author a new sense`);
+        }
+      }
       if (!canonicalIndex) return;
       const entries = canonicalIndex.get(candidate.input) ?? [];
       const target = entries.find((record) => record.id === entry.existing_entry_id);
