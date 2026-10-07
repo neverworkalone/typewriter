@@ -7,13 +7,19 @@
   "semantic_decisions_sha256": "cb69ca7c25422db3bd937871433c4943e60ebab655cb673380de74999ecfc28d",
   "handoff_sha256": "904efd06e9ca887456bd3cde59b537c8135d222dd08cae68b939c2419378fac5",
   "attempt": 1,
-  "status": "ready",
-  "history": [],
+  "status": "rejected",
+  "history": [
+    {
+      "attempt": 1,
+      "rejected_pr": 374
+    }
+  ],
   "contract_repairs": [
     {
       "contract": "scope_declaration",
       "previous_semantic_decisions_sha256": "6d18d7d2689572c671dc709ea21f45f24646ab5f8cb374362b7f47e45c5d27d3",
       "semantic_decisions_sha256": "cb69ca7c25422db3bd937871433c4943e60ebab655cb673380de74999ecfc28d"
     }
-  ]
+  ],
+  "rejected_pr": 374
 }
