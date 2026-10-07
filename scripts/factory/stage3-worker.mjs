@@ -459,7 +459,14 @@ async function verifySupersededRejection({ github, git, rejection, admission, ba
       batchId, attempt, claimCreated: true, prNumber: rejection.number,
     });
   }
-  return { branchName, manifestPath };
+  const rejectionCode = stage3RejectionCode(admission.body);
+  const statusCode = /^Stage 3 rejection code: ([A-Z0-9_]+)\.$/mu.exec(rejection.body ?? '')?.[1];
+  if (!rejectionCode || (statusCode && statusCode !== rejectionCode)) {
+    throw new Stage3WorkerError(`status PR #${rejection.number} does not bind the admission PR's rejection code`, {
+      batchId, attempt, claimCreated: true, prNumber: rejection.number,
+    });
+  }
+  return { branchName, manifestPath, rejectionCode };
 }
 
 /** Supersedes one exact unmerged rejection PR so its still-ready attempt can be retried. */
@@ -519,7 +526,7 @@ export async function supersedeStage3RejectionForRetry({
       batchId, attempt, claimCreated: true, prNumber: rejectionPrNumber,
     });
   }
-  await verifySupersededRejection({ github, git, rejection, admission, batchId, attempt, claimRef, reviewManifest: review.manifest });
+  const verifiedStatus = await verifySupersededRejection({ github, git, rejection, admission, batchId, attempt, claimRef, reviewManifest: review.manifest });
   if (dryRun) return { status: alreadySuperseded ? 'retry-already-superseded' : 'retry-ready', batchId, attempt, admissionPr: admission.number, rejectionPr: rejectionPrNumber, claimRef };
 
   try {
@@ -551,18 +558,30 @@ export async function supersedeStage3RejectionForRetry({
   } else {
     log(`Verified admission Draft PR #${admission.number} is already reopened and status PR #${rejectionPrNumber} is closed.`);
   }
-  return { status: 'retry-ready', batchId, attempt, admissionPr: admission.number, rejectionPr: rejectionPrNumber, claimRef };
+  return {
+    status: 'retry-ready', batchId, attempt, admissionPr: admission.number, rejectionPr: rejectionPrNumber,
+    rejectionBranchName: verifiedStatus.branchName, supersededRejectionCode: verifiedStatus.rejectionCode, claimRef,
+  };
 }
 
-function recordLexicalRejection(pr, error) {
+function stage3RejectionCode(body) {
+  return [...String(body ?? '').matchAll(/^Stage 3 disposition: lexical-rejection \(([A-Z0-9_]+)\)\.$/gmu)].at(-1)?.[1];
+}
+
+function recordLexicalRejection(pr, error, claim) {
   const marker = `Stage 3 disposition: lexical-rejection (${error.code ?? 'STAGE3_LEXICAL_BLOCK'}).`;
   const body = pr.body ?? '';
-  return body.includes('Stage 3 disposition: lexical-rejection (')
-    ? body
-    : `${body}${body.endsWith('\n') || body.length === 0 ? '' : '\n'}\n${marker}`;
+  const previousCode = stage3RejectionCode(body);
+  const currentCode = error.code ?? 'STAGE3_LEXICAL_BLOCK';
+  if (previousCode && previousCode !== currentCode) {
+    throw new Stage3WorkerError(`retry produced ${currentCode}, but the existing Draft records ${previousCode}; preserve both PRs and inspect the changed blocker`, {
+      batchId: claim.batchId, attempt: claim.attempt, claimCreated: true, prNumber: pr.number,
+    });
+  }
+  return previousCode ? body : `${body}${body.endsWith('\n') || body.length === 0 ? '' : '\n'}\n${marker}`;
 }
 
-export async function createRejectionStatusPullRequest({ github, git, root, claim, admissionPr, log = () => {} } = {}) {
+export async function createRejectionStatusPullRequest({ github, git, root, claim, admissionPr, rejectionCode, log = () => {} } = {}) {
   const branchName = claim.rejectionBranchName ?? rejectionBranchName(claim.agent ?? 'codex', claim.batchId, claim.attempt);
   const manifestPath = `data/reviews/${claim.batchId}/manifest.json`;
   try {
@@ -572,6 +591,11 @@ export async function createRejectionStatusPullRequest({ github, git, root, clai
     const manifest = JSON.parse(await readFile(absolute, 'utf8'));
     const rejected = statusManifestForRejection(manifest, admissionPr);
     if (claim.supersededRejectionPr !== undefined) {
+      if (claim.supersededRejectionCode !== rejectionCode) {
+        throw new Stage3WorkerError(`retry rejection code ${rejectionCode} differs from superseded code ${claim.supersededRejectionCode}`, {
+          ...claim, claimCreated: true, prNumber: claim.supersededRejectionPr,
+        });
+      }
       const prior = await github.getPullRequest(claim.supersededRejectionPr);
       const admission = await github.getPullRequest(admissionPr);
       if (prior.state !== 'closed' || prior.merged || prior.merged_at || admission.state !== 'closed' || admission.merged || admission.merged_at) {
@@ -579,10 +603,15 @@ export async function createRejectionStatusPullRequest({ github, git, root, clai
           ...claim, claimCreated: true, prNumber: claim.supersededRejectionPr,
         });
       }
-      await verifySupersededRejection({
+      const priorStatus = await verifySupersededRejection({
         github, git, rejection: prior, admission, batchId: claim.batchId, attempt: claim.attempt,
         claimRef: claim.claimRef, reviewManifest: manifest,
       });
+      if (priorStatus.rejectionCode !== rejectionCode) {
+        throw new Stage3WorkerError(`closed status PR #${prior.number} records ${priorStatus.rejectionCode}; retry produced ${rejectionCode}`, {
+          ...claim, claimCreated: true, prNumber: prior.number,
+        });
+      }
       if (!same(JSON.parse(git.show(`origin/${branchName}`, manifestPath)), rejected)) {
         throw new Stage3WorkerError(`closed status PR #${prior.number} does not match the retry's exact rejection state`, {
           ...claim, claimCreated: true, prNumber: prior.number,
@@ -606,6 +635,7 @@ export async function createRejectionStatusPullRequest({ github, git, root, clai
         `Status-only rejection for ${claim.batchId} attempt ${claim.attempt}.`,
         `Claim ref: ${claim.claimRef}`,
         `Closed admission draft: #${admissionPr}`,
+        `Stage 3 rejection code: ${rejectionCode ?? 'STAGE3_LEXICAL_BLOCK'}.`,
         'This PR changes only the review manifest to rejected and records the closed admission PR number.',
       ].join('\n'),
       head: branchName, base: MASTER, draft: false,
@@ -678,11 +708,14 @@ export async function processStage3Attempt({
     return { ...claim, prNumber: claim.prNumber, prState: 'admission', pullRequest, prepared: applied };
   } catch (error) {
     if (!(error instanceof Stage3AdmissionError) || error.category !== 'lexical') throw error;
-    await github.updatePullRequestBody(claim.prNumber, recordLexicalRejection(draftPr, error));
+    await github.updatePullRequestBody(claim.prNumber, recordLexicalRejection(draftPr, error, claim));
     await github.closePullRequest(claim.prNumber);
     await git.deleteBranch?.(claim.branchName);
     await git.deleteLocalBranch?.(claim.branchName);
-    return createRejectionStatusPullRequest({ github, git, root, claim, admissionPr: claim.prNumber, log });
+    return createRejectionStatusPullRequest({
+      github, git, root, claim, admissionPr: claim.prNumber,
+      rejectionCode: error.code ?? 'STAGE3_LEXICAL_BLOCK', log,
+    });
   }
 }
 

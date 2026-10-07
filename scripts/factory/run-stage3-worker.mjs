@@ -75,7 +75,10 @@ export const HELP = [
   'Interrupted attempts are resumed only when the exact batch and attempt are supplied with --resume-batch and --attempt.',
 ].join('\n');
 
-function claimFromSnapshot(snapshot, { batchId, attempt, agent, branchName, baseSha, prNumber, prState, admissionPr, activeLock, supersededRejectionPr }) {
+function claimFromSnapshot(snapshot, {
+  batchId, attempt, agent, branchName, baseSha, prNumber, prState, admissionPr, activeLock,
+  supersededRejectionPr, supersededRejectionCode, rejectionBranchName,
+}) {
   const review = snapshot.reviews.find((entry) => entry.batchId === batchId);
   const candidate = snapshot.candidates.find((entry) => entry.batchId === batchId);
   if (!review || !candidate || review.manifest.attempt !== attempt || review.manifest.status !== 'ready') {
@@ -86,9 +89,10 @@ function claimFromSnapshot(snapshot, { batchId, attempt, agent, branchName, base
   return {
     batchId, attempt, agent, branchName, prNumber, prState, admissionPr, activeLock,
     ...(supersededRejectionPr !== undefined ? { supersededRejectionPr } : {}),
+    ...(supersededRejectionCode !== undefined ? { supersededRejectionCode } : {}),
     claimRef: `refs/heads/stage3-claims/${batchId}-a${attempt}`,
     baseSha: baseSha || snapshot.headSha,
-    rejectionBranchName: `${agent}/stage3-status/${batchId}-a${attempt}`,
+    rejectionBranchName: rejectionBranchName ?? `${agent}/stage3-status/${batchId}-a${attempt}`,
     candidates: candidate.rows,
     candidateManifest: candidate.manifest,
     candidateFiles: candidate.files,
@@ -150,7 +154,11 @@ async function resumeStage3Cli({
   } else if (recovered.status === 'create-rejection') {
     claim = claimFromSnapshot(snapshot, { ...recovered, agent, prState: 'starter' });
   } else {
-    claim = claimFromSnapshot(snapshot, { ...recovered, agent, supersededRejectionPr: options.supersedeRejectionPr });
+    claim = claimFromSnapshot(snapshot, {
+      ...recovered, agent, supersededRejectionPr: options.supersedeRejectionPr,
+      supersededRejectionCode: options.retryRecovery?.supersededRejectionCode,
+      rejectionBranchName: options.retryRecovery?.rejectionBranchName,
+    });
   }
 
   if (recovered.status === 'resume-admission' && recovered.draft) {
@@ -246,6 +254,7 @@ export async function runStage3Cli(argv, {
       github, git, snapshot, batchId: options.resumeBatch, attempt: options.resumeAttempt,
       rejectionPrNumber: options.supersedeRejectionPr, dryRun: options.dryRun, log,
     });
+    options.retryRecovery = retry;
     if (options.dryRun) { log(JSON.stringify(retry)); return retry; }
   }
   if (options.resumeBatch !== undefined) {
