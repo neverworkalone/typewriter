@@ -892,3 +892,33 @@ test('review artifacts require pair evidence for each existing same-POS sense of
   assert.deepEqual(errorsOf({ canonicalIndex: two, requireExistingSensePairs: false }), [], 'an unchanged merged review is not required to carry pairs');
   assert.deepEqual(errorsOf({ canonicalIndex: null, requireExistingSensePairs: true }), [], 'a review that is not bound to the current canonical state is only checked structurally');
 });
+
+// The canonical index that validate.mjs passes must carry the canonical glosses, or valid existing-sense pairs
+// could never bind (regression for the index dropping `gloss`).
+test('review artifacts bind existing-sense pairs to the canonical glosses carried by the canonical index', async () => {
+  const { rows, goDecision, pangDecision } = await lemmaFixture();
+  const entry = { id: 'w3', record_type: 'entry', lemma: '가다', senses: [{ id: 'w3-s1', pos: 'verb', gloss: '앞으로 나아가다.' }, { id: 'w3-s2', pos: 'verb', gloss: '어떤 곳을 떠나다.' }] };
+  const index = buildCanonicalIndex([entry]);
+  assert.equal(index.get('가다')[0].senses[0].gloss, '앞으로 나아가다.');
+  const decisions = [goDecision(), pangDecision()];
+  const base = await artifactsFor(rows, decisions);
+  const go = goDecision();
+  const semantic = JSON.parse(base.semanticDecisionsText);
+  const row = semantic.decisions.find((item) => item.source_candidate_id === go.source_candidate_id);
+  const id = go.source_candidate_id;
+  const pairs = entry.senses.flatMap((existing) => go.reviewed_record.senses.map((sense, i) => ({
+    existing_sense_id: existing.id, new_sense_id: `${id}-s${i + 1}`, relationship: 'distinct', decision: 'retain',
+    existing_gloss_sha256: sha256Json(existing.gloss), new_gloss_sha256: sha256Json(sense.gloss),
+    evidence_basis: `${id}: 대조했다.`, distinguishing_feature: `${id}: 대상이 다르다.`, rationale: `${id}: 별개의 뜻이다.`,
+  })));
+  const bind = (existingPairs) => {
+    const copy = JSON.parse(JSON.stringify(row));
+    copy.existing_sense_pairs = existingPairs;
+    copy.review_binding = authorSemanticReviewBinding(copy, reviewedCandidateRecord(go));
+    return JSON.stringify({ ...semantic, decisions: semantic.decisions.map((item) => (item === row ? copy : item)) });
+  };
+  const run = (existingPairs) => validateReviewArtifacts({ ...base, semanticDecisionsText: bind(existingPairs), canonicalIndex: index, requireExistingSensePairs: true });
+  assert.deepEqual(run(pairs), []);
+  assert.ok(run(pairs.map((pair) => ({ ...pair, existing_gloss_sha256: 'b'.repeat(64) }))).some((error) => /does not bind the canonical gloss/u.test(error)));
+  assert.ok(run(pairs.slice(1)).some((error) => /missing existing_sense_pairs/u.test(error)));
+});
