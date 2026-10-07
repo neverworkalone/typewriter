@@ -1569,6 +1569,55 @@ export function validateLexicalRecord(record, options = {}) {
   return record;
 }
 
+/**
+ * Close-form lexical confusions between two *different* headwords whose spellings
+ * writers (and sources) routinely mix up (쫓다/좇다, 가리키다/가르치다, ...).  Whether an
+ * observed meaning belongs to the observed spelling or to the counterpart headword is a
+ * source-bound semantic judgment, so this is an ADVISORY hint for the author and the
+ * reviewer, never a validation failure: a substring or co-occurrence test cannot prove
+ * that a gloss is wrong, and a hard failure would block valid meanings of the headword.
+ * Nothing here is wired into `validateLexicalRecord`, the canonical audit, admission or
+ * the Stage 2 decision validators.  Each hint names the counterpart headword so the
+ * author can compare the gloss with its canonical senses before submitting.
+ */
+export const CONFUSABLE_LEMMA_HINTS = Object.freeze([
+  { lemma: '쫓다', pos: 'verb', counterpart: '좇다', terms: [['이상', '이루'], ['목표', '이루'], ['이상', '따르'], ['목표', '따르'], ['이념', '따르']] },
+  { lemma: '좇다', pos: 'verb', counterpart: '쫓다', terms: [['달아나', '붙잡'], ['도망', '붙잡']] },
+  { lemma: '가르치다', pos: 'verb', counterpart: '가리키다', terms: [['손가락', '방향'], ['손가락', '나타내'], ['지목', '대상']] },
+  { lemma: '가리키다', pos: 'verb', counterpart: '가르치다', terms: [['지식', '익히'], ['기술', '익히'], ['지식', '배우']] },
+  { lemma: '벌리다', pos: 'verb', counterpart: '벌이다', terms: [['일을', '시작'], ['판', '차리'], ['잔치', '차리']] },
+  { lemma: '벌이다', pos: 'verb', counterpart: '벌리다', terms: [['넓게', '열'], ['사이를', '넓']] },
+  { lemma: '맞추다', pos: 'verb', counterpart: '맞히다', terms: [['정답', '맞'], ['답', '알아내']] },
+  { lemma: '맞히다', pos: 'verb', counterpart: '맞추다', terms: [['서로 맞게', '조절'], ['서로', '조정']] },
+  { lemma: '잃다', pos: 'verb', counterpart: '잊다', terms: [['기억', '떠올리지 못']] },
+  { lemma: '잊다', pos: 'verb', counterpart: '잃다', terms: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
+  { lemma: '잃어버리다', pos: 'verb', counterpart: '잊어버리다', terms: [['기억', '떠올리지 못']] },
+  { lemma: '잊어버리다', pos: 'verb', counterpart: '잃어버리다', terms: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
+]);
+
+export function findConfusableLemmaHints({ lemma, senses, label = 'record' } = {}) {
+  if (typeof lemma !== 'string' || !Array.isArray(senses)) return [];
+  const normalizedLemma = lemma.normalize('NFC');
+  const hints = [];
+  for (const [index, sense] of senses.entries()) {
+    if (typeof sense?.gloss !== 'string') continue;
+    const gloss = sense.gloss.normalize('NFC');
+    for (const rule of CONFUSABLE_LEMMA_HINTS) {
+      if (rule.lemma !== normalizedLemma || rule.pos !== sense.pos) continue;
+      const terms = rule.terms.find((group) => group.every((term) => gloss.includes(term)));
+      if (terms === undefined) continue;
+      hints.push({
+        code: 'CONFUSABLE_LEMMA_HINT',
+        advisory: true,
+        message: `${label}.senses[${index}].gloss uses "${terms.join('" + "')}", wording typical of ${rule.counterpart}; compare with the canonical ${rule.counterpart} senses and confirm the observed meaning belongs to ${rule.lemma}`,
+        confusable_lemma: rule.counterpart,
+        terms,
+      });
+    }
+  }
+  return hints;
+}
+
 export function findLexicalQualityFindings(record, options = {}) {
   return recordQualityFindings(record, options);
 }
