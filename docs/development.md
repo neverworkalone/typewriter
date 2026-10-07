@@ -4,7 +4,7 @@
 
 The complete M2 toolchain uses the built-in `node:sqlite` module and the vendored
 SQLite WASM runtime, and the product uses Vite 8.2.2. Together they require
-Node.js 22.13.0 or newer; CI uses Node.js 22.13.x.
+Node.js 24.19.0 or newer (Node 24 LTS); CI uses Node.js 24.x.
 Install the pinned runtime before running the commands:
 
 ```sh
@@ -275,7 +275,7 @@ commands themselves should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It
 checks out the revision under review, installs the pinned dependencies with
-`pnpm install --frozen-lockfile --ignore-scripts`, selects Node.js 22.13.x, then
+`pnpm install --frozen-lockfile --ignore-scripts`, selects Node.js 24.x, then
 runs `pnpm run ci:normal` in one process. The normal runner emits the `ci:fast`
 checkpoint and then continues with the remaining normal checks; the fast
 checkpoint is not started as a second GitHub Actions workflow.

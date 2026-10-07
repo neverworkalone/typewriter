@@ -194,8 +194,8 @@ test('CI changed-path gate skips only documentation-only PRs', async (t) => {
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
   assert.equal(
     (workflow.match(/if: steps\.changes\.outputs\.run_normal == 'true'/gu) ?? []).length,
-    6,
-    'pnpm and Node setup, dependencies, the full normal run and the FTS5 literature regression steps must all use the same classifier result',
+    5,
+    'pnpm and Node setup, dependencies and the full normal run must all use the same classifier result',
   );
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
@@ -292,7 +292,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /runs-on: ubuntu-24\.04/u);
   assert.match(workflow, /actions\/checkout@v7/u);
   assert.match(workflow, /actions\/setup-node@v7/u);
-  assert.match(workflow, /node-version: 22\.13\.x/u);
+  assert.match(workflow, /node-version: 24\.x/u);
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
   assert.doesNotMatch(workflow, /pnpm run ci:fast/u);
@@ -309,7 +309,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(deepWorkflow, /runs-on: ubuntu-24\.04/u);
   assert.match(deepWorkflow, /actions\/checkout@v7/u);
   assert.match(deepWorkflow, /actions\/setup-node@v7/u);
-  assert.match(deepWorkflow, /node-version: 22\.13\.x/u);
+  assert.match(deepWorkflow, /node-version: 24\.x/u);
   assert.match(deepWorkflow, /ref: \$\{\{ github\.sha \}\}/u);
   assert.doesNotMatch(deepWorkflow, /Deep CI Gate|Resolve deep validation target/u);
 
