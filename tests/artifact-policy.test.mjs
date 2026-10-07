@@ -764,11 +764,14 @@ test('artifact policy accepts authored correction, boundary, and relation payloa
   });
   const existingPairs = withExistingPairs(existingPair);
   const hiddenField = withExistingPairs({ ...existingPair, smuggled: 'value' });
+  const wrongType = withExistingPairs({ ...existingPair, existing_gloss_sha256: 7 });
 
   try {
     await mkdir(path.dirname(filePath), { recursive: true });
     await writeFile(filePath, `${JSON.stringify(hiddenField)}\n`, 'utf8');
     await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }), /unknown durable fields: smuggled|smuggled/u);
+    await writeFile(filePath, `${JSON.stringify(wrongType)}\n`, 'utf8');
+    await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }), /existing_gloss_sha256|string/u);
     for (const value of [corrected, multiSense, existingPairs]) {
       await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
       await assert.doesNotReject(
