@@ -212,3 +212,11 @@ row now carries an optional `surface_form_judgments: [{sense_index, class_id, re
   gap still fails closed; with an invalid one the lexical error is `STAGE3_SURFACE_FORM_JUDGMENT_INVALID` and nothing is written.
 - Whether a ㅂ-final adjective is regular or irregular remains a Stage 2 judgment; the shared rule checks that the
   class fits the sense, not that the linguistic choice is right.
+
+## Pairwise boundary evidence for a new sense on an entry with several same-POS senses (issue #379)
+
+`semantic-decisions.json` rows of `new_sense_on_existing_entry` decisions may carry `existing_sense_pairs` (see
+[`lexical-production-factory.md`](lexical-production-factory.md) §5.1). They are part of the source-bound review binding
+(`reviewDecisionEvidence`), required when the canonical target entry has two or more same-POS senses, and consumed by
+`buildReviewForChangedRecord` as the exact cross-boundary pair evidence. A single existing same-POS sense and every
+`new_entry`/`new_pos_on_existing_lemma` decision are unchanged.
