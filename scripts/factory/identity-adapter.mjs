@@ -16,7 +16,7 @@ export function buildCanonicalIndex(entries) {
     const list = byLemma.get(entry.lemma) ?? [];
     list.push({
       id: entry.id,
-      senses: (entry.senses ?? []).map((sense) => ({ id: sense.id, pos: sense.pos })),
+      senses: (entry.senses ?? []).map((sense) => ({ id: sense.id, pos: sense.pos, gloss: sense.gloss })),
     });
     byLemma.set(entry.lemma, list);
   }

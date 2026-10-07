@@ -172,6 +172,10 @@ const ENTRIES = [
 ];
 const INDEX = buildCanonicalIndex(ENTRIES);
 
+test('canonical index preserves sense glosses for existing_sense_pairs binding', () => {
+  assert.deepEqual(INDEX.get('짠하다')[0].senses, [{ id: 'w1-s1', pos: 'adjective', gloss: 'g' }]);
+});
+
 test('identity adapter keeps same-lemma/POS usages separate and never drops existing lemmas as covered', async () => {
   const P = (lemma, pos) => ({ lemma, pos, form: lemma });
   const table = {
