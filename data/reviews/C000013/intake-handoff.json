@@ -1,0 +1,4579 @@
+{
+  "contract_version": "intake-production-handoff-v1",
+  "batch_id": "C000013",
+  "source_adapter": "corpus-adapter",
+  "input_digest": "882f48311b81cd0258a8aeeec1a1d56f972322fe96ab688fca54c269ddb65686",
+  "analyzer_digest": "7e2637cc1b03827f6fd4333672a2b3cac86b2ab434ca3f1f1b2a1ecf159d834e",
+  "analyzer": {
+    "kiwipiepy_model_version": "0.24.0",
+    "kiwipiepy_version": "0.24.0",
+    "pinned": {
+      "kiwipiepy": "0.24.0",
+      "kiwipiepy_model": "0.24.0"
+    },
+    "proposal_contract": "derivation-root-v1",
+    "service_version": "1",
+    "top_n": 3
+  },
+  "entries": [
+    {
+      "key": "가부장적\u0000noun",
+      "input": "가부장적",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "개다\u0000verb",
+      "input": "개다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "갤러리\u0000noun",
+      "input": "갤러리",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "5cd4cd76699a6fd03c5603f4c18f6ebab5d256686581426479a6832a3f0132d1",
+        "analyses": [
+          [
+            {
+              "form": "갤러리",
+              "lemma": "갤러리",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "갤러",
+              "lemma": "갤러",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "리",
+              "lemma": "리",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "갤러리를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500004450.1#WARW2500004450.1.228"
+        }
+      ],
+      "analysis_binding": "b7835f4ce02fbf458f49a733c74c93e9fa7a927e887dfcaa3c9da62765ecde97"
+    },
+    {
+      "key": "걸림돌\u0000noun",
+      "input": "걸림돌",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "a9066a57247dea55c0ae64d483d32b6490b8a28daf3891157925e33e6714ca27",
+        "analyses": [
+          [
+            {
+              "form": "걸림돌",
+              "lemma": "걸림돌",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "걸리",
+              "lemma": "걸리다",
+              "pos": "verb"
+            },
+            {
+              "form": "돌",
+              "lemma": "돌",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "걸리",
+              "lemma": "걸리다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "걸림돌은",
+        "걸림돌을",
+        "걸림돌이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000151.1#WARW2500000151.1.723"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005300.1#WARW2500005300.1.396"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005450.1#WARW2500005450.1.622"
+        }
+      ],
+      "analysis_binding": "f6ac3381d040aeb308c15dc9a984f86f25c14fcd509ad6c1bb0e30a6974a244d"
+    },
+    {
+      "key": "검열\u0000noun",
+      "input": "검열",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "7e209cc91d25c03560d2bd2fcd4e3d01eeff97c513db33c257a50d19b82107b7",
+        "analyses": [
+          [
+            {
+              "form": "검열",
+              "lemma": "검열",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "검",
+              "lemma": "검",
+              "pos": "noun"
+            },
+            {
+              "form": "열",
+              "lemma": "열",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "검",
+              "lemma": "검",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "검열에",
+        "검열을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.318"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005150.1#WARW2500005150.1.106"
+        }
+      ],
+      "analysis_binding": "0f52dff9517979d737ade43ddd8ac508c11c360f6d4e488b74764ad1e0698c98"
+    },
+    {
+      "key": "겨자\u0000noun",
+      "input": "겨자",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "8680a1111b22601325c5263ebcbd2e5ca1ff8ce8836d8a39fa775d1c6bcaadbd",
+        "analyses": [
+          [
+            {
+              "form": "겨자",
+              "lemma": "겨자",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "겨",
+              "lemma": "겨",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "겨",
+              "lemma": "겨",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "겨자는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005850.1#WARW2500005850.1.539"
+        }
+      ],
+      "analysis_binding": "b42fddddc215962aa4afffdaf919c365c90abfbe1105fd9f3c271272fd84b8fd"
+    },
+    {
+      "key": "결사\u0000noun",
+      "input": "결사",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "4184905fe7e500e837f846cc8b616be2bccc7d340751d69d79186e8a28590b41",
+        "analyses": [
+          [
+            {
+              "form": "결사",
+              "lemma": "결사",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "결",
+              "lemma": "결",
+              "pos": "noun"
+            },
+            {
+              "form": "사",
+              "lemma": "사",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "결",
+              "lemma": "결",
+              "pos": "noun"
+            },
+            {
+              "form": "사",
+              "lemma": "사다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "결사",
+        "결사가"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005210.1#WARW2500005210.1.1103"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005620.1#WARW2500005620.1.1569"
+        }
+      ],
+      "analysis_binding": "66ddc76cd476def7a763521893e1bfc937980f3181fa869046cfcfcc7491d365"
+    },
+    {
+      "key": "계통\u0000noun",
+      "input": "계통",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "deb95e87b81eab78ab7da2d48ebd4d00bbdbde5e5aa7649ecf0456bc92dd5a9e",
+        "analyses": [
+          [
+            {
+              "form": "계통",
+              "lemma": "계통",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "계",
+              "lemma": "계",
+              "pos": "noun"
+            },
+            {
+              "form": "통",
+              "lemma": "통",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "계",
+              "lemma": "계",
+              "pos": "noun"
+            },
+            {
+              "form": "통",
+              "lemma": "통",
+              "pos": "adverb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "계통",
+        "계통이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002870.1#WARW2500002870.1.1365"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005210.1#WARW2500005210.1.2270"
+        }
+      ],
+      "analysis_binding": "26ef9ee6e6b957b708e19283e44baf9922094640ef09ce586e3855a53c2b4cf8"
+    },
+    {
+      "key": "공단\u0000noun",
+      "input": "공단",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "6c5fd82f43d81046f375a5d663ee6696ce8b2802e183ac22489c96daec9e6966",
+        "analyses": [
+          [
+            {
+              "form": "공단",
+              "lemma": "공단",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "단",
+              "lemma": "단",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "공",
+              "lemma": "공",
+              "pos": "noun"
+            },
+            {
+              "form": "단",
+              "lemma": "단",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "공단과"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005340.1#WARW2500005340.1.526"
+        }
+      ],
+      "analysis_binding": "4592bf8039e2319a08dce501c703f2e10f5999a4170e7cef506c986b673f414c"
+    },
+    {
+      "key": "과외\u0000noun",
+      "input": "과외",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "01d9386913b8be49a93057ce6f3088013ef1d31c63a6f0894ca832ada3c1e7e8",
+        "analyses": [
+          [
+            {
+              "form": "과외",
+              "lemma": "과외",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "과",
+              "lemma": "과",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "과",
+              "lemma": "과",
+              "pos": "noun"
+            },
+            {
+              "form": "외",
+              "lemma": "외",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "과외를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000151.1#WARW2500000151.1.665"
+        }
+      ],
+      "analysis_binding": "930571ff8babe409b13cbd9e5d7f7c628c3ae76d23e64432c7536e86e885d436"
+    },
+    {
+      "key": "관할\u0000noun",
+      "input": "관할",
+      "decision": "hold",
+      "holds": [
+        "coverage_collision"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "교섭\u0000noun",
+      "input": "교섭",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "58b9dc4505b8857ba917700375d832f764ed87e0bac5937a73314586b936ad00",
+        "analyses": [
+          [
+            {
+              "form": "교섭",
+              "lemma": "교섭",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "교",
+              "lemma": "교",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "교",
+              "lemma": "교",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "교섭에",
+        "교섭을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002160.1#WARW2500002160.1.872"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005100.1#WARW2500005100.1.1694"
+        }
+      ],
+      "analysis_binding": "8e31f681fc586d305a2e5725ab3666e5d00167354e9d7de2d032fddd4466a06f"
+    },
+    {
+      "key": "구구절절\u0000adverb",
+      "input": "구구절절",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "구리\u0000noun",
+      "input": "구리",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "proposed_pos": null
+    },
+    {
+      "key": "굴러다니다\u0000verb",
+      "input": "굴러다니다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "8a5f7dcfd2054de606a64158a51c2e49d6cf720c1d03e444b86dd04794ce6040",
+        "analyses": [
+          [
+            {
+              "form": "굴러다니",
+              "lemma": "굴러다니다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "굴러다니",
+              "lemma": "굴러다니다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "구르",
+              "lemma": "구르다",
+              "pos": "verb"
+            },
+            {
+              "form": "다니",
+              "lemma": "다니다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "굴러다녔고",
+        "굴러다녔다",
+        "굴러다니는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001560.1#WARW2500001560.1.924"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001760.1#WARW2500001760.1.319"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500006040.1#WARW2500006040.1.1349"
+        }
+      ],
+      "analysis_binding": "e2eb268b4e9b01fcc792df883c0e7d6a3cd29f7ca29b54fc17ff364e4ac49dc1"
+    },
+    {
+      "key": "그중\u0000noun",
+      "input": "그중",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "글로벌\u0000noun",
+      "input": "글로벌",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "e0587f75ed317902e7232eba2a472d198bd4102a61a8692f371fbe60adeeeabc",
+        "analyses": [
+          [
+            {
+              "form": "글로벌",
+              "lemma": "글로벌",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "글",
+              "lemma": "글",
+              "pos": "noun"
+            },
+            {
+              "form": "벌",
+              "lemma": "벌",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "글",
+              "lemma": "글",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "글로벌과"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500091140.1#WARW2500091140.1.1201"
+        }
+      ],
+      "analysis_binding": "d3907d77f69f33032c48fd43eeb3740f1433f072851be9e46d94b192b170156f"
+    },
+    {
+      "key": "노새\u0000noun",
+      "input": "노새",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "5b195fbd800cedda9254ac5c7a112ad18cde6926c8000ca12889ab9520537340",
+        "analyses": [
+          [
+            {
+              "form": "노새",
+              "lemma": "노새",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "새",
+              "lemma": "새",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "노새가"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005140.1#WARW2500005140.1.819"
+        }
+      ],
+      "analysis_binding": "e55a21ce29286cc3e0da6282ab8d14c7fae0868ba3d181aa27c9682606abea21"
+    },
+    {
+      "key": "놀아나다\u0000verb",
+      "input": "놀아나다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "fb230904d18d67ca74e693475c681e313255eb3ed15d472444ebece395c0346f",
+        "analyses": [
+          [
+            {
+              "form": "놀아나",
+              "lemma": "놀아나다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "놀아나",
+              "lemma": "놀아나다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "놀아나",
+              "lemma": "놀아나다",
+              "pos": "verb"
+            },
+            {
+              "form": "다",
+              "lemma": "다",
+              "pos": "adverb"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "놀아나고",
+        "놀아나는",
+        "놀아난"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001760.1#WARW2500001760.1.261"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005320.1#WARW2500005320.1.1176"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005950.1#WARW2500005950.1.787"
+        }
+      ],
+      "analysis_binding": "e71c6e499a07afec58c2e4f29904840021f84b7523e854c31ff69a8b5d2000e3"
+    },
+    {
+      "key": "다운\u0000noun",
+      "input": "다운",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "a35dd1a6601d31fb84bc3bb563679859469735a255223e1adb32abf1fa1c3b38",
+        "analyses": [
+          [
+            {
+              "form": "다운",
+              "lemma": "다운",
+              "pos": "noun"
+            }
+          ],
+          [],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "다운을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500018050.1#WARW2500018050.1.280"
+        }
+      ],
+      "analysis_binding": "ad1c94f23464c97dae4a195ae4d72c6b5c2b163ecc7884fd4cc5e5f225047ec8"
+    },
+    {
+      "key": "단도직입\u0000noun",
+      "input": "단도직입",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "0478750c1ef763e3759b3350ea818049d5856a8bc717668bd9b2348a8d5f44f9",
+        "analyses": [
+          [
+            {
+              "form": "단도직입",
+              "lemma": "단도직입",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "단도직",
+              "lemma": "단도직",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "단도직입으로"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005730.1#WARW2500005730.1.1025"
+        }
+      ],
+      "analysis_binding": "742e277865fd9e1de00d11cc4f51c9a573d6bc97ea5d2375ac9232eab4392c53"
+    },
+    {
+      "key": "달인\u0000noun",
+      "input": "달인",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "도배\u0000noun",
+      "input": "도배",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "b10220bfde332330cbc20b74a450498e6e5db679a83fad45e4863ece0ac3ae84",
+        "analyses": [
+          [
+            {
+              "form": "도배",
+              "lemma": "도배",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "도",
+              "lemma": "도",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "도배를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005450.1#WARW2500005450.1.2233"
+        }
+      ],
+      "analysis_binding": "1abb5b5ffc6adda3e1b8a3b6ed0010ff3379721cf7a26ea9c2f56034a7a835c0"
+    },
+    {
+      "key": "드라이브\u0000noun",
+      "input": "드라이브",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "6f04bb4a92bede97ed31f76f68b33b2c64bce0868c51831b8cdf8d3a7bdaed66",
+        "analyses": [
+          [
+            {
+              "form": "드라이브",
+              "lemma": "드라이브",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "라이브",
+              "lemma": "라이브",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "드",
+              "lemma": "드",
+              "pos": "noun"
+            },
+            {
+              "form": "라이브",
+              "lemma": "라이브",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "드라이브나"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500010540.1#WARW2500010540.1.1811"
+        }
+      ],
+      "analysis_binding": "c2780182770b2220babee71717c849af63424a07fa7e8cd26a45f40443d43ba4"
+    },
+    {
+      "key": "뗏목\u0000noun",
+      "input": "뗏목",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "4c24109c51ffadfd42d24b8a4387c4769f9d17e8ae01cca54d044ca51bb6dc35",
+        "analyses": [
+          [
+            {
+              "form": "뗏목",
+              "lemma": "뗏목",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "목",
+              "lemma": "목",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "떼",
+              "lemma": "떼다",
+              "pos": "verb"
+            },
+            {
+              "form": "목",
+              "lemma": "목",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "뗏목에",
+        "뗏목을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005060.1#WARW2500005060.1.2397"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005100.1#WARW2500005100.1.1462"
+        }
+      ],
+      "analysis_binding": "b59b0e98b22734692f1590cb04f8a9eb1525d88a43a18263749eb5335cbb0a01"
+    },
+    {
+      "key": "라이프\u0000noun",
+      "input": "라이프",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "proposed_pos": null
+    },
+    {
+      "key": "로고\u0000noun",
+      "input": "로고",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "ac97396dc2c511054319fcc3434b17166d74fd66658d1405ed7cebab2abb0898",
+        "analyses": [
+          [
+            {
+              "form": "로고",
+              "lemma": "로고",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "로",
+              "lemma": "로",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "로고가",
+        "로고를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1623"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002690.1#WARW2500002690.1.338"
+        }
+      ],
+      "analysis_binding": "baa2e66938aaabd93a23dcbb6313599445111fd4074e2152fedebbe3fe5c07c1"
+    },
+    {
+      "key": "막다르다\u0000adjective",
+      "input": "막다르다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "만발하다\u0000adjective",
+      "input": "만발하다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "매너\u0000noun",
+      "input": "매너",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "84b0653eff56b5ef817ca87990728991b568e2e95dbcd5a80db90f06a5d6b9df",
+        "analyses": [
+          [
+            {
+              "form": "매너",
+              "lemma": "매너",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "매",
+              "lemma": "매",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "매너가",
+        "매너는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001090.1#WARW2500001090.1.1012"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500010070.1#WARW2500010070.1.327"
+        }
+      ],
+      "analysis_binding": "9d1ba0025842ab0f1915eaed817fda3049334f309ce67f95716b90a068b465c7"
+    },
+    {
+      "key": "매트\u0000noun",
+      "input": "매트",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "66c44321bacfe553429fe565a770b50b51dd11237ed9b413efcbb4270bb20458",
+        "analyses": [
+          [
+            {
+              "form": "매트",
+              "lemma": "매트",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "매",
+              "lemma": "매",
+              "pos": "noun"
+            },
+            {
+              "form": "트",
+              "lemma": "트다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "트",
+              "lemma": "트다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "매트가",
+        "매트를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005190.1#WARW2500005190.1.1085"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005530.1#WARW2500005530.1.1596"
+        }
+      ],
+      "analysis_binding": "989de33ce37e6d868ae742fbc9bae4c1b176d972face2d0f7b417ae0ec9a7d8f"
+    },
+    {
+      "key": "모드\u0000noun",
+      "input": "모드",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "무용하다\u0000adjective",
+      "input": "무용하다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "문헌\u0000noun",
+      "input": "문헌",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "38dfe6c0e247f2964a23440aea0f9ca5321b390951c7e3d9ff5bbdf95cfba230",
+        "analyses": [
+          [
+            {
+              "form": "문헌",
+              "lemma": "문헌",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "문",
+              "lemma": "문",
+              "pos": "noun"
+            },
+            {
+              "form": "헌",
+              "lemma": "헌",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "헌",
+              "lemma": "헌",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "문헌이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005200.1#WARW2500005200.1.220"
+        }
+      ],
+      "analysis_binding": "4e714fd918efce85b136bd414198160939402001d2a2fc6b35eea53ec71e4408"
+    },
+    {
+      "key": "미션\u0000noun",
+      "input": "미션",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "d8359fe7998a8f0e8d949f60fb499300075789ba6c1d2836f4432fc7bddca4bb",
+        "analyses": [
+          [
+            {
+              "form": "미션",
+              "lemma": "미션",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "미",
+              "lemma": "미",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "미션은",
+        "미션을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001090.1#WARW2500001090.1.25"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500012200.1#WARW2500012200.1.1349"
+        }
+      ],
+      "analysis_binding": "e81840eef1c06c9741b26b2326a136519c0a9634413bd1539d51a28128a84fec"
+    },
+    {
+      "key": "미스터\u0000noun",
+      "input": "미스터",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "6fcc2d55d348e04661e0e82c1fed3e99c0e5d7911c409cfba37e3f0dd97fc440",
+        "analyses": [
+          [
+            {
+              "form": "미스터",
+              "lemma": "미스터",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "미스",
+              "lemma": "미스",
+              "pos": "noun"
+            },
+            {
+              "form": "터",
+              "lemma": "터",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "미스터",
+        "미스터가"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1199"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500060510.1#WARW2500060510.1.1347"
+        }
+      ],
+      "analysis_binding": "d17b64efe6c9002430744dd2f95702af5e0044f728054b4031c858c05d4fcaf6"
+    },
+    {
+      "key": "미지\u0000noun",
+      "input": "미지",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "반려\u0000noun",
+      "input": "반려",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "d283b7dbc864793f48ce9c18b99dedb5e9a78bcd48c98229ec009539d6413422",
+        "analyses": [
+          [
+            {
+              "form": "반려",
+              "lemma": "반려",
+              "pos": "noun"
+            }
+          ],
+          [],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "반려",
+        "반려가"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001450.1#WARW2500001450.1.5"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005540.1#WARW2500005540.1.1496"
+        }
+      ],
+      "analysis_binding": "008f4672808f9e147260bbddf6735b068a1e1a11ae0321905815f5a533cc2ee0"
+    },
+    {
+      "key": "발악\u0000noun",
+      "input": "발악",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "5b8ccbebe952e051896405353f1be4bf098a2d906abccc5dd5fba13696b0919c",
+        "analyses": [
+          [
+            {
+              "form": "발악",
+              "lemma": "발악",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "발",
+              "lemma": "발",
+              "pos": "noun"
+            },
+            {
+              "form": "악",
+              "lemma": "악",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "악",
+              "lemma": "악",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "발악을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500004750.1#WARW2500004750.1.367"
+        }
+      ],
+      "analysis_binding": "69f3d071339f08d03678dce8129ec3532938cdf89347efa7ac9953674af6f3eb"
+    },
+    {
+      "key": "방\u0000noun",
+      "input": "방",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "방언\u0000noun",
+      "input": "방언",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "005242e44c4e9aef40adc38bdc27adafabf67d058fb2cd6f84657e66a3d2d171",
+        "analyses": [
+          [
+            {
+              "form": "방언",
+              "lemma": "방언",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "방어",
+              "lemma": "방어",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "방",
+              "lemma": "방",
+              "pos": "noun"
+            },
+            {
+              "form": "언",
+              "lemma": "언",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "방언과"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500006400.1#WARW2500006400.1.283"
+        }
+      ],
+      "analysis_binding": "80d7e6495277bc0a5b19e375469757bee6a12b614fa718574592ec44164c7155"
+    },
+    {
+      "key": "배터리\u0000noun",
+      "input": "배터리",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "5e29d5dcb84b45469293c98ebc4c407f89af6e412913828dc3e73140da6ccd38",
+        "analyses": [
+          [
+            {
+              "form": "배터리",
+              "lemma": "배터리",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "배터",
+              "lemma": "배터",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "리",
+              "lemma": "리",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "배터리가",
+        "배터리를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005040.1#WARW2500005040.1.1516"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005070.1#WARW2500005070.1.4011"
+        }
+      ],
+      "analysis_binding": "7e81060bf8873108fdd983c5479eaf92bab8e9fa7805dffad8a75768f3f73370"
+    },
+    {
+      "key": "보듬다\u0000verb",
+      "input": "보듬다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "ea04c8293e47529bbccf294d465d2aa68d11fde4f9c394104b4e282076aa640c",
+        "analyses": [
+          [
+            {
+              "form": "보듬",
+              "lemma": "보듬다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "보듬",
+              "lemma": "보듬다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "보듬다",
+              "lemma": "보듬다",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "보듬고"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.698"
+        }
+      ],
+      "analysis_binding": "feb75891f327411692af05879d1f2e0282e3650971563abfedacca62890bdb8c"
+    },
+    {
+      "key": "부수\u0000noun",
+      "input": "부수",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "분신\u0000noun",
+      "input": "분신",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "a6a89fa4519ccfb05be7b734d8b4f2afedf8a7d68a7bdd10149d549123cb1d94",
+        "analyses": [
+          [
+            {
+              "form": "분신",
+              "lemma": "분신",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "분",
+              "lemma": "분",
+              "pos": "noun"
+            },
+            {
+              "form": "신",
+              "lemma": "신",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "신",
+              "lemma": "신",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "분신을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005420.1#WARW2500005420.1.1449"
+        }
+      ],
+      "analysis_binding": "224e02652cbe1b58da332d292c67557e586d5014fe8eca01fd29aea0dd944ff9"
+    },
+    {
+      "key": "불거지다\u0000verb",
+      "input": "불거지다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "1618c24113c61638919b1d051b09c7206e55fc01291051f28f276713b2ead6d3",
+        "analyses": [
+          [
+            {
+              "form": "불거지",
+              "lemma": "불거지다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "불거지",
+              "lemma": "불거지다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "불",
+              "lemma": "불",
+              "pos": "noun"
+            },
+            {
+              "form": "거지",
+              "lemma": "거지",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "불거져"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002690.1#WARW2500002690.1.322"
+        }
+      ],
+      "analysis_binding": "0f90c994f6f468d8e18ea2c2a92c52c948bad84919650fd37ca365c6a660a06a"
+    },
+    {
+      "key": "불경하다\u0000adjective",
+      "input": "불경하다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "불능\u0000noun",
+      "input": "불능",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "58088b3b97647b08c14d75302b9c9b6d658d8b9e0428480016fba572129db2fd",
+        "analyses": [
+          [
+            {
+              "form": "불능",
+              "lemma": "불능",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "불",
+              "lemma": "불",
+              "pos": "noun"
+            },
+            {
+              "form": "능",
+              "lemma": "능",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "능",
+              "lemma": "능",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "불능이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005190.1#WARW2500005190.1.3965"
+        }
+      ],
+      "analysis_binding": "9bfd6587d111e7ecb5531b9913da598ef8a8583bcb2ef6bdceef53b51b67e5cf"
+    },
+    {
+      "key": "불사\u0000noun",
+      "input": "불사",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "899fb737c0e34b80d386a095b0f3ee7a1348dbf8ccc70cd700ae674df07ef386",
+        "analyses": [
+          [
+            {
+              "form": "불사",
+              "lemma": "불사",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "불",
+              "lemma": "불",
+              "pos": "noun"
+            },
+            {
+              "form": "사",
+              "lemma": "사",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "불사에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005160.1#WARW2500005160.1.1761"
+        }
+      ],
+      "analysis_binding": "07209121778c4595ada5a5beb26278a972158c184a24ccef3e9374cfd811e16c"
+    },
+    {
+      "key": "비굴하다\u0000adjective",
+      "input": "비굴하다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "빗속\u0000noun",
+      "input": "빗속",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "8276ff8bc1c38968124fdc6acf3ff4dcdb7be559e058e39157557d3b85be4ee1",
+        "analyses": [
+          [
+            {
+              "form": "빗속",
+              "lemma": "빗속",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "빗",
+              "lemma": "빗",
+              "pos": "noun"
+            },
+            {
+              "form": "속",
+              "lemma": "속",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "빗",
+              "lemma": "빗다",
+              "pos": "verb"
+            },
+            {
+              "form": "속",
+              "lemma": "속",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "빗속에",
+        "빗속을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002690.1#WARW2500002690.1.18"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002690.1#WARW2500002690.1.24"
+        }
+      ],
+      "analysis_binding": "df3a2f009c9648a74ac8f4ecdf2e1981cd27d967b8d4e833d1158719119f0370"
+    },
+    {
+      "key": "빚어내다\u0000verb",
+      "input": "빚어내다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "사직\u0000noun",
+      "input": "사직",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "삭이다\u0000verb",
+      "input": "삭이다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "024e7c390058e6d06d1189a404cf1bef6af70c856cc36d641c412dbf2eff7da1",
+        "analyses": [
+          [
+            {
+              "form": "삭이",
+              "lemma": "삭이다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "삭이",
+              "lemma": "삭이다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "삭",
+              "lemma": "삭",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "삭였다",
+        "삭이지"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001560.1#WARW2500001560.1.237"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002690.1#WARW2500002690.1.693"
+        }
+      ],
+      "analysis_binding": "76c5648266efd1c4f48beec290a6237898fead60fdaab9e7518edceb097f8b91"
+    },
+    {
+      "key": "상부\u0000noun",
+      "input": "상부",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "8f3ebac4a425d0f23e18a01494aa560928e8880edd4b1cd1c8117c7e16e28b40",
+        "analyses": [
+          [
+            {
+              "form": "상부",
+              "lemma": "상부",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "상",
+              "lemma": "상",
+              "pos": "noun"
+            },
+            {
+              "form": "부",
+              "lemma": "부",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "상",
+              "lemma": "상",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "상부에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002880.1#WARW2500002880.1.538"
+        }
+      ],
+      "analysis_binding": "3f30ac9b13844f4477319819fd1739c53e55b7cc545ccb8f7d4abe0043b4d1d7"
+    },
+    {
+      "key": "서기\u0000noun",
+      "input": "서기",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "선도\u0000noun",
+      "input": "선도",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "e8f9622fcc7285516856c3cd9fa9386e827897577e1b2222d92274299c824d8f",
+        "analyses": [
+          [
+            {
+              "form": "선도",
+              "lemma": "선도",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "선",
+              "lemma": "선",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "선도에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500010800.1#WARW2500010800.1.4840"
+        }
+      ],
+      "analysis_binding": "90ebb390d2bb5f98f38521c68741f61501f514d3ad1d321e903e923e7656bb2a"
+    },
+    {
+      "key": "설치다\u0000verb",
+      "input": "설치다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "셔터\u0000noun",
+      "input": "셔터",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "1e9e8d9ba410cf17535b8d7f36195353871ab99c191edeb80faa15e232771722",
+        "analyses": [
+          [
+            {
+              "form": "셔터",
+              "lemma": "셔터",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "시",
+              "lemma": "시다",
+              "pos": "adjective"
+            }
+          ],
+          [
+            {
+              "form": "터",
+              "lemma": "터",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "셔터가",
+        "셔터를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1162"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.822"
+        }
+      ],
+      "analysis_binding": "4f8fc640fabe407d6ab3c2c916bb743dbbfd6ddc383a5df55d66361ab3a222db"
+    },
+    {
+      "key": "소인\u0000noun",
+      "input": "소인",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "소품\u0000noun",
+      "input": "소품",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "caad4d4bc73d6b14935711c99ac3ba58343f61cceea698a56f8fbd4651a39f53",
+        "analyses": [
+          [
+            {
+              "form": "소품",
+              "lemma": "소품",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "소",
+              "lemma": "소",
+              "pos": "noun"
+            },
+            {
+              "form": "품",
+              "lemma": "품",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "소",
+              "lemma": "소",
+              "pos": "noun"
+            },
+            {
+              "form": "푸",
+              "lemma": "푸다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "소품",
+        "소품을",
+        "소품이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1621"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.259"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005110.1#WARW2500005110.1.688"
+        }
+      ],
+      "analysis_binding": "a02c51af0305e7f38db74fac402c268d9f26cb2900a0e66cec6a68fe44a9e3b3"
+    },
+    {
+      "key": "수호\u0000noun",
+      "input": "수호",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "신도\u0000noun",
+      "input": "신도",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "신약\u0000noun",
+      "input": "신약",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "proposed_pos": null
+    },
+    {
+      "key": "싸매다\u0000verb",
+      "input": "싸매다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "408ee8b7c08bc0b6972bdad56b36f60eb24282df485cbfca0639121078b6ce3b",
+        "analyses": [
+          [
+            {
+              "form": "싸매",
+              "lemma": "싸매다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "싸매",
+              "lemma": "싸매다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "싸",
+              "lemma": "싸다",
+              "pos": "verb"
+            },
+            {
+              "form": "매",
+              "lemma": "매다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "싸매고"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000151.1#WARW2500000151.1.232"
+        }
+      ],
+      "analysis_binding": "ba7522a324b6e27781c2a062cb8e6a45a0c5d92c0cd77b2b1ac3df45a3d8409a"
+    },
+    {
+      "key": "썩이다\u0000verb",
+      "input": "썩이다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "623ca2762d47aa4aac5c460b19666f8a3e19541338affa7149319795ef3c31c1",
+        "analyses": [
+          [
+            {
+              "form": "썩이",
+              "lemma": "썩이다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "썩이",
+              "lemma": "썩이다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "썩",
+              "lemma": "썩",
+              "pos": "adverb"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "썩이고"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500003830.1#WARW2500003830.1.400"
+        }
+      ],
+      "analysis_binding": "d81c0441b4b186d23a9322a7fbb449f77b778c538b78981e9e1efd5cd6b8de3d"
+    },
+    {
+      "key": "아웃\u0000noun",
+      "input": "아웃",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "e9b4c443b49e3717e7529c62aea130869b7989c391fb81b0c179edd6ec867ead",
+        "analyses": [
+          [
+            {
+              "form": "아웃",
+              "lemma": "아웃",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "웃",
+              "lemma": "웃",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "아웃이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001450.1#WARW2500001450.1.1221"
+        }
+      ],
+      "analysis_binding": "8f8e894ed5259f87689a703c305e6a2052501408ade61a69344a9662feca0253"
+    },
+    {
+      "key": "아카데미\u0000noun",
+      "input": "아카데미",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "fb62356185a76d0f0886b2fadebf238f3b9f6e5926b83d614f494dbac9211104",
+        "analyses": [
+          [
+            {
+              "form": "아카데미",
+              "lemma": "아카데미",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "아카데",
+              "lemma": "아카데",
+              "pos": "noun"
+            },
+            {
+              "form": "미",
+              "lemma": "미",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "카",
+              "lemma": "카",
+              "pos": "noun"
+            },
+            {
+              "form": "데",
+              "lemma": "데",
+              "pos": "noun"
+            },
+            {
+              "form": "미",
+              "lemma": "미",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "아카데미",
+        "아카데미를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.337"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.614"
+        }
+      ],
+      "analysis_binding": "137ab96a3a5cbbb90d297896744ad4dca5a54b73f359078ce7310637e3be2e08"
+    },
+    {
+      "key": "암울하다\u0000adjective",
+      "input": "암울하다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "암자\u0000noun",
+      "input": "암자",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "e1c5f857f9261ff7e1bab2a509ad37842f582e37d64756a303dd64f24c4d6e80",
+        "analyses": [
+          [
+            {
+              "form": "암자",
+              "lemma": "암자",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "암",
+              "lemma": "암",
+              "pos": "noun"
+            },
+            {
+              "form": "자",
+              "lemma": "자",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "암자",
+        "암자에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002670.1#WARW2500002670.1.2646"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005430.1#WARW2500005430.1.2376"
+        }
+      ],
+      "analysis_binding": "2cf88004e7a91a333507c6a9226bd86c6ece29e42c2fa900fcce6cb5b7f8dfe2"
+    },
+    {
+      "key": "양산\u0000noun",
+      "input": "양산",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "어떠하다\u0000adjective",
+      "input": "어떠하다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "14f9491fcd785430c9ab12d5f99bccfb6064e0a6f8f49df6ca91110aeb019818",
+        "analyses": [
+          [
+            {
+              "form": "어떠하",
+              "lemma": "어떠하다",
+              "pos": "adjective"
+            }
+          ],
+          [
+            {
+              "derived_from": "어떠",
+              "derived_from_index": null,
+              "form": "어떠하",
+              "lemma": "어떠하다",
+              "pos": "adjective"
+            }
+          ],
+          [
+            {
+              "derived_from": "어떠",
+              "derived_from_index": null,
+              "form": "어떠하",
+              "lemma": "어떠하다",
+              "pos": "adjective"
+            }
+          ]
+        ]
+      },
+      "pos": "adjective",
+      "observed_forms": [
+        "어떠하겠는가",
+        "어떠한지"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002880.1#WARW2500002880.1.558"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500010540.1#WARW2500010540.1.1486"
+        }
+      ],
+      "analysis_binding": "388cfbae6c0ce6a12e7de3f0bc7edd9d1496243baeb668213aec3b3e1eb02d0d"
+    },
+    {
+      "key": "얻어먹다\u0000verb",
+      "input": "얻어먹다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "얼빠지다\u0000verb",
+      "input": "얼빠지다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "7a9459bfd3cc2bce970681081896581ad0026e27360445304a9a40717fc2b66c",
+        "analyses": [
+          [
+            {
+              "form": "얼빠지",
+              "lemma": "얼빠지다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "얼빠지",
+              "lemma": "얼빠지다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "얼",
+              "lemma": "얼",
+              "pos": "noun"
+            },
+            {
+              "form": "빠지",
+              "lemma": "빠지다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "얼빠진"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005040.1#WARW2500005040.1.601"
+        }
+      ],
+      "analysis_binding": "b5a05c9d827dfb7d49ee872b2daba0d524a88502f7af3f070eb6f3d0387adf86"
+    },
+    {
+      "key": "여의다\u0000verb",
+      "input": "여의다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "482280ff7a81b5ddfec99da92b8adb98045030018fb6aec52c443db0a35f6fad",
+        "analyses": [
+          [
+            {
+              "form": "여의",
+              "lemma": "여의다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "여의",
+              "lemma": "여의다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "여",
+              "lemma": "여",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "여의고",
+        "여읜"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1235"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001440.1#WARW2500001440.1.3"
+        }
+      ],
+      "analysis_binding": "fd3a6ce502f9d0c1083295f666846ae8cd157876946df4edc7f3c6d58297c25a"
+    },
+    {
+      "key": "역전\u0000noun",
+      "input": "역전",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "811b5b607bd7705b142c6101edb141308bc3a2499d2ed4460bc0683acd1b1e19",
+        "analyses": [
+          [
+            {
+              "form": "역전",
+              "lemma": "역전",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "역",
+              "lemma": "역",
+              "pos": "noun"
+            },
+            {
+              "form": "전",
+              "lemma": "전",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "전",
+              "lemma": "전",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "역전에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005490.1#WARW2500005490.1.654"
+        }
+      ],
+      "analysis_binding": "0869280f09ac72c5af5858308af925fce4f79b2979d2dfe69d33e9201e358720"
+    },
+    {
+      "key": "오래다\u0000adjective",
+      "input": "오래다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "오른팔\u0000noun",
+      "input": "오른팔",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "오버\u0000noun",
+      "input": "오버",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "8f0c956c468cc2313c3512ea7cd2145d0d65866c6be47c4895d72a1d2841a98e",
+        "analyses": [
+          [
+            {
+              "form": "오버",
+              "lemma": "오버",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "오버",
+        "오버는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.958"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500020280.1#WARW2500020280.1.501"
+        }
+      ],
+      "analysis_binding": "c4ca3cc9bf741526505b7877eb50071e616d430e39acfde68d0f5ca89021b2e6"
+    },
+    {
+      "key": "용량\u0000noun",
+      "input": "용량",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 3,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "e6ac1362406cc066d352d504e3d324627a09e24bf38ee79623046b59cab748d2",
+        "analyses": [
+          [
+            {
+              "form": "용량",
+              "lemma": "용량",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "용",
+              "lemma": "용",
+              "pos": "noun"
+            },
+            {
+              "form": "량",
+              "lemma": "량",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "용량",
+        "용량을",
+        "용량이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.5451"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005050.1#WARW2500005050.1.3457"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005060.1#WARW2500005060.1.4279"
+        }
+      ],
+      "analysis_binding": "782963c49d7b17a70855981097257883088720782bc74fb28b15b002b52c9cea"
+    },
+    {
+      "key": "위인\u0000noun",
+      "input": "위인",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "유대\u0000noun",
+      "input": "유대",
+      "decision": "hold",
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "b6d06c6345f61b2f1fa479d030202fc0f259dff749e861da06d21e76b02982ea",
+        "analyses": [
+          [],
+          [
+            {
+              "form": "유대",
+              "lemma": "유대",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "proposed_pos": null
+    },
+    {
+      "key": "유신\u0000noun",
+      "input": "유신",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "90aed4f203369059e861139c80ee56107832023b0385fc16ee15d44379722654",
+        "analyses": [
+          [
+            {
+              "form": "유신",
+              "lemma": "유신",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "신",
+              "lemma": "신",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "유신이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500010640.1#WARW2500010640.1.278"
+        }
+      ],
+      "analysis_binding": "b14a75faddb40e9bb49e1979ce19223aa9e98d274544b78fe94f83de989b7ee7"
+    },
+    {
+      "key": "유추\u0000noun",
+      "input": "유추",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "인증\u0000noun",
+      "input": "인증",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "c1d2fa4e6d1f40ac50a1f017d333920679d71c6892754b2f08599ef2b35a8cf1",
+        "analyses": [
+          [
+            {
+              "form": "인증",
+              "lemma": "인증",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "인",
+              "lemma": "인",
+              "pos": "noun"
+            },
+            {
+              "form": "증",
+              "lemma": "증",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "증",
+              "lemma": "증",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "인증을",
+        "인증이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.577"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005150.1#WARW2500005150.1.1603"
+        }
+      ],
+      "analysis_binding": "941e5a8293929ca2a2ea8be91b9219907f104a5684d527aeb2f5d31857528487"
+    },
+    {
+      "key": "일명\u0000noun",
+      "input": "일명",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "f2b2688c656f04a7c533c4d49eea98908e5ebc8e2d763a5e2aba6ff4e3a0b0f5",
+        "analyses": [
+          [
+            {
+              "form": "일명",
+              "lemma": "일명",
+              "pos": "noun"
+            }
+          ],
+          [],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "일명"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.256"
+        }
+      ],
+      "analysis_binding": "762e85b90d4debd68c6a8a1756861454a5a77c51627409df0229bd2813ee96fb"
+    },
+    {
+      "key": "자유주의\u0000noun",
+      "input": "자유주의",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "8018518bcda5813983c7f8db75169d2db2f23b51b1786c6a23c6bfb403965200",
+        "analyses": [
+          [
+            {
+              "form": "자유주의",
+              "lemma": "자유주의",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "자유",
+              "lemma": "자유",
+              "pos": "noun"
+            },
+            {
+              "form": "주의",
+              "lemma": "주의",
+              "pos": "noun"
+            }
+          ],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "자유주의"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001360.1#WARW2500001360.1.745"
+        }
+      ],
+      "analysis_binding": "2b75d1a51f896f498704674d63880a219b436e1a27373f82826cdbde4ca79543"
+    },
+    {
+      "key": "자의\u0000noun",
+      "input": "자의",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "802e6bd495487edf75f45369c3c18ab1bf06296e7693241f3301f30af45cb0ba",
+        "analyses": [
+          [
+            {
+              "form": "자의",
+              "lemma": "자의",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "자",
+              "lemma": "자",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "자의에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500004420.1#WARW2500004420.1.639"
+        }
+      ],
+      "analysis_binding": "16161de3991c11e38f89af4c48b3edfd75d4714b268be67ce01523f883fd551a"
+    },
+    {
+      "key": "자초\u0000noun",
+      "input": "자초",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "4fa367caef76fb4962768d428956f3b883d0d82d54a3bf75475f458e82ebf4dd",
+        "analyses": [
+          [
+            {
+              "form": "자초",
+              "lemma": "자초",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "자",
+              "lemma": "자",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "자초는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500025240.1#WARW2500025240.1.720"
+        }
+      ],
+      "analysis_binding": "4d28d75b0b875c1c25bd49d68c2a1cc4a0d086e8cca9c37342965f998c06af50"
+    },
+    {
+      "key": "잠꼬대\u0000noun",
+      "input": "잠꼬대",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "15193c4899b234030986d63db59277ed1faf84232f32f56a3afae720acc8f870",
+        "analyses": [
+          [
+            {
+              "form": "잠꼬대",
+              "lemma": "잠꼬대",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "잠",
+              "lemma": "잠",
+              "pos": "noun"
+            },
+            {
+              "form": "꼬",
+              "lemma": "꼬다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "잠꼬",
+              "lemma": "잠꼬",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "잠꼬대가",
+        "잠꼬대를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005160.1#WARW2500005160.1.3688"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500015320.1#WARW2500015320.1.681"
+        }
+      ],
+      "analysis_binding": "22ba421c9ae241a28c34092e088d97ce409d4f27517fbfe6157002b0d383eb9f"
+    },
+    {
+      "key": "장한\u0000noun",
+      "input": "장한",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "전당\u0000noun",
+      "input": "전당",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "전도\u0000noun",
+      "input": "전도",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "절다\u0000verb",
+      "input": "절다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "점프\u0000noun",
+      "input": "점프",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "db36d775c5ff8df869221c4becc9a24e203c7846341f2d48d5f5e1cf5cc6a37d",
+        "analyses": [
+          [
+            {
+              "form": "점프",
+              "lemma": "점프",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "점",
+              "lemma": "점",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "점프를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005140.1#WARW2500005140.1.3246"
+        }
+      ],
+      "analysis_binding": "7c5ef037cf46d893560c5c7311ea2548436e16bac1e95f3ac5bb27de182d5e33"
+    },
+    {
+      "key": "조기\u0000noun",
+      "input": "조기",
+      "decision": "hold",
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "d99fb8b1fa40d33f40479801cbeca054f4a7ac4d808111191486e6215f44feba",
+        "analyses": [
+          [],
+          [
+            {
+              "form": "조기",
+              "lemma": "조기",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "기",
+              "lemma": "기",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "proposed_pos": null
+    },
+    {
+      "key": "족쇄\u0000noun",
+      "input": "족쇄",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "ead993318529970385bbec25bdc6af3f5480b2f31498319cfc34bd3907238c53",
+        "analyses": [
+          [
+            {
+              "form": "족쇄",
+              "lemma": "족쇄",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "쇠",
+              "lemma": "쇠다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "쇠",
+              "lemma": "쇠다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "족쇄가",
+        "족쇄를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001440.1#WARW2500001440.1.776"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005050.1#WARW2500005050.1.3469"
+        }
+      ],
+      "analysis_binding": "ca072dc103f4b23060bfa7672b8afaa19eee49cfa5b3e53b023f755541f51a0c"
+    },
+    {
+      "key": "주무\u0000noun",
+      "input": "주무",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "f21ecb5872da27025d9dacc172cf4ff579675a49a28498e0051d05772212a5c5",
+        "analyses": [
+          [
+            {
+              "form": "주무",
+              "lemma": "주무",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "주",
+              "lemma": "주",
+              "pos": "noun"
+            },
+            {
+              "form": "무",
+              "lemma": "무",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "무",
+              "lemma": "무",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "주무가"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500051890.1#WARW2500051890.1.455"
+        }
+      ],
+      "analysis_binding": "8f26ce7a76e75e268230984b3f299a1472d5679094fb4b0a2f6e21efa5552796"
+    },
+    {
+      "key": "중턱\u0000noun",
+      "input": "중턱",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "9ff2a623fd1c7673c14c2325f41d5efd0b941aaaa880d9f0d6f9c6e919290931",
+        "analyses": [
+          [
+            {
+              "form": "중턱",
+              "lemma": "중턱",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "턱",
+              "lemma": "턱",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "중",
+              "lemma": "중",
+              "pos": "noun"
+            },
+            {
+              "form": "턱",
+              "lemma": "턱",
+              "pos": "adverb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "중턱에는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005850.1#WARW2500005850.1.281"
+        }
+      ],
+      "analysis_binding": "22a5f4501ad7532f33311c1beef5a21e24adb34381c4622f5f2e2335c378be30"
+    },
+    {
+      "key": "증발\u0000noun",
+      "input": "증발",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "6b9f956de6e0d28aaffd8115794e804ab1ec88b6b82cbd945673d9978ca976ca",
+        "analyses": [
+          [
+            {
+              "form": "증발",
+              "lemma": "증발",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "증",
+              "lemma": "증",
+              "pos": "noun"
+            },
+            {
+              "form": "발",
+              "lemma": "발",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "증",
+              "lemma": "증",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "증발이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005390.1#WARW2500005390.1.879"
+        }
+      ],
+      "analysis_binding": "67d76140ab25e045a09703941510d722b18ef86c327b70e44eee1e80b8a0a28f"
+    },
+    {
+      "key": "집합\u0000noun",
+      "input": "집합",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "c492e4dde7e7183604f184383a57b853d6f464d206196f8558c5018f0e78a043",
+        "analyses": [
+          [
+            {
+              "form": "집합",
+              "lemma": "집합",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "집",
+              "lemma": "집",
+              "pos": "noun"
+            },
+            {
+              "form": "합",
+              "lemma": "합",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "합",
+              "lemma": "합",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "집합을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005610.1#WARW2500005610.1.67"
+        }
+      ],
+      "analysis_binding": "3da192b884efc1852d8866d3c8aaf0ae1ec44c4037494c3e1d8063e0835e18d8"
+    },
+    {
+      "key": "차\u0000noun",
+      "input": "차",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "채색\u0000noun",
+      "input": "채색",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "1a844777e110cc54e607a9785dbc4ac7c4ceb3226597762daa92316dc69a4f61",
+        "analyses": [
+          [
+            {
+              "form": "채색",
+              "lemma": "채색",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "채",
+              "lemma": "채",
+              "pos": "adverb"
+            },
+            {
+              "form": "색",
+              "lemma": "색",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "색",
+              "lemma": "색",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "채색을"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.202"
+        }
+      ],
+      "analysis_binding": "4232f697a4bea2c533db571e041dd9ae3ea0c51b461d0e405550a6656a83d388"
+    },
+    {
+      "key": "처먹다\u0000verb",
+      "input": "처먹다",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "62aba6b2c3c6f5b5b3778c5263835119a642df1e6bae4994f63c1401cd1a0e0c",
+        "analyses": [
+          [
+            {
+              "form": "처먹",
+              "lemma": "처먹다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "처먹",
+              "lemma": "처먹다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "처",
+              "lemma": "처",
+              "pos": "noun"
+            },
+            {
+              "form": "먹",
+              "lemma": "먹다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "verb",
+      "observed_forms": [
+        "처먹고"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002870.1#WARW2500002870.1.42"
+        }
+      ],
+      "analysis_binding": "563dca17f240f2bddfce729578aa502ade3fafda0dedf6723c5b053e9ee54eae"
+    },
+    {
+      "key": "치부하다\u0000verb",
+      "input": "치부하다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "치키다\u0000verb",
+      "input": "치키다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "친애하다\u0000verb",
+      "input": "친애하다",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "proposed_pos": null
+    },
+    {
+      "key": "커버\u0000noun",
+      "input": "커버",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "8bcde21ccd0b8d9b306b092fc29e758a3422ad7a05888159907188d7f730a514",
+        "analyses": [
+          [
+            {
+              "form": "커버",
+              "lemma": "커버",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "커버",
+        "커버를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.204"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.106"
+        }
+      ],
+      "analysis_binding": "c68b2296c0554b1d808d0c4057726cb9dd0741569394d2d88493190ec63a00da"
+    },
+    {
+      "key": "콤플렉스\u0000noun",
+      "input": "콤플렉스",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "5333b75eaaa9d4a044b0fddcce174eaf37c597f1f6f7a3ec9c8f922c304936c7",
+        "analyses": [
+          [
+            {
+              "form": "콤플렉스",
+              "lemma": "콤플렉스",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "콤플렉",
+              "lemma": "콤플렉",
+              "pos": "noun"
+            },
+            {
+              "form": "스",
+              "lemma": "스다",
+              "pos": "verb"
+            }
+          ],
+          [
+            {
+              "form": "스",
+              "lemma": "스다",
+              "pos": "verb"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "콤플렉스가",
+        "콤플렉스를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002160.1#WARW2500002160.1.577"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500003760.1#WARW2500003760.1.109"
+        }
+      ],
+      "analysis_binding": "5f55d4d11cb2bc61524c101f1a2d3473a1c92a9a5b07822d8c32d532d073f0ae"
+    },
+    {
+      "key": "큰소리\u0000noun",
+      "input": "큰소리",
+      "decision": "hold",
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "proposed_pos": null
+    },
+    {
+      "key": "클래식\u0000noun",
+      "input": "클래식",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "6514ada5a92281d90d5ef11cca0636a80bd518c27f2fc8dbb065af2445876e58",
+        "analyses": [
+          [
+            {
+              "form": "클래식",
+              "lemma": "클래식",
+              "pos": "noun"
+            }
+          ],
+          [],
+          []
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "클래식"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.630"
+        }
+      ],
+      "analysis_binding": "09c83774966baa8015b3bd4c36501e3873c1cf3e333979397df47b70e7e37caf"
+    },
+    {
+      "key": "클릭\u0000noun",
+      "input": "클릭",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "a6bb9eae4718ea555b6423a27505abbc2faf9f2281ef9aadd33c1a97a48f183e",
+        "analyses": [
+          [
+            {
+              "form": "클릭",
+              "lemma": "클릭",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "크",
+              "lemma": "크다",
+              "pos": "adjective"
+            }
+          ],
+          [
+            {
+              "form": "크",
+              "lemma": "크다",
+              "pos": "adjective"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "클릭은"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005890.1#WARW2500005890.1.520"
+        }
+      ],
+      "analysis_binding": "a68dd4877bc7af89d93d959b2a4294f2c3640825faa99e2445cca56d8fd5b5d8"
+    },
+    {
+      "key": "타이틀\u0000noun",
+      "input": "타이틀",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "014ec62287797e114838a8280ac7e958a73626ee0ae5eb99aeef9b82be83857d",
+        "analyses": [
+          [
+            {
+              "form": "타이틀",
+              "lemma": "타이틀",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "타이트",
+              "lemma": "타이트",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "타이",
+              "lemma": "타이",
+              "pos": "noun"
+            },
+            {
+              "form": "틀",
+              "lemma": "틀",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "타이틀을",
+        "타이틀이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000250.1#WARW2500000250.1.791"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.83"
+        }
+      ],
+      "analysis_binding": "5a2aa920df858e961c3be92805349c0d8cb9333be342b22acfa9dca1fed9e023"
+    },
+    {
+      "key": "토양\u0000noun",
+      "input": "토양",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "41f04981a56fde8e7d5300077ab6146da9091a03d6712a08082a0fe78c3f0ffb",
+        "analyses": [
+          [
+            {
+              "form": "토양",
+              "lemma": "토양",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "토",
+              "lemma": "토",
+              "pos": "noun"
+            },
+            {
+              "form": "양",
+              "lemma": "양",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "토",
+              "lemma": "토",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "토양이"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.374"
+        }
+      ],
+      "analysis_binding": "25ee78580fa2a0bf7fab7134c041ffe0f7cd8a9b5ff19fbc8c93d2ac100de804"
+    },
+    {
+      "key": "파워\u0000noun",
+      "input": "파워",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "120a365d398591079ae2928dc273553394a9e04a9f1f643e46cbd05dcaa7510b",
+        "analyses": [
+          [
+            {
+              "form": "파워",
+              "lemma": "파워",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "파",
+              "lemma": "파",
+              "pos": "noun"
+            },
+            {
+              "form": "워",
+              "lemma": "워",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "워",
+              "lemma": "워",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "파워가",
+        "파워를"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.492"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500003360.1#WARW2500003360.1.259"
+        }
+      ],
+      "analysis_binding": "ea3f8690eebdd769e0898d5cd8154f6745657f397fa518b0ce488ed680af2111"
+    },
+    {
+      "key": "평상\u0000noun",
+      "input": "평상",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "9a2bf2d46afaf6ae376fdc48eea90398eece21cf2f206b7c9ef05a35f6980d9c",
+        "analyses": [
+          [
+            {
+              "form": "평상",
+              "lemma": "평상",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "평",
+              "lemma": "평",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "평상에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001160.1#WARW2500001160.1.8"
+        }
+      ],
+      "analysis_binding": "6d77c416f055bc8217821b9b85ba53e41d185dbc222b43d703095485e6e7e43a"
+    },
+    {
+      "key": "피비린내\u0000noun",
+      "input": "피비린내",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "34b58b01eaa19de2bf18a5ad2b399998b33d48a55c9ef01ec2a2e169370c46af",
+        "analyses": [
+          [
+            {
+              "form": "피비린내",
+              "lemma": "피비린내",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "피",
+              "lemma": "피",
+              "pos": "noun"
+            },
+            {
+              "form": "비린내",
+              "lemma": "비린내",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "비린내",
+              "lemma": "비린내",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "피비린내가"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001560.1#WARW2500001560.1.831"
+        }
+      ],
+      "analysis_binding": "ed2ce5592cb8c01e6817c8be96aae98f3828628398e2b295a325a54b94e4196b"
+    },
+    {
+      "key": "학부\u0000noun",
+      "input": "학부",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "d35510c2714fa578cad65b3da32d1718e9132188396cf58cdbdc09e5c3bc1bc4",
+        "analyses": [
+          [
+            {
+              "form": "학부",
+              "lemma": "학부",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "학",
+              "lemma": "학",
+              "pos": "noun"
+            },
+            {
+              "form": "부",
+              "lemma": "부",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "학",
+              "lemma": "학",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "학부를",
+        "학부에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.52"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500010041.1#WARW2500010041.1.1241"
+        }
+      ],
+      "analysis_binding": "a18d94c45769dd4b7f09a9f9dacf4e6382b3ef19715e5507d73127c32140cc67"
+    },
+    {
+      "key": "화성\u0000noun",
+      "input": "화성",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 1,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "88f6c7a59ca4a6f0069c446ab3c6ecd724e83efd4d48958817d80c619486dba0",
+        "analyses": [
+          [
+            {
+              "form": "화성",
+              "lemma": "화성",
+              "pos": "noun"
+            }
+          ],
+          [],
+          [
+            {
+              "form": "화",
+              "lemma": "화",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "화성에"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005070.1#WARW2500005070.1.566"
+        }
+      ],
+      "analysis_binding": "4f186fa00ef3d71bec4358dd6941311e8667d51316a4ed395ce4ba393e1f82d7"
+    },
+    {
+      "key": "효자\u0000noun",
+      "input": "효자",
+      "decision": "semantic_qa",
+      "holds": [],
+      "adapter_ids": [
+        "corpus-adapter"
+      ],
+      "duplicate_count": 2,
+      "analysis_outcome": {
+        "status": "ok",
+        "input_digest": "822819d915330877bf05c707bd1a6b17605556a85348ee8f64955e35cca15cba",
+        "analyses": [
+          [
+            {
+              "form": "효자",
+              "lemma": "효자",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "효",
+              "lemma": "효",
+              "pos": "noun"
+            },
+            {
+              "form": "자",
+              "lemma": "자",
+              "pos": "noun"
+            }
+          ],
+          [
+            {
+              "form": "효",
+              "lemma": "효",
+              "pos": "noun"
+            }
+          ]
+        ]
+      },
+      "pos": "noun",
+      "observed_forms": [
+        "효자가",
+        "효자는"
+      ],
+      "evidence": [
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001450.1#WARW2500001450.1.518"
+        },
+        {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500010300.1#WARW2500010300.1.1438"
+        }
+      ],
+      "analysis_binding": "c6893afc6e4152025376602a7cc53971d7daeedd3c5e5050b084f76ec3fba479"
+    }
+  ]
+}
