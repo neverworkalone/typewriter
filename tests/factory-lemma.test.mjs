@@ -28,14 +28,14 @@ const P = (lemma, pos, form = lemma) => ({ lemma, pos, form });
 const ANALYSES = {
   짠한: [[P('짠하다', 'adjective', '짠하')]], 짠해서: [[P('짠하다', 'adjective', '짠하')]],
   가는: [[P('가다', 'verb', '가')]], 가서: [[P('가다', 'verb', '가')]], 갈: [[P('가다', 'verb', '가')]],
-  걸음: [[P('걸음', 'noun')]],
+  걸음: [[P('걸음', 'noun')]], 좁은: [[P('좁다', 'adjective', '좁')]],
 };
 const analyzer = async (requests) => ({
   metadata: METADATA,
   results: requests.map(({ id, text }) => ({ id, input_digest: analysisInputDigest(text), reason: '', ...(ANALYSES[text] ? { status: 'ok', analyses: ANALYSES[text] } : { status: 'unsupported', analyses: [] }) })),
 });
 // Analyzer for the lemma (citation) forms that the shared hand-off analyzes.
-const LEMMA_POS = { 가다: 'verb', 짠하다: 'adjective', 걸음: 'noun' };
+const LEMMA_POS = { 가다: 'verb', 짠하다: 'adjective', 걸음: 'noun', 좁다: 'adjective' };
 const lemmaAnalyzer = async (requests) => ({
   metadata: METADATA,
   results: requests.map(({ id, text }) => ({ id, input_digest: analysisInputDigest(text), reason: '', status: 'ok', analyses: [[P(text, LEMMA_POS[text], text)]] })),
@@ -660,4 +660,80 @@ test('a merged review authored under an older contract is tolerated on master, r
   });
   const repaired = run();
   assert.equal(repaired.status, 0, repaired.stderr);
+});
+
+// Surface-form judgments (issue #365) are required of a new or changed review; a review that was already
+// merged without them stays valid on master (Stage 3 blocks it fail-closed) until it is changed.
+test('a needed surface-form judgment is required of a new or changed review, not of an unchanged merged one', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-judgment-'));
+  const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+  git('init', '-q', '-b', 'master');
+  git('config', 'user.email', 't@example.com');
+  git('config', 'user.name', 't');
+  const write = async (name, content) => { await mkdir(path.dirname(path.join(root, name)), { recursive: true }); await writeFile(path.join(root, name), content); };
+  const run = () => spawnSync(process.execPath, ['scripts/factory/validate.mjs'], {
+    cwd: path.resolve('.'), encoding: 'utf8', env: { ...process.env, FACTORY_ROOT: root, FACTORY_BASE_REF: 'master' },
+  });
+  await write('data/canonical/fixture.jsonl', jsonl(ENTRIES));
+  const old = v1Batch();
+  await write('data/candidates/C000001/manifest.json', JSON.stringify(old.manifest));
+  await write('data/candidates/C000001/candidates.jsonl', old.candidatesText);
+  const { manifest, candidatesText, rows } = await batchOf(evidenceDoc([cand('좁다', 'adjective', [hit('d4', 'p1', '좁은')])]));
+  await write('data/candidates/C000002/manifest.json', JSON.stringify(manifest));
+  await write('data/candidates/C000002/candidates.jsonl', candidatesText);
+  git('add', '-A'); git('commit', '-qm', 'stage1');
+
+  const [row] = rows;
+  const unjudged = {
+    source_candidate_id: row.candidate_id, disposition: 'included', target: { kind: 'new_entry' },
+    reviewed_record: { lemma: '좁다', senses: [{ pos: 'adjective', gloss: '너비나 공간이 작다.' }] },
+    group_decisions: [{ group_id: row.usage_groups[0].group_id, disposition: 'included', reason: '공간이 작다는 뜻이다.', sense_indexes: [0] }],
+  };
+  const judged = { ...unjudged, surface_form_judgments: [{ sense_index: 0, class_id: 'm6-3-regular-b-adjective', reason: `${row.candidate_id} 좁다는 ㅂ 받침 규칙 활용이다.` }] };
+  const artifacts = await artifactsFor(rows, [unjudged]);
+  const stage2 = async (decision, semanticText = artifacts.semanticDecisionsText) => {
+    const decisionsText = jsonl([decision]);
+    const text = `${semanticText}\n`;
+    await write('data/candidates/C000002/manifest.json', JSON.stringify({ ...manifest, status: 'complete' }));
+    await write('data/reviews/C000002/decisions.jsonl', decisionsText);
+    await write('data/reviews/C000002/semantic-decisions.json', text);
+    await write('data/reviews/C000002/intake-handoff.json', `${artifacts.handoffText}\n`);
+    await write('data/reviews/C000002/manifest.json', JSON.stringify({
+      contract: REVIEW_MANIFEST_CONTRACT, batch_id: 'C000002', candidates_sha256: manifest.candidates_sha256, canonical_snapshot_digest: HEX,
+      decisions_sha256: sha256Hex(decisionsText), semantic_decisions_sha256: sha256Hex(text),
+      handoff_sha256: sha256Hex(`${artifacts.handoffText}\n`), attempt: 1, status: 'ready', history: [],
+    }));
+  };
+
+  // A new review in a PR must carry the judgment; with it, the same review passes.
+  git('checkout', '-q', '-b', 'pr');
+  await stage2(unjudged);
+  const refused = run();
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /surface_form_judgments/);
+  await stage2(judged);
+  assert.equal(run().status, 0, run().stderr);
+
+  // A review that merged without it stays valid on master and is not reported stale; Stage 3 blocks it fail-closed.
+  await stage2(unjudged);
+  git('add', '-A'); git('commit', '-qm', 'merged without the judgment');
+  git('checkout', '-q', 'master'); git('merge', '-q', '--ff-only', 'pr');
+  assert.equal(run().status, 0, run().stderr);
+  const report = {};
+  assert.deepEqual(await validateFactoryRepository({ root, mergedMaster: true, report }), []);
+  assert.deepEqual(report.staleContractReviews, []);
+
+  // Changing that review is strict again (a merged ready review is otherwise immutable, so only the judgment
+  // requirement is asserted here): the judgment is required, and once supplied it is no longer reported.
+  git('checkout', '-q', '-b', 'changed');
+  const changed = JSON.parse(artifacts.semanticDecisionsText);
+  changed.decisions[0].decision_rationale += ' 추가 확인.';
+  changed.decisions[0].review_binding = authorSemanticReviewBinding(changed.decisions[0], reviewedCandidateRecord(unjudged));
+  await stage2(unjudged, JSON.stringify(changed));
+  const stillRefused = run();
+  assert.notEqual(stillRefused.status, 0);
+  assert.match(stillRefused.stderr, /surface_form_judgments/);
+  await stage2(judged, JSON.stringify(changed));
+  assert.doesNotMatch(run().stderr, /surface_form_judgments/);
+  await rm(root, { recursive: true, force: true });
 });
