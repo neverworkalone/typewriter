@@ -1547,54 +1547,6 @@
       }
     },
     {
-      "source_candidate_id": "C000009-0227",
-      "candidate_record_id": "C000009-0227",
-      "candidate_record_sha256": "c192af148dd5b548cf3fe29de63797e1d4713a455af3ff54e390d9c1159923aa",
-      "decision": "included",
-      "decision_rationale": "C000009-0227 attempt 1 Claude agent self-check: o01은 소름이 돋고 몸이 얼어붙는 듯했다, o03은 얼어붙은 것처럼 앉아서 대책을 고심했다는 쓰임으로 놀라거나 겁에 질려 몸이 굳어 움직이지 못하는 뜻이다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000009-0227-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000009-0227: o01은 소름이 돋고 몸이 얼어붙는 듯했다, o03은 얼어붙은 것처럼 앉아서 대책을 고심했다는 쓰임으로 놀라거나 겁에 질려 몸이 굳어 움직이지 못하는 뜻이다.",
-          "semantic_rationale": "C000009-0227: o01은 소름이 돋고 몸이 얼어붙는 듯했다, o03은 얼어붙은 것처럼 앉아서 대책을 고심했다는 쓰임으로 놀라거나 겁에 질려 몸이 굳어 움직이지 못하는 뜻이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000009-0227 C000009-0227-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000009-0227.o01",
-              "C000009-0227.o03"
-            ],
-            "excluded_observation_ids": [
-              "C000009-0227.o02"
-            ],
-            "excluded_terms": [
-              "파이프"
-            ]
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000009-0227",
-        "candidate_record_sha256": "c192af148dd5b548cf3fe29de63797e1d4713a455af3ff54e390d9c1159923aa",
-        "decision_evidence_sha256": "7690f05564ad29b8dbea88835f740fdd2c974e6cc2ff4a60bcc7775b70610998",
-        "sense_evidence": [
-          {
-            "sense_id": "C000009-0227-s1",
-            "sense_sha256": "4a9306ac7bfdd615222a95625e2fa26c0dd3a3852e290241fe70482a524acd62",
-            "gloss_sha256": "b450473e71c6225b1b3705ed1440e0de9e66859c132a2b8031990d4670e7a2d4",
-            "evidence_sha256": "9c7bf29d577bbf3a83c4f8fac513d21bc2fe32443053b9a8af1529d3ee64c111"
-          }
-        ]
-      }
-    },
-    {
       "source_candidate_id": "C000009-0229",
       "candidate_record_id": "C000009-0229",
       "candidate_record_sha256": "4fe2eb9004b30b72ca663b11f9cbaee37123924d1fa0b1862fee680f8cd9cdb0",
