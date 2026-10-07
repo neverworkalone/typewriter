@@ -548,7 +548,11 @@ it through the rejection process for a Stage 2 rework.
 `disposition` takes the existing meanings: included / corrected / held /
 rejected / deferred. `target.kind` is `new_entry`, `new_pos_on_existing_lemma`
 or `new_sense_on_existing_entry` (the last two carry the existing canonical `id`
-and, for a sense, the existing sense context). Whether the current canonical
+and, for a sense, the existing sense context). When the entry already has
+several senses of the new sense's POS, `context_sense_id` names the primary one
+and `context_sense_ids` lists every compared same-POS sense; the new sense needs
+a distinguishing basis against each, and Stage 3 builds one pairwise boundary
+record per old sense from that list. Whether the current canonical
 import can express the last two is open (§10, §12).
 
 ### 5.2 One PR, two manifests
