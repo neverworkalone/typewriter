@@ -5,7 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { aggregateSelfCheck, loadSelfCheck, validateCohortBinding, validateSelfCheck } from './literature-evidence-selfcheck.mjs';
+import { aggregateSelfCheck, checkReportContract, loadSelfCheck, validateCohortBinding, validateSelfCheck } from './literature-evidence-selfcheck.mjs';
 
 const D = (n) => String(n).padStart(64, '0');
 
@@ -139,14 +139,27 @@ test('universe batch ids cannot escape data/reviews', async () => {
   }
 });
 
-test('the published report states exactly the pinned aggregate and the reviewed retrieval condition', async () => {
+test('the published report states exactly the pinned record: aggregate, outcomes, evidence use and the full retrieval condition', async () => {
+  const record = await loadSelfCheck();
+  assert.deepEqual(aggregateSelfCheck(record), PINNED);
   const report = await readFile(new URL('../../docs/literature-evidence-pilot-report-issue-391.md', import.meta.url), 'utf8');
-  const { deferred_outcomes: o, deferred_evidence_use: u, comparison_evidence_use: c } = PINNED;
-  for (const [label, count] of [['`resolved_included`', o.resolved_included], ['`resolved_covered`', o.resolved_covered], ['`resolved_rejected`', o.resolved_rejected], ['`partially_resolved`', o.partially_resolved], ['`still_deferred`', o.still_deferred]]) {
-    assert.match(report, new RegExp(`\\| ${label}[^|]*\\| ${count} \\|`, 'u'), label);
+  assert.deepEqual(checkReportContract(report, record), []);
+  // Report-only mutations of every published pinned field must be rejected.
+  const mutations = [
+    ['max_per_work=1', 'max_per_work=2'],
+    ['hit_fetch_cap=2000', 'hit_fetch_cap=10'],
+    ['max_contexts=5', 'max_contexts=8'],
+    ['다른 뜻 노출 4', '다른 뜻 노출 5'],
+    ['잡음으로 오히려 방해 9', '잡음으로 오히려 방해 8'],
+    ['뒷받침 23', '뒷받침 22'],
+    ['완전 해소는 22건', '완전 해소는 21건'],
+    ['| 11 |', '| 12 |'],
+    ['뒷받침 6, 효과 없음 3, 잡음 1', '뒷받침 6, 효과 없음 2, 잡음 2'],
+    ['"comparison_cases": 10', '"comparison_cases": 9'],
+  ];
+  for (const [from, to] of mutations) {
+    assert.ok(report.includes(from), 'fixture text must exist: ' + from);
+    assert.notEqual(checkReportContract(report.replace(from, to), record).length, 0, from + ' → ' + to);
   }
-  assert.match(report, new RegExp(`완전 해소는 ${PINNED.deferred_fully_resolved}건`, 'u'));
-  assert.match(report, new RegExp(`뒷받침 ${u.supports}, 효과 없음 ${u.no_effect}[^,]*, 잡음으로 오히려 방해한 사례 ?${u.misleading_noise}|잡음으로 오히려 방해 ${u.misleading_noise}, 다른 뜻 노출 ${u.exposes_other_sense}`, 'u'));
-  assert.match(report, new RegExp(`뒷받침 ${c.supports}, 효과 없음 ${c.no_effect}, 잡음 ${c.misleading_noise}`, 'u'));
-  assert.match(report, /`max_contexts=5`/u);
+  assert.deepEqual(checkReportContract('no block', record), ['report lacks the selfcheck-contract JSON block']);
 });

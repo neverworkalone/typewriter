@@ -129,3 +129,33 @@ export function aggregateSelfCheck(record) {
 export async function loadSelfCheck() {
   return JSON.parse(await readFile(SELFCHECK_RECORD_URL, 'utf8'));
 }
+
+// Report contract: every published measurement field must equal the structured record. The JSON block is
+// compared exactly; the prose that repeats the numbers is checked field by field so it cannot drift alone.
+export function checkReportContract(report, record) {
+  const errors = [];
+  const aggregate = aggregateSelfCheck(record);
+  const retrieval = Object.fromEntries(Object.keys(PINNED_RETRIEVAL).map((key) => [key, record.retrieval[key]]));
+  const match = /<!-- selfcheck-contract[^>]*-->\s*```json\n([\s\S]*?)\n```/u.exec(report);
+  if (!match) return ['report lacks the selfcheck-contract JSON block'];
+  let published;
+  try { published = JSON.parse(match[1]); } catch { return ['selfcheck-contract block is not valid JSON']; }
+  if (JSON.stringify(published) !== JSON.stringify({ retrieval, aggregate })) errors.push('selfcheck-contract block differs from the record');
+  for (const [key, value] of Object.entries(retrieval)) {
+    const values = [...report.matchAll(new RegExp(`\\b${key}=(\\d+)`, 'gu'))].map((m) => Number(m[1]));
+    if (values.length === 0 || values.some((found) => found !== value)) errors.push(`report states ${key}=${values.join('/')} but the record says ${value}`);
+  }
+  const o = aggregate.deferred_outcomes;
+  for (const [name, count] of Object.entries(o)) {
+    if (!new RegExp(`\\| \`${name}\`[^|]*\\| ${count} \\|`, 'u').test(report)) errors.push(`report table row ${name} is not ${count}`);
+  }
+  if (!new RegExp(`완전 해소는 ${aggregate.deferred_fully_resolved}건`, 'u').test(report)) errors.push('report fully-resolved count differs');
+  const use = aggregate.deferred_evidence_use;
+  const deferredLine = /뒷받침 (\d+), 효과 없음 (\d+)[^,]*?, 잡음으로 오히려 방해 (\d+), 다른 뜻 노출 (\d+)/u.exec(report);
+  if (!deferredLine || deferredLine.slice(1).map(Number).join() !== [use.supports, use.no_effect, use.misleading_noise, use.exposes_other_sense].join()) errors.push('report deferred evidence-use line differs');
+  const cu = aggregate.comparison_evidence_use;
+  const comparisonLine = /뒷받침 (\d+), 효과 없음 (\d+), 잡음 (\d+)/u.exec(report);
+  if (!comparisonLine || comparisonLine.slice(1).map(Number).join() !== [cu.supports, cu.no_effect, cu.misleading_noise].join()) errors.push('report comparison evidence-use line differs');
+  if (cu.exposes_other_sense !== 0) errors.push('report comparison line omits exposes_other_sense');
+  return errors;
+}
