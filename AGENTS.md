@@ -311,7 +311,9 @@ rather than by the batch data:
 4. Otherwise open a separate issue and a separate PR from the latest remote
    `master` (new worktree) that fixes the shared pipeline with a general
    regression (no word-specific code), run the issue's CI locally, bind the PR
-   and enable auto-fix. Never merge it yourself.
+   and enable auto-fix. Never merge it yourself. This shared-fix PR is not a
+   second batch: the one-active-batch/one-result-PR rule above is unchanged, and
+   the batch result PR simply waits on it.
 5. A regression for a shared contract must exercise the real production path
    (real-shaped canonical data and the real validators), not only synthetic
    inputs that omit the new field.
