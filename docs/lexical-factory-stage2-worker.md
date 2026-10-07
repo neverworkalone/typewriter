@@ -55,6 +55,8 @@ candidate dispositions and source bindings. Record agent self-check honestly;
 do not add human or independent-review claims. Do not modify canonical JSONL or
 allocate final w… IDs.
 
+Before it submits, the agent also compares every newly authored gloss (new entries and new senses on existing entries) with the canonical entries of close-form headwords (spelling, voice and one-jamo variants such as 쫓다/좇다, 부딪치다/부딪히다, 잃다/잊다). When an observation is a nonstandard spelling of another canonical headword, its meaning stays under that headword and the observation is rejected with that reasoning; it is never admitted as a new sense of the observed spelling. `scripts/validate/lexical-quality.mjs` (`CONFUSABLE_LEMMA_RULES`) tripwires the unambiguous gloss vocabulary of known pairs for canonical data, admission and Stage 2 decisions; the comparison itself remains a source-bound semantic judgment.
+
 The result PR must update the candidate manifest to complete together with a
 ready review manifest, include the complete review artifacts, pass the factory
 validator and exact-head CI, and close the tracking Issue when merged. Rework

@@ -103,6 +103,14 @@ test('decision rows must cover every candidate exactly once in order', () => {
   assert.ok(validateDecisionRows([{ source_candidate_id: ids[0] }, { source_candidate_id: ids[0] }], ids).some((e) => e.includes('duplicate')));
 });
 
+test('Stage 2 decisions refuse a reviewed gloss that belongs to a confusable counterpart headword', () => {
+  const included = (reviewed) => ({ source_candidate_id: 'C000001-0001', disposition: 'included', target: { kind: 'new_entry' }, reviewed_record: reviewed });
+  const wrong = included({ lemma: '쫓다', senses: [{ pos: 'verb', gloss: '어떤 이상이나 목표를 이루려고 좇아 따르다.' }] });
+  assert.ok(validateDecisionRow(wrong, { canonicalIndex: INDEX }).some((e) => e.includes('LEXICAL_CONFUSABLE_LEMMA_SENSE') && e.includes('좇다')));
+  const right = included({ lemma: '쫓다', senses: [{ pos: 'verb', gloss: '달아나는 대상을 따라가 붙잡으려 하다.' }] });
+  assert.deepEqual(validateDecisionRow(right, { canonicalIndex: INDEX }), []);
+});
+
 test('status-only change never alters the manifest content digest', () => {
   const ready = reviewManifest();
   assert.equal(manifestContentDigest(ready), manifestContentDigest({ ...ready, status: 'rejected', rejected_pr: 9, attempt: 2, history: [{ attempt: 1, rejected_pr: 9 }] }));

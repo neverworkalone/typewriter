@@ -4816,54 +4816,6 @@
       }
     },
     {
-      "source_candidate_id": "C000007-0449",
-      "candidate_record_id": "C000007-0449",
-      "candidate_record_sha256": "f1ae05a76dd1e65f07944962b6d86ca334a57b5f14c53eb4b53d7931a6a27f86",
-      "decision": "included",
-      "decision_rationale": "C000007-0449 attempt 1 Claude agent self-check: o01은 환상을 쫓고, o02는 진정성을 쫓는 모험이라는 쓰임으로 어떤 이상이나 목표를 이루려고 따르는 뜻이다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000007-0449-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000007-0449: o01은 환상을 쫓고, o02는 진정성을 쫓는 모험이라는 쓰임으로 어떤 이상이나 목표를 이루려고 따르는 뜻이다.",
-          "semantic_rationale": "C000007-0449: o01은 환상을 쫓고, o02는 진정성을 쫓는 모험이라는 쓰임으로 어떤 이상이나 목표를 이루려고 따르는 뜻이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000007-0449 C000007-0449-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000007-0449.o01",
-              "C000007-0449.o02"
-            ],
-            "excluded_observation_ids": [
-              "C000007-0449.o03"
-            ],
-            "excluded_terms": [
-              "달아나"
-            ]
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000007-0449",
-        "candidate_record_sha256": "f1ae05a76dd1e65f07944962b6d86ca334a57b5f14c53eb4b53d7931a6a27f86",
-        "decision_evidence_sha256": "986216efe8281f030f320a396eeec562ada0803a2970c77a1291cda14bae54ee",
-        "sense_evidence": [
-          {
-            "sense_id": "C000007-0449-s1",
-            "sense_sha256": "8d657922638998e3c03a1e43ecf92f567c9ea548d8dc1ff5ea6b38a57a5c0a97",
-            "gloss_sha256": "6fc89d633b64762b789d0c6fb605bb884dffb0982b8e1b7436b99c70644bd564",
-            "evidence_sha256": "f1d2eef8ce788d81cc3d3d8356b54e69dec3b99d897180b1bc22eee6c6b310b8"
-          }
-        ]
-      }
-    },
-    {
       "source_candidate_id": "C000007-0454",
       "candidate_record_id": "C000007-0454",
       "candidate_record_sha256": "b9f2b29ed2b6b18fd84c78e4be1bbc0319089c9f65f2cc9edb05dcd7bfc949b1",

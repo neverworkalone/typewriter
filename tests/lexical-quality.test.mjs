@@ -18,6 +18,8 @@ import {
   validateBulkGlossProjection,
   validateLexicalSemanticReview,
   validateLexicalRecord,
+  CONFUSABLE_LEMMA_RULES,
+  findConfusableLemmaSenseFindings,
 } from '../scripts/validate/lexical-quality.mjs';
 import { validateLexicalAddition as validateLexicalAdditionImpl } from '../scripts/batch/lexical-admission.mjs';
 import { createCanonicalContext } from '../scripts/validate/canonical-context.mjs';
@@ -2932,4 +2934,53 @@ test('reviewed existing-record correction passes while an unreviewed replacement
     }),
     /does not preserve base record w903|corrected|producer-owned selection output/u,
   );
+});
+
+test('confusable headwords keep their own meanings: a gloss of the counterpart lemma is rejected', () => {
+  const sense = (gloss, pos = 'verb') => [{ id: 'x-s1', pos, gloss }];
+  const codes = (lemma, gloss, pos) => findConfusableLemmaSenseFindings({ lemma, senses: sense(gloss, pos) });
+
+  // Negative: the observed spelling 쫓다 must not receive the goal-pursuing meaning of 좇다.
+  const wrong = codes('쫓다', '어떤 이상이나 목표를 이루려고 좇아 따르다.');
+  assert.equal(wrong.length, 1);
+  assert.equal(wrong[0].code, 'LEXICAL_CONFUSABLE_LEMMA_SENSE');
+  assert.equal(wrong[0].confusable_lemma, '좇다');
+  assert.match(wrong[0].message, /좇다/u);
+  assert.equal(codes('좇다', '달아나는 대상을 따라가 붙잡으려 하다.').length, 1);
+  assert.equal(codes('가르치다', '손가락으로 방향을 나타내다.').length, 1);
+  assert.equal(codes('가리키다', '지식이나 기술을 익히도록 알려 주다.').length, 1);
+  assert.equal(codes('틀리다', '서로 같지 않고 차이가 있다.').length, 1);
+  assert.equal(codes('늘이다', '수나 양을 더 많게 하다.').length, 1);
+  assert.equal(codes('잃어버리다', '기억하고 있던 내용을 떠올리지 못하게 되다.').length, 1);
+  assert.equal(codes('잊어버리다', '가졌던 것이 없어져 더 이상 가지지 못하게 되다.').length, 1);
+
+  // Positive: each headword with its own meaning, including the canonical glosses, passes.
+  assert.deepEqual(codes('쫓다', '달아나는 대상을 따라가 붙잡으려 하다.'), []);
+  assert.deepEqual(codes('좇다', '목표나 대상을 따라가며 이루려 하다.'), []);
+  assert.deepEqual(codes('잊어버리다', '기억하고 있던 내용을 떠올리지 못하게 되다.'), []);
+  assert.deepEqual(codes('잃어버리다', '가지고 있던 것을 어디에 두었는지 몰라 찾지 못하다.'), []);
+  assert.deepEqual(codes('가리키다', '손가락이나 말로 일정한 대상이나 방향을 나타내다.'), []);
+  assert.deepEqual(codes('다르다', '서로 같지 않고 차이가 있다.', 'adjective'), []);
+  // Other POS or unrelated lemmas are unaffected.
+  assert.deepEqual(codes('쫓다', '어떤 이상이나 목표를 이루려고 따르다.', 'noun'), []);
+  assert.deepEqual(codes('따르다', '어떤 이상이나 목표를 이루려고 따르다.'), []);
+  assert.deepEqual(findConfusableLemmaSenseFindings({}), []);
+
+  // Every rule names a distinct counterpart that is itself covered in the opposite direction.
+  for (const rule of CONFUSABLE_LEMMA_RULES) {
+    assert.notEqual(rule.lemma, rule.counterpart);
+    assert.ok(CONFUSABLE_LEMMA_RULES.some((other) => other.lemma === rule.counterpart && other.counterpart === rule.lemma));
+    assert.ok(rule.forbidden_terms.length > 0);
+  }
+
+  // The shared record validator applies the same rule to every candidate and canonical record.
+  const record = (gloss) => ({
+    id: 'w9001', record_type: 'entry', role: 'start', candidate_id: 'w9001', lemma: '쫓다', search_forms: ['쫓다'],
+    senses: [{ id: 'w9001-s1', pos: 'verb', gloss }],
+  });
+  assert.throws(
+    () => validateLexicalRecord(record('어떤 이상이나 목표를 이루려고 좇아 따르다.'), { mode: 'candidate' }),
+    (error) => error.code === 'LEXICAL_CONFUSABLE_LEMMA_SENSE',
+  );
+  assert.doesNotThrow(() => validateLexicalRecord(record('달아나는 대상을 따라가 붙잡으려 하다.'), { mode: 'candidate' }));
 });

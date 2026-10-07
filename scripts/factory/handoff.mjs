@@ -1,3 +1,4 @@
+import { findConfusableLemmaSenseFindings } from '../validate/lexical-quality.mjs';
 import { DISPOSITIONS, TARGET_KINDS } from './contract.mjs';
 
 // Typed Stage 2 → Stage 3 decision handoff (design §5.1). Pure validation against a
@@ -36,6 +37,9 @@ export function validateDecisionRow(row, { canonicalIndex }) {
   }
   for (const sense of record.senses) {
     if (!POS.has(sense?.pos) || typeof sense.gloss !== 'string' || !sense.gloss) errors.push(`${at}: every sense needs pos and gloss`);
+  }
+  for (const finding of findConfusableLemmaSenseFindings({ lemma: record.lemma, senses: record.senses, label: `${at} reviewed_record` })) {
+    errors.push(`${finding.code}: ${finding.message}`);
   }
   const entries = canonicalIndex.get(record.lemma) ?? [];
   if (kind === 'new_entry') {
