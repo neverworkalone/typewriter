@@ -951,6 +951,50 @@
       }
     },
     {
+      "source_candidate_id": "C000008-0076",
+      "candidate_record_id": "C000008-0076",
+      "candidate_record_sha256": "feceb851f0d3a5201c2e0ebac227785b768e7f186e37d083156db4531ccec401",
+      "decision": "included",
+      "decision_rationale": "C000008-0076 attempt 1 Claude agent self-check: o01의 라면을 끓여 주시며와 o02의 파프리카를 넣어 끓인 매운탕은 액체 자체를 끓게 하는 것이 아니라 재료를 물에 넣고 가열해 음식을 만드는 뜻이어서 기존 w6348-s1과 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000008-0076-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000008-0076: o01의 라면을 끓여 주시며와 o02의 파프리카를 넣어 끓인 매운탕은 액체 자체를 끓게 하는 것이 아니라 재료를 물에 넣고 가열해 음식을 만드는 뜻이어서 기존 w6348-s1과 구별된다.",
+          "semantic_rationale": "C000008-0076: o01의 라면을 끓여 주시며와 o02의 파프리카를 넣어 끓인 매운탕은 액체 자체를 끓게 하는 것이 아니라 재료를 물에 넣고 가열해 음식을 만드는 뜻이어서 기존 w6348-s1과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000008-0076 C000008-0076-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000008-0076.o01",
+              "C000008-0076.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000008-0076",
+        "candidate_record_sha256": "feceb851f0d3a5201c2e0ebac227785b768e7f186e37d083156db4531ccec401",
+        "decision_evidence_sha256": "bcd75f75d35117bb3f6377123371247a885a7589dabe7e36b0a81626e6278a46",
+        "sense_evidence": [
+          {
+            "sense_id": "C000008-0076-s1",
+            "sense_sha256": "c897ee449795fac7d6769dd05bfe668fcd36b7fc964c5a6cd30f95770fd1fcdf",
+            "gloss_sha256": "0bcc9eef11ac25d404739d515bf9a49cd0b19cdeb63ae2904d2c6735a5783743",
+            "evidence_sha256": "0db7b5f78533faaa366b7a388eb73ccc31c9d65e23fbbc50e5b7095b24580399"
+          }
+        ]
+      }
+    },
+    {
       "source_candidate_id": "C000008-0077",
       "candidate_record_id": "C000008-0077",
       "candidate_record_sha256": "3f35974e5a22134666a162720d40337318dad30f721b2ca628bd922882522fd9",
@@ -1861,6 +1905,53 @@
             "sense_sha256": "7bd7a43d702cb63e6cbc7952cb27eead92643b4d85f60332d8158c90d9857c93",
             "gloss_sha256": "531de11a472524ec4ece071812bea99c98dcc1272f37404195ed1ac515a05495",
             "evidence_sha256": "19960a897aa92af849384b4d688bda53dbc40c79bdc6fec00d6be09cf0c5d61e"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000008-0288",
+      "candidate_record_id": "C000008-0288",
+      "candidate_record_sha256": "fd1a7525cfcfb5e2bb3a4f743d22029ca2891e5ba7c8b249c0f9aff2e39f2529",
+      "decision": "included",
+      "decision_rationale": "C000008-0288 attempt 1 Claude agent self-check: o01은 이 난국을 헤쳐 나갈 아이디어라는 쓰임으로 가로막는 물건이 아니라 어려운 처지를 이겨 내며 나아가는 뜻이어서 기존 w6319-s1과 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000008-0288-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000008-0288: o01은 이 난국을 헤쳐 나갈 아이디어라는 쓰임으로 가로막는 물건이 아니라 어려운 처지를 이겨 내며 나아가는 뜻이어서 기존 w6319-s1과 구별된다.",
+          "semantic_rationale": "C000008-0288: o01은 이 난국을 헤쳐 나갈 아이디어라는 쓰임으로 가로막는 물건이 아니라 어려운 처지를 이겨 내며 나아가는 뜻이어서 기존 w6319-s1과 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000008-0288 C000008-0288-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000008-0288.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000008-0288.o02"
+            ],
+            "excluded_terms": [
+              "의자"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000008-0288",
+        "candidate_record_sha256": "fd1a7525cfcfb5e2bb3a4f743d22029ca2891e5ba7c8b249c0f9aff2e39f2529",
+        "decision_evidence_sha256": "cc80189c8e95a7d5aef198a930249c1497958cc8cfd407b3d923a644e7ce70de",
+        "sense_evidence": [
+          {
+            "sense_id": "C000008-0288-s1",
+            "sense_sha256": "fa09c4ef58b45f07a7aeeed264678310877972cf8fa0632fb7b2c086be302a43",
+            "gloss_sha256": "8e0cbbb3875c6c1d81aa63a648ac2706d39227622d7bcb1b3ac3badb546a1282",
+            "evidence_sha256": "c2cf3808f911533b13c65450da55c3e3dfde1106038f5f20c33d1ba80e63f99a"
           }
         ]
       }
