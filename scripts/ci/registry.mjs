@@ -219,6 +219,10 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/reference/literature-index.test.mjs'],
       ),
       commandCheck(
+        'Test Issue #391 Stage 2 literature evidence retriever',
+        ['--test', 'scripts/reference/literature-evidence.test.mjs'],
+      ),
+      commandCheck(
         'Test Issue #223 review-only import boundary',
         ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
       ),
