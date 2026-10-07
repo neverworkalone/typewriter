@@ -5,7 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { aggregateSelfCheck, checkReportContract, loadSelfCheck, validateCohortBinding, validateSelfCheck } from './literature-evidence-selfcheck.mjs';
+import { aggregateSelfCheck, checkReportContract, loadSelfCheck, reportProseClaims, validateCohortBinding, validateSelfCheck } from './literature-evidence-selfcheck.mjs';
 
 const D = (n) => String(n).padStart(64, '0');
 
@@ -161,5 +161,19 @@ test('the published report states exactly the pinned record: aggregate, outcomes
     assert.ok(report.includes(from), 'fixture text must exist: ' + from);
     assert.notEqual(checkReportContract(report.replace(from, to), record).length, 0, from + ' → ' + to);
   }
+  // Exhaustive: bump each number captured by every prose claim on its own (JSON block untouched).
+  let bumped = 0;
+  for (const [pattern, expected] of reportProseClaims(aggregateSelfCheck(record))) {
+    const found = pattern.exec(report);
+    assert.ok(found, String(pattern));
+    expected.forEach((_, index) => {
+      const groups = found.slice(1);
+      const offset = found[0].indexOf(groups[index], groups.slice(0, index).reduce((end, g) => end + g.length, 0));
+      const mutatedClaim = found[0].slice(0, offset) + (Number(groups[index]) + 1) + found[0].slice(offset + groups[index].length);
+      assert.notEqual(checkReportContract(report.replace(found[0], mutatedClaim), record).length, 0, `${found[0]} [${index}]`);
+      bumped += 1;
+    });
+  }
+  assert.ok(bumped >= 25);
   assert.deepEqual(checkReportContract('no block', record), ['report lacks the selfcheck-contract JSON block']);
 });

@@ -157,5 +157,36 @@ export function checkReportContract(report, record) {
   const comparisonLine = /뒷받침 (\d+), 효과 없음 (\d+), 잡음 (\d+)/u.exec(report);
   if (!comparisonLine || comparisonLine.slice(1).map(Number).join() !== [cu.supports, cu.no_effect, cu.misleading_noise].join()) errors.push('report comparison evidence-use line differs');
   if (cu.exposes_other_sense !== 0) errors.push('report comparison line omits exposes_other_sense');
+  errors.push(...checkReportProse(report, aggregate));
+  return errors;
+}
+
+// Every number the report prose states about the self-check, as [pattern, expected captures]. Each capture is
+// compared with the value derived from the record, so no published figure can change on its own.
+export function reportProseClaims(aggregate) {
+  const o = aggregate.deferred_outcomes;
+  const u = aggregate.deferred_evidence_use;
+  const c = aggregate.comparison_evidence_use;
+  const cases = aggregate.deferred_cases;
+  const full = aggregate.deferred_fully_resolved;
+  const pct = (part) => Math.round((part * 100) / cases);
+  return [
+    [/과거 deferred (\d+)건의 self-check 결과/u, [cases]],
+    [/부분·완전 해소 합 (\d+)\/(\d+)이지만 \*\*완전 해소는 (\d+)건\((\d+)%\)\*\*, 나머지 (\d+)건은 보류 유지/u, [full + o.partially_resolved, cases, full, pct(full), o.still_deferred]],
+    [/\(`evidence_use`, (\d+)건\): 뒷받침 (\d+), 효과 없음 (\d+)[^,]*?, 잡음으로 오히려 방해 (\d+), 다른 뜻 노출 (\d+)\./u, [cases, u.supports, u.no_effect, u.misleading_noise, u.exposes_other_sense]],
+    [/비교군 (\d+)건: (\d+)건 모두 `included` 유지\(뒷받침 (\d+), 효과 없음 (\d+), 잡음 (\d+)\)/u, [aggregate.comparison_cases, aggregate.comparison_outcomes.unchanged_included, c.supports, c.no_effect, c.misleading_noise]],
+    [/\*탐색적 self-check 기준\* (\d+)건 중 (\d+)건이 더 근거 있는 최종 판정\(포함 (\d+)·커버 (\d+)·거절 (\d+)\)으로 갈 수 있었고 (\d+)건은 일부만 해소/u, [cases, full, o.resolved_included, o.resolved_covered, o.resolved_rejected, o.partially_resolved]],
+    [/잡음이 방해한 사례도 (\d+)건/u, [u.misleading_noise]],
+    [/'효과 없음\/잡음'이 (\d+)\/(\d+)\((\d+)%\)/u, [u.no_effect + u.misleading_noise, cases, pct(u.no_effect + u.misleading_noise)]],
+  ];
+}
+
+export function checkReportProse(report, aggregate) {
+  const errors = [];
+  for (const [pattern, expected] of reportProseClaims(aggregate)) {
+    const found = pattern.exec(report);
+    if (!found) { errors.push(`report prose claim not found: ${pattern}`); continue; }
+    if (found.slice(1).map(Number).join() !== expected.join()) errors.push(`report prose ${found[0].slice(0, 40)}… says ${found.slice(1).join('/')}, record says ${expected.join('/')}`);
+  }
   return errors;
 }
