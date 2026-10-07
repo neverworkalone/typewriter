@@ -139,6 +139,7 @@
     "reference:literature:full-build": "node scripts/reference/build-literature-index.mjs full-build",
     "reference:literature:full-verify": "node scripts/reference/build-literature-index.mjs full-verify",
     "reference:literature:search": "node scripts/reference/search-literature-index.mjs",
+    "reference:literature:evidence": "node scripts/reference/literature-evidence-pack.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "verify:m2": "node scripts/verify/m2-pipeline.mjs",

@@ -1,0 +1,999 @@
+{
+ "contract": "literature-evidence-selfcheck-v1",
+ "provenance": "Exploratory agent self-check by the primary Claude implementation context (Sonnet 5.5) over local evidence packs. Not an independent adjudication, not human editorial approval, not accuracy ground truth. No canonical or historical decision is changed.",
+ "literature_index_logical_rows_sha256": "bbb19a0b3535eca20f11431cf2c786bb399377356147b1224c3515b8bb9752fe",
+ "retrieval": {
+  "max_contexts": 5,
+  "max_per_work": 1,
+  "hit_fetch_cap": 2000,
+  "note": "Condition under which the self-check packs were read; the replay aggregate in the report used the default 8 contexts."
+ },
+ "cohort": {
+  "universe_batches": [
+   "C000001",
+   "C000002",
+   "C000003",
+   "C000004",
+   "C000005",
+   "C000006",
+   "C000007",
+   "C000008",
+   "C000009",
+   "C000010",
+   "C000011",
+   "C000012",
+   "C000013"
+  ],
+  "excluded_no_context_ids": [
+   "C000003-0331",
+   "C000013-0017",
+   "C000013-0095",
+   "C000013-0112"
+  ],
+  "deferred_per_category": {
+   "sense_or_expression_boundary": 36,
+   "evidence_insufficient": 4,
+   "other": 10
+  },
+  "comparison_count": 10
+ },
+ "cohort_selection": "Deferred: every deferred decision in universe_batches except excluded_no_context_ids (no usable search form or no literature hit at replay), bucketed by deferralCategory, each bucket ordered by sha256(candidate id) and the first deferred_per_category taken; comparison: every included decision with a non-new_entry target in universe_batches ordered by sha256(candidate id), first comparison_count. Recomputed and enforced by validateCohortBinding.",
+ "rows": [
+  {
+   "candidate_id": "C000008-0120",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "57f05f562dfc3e5224541505da98fc06b1c9c18f8bcc90ff8cdcf6b53e745d93",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "0a544bf00a53bd33c850531ab1749d2c5a9cac672bee3014b5cf591f7cc51b03",
+    "62c0990b71d8360e45da3d192d906d46945e93c21d8c89fa6560d082c63e4ff8",
+    "9d83d50cc276d7b70f643900ca2ff315c8d73b89aa529f80f1afd271e0334412",
+    "57420ef5512f360ff1f9f8f0a4c9f58cb33f2bf10fac807ec9b5b416a9daa5a9",
+    "d5ec58f24ad02af685d12f1f10e21fb6f1deb26d118d19b1a4ba94267a8231a4"
+   ]
+  },
+  {
+   "candidate_id": "C000013-0029",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "1510bee9c032c1ecc80c9fddc3907c9b632796c1681e7830ab7566a556482001",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "14d7cf98932caef36f380210f3cbb7a99c6b85365242f5311081df7ceb9b03de",
+    "d9a423f683f66625dd1a81f35e2df4db3da624fb43f779ce59afced7882cbf27",
+    "2f9e6c528aecfa7c2a4b72a3ca1ec7addaa432fc31f3036865e9d4d9d908f25a",
+    "b54adc5d93b82375c3b9beece5a84d395811bda61c38f253ea9e460546d416bd",
+    "af5cf769edb3dd93e83326b26e4cdad87d7aa5a39c667abd20ea2fd6fff8b5ff"
+   ]
+  },
+  {
+   "candidate_id": "C000013-0086",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "8bda5cc7fa0ccc05847a8097d82347843169033e58a3677bf07eefcac1b37ce7",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "6a2cc23109543206e49b7e69f2cb41547e8fcb7883a6019bace35a1ad3b8b248",
+    "76640ef7a3bd95487f67e6d2c4d646fe35637c588b28a8d87e4d1930c66ca729",
+    "698f3706f4c962f3a1c0ce585efa03f3caca05a48622428335de234aa95295aa",
+    "61aee6023f364c524ebf2f965414141a3bc203453cc63f71f9d39deee279f3e7",
+    "a4ef4f57eb4a5a39c9b9f4ebd5c893b4d12dd9c31b376b80e920698a600ea7ac"
+   ]
+  },
+  {
+   "candidate_id": "C000005-0142",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "af9550f8dce36808c38f639d4fb4e5f87810cd4361f2778000d631be63290670",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "d820cfc54fe9feeb16ff5faed844561f5a5310f43403c39695c5db76cfd97855",
+    "9a9e2fbe7a8101d2f55725de7d4ba6fe6ec9c3da7b8c17f8255f93fd89a148c8",
+    "ac23cfa3d8362b5aa6793e836625e650038cb1adf001583dcdbca54007c9404d",
+    "83fe77d2f3062b56cb686f6e5f239c71acf8a215f056f2828d14dde6335ef88e",
+    "3a5aea6ab93c9e4f923d9822e3eb01988f220e478bfeab1220c2dd53cc3cdff0"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0069",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "1a517c5a4f4611ff1934ae6f42cb6a7c0f5e172b1307b6bebc269a92fb36a574",
+   "outcome": "partially_resolved",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "57c4bf74fc095e440e8dd640d9d03d4bdc529818263c0f2c751efe5c4faadffa",
+    "c90f1149ba1ea8db87eb7da7c8c4635fd249b6735d8a12991acc46de7d42d27b",
+    "d39a689e7bbbff36ac40b3dead0001de62485f0a554ee50fbc0282916695c37c",
+    "8b3ba2f43c44f0bf2912aa53b1a9a24669aee76207ff394ea94c035810e87d25",
+    "f3543aa887ca114119e678f370b6d9c679429a38159d8503198137590e6a1c16"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0198",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "f5a0fd236beee1447c3b7699734229433897cbd85adb9223f67053f46df069dc",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "713f735a4049fc9d2868076ee73da16c7b22570a518b82128162f94e6d5d95e4",
+    "6a14212cd6488093ed0b01648cd6b02bc986a1fc7c8b7dc3345530d32ef9a314",
+    "5b33d9926063d7d5284d55d47eb4fc412504a714dbae93f500432dbe512df58e",
+    "8e9d1f948fa34fcb8435e31a53f7a6d01590f0abea71808da01fd7debe5bd3bf",
+    "22c9cd95b85370ba92d0caac9342989f46ebcac632985395a7a17e0ad08f2902"
+   ]
+  },
+  {
+   "candidate_id": "C000004-0427",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "b13d7074e6857b50abc5f68bb525d273781263a57379567af2f11b3e72898279",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "de96a2f18c72fcb83cd82ee524b84ee659249e8a95992f258c0a4c80ac2185b1",
+    "cb9b9393090d84be8f9c664df3bff9d0383721ed004b796389112ebbd0fa3188",
+    "7c9aeb5ca2b9f872f9c7a7ee036d9a9e72654827ce2ce254fb0429725ed3b913",
+    "3becb0dd5eee40748d2c9da79bc7e3fc2446dd6e0183834f5207ab8fec131886",
+    "8e6098b7475f56155155079088f56816e3a581883faf1e51112410c962ca9412"
+   ]
+  },
+  {
+   "candidate_id": "C000011-0163",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "4b018cb3eab49d02ad2dda146445cbac6bc14dcd5593dd3fb3cbeb342e504953",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "2c51f4e74c3cd1b013609eb40e57b6cfb1cf371937de7abd4e5b510887e8e2a0",
+    "0b913ea9edfb11e36c45967c5747759f9b200d34b790737aeea56fca5722142c",
+    "ef6c9a5bd28750b3dd1adac2b44599d9ffcbf10039b8e4f94cae3d41bdbe2fd8",
+    "b4deb9a8f477e8326b2e7847dff2da26d5763d13cdd2b351e157efc197e3f964",
+    "97d526f0fa4dd7d98945dd585b56883a75a99467a34fb615741ce0cf2ae01b51"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0235",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "e11c29aeca18e23e2bcfe7f1ef1f960fed78512ff278a90a4499c0fbdacf8314",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "49f6706b083e50540ee8e8a5daaed580fd2d9f8ae830d1c513af79462c8e367a",
+    "f2ae34a86bacb08f210c68d83c3e3d91f6cb4fa5e65d38332de365ab2a5acacc",
+    "013b2cedde89e291e603b64cc745d03dfb49182573857013105d264e4d5274f4",
+    "2d1ee48f9719023cbaa0dc94f450632e2643af60ac2e1ffa3f7608457cd13a5c",
+    "14c9788832db7d151f075b0d64e8ea3223145be2a007f8e305c7f20b28a0199c"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0109",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "de1cbeae2542537212cef44cf60aba2bd9d306854ae61aba11dea8193b3e0784",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "2b9ca9a0c964b97b5ced660f1cf106fbc3b89202440eed118cfe6449aa8c9a79",
+    "16c12143a3ea661403b7a503ff6bc4ed99d612a5662545e713a2f5fc8cb4ca26",
+    "7ce9ab04fcbbc7b62056f8305abc25ff77de7c6c5d0cbfd79cbc45bbb463c74f",
+    "5037a2d4c5251ad2ff8ce3111f188b3f070f0566674109fdc6a37dd7c96d7dd9",
+    "ee6023a0d3c8814b9974cbad6b6d9b2d50e116aeecd85319d19cd3d2ab5352d8"
+   ]
+  },
+  {
+   "candidate_id": "C000007-0084",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "44ace2990cb8b4954120d3f358b4b6b4108920ad90275e7fe531cde5dd904ae2",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "f88753fb75c00d9c4aabd70f03df1762b7fee9178cd9094a7b230176becfc715",
+    "8dc2c16744f7e5f0de71c9fddd31b149a66ea397cadebc04306dd20aa180949f",
+    "d8dfcf7d66f4c8f0c8b7fe6aca4e3360ce0496ff51e70fcda7b550e0157571bc",
+    "0cedeb5d2ebada7aa1aa02ecdf061c206bff52f6b84a2cc95dd309db090c8a82",
+    "cbef511ddf7951096c7fbc9d640569bc0f163de032b36d661ddbd14403f737b9"
+   ]
+  },
+  {
+   "candidate_id": "C000011-0228",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "54977269b688caa7fe92154e829ad5a32c4a8bb8067da459c065a43f8c18ce07",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "f152aa0235c81ecea28ff217b67d236727900b37823ad9bbdc3e192b5c6ceb34",
+    "bee666900417abbecd60b3377f2e636f7e2be196c41060be60f91767f5a0986e",
+    "02db84e8630c41da3e2dd9e266247b9737cecb6e0bfd012bc6df46c27fad2065",
+    "e97b308099b3b8a031ba26bd5eae03333ad9fa0afb384f1dc6faa82d33b81544",
+    "cbf84a9c06c9fadd07589563982aca289b008ec6b699ee7fc713af4f07ceb55b"
+   ]
+  },
+  {
+   "candidate_id": "C000011-0200",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "c6a6e928da4d7e7e6ad6bd88a883ba843fbc95306a17b126de36085153103563",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "d258e1e16904eae91b7427cd917578679f76c0b6a694b0c7fabe72b97582fb74",
+    "21f03a74b3725426caec6e821b629466bde8adde0be8fe5c5063c74c464f982b",
+    "bdfb69066f226e57e870fbfc64c208eaa6b28580e3034697fb50784e6583e30c",
+    "51d86bcb6a9b7bdb178edb977b37778c7e435c8a611e66b415aae3b145811d99",
+    "ec7fd6642d1b1fc77137d9a5a2b1670df3039dfeb4166499bdd0f8a730c21906"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0137",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "a76f7e83fc40be28517034588d22a25f2768ae0f8958d1466728f14bc952b558",
+   "outcome": "resolved_covered",
+   "evidence_use": "exposes_other_sense",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "cc713b53fe06150d28a8f5a194318c9d11f70dea17a772953944153766b2d482",
+    "8aa8b157f832648fa35b08a663889067c8629917dda7079f497f908aedc84fc7",
+    "35bce4dc64d4628cdce4417babf43446755745ab12f35d9d16e8c3e25d2635ea",
+    "8f3f9b9305364515da866699e08cb9d3ce95cdd235d9a939645f88af193d938d",
+    "47a8bcbe7a8d31956f1856467b875c132a1df04888fc7d45d50e6f8c845944ee"
+   ]
+  },
+  {
+   "candidate_id": "C000005-0070",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "0495d936dd8955b21e3d4559e78dcb2a08fa357997ff56ecd30e2ec441e3a777",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "12a2105f6b4baea06bff51ee45ffbca395a98c00c8c1c135c7f2d010f0ed0329",
+    "c6cf0cfeede3e5fb7ac696cd644025a808ba4fa94b0bfb564b3982b3e4ed8d6e",
+    "49c0a2a1fc8f6d71d83bb0aea75271c07cfcb8008c7ede7003aeeae6ccdd9329",
+    "d30dd51c12510bc589743a1ab377719538341b1c8843e2b8360cff935a8bce7b",
+    "19970021510af8b06e5c194f3f3aa7d8c73f6a7fead632f715a9723d911336fe"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0248",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "3ce247e08a8083ae83387105d4f88b1d60a6c09d249f50ee5c5fbdf22f4557d2",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "8702e52c499e4c426734ea7ade0959232dbdbd6998cf7c2be4f6190e25a18229",
+    "18393bef20ce9d3bd56e29a48185ca240a5ac5fa654b37276c7fed9c5407f471",
+    "1b6d1582d54c845d821a092ae6059a23fc90426cf824a1ae3de2b47793c88834",
+    "737c31aeee0991eec817b7467186acb0338ff894ff411b3db15218ec73b9924b",
+    "d47114e48b74936e696f6937a3c0c8bd428996899c987c758a380583ae620a84"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0103",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "2d6e75dc90d4a0fab35f88e9fc8907d776356008629b37d3f95fd0bd76e15e20",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "48f6eb28bb2ef478a1dc1b7a77dcd3ae17648c50526eeab4e91ef5eac565a55d",
+    "28aa02ee069d4883f9c912e968d3a943d41bc2a56b04541ac100fdca1bd04661",
+    "af747832db746cbf8a91206161cc42c766f1ca3937adcbdc81d63fa349132203",
+    "9a5a51c35d862fe757153a9d2c2dd0aa752567c06e863173ba39e9dab61f6125",
+    "cca27287bdc1b6104bbdce52da433a99d03562f5788fa7596bd7f6f8a4c97be6"
+   ]
+  },
+  {
+   "candidate_id": "C000007-0077",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "d09ebbb97efd9a7e8b4e371d259280eea655c8e8619706837205a1d5c1dc8dc9",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "cea49559617c6fc6b9451c6802497835873c290f57e6ead434cf295349edf81f",
+    "dcf15a420da6495d70ac26a9fe97d00f334e23be428ceb4cbd22df18b513f9ce",
+    "d328201e243b4e2acde4a06f73af22fe0e6851df31655c9740d22c6c97b10ff7",
+    "5ff63488cf895db8e12003668ce98137b676e02f84b22afc59c6f03de5911e7f",
+    "0f043a24e51b6452d5cc9cd0c6e1362c3766a596e298f2b158cec044b703a4bd"
+   ]
+  },
+  {
+   "candidate_id": "C000010-0359",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "58512847becdb8cb117564889733e48d8eb3a99daecf4562e0a368291eb7046d",
+   "outcome": "resolved_rejected",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "9809bc8473702491df77d8b231d1db31095d9733ab1e43fe0b1f10e28e42c874",
+    "1c483764c7b0e9622b56ff6b704f5f71e550148385c276e881489b2a946e5b43",
+    "cc2bdff497f55490964e0865aaa85e44e8ac6bf11b10124ba41e1b68fc083d37",
+    "7275085d7f1c01613b10227f2a16cb073c39c683c5c2547402fc94c616831468",
+    "12d11a43e74b6745320f9120626052dc6a3ce21fa6a91ae9c449d35232f0ea9c"
+   ]
+  },
+  {
+   "candidate_id": "C000012-0297",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "a5b10e3dd28f03a233e3ef765f4bc7d834f2ab757d26fa6008869084f9d01211",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "582208a2a7b352ddc41181bf440bbb00b8064734c58630089ca5f76ba415ac22",
+    "c9376dc0f1a4b284e1c9d62895eddc9a792f86ed12895c123827d8be7ab81e2a",
+    "f5bf59d4374ba5c0ca92988bd5da394e3b134ba005a02948d8562fce3fff311a",
+    "c91bd01c60f7b6b8bb8b99096e263ad39fad2a342be0de3708ce1f23c70a8c59",
+    "1c4d41a9e47de69a673a17f3c672dd47f4181b31d8b37032605749706616f59b"
+   ]
+  },
+  {
+   "candidate_id": "C000007-0179",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "be228043b96813824d223174bdad59fddcc0a6441b18313274f9dfd90f73f7bb",
+   "outcome": "still_deferred",
+   "evidence_use": "exposes_other_sense",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "0974d2aed4927c4a5dc8049830817f31fa53e7c9f96f66dcc6e0788770eb3a4b",
+    "07c1b9133824e464fb41ee25709b51cbc11de4ead55dbf85d71478e05a0afbb2",
+    "3eb7f779271e3643e9e9fde66f345f41fa76c3d2a665e6688a0305e8fd9eab51",
+    "15c350809240bbd77c0fcc1cca019981f23f2eeb422d27a57c6599940a2f7ca3",
+    "d3b7ccc82c5e0ef6cb928cc3d0ca4da634d41bcd1b41bb3315d570903dac259e"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0159",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "c81726792c4193e88065d35496efc808bad6104c30a1721bed330a355ffd8676",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "779dd3076bb358972be0fbaa86a086f7c2261f5c5e5aa011fb65d6dee1987da1",
+    "ccb57f14217bb88bbbc59f0887b722bf8c5fef268543deb662a4c5f09054b261",
+    "b0c92317e24b759497fb4d7cab2b1fa3885acd75572e4bf224d2f4997c04d4e8",
+    "8f29699bf23111b1e1f70d1e68604dadc27e8616a38e2111253225ff597fe1e9",
+    "93182a0449a944eaa770e6bb2736091940f9748940e9a00cf2001864359ff857"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0045",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "18b79a5a6c003e6fec38e307c7965212ef7829b84d8a66f7bbe48bdc74bc8763",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "eb0e9296eb0262f9e0044d39f11a81e30e9d9618703e0eff8f76923c29f8d187",
+    "1633b4febfcedfb8700f1c8727922d84760aa14698ac02f3f5295839688908fc",
+    "9a046b71394460a02ede48c6743c94f85e29b1112dfff8aafc2f1a431b60d36b",
+    "ab2f925e4b5d1e0a8901bcb199f5c777c61e022b508b99409f3a307640798fbe",
+    "1eccbc0fb619a3abb499ff830c8e8a8a5860c276171db69bb3caedea630e9212"
+   ]
+  },
+  {
+   "candidate_id": "C000007-0152",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "bdc92ebd447a0d4e1c1b94314e1c7edfcf8380bf015f588e6a40060168f8d13d",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "09571522a20f66aef0edf3a17d02fea222f2ca65aca86fc3a1ab194122f7e6ba",
+    "2e2a09b2e31693ad8b3baf8a2847aa3762c0f89bd0c5e0c0be8a5cd0ded6bdb5",
+    "7c1bedb06925bebb9fb66966b81f3b63adcaa01e5aadb4176141cb1c8385bc47",
+    "c2cf37a31d3c6c3bb5f5a92e45260931fa0038e8fc2f212a5b746691767e5687",
+    "93a33293565a63ea37fa777839b0e3137de6e7e5591961660668b8c4fc13e6c6"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0155",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "80d0a9b8415ef36563f6368fd7e68f314b2793b7ae3278aa6cd728e4e235f153",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "8c5e5252f1fc03f80d5e793b4e8b750600becf34cad7b9b0ac073b69e49d9b27",
+    "e0682a7ea37d6e99199216d574acb9ebb0f75b2e23948f1993825ffd10950587",
+    "1d7a1dcae88fd69c96cc5ad223f2a1173a6fb2ef52f76a26e712e8e7eb62bfa8",
+    "879f049d6391ceb7b91bfb653797cda10b2d2ed9c3e2eaa8fcacb2eee0a9effc",
+    "c497916a4f4ad25934b8097c5421a4c0bde753c2fb33d4e6da937017ee942d51"
+   ]
+  },
+  {
+   "candidate_id": "C000013-0065",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "727892b2e13e303fbdf5f1733ea19b81a18fc94ec0e95276713cb7a1a6a965d8",
+   "outcome": "resolved_rejected",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "0897050d9aa4607e907d0da012048d5f74563675c40a3d1a8c637066202d508c",
+    "cea421c8360be68e225a7ef66dc402bc08bf5e732b8fa99d7c2bec6704804a1a",
+    "91bc47f537eafa7552c990ad2ec51a262e50bdfd0758fda09503ddc065953671",
+    "a9c825e5b1605ffda23115a735336c89b6cc030f4e1b64f62fe3d1283ee9c4c4",
+    "97c44fd862a68caf902796e0e2ec10e1e8faf17f9c10ca2cacb859ce1076e22e"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0012",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "feb8e83c53c4d288438c9c2115905af05058cac3dba39f1640aa078a271a8d7b",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "545db186d91a6ef0478ca983b6317f0d2f2153e1854ca563ace626a06111a498",
+    "356c4bad379ee6687c60a1225625c7ba72267ddfe1ff4c95f3b8ace4b446980d",
+    "a486f4481e52db8e328ff8b9e34a932e14be65ee621c80df945ddc04a3e6ca0d",
+    "15d68c725b7003892bfd85dbb59a0802b46359c105300e98b522b89bca28ac8b",
+    "d6f9c02a4268f454a97c193b0543561f391711f678996794b2430e28e51f19c2"
+   ]
+  },
+  {
+   "candidate_id": "C000013-0092",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "16a9411d205f3c199477920b84c794fe7d8518bbd7180eaa6b97760a90058fe5",
+   "outcome": "resolved_included",
+   "evidence_use": "exposes_other_sense",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "9c0dd3d051b503540d656ce16a4b0ddd9d1d2d64e0a8dbf412185b65baeaed9c",
+    "82ac9fb8e0421deb8cefc694aa97cce0fc9f4f944ca0a00fa2b2c3bbee430085",
+    "5f1ac1a1e2691ecc323f51767b83cc2f15140de126fde9e285226a53ec99381e",
+    "45a6d599096d7d56a7ccd678812a26e7f6af9b3561c35df757e1a169b082ea86",
+    "12917b71ea070ba24abb98d8b87f85d1e37091af99a9c2d70b20ffe2ee47ae4f"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0303",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "06654f64c77f3c94b959e968bf3edfba5c704b0d3036c5dab6a42ac08a7efb30",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "aef333b51e60f6ec0deb34924d78bd7de1e60bf6673b9e0455c44382252a66c1",
+    "16400968993acd8f9ed595590cac1511e3be0a269b93b4d21e98178994dbfe8d",
+    "70a95c13baa8e1cfc5163ee4f27b0441ac71fb027dc7ea49c15d12d0939d9b0a",
+    "3e8614a61c6f3e6e3e40afd925640b987d86abf1b1042518caaf71b2d6176584",
+    "77503a05e9bf4978fa4aded44899beebd83da56ea782eddb8778cc6c39a53822"
+   ]
+  },
+  {
+   "candidate_id": "C000012-0051",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "53a1056af473a5a0b71e81827bce0d9267e3aecf6ac838eff98fd3dd44331e43",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "a98f61d80c15750c00d878601401751e03b1c668294692daf560394eecd2be65",
+    "64105ee34ec30a172dcb7aa204bcba064c3c94a9acff2288152e2c76c4c29b9c",
+    "84a6e0b639abed4bec78aa837982b4640710af3f8d785d408456911a8342a1b6",
+    "feea132cd5be69a7ce38e133c9fac29ea4cf8ab6486dedc00a77996d17526fa7",
+    "3b7290ab5f2ab6307d3eca92d439750de0e4f0da00e75f4aa1a674824592e707"
+   ]
+  },
+  {
+   "candidate_id": "C000004-0093",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "5d921e00db5c1bdd0a46c213f3d8b96d436e46b765079f458370876a2493ad3d",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "64632da8bbe7117208bd28071ebfa4574c617ac809b93631119041bf250f5fc6",
+    "faad9a02f94c403fdd7db6da9aafb8e64132e135acfaeca1f6f873f2d9256eb8",
+    "b7dcf12788d127975a3f03306dc52078d5529ca0d17985a7fa66fa7abc629795",
+    "99b6eb41849dcee0729a399056004626e93fa2e71a320c1514662db93fba9e87",
+    "8c711d7282a1739c7eb5ed96c7776a308eca02960f6fde8f9194c48f49f364be"
+   ]
+  },
+  {
+   "candidate_id": "C000007-0096",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "7a8049578c1de9e46dcdfe00d30e060acf4234a26c2cf11e80f9c6e28974cc5a",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "d8ad65ae6cfc9cff793c4f2daffd7d5b20cdd57f9b85018ef6949afac484d365",
+    "7d87a5dbc0d356347b06e3067bf68e60d1c8f308049af3db2b4f05e39705cf57",
+    "fdb958773cacbc6aac8832c806395bd9b9f294fed75a17dec33869ac400dd218",
+    "e377c46f67e49357719adad97ce6092e426f538e6f095dfd8b02ee8682ec7a07",
+    "dc9d8c7eb23ea3863e028e73d18c4ebe83b5bf3b79aefe85f18392ce342e3a95"
+   ]
+  },
+  {
+   "candidate_id": "C000004-0176",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "12ae63e676e44508034c5fbf2aeec119123aa94d8b70588da748240be81cff0a",
+   "outcome": "resolved_rejected",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "31a7afac1c80991b3bd905d57b519dc6f14b4b5c9c13a049f252b3593b5a8692",
+    "fcd2e5640b50acc09853d3b4e27dae3525fbaec236401a76b19eeac4bed71a6d",
+    "d0f0158a105d5c005db65bf7905f29797ab5363f521151680067c3172859ccd3",
+    "36a2c08a5d3120a142efa96518b4a2b8faa82a4d77e05c1ba36f052fcd66c589",
+    "0a9cd42a5f964ab3df095507f64838b6c29c1560d73f92d1672f490e1fc19b89"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0104",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "560cc66b9bacecb307ddd9ad99f8988c47b159e42a93b8785603fa486ec247d2",
+   "outcome": "partially_resolved",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "1caaf233dadcc542821672a523d1ef5615cd339df08542449de1a3ee0022a0c8",
+    "4b51ca7560c06da142cd666c4ef1ac31adf635591277297bd012e646a61e8235",
+    "1a232bd4dc619e6558fb4016d3c425497bcd0d0df5c3caa6bbd79abd71ea946f",
+    "d4c160c686cbf54e17c9977e9dc2d7dbb3997cb831ec364e894c6ae028daf38b",
+    "609bb528233be478fe13841728d4689055a7a70044ee3b625916508538b09087"
+   ]
+  },
+  {
+   "candidate_id": "C000006-0182",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "99b393763959581cd5080414cd09974945a3a5e5f588026fe3218497eab756f1",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 1,
+   "selected_location_digests": [
+    "e2d2af789428501f99f4a41e21ca12014a307b3bbe970a5328008d61931a3902"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0152",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "historical_decision_sha256": "07742bee386cce6b6eab4fd207d7220b62230be6af8800f2d846d61b60b78096",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "1e4b013869d5454a57965398c343ca5186437050416cc72c5c281a78b9081ae8",
+    "66eefc9a437e99d2e998e6d3ccf031384a5703268b47309d6c1ac71e99a8f660",
+    "ad72d780688a101190386a4db5abaf5190ec2249ed9da49e95861d3ad03780a2",
+    "0ce9389ee690cdfeb24412580bd51bcbab05e5216ee18594512b059e3576af0e",
+    "571d0ae8c55f02f566a1a7666957849cfbbfb520796e21be163613c5e07a8417"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0095",
+   "group": "deferred",
+   "deferral_heuristic_category": "evidence_insufficient",
+   "historical_decision_sha256": "e9015324b9e4a26d31be6c4d9478d2b6b708dec89d21dfe1849c54ae74448ae8",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "682080c2504b184458261aee1995cef06599fca7c2cb0aed784e679cecfda7d6",
+    "3bd7864354abcfecbca2f8188ffd6ebe524559d9fd08d34c71d0735ab665c97c",
+    "df91657234711a549ff822f6096867ddc975cecff19173d161ce9b02de50f834",
+    "7fa2783ef4de98324c16c9d4122e98d725629ed0687886fa93a6d245ff446d7c",
+    "9c32140895417385f96f17382860fb3cbbf180cda2adfe979d9b87b8f5615311"
+   ]
+  },
+  {
+   "candidate_id": "C000009-0227",
+   "group": "deferred",
+   "deferral_heuristic_category": "evidence_insufficient",
+   "historical_decision_sha256": "852be562e9c6bc0c44b25902740812fd0c93b4a1177c3c5992052a09daf92c4b",
+   "outcome": "partially_resolved",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "f9cab42277fef3b01c0461ced9c288ac6860bf10c98e577414e82e418162f4b0",
+    "98526a789885560a2d28592f334259239b37c7a2af0abb4063225c8330a58ede",
+    "6a10860d2ba76e7bd7476e885b99ed1510166d53e974e4621dcc31bc2c20257c",
+    "bf7efb062f417b442cfa3d2737f15f65dff6010cdef27e9f6c980a4987a1d426",
+    "be4bdd6c51294d4bd86da4ed63c5fc10fb9036e953a86f02e58f765462e06612"
+   ]
+  },
+  {
+   "candidate_id": "C000004-0435",
+   "group": "deferred",
+   "deferral_heuristic_category": "evidence_insufficient",
+   "historical_decision_sha256": "c97c34a1f6d004f4f2c9feb2fc2e159d4bfffd2b8b2026d99c36d30070a3911c",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "846e24eff3f2f2d7872a757c15697482f2753f4b25e5cbc0d7323e0672468226",
+    "6e64f2d5931c3e9338ff6f2bf94a3bc829f1364fc0290ebc598d4baf7c28bf7c",
+    "9f83fc8471d8061c69d2e29cc01797ddbc40bc94c3b4764c6262457b49d64f81",
+    "4136532df18b3c74bcb27c0631e1a4acd4211d3708c163abda28eeb3a94d52ac",
+    "df51a446c0e3c38df97cedec89c05f2a5487e9a91223e60fc0564110418bf374"
+   ]
+  },
+  {
+   "candidate_id": "C000013-0057",
+   "group": "deferred",
+   "deferral_heuristic_category": "evidence_insufficient",
+   "historical_decision_sha256": "05d146afa98aee5295b4efebc165b7a350c6edfd2cafd2cdfbe1af3502a42fd9",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "d0fd34e9dd3193976982d398dc47b95a62c8c7bd8ba8db154b00c62c9a516b08",
+    "94f7a4ab88dc8db064f8c7a64796ccc6b9b21c4d104b1280ffd71b673333868c",
+    "a7f1bb238f1de2bb8b50544634e254b361334b767112578fd06e59684eb7f410",
+    "9fac1034b03f5fbb4b312777d83867c43f0e384d130150cff1873c6667c89829",
+    "0890d2cc0e00f97cfa16dd39bfdded358a7a05131c042a856dbfb0580d95f7ed"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0084",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "c05270ec076727ff1da42b634784df9a1c1897c1aef4aa187914e80bce5b2801",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "fb8b13e49402079b3771ffe5b5a1b7ace6f6c8c89f7c508efa1ffd1cb9b045c4",
+    "8abb114c8d69542e0e9053ab66dfb3611c441050ecb27c748818e7fecd3b1634",
+    "67d64912aba93394f7989d2545dad3073685dca0012e0cb9232d259b6a13bc23",
+    "ccd7b0d9da9bdba2f5036867716efc2e5ea41e262ca6ad18af45009adad96c61",
+    "9900813f50701bfa275be61df6e71c8886e02a2a7b9b908b52419c21420168e4"
+   ]
+  },
+  {
+   "candidate_id": "C000009-0110",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "bb39bbf381098c4e0154640400f41bfc0a60c4d898a3e1fb3e51be3f493b2ff9",
+   "outcome": "still_deferred",
+   "evidence_use": "exposes_other_sense",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "b12db831365d3d32abb694cf7417fa77f664f7ceea065598b2cd1f5827f28004",
+    "d0a851b076843a0315f46f30f9bc63056361dc650d55a926681ebdc919a60655",
+    "7e5dd2bd2bc53c8a71500c2b26fcac5db2ddcbe64ca5599e39514fe37af4a538",
+    "5cc086e2516bc5cb693d1a40016fccd90aab64f1b626bd5b3cbfeef30e1252e9",
+    "bb293c1bf0281a484eacd5dfe12382a6c18d401ef410042ba5ebb976da2c70fb"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0005",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "eedc940595c389633c358c77d4004ac63cbb713aa44f5d67a5cc54d5a49b315e",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "557728a74b3a863a5d8d098763a301c265db8c9f320ea26b915f9363386b27de",
+    "7c172698eff112386652570ae2770aed52fdef20bb5f4fa840ef5a27b4455de1",
+    "ef04960a35048fae7f378ad14341adef32eb3562b2478fd13aab2cf317ce5f9c",
+    "0999c4b6d6c7b12ce9116bbfa0feb9d7c262c10c4fa103cb806bf2c51a704595",
+    "b3b330c311d7f0e3bc171429ce13de6fd55eb478e16a45f5382c43fe8d528901"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0218",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "3052465dc73d4c0620d052be2af3b38be764c68bb6c4396cb5619290e43d9360",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "7550be28d4cd692ff5dfc1f33f7aefdc40fb8eb6ea708109524aec902847181b",
+    "a7dce44fee30468c0283da6f30ad0566bc0b6b3decbddf1591657725e366ccd3",
+    "833acca4c4b40b38a55ad1a4e940ab54cfe42a8d2a2e6c02d20015db9cdfd62b",
+    "d436c5cd9ea8900e2447d6faf9ce16fb3bf6c7140e2c4848c3981bf51363458f",
+    "b5b54ce5a4d9ffe80512fb7efe9492f3ce2edf7702c6b46849c7aa40604fd31c"
+   ]
+  },
+  {
+   "candidate_id": "C000005-0423",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "924f22cf2af9367b225f85a4c68e7b8b0c2f512754b59d15acedaa8991fe7a67",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "9a1cb3cb256aa569b5414f377baa0442127e4c3684f5cebf725ce2b6333f28f2",
+    "7ce3f7e01ad91811a167d8fb6d009ab219de023cbf28a994c9ef5f9de9d361ee",
+    "b37fbb12808291a74738110a6cec9ed629ce8356f9a17033812b66b47d02e4d6",
+    "d7f7ee78a9901183e8110072028ce50a90651bf8af6ed8aa252c636c12f3fa86",
+    "452e03553e8a048a07c7959821b40040d7c7fcba4d8cd49fb0da7fedabe91710"
+   ]
+  },
+  {
+   "candidate_id": "C000013-0098",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "e0fd3af08445921365a0c5f3024aa9df1f777011d834ce17eabfc7dbc5df0298",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "cd4c5def62d596869695461c0c3ab9bf66c0538efcc2e3234f8ca72b6b9a362e",
+    "0ec2810c07299a8f19aa7369304c4fe15f4e87b1536c769f2a656699d5e8ab51",
+    "3df660b198e4bacaf08ce3b57f9191d2669bfd82802a929ec9b1735fa2ea41f6",
+    "29ef3973a8468d30c35182bfa5695baa5a5fb600ecf0eccea51b7d2e58bc9ef9",
+    "bcdef7edba0c5df1baff052e5b6e9d124847abb007ed64b81a3c89e70e8a966f"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0026",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "9ff32d7c972cd1c9b38fd5f9fc34c73cea02fd399d864379472c4a4bf91020a7",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "95c98fb1ad7766cf4a84470704f4d97643e21e6392759cd19bbbc1e9136a6f98",
+    "1cd183a431ef8ca9dfb226c1a5104ceda736f76ac5adadf8be4911bd71aaa281",
+    "116403851156220cf85c1642fab1bff3bfbc722d8e90d622a96d696850998b4c",
+    "874acda8c67652dd324a5582c9e88f49d13839c6ebbf41b414744f38ca4f0af2",
+    "2ffdc5a7a420649313901e6475ff489caba2ecb3aae634b5c1323dd03d5a892a"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0097",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "f3fbdba692ec2581594a25e703d238bd3fbb0bce26345bdf769f4feb2203ecf4",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "3eb2f2ff4e7c56b19f80e6ebee73022dd3a0e377a6d688874c38ebaed4dee91f",
+    "424b0fcdb7b2db25be7140baeecd149de663f2036b83e19dea90cfdececd98b7",
+    "185a4be7d1c9a8452f8bb25240c414401bbbec5cba656f5a9eec3cb9453d635f",
+    "9105a3ba6be094e41e14a05ff3d1d6c3efc722abaceefd2b5f7e8eaaa012f8b8",
+    "86e9c44b7a084eb1f89e5ebeb10c87ca08574b125100a20ec211d62f198f6a1c"
+   ]
+  },
+  {
+   "candidate_id": "C000013-0106",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "7154f0b11c937062d1f0594ceffafb7e6804e6287e405514baa0ecdf31b18e7f",
+   "outcome": "resolved_rejected",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "23aae262af9a5c93687a590b67c43c55396c613511fa6343039c72e049aaf934",
+    "444f26262731f478ddb10b6c241f10e689db00d5fd4780596cc414a633df40a9",
+    "d722e76efbaf894efc4e40a4375a5922d673f8f42e252bc8fb9a9fb1743d9088",
+    "25d3f9d1907ddcc5da8182b14cb27cd893ff1829b548b3855772a050f1f52e5d",
+    "de9c6b4fdde8c54d516cb263de29b390ffa64ae922e9f09d090e00ef6ec43d23"
+   ]
+  },
+  {
+   "candidate_id": "C000008-0142",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "historical_decision_sha256": "d7f78a2e20f7dad3fb94a5d57c534fd0073c32cf4d977e5cdd1272c9c6c05918",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "0acea6f2b1c9e72fb38100ee7747c2f6ea241f0102a833af581ca7f266a5c71a",
+    "a26d4530d296d4b7fd78f08c90456e61a4fb46284ac84c88e86e4f894110adf2",
+    "4a50bd8df0e6a39d4bc1276f53cd3591f678bb11647774758593cedfd3ed9a8d",
+    "d54650a6fe08d482e1166ace5fe25fb97622c586312caf132c53b2048c63d4e1",
+    "a3786821717ccd35ccfe091209f30ae0bf97b240a8e8c56124b5461c2cddad19"
+   ]
+  },
+  {
+   "candidate_id": "C000010-0149",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "88f3ed696239de5076ae76222b0c94589356ad90a8ded3d5f31ed9e8648c1b05",
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "cbd45c22f73fbb0a84a193850bfc2389d18da2377bed2043eb345189c0b2297f",
+    "7776023fc0873965e29b166fafdb2f9c25a8a3c39fdff0aef45a8e54450c7227",
+    "3377cc5adbf1bbd64f18c7946887fd46efb2ffae1bbe4c28d477043f503658dd",
+    "9440b205917c361afb9769a4d0fe1880983556545739726a1d8389e4c15fa3a8",
+    "778e2d0eb26536d26d9ab301c94052add4b87538e4e61da6ec4a709efa1d5a1a"
+   ]
+  },
+  {
+   "candidate_id": "C000011-0244",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "5ffd17c7daabc1a8d31632e50241a577b114043c557d4831b91197e2bd44de23",
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "9095cbaaf2c71634c301779a9b06c572e82e36e95a6862e1f907b74009b90a33",
+    "161e1992208581e980c9c20fe6e7da2d0f93e0ddd263bc04d8241e0e451a9d7a",
+    "71919f25d54c021df5bf48f0f398817e9043ff414569ccc14b3a7d6dcb90b42a",
+    "459af8ae07dbf43f5d73796628c87d87fe1bc7048d49c5308cf6dac1eb9b61b2",
+    "dd104dec7c9cebb1bce3d9448b2a0ad3cda0bd4456126db4eb9fdda4dc4d37d3"
+   ]
+  },
+  {
+   "candidate_id": "C000010-0015",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "f00018e2fffab1f97c6db28c04eb9ef94bc1aed7624b3c27ccf548d94dae1ac7",
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "1bc673177da97a691d141bfeda3634c2d3ac05b608037549f5b8bf30f065c6dc",
+    "2747411c9a576f3d59dd324d83f4e70c261c7685d142fc9647802898d6dde448",
+    "082a1e9ca24c352bcae72f1de89108e3444793010b27a91bb2e7161217b5e18e",
+    "77231b119b14569f2917e2b6023b2334a6cdd1ef4cddd864b0dbeda650a77aad",
+    "cc59d14950a48d04dc1fb92b0c0f3ed7f0caada209cb7a57498a1d052ffd8fbe"
+   ]
+  },
+  {
+   "candidate_id": "C000012-0239",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "35882578ab00e1df9b6b9792509f64c9aa51c2c880fb16bc5aea1df18084849c",
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "ccc5e9ef18b20f5c6e9a465b29d619bb55c8cafb57f94d6e644bb325f176a410",
+    "232ce87ae8573b4f33fbb13430a50ae616e2f7b38fa85cfb9e706eae5291a8ac",
+    "161ea6e0bb75a0387003747b6a3e6c6a49bcccf5985a231206590cbfabb955a0",
+    "6fa2ed04ff18e7d689f7934ed045cb3f38013f28d234cfa1562c594f9de1706d",
+    "ebb0226e49e3673b6e9c18c22d9020b292f850a0602deeb53b4f66b47f328249"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0013",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "405d3ea76e3b0be7bff064a51337f02614930b39842590df7d1f39d4d43dc423",
+   "outcome": "unchanged_included",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "cb8406cba9310322c1ddc2dda51d65d64d16f6e1fad9ebfd4ac05210dd5a4b98",
+    "d7a30ff6803ff87469bc4814bd5d2519d422eccb84bede882359a06927494c5b",
+    "1daf6b1780be4c7e5bc40afb8612d0c0dac1d2565bfd08b724290e4a2deef4c3",
+    "3f462f1792ca35b1e4c0e7e2d7c87bb874ca67dcc9c1febf3ec148baaeb270a0",
+    "34dcbf15a52de8561afba462cc703caa3324790e3dc79c512bbaa27fbbdfc678"
+   ]
+  },
+  {
+   "candidate_id": "C000007-0158",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "fbd52227a83b8279ee5737521a82cc8ac0ad073c10af87152986281768b2ee21",
+   "outcome": "unchanged_included",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "0dcaee530280423dcad11ddb9e48ee5c6c7e9d3b02231af156f679a76a5bbf93",
+    "6fb04b3b5ec9b97809dbe40363523be2676a92176e3c196b0128db0686ba803f",
+    "4d8fd8c0089b012895110c23b2a60ae2d31e7ca6629f8260275da573958b644f",
+    "04db23b18bffe3752a7c6b6f4e6b8f5c0136666c60585c1ae83574719ebc710b",
+    "135a884b773c454079927aea911b3d7d21b21dce46905cc529fafd7c8f1a8599"
+   ]
+  },
+  {
+   "candidate_id": "C000012-0236",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "8da68d42d5580590a853be0f427f31f119a4f87dd20293ba2ff210c2c9f1c7d1",
+   "outcome": "unchanged_included",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "6a3b5e14a9fcc917c6a9a7ddde7c3942604be0223a3403f12078ae8f22bab403",
+    "a25ec9f35088cd9a02c060afc0b23ebb494e5b3e55d607c14d9a1dbac24bcaed",
+    "2d45c1c7d6145b82b99bfabafdaf688491c9d2580a501bc3bf2dd9de23f2dcbf",
+    "1edc181d9294f09b432e1a31d203bbc320e28c0de46b258cb54b0c206855aa08",
+    "07877ca241b3fa70a943ca0dffd1071fda0528804bfe00aaca801357fa5e6e73"
+   ]
+  },
+  {
+   "candidate_id": "C000003-0319",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "593478e1cd32bfa226e5395648906ad07fbb5909174b45804281b2a1eef282ad",
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "7fc7820a77e755f1e34499570e3503e56180cfd159b05ec6fff5e7712deb550f",
+    "cccd7b09ade13b414d1d26c5feb07024c3fb90e886b658f4a65dd8c928840057",
+    "cc23678a0fe1f5da1504a8807b1629216a296de8e56b689927ad365b3d2987ad",
+    "5e4f87e0b964450bda66a2d3a802c5ab98b37ed912ff9e3a3fc5b8718fadf6a9",
+    "f06450c8f058d8321f2cc7bd4cf6cf32c9bec2446e8d7f0ef8bf06dcc72b6d83"
+   ]
+  },
+  {
+   "candidate_id": "C000012-0055",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "555e9683474a7a04e29d5b8e933cf2505365ef62ad9572a63a1fe7c4737c085e",
+   "outcome": "unchanged_included",
+   "evidence_use": "no_effect",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "c770e6a7b12c4887491bfb5cc98e0775dd03eedca6c6eb0b2f28fe6a0a427017",
+    "05c62be306821c6f1b7619f7080ad8403bbefe94bdcabf97af9777ffe898e37f",
+    "0f763da4acc6de3090b83e55b4367ee83f5e540601049efd48282ece9b04ccb4",
+    "19a653c22b311ddf02274b5412c4b741d1b1f2dd30df0b60764a149d02bccc8d",
+    "90a800875120a5063b61c824c7fef5313e0f30446f8eedeede5649a80b923e9e"
+   ]
+  },
+  {
+   "candidate_id": "C000007-0444",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "historical_decision_sha256": "0bed4cd795a03e05afb6e6aa9296b3633fb9b94007f050aee215f0d5d0737e02",
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 5,
+   "selected_location_digests": [
+    "3a2bdbed6985fe1dfdea51cc9ab671f0ee30ff9338be7688c020c32a06c1a5d1",
+    "0579fda303070b77e3b68d56742a92d2ee1358b3f2f8891d0e75677ae805080c",
+    "7e620f469d40f319ab8b9d65c95ee2e09958a9bc2057944a646486804cb5177a",
+    "7f34f12eaefcb94306db686bd414d657c4561a568600845194e3171b3b793d14",
+    "a6ab49228c28dba6b859c3209e5f53b5caa7d85b65a791d6aa14e5c4463cc4ab"
+   ]
+  }
+ ]
+}
