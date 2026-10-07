@@ -26,10 +26,11 @@ const formSupported = (lemma, surface, entryIds, support) => surface === lemma |
 
 // Observation fit of `covered`/`search_coverage` (issue #366). Their structural proof (same lemma/POS
 // sense, supported forms) says nothing about whether each judged observation's meaning lies inside the
-// existing gloss, so from this batch on the reason must name every judged observation (`o01`) and must
-// not itself describe a non-literal use. Such an observation is split off by `observation_ids` and
-// deferred or authored as its own sense. Earlier merged batches stay as recorded. This catches only a
-// reason that describes the mismatch; an unmarked meaning mismatch remains a source-bound semantic call.
+// existing gloss, so from this batch on the reason must name every judged observation (`o01`): a
+// mechanical provenance invariant. Whether the meaning fits stays a source-bound semantic judgment; a
+// reason that mentions a figurative marker (비유·상징·관용 …) is only surfaced as a non-blocking advisory,
+// because the word can be literal (the lemma 상징) or describe a sense the canonical entry already holds.
+// Earlier merged batches stay as recorded.
 export const OBSERVATION_FIT_FIRST_BATCH = 8;
 const NONLITERAL_USE = /비유|빗대|은유|상징|관용|몸짓/;
 const batchNumber = (candidateId) => Number(/^C(\d{6})-/.exec(candidateId ?? '')?.[1] ?? 0);
@@ -114,10 +115,6 @@ export function validateLemmaDecision(row, candidate, { canonicalIndex, support 
         const unnamed = members.map((observation) => observation.observation_id.split('.').pop())
           .filter((id) => !mentionsObservation(entry.reason, id));
         if (unnamed.length) errors.push(`${here}: ${entry.disposition} reason must name every judged observation (missing ${unnamed.join(', ')})`);
-        const nonliteral = NONLITERAL_USE.exec(entry.reason)?.[0];
-        if (nonliteral) {
-          errors.push(`${here}: ${entry.disposition} reason describes a non-literal use (${nonliteral}); split that observation by observation_ids and defer it or author a new sense`);
-        }
       }
       if (!canonicalIndex) return;
       const entries = canonicalIndex.get(candidate.input) ?? [];
@@ -143,4 +140,13 @@ export function validateLemmaDecision(row, candidate, { canonicalIndex, support 
     errors.push(`${at}: ${row.disposition} candidate must not include a usage group`);
   }
   return errors;
+}
+
+// Non-blocking review hints: a covered/search_coverage reason that mentions a figurative marker may
+// describe an observation outside the existing gloss; the reviewer confirms or splits/defers it.
+export function nonliteralCoverageAdvisories(row, candidate) {
+  if (batchNumber(candidate.candidate_id) < OBSERVATION_FIT_FIRST_BATCH) return [];
+  return (row.group_decisions ?? [])
+    .filter((entry) => ['covered', 'search_coverage'].includes(entry?.disposition) && isText(entry.reason) && NONLITERAL_USE.test(entry.reason))
+    .map((entry) => `decision ${row.source_candidate_id} group ${entry.group_id}: ${entry.disposition} reason mentions ${NONLITERAL_USE.exec(entry.reason)[0]}; confirm the observation fits the existing gloss or split/defer it`);
 }

@@ -16,7 +16,7 @@ import {
 import { confusableLemmaAdvisories, validateDecisionHandoff } from './handoff.mjs';
 import { buildCanonicalIndex } from './identity-adapter.mjs';
 import { isLemmaRow } from './lemma-contract.mjs';
-import { validateLemmaDecision } from './lemma-decisions.mjs';
+import { nonliteralCoverageAdvisories, validateLemmaDecision } from './lemma-decisions.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
@@ -167,6 +167,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
         for (const decision of decisions) {
           const candidate = rowById.get(decision.source_candidate_id);
           if (candidate) errors.push(...validateLemmaDecision(decision, candidate, proofs).map((error) => `${batch}: ${error}`));
+          if (candidate) report.advisories.push(...nonliteralCoverageAdvisories(decision, candidate).map((hint) => `${batch}: ${hint}`));
         }
       }
       if (typeof semanticDecisionsText === 'string' && typeof handoffText === 'string') {

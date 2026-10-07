@@ -11,7 +11,7 @@ import {
   CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, REVIEW_MANIFEST_CONTRACT, expectedAnalyzerDigest, sha256Hex, validateCandidateBatch,
 } from '../scripts/factory/contract.mjs';
 import { buildCanonicalIndex, buildSearchFormSupport, candidateViews, intakeCandidates, toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
-import { validateLemmaDecision } from '../scripts/factory/lemma-decisions.mjs';
+import { nonliteralCoverageAdvisories, validateLemmaDecision } from '../scripts/factory/lemma-decisions.mjs';
 import { expectedScopes, validateScopeDeclarations } from '../scripts/factory/scope-declaration.mjs';
 import { produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { assertStage3ContractCurrent } from '../scripts/factory/stage3-worker.mjs';
@@ -249,8 +249,8 @@ test('covered and search_coverage are canonical proofs, never assumptions from s
 });
 
 // Observation fit (#366): from C000008 on, a covered/search_coverage reason names every judged
-// observation and may not itself describe a non-literal use; merged earlier batches stay as recorded.
-test('covered/search_coverage reasons name each judged observation and refuse self-described non-literal use from C000008', async () => {
+// observation; figurative markers are advisory only; merged earlier batches stay as recorded.
+test('covered/search_coverage reasons name each judged observation from C000008; figurative markers are advisory only', async () => {
   const has = (errors, fragment) => assert.ok(errors.some((e) => e.includes(fragment)), `${fragment}: ${errors.join(' | ')}`);
   const lacks = (errors, fragment) => assert.ok(!errors.some((e) => e.includes(fragment)), errors.join(' | '));
   const existing = { existing_entry_id: 'w3', existing_sense_id: 'w3-s1' };
@@ -272,12 +272,14 @@ test('covered/search_coverage reasons name each judged observation and refuse se
   has(verdict(go, [named[0], { ...named[1], reason: 'o020은 때가 지나가는 쓰임으로 w3-s1에 포함된다.' }]), 'missing o02');
   assert.deepEqual(verdict(go, [named[0], { ...named[1], reason: `${go.observations[1].observation_id}는 때가 지나가는 쓰임으로 w3-s1에 포함된다.` }]), []);
 
-  // A reason that describes a figurative use is refused for either disposition.
-  for (const marker of ['비유', '빗대', '은유', '상징', '관용', '몸짓']) {
-    const reason = `o01은 마음을 ${marker}한 쓰임이지만 w3-s1에 포함된다.`;
-    has(verdict(go, [{ group_id: move.group_id, ...stated, reason }, named[1]]), 'non-literal use');
-    has(verdict(go, [{ group_id: move.group_id, ...stated, disposition: 'search_coverage', forms: ['가는'], reason }, named[1]]), 'non-literal use');
+  // A figurative marker never blocks: the word may be the literal lemma (상징) or describe a sense the
+  // canonical entry already holds. It is only surfaced as an advisory for the reviewer.
+  for (const reason of ['o01은 분단의 상징이라는 쓰임으로 w3-s1에 포함된다.', 'o01은 기존 비유적 뜻과 같은 쓰임으로 w3-s1에 포함된다.']) {
+    const decision = { source_candidate_id: go.candidate_id, disposition: 'rejected', reason: 'r', group_decisions: [{ group_id: move.group_id, ...stated, reason }, named[1]] };
+    assert.deepEqual(verdict(go, decision.group_decisions), []);
+    assert.equal(nonliteralCoverageAdvisories(decision, go).length, 1);
   }
+  assert.deepEqual(nonliteralCoverageAdvisories({ source_candidate_id: go.candidate_id, group_decisions: named }, go), []);
   // The same split into a deferred observation passes: the figurative evidence is judged on its own.
   const [oneGroup] = (await batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는'), hit('d2', 'p1', '가는')])]), 'C000008')).rows;
   const [first, second] = oneGroup.observations.map((o) => o.observation_id);
@@ -292,9 +294,8 @@ test('covered/search_coverage reasons name each judged observation and refuse se
   // Merged earlier batches (C000007 and before) are exempt, exactly as recorded.
   const { rows: [earlier] } = await batchOf(EVIDENCE, 'C000007');
   const exempt = [{ group_id: earlier.usage_groups[0].group_id, ...stated, reason: 'o01은 비유적 쓰임이다.' }, { group_id: earlier.usage_groups[1].group_id, ...stated, reason: '같은 뜻.' }];
-  const errors = verdict(earlier, exempt);
-  lacks(errors, 'non-literal use');
-  lacks(errors, 'must name every judged observation');
+  lacks(verdict(earlier, exempt), 'must name every judged observation');
+  assert.deepEqual(nonliteralCoverageAdvisories({ source_candidate_id: earlier.candidate_id, group_decisions: exempt }, earlier), []);
 });
 
 // Review artifacts for a lemma batch: semantic rows, hand-off and per-group hold resolution.
@@ -863,10 +864,12 @@ test('the repository validator applies the observation-fit rule to C000008 but l
         decisions_sha256: sha256Hex(decisionsText), semantic_decisions_sha256: sha256Hex(text),
         handoff_sha256: sha256Hex(`${artifacts.handoffText}\n`), attempt: 1, status: 'ready', history: [],
       }));
-      return (await validateFactoryRepository({ root, canonicalEntries: ENTRIES })).filter((error) => /non-literal use|must name every judged observation/.test(error));
+      return (await validateFactoryRepository({ root, canonicalEntries: ENTRIES })).filter((error) => /must name every judged observation/.test(error));
     };
-    const old = await stage2(decisionFor('마음을 길에 빗댄 쓰임이다.'));
+    const old = await stage2(decisionFor('같은 뜻의 기존 동사 가다.'));
     assert.equal(old.length > 0, expectRefused, `${batch}: ${old.join(' | ')}`);
     assert.deepEqual(await stage2(decisionFor('o01은 다른 곳으로 옮겨 가는 쓰임으로 w3-s1에 포함된다.')), [], batch);
+    // A literal 상징 in a reason never blocks, in C000008 as in C000007.
+    assert.deepEqual(await stage2(decisionFor('o01은 분단의 상징이라는 쓰임으로 w3-s1에 포함된다.')), [], batch);
   }
 });
