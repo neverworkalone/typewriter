@@ -351,3 +351,20 @@ test('pnpm script commands deliver exactly the intended arguments to the script'
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+// The Node baseline in package.json must agree with every active document that states it.
+test('documented Node baseline matches package.json engines', async () => {
+  const root = path.resolve(TEST_DIRECTORY, '..');
+  const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+  const minimum = pkg.engines.node.replace(/^>=/u, '');
+  assert.match(minimum, /^24\.\d+\.\d+$/u);
+  const [major, minor] = minimum.split('.');
+  for (const file of ['README.md', 'docs/build.md', 'docs/development.md', 'docs/corpus-index-design.md']) {
+    const text = await readFile(path.join(root, file), 'utf8');
+    assert.ok(
+      text.includes(minimum) || text.includes(`${major}.${minor}`),
+      `${file} must state the Node ${minimum} minimum`,
+    );
+    assert.doesNotMatch(text, /22\.13/u, `${file} must not describe Node 22.13 as the baseline`);
+  }
+});
