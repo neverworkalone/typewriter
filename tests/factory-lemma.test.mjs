@@ -12,7 +12,7 @@ import {
 } from '../scripts/factory/contract.mjs';
 import { buildCanonicalIndex, buildSearchFormSupport, candidateViews, intakeCandidates, toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
 import { validateLemmaDecision } from '../scripts/factory/lemma-decisions.mjs';
-import { expectedScopes } from '../scripts/factory/scope-declaration.mjs';
+import { expectedScopes, validateScopeDeclarations } from '../scripts/factory/scope-declaration.mjs';
 import { produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { assertStage3ContractCurrent } from '../scripts/factory/stage3-worker.mjs';
 import { validateCandidateTransition } from '../scripts/factory/transitions.mjs';
@@ -368,6 +368,44 @@ test('a gloss cannot widen to a deferred observation: scope declaration is sourc
   const pang = rows.find((row) => row.candidate_id === pangDecision().source_candidate_id);
   const full = await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { if (row.source_candidate_id === pang.candidate_id) review.scope_declaration.excluded_terms = ['시간']; });
   has(full, 'excluded_terms must be empty while no observation is excluded');
+});
+
+test('same lemma and POS with different semantic domains: split senses keep each gloss inside its own observations (가라앉다: 목소리 vs 감정)', () => {
+  // Regression for C000005-0002: one group held 목소리가 가라앉다 (o01) and 화가 가라앉다 (o02, o03).
+  // A single feeling gloss for all three leaves the voice observation outside the gloss's domain. The
+  // contract cannot judge that fit mechanically; it forces the split to be explicit and checkable.
+  const group = 'C000009-0001.g01';
+  const ob = (n) => `C000009-0001.o0${n}`;
+  const candidate = {
+    candidate_id: 'C000009-0001', input: '가라앉다', usage_groups: [{ group_id: group, pos: 'verb' }],
+    observations: [1, 2, 3].map((n) => ({ observation_id: ob(n), group_id: group, pos: 'verb', holds: [] })),
+  };
+  const voice = '착 가라앉은 목소리의 높이가 낮아진 상태이다.';
+  const feeling = '화가 가라앉는 감정의 변화이다.';
+  const decision = (senses, entries) => ({ source_candidate_id: candidate.candidate_id, disposition: 'included', reviewed_record: { lemma: '가라앉다', senses }, group_decisions: entries });
+  const split = decision(
+    [{ pos: 'verb', gloss: '목소리가 낮아지고 차분해지다.' }, { pos: 'verb', gloss: '거센 기운이나 감정이 약해져 차분해지다.' }],
+    [
+      { group_id: group, observation_ids: [ob(1)], disposition: 'included', sense_indexes: [0], reason: `o01은 ${voice}` },
+      { group_id: group, observation_ids: [ob(2), ob(3)], disposition: 'included', sense_indexes: [1], reason: `o02와 o03은 ${feeling}` },
+    ],
+  );
+  const check = (row, declarations) => validateScopeDeclarations({ decision: row, candidate, required: true, senseReviews: declarations.map((scope_declaration) => ({ scope_declaration })) });
+  const scopes = expectedScopes(split, candidate);
+  assert.deepEqual(scopes.map(({ admitted }) => admitted), [[ob(1)], [ob(2), ob(3)]]);
+  const declare = (terms) => scopes.map(({ admitted, excluded }, index) => ({ admitted_observation_ids: admitted, excluded_observation_ids: excluded, excluded_terms: terms[index] }));
+  // Each sense names the other domain it must not describe, and the names come from the authored reasons.
+  assert.deepEqual(check(split, declare([['감정'], ['목소리']])), []);
+  // A feeling gloss that absorbs the voice meaning, or a voice gloss that absorbs the feeling, is refused.
+  const absorbs = decision([{ pos: 'verb', gloss: '목소리나 감정이 약해져 차분해지다.' }, split.reviewed_record.senses[1]], split.group_decisions);
+  assert.ok(check(absorbs, declare([['감정'], ['목소리']])).some((e) => e.includes('the gloss contains the excluded term 감정')));
+  // A term that is not in the reason of the excluded observation cannot stand in for the excluded meaning.
+  assert.ok(check(split, declare([['슬픔'], ['목소리']])).some((e) => e.includes('does not occur in the reason that judges an excluded observation')));
+  // The declaration must also drop the other domain's observations; folding all three into one sense is a
+  // semantic judgment this contract does not make, but then the single sense claims every observation.
+  const merged = decision([{ pos: 'verb', gloss: '거센 기운이나 감정이 약해져 차분해지다.' }], [{ group_id: group, disposition: 'included', sense_indexes: [0], reason: 'o01과 o02와 o03은 모두 기운이 약해지는 쓰임이다.' }]);
+  assert.deepEqual(expectedScopes(merged, candidate)[0].admitted, [ob(1), ob(2), ob(3)]);
+  assert.deepEqual(expectedScopes(merged, candidate)[0].excluded, []);
 });
 
 test('a held observation requires a resolution only in the included group that contains it', async () => {
