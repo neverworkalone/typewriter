@@ -22,7 +22,7 @@ import { confusableLemmaAdvisories, partitionByWriterSupport, validateDecisionRo
 import { buildCanonicalIndex, classifyAgainstCanonical, intakeCandidates, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { validateCandidateTransition, validateLinkedTransition, validateReviewTransition } from '../scripts/factory/transitions.mjs';
 import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
-import { validateReviewArtifacts } from '../scripts/factory/artifacts.mjs';
+import { validateExistingBoundaryPairs, validateReviewArtifacts } from '../scripts/factory/artifacts.mjs';
 import { toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
