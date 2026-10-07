@@ -140,11 +140,14 @@ export function checkReportContract(report, record) {
   if (!match) return ['report lacks the selfcheck-contract JSON block'];
   let published;
   try { published = JSON.parse(match[1]); } catch { return ['selfcheck-contract block is not valid JSON']; }
-  if (JSON.stringify(published) !== JSON.stringify({ retrieval, aggregate })) errors.push('selfcheck-contract block differs from the record');
+  if (JSON.stringify(published) !== JSON.stringify({ literature_index_logical_rows_sha256: record.literature_index_logical_rows_sha256, retrieval, aggregate })) errors.push('selfcheck-contract block differs from the record');
   for (const [key, value] of Object.entries(retrieval)) {
     const values = [...report.matchAll(new RegExp(`\\b${key}=(\\d+)`, 'gu'))].map((m) => Number(m[1]));
     if (values.length === 0 || values.some((found) => found !== value)) errors.push(`report states ${key}=${values.join('/')} but the record says ${value}`);
   }
+  const digest = record.literature_index_logical_rows_sha256;
+  const shown = [...report.matchAll(/DB digest `([0-9a-f]{8})…([0-9a-f]{4})`/gu)];
+  if (shown.length === 0 || shown.some(([, head, tail]) => head !== digest.slice(0, 8) || tail !== digest.slice(-4))) errors.push('report DB digest differs from the record');
   const o = aggregate.deferred_outcomes;
   for (const [name, count] of Object.entries(o)) {
     if (!new RegExp(`\\| \`${name}\`[^|]*\\| ${count} \\|`, 'u').test(report)) errors.push(`report table row ${name} is not ${count}`);

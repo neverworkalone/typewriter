@@ -32,6 +32,7 @@
 <!-- selfcheck-contract: 이 블록은 기록(JSON)과 회귀(`checkReportContract`)가 기계적으로 대조한다 -->
 ```json
 {
+ "literature_index_logical_rows_sha256": "bbb19a0b3535eca20f11431cf2c786bb399377356147b1224c3515b8bb9752fe",
  "retrieval": {
   "max_contexts": 5,
   "max_per_work": 1,

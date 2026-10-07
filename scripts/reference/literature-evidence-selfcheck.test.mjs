@@ -146,6 +146,9 @@ test('the published report states exactly the pinned record: aggregate, outcomes
   assert.deepEqual(checkReportContract(report, record), []);
   // Report-only mutations of every published pinned field must be rejected.
   const mutations = [
+    ['bbb19a0b…52fe', 'bbb19a0c…52fe'],
+    ['bbb19a0b…52fe', 'bbb19a0b…52ff'],
+    ['"literature_index_logical_rows_sha256": "bbb19a0b', '"literature_index_logical_rows_sha256": "bbb19a0c'],
     ['max_per_work=1', 'max_per_work=2'],
     ['hit_fetch_cap=2000', 'hit_fetch_cap=10'],
     ['max_contexts=5', 'max_contexts=8'],
