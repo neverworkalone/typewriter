@@ -249,12 +249,14 @@ test('covered and search_coverage are canonical proofs, never assumptions from s
 });
 
 // Review artifacts for a lemma batch: semantic rows, hand-off and per-group hold resolution.
-// Pending reviews must declare the scope of each gloss; the default fixture names, for each sense, the first
-// reason word of an excluded observation that its gloss does not use.
+// Pending reviews must declare the scope of each gloss. The fixture names the excluded MEANING explicitly
+// (a word that denotes it); it never picks "the first reason word", which would let a vacuous or incidental
+// token pass as scope evidence.
+const FIXTURE_EXCLUDED_MEANING = ['시간', '이동', '방향', '관용적'];
 function defaultScope(decision, candidate) {
   return expectedScopes(decision, candidate).map(({ admitted, excluded, reasons }, index) => {
     const gloss = decision.reviewed_record.senses[index].gloss;
-    const term = reasons.flatMap((reason) => reason.split(/[\s.,]+/u)).find((word) => word.length > 1 && !gloss.includes(word));
+    const term = FIXTURE_EXCLUDED_MEANING.find((word) => !gloss.includes(word) && reasons.some((reason) => reason.includes(word))) ?? FIXTURE_EXCLUDED_MEANING[0];
     return { admitted_observation_ids: admitted, excluded_observation_ids: excluded, excluded_terms: excluded.length ? [term] : [] };
   });
 }
@@ -354,6 +356,12 @@ test('a gloss cannot widen to a deferred observation: scope declaration is sourc
   // The term must be source-bound to the reason that judges the excluded observation.
   has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = ['전혀없는말']; }), 'does not occur in the reason that judges an excluded observation');
   has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = []; }), 'require excluded_terms');
+  // Through the shared review-artifact path: a placeholder that occurs in the reason (generic word, observed
+  // form) used to pass as scope evidence and is now refused; the genuine meaning word (시간) is accepted above.
+  has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = ['용법']; }), 'generic placeholder');
+  const surfaceReason = { ...scoped('다른 곳으로 옮겨 가다.') };
+  surfaceReason.group_decisions = surfaceReason.group_decisions.map((entry) => (entry.disposition === 'deferred' ? { ...entry, reason: `${go.forms[0].surface}의 ${reason}` } : entry));
+  has(await withScope(surfaceReason, (row, review) => { review.scope_declaration.excluded_terms = [go.forms[0].surface]; }), 'observed form or the lemma');
   // The declared scope must be exactly what the group decisions admit.
   const claimed = go.observations.filter((o) => o.group_id === go.usage_groups[0].group_id).map((o) => o.observation_id);
   const leaked = go.observations.find((o) => o.group_id === go.usage_groups[1].group_id).observation_id;
@@ -368,6 +376,41 @@ test('a gloss cannot widen to a deferred observation: scope declaration is sourc
   const pang = rows.find((row) => row.candidate_id === pangDecision().source_candidate_id);
   const full = await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { if (row.source_candidate_id === pang.candidate_id) review.scope_declaration.excluded_terms = ['시간']; });
   has(full, 'excluded_terms must be empty while no observation is excluded');
+});
+
+// excluded_terms must DENOTE the excluded meaning. Placeholders that merely occur in the reason (a generic
+// word, or the observed surface form / lemma) satisfy the old syntax-only check but bind nothing: the gloss
+// could widen to the excluded meaning and still pass. The shared contract refuses them; subjective fit of a
+// genuine term remains an editorial judgment.
+test('excluded_terms must name the excluded meaning, not a generic word or the observed form', () => {
+  const group = 'C000009-0002.g01';
+  const ob = (n) => `C000009-0002.o0${n}`;
+  const candidate = {
+    candidate_id: 'C000009-0002', input: '가꾸다', forms: [{ form_id: 'f1', surface: '가꾸고' }, { form_id: 'f2', surface: '가꿀' }],
+    usage_groups: [{ group_id: group, pos: 'verb' }],
+    observations: [1, 2].map((n) => ({ observation_id: ob(n), group_id: group, pos: 'verb', holds: [] })),
+  };
+  const existing = '가꾸고의 쓰임은 w1-s1 식물이나 공간을 돌보아 보기 좋게 만들다에 포함된다.';
+  const decision = {
+    source_candidate_id: candidate.candidate_id, disposition: 'included',
+    reviewed_record: { lemma: '가꾸다', senses: [{ pos: 'verb', gloss: '몸이나 마음을 정성 들여 아름답게 다듬다.' }] },
+    group_decisions: [
+      { group_id: group, observation_ids: [ob(1)], disposition: 'covered', existing_entry_id: 'w1', existing_sense_id: 'w1-s1', reason: `o01 ${existing}` },
+      { group_id: group, observation_ids: [ob(2)], disposition: 'included', sense_indexes: [0], reason: 'o02 내면을 아름답게 가꾼다는 쓰임이다.' },
+    ],
+  };
+  const check = (terms) => validateScopeDeclarations({
+    decision, candidate, required: true,
+    senseReviews: [{ scope_declaration: { admitted_observation_ids: [ob(2)], excluded_observation_ids: [ob(1)], excluded_terms: terms } }],
+  });
+  const refused = (terms, fragment) => assert.ok(check(terms).some((error) => error.includes(fragment)), `${terms}: ${check(terms).join(' | ')}`);
+  // Old syntax-only check accepted all of these (the word occurs in the excluded reason and not in the gloss).
+  refused(['쓰임'], 'generic placeholder');
+  refused(['가꾸고'], 'observed form or the lemma');
+  refused(['가꾸고는'], 'observed form or the lemma');
+  refused(['가꾸다'], 'observed form or the lemma');
+  // A word that denotes the excluded meaning passes.
+  assert.deepEqual(check(['식물']), []);
 });
 
 test('same lemma and POS with different semantic domains: split senses keep each gloss inside its own observations (가라앉다: 목소리 vs 감정)', () => {

@@ -17,12 +17,22 @@ import { resolveGroupEntries } from './lemma-decisions.mjs';
 // - while observations are excluded, at least one term is required, each term must occur in the
 //   authored reason of an entry that judges an excluded observation (so it is source-bound), and
 //   no term may occur in the sense gloss;
+// - a term must DENOTE the excluded meaning, not merely be a word that happens to occur: it may not be
+//   a generic placeholder (쓰임, 뜻, …) nor an observed surface form or the lemma itself (optionally with
+//   a particle): those occur in the reason because of the sentence, not because they name a meaning.
+//   Whether a term names the right meaning stays a source-bound editorial judgment; these are only
+//   the mechanically refutable placeholders;
 // - without excluded observations the term list must be empty.
 export const SCOPE_DECLARATION_FIELD = 'scope_declaration';
 
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
 const norm = (value) => String(value).normalize('NFC');
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+
+// Words that never name a meaning. They appear in almost any authored reason, so they cannot bind a gloss.
+export const GENERIC_SCOPE_TERMS = Object.freeze(['쓰임', '뜻', '의미', '경우', '용법', '관찰', '판단', '보류', '제외', '포함', '확인']);
+const PARTICLE = /(이|가|을|를|은|는|의|에|에서|로|으로|과|와|도|만)$/u;
+const stripParticle = (word) => { const bare = word.replace(PARTICLE, ''); return bare.length >= 2 ? bare : word; };
 
 // Per reviewed sense: the observations it may describe, the others, and the reasons that judge them.
 export function expectedScopes(decision, candidate) {
@@ -75,9 +85,14 @@ export function validateScopeDeclarations({ decision, candidate, senseReviews, r
     }
     if (terms.length === 0) errors.push(`${at}: excluded observations ${excluded.join(', ')} require excluded_terms naming the meaning the gloss must not describe`);
     const gloss = norm(sense.gloss);
+    const observed = new Set([candidate.input, ...(candidate.forms ?? []).map((form) => form.surface)].filter(Boolean).map((word) => norm(word)));
+    const observedBare = new Set([...observed].map(stripParticle));
     for (const term of terms) {
-      if (gloss.includes(norm(term).trim())) errors.push(`${at}: the gloss contains the excluded term ${term}; it describes a meaning outside its admitted observations`);
-      if (!reasons.some((reason) => reason.includes(norm(term).trim()))) errors.push(`${at}: excluded term ${term} does not occur in the reason that judges an excluded observation`);
+      const word = norm(term).trim();
+      if (gloss.includes(word)) errors.push(`${at}: the gloss contains the excluded term ${term}; it describes a meaning outside its admitted observations`);
+      if (!reasons.some((reason) => reason.includes(word))) errors.push(`${at}: excluded term ${term} does not occur in the reason that judges an excluded observation`);
+      if (GENERIC_SCOPE_TERMS.includes(word)) errors.push(`${at}: excluded term ${term} is a generic placeholder and does not name the excluded meaning`);
+      else if (observed.has(word) || observedBare.has(stripParticle(word))) errors.push(`${at}: excluded term ${term} is an observed form or the lemma, not the excluded meaning`);
     }
   });
   return errors;
