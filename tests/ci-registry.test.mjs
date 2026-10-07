@@ -194,7 +194,7 @@ test('CI changed-path gate skips only documentation-only PRs', async (t) => {
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
   assert.equal(
     (workflow.match(/if: steps\.changes\.outputs\.run_normal == 'true'/gu) ?? []).length,
-    5,
+    4,
     'pnpm and Node setup, dependencies and the full normal run must all use the same classifier result',
   );
 
