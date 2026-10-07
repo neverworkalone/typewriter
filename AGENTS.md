@@ -141,6 +141,9 @@ subagents, or a separate agent session to author, verify, review, or endorse
 lexical records. Do not invoke a different LLM to satisfy a historical
 `reviewer` label or an obsolete independent-review gate. Existing source
 files and deterministic local validators/tests may be read/run normally.
+This restriction applies to delegation within the same task or PR.
+Owner-authorized creation of a new thread for a separate PR or the next batch is permitted.
+It must not be used to delegate lexical QA or manufacture independent review.
 
 Do not inspect `claude auth status` or other agent account identity, email,
 subscription, authentication, or usage details to troubleshoot lexical review.
@@ -274,8 +277,10 @@ are distinct from the PR-review gates in `REVIEW.md`.
   semantic QA, validation and regression process, and submit the result PR. **Then
   wait for that PR to merge** (fix CI and reviewer feedback on the same branch;
   never review or merge it yourself; do not bypass a blocked or closed PR). Only
-  after the merge is confirmed on `master`, release the claim and start the next
-  batch; do not wait for Stage 3 admission. Stop when no eligible work remains,
+  after the merge is confirmed on `master`, release the claim and start the next batch;
+  do not wait for Stage 3 admission. After confirming the merge, continue the next batch
+  in a new thread, not the completed PR thread, when the owner has authorized continuous
+  execution and the environment supports thread creation. Stop when no eligible work remains,
   the owner stops you, or a systemic failure blocks progress. Do not edit
   canonical JSONL or turn Stage 3 into an editorial repair pass. Parallelism comes
   only from separate owner-launched agents.
@@ -292,6 +297,14 @@ are distinct from the PR-review gates in `REVIEW.md`.
   coordinates or limits the number of other agents or waits for them. Each Stage 2
   agent follows the same selection and atomic-claim protocol on its own batch;
   claim exclusivity, not agent awareness, provides parallel safety.
+- PR thread isolation: Each thread owns exactly one PR.
+  Owner-authorized workflows may create new threads for
+  separate PRs, including discovered bugs and subsequent
+  Stage 1/2/3 batches. Each thread uses an independent
+  branch and working context. Do not share uncommitted work.
+- Thread handoff is not lexical QA delegation. The owner
+  controls parallelism; agents must not independently
+  increase worker concurrency outside authorized workflows.
 - **No delegation remains:** a Stage 2 agent works in its own assigned context and
   must not launch subagents, other-model CLIs or additional primary-agent
   sessions for lexical authoring or QA. The owner manually launching several

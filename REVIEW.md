@@ -54,6 +54,8 @@ For large data batches trace **candidate → source-bound semantic QA → admiss
 
 A **passing exact-HEAD CI check proves only its tested properties**; Stage 2 must not claim unrun manual/local checks. Stage 2 reads passed logs only if the workflow, validator, fixture or expected behavior changed, or observed code contradicts claimed coverage.
 
+Do not require deterministic validators to prove subjective semantic correctness. Generalize only demonstrably machine-checkable invariants; handle semantic judgment through source-bound editorial QA.
+
 For systemic defects demand **minimal failing fixture → shared producer/validator/admission/search fix → old-fails/new-passes regression → enforcement on existing applicable records and future additions**. A recurring data-only patch, invalid self-issued editorial approval, unresolved shared defect or missing required validation is a **BLOCKER**.
 
 When canonical or CI architecture changes, verify: one shared complete-revision context; global semantic audit before SQLite; downstream checks reuse the context; no redundant whole-corpus parsing/building. Compare claimed parse/scan/build counts to actual wiring.
