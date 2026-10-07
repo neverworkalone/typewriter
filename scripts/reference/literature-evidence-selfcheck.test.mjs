@@ -10,7 +10,10 @@ const D = (n) => String(n).padStart(64, '0');
 const row = (candidate_id, group, outcome, evidence_use = 'supports') => ({
   candidate_id, group, outcome, evidence_use, contexts_returned: 1, selected_location_digests: [D(1)], historical_decision_sha256: D(2),
 });
-const base = { retrieval: { max_contexts: 5 }, literature_index_logical_rows_sha256: D(3), cohort_selection: 'x' };
+const base = {
+  retrieval: { max_contexts: 5, max_per_work: 1, hit_fetch_cap: 2000 }, literature_index_logical_rows_sha256: D(3), cohort_selection: 'x',
+  cohort: { universe_batches: [], excluded_no_context_ids: [], deferred_per_category: {}, comparison_count: 0 },
+};
 
 test('aggregation separates deferred resolutions, partial/still deferred, and the comparison group', () => {
   const record = { ...base, rows: [
@@ -46,6 +49,10 @@ test('validation rejects cross-group outcomes, unknown enums and duplicate candi
   assert.equal(bound({ selected_location_digests: ['x'] }).length, 1);
   assert.equal(bound({ historical_decision_sha256: undefined }).length, 1);
   assert.ok(validateSelfCheck({ rows: [] }).length >= 3);
+  assert.equal(bound({ contexts_returned: 0, selected_location_digests: [] }).length, 1);
+  for (const retrieval of [{ max_contexts: 8 }, { max_per_work: 2 }, { hit_fetch_cap: 10 }]) {
+    assert.equal(validateSelfCheck({ ...base, retrieval: { ...base.retrieval, ...retrieval }, rows: [] }).length, 1);
+  }
 });
 
 const PINNED = {
@@ -65,6 +72,27 @@ test('committed self-check record is valid, text-free, honestly labeled, bound t
   assert.match(record.provenance, /not an independent adjudication/iu);
   assert.equal(record.retrieval.max_contexts, 5);
   assert.deepEqual(aggregateSelfCheck(record), PINNED);
+});
+
+test('cohort binding rejects an empty cohort rule, swapped candidates and a changed exclusion list', async () => {
+  const record = await loadSelfCheck();
+  const clone = () => JSON.parse(JSON.stringify(record));
+  assert.deepEqual(await validateCohortBinding(record), []);
+  // Swap a deferred candidate for another deferred one of the same category that the rule does not select.
+  const swapped = clone();
+  const target = swapped.rows.find((row) => row.group === 'deferred' && row.deferral_heuristic_category === 'other');
+  const other = swapped.rows.find((row) => row.group === 'deferred' && row !== target && row.deferral_heuristic_category === 'other');
+  target.candidate_id = 'C000013-0098' === other.candidate_id ? 'C000003-0097' : 'C000013-0098';
+  assert.ok((await validateCohortBinding(swapped)).some((error) => /cohort differs|historical/u.test(error)));
+  const fewer = clone();
+  fewer.cohort.deferred_per_category.other = 9;
+  assert.ok((await validateCohortBinding(fewer)).some((error) => /cohort differs/u.test(error)));
+  const excluded = clone();
+  excluded.cohort.excluded_no_context_ids = [];
+  assert.ok((await validateCohortBinding(excluded)).some((error) => /cohort differs/u.test(error)));
+  const comparison = clone();
+  comparison.rows.find((row) => row.group === 'clear_included').candidate_id = 'C000003-0013';
+  assert.ok((await validateCohortBinding(comparison)).length > 0);
 });
 
 test('the published report states exactly the pinned aggregate and the reviewed retrieval condition', async () => {

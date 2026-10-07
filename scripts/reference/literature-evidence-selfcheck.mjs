@@ -22,11 +22,19 @@ export function deferralCategory(reason = '') {
   return 'other';
 }
 
+export const PINNED_RETRIEVAL = Object.freeze({ max_contexts: 5, max_per_work: 1, hit_fetch_cap: 2000 });
+
 export function validateSelfCheck(record) {
   const errors = [];
   const retrieval = record.retrieval;
-  if (!retrieval || !Number.isSafeInteger(retrieval.max_contexts) || retrieval.max_contexts < 1) errors.push('retrieval.max_contexts is required');
+  for (const [key, value] of Object.entries(PINNED_RETRIEVAL)) {
+    if (retrieval?.[key] !== value) errors.push(`retrieval.${key} must be ${value}`);
+  }
   if (!HEX64.test(record.literature_index_logical_rows_sha256 ?? '')) errors.push('literature_index_logical_rows_sha256 is required');
+  const cohort = record.cohort;
+  if (!Array.isArray(cohort?.universe_batches) || !Array.isArray(cohort?.excluded_no_context_ids) || !cohort?.deferred_per_category || !Number.isSafeInteger(cohort?.comparison_count)) {
+    errors.push('cohort (universe_batches, excluded_no_context_ids, deferred_per_category, comparison_count) is required');
+  }
   if (typeof record.cohort_selection !== 'string' || record.cohort_selection.length === 0) errors.push('cohort_selection is required');
   const seen = new Set();
   for (const row of record.rows) {
@@ -40,25 +48,41 @@ export function validateSelfCheck(record) {
     const digests = row.selected_location_digests;
     if (!Array.isArray(digests) || !digests.every((d) => HEX64.test(d)) || new Set(digests).size !== digests.length) {
       errors.push(`${id}: selected_location_digests must be unique sha256 digests`);
-    } else if (digests.length !== row.contexts_returned || digests.length > (retrieval?.max_contexts ?? 0)) {
-      errors.push(`${id}: contexts_returned ${row.contexts_returned} disagrees with ${digests.length} digests or exceeds max_contexts`);
+    } else if (digests.length < 1 || digests.length !== row.contexts_returned || digests.length > PINNED_RETRIEVAL.max_contexts) {
+      errors.push(`${id}: needs 1..${PINNED_RETRIEVAL.max_contexts} contexts matching its digests (contexts_returned ${row.contexts_returned}, digests ${digests.length})`);
     }
     if (!HEX64.test(row.historical_decision_sha256 ?? '')) errors.push(`${id}: historical_decision_sha256 is required`);
   }
   return errors;
 }
 
-// Cohort binding: each row's historical decision still exists with the claimed group/category and digest.
+// Cohort binding: the recorded ids are exactly the set the declared selection rule yields from the
+// tracked review decisions, and each row still carries its historical group/category and digest.
 export async function validateCohortBinding(record, root = REPOSITORY_ROOT) {
   const errors = [];
-  const decisions = new Map();
-  for (const row of record.rows) {
-    const batch = row.candidate_id.slice(0, 7);
-    if (!decisions.has(batch)) {
-      const text = await readFile(path.join(root, 'data/reviews', batch, 'decisions.jsonl'), 'utf8');
-      decisions.set(batch, new Map(text.split('\n').filter(Boolean).map((line) => [JSON.parse(line).source_candidate_id, line])));
+  const { universe_batches: batches, excluded_no_context_ids: excluded, deferred_per_category: perCategory, comparison_count: comparisonCount } = record.cohort;
+  const lines = new Map();
+  const deferred = [];
+  const clear = [];
+  for (const batch of batches) {
+    const text = await readFile(path.join(root, 'data/reviews', batch, 'decisions.jsonl'), 'utf8').catch(() => '');
+    for (const line of text.split('\n').filter(Boolean)) {
+      const decision = JSON.parse(line);
+      const id = decision.source_candidate_id;
+      lines.set(id, line);
+      if (decision.disposition === 'deferred' && !excluded.includes(id)) deferred.push({ id, category: deferralCategory(decision.reason) });
+      else if (decision.disposition === 'included' && decision.target?.kind !== 'new_entry') clear.push(id);
     }
-    const line = decisions.get(batch).get(row.candidate_id);
+  }
+  const byHash = (a, b) => (sha256Hex(a) < sha256Hex(b) ? -1 : 1);
+  const expectedDeferred = Object.entries(perCategory).flatMap(([category, count]) => deferred
+    .filter((entry) => entry.category === category).map((entry) => entry.id).sort(byHash).slice(0, count));
+  const expectedClear = clear.sort(byHash).slice(0, comparisonCount);
+  const recorded = (group) => record.rows.filter((row) => row.group === group).map((row) => row.candidate_id).sort();
+  if (JSON.stringify(recorded('deferred')) !== JSON.stringify([...expectedDeferred].sort())) errors.push('deferred cohort differs from the declared selection rule');
+  if (JSON.stringify(recorded('clear_included')) !== JSON.stringify([...expectedClear].sort())) errors.push('comparison cohort differs from the declared selection rule');
+  for (const row of record.rows) {
+    const line = lines.get(row.candidate_id);
     if (line === undefined) { errors.push(row.candidate_id + ': historical decision not found'); continue; }
     const decision = JSON.parse(line);
     if (sha256Hex(line) !== row.historical_decision_sha256) errors.push(row.candidate_id + ': historical decision digest changed');

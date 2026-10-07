@@ -8,7 +8,36 @@
   "hit_fetch_cap": 2000,
   "note": "Condition under which the self-check packs were read; the replay aggregate in the report used the default 8 contexts."
  },
- "cohort_selection": "Deferred: replay-391 rows with at least one context, ordered by sha256(candidate id), first 36 sense_or_expression_boundary + 4 evidence_insufficient + 10 other (deferral_heuristic_category via deferralCategory); comparison: first 10 clear_included (included, non-new_entry) by sha256(candidate id).",
+ "cohort": {
+  "universe_batches": [
+   "C000001",
+   "C000002",
+   "C000003",
+   "C000004",
+   "C000005",
+   "C000006",
+   "C000007",
+   "C000008",
+   "C000009",
+   "C000010",
+   "C000011",
+   "C000012",
+   "C000013"
+  ],
+  "excluded_no_context_ids": [
+   "C000003-0331",
+   "C000013-0017",
+   "C000013-0095",
+   "C000013-0112"
+  ],
+  "deferred_per_category": {
+   "sense_or_expression_boundary": 36,
+   "evidence_insufficient": 4,
+   "other": 10
+  },
+  "comparison_count": 10
+ },
+ "cohort_selection": "Deferred: every deferred decision in universe_batches except excluded_no_context_ids (no usable search form or no literature hit at replay), bucketed by deferralCategory, each bucket ordered by sha256(candidate id) and the first deferred_per_category taken; comparison: every included decision with a non-new_entry target in universe_batches ordered by sha256(candidate id), first comparison_count. Recomputed and enforced by validateCohortBinding.",
  "rows": [
   {
    "candidate_id": "C000008-0120",
