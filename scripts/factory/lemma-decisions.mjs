@@ -36,7 +36,7 @@ const NONLITERAL_USE = /비유|빗대|은유|상징|관용|몸짓/;
 const batchNumber = (candidateId) => Number(/^C(\d{6})-/.exec(candidateId ?? '')?.[1] ?? 0);
 const mentionsObservation = (reason, observationId) => {
   const short = observationId.split('.').pop();
-  return new RegExp(`(?<![0-9A-Za-z])${short}(?![0-9])`).test(reason);
+  return new RegExp(`(?<![0-9A-Za-z_])${short}(?![0-9A-Za-z_])`).test(reason);
 };
 
 // Pairs every decision entry with its group and the observations it judges. Returns

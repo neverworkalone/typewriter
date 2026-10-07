@@ -269,6 +269,12 @@ test('covered/search_coverage reasons name each judged observation from C000008;
   // Naming the observation passes (`o1`-style prefixes of another id do not count).
   const named = [{ group_id: move.group_id, ...stated, reason: 'o01은 다른 곳으로 옮겨 가는 쓰임으로 w3-s1에 포함된다.' }, { group_id: pass.group_id, ...stated, reason: 'o02는 때가 지나가는 쓰임으로 w3-s1에 포함된다.' }];
   assert.deepEqual(verdict(go, named), []);
+  for (const token of ['o02x는', 'o02foo는', 'o02_foo는', 'xo02는', 'o2는']) {
+    has(verdict(go, [named[0], { ...named[1], reason: `${token} 때가 지나가는 쓰임으로 w3-s1에 포함된다.` }]), 'missing o02');
+  }
+  for (const token of ['o02', 'o02은', '(o02)', 'o02,']) {
+    assert.deepEqual(verdict(go, [named[0], { ...named[1], reason: `${token} 때가 지나가는 쓰임으로 w3-s1에 포함된다.` }]), [], token);
+  }
   has(verdict(go, [named[0], { ...named[1], reason: 'o020은 때가 지나가는 쓰임으로 w3-s1에 포함된다.' }]), 'missing o02');
   assert.deepEqual(verdict(go, [named[0], { ...named[1], reason: `${go.observations[1].observation_id}는 때가 지나가는 쓰임으로 w3-s1에 포함된다.` }]), []);
 
