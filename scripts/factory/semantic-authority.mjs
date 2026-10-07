@@ -136,7 +136,7 @@ function crossBoundaryPair({ record, beforeReview, oldSense, newSense, decision,
     failLexical(`${decision.source_candidate_id}: a new canonical sense overlaps or mechanically conflicts with existing ${oldSense.id}`, 'STAGE3_CANONICAL_SENSE_CONFLICT');
   }
   if (decision.target.kind === 'new_sense_on_existing_entry' && oldSense.pos === newSense.pos
-    && oldSense.id !== decision.target.context_sense_id) {
+    && oldSense.id !== decision.target.context_sense_id && !(decision.target.context_sense_ids ?? []).includes(oldSense.id)) {
     failLexical(`${decision.source_candidate_id}: same-POS new-sense review does not compare against every existing same-POS sense`, 'STAGE3_BOUNDARY_CONTEXT_MISSING');
   }
   const oldReview = beforeReview?.sense_reviews?.find(({ sense_id: id }) => id === oldSense.id);
@@ -146,7 +146,7 @@ function crossBoundaryPair({ record, beforeReview, oldSense, newSense, decision,
   const rightHash = sha256Json(right.gloss);
   const newText = sourceSemanticSense.semantic_rationale ?? sourceSemanticSense.boundary_rationale ?? decision.source_candidate_id;
   const oldText = oldReview?.review_basis?.rationale ?? oldReview?.sense_boundary?.rationale ?? oldSense.id;
-  const context = `Stage 2 ${decision.target.kind}${decision.target.context_sense_id ? ` context ${decision.target.context_sense_id}` : ` POS ${newSense.pos}`}`;
+  const context = `Stage 2 ${decision.target.kind}${decision.target.context_sense_id ? ` context ${[decision.target.context_sense_id, ...(decision.target.context_sense_ids ?? [])].filter((id, index, ids) => ids.indexOf(id) === index).join(', ')}` : ` POS ${newSense.pos}`}`;
   return {
     left_sense_id: left.id, right_sense_id: right.id,
     relationship: 'distinct', decision: 'retain',

@@ -169,6 +169,7 @@ test('legal candidate and review transitions pass; unsupported ones fail', () =>
 const ENTRIES = [
   { id: 'w1', record_type: 'entry', lemma: '짠하다', senses: [{ id: 'w1-s1', pos: 'adjective', gloss: 'g' }] },
   { id: 'w2', record_type: 'entry', lemma: '걸음', senses: [{ id: 'w2-s1', pos: 'noun', gloss: 'g' }] },
+  { id: 'w3', record_type: 'entry', lemma: '더듬다', senses: [{ id: 'w3-s1', pos: 'verb', gloss: 'g' }, { id: 'w3-s2', pos: 'verb', gloss: 'h' }, { id: 'w3-s3', pos: 'noun', gloss: 'n' }] },
 ];
 const INDEX = buildCanonicalIndex(ENTRIES);
 
@@ -255,6 +256,12 @@ test('typed handoff validates the three target kinds against canonical and parti
   has(included({ kind: 'new_pos_on_existing_lemma', entry_id: 'w2' }, { lemma: '걸음', senses: [{ pos: 'noun', gloss: 'g' }] }), 'already exists');
   has(included({ kind: 'new_sense_on_existing_entry', entry_id: 'w1' }, { lemma: '짠하다', senses: [{ pos: 'adjective', gloss: 'g' }] }), 'context_sense_id');
   has(included({ kind: 'new_sense_on_existing_entry', entry_id: 'w9', context_sense_id: 'x' }, { lemma: '짠하다', senses: [{ pos: 'adjective', gloss: 'g' }] }), 'existing canonical entry_id');
+  // Multiple existing same-POS senses: the new sense must be compared against each of them.
+  const multi = (target) => included({ kind: 'new_sense_on_existing_entry', entry_id: 'w3', ...target }, { lemma: '더듬다', senses: [{ pos: 'verb', gloss: 'x' }] });
+  assert.deepEqual(validateDecisionRow(multi({ context_sense_id: 'w3-s1', context_sense_ids: ['w3-s1', 'w3-s2'] }), { canonicalIndex: INDEX }), []);
+  has(multi({ context_sense_id: 'w3-s1' }), 'existing same-POS sense w3-s2');
+  has(multi({ context_sense_id: 'w3-s1', context_sense_ids: ['w3-s1', 'w3-s1'] }), 'context_sense_ids');
+  has(multi({ context_sense_id: 'w3-s1', context_sense_ids: ['w3-s9'] }), 'context_sense_ids');
   has({ source_candidate_id: 'C000001-0001', disposition: 'held' }, 'reason');
   has({ source_candidate_id: 'C000001-0001', disposition: 'maybe' }, 'disposition');
 });

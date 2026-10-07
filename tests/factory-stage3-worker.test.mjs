@@ -104,6 +104,22 @@ test('Stage 3 appends new POS and new sense without replacing canonical identity
   assert.equal(plan([addedSense]).records.get('w00001').record.senses.at(-1).id, 'w00001-s2');
 });
 
+test('Stage 3 requires a new sense to be compared against every existing same-POS sense', () => {
+  const twoSenses = {
+    ...baseRecord,
+    senses: [...baseRecord.senses, { id: 'w00001-s2', pos: 'adjective', gloss: '소리가 또렷하고 깨끗하다.' }],
+  };
+  const make = (target) => decision({
+    n: 1, lemma: '맑다', target: { kind: 'new_sense_on_existing_entry', entry_id: 'w00001', ...target },
+    senses: [{ pos: 'adjective', gloss: '마음이나 태도가 맑고 깨끗하다.' }],
+  });
+  const both = plan([make({ context_sense_id: 'w00001-s1', context_sense_ids: ['w00001-s1', 'w00001-s2'] })], [twoSenses]);
+  assert.equal(both.records.get('w00001').record.senses.at(-1).id, 'w00001-s3');
+  assert.throws(() => plan([make({ context_sense_id: 'w00001-s1' })], [twoSenses]),
+    (error) => error instanceof Stage3AdmissionError && /not compared against existing same-POS sense w00001-s2/.test(error.message));
+  assert.equal(plan([make({ context_sense_id: 'w00001-s1' })]).records.get('w00001').record.senses.at(-1).id, 'w00001-s2');
+});
+
 test('latest canonical lexical conflicts are typed as lexical, not systemic', () => {
   const conflict = decision({ n: 1, lemma: '맑다' });
   assert.throws(() => plan([conflict]), (error) => error instanceof Stage3AdmissionError && error.category === 'lexical' && error.code === 'STAGE3_CANONICAL_CONFLICT');
