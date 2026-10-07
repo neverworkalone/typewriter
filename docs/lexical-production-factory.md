@@ -513,7 +513,9 @@ carries `scope_declaration: {admitted_observation_ids, excluded_observation_ids,
 Both id lists must equal what the decision's `group_decisions` derive for that sense; while
 observations are excluded, `excluded_terms` must name the excluded meaning, each term must occur
 in the authored `reason` of an entry that judges an excluded observation, and no term may occur
-in the gloss. Whether a gloss otherwise stays within its evidence remains a source-bound semantic
+in the gloss. A term must denote the excluded meaning, not merely occur in a reason: a generic placeholder
+(쓰임, 뜻, 의미, …) or an observed surface form / the lemma (with or without a particle) is refused. Whether a
+gloss otherwise stays within its evidence remains a source-bound semantic
 judgment; the contract makes the scope explicit and refuses the mechanically detectable widening
 (`scripts/factory/scope-declaration.mjs`, enforced by `validate.mjs` and the shared review artifact
 validator). Reviews already `complete` predate the field and are not rewritten.
