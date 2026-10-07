@@ -1,0 +1,547 @@
+{
+ "contract": "literature-evidence-selfcheck-v1",
+ "provenance": "Exploratory agent self-check by the primary Claude implementation context (Sonnet 5.5) over local evidence packs. Not an independent adjudication, not human editorial approval, not accuracy ground truth. No canonical or historical decision is changed.",
+ "literature_index_logical_rows_sha256": "bbb19a0b3535eca20f11431cf2c786bb399377356147b1224c3515b8bb9752fe",
+ "rows": [
+  {
+   "candidate_id": "C000008-0120",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 425
+  },
+  {
+   "candidate_id": "C000013-0029",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 4
+  },
+  {
+   "candidate_id": "C000013-0086",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 446
+  },
+  {
+   "candidate_id": "C000005-0142",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 8
+  },
+  {
+   "candidate_id": "C000008-0069",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "partially_resolved",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 2361
+  },
+  {
+   "candidate_id": "C000008-0198",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 9
+  },
+  {
+   "candidate_id": "C000004-0427",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 921
+  },
+  {
+   "candidate_id": "C000011-0163",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 5
+  },
+  {
+   "candidate_id": "C000008-0235",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 465
+  },
+  {
+   "candidate_id": "C000003-0109",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 861
+  },
+  {
+   "candidate_id": "C000007-0084",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 9
+  },
+  {
+   "candidate_id": "C000011-0228",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 1355
+  },
+  {
+   "candidate_id": "C000011-0200",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 906
+  },
+  {
+   "candidate_id": "C000008-0137",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "exposes_other_sense",
+   "contexts_returned": 8,
+   "lookup_ms": 7
+  },
+  {
+   "candidate_id": "C000005-0070",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 771
+  },
+  {
+   "candidate_id": "C000008-0248",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 2267
+  },
+  {
+   "candidate_id": "C000008-0103",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 1287
+  },
+  {
+   "candidate_id": "C000007-0077",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 382
+  },
+  {
+   "candidate_id": "C000010-0359",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_rejected",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 371
+  },
+  {
+   "candidate_id": "C000012-0297",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 459
+  },
+  {
+   "candidate_id": "C000007-0179",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "exposes_other_sense",
+   "contexts_returned": 8,
+   "lookup_ms": 7
+  },
+  {
+   "candidate_id": "C000008-0159",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 432
+  },
+  {
+   "candidate_id": "C000008-0045",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 377
+  },
+  {
+   "candidate_id": "C000007-0152",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 1272
+  },
+  {
+   "candidate_id": "C000008-0155",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 7
+  },
+  {
+   "candidate_id": "C000013-0065",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_rejected",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 4
+  },
+  {
+   "candidate_id": "C000003-0012",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 2164
+  },
+  {
+   "candidate_id": "C000013-0092",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_included",
+   "evidence_use": "exposes_other_sense",
+   "contexts_returned": 8,
+   "lookup_ms": 452
+  },
+  {
+   "candidate_id": "C000003-0303",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 1394
+  },
+  {
+   "candidate_id": "C000012-0051",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 385
+  },
+  {
+   "candidate_id": "C000004-0093",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 876
+  },
+  {
+   "candidate_id": "C000007-0096",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 2107
+  },
+  {
+   "candidate_id": "C000004-0176",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "resolved_rejected",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 851
+  },
+  {
+   "candidate_id": "C000008-0104",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "partially_resolved",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 1274
+  },
+  {
+   "candidate_id": "C000006-0182",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 1,
+   "lookup_ms": 5
+  },
+  {
+   "candidate_id": "C000003-0152",
+   "group": "deferred",
+   "deferral_heuristic_category": "sense_or_expression_boundary",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 440
+  },
+  {
+   "candidate_id": "C000003-0095",
+   "group": "deferred",
+   "deferral_heuristic_category": "evidence_insufficient",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 1686
+  },
+  {
+   "candidate_id": "C000009-0227",
+   "group": "deferred",
+   "deferral_heuristic_category": "evidence_insufficient",
+   "outcome": "partially_resolved",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 6
+  },
+  {
+   "candidate_id": "C000004-0435",
+   "group": "deferred",
+   "deferral_heuristic_category": "evidence_insufficient",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 461
+  },
+  {
+   "candidate_id": "C000013-0057",
+   "group": "deferred",
+   "deferral_heuristic_category": "evidence_insufficient",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 450
+  },
+  {
+   "candidate_id": "C000003-0084",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 850
+  },
+  {
+   "candidate_id": "C000009-0110",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "still_deferred",
+   "evidence_use": "exposes_other_sense",
+   "contexts_returned": 8,
+   "lookup_ms": 424
+  },
+  {
+   "candidate_id": "C000008-0005",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "resolved_covered",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 6
+  },
+  {
+   "candidate_id": "C000008-0218",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 515
+  },
+  {
+   "candidate_id": "C000005-0423",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 5
+  },
+  {
+   "candidate_id": "C000013-0098",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "still_deferred",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 456
+  },
+  {
+   "candidate_id": "C000008-0026",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 377
+  },
+  {
+   "candidate_id": "C000003-0097",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "resolved_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 7
+  },
+  {
+   "candidate_id": "C000013-0106",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "resolved_rejected",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 475
+  },
+  {
+   "candidate_id": "C000008-0142",
+   "group": "deferred",
+   "deferral_heuristic_category": "other",
+   "outcome": "still_deferred",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 436
+  },
+  {
+   "candidate_id": "C000010-0149",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 838
+  },
+  {
+   "candidate_id": "C000011-0244",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 1808
+  },
+  {
+   "candidate_id": "C000010-0015",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 396
+  },
+  {
+   "candidate_id": "C000012-0239",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 9
+  },
+  {
+   "candidate_id": "C000003-0013",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "misleading_noise",
+   "contexts_returned": 8,
+   "lookup_ms": 431
+  },
+  {
+   "candidate_id": "C000007-0158",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 1286
+  },
+  {
+   "candidate_id": "C000012-0236",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 507
+  },
+  {
+   "candidate_id": "C000003-0319",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 480
+  },
+  {
+   "candidate_id": "C000012-0055",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "no_effect",
+   "contexts_returned": 8,
+   "lookup_ms": 1105
+  },
+  {
+   "candidate_id": "C000007-0444",
+   "group": "clear_included",
+   "deferral_heuristic_category": null,
+   "outcome": "unchanged_included",
+   "evidence_use": "supports",
+   "contexts_returned": 8,
+   "lookup_ms": 1432
+  }
+ ]
+}

@@ -102,19 +102,32 @@ function metadataOf(database) {
   };
 }
 
-function collectHits(database, forms) {
+function formQuery(form) {
+  const useFts = [...form].length >= 3;
+  const where = (useFts ? 'unit_fts MATCH ? AND ' : '') + 'instr(u.text, ?) > 0';
+  const parameters = [...(useFts ? [ftsPattern(form)] : []), form];
+  const from = `FROM text_units u JOIN source_files f USING (file_id) JOIN works w ON w.file_id = f.file_id
+      ${useFts ? 'JOIN unit_fts ON unit_fts.rowid = u.unit_rowid' : ''} WHERE u.kind = 'text' AND ${where}`;
+  return { from, parameters };
+}
+
+// Exact union over all forms, independent of the fetch cap.
+function exactTotals(database, forms) {
+  const parts = forms.map(({ form }) => formQuery(form));
+  const sql = parts.map(({ from }) => `SELECT u.unit_rowid AS unit, w.work_id AS work ${from}`).join(' UNION ');
+  const { units, works } = database.prepare(`SELECT count(*) AS units, count(DISTINCT work) AS works FROM (${sql})`).get(...parts.flatMap(({ parameters }) => parameters));
+  return { units, works };
+}
+
+function collectHits(database, forms, fetchCap) {
   const hits = new Map(); // unit_rowid → hit
   const perForm = [];
   for (const { form } of forms) {
-    const useFts = [...form].length >= 3;
-    const where = (useFts ? 'unit_fts MATCH ? AND ' : '') + 'instr(u.text, ?) > 0';
-    const parameters = [...(useFts ? [ftsPattern(form)] : []), form];
-    const from = `FROM text_units u JOIN source_files f USING (file_id) JOIN works w ON w.file_id = f.file_id
-      ${useFts ? 'JOIN unit_fts ON unit_fts.rowid = u.unit_rowid' : ''} WHERE u.kind = 'text' AND ${where}`;
+    const { from, parameters } = formQuery(form);
     const { n, works } = database.prepare(`SELECT count(*) AS n, count(DISTINCT w.work_id) AS works ${from}`).get(...parameters);
     const rows = database.prepare(`
       SELECT u.unit_rowid, u.file_id, u.ordinal, u.block_ordinal, w.work_id, w.author, f.genre, f.source_sha256
-      ${from} ORDER BY (u.unit_rowid * 2654435761) % 4294967296, u.unit_rowid LIMIT ?`).all(...parameters, HIT_FETCH_CAP);
+      ${from} ORDER BY (u.unit_rowid * 2654435761) % 4294967296, u.unit_rowid LIMIT ?`).all(...parameters, fetchCap);
     perForm.push({ form, unit_matches: n, distinct_works: works, fetched: rows.length, truncated: rows.length < n });
     for (const row of rows) {
       const hit = hits.get(row.unit_rowid) ?? { ...row, matched_forms: [] };
@@ -188,13 +201,15 @@ export function retrieveLiteratureEvidence({
   searchForms,
   maxContexts = DEFAULT_MAX_CONTEXTS,
   maxPerWork = DEFAULT_MAX_PER_WORK,
+  hitFetchCap = HIT_FETCH_CAP,
 }) {
   if (!searchForms?.forms?.length) throw new Error('No usable search forms.');
   const startedAt = process.hrtime.bigint();
   const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
   try {
     const metadata = metadataOf(database);
-    const { hits, perForm } = collectHits(database, searchForms.forms);
+    const { hits, perForm } = collectHits(database, searchForms.forms, hitFetchCap);
+    const totals = exactTotals(database, searchForms.forms);
     const seed = (identity.batch_id ?? '') + '/' + (identity.candidate_id ?? '');
     const selected = selectRepresentativeHits(hits, { maxContexts, maxPerWork, seed });
     const contexts = selected.map((hit) => {
@@ -222,13 +237,18 @@ export function retrieveLiteratureEvidence({
       search_forms: searchForms.forms,
       skipped_forms: searchForms.skipped,
       per_form: perForm,
-      total_match_units: hits.length,
-      distinct_works_matched: new Set(hits.map((hit) => hit.work_id)).size,
+      // Exact over all forms (not limited by the fetch cap).
+      total_match_units: totals.units,
+      distinct_works_matched: totals.works,
+      // Fetched pool the selection drew from; smaller than the totals when `fetch_truncated`.
+      sampled_match_units: hits.length,
+      sampled_works: new Set(hits.map((hit) => hit.work_id)).size,
+      fetch_truncated: perForm.some((entry) => entry.truncated),
       genres_matched: [...new Set(hits.map((hit) => hit.genre))].sort(compare),
       contexts_returned: contexts.length,
       distinct_works_returned: new Set(contexts.map((c) => c.work_id)).size,
       genres_returned: [...new Set(contexts.map((c) => c.genre))].sort(compare),
-      bounds: { max_contexts: maxContexts, max_per_work: maxPerWork, hit_fetch_cap: HIT_FETCH_CAP },
+      bounds: { max_contexts: maxContexts, max_per_work: maxPerWork, hit_fetch_cap: hitFetchCap },
       useful_evidence: contexts.length > 0,
       no_evidence_note: contexts.length === 0 ? 'no literature hits; this is not negative evidence' : null,
       literature_works_total: works,
@@ -259,7 +279,7 @@ export function renderEvidenceMarkdown({ summary, contexts }) {
     `# ${summary.candidate_id} ${summary.lemma} — literature evidence (local only)`,
     '',
     'Evidence only: no POS, sense, disposition or literal/figurative decision. No hits is not negative evidence.',
-    `Forms: ${summary.search_forms.map((f) => f.form).join(', ')} · matches ${summary.total_match_units} units in ${summary.distinct_works_matched} works · returned ${summary.contexts_returned}`,
+    `Forms: ${summary.search_forms.map((f) => f.form).join(', ')} · matches ${summary.total_match_units} units in ${summary.distinct_works_matched} works${summary.fetch_truncated ? ` (selected from a sample of ${summary.sampled_match_units} units in ${summary.sampled_works} works; fetch cap reached)` : ''} · returned ${summary.contexts_returned}`,
     '',
   ];
   contexts.forEach((context, index) => {

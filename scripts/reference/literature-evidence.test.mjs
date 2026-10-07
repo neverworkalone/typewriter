@@ -16,6 +16,7 @@ import {
   loadFactoryCandidate,
   MAX_BLOCK_UNITS,
   pilotTriggerReasons,
+  renderEvidenceMarkdown,
   retrieveLiteratureEvidence,
   selectRepresentativeHits,
   writeEvidencePack,
@@ -151,7 +152,7 @@ test('no useful evidence is reported without a verdict', needsFts5, async () => 
   for (const key of ['pos', 'sense', 'disposition', 'decision', 'relation']) assert.equal(key in summary, false);
 });
 
-test('context expansion stays within the block and file; large blocks fall back to neighbours', async () => {
+test('context expansion stays within the block and file; large blocks fall back to neighbours', needsFts5, async () => {
   const big = Array.from({ length: MAX_BLOCK_UNITS + 8 }, (_, i) => (i === 10 ? '푸른 표적' : '줄 ' + i));
   const databasePath = await makeDatabase([
     { genre: 'novel', blocks: [['앞 문단'], big, ['뒤 문단']] },
@@ -204,4 +205,24 @@ test('existing literature search behaviour is unchanged by retrieval', needsFts5
   const before = JSON.stringify(searchLiteratureIndex({ databasePath, query: '푸른' }));
   retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms: forms('푸른') });
   assert.equal(JSON.stringify(searchLiteratureIndex({ databasePath, query: '푸른' })), before);
+});
+
+test('totals stay exact when the fetch cap is reached; summary and rendering distinguish sampled from total', needsFts5, async () => {
+  const files = Array.from({ length: 6 }, (_, i) => ({
+    genre: ['poem', 'novel', 'essay'][i % 3],
+    blocks: Array.from({ length: 5 }, (_, b) => ['푸른 줄 ' + i + '-' + b, '푸르러 줄 ' + i + '-' + b]),
+  })); // 6 works × 5 blocks × 2 lines = 60 matching units
+  const databasePath = await makeDatabase(files);
+  const capped = retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms: forms('푸른', '푸르러'), hitFetchCap: 7 });
+  assert.equal(capped.summary.total_match_units, 60);
+  assert.equal(capped.summary.distinct_works_matched, 6);
+  assert.equal(capped.summary.sampled_match_units < 60, true);
+  assert.equal(capped.summary.fetch_truncated, true);
+  assert.deepEqual(capped.summary.per_form.map((f) => [f.unit_matches, f.truncated]), [[30, true], [30, true]]);
+  assert.match(renderEvidenceMarkdown(capped), /matches 60 units in 6 works \(selected from a sample of \d+ units in \d+ works; fetch cap reached\)/u);
+  const full = retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms: forms('푸른', '푸르러') });
+  assert.equal(full.summary.total_match_units, 60);
+  assert.equal(full.summary.sampled_match_units, 60);
+  assert.equal(full.summary.fetch_truncated, false);
+  assert.doesNotMatch(renderEvidenceMarkdown(full), /fetch cap reached/u);
 });
