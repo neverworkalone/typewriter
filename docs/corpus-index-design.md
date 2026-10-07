@@ -72,7 +72,7 @@ The local `data/reference/corpus/` snapshot used for issue #197 contained 3,410 
 - **Storage:** paragraph text is the dominant base-table payload. Trigram postings, SQLite pages, and indexes on metadata are the likely additional size drivers; the FTS external-content table avoids another stored text copy. Issue #197 measured the FTS shadow tables, total index size, full rebuild time, and representative lookup latency below. Check free disk space before a staged build because the source, current index, and temporary replacement can coexist.
 - **Update cadence:** the corpus is a local reference snapshot, not product runtime data. Rebuild when an authorized source snapshot changes. A file-hash based incremental path is a later optimization, justified only by observed rebuild cost and source update cadence.
 
-The full-folder schema and FTS storage uncertainties from the pilot were measured in issue #197. The one-character literal fallback is materially slower than the trigram path; keep it correct and measure actual query demand before adding a separate short-query index. The builder still feature-checks FTS5 because the declared minimum Node version may not provide the trigram tokenizer.
+The full-folder schema and FTS storage uncertainties from the pilot were measured in issue #197. The one-character literal fallback is materially slower than the trigram path; keep it correct and measure actual query demand before adding a separate short-query index. The builder still probes FTS5 trigram as a fail-closed check: the supported Node 24.19.0 baseline must provide it, so the probe only catches an unexpected runtime regression with a clear error rather than selecting an alternate path.
 
 ## Bounded search and future corpus tooling
 

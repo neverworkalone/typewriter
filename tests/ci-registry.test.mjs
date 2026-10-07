@@ -366,5 +366,10 @@ test('documented Node baseline matches package.json engines', async () => {
       `${file} must state the Node ${minimum} minimum`,
     );
     assert.doesNotMatch(text, /22\.13/u, `${file} must not describe Node 22.13 as the baseline`);
+    assert.doesNotMatch(
+      text,
+      /minimum Node[^.]*\bmay not (?:provide|support|include)|Node 22[^.]*(?:lacks?|without|no) FTS5|FTS5[^.]*(?:lacks?|missing)[^.]*Node 22/iu,
+      `${file} must not describe FTS5 as possibly missing on the supported Node baseline`,
+    );
   }
 });
