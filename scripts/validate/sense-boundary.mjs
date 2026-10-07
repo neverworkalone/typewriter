@@ -131,13 +131,19 @@ export function inspectSenseBoundaryPairs(record) {
       const rightDistinctiveTokens = [...rightSet].filter((token) => !leftSet.has(token)).sort();
       let relationship = 'distinct';
       let reason;
-      if (compactGloss(left.gloss) === compactGloss(right.gloss)) {
+      // A different part of speech is itself a boundary: gloss-token overlap between, say, a noun and an
+      // adverb says nothing about duplicated senses, and a new POS is separately proven absent from the
+      // entry (issue #393). Only same-POS pairs are checked for duplicate/nested/usage-only overlap.
+      const crossPos = typeof left.pos === 'string' && typeof right.pos === 'string' && left.pos !== right.pos;
+      if (crossPos) {
+        // Boundary stays distinct.
+      } else if (compactGloss(left.gloss) === compactGloss(right.gloss)) {
         relationship = 'duplicate';
       } else {
         const smallerSize = Math.min(leftSet.size, rightSet.size);
         if (smallerSize >= 2 && sharedTokens.length === smallerSize) relationship = 'nested';
       }
-      if (relationship === 'distinct') {
+      if (relationship === 'distinct' && !crossPos) {
         const highConfidence = highConfidenceRelationship(left.gloss, right.gloss);
         if (highConfidence) {
           relationship = highConfidence.relationship;

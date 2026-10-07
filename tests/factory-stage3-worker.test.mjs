@@ -1159,3 +1159,51 @@ test('Stage 2 validation computes the required pairs from the canonical entry an
   // Without a comparable canonical state (stale review) only the structure is checked.
   assert.deepEqual(validateExistingSensePairs(decision, row, { existingSenses: null, required: true }), []);
 });
+
+// A new POS is proven absent from the entry by the decision hand-off; its gloss is not judged by token overlap
+// with the other POS (issue #393). Real canonical w6757 is the noun 잠시 "짧은 시간 동안.".
+async function newSenseScenario({ kind, pos, gloss }) {
+  const { canonicalRecords, recordPathById } = await realCanonical();
+  const target = canonicalRecords.find((record) => record.id === 'w6757');
+  const id = 'C900001-0001';
+  const decision = {
+    source_candidate_id: id, disposition: 'included',
+    target: kind === 'new_pos_on_existing_lemma' ? { kind, entry_id: 'w6757' } : { kind, entry_id: 'w6757', context_sense_id: 'w6757-s1' },
+    reviewed_record: { lemma: target.lemma, senses: [{ pos, gloss }] },
+  };
+  const record = reviewedCandidateRecord(decision);
+  const row = {
+    source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+    decision_rationale: id + ': 합성 시험 결정.', gloss_judgment: 'fit',
+    sense_reviews: record.senses.map((sense) => ({
+      sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+      boundary_rationale: id + ' ' + sense.id + ': 한 가지 뜻으로 한정된다.', semantic_rationale: id + ' ' + sense.id + ': ' + sense.gloss,
+      relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: id + ' ' + sense.id + ': 관계 없음.',
+    })),
+  };
+  row.review_binding = authorSemanticReviewBinding(row, record);
+  const digest = 'a'.repeat(64);
+  const plan = () => planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  return { plan, authority: () => buildStage3SemanticAuthority({ root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan: plan(), semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' }) };
+}
+
+test('a new POS whose gloss contains every token of another POS gloss is admitted without paraphrase games', async () => {
+  const adverb = await newSenseScenario({ kind: 'new_pos_on_existing_lemma', pos: 'adverb', gloss: '아주 짧은 시간 동안에.' });
+  assert.ok((await adverb.authority()).sourceObject);
+  const equivalent = await newSenseScenario({ kind: 'new_pos_on_existing_lemma', pos: 'adverb', gloss: '얼마 되지 않는 동안에.' });
+  assert.ok((await equivalent.authority()).sourceObject, 'the outcome no longer depends on the wording');
+});
+
+test('the same overlap inside one POS is still blocked, and a new_pos decision for an existing POS still fails', async () => {
+  const nested = await newSenseScenario({ kind: 'new_sense_on_existing_entry', pos: 'noun', gloss: '아주 짧은 시간 동안에.' });
+  await assert.rejects(nested.authority(), rejectsWith('STAGE3_CANONICAL_SENSE_CONFLICT'));
+  const duplicate = await newSenseScenario({ kind: 'new_sense_on_existing_entry', pos: 'noun', gloss: '짧은 시간 동안.' });
+  await assert.rejects(duplicate.authority(), rejectsWith('STAGE3_CANONICAL_SENSE_CONFLICT'));
+  const falsePos = await newSenseScenario({ kind: 'new_pos_on_existing_lemma', pos: 'noun', gloss: '전혀 다른 둘째 뜻풀이.' });
+  assert.throws(() => falsePos.plan(), rejectsWith('STAGE3_CANONICAL_CONFLICT'));
+});
