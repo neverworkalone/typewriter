@@ -336,6 +336,7 @@ test('recovery reuses an open admission PR and creates status only when it is mi
   });
   assert.equal(result.status, 'create-rejection');
   assert.equal(result.admissionPr, 92);
+  assert.equal(result.rejectionCode, 'STAGE3_CANONICAL_CONFLICT');
   assert.deepEqual(createCalls, []);
   await assert.rejects(() => recoverStage3Attempt({
     github: { ...github, async listPullRequests() { return [
@@ -343,6 +344,13 @@ test('recovery reuses an open admission PR and creates status only when it is mi
     ]; } },
     git: {}, batchId: 'C000001', attempt: 1,
   }), /without a recorded lexical-rejection disposition/u);
+  await assert.rejects(() => recoverStage3Attempt({
+    github: { ...github, async listPullRequests() { return [{
+      number: 96, state: 'closed', merged: false, body: `Claim ref: ${claimRef}\n\nStage 3 disposition: lexical-rejection (STAGE3_CANONICAL_CONFLICT).\nStage 3 disposition: lexical-rejection (STAGE3_BOUNDARY_CONTEXT_MISSING).`,
+      head: { ref: 'codex/stage3/C000001-a1' },
+    }]; } },
+    git: {}, batchId: 'C000001', attempt: 1,
+  }), /ambiguous lexical-rejection codes/u);
 });
 
 function stage3RetryFixture({ statusPrNumber = 96, statusState = 'open', admissionState = 'closed', admissionAgent = 'codex', statusAgent = admissionAgent } = {}) {
@@ -664,6 +672,61 @@ test('CLI supersedes only the named rejection PR before resuming its same admiss
   assert.ok(events.indexOf('close:96') < events.indexOf('reopen:95'));
   assert.ok(events.indexOf('reopen:95') < events.indexOf(`refresh:${fixture.admissionBranch}`));
   assert.ok(events.includes(`process:${fixture.statusBranch}`));
+});
+
+test('closed-admission crash recovery carries its actual rejection code into the status PR', async () => {
+  const batchId = 'C900002';
+  const attempt = 1;
+  const claimRef = `refs/heads/stage3-claims/${batchId}-a${attempt}`;
+  const admissionBranch = `codex/stage3/${batchId}-a${attempt}`;
+  const rejectionCode = 'STAGE3_BOUNDARY_CONTEXT_MISSING';
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId, attempt, baseSha: 'master-sha', ownerToken: 'owner-token-0001' };
+  const reviewManifest = { batch_id: batchId, status: 'ready', attempt, history: [], candidates_sha256: digest };
+  const snapshot = {
+    headSha: 'master-sha', validated: true,
+    candidates: [{ batchId, manifest: { batch_id: batchId, status: 'complete' }, rows: [], files: [] }],
+    reviews: [{ batchId, manifest: reviewManifest, decisions: [], files: [] }],
+    canonicalEntries: [],
+  };
+  const admission = {
+    number: 95, state: 'closed', merged: false, draft: true, base: { ref: 'master' },
+    head: { ref: admissionBranch, sha: 'draft-sha' },
+    body: `Stage 3 attempt: ${batchId}-a${attempt}\nClaim ref: ${claimRef}\n\nStage 3 disposition: lexical-rejection (${rejectionCode}).`,
+  };
+  const events = [];
+  let statusBody;
+  const github = {
+    async getBranchHead() { return 'master-sha'; },
+    async listStage3ClaimRefs() { return [claimRef]; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listPullRequests(state) { assert.equal(state, 'all'); return [admission]; },
+    async createPullRequest(payload) { statusBody = payload.body; events.push('create-status'); return { number: 96, html_url: 'https://example.test/96' }; },
+  };
+  const git = {
+    originRemote() { return 'https://github.com/o/r.git'; },
+    async fetchMaster() {},
+    resolveRef() { return 'master-sha'; },
+    createBranch(branch, base) { events.push(`create:${branch}:${base}`); },
+    async commitAndPush({ files }) { assert.deepEqual(files, [`data/reviews/${batchId}/manifest.json`]); events.push('commit-status'); },
+  };
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-crash-rejection-'));
+  try {
+    const reviewPath = path.join(root, 'data/reviews', batchId, 'manifest.json');
+    await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify(reviewManifest));
+    const result = await runStage3Cli(['--resume-batch', batchId, '--attempt', String(attempt)], {
+      root, env: { GH_TOKEN: 'fixture-token' }, makeGit: () => git, makeGithub: () => github,
+      loadSnapshot: async () => snapshot,
+      callbacks: { async waitForMerge() { return { status: 'stopped-by-primary' }; }, close() {} },
+      log: () => {},
+    });
+    assert.equal(result.status, 'stopped-by-primary');
+    assert.match(statusBody, new RegExp(`Stage 3 rejection code: ${rejectionCode}\\.`));
+    assert.deepEqual(JSON.parse(await readFile(reviewPath, 'utf8')), {
+      ...reviewManifest, status: 'rejected', rejected_pr: 95, history: [{ attempt, rejected_pr: 95 }],
+    });
+    assert.ok(events.includes('create-status'));
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 for (const { label, remoteBranchExists } of [

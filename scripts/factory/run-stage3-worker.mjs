@@ -173,7 +173,7 @@ async function resumeStage3Cli({
     claim = await createRejectionStatusPullRequest({
       github, git, root,
       claim: { ...claim, rejectionBranchName: `${agent}/stage3-status/${batchId}-a${attempt}` },
-      admissionPr: recovered.admissionPr, log,
+      admissionPr: recovered.admissionPr, rejectionCode: recovered.rejectionCode, log,
     });
   }
 

@@ -564,14 +564,22 @@ export async function supersedeStage3RejectionForRetry({
   };
 }
 
-function stage3RejectionCode(body) {
-  return [...String(body ?? '').matchAll(/^Stage 3 disposition: lexical-rejection \(([A-Z0-9_]+)\)\.$/gmu)].at(-1)?.[1];
-}
+const stage3RejectionCodes = (body) => [...String(body ?? '').matchAll(/^Stage 3 disposition: lexical-rejection \(([A-Z0-9_]+)\)\.$/gmu)].map((match) => match[1]);
+const stage3RejectionCode = (body) => {
+  const codes = stage3RejectionCodes(body);
+  return codes.length === 1 ? codes[0] : undefined;
+};
 
 function recordLexicalRejection(pr, error, claim) {
   const marker = `Stage 3 disposition: lexical-rejection (${error.code ?? 'STAGE3_LEXICAL_BLOCK'}).`;
   const body = pr.body ?? '';
-  const previousCode = stage3RejectionCode(body);
+  const previousCodes = stage3RejectionCodes(body);
+  if (previousCodes.length > 1) {
+    throw new Stage3WorkerError('admission Draft contains multiple lexical-rejection codes; preserve it for owner recovery', {
+      batchId: claim.batchId, attempt: claim.attempt, claimCreated: true, prNumber: pr.number,
+    });
+  }
+  const previousCode = previousCodes[0];
   const currentCode = error.code ?? 'STAGE3_LEXICAL_BLOCK';
   if (previousCode && previousCode !== currentCode) {
     throw new Stage3WorkerError(`retry produced ${currentCode}, but the existing Draft records ${previousCode}; preserve both PRs and inspect the changed blocker`, {
@@ -761,9 +769,13 @@ export async function recoverStage3Attempt({ github, git, agent = 'codex', batch
         batchId, attempt, claimCreated: true, prNumber: admission.number,
       });
     }
+    const rejectionCode = stage3RejectionCode(admission.body);
+    if (!rejectionCode) throw new Stage3WorkerError(`${claimRef} closed admission PR #${admission.number} has ambiguous lexical-rejection codes; preserve it for owner recovery`, {
+      batchId, attempt, claimCreated: true, prNumber: admission.number,
+    });
     return {
       status: 'create-rejection', batchId, attempt, claimRef, agent, activeLock, claimMissing: !hasClaim,
-      rejectionBranchName: rejectionBranchName(agent, batchId, attempt), admissionPr: admission.number,
+      rejectionBranchName: rejectionBranchName(agent, batchId, attempt), admissionPr: admission.number, rejectionCode,
     };
   }
   if (admission?.merged || admission?.merged_at) return { status: 'admission-merged', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, branchName: admission.head.ref, prNumber: admission.number, prState: 'admission' };
