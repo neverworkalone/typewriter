@@ -520,6 +520,22 @@ judgment; the contract makes the scope explicit and refuses the mechanically det
 (`scripts/factory/scope-declaration.mjs`, enforced by `validate.mjs` and the shared review artifact
 validator). Reviews already `complete` predate the field and are not rewritten.
 
+**Surface-form (inflection class) judgments.** An admitted predicate sense whose final coda cannot be
+classified by a mechanical rule (for example a ㅂ-final adjective, regular or irregular) needs an explicit
+Stage 2 judgment, because Stage 3 never guesses it. The decision row of an `included`/`corrected` candidate
+carries `surface_form_judgments: [{sense_index, class_id, reason}]`: `sense_index` is the 0-based index in
+`reviewed_record.senses`, `class_id` is any M6-2/M6-3 class that the shared surface-form rule accepts for that
+exact sense (an irregular exception class, the regular risk-coda class, or the predicate exclusion) and `reason`
+is authored, candidate-specific text citing the candidate id. A judgment is allowed only for a sense that has an
+open judgment gap, and a sense with an open gap needs one; unknown or mismatched classes, duplicates and
+judgments for senses that need none are rejected by the shared validator
+(`scripts/factory/surface-form-judgments.mjs`, enforced by `validate.mjs` and `validateReviewArtifacts` for every
+new or changed review). Stage 3 re-checks the same judgments with `resolveSurfaceFormJudgments`
+(`scripts/inflection/surface-form-projection.mjs`) under the allocated canonical ids and records them in the
+M6-2/M6-3 manifests it already owns; no word or suffix is special-cased. A merged review that predates the field
+is not rewritten: if its sense needs a judgment, Stage 3 fails closed (`STAGE3_SURFACE_FORM_JUDGMENT`) and returns
+it through the rejection process for a Stage 2 rework.
+
 `disposition` takes the existing meanings: included / corrected / held /
 rejected / deferred. `target.kind` is `new_entry`, `new_pos_on_existing_lemma`
 or `new_sense_on_existing_entry` (the last two carry the existing canonical `id`
