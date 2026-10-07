@@ -359,6 +359,12 @@ test('documented Node baseline matches package.json engines', async () => {
   const minimum = pkg.engines.node.replace(/^>=/u, '');
   assert.match(minimum, /^24\.\d+\.\d+$/u);
   const [major, minor] = minimum.split('.');
+  for (const workflow of ['ci.yml', 'deep.yml', 'pages.yml', 'factory-master.yml']) {
+    const text = await readFile(path.join(root, '.github/workflows', workflow), 'utf8');
+    const versions = [...text.matchAll(/node-version: (\S+)/gu)].map((match) => match[1]);
+    assert.ok(versions.length > 0, `${workflow} must set up Node.js`);
+    assert.deepEqual([...new Set(versions)], [`${major}.x`], `${workflow} must use the Node ${major} baseline only`);
+  }
   for (const file of ['README.md', 'docs/build.md', 'docs/development.md', 'docs/corpus-index-design.md']) {
     const text = await readFile(path.join(root, file), 'utf8');
     assert.ok(
