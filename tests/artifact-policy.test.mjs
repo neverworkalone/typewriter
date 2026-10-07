@@ -752,10 +752,24 @@ test('artifact policy accepts authored correction, boundary, and relation payloa
       sense_reviews: [{}, {}],
     })],
   });
+  // Pairwise evidence against the existing same-POS senses of the target entry (issue #379) is a closed durable payload.
+  const existingPair = {
+    existing_sense_id: 'w1001-s1', new_sense_id: 'C000001-0001-s1', relationship: 'distinct', decision: 'retain',
+    existing_gloss_sha256: 'e'.repeat(64), new_gloss_sha256: 'f'.repeat(64),
+    evidence_basis: 'C000001-0001: separate gloss evidence', distinguishing_feature: 'C000001-0001: distinct meanings', rationale: 'C000001-0001: retain',
+  };
+  const withExistingPairs = (pair) => decisionSourceFixture({
+    candidateRecords: [multiSenseRecord],
+    decisions: [decisionRowFixture({ existing_sense_pairs: [pair], sense_reviews: [{}, {}] })],
+  });
+  const existingPairs = withExistingPairs(existingPair);
+  const hiddenField = withExistingPairs({ ...existingPair, smuggled: 'value' });
 
   try {
     await mkdir(path.dirname(filePath), { recursive: true });
-    for (const value of [corrected, multiSense]) {
+    await writeFile(filePath, `${JSON.stringify(hiddenField)}\n`, 'utf8');
+    await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }), /unknown durable fields: smuggled|smuggled/u);
+    for (const value of [corrected, multiSense, existingPairs]) {
       await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
       await assert.doesNotReject(
         validateArtifactPolicy({
