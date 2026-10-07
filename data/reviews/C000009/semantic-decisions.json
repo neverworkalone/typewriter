@@ -1641,9 +1641,9 @@
     {
       "source_candidate_id": "C000009-0262",
       "candidate_record_id": "C000009-0262",
-      "candidate_record_sha256": "4336dd3aa7a4d88ffe4c4b559ca578b8559ef6ca9e8722af54838eaec595c475",
+      "candidate_record_sha256": "1fc78e9ba492ce9bdce7d0ead4ecf8f7fbc8e21f32dea7f51530a5399e081e4c",
       "decision": "included",
-      "decision_rationale": "C000009-0262 attempt 1 Claude agent self-check: o01은 잠시 망설이다 다가갔다는 쓰임으로 얼마 되지 않는 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
+      "decision_rationale": "C000009-0262 attempt 1 Claude agent self-check: o01은 잠시 망설이다 다가갔다는 쓰임으로 짧은 시간 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -1651,8 +1651,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000009-0262: o01은 잠시 망설이다 다가갔다는 쓰임으로 얼마 되지 않는 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
-          "semantic_rationale": "C000009-0262: o01은 잠시 망설이다 다가갔다는 쓰임으로 얼마 되지 않는 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
+          "boundary_rationale": "C000009-0262: o01은 잠시 망설이다 다가갔다는 쓰임으로 짧은 시간 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
+          "semantic_rationale": "C000009-0262: o01은 잠시 망설이다 다가갔다는 쓰임으로 짧은 시간 동안을 부사로 나타내며 명사 잠시의 관찰이 아니다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -1669,14 +1669,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0262",
-        "candidate_record_sha256": "4336dd3aa7a4d88ffe4c4b559ca578b8559ef6ca9e8722af54838eaec595c475",
-        "decision_evidence_sha256": "07c279cb22f7573d177bf88ca665d3a17013e340b6c5a44bd5e8deb9ba3b2d48",
+        "candidate_record_sha256": "1fc78e9ba492ce9bdce7d0ead4ecf8f7fbc8e21f32dea7f51530a5399e081e4c",
+        "decision_evidence_sha256": "52af7c9ac297f56c5055ffe8484a9e857f3b86557e03b4bf183a7da5c74b2536",
         "sense_evidence": [
           {
             "sense_id": "C000009-0262-s1",
-            "sense_sha256": "002efad34d9035d754d1e7f0bb7eebd6fe684734bfcc0161bbcc047a370dc015",
-            "gloss_sha256": "dbf17cf126e4acb4f33531557b321f2deec9eecd4bd289ca54779a8c00459589",
-            "evidence_sha256": "b7f9ee62b84a68569f2dc7b6523abb296f6f3f1e36aa8fbbfd4040ca6bd54763"
+            "sense_sha256": "76ed46ccaa3db2e99f342494174f340b40eb8da6487bc780fe1beb24c5ba9f89",
+            "gloss_sha256": "b932d78cc25c2a7faadbc2a199f82931d2ce87eed0cfe4a9c33dc639e21bda01",
+            "evidence_sha256": "bb21175535691511b04e3080cf283b7e3e975a30e70d579c255cdc0d4c7baf07"
           }
         ]
       }
