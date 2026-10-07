@@ -149,9 +149,9 @@
     {
       "source_candidate_id": "C000006-0003",
       "candidate_record_id": "C000006-0003",
-      "candidate_record_sha256": "d0d9fb50975e7633ac0e0ed151a49df5122840cd8b2f43885b49b1f899f717f6",
+      "candidate_record_sha256": "5f4e93fb6bc5e18649c363ea9ed0c839ef78975420edc2b6a5015d8939e42514",
       "decision": "included",
-      "decision_rationale": "C000006-0003 attempt 1 Claude agent self-check: o01은 팔의 가동 범위처럼 몸의 부분이 움직이는 일을 나타낸다. o02는 폐쇄 공동체의 가동을 시작한다는 쓰임으로 시설을 움직여 돌아가게 하는 일이다.",
+      "decision_rationale": "C000006-0003 attempt 1 Claude agent self-check: o01은 팔의 가동 범위처럼 몸의 부분이 움직이는 일을 나타낸다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -173,64 +173,22 @@
               "C000006-0003.o02"
             ],
             "excluded_terms": [
-              "시작"
+              "공동체"
             ]
           }
-        },
-        {
-          "sense_id": "C000006-0003-s2",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0003: o02는 폐쇄 공동체의 가동을 시작한다는 쓰임으로 시설을 움직여 돌아가게 하는 일이다.",
-          "semantic_rationale": "C000006-0003: o02는 폐쇄 공동체의 가동을 시작한다는 쓰임으로 시설을 움직여 돌아가게 하는 일이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000006-0003 C000006-0003-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000006-0003.o02"
-            ],
-            "excluded_observation_ids": [
-              "C000006-0003.o01"
-            ],
-            "excluded_terms": [
-              "범위"
-            ]
-          }
-        }
-      ],
-      "boundary_pairs": [
-        {
-          "left_sense_id": "C000006-0003-s1",
-          "right_sense_id": "C000006-0003-s2",
-          "relationship": "distinct",
-          "decision": "retain",
-          "left_gloss_sha256": "8878976409bd0ac34f4a260f3d2807fc414f4a8e464fc6c9246c704dab92d26d",
-          "right_gloss_sha256": "23baace6710cdf63f65b512da5f908fcc35763d620fc1722437e93b9c77a67b9",
-          "evidence_basis": "C000006-0003: 서로 다른 관찰 근거를 attempt 1 Claude agent self-check으로 원본 문맥에서 대조했다.",
-          "distinguishing_feature": "C000006-0003: 몸의 관절이나 기계의 부분이 움직이는 일. 대 기계나 시설을 움직여 돌아가게 하는 일.",
-          "rationale": "C000006-0003: o01은 팔의 가동 범위처럼 몸의 부분이 움직이는 일을 나타낸다. / o02는 폐쇄 공동체의 가동을 시작한다는 쓰임으로 시설을 움직여 돌아가게 하는 일이다."
         }
       ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000006-0003",
-        "candidate_record_sha256": "d0d9fb50975e7633ac0e0ed151a49df5122840cd8b2f43885b49b1f899f717f6",
-        "decision_evidence_sha256": "fae15f1cc023a2687d02acbeaba29318e068c4026ebad43f8076273352e4c5eb",
+        "candidate_record_sha256": "5f4e93fb6bc5e18649c363ea9ed0c839ef78975420edc2b6a5015d8939e42514",
+        "decision_evidence_sha256": "6241fd89df009494b6fea0dd4b66676ddd3e233b58696348d9e31b78afd2f8a1",
         "sense_evidence": [
           {
             "sense_id": "C000006-0003-s1",
             "sense_sha256": "a270bacb384f53a71e557a51a5186f078d6b579d47abb1ef817f826e24d08faa",
             "gloss_sha256": "8878976409bd0ac34f4a260f3d2807fc414f4a8e464fc6c9246c704dab92d26d",
-            "evidence_sha256": "ee277d55e7678d530ba09074bc591e00d51b820a31c3a8d8673bfb0c9446a537"
-          },
-          {
-            "sense_id": "C000006-0003-s2",
-            "sense_sha256": "9e7be86b06b03f792a17027b68f4ab5d0ec9865aaa65805b30959c5b0051df0d",
-            "gloss_sha256": "23baace6710cdf63f65b512da5f908fcc35763d620fc1722437e93b9c77a67b9",
-            "evidence_sha256": "a516fbf224ccce552d189041a558380a7abee833a11afe3c1092a737c7211938"
+            "evidence_sha256": "e14dd442e4a33cc02f1ccb6b08fe86e686c8db0b9292028c47db3dc2506d3719"
           }
         ]
       }
@@ -1598,9 +1556,9 @@
     {
       "source_candidate_id": "C000006-0033",
       "candidate_record_id": "C000006-0033",
-      "candidate_record_sha256": "1ccf0ff50d0e70d47eea06b44ea53285b71507236691eac600f2ee4a375e1adf",
+      "candidate_record_sha256": "a19c5cdb171d19cf87dcc3fd44eed14f5a74f1a7a40c9af390f46607d66ba062",
       "decision": "included",
-      "decision_rationale": "C000006-0033 attempt 1 Claude agent self-check: o01은 로봇 기수 콜리, o02는 말에 오른 기수로 말을 타는 사람을 가리킨다. o03은 다음 기수는 사흘 뒤 시작이라는 쓰임으로 교육 과정에서 차례를 나눈 기를 뜻한다.",
+      "decision_rationale": "C000006-0033 attempt 1 Claude agent self-check: o01은 로봇 기수 콜리가 달리는 말에 오르는 쓰임, o02는 강청색 말에 오른 기수가 둘이라는 쓰임으로 말을 타는 사람을 가리킨다. o03은 다음 기수는 사흘 뒤 시작이라는 쓰임으로 모집이나 교육에서 시기를 나누어 구분한 한 차례의 집단을 뜻한다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -1608,8 +1566,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0033: o01은 로봇 기수 콜리, o02는 말에 오른 기수로 말을 타는 사람을 가리킨다.",
-          "semantic_rationale": "C000006-0033: o01은 로봇 기수 콜리, o02는 말에 오른 기수로 말을 타는 사람을 가리킨다.",
+          "boundary_rationale": "C000006-0033: o01은 로봇 기수 콜리가 달리는 말에 오르는 쓰임, o02는 강청색 말에 오른 기수가 둘이라는 쓰임으로 말을 타는 사람을 가리킨다.",
+          "semantic_rationale": "C000006-0033: o01은 로봇 기수 콜리가 달리는 말에 오르는 쓰임, o02는 강청색 말에 오른 기수가 둘이라는 쓰임으로 말을 타는 사람을 가리킨다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -1632,8 +1590,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0033: o03은 다음 기수는 사흘 뒤 시작이라는 쓰임으로 교육 과정에서 차례를 나눈 기를 뜻한다.",
-          "semantic_rationale": "C000006-0033: o03은 다음 기수는 사흘 뒤 시작이라는 쓰임으로 교육 과정에서 차례를 나눈 기를 뜻한다.",
+          "boundary_rationale": "C000006-0033: o03은 다음 기수는 사흘 뒤 시작이라는 쓰임으로 모집이나 교육에서 시기를 나누어 구분한 한 차례의 집단을 뜻한다.",
+          "semantic_rationale": "C000006-0033: o03은 다음 기수는 사흘 뒤 시작이라는 쓰임으로 모집이나 교육에서 시기를 나누어 구분한 한 차례의 집단을 뜻한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -1648,7 +1606,7 @@
             ],
             "excluded_terms": [
               "로봇",
-              "말"
+              "강청색"
             ]
           }
         }
@@ -1659,30 +1617,30 @@
           "right_sense_id": "C000006-0033-s2",
           "relationship": "distinct",
           "decision": "retain",
-          "left_gloss_sha256": "35517d4170de027cc613f4ebe4adeb9d59ef13b502371638b313b6f95412f9be",
-          "right_gloss_sha256": "03fa20a05b2342625412dc80f1f1d3f84040e15e05a17123f189abaeb536c68e",
+          "left_gloss_sha256": "3f47bf0cdc3bae4679b6bf14241b0aafc89185704cdf2a7ef2e126f2ceb04722",
+          "right_gloss_sha256": "394e3344e8da598fbe0630fda1cbc6830dfe06dd4222200cb20e679cd137d4dd",
           "evidence_basis": "C000006-0033: 서로 다른 관찰 근거를 attempt 1 Claude agent self-check으로 원본 문맥에서 대조했다.",
-          "distinguishing_feature": "C000006-0033: 경마나 말타기에서 말을 타는 사람. 대 교육이나 모집에서 차례를 나눈 기의 수.",
-          "rationale": "C000006-0033: o01은 로봇 기수 콜리, o02는 말에 오른 기수로 말을 타는 사람을 가리킨다. / o03은 다음 기수는 사흘 뒤 시작이라는 쓰임으로 교육 과정에서 차례를 나눈 기를 뜻한다."
+          "distinguishing_feature": "C000006-0033: 말을 타는 사람. 대 교육이나 모집에서 시기를 나누어 구분한 한 차례의 집단.",
+          "rationale": "C000006-0033: o01은 로봇 기수 콜리가 달리는 말에 오르는 쓰임, o02는 강청색 말에 오른 기수가 둘이라는 쓰임으로 말을 타는 사람을 가리킨다. / o03은 다음 기수는 사흘 뒤 시작이라는 쓰임으로 모집이나 교육에서 시기를 나누어 구분한 한 차례의 집단을 뜻한다."
         }
       ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000006-0033",
-        "candidate_record_sha256": "1ccf0ff50d0e70d47eea06b44ea53285b71507236691eac600f2ee4a375e1adf",
-        "decision_evidence_sha256": "9bfc21cb1a46bfcd4e29710445a487c6431d9c3f5c0af5eff33f6b5f531d9783",
+        "candidate_record_sha256": "a19c5cdb171d19cf87dcc3fd44eed14f5a74f1a7a40c9af390f46607d66ba062",
+        "decision_evidence_sha256": "6774bd7e5f984867a1d56172e5c6b6dd874ce10979a8388f4d0be59510eddd3a",
         "sense_evidence": [
           {
             "sense_id": "C000006-0033-s1",
-            "sense_sha256": "e322e3db26bbd2b5f26c76cce4790ae320bcb0fd3d8f5ce08cbe533969f259df",
-            "gloss_sha256": "35517d4170de027cc613f4ebe4adeb9d59ef13b502371638b313b6f95412f9be",
-            "evidence_sha256": "bc2ec00afa33b7e723b2409e1291d73980edf7e8489fe3a10276673e52db0e0d"
+            "sense_sha256": "640690417df936dd45982b802fc1e63ff72f06341a44475416f46571ca3105cd",
+            "gloss_sha256": "3f47bf0cdc3bae4679b6bf14241b0aafc89185704cdf2a7ef2e126f2ceb04722",
+            "evidence_sha256": "aa58d9aa03dc2acc2b09324dd193fc99e7984fa34b6d6f0c5a1534435afb462a"
           },
           {
             "sense_id": "C000006-0033-s2",
-            "sense_sha256": "956f1d4271eb2d927160f0aa625985822488b64b178c061c195ae2bfd9812344",
-            "gloss_sha256": "03fa20a05b2342625412dc80f1f1d3f84040e15e05a17123f189abaeb536c68e",
-            "evidence_sha256": "9c21abf789f7f335c541a0656aab8aa0953ab8a94722eaae417dbbee6fce350b"
+            "sense_sha256": "2ce98c9c97efa451358af8f957f593ca7599297c667d47cadb9cf1d5a9eb4ee7",
+            "gloss_sha256": "394e3344e8da598fbe0630fda1cbc6830dfe06dd4222200cb20e679cd137d4dd",
+            "evidence_sha256": "1e831622a8a59a1fcb3639128b46b6471dbe698a6931e950b769177eb1be29f4"
           }
         ]
       }
@@ -1916,9 +1874,9 @@
     {
       "source_candidate_id": "C000006-0038",
       "candidate_record_id": "C000006-0038",
-      "candidate_record_sha256": "195f828367dc68b9a1e5960296a5a41aade3509b4ed06ede0c0887c49d83d558",
+      "candidate_record_sha256": "47ecbe1dc91389ec2678598140a8d66969312e2b1ec44dc1b9cc50d4a5c711bc",
       "decision": "included",
-      "decision_rationale": "C000006-0038 attempt 1 Claude agent self-check: o01은 까치의 날갯짓, o02는 알을 깨고 날갯짓을 하는 비유, o03은 재호의 날갯짓으로 날개를 치는 움직임을 나타낸다.",
+      "decision_rationale": "C000006-0038 attempt 1 Claude agent self-check: o01은 까치들의 날갯짓 사이로 걷혀가는 안개라는 쓰임으로 새가 날개를 치는 일이다. o02는 알을 깨고 날갯짓을 할 수 있도록, o03은 재호의 날갯짓이 해방을 가져올지도 모른다는 쓰임으로 새가 날아오르듯 힘차게 나아가려는 움직임을 비유한다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -1926,34 +1884,81 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0038: o01은 까치의 날갯짓, o02는 알을 깨고 날갯짓을 하는 비유, o03은 재호의 날갯짓으로 날개를 치는 움직임을 나타낸다.",
-          "semantic_rationale": "C000006-0038: o01은 까치의 날갯짓, o02는 알을 깨고 날갯짓을 하는 비유, o03은 재호의 날갯짓으로 날개를 치는 움직임을 나타낸다.",
+          "boundary_rationale": "C000006-0038: o01은 까치들의 날갯짓 사이로 걷혀가는 안개라는 쓰임으로 새가 날개를 치는 일이다.",
+          "semantic_rationale": "C000006-0038: o01은 까치들의 날갯짓 사이로 걷혀가는 안개라는 쓰임으로 새가 날개를 치는 일이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000006-0038 C000006-0038-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
           "scope_declaration": {
             "admitted_observation_ids": [
-              "C000006-0038.o01",
+              "C000006-0038.o01"
+            ],
+            "excluded_observation_ids": [
               "C000006-0038.o02",
               "C000006-0038.o03"
             ],
-            "excluded_observation_ids": [],
-            "excluded_terms": []
+            "excluded_terms": [
+              "알을",
+              "해방"
+            ]
           }
+        },
+        {
+          "sense_id": "C000006-0038-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000006-0038: o02는 알을 깨고 날갯짓을 할 수 있도록, o03은 재호의 날갯짓이 해방을 가져올지도 모른다는 쓰임으로 새가 날아오르듯 힘차게 나아가려는 움직임을 비유한다.",
+          "semantic_rationale": "C000006-0038: o02는 알을 깨고 날갯짓을 할 수 있도록, o03은 재호의 날갯짓이 해방을 가져올지도 모른다는 쓰임으로 새가 날아오르듯 힘차게 나아가려는 움직임을 비유한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000006-0038 C000006-0038-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000006-0038.o02",
+              "C000006-0038.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000006-0038.o01"
+            ],
+            "excluded_terms": [
+              "안개"
+            ]
+          }
+        }
+      ],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000006-0038-s1",
+          "right_sense_id": "C000006-0038-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "850d495e0619861e0fbcc48ccc97dae2c60867f952663dca345f2f2933f91915",
+          "right_gloss_sha256": "10d2d372afa67a21fd0381c365328f29a00c907e08be09a71444e1021a32c763",
+          "evidence_basis": "C000006-0038: 서로 다른 관찰 근거를 attempt 1 Claude agent self-check으로 원본 문맥에서 대조했다.",
+          "distinguishing_feature": "C000006-0038: 새가 날개를 치는 일. 대 새가 날아오르듯 힘차게 나아가려는 움직임을 비유하는 말.",
+          "rationale": "C000006-0038: o01은 까치들의 날갯짓 사이로 걷혀가는 안개라는 쓰임으로 새가 날개를 치는 일이다. / o02는 알을 깨고 날갯짓을 할 수 있도록, o03은 재호의 날갯짓이 해방을 가져올지도 모른다는 쓰임으로 새가 날아오르듯 힘차게 나아가려는 움직임을 비유한다."
         }
       ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000006-0038",
-        "candidate_record_sha256": "195f828367dc68b9a1e5960296a5a41aade3509b4ed06ede0c0887c49d83d558",
-        "decision_evidence_sha256": "c8912026984d76cd90eb1d2ce8c910ca6103c79ce45782c8f4d7bd2085203f67",
+        "candidate_record_sha256": "47ecbe1dc91389ec2678598140a8d66969312e2b1ec44dc1b9cc50d4a5c711bc",
+        "decision_evidence_sha256": "cbd5c7932e72b38d85aed144c0830babc258762274f698d4ed106c17bde27a1b",
         "sense_evidence": [
           {
             "sense_id": "C000006-0038-s1",
             "sense_sha256": "63198ab26031037f7d74b4e7641355830842ab77498b0379e0f0f395ec17d956",
             "gloss_sha256": "850d495e0619861e0fbcc48ccc97dae2c60867f952663dca345f2f2933f91915",
-            "evidence_sha256": "d825e96bdc9b9f6501f84ff4efa6edfae75212ae0fddb8a9c93c92007c4a35b3"
+            "evidence_sha256": "70c093376d36b68ca7ceefce298be6e2c9c6805c60f95e39e02393e8b12f160a"
+          },
+          {
+            "sense_id": "C000006-0038-s2",
+            "sense_sha256": "b0ea72a2257404e72ac5794d1747546a3e3f73bca09144dc749b018438fbdcde",
+            "gloss_sha256": "10d2d372afa67a21fd0381c365328f29a00c907e08be09a71444e1021a32c763",
+            "evidence_sha256": "624857862f60ee896870b57274992fc810546578389e4a2235794157d626a7a9"
           }
         ]
       }
@@ -1961,9 +1966,9 @@
     {
       "source_candidate_id": "C000006-0039",
       "candidate_record_id": "C000006-0039",
-      "candidate_record_sha256": "d25ae0f4189ac2f3b453e04a890facaa3c0d1feff4f184d69ac7ef85660833b1",
+      "candidate_record_sha256": "1cf6c45bbf7b52f4df4f4f329282db36fdae1fd0f716df6aa935b0124956868d",
       "decision": "included",
-      "decision_rationale": "C000006-0039 attempt 1 Claude agent self-check: o01은 의자에서 내려선, o02는 동정 쪽으로 내려섰다로 높은 데서 내려와 자리를 잡는 뜻이다.",
+      "decision_rationale": "C000006-0039 attempt 1 Claude agent self-check: o01은 의자에서 내려선 다음 침대를 돌아간다는 쓰임으로 높은 곳에서 아래로 내려와 서는 뜻이다. o02는 혐오와 동정을 가르는 면도날 위에서 동정 쪽으로 내려섰다는 쓰임으로 어떤 쪽의 입장에 서기로 마음을 정하는 비유이다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -1971,33 +1976,78 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0039: o01은 의자에서 내려선, o02는 동정 쪽으로 내려섰다로 높은 데서 내려와 자리를 잡는 뜻이다.",
-          "semantic_rationale": "C000006-0039: o01은 의자에서 내려선, o02는 동정 쪽으로 내려섰다로 높은 데서 내려와 자리를 잡는 뜻이다.",
+          "boundary_rationale": "C000006-0039: o01은 의자에서 내려선 다음 침대를 돌아간다는 쓰임으로 높은 곳에서 아래로 내려와 서는 뜻이다.",
+          "semantic_rationale": "C000006-0039: o01은 의자에서 내려선 다음 침대를 돌아간다는 쓰임으로 높은 곳에서 아래로 내려와 서는 뜻이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000006-0039 C000006-0039-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
           "scope_declaration": {
             "admitted_observation_ids": [
-              "C000006-0039.o01",
+              "C000006-0039.o01"
+            ],
+            "excluded_observation_ids": [
               "C000006-0039.o02"
             ],
-            "excluded_observation_ids": [],
-            "excluded_terms": []
+            "excluded_terms": [
+              "동정"
+            ]
           }
+        },
+        {
+          "sense_id": "C000006-0039-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000006-0039: o02는 혐오와 동정을 가르는 면도날 위에서 동정 쪽으로 내려섰다는 쓰임으로 어떤 쪽의 입장에 서기로 마음을 정하는 비유이다.",
+          "semantic_rationale": "C000006-0039: o02는 혐오와 동정을 가르는 면도날 위에서 동정 쪽으로 내려섰다는 쓰임으로 어떤 쪽의 입장에 서기로 마음을 정하는 비유이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000006-0039 C000006-0039-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000006-0039.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000006-0039.o01"
+            ],
+            "excluded_terms": [
+              "침대"
+            ]
+          }
+        }
+      ],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "C000006-0039-s1",
+          "right_sense_id": "C000006-0039-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "08aaa7d987c7d5bc29c88c6ff804bbcf12b23b71a30575379dae1aec868f8005",
+          "right_gloss_sha256": "8b5012f1329218528de7b71494d2a9232643621a17a4295ccbb0ea9d629d1104",
+          "evidence_basis": "C000006-0039: 서로 다른 관찰 근거를 attempt 1 Claude agent self-check으로 원본 문맥에서 대조했다.",
+          "distinguishing_feature": "C000006-0039: 높은 곳에서 아래로 내려와 서다. 대 어떤 쪽의 입장에 서기로 마음을 정하다.",
+          "rationale": "C000006-0039: o01은 의자에서 내려선 다음 침대를 돌아간다는 쓰임으로 높은 곳에서 아래로 내려와 서는 뜻이다. / o02는 혐오와 동정을 가르는 면도날 위에서 동정 쪽으로 내려섰다는 쓰임으로 어떤 쪽의 입장에 서기로 마음을 정하는 비유이다."
         }
       ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000006-0039",
-        "candidate_record_sha256": "d25ae0f4189ac2f3b453e04a890facaa3c0d1feff4f184d69ac7ef85660833b1",
-        "decision_evidence_sha256": "660885fcdeabd1a11da5ac2e97ac2fe71c69f945672073bce24ab2b4993779d1",
+        "candidate_record_sha256": "1cf6c45bbf7b52f4df4f4f329282db36fdae1fd0f716df6aa935b0124956868d",
+        "decision_evidence_sha256": "6e8e32648ec35c6be10143b7218ae198eafbaa0a6a1498aeee18c246ba5fcca6",
         "sense_evidence": [
           {
             "sense_id": "C000006-0039-s1",
             "sense_sha256": "78a57b3c0229458b1bceb5a42176cd31e4948f09f027e0a8290f91a0409b2c60",
             "gloss_sha256": "08aaa7d987c7d5bc29c88c6ff804bbcf12b23b71a30575379dae1aec868f8005",
-            "evidence_sha256": "8e66a9e1b237837c91bc4ad81b7fa9ed8d159545380fcc941c6f05bc8db986cc"
+            "evidence_sha256": "48d9f1130a41c42dfe44409aa4a67e8b877ccea8f0581e871a00319c17eaa458"
+          },
+          {
+            "sense_id": "C000006-0039-s2",
+            "sense_sha256": "2353a14a5eb63aa003a93112dde14200d13bc812bb9cb03f153fb9478fd0aeba",
+            "gloss_sha256": "8b5012f1329218528de7b71494d2a9232643621a17a4295ccbb0ea9d629d1104",
+            "evidence_sha256": "43d9641dc774ee871084a8d05a90f0b5d325a44d43bef9b330911951664c3c04"
           }
         ]
       }
@@ -5842,38 +5892,13 @@
     {
       "source_candidate_id": "C000006-0117",
       "candidate_record_id": "C000006-0117",
-      "candidate_record_sha256": "ad27052c25b997d90931bd00c3cd303b29e9172fe5ef168ae717e4e0d2ef9647",
+      "candidate_record_sha256": "c52dd08ba78dc57a7370de5973edf08db6c47b116abbf0a9baf7a7f324d888d8",
       "decision": "included",
-      "decision_rationale": "C000006-0117 attempt 1 Claude agent self-check: o02는 숨통을 누르고 신용을 떨어뜨리려 했다는 쓰임으로 숨이 드나드는 길을 눌러 활동을 막는 비유이다. o01은 애들 숨통 좀 틔워줍시다, o03은 시댁과 거리가 생기자 숨통이 트였다로 답답함에서 벗어난 여유를 뜻한다.",
+      "decision_rationale": "C000006-0117 attempt 1 Claude agent self-check: o01은 애들 숨통 좀 틔워줍시다, o03은 시댁과 거리가 생기자 숨통이 트였다로 답답함에서 벗어난 여유를 뜻한다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
           "sense_id": "C000006-0117-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0117: o02는 숨통을 누르고 신용을 떨어뜨리려 했다는 쓰임으로 숨이 드나드는 길을 눌러 활동을 막는 비유이다.",
-          "semantic_rationale": "C000006-0117: o02는 숨통을 누르고 신용을 떨어뜨리려 했다는 쓰임으로 숨이 드나드는 길을 눌러 활동을 막는 비유이다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000006-0117 C000006-0117-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000006-0117.o02"
-            ],
-            "excluded_observation_ids": [
-              "C000006-0117.o01",
-              "C000006-0117.o03"
-            ],
-            "excluded_terms": [
-              "애들",
-              "시댁"
-            ]
-          }
-        },
-        {
-          "sense_id": "C000006-0117-s2",
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
@@ -5882,7 +5907,7 @@
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
-          "no_relation_rationale": "C000006-0117 C000006-0117-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "no_relation_rationale": "C000006-0117 C000006-0117-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000006-0117.o01",
@@ -5897,36 +5922,17 @@
           }
         }
       ],
-      "boundary_pairs": [
-        {
-          "left_sense_id": "C000006-0117-s1",
-          "right_sense_id": "C000006-0117-s2",
-          "relationship": "distinct",
-          "decision": "retain",
-          "left_gloss_sha256": "1b234b9763c05aa0daf364216e6bffb169805b167f2a596aa4da626f05b66b5b",
-          "right_gloss_sha256": "26eb3bd50fde658c029bdcedae06f570a00a6a4dcfa21c2e55bd28a52084069f",
-          "evidence_basis": "C000006-0117: 서로 다른 관찰 근거를 attempt 1 Claude agent self-check으로 원본 문맥에서 대조했다.",
-          "distinguishing_feature": "C000006-0117: 숨이 드나드는 목구멍 쪽 통로. 대 답답함에서 벗어나 쉴 수 있는 여유.",
-          "rationale": "C000006-0117: o02는 숨통을 누르고 신용을 떨어뜨리려 했다는 쓰임으로 숨이 드나드는 길을 눌러 활동을 막는 비유이다. / o01은 애들 숨통 좀 틔워줍시다, o03은 시댁과 거리가 생기자 숨통이 트였다로 답답함에서 벗어난 여유를 뜻한다."
-        }
-      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000006-0117",
-        "candidate_record_sha256": "ad27052c25b997d90931bd00c3cd303b29e9172fe5ef168ae717e4e0d2ef9647",
-        "decision_evidence_sha256": "1eb3ab7f23646d3b7a25b03e569ad0d9ee6f729cd18e71434b911dcbd1fdb821",
+        "candidate_record_sha256": "c52dd08ba78dc57a7370de5973edf08db6c47b116abbf0a9baf7a7f324d888d8",
+        "decision_evidence_sha256": "feb6da5111fd227c79575182c0a875922abe567d0f71d08c38ab0a3986ffc637",
         "sense_evidence": [
           {
             "sense_id": "C000006-0117-s1",
-            "sense_sha256": "b63c1f39aeb7735bd52dd553dcd4094507d6564e81b73d1f32cec8edc3b8fb90",
-            "gloss_sha256": "1b234b9763c05aa0daf364216e6bffb169805b167f2a596aa4da626f05b66b5b",
-            "evidence_sha256": "40095f6345853136da7909b70696c6d5b7268bcc9ae5979b0f00ee2dd234f0fb"
-          },
-          {
-            "sense_id": "C000006-0117-s2",
-            "sense_sha256": "b95e7d4b951bc8446f6246422d0cfacc62f934472580400f22cc00f40f590cdc",
+            "sense_sha256": "4fb02037ac2297a4f074135e14c0c9df734f772471535e58a0be7adb31dd46db",
             "gloss_sha256": "26eb3bd50fde658c029bdcedae06f570a00a6a4dcfa21c2e55bd28a52084069f",
-            "evidence_sha256": "f6c35c4b062ca3679387bde068cd0af921e47bb6448d60086cca169c555bea0f"
+            "evidence_sha256": "a3b7f5b9644be1d57d703c758e89601980724a50462fa3e770d83c60d07d356c"
           }
         ]
       }
@@ -6425,7 +6431,7 @@
       "candidate_record_id": "C000006-0126",
       "candidate_record_sha256": "13368490511d6d546319c0588fa3d0d2778f73296ece8ddf0acaf54268bb17a1",
       "decision": "included",
-      "decision_rationale": "C000006-0126 attempt 1 Claude agent self-check: o01은 속으로 씩씩거렸다, o02는 화가 난 브리디가 씩씩거리며 말했다, o03은 바이올린이 황소처럼 씩씩거릴 것이라는 비유로 거칠게 숨을 쉬는 뜻이다.",
+      "decision_rationale": "C000006-0126 attempt 1 Claude agent self-check: o01은 브리디가 속으로 씩씩거렸다, o02는 화가 난 브리디가 씩씩거리며 말했다로 화가 나서 숨을 거칠게 쉬는 뜻이다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -6433,8 +6439,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0126: o01은 속으로 씩씩거렸다, o02는 화가 난 브리디가 씩씩거리며 말했다, o03은 바이올린이 황소처럼 씩씩거릴 것이라는 비유로 거칠게 숨을 쉬는 뜻이다.",
-          "semantic_rationale": "C000006-0126: o01은 속으로 씩씩거렸다, o02는 화가 난 브리디가 씩씩거리며 말했다, o03은 바이올린이 황소처럼 씩씩거릴 것이라는 비유로 거칠게 숨을 쉬는 뜻이다.",
+          "boundary_rationale": "C000006-0126: o01은 브리디가 속으로 씩씩거렸다, o02는 화가 난 브리디가 씩씩거리며 말했다로 화가 나서 숨을 거칠게 쉬는 뜻이다.",
+          "semantic_rationale": "C000006-0126: o01은 브리디가 속으로 씩씩거렸다, o02는 화가 난 브리디가 씩씩거리며 말했다로 화가 나서 숨을 거칠게 쉬는 뜻이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -6442,11 +6448,14 @@
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000006-0126.o01",
-              "C000006-0126.o02",
+              "C000006-0126.o02"
+            ],
+            "excluded_observation_ids": [
               "C000006-0126.o03"
             ],
-            "excluded_observation_ids": [],
-            "excluded_terms": []
+            "excluded_terms": [
+              "바이올린"
+            ]
           }
         }
       ],
@@ -6454,13 +6463,13 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000006-0126",
         "candidate_record_sha256": "13368490511d6d546319c0588fa3d0d2778f73296ece8ddf0acaf54268bb17a1",
-        "decision_evidence_sha256": "1071d9ec71222023388cd5de23622a413c1a5cb8e5f8015663b1d314fee49763",
+        "decision_evidence_sha256": "4e95a7d802d0dcd1fac128aeafb63eb278890dd9c3ae47eb61b0ad75c58bd795",
         "sense_evidence": [
           {
             "sense_id": "C000006-0126-s1",
             "sense_sha256": "7a9e1e8f80dd95a20fea5cc141838b810649c4bbd109757259f003efc16b3c15",
             "gloss_sha256": "41fa16829c7fc1205b90ca9e4d138e93c634017a938e605107b7aa3fffd396cb",
-            "evidence_sha256": "b2d6690aaa28462e1453e2e90cf983ba5b93191f797460745e2f10a4010cedce"
+            "evidence_sha256": "a3316876103248b2c8996278144abf13e7fa9d7539a8c5a3b0bdeb01e4c87203"
           }
         ]
       }
@@ -8965,49 +8974,6 @@
       }
     },
     {
-      "source_candidate_id": "C000006-0182",
-      "candidate_record_id": "C000006-0182",
-      "candidate_record_sha256": "e8a463c0eded8b6096bbd42bee9d503356c19e5542600eed7e77bc2e60d3fe47",
-      "decision": "included",
-      "decision_rationale": "C000006-0182 attempt 1 Claude agent self-check: o01은 아버지의 가슴은 내내 쿵쾅거렸다라는 비유로 가슴이 세게 뛰며 요란한 소리가 나는 듯한 뜻을 나타낸다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000006-0182-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000006-0182: o01은 아버지의 가슴은 내내 쿵쾅거렸다라는 비유로 가슴이 세게 뛰며 요란한 소리가 나는 듯한 뜻을 나타낸다.",
-          "semantic_rationale": "C000006-0182: o01은 아버지의 가슴은 내내 쿵쾅거렸다라는 비유로 가슴이 세게 뛰며 요란한 소리가 나는 듯한 뜻을 나타낸다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000006-0182 C000006-0182-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000006-0182.o01"
-            ],
-            "excluded_observation_ids": [],
-            "excluded_terms": []
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000006-0182",
-        "candidate_record_sha256": "e8a463c0eded8b6096bbd42bee9d503356c19e5542600eed7e77bc2e60d3fe47",
-        "decision_evidence_sha256": "f1f7d0ba8997707e47c7882daf1c756e67ef671f94ae09917de54016216cbba2",
-        "sense_evidence": [
-          {
-            "sense_id": "C000006-0182-s1",
-            "sense_sha256": "f9d61c6ac143f9b85ecd59ce3d57a1893fd43d04f2527d0344e3a253827e7577",
-            "gloss_sha256": "754fe0ddc67c32f6f79a8db43161df871ea1af316aef570bb7c82ebdcdca8acb",
-            "evidence_sha256": "12d5f5951b362521f1a6f0478167266f0a173e13a35355dc67da5086962c5bc7"
-          }
-        ]
-      }
-    },
-    {
       "source_candidate_id": "C000006-0183",
       "candidate_record_id": "C000006-0183",
       "candidate_record_sha256": "0d7e0fe3be31041049554e44cebf3ed60d2433a81e97f1da59fce27cf398d404",
@@ -9412,7 +9378,7 @@
     {
       "source_candidate_id": "C000006-0190",
       "candidate_record_id": "C000006-0190",
-      "candidate_record_sha256": "beb2cf6331a8cfc84b26eff272cbc4102e8a770ad6e95df4d23408459ba5e332",
+      "candidate_record_sha256": "f9e2f14cf9cfec5f87f2ff8096298f3ac24a960456aff9c9288a4c58fe2c5f09",
       "decision": "included",
       "decision_rationale": "C000006-0190 attempt 1 Claude agent self-check: o01은 필름을 꺼내 단어를 찾아본다, o02는 필름이 사라지면서 암실 과정이 생략되었다로 사진을 찍는 데 쓰는 막을 뜻한다.",
       "gloss_judgment": "fit",
@@ -9441,13 +9407,13 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000006-0190",
-        "candidate_record_sha256": "beb2cf6331a8cfc84b26eff272cbc4102e8a770ad6e95df4d23408459ba5e332",
+        "candidate_record_sha256": "f9e2f14cf9cfec5f87f2ff8096298f3ac24a960456aff9c9288a4c58fe2c5f09",
         "decision_evidence_sha256": "1cfba435bbc067c9ebcf3d0b2bc9575c673587bca2cfc22548b3963e8587fdec",
         "sense_evidence": [
           {
             "sense_id": "C000006-0190-s1",
-            "sense_sha256": "d4a40b230cb0d785af4edc1fe2d0e1c4357a0e7d5e41f64d9fc0f034a3d46e37",
-            "gloss_sha256": "cb07707c6015e3cedbcb99d6f8e4c1eaf21524475673c34b1c17104e61c0f8e1",
+            "sense_sha256": "c6676b0d4ed66239be7cf4be5b9576056c8d388ec8b8f21d6bfc0aefe151dcd3",
+            "gloss_sha256": "b8d20b293afac52d84f21938e1251f955034e8d445997b5f387a1bf0fbc17626",
             "evidence_sha256": "873949a3cac95bc732ad913f20970571d55497564d36fcb16029c73b72742c7a"
           }
         ]
