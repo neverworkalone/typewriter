@@ -204,9 +204,9 @@
     {
       "source_candidate_id": "C000009-0020",
       "candidate_record_id": "C000009-0020",
-      "candidate_record_sha256": "012921cf1d6b266ae7b4b6b05242c1770fec78b5ba5cb750eef17951a2855afa",
+      "candidate_record_sha256": "446bb5a334339bf5758ad32fdc48cd6452f7d4ec63f3d35e0a51814cf803b1bb",
       "decision": "included",
-      "decision_rationale": "C000009-0020 attempt 1 Claude agent self-check: o01은 제벡스를 건설한 목적이라는 쓰임으로 세계를 새로 세워 이루는 뜻이다.",
+      "decision_rationale": "C000009-0020 attempt 1 Claude agent self-check: o01은 제벡스를 건설한 목적에서 벗어난 부산물이라는 쓰임으로 그 세계의 일부분으로 주민이 등장했다는 앞뒤 말에서 알 수 있듯 제벡스는 새로 세워 이룬 하나의 세계이므로, 건물이나 시설, 조직뿐 아니라 세계 같은 큰 것을 새로 세우는 뜻이다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -214,8 +214,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000009-0020: o01은 제벡스를 건설한 목적이라는 쓰임으로 세계를 새로 세워 이루는 뜻이다.",
-          "semantic_rationale": "C000009-0020: o01은 제벡스를 건설한 목적이라는 쓰임으로 세계를 새로 세워 이루는 뜻이다.",
+          "boundary_rationale": "C000009-0020: o01은 제벡스를 건설한 목적에서 벗어난 부산물이라는 쓰임으로 그 세계의 일부분으로 주민이 등장했다는 앞뒤 말에서 알 수 있듯 제벡스는 새로 세워 이룬 하나의 세계이므로, 건물이나 시설, 조직뿐 아니라 세계 같은 큰 것을 새로 세우는 뜻이다.",
+          "semantic_rationale": "C000009-0020: o01은 제벡스를 건설한 목적에서 벗어난 부산물이라는 쓰임으로 그 세계의 일부분으로 주민이 등장했다는 앞뒤 말에서 알 수 있듯 제벡스는 새로 세워 이룬 하나의 세계이므로, 건물이나 시설, 조직뿐 아니라 세계 같은 큰 것을 새로 세우는 뜻이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -232,14 +232,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0020",
-        "candidate_record_sha256": "012921cf1d6b266ae7b4b6b05242c1770fec78b5ba5cb750eef17951a2855afa",
-        "decision_evidence_sha256": "6ba1c8dfd25fe0f0135d4bffeb1e264500ad0df12f283b59cb65d82f1bdb3250",
+        "candidate_record_sha256": "446bb5a334339bf5758ad32fdc48cd6452f7d4ec63f3d35e0a51814cf803b1bb",
+        "decision_evidence_sha256": "224ad4334aa745c2f06dafea02455a3390c1f11cd36cc9c51f4a3a9b261b776a",
         "sense_evidence": [
           {
             "sense_id": "C000009-0020-s1",
-            "sense_sha256": "8eb48910e65acf89edc4c50f7d407e5c81e242c923d86305c85a9cf4e0f937cd",
-            "gloss_sha256": "b6b1e2d13ddeb16cc6ade4da197de13d96b88d1e93affd68264d94abfa31cf39",
-            "evidence_sha256": "7f89a5fe70af223aa155d0682f12813760ae827dc57c8d42750fa1374bf4260c"
+            "sense_sha256": "3e08e80472cc2b989d998edf61689c603656d7ad3e379d3e1cec37c994432ae4",
+            "gloss_sha256": "c5516e226403ccf90284690a0c04835ffc301e3eccbfebab13a9578c3f422b81",
+            "evidence_sha256": "209a491f28b8b850c02949375e3c46173c70b6c322cb80793580037c46b8a7ef"
           }
         ]
       }
