@@ -61,7 +61,7 @@ function parse(text, label, errors) {
   }
 }
 
-export function validateReviewArtifacts({ batchId, adapterId, candidates, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration = false, requireSurfaceFormJudgments = false }) {
+export function validateReviewArtifacts({ batchId, adapterId, candidates, decisions, semanticDecisionsText, handoffText, requireScopeDeclaration = false, requireSurfaceFormJudgments = false, requireExistingBoundaryPairs = requireScopeDeclaration }) {
   const errors = [];
   const admitted = decisions.filter((row) => ADMITTED.has(row.disposition));
   const candidateById = new Map(candidates.map((candidate) => [candidate.candidate_id, candidate]));
@@ -87,6 +87,7 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
           const row = rowById.get(decision.source_candidate_id);
           validateSemanticRow(row, decision, batchId, errors, { candidate: candidateById.get(decision.source_candidate_id), requireScopeDeclaration });
           validateFactoryBoundaryPairs(row, decision, errors);
+          validateExistingBoundaryPairs(row, decision, errors, requireExistingBoundaryPairs);
         }
       }
     }
@@ -137,6 +138,41 @@ export function validateReviewArtifacts({ batchId, adapterId, candidates, decisi
     }
   }
   return errors;
+}
+
+// A new sense on an existing entry must be distinguished from each existing same-POS canonical
+// sense by Stage 2: one authored pair per (existing sense, new sense). Stage 3 binds the existing
+// gloss digest to canonical and requires a pair for every existing same-POS sense.
+export function validateExistingBoundaryPairs(row, decision, errors, required) {
+  const label = `semantic decision ${decision.source_candidate_id}`;
+  const pairs = row?.existing_boundary_pairs;
+  if (decision.target?.kind !== 'new_sense_on_existing_entry') {
+    if (pairs !== undefined) errors.push(`${label}: existing_boundary_pairs is only valid for new_sense_on_existing_entry`);
+    return;
+  }
+  if (pairs === undefined && !required) return;
+  if (!Array.isArray(pairs) || pairs.length === 0) {
+    errors.push(`${label}: new_sense_on_existing_entry requires authored existing_boundary_pairs`);
+    return;
+  }
+  const context = new Set([decision.target.context_sense_id, ...(decision.target.context_sense_ids ?? [])]);
+  const senses = decision.reviewed_record.senses;
+  const seen = new Set();
+  for (const [index, pair] of pairs.entries()) {
+    const pairLabel = `${label} existing_boundary_pairs[${index}]`;
+    const newIndex = senses.findIndex((_, i) => pair?.new_sense_id === `${decision.source_candidate_id}-s${i + 1}`);
+    const key = `${pair?.existing_sense_id}:${pair?.new_sense_id}`;
+    if (!context.has(pair?.existing_sense_id) || newIndex < 0 || seen.has(key)) { errors.push(`${pairLabel}: pair identity is unknown, outside the compared context senses, or duplicated`); continue; }
+    seen.add(key);
+    if (pair.relationship !== 'distinct' || pair.decision !== 'retain') errors.push(`${pairLabel}: an admitted pair must retain a distinct relationship`);
+    if (pair.new_gloss_sha256 !== sha256Json(senses[newIndex].gloss) || !/^[0-9a-f]{64}$/.test(pair.existing_gloss_sha256 ?? '')) errors.push(`${pairLabel}: gloss digests do not bind the compared pair`);
+    for (const field of ['evidence_basis', 'distinguishing_feature', 'rationale']) {
+      if (typeof pair[field] !== 'string' || !pair[field].trim() || !pair[field].includes(decision.source_candidate_id)) errors.push(`${pairLabel}: ${field} must be candidate-specific authored evidence`);
+    }
+  }
+  for (const id of context) {
+    if (![...seen].some((key) => key.startsWith(`${id}:`))) errors.push(`${label}: no authored boundary evidence against existing sense ${id}`);
+  }
 }
 
 function validateFactoryBoundaryPairs(row, decision, errors) {

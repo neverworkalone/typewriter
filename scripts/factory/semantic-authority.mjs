@@ -129,31 +129,46 @@ function buildNewSenseReview({ record, sense, sourceCandidateId, semanticSense, 
   };
 }
 
-function crossBoundaryPair({ record, beforeReview, oldSense, newSense, decision, sourceSemanticSense, decisionSourceId }) {
+export function crossBoundaryPair({ record, beforeReview, oldSense, newSense, decision, sourceSemanticSense, decisionSourceId, authored, sourceNewSense }) {
   const mechanical = inspectSenseBoundaryPairs(record).find((pair) => pair.left_sense_id === oldSense.id && pair.right_sense_id === newSense.id)
     ?? inspectSenseBoundaryPairs(record).find((pair) => pair.left_sense_id === newSense.id && pair.right_sense_id === oldSense.id);
   if (!mechanical || mechanical.relationship !== 'distinct') {
     failLexical(`${decision.source_candidate_id}: a new canonical sense overlaps or mechanically conflicts with existing ${oldSense.id}`, 'STAGE3_CANONICAL_SENSE_CONFLICT');
   }
-  if (decision.target.kind === 'new_sense_on_existing_entry' && oldSense.pos === newSense.pos
-    && oldSense.id !== decision.target.context_sense_id && !(decision.target.context_sense_ids ?? []).includes(oldSense.id)) {
-    failLexical(`${decision.source_candidate_id}: same-POS new-sense review does not compare against every existing same-POS sense`, 'STAGE3_BOUNDARY_CONTEXT_MISSING');
+  const sameSensePos = decision.target.kind === 'new_sense_on_existing_entry' && oldSense.pos === newSense.pos;
+  if (sameSensePos && !authored) {
+    failLexical(`${decision.source_candidate_id}: Stage 2 did not author boundary evidence between the new sense and existing same-POS ${oldSense.id}`, 'STAGE3_BOUNDARY_CONTEXT_MISSING');
   }
   const oldReview = beforeReview?.sense_reviews?.find(({ sense_id: id }) => id === oldSense.id);
   const left = record.senses.indexOf(oldSense) < record.senses.indexOf(newSense) ? oldSense : newSense;
   const right = left === oldSense ? newSense : oldSense;
   const leftHash = sha256Json(left.gloss);
   const rightHash = sha256Json(right.gloss);
+  const pairPrefix = `${record.id} ${left.id} ${right.id}`;
+  if (authored) {
+    if (authored.existing_gloss_sha256 !== sha256Json(oldSense.gloss) || authored.new_gloss_sha256 !== sha256Json(sourceNewSense?.gloss)) {
+      failSystemic(`${decision.source_candidate_id}: authored boundary evidence is not bound to the existing and new sense glosses`, 'STAGE3_BOUNDARY_PAIR_DIGEST');
+    }
+    return {
+      left_sense_id: left.id, right_sense_id: right.id,
+      relationship: 'distinct', decision: 'retain',
+      left_gloss_sha256: leftHash, right_gloss_sha256: rightHash,
+      evidence_basis: `${pairPrefix}: ${authored.evidence_basis}`,
+      distinguishing_feature: `${pairPrefix}: ${authored.distinguishing_feature}`,
+      rationale: `${pairPrefix} ${leftHash.slice(0, 12)} ${rightHash.slice(0, 12)} [${decision.source_candidate_id}]: ${authored.rationale}`,
+      decision_source_id: decisionSourceId,
+    };
+  }
   const newText = sourceSemanticSense.semantic_rationale ?? sourceSemanticSense.boundary_rationale ?? decision.source_candidate_id;
   const oldText = oldReview?.review_basis?.rationale ?? oldReview?.sense_boundary?.rationale ?? oldSense.id;
-  const context = `Stage 2 ${decision.target.kind}${decision.target.context_sense_id ? ` context ${[decision.target.context_sense_id, ...(decision.target.context_sense_ids ?? [])].filter((id, index, ids) => ids.indexOf(id) === index).join(', ')}` : ` POS ${newSense.pos}`}`;
+  const context = `Stage 2 ${decision.target.kind} POS ${newSense.pos}`;
   return {
     left_sense_id: left.id, right_sense_id: right.id,
     relationship: 'distinct', decision: 'retain',
     left_gloss_sha256: leftHash, right_gloss_sha256: rightHash,
-    evidence_basis: `${record.id} ${left.id} ${right.id}: ${oldText} ${newText}`,
-    distinguishing_feature: `${record.id} ${left.id} ${right.id}: ${context}; the source-bound Stage 2 target is distinct from the existing canonical sense.`,
-    rationale: `${record.id} ${left.id} ${right.id} ${leftHash.slice(0, 12)} ${rightHash.slice(0, 12)} [${decision.source_candidate_id}]: ${context}; ${newText}`,
+    evidence_basis: `${pairPrefix}: ${oldText} ${newText}`,
+    distinguishing_feature: `${pairPrefix}: ${context}; the source-bound Stage 2 target is distinct from the existing canonical sense.`,
+    rationale: `${pairPrefix} ${leftHash.slice(0, 12)} ${rightHash.slice(0, 12)} [${decision.source_candidate_id}]: ${context}; ${newText}`,
     decision_source_id: decisionSourceId,
   };
 }
@@ -229,16 +244,26 @@ function buildReviewForChangedRecord({ record, beforeRecord, beforeReview, mappe
 
   if (!isNew) {
     const oldSenses = (beforeRecord?.senses ?? []).filter(({ id }) => beforeSenseIds.has(id));
+    const authoredExisting = new Map((semanticRow.existing_boundary_pairs ?? []).map((pair) => [`${pair.existing_sense_id}:${pair.new_sense_id}`, pair]));
+    const usedAuthored = new Set();
     const newSenses = mappedSenses.map(({ sense }) => sense);
     for (const newSense of newSenses) {
       const sourceIndex = mappedSenses.find(({ sense }) => sense.id === newSense.id).sourceIndex;
       const sourceSemanticSense = semanticRow.sense_reviews[sourceIndex];
+      const sourceNewSenseId = mappedSenses.find(({ sense }) => sense.id === newSense.id).sourceSenseId;
+      const sourceNewSense = mappedSenses.find(({ sense }) => sense.id === newSense.id).reviewedSense;
       for (const oldSense of oldSenses) {
+        const key = `${oldSense.id}:${sourceNewSenseId}`;
+        const authored = authoredExisting.get(key);
+        if (authored) usedAuthored.add(key);
         const pair = crossBoundaryPair({
-          record, beforeReview, oldSense, newSense, decision, sourceSemanticSense, decisionSourceId: sourceId,
+          record, beforeReview, oldSense, newSense, decision, sourceSemanticSense, decisionSourceId: sourceId, authored, sourceNewSense,
         });
         pairwiseByKey.set(pairKey(pair.left_sense_id, pair.right_sense_id), pair);
       }
+    }
+    if ([...authoredExisting.keys()].some((key) => !usedAuthored.has(key))) {
+      failSystemic(`${decision.source_candidate_id}: authored existing-sense boundary evidence names an unknown or non-same-POS sense pair`, 'STAGE3_BOUNDARY_PAIR_ID');
     }
 
     // The old sense gloss/POS/relations are preserved, but its boundary record

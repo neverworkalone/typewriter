@@ -343,6 +343,16 @@ function semanticRow(decision, candidate) {
       };
     }),
   };
+  if (decision.target?.kind === 'new_sense_on_existing_entry') {
+    row.existing_boundary_pairs = [decision.target.context_sense_id, ...(decision.target.context_sense_ids ?? [])]
+      .flatMap((existingId) => record.senses.map((sense) => ({
+        existing_sense_id: existingId, new_sense_id: sense.id, relationship: 'distinct', decision: 'retain',
+        existing_gloss_sha256: sha256Json(`existing ${existingId}`), new_gloss_sha256: sha256Json(sense.gloss),
+        evidence_basis: `${id}: compares ${sense.id} with existing ${existingId}.`,
+        distinguishing_feature: `${id}: ${sense.id} differs from existing ${existingId}.`,
+        rationale: `${id}: retain ${sense.id} as distinct from existing ${existingId}.`,
+      })));
+  }
   row.review_binding = authorSemanticReviewBinding(row, record);
   return row;
 }

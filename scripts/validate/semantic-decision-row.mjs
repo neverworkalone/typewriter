@@ -100,6 +100,7 @@ function reviewDecisionEvidence(row) {
   // Stage 3 needs the complete source-bound pair decision set when an admitted
   // factory candidate contributes more than one sense to a canonical entry.
   if (Object.hasOwn(row, 'boundary_pairs')) evidence.boundary_pairs = row.boundary_pairs;
+  if (Object.hasOwn(row, 'existing_boundary_pairs')) evidence.existing_boundary_pairs = row.existing_boundary_pairs;
   if (Object.hasOwn(row, 'hold_basis')) evidence.hold_basis = row.hold_basis;
   if (Object.hasOwn(row, 'rejection_basis')) evidence.rejection_basis = row.rejection_basis;
   if (Object.hasOwn(row, 'lexical_unit_review')) evidence.lexical_unit_review = row.lexical_unit_review;

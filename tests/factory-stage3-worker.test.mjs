@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { finalBoundary, buildStage3SemanticAuthority } from '../scripts/factory/semantic-authority.mjs';
+import { finalBoundary, buildStage3SemanticAuthority, crossBoundaryPair } from '../scripts/factory/semantic-authority.mjs';
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import {
   buildSemanticAuditFromDecisionSource, inspectSenseBoundaryPairs, readAuthoredBatchDecisionSources, sha256Json,
@@ -104,20 +104,32 @@ test('Stage 3 appends new POS and new sense without replacing canonical identity
   assert.equal(plan([addedSense]).records.get('w00001').record.senses.at(-1).id, 'w00001-s2');
 });
 
-test('Stage 3 requires a new sense to be compared against every existing same-POS sense', () => {
-  const twoSenses = {
-    ...baseRecord,
-    senses: [...baseRecord.senses, { id: 'w00001-s2', pos: 'adjective', gloss: '소리가 또렷하고 깨끗하다.' }],
-  };
-  const make = (target) => decision({
-    n: 1, lemma: '맑다', target: { kind: 'new_sense_on_existing_entry', entry_id: 'w00001', ...target },
-    senses: [{ pos: 'adjective', gloss: '마음이나 태도가 맑고 깨끗하다.' }],
+test('Stage 3 consumes Stage 2 pairwise evidence for each existing same-POS sense of a new sense', () => {
+  const oldA = { id: 'w1-s1', pos: 'adjective', gloss: '빛이 흐리지 않고 밝다.' };
+  const oldB = { id: 'w1-s2', pos: 'adjective', gloss: '소리가 또렷하고 깨끗하다.' };
+  const newSense = { id: 'w1-s3', pos: 'adjective', gloss: '마음이나 태도가 맑고 깨끗하다.' };
+  const record = { id: 'w1', lemma: '맑다', senses: [oldA, oldB, newSense] };
+  const decision = { source_candidate_id: 'C1-0001', target: { kind: 'new_sense_on_existing_entry', entry_id: 'w1', context_sense_id: 'w1-s1', context_sense_ids: ['w1-s1', 'w1-s2'] } };
+  const sourceNewSense = { pos: 'adjective', gloss: newSense.gloss };
+  const authored = (old) => ({
+    existing_sense_id: old.id, new_sense_id: 'C1-0001-s1', relationship: 'distinct', decision: 'retain',
+    existing_gloss_sha256: sha256Json(old.gloss), new_gloss_sha256: sha256Json(newSense.gloss),
+    evidence_basis: `C1-0001: ${old.id} 비교 근거`, distinguishing_feature: `C1-0001: ${old.id} 구별 특징`, rationale: `C1-0001: ${old.id} 판단`,
   });
-  const both = plan([make({ context_sense_id: 'w00001-s1', context_sense_ids: ['w00001-s1', 'w00001-s2'] })], [twoSenses]);
-  assert.equal(both.records.get('w00001').record.senses.at(-1).id, 'w00001-s3');
-  assert.throws(() => plan([make({ context_sense_id: 'w00001-s1' })], [twoSenses]),
-    (error) => error instanceof Stage3AdmissionError && /not compared against existing same-POS sense w00001-s2/.test(error.message));
-  assert.equal(plan([make({ context_sense_id: 'w00001-s1' })]).records.get('w00001').record.senses.at(-1).id, 'w00001-s2');
+  const run = (old, pair, overrides = {}) => crossBoundaryPair({
+    record, beforeReview: null, oldSense: old, newSense, decision, sourceSemanticSense: {}, decisionSourceId: 'src', authored: pair, sourceNewSense, ...overrides,
+  });
+  const a = run(oldA, authored(oldA));
+  const b = run(oldB, authored(oldB));
+  assert.match(a.distinguishing_feature, /w1-s1 구별 특징/u);
+  assert.match(b.distinguishing_feature, /w1-s2 구별 특징/u);
+  const code = (fn) => { try { fn(); } catch (error) { assert.ok(error instanceof Stage3AdmissionError); return error; } return assert.fail('expected Stage3AdmissionError'); };
+  assert.equal(code(() => run(oldB, undefined)).code, 'STAGE3_BOUNDARY_CONTEXT_MISSING');
+  assert.equal(code(() => run(oldB, { ...authored(oldB), existing_gloss_sha256: sha256Json('다른 뜻') })).code, 'STAGE3_BOUNDARY_PAIR_DIGEST');
+  assert.equal(code(() => run(oldB, { ...authored(oldB), new_gloss_sha256: sha256Json('다른 뜻') })).code, 'STAGE3_BOUNDARY_PAIR_DIGEST');
+  // One existing same-POS sense: the authored pair is the single comparison and still passes.
+  const single = { ...record, senses: [oldA, { ...newSense, id: 'w1-s2' }] };
+  assert.ok(crossBoundaryPair({ record: single, beforeReview: null, oldSense: oldA, newSense: single.senses[1], decision, sourceSemanticSense: {}, decisionSourceId: 'src', authored: authored(oldA), sourceNewSense }));
 });
 
 test('latest canonical lexical conflicts are typed as lexical, not systemic', () => {

@@ -474,3 +474,26 @@ test('registered validator accepts a new Stage 1 batch and a complete Stage 2 tr
   await f.write('data/candidates/C000001/manifest.json', JSON.stringify(f.batch.manifest));
   assert.notEqual(f.run().status, 0);
 });
+
+test('a new sense on an existing entry needs authored pairwise evidence against each compared existing sense', () => {
+  const id = 'C000001-0001';
+  const decision = {
+    source_candidate_id: id, disposition: 'included',
+    target: { kind: 'new_sense_on_existing_entry', entry_id: 'w3', context_sense_id: 'w3-s1', context_sense_ids: ['w3-s1', 'w3-s2'] },
+    reviewed_record: { lemma: '더듬다', senses: [{ pos: 'verb', gloss: '말을 더듬거리다.' }] },
+  };
+  const pair = (existing, over = {}) => ({
+    existing_sense_id: existing, new_sense_id: `${id}-s1`, relationship: 'distinct', decision: 'retain',
+    existing_gloss_sha256: sha256Json(`gloss ${existing}`), new_gloss_sha256: sha256Json('말을 더듬거리다.'),
+    evidence_basis: `${id}: 근거`, distinguishing_feature: `${id}: 특징`, rationale: `${id}: 판단`, ...over,
+  });
+  const check = (row, required = true) => { const errors = []; validateExistingBoundaryPairs(row, decision, errors, required); return errors; };
+  assert.deepEqual(check({ existing_boundary_pairs: [pair('w3-s1'), pair('w3-s2')] }), []);
+  assert.ok(check({ existing_boundary_pairs: [pair('w3-s1')] }).some((e) => e.includes('existing sense w3-s2')));
+  assert.ok(check({}).some((e) => e.includes('requires authored existing_boundary_pairs')));
+  assert.deepEqual(check({}, false), []);
+  assert.ok(check({ existing_boundary_pairs: [pair('w3-s1'), pair('w3-s2'), pair('w3-s9')] }).some((e) => e.includes('outside the compared context')));
+  assert.ok(check({ existing_boundary_pairs: [pair('w3-s1'), pair('w3-s2', { new_gloss_sha256: sha256Json('다름') })] }).some((e) => e.includes('do not bind')));
+  assert.ok(check({ existing_boundary_pairs: [pair('w3-s1'), pair('w3-s2', { rationale: '근거 없음' })] }).some((e) => e.includes('candidate-specific')));
+  assert.ok(check({ existing_boundary_pairs: [pair('w3-s1'), pair('w3-s1'), pair('w3-s2')] }).some((e) => e.includes('duplicated')));
+});
