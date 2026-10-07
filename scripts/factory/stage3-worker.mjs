@@ -489,8 +489,27 @@ export async function supersedeStage3RejectionForRetry({
     throw new Stage3WorkerError(`${claimRef} does not exclusively own the matching Stage 3 lock and claim`, { batchId, attempt, claimCreated: hasClaim });
   }
   const stage3PullRequests = allPullRequests.filter(isStage3PullRequest);
-  const admission = stage3PullRequests.find((pr) => ['codex', 'claude'].some((agent) => pr.head?.ref === branchNameFor(agent, batchId, attempt)));
-  const rejection = stage3PullRequests.find((pr) => pr.number === rejectionPrNumber);
+  const admissionBranches = ['codex', 'claude'].map((agent) => branchNameFor(agent, batchId, attempt));
+  const statusBranches = ['codex', 'claude'].map((agent) => rejectionBranchName(agent, batchId, attempt));
+  const exactBodyLine = (pr, line) => String(pr.body ?? '').split(/\r?\n/u).some((entry) => entry === line);
+  const attemptPullRequests = stage3PullRequests.filter((pr) => admissionBranches.includes(pr.head?.ref)
+    || statusBranches.includes(pr.head?.ref)
+    || exactBodyLine(pr, `Claim ref: ${claimRef}`)
+    || exactBodyLine(pr, `Stage 3 attempt: ${batchId}-a${attempt}`));
+  const admissionPullRequests = attemptPullRequests.filter((pr) => admissionBranches.includes(pr.head?.ref));
+  const statusPullRequests = attemptPullRequests.filter((pr) => statusBranches.includes(pr.head?.ref));
+  if (attemptPullRequests.length !== 2 || admissionPullRequests.length !== 1 || statusPullRequests.length !== 1) {
+    throw new Stage3WorkerError(`retry recovery found ambiguous PR history for ${batchId}-a${attempt}; preserving all PRs and refs`, {
+      batchId, attempt, claimCreated: true, prNumber: rejectionPrNumber,
+    });
+  }
+  const admission = admissionPullRequests[0];
+  const rejection = statusPullRequests[0];
+  if (rejection.number !== rejectionPrNumber) {
+    throw new Stage3WorkerError(`PR #${rejectionPrNumber} is not the unique status PR for ${batchId}-a${attempt}; preserving all PRs and refs`, {
+      batchId, attempt, claimCreated: true, prNumber: rejectionPrNumber,
+    });
+  }
   const openStage3Pulls = stage3PullRequests.filter((pr) => pr.state === 'open');
   const rejectionOpen = rejection?.state === 'open';
   const admissionOpen = admission?.state === 'open';

@@ -633,9 +633,13 @@ crash-safe record:
   `--resume-batch C… --attempt N --supersede-rejection-pr <PR>` path. The worker
   verifies the exact lock and claim, the still-ready master review and digests,
   the linked closed lexical-rejection Draft, the open unmerged status PR, and its
-  manifest-only diff. It binds the retry to the original rejection code and the
-  actual owner branch recorded by the linked PR. It restores the Draft head from
-  the PR ref, closes the superseded status PR, and reopens that same Draft.
+  manifest-only diff. The all-state PR inventory must contain exactly one
+  admission Draft and one status PR for that batch and attempt; any additional
+  same-attempt admission or status PR fails closed regardless of its state, while
+  unrelated closed historical PRs for other attempts are ignored. It binds the
+  retry to the original rejection code and the actual owner branch recorded by
+  the linked PR. It restores the Draft head from the PR ref, closes the
+  superseded status PR, and reopens that same Draft.
   `--dry-run` validates these preconditions without changing PRs or refs. If the
   retry reaches the same Stage 2-repairable evidence gap, the worker reopens the
   existing status PR only when its branch still contains the exact expected

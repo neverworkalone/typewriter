@@ -409,6 +409,12 @@ function stage3RetryFixture({ statusPrNumber = 96, statusState = 'open', admissi
 
 test('an explicit retry supersedes only the matching open rejection PR and reopens its linked admission draft', async () => {
   const fixture = stage3RetryFixture({ admissionAgent: 'claude', statusAgent: 'claude' });
+  const unrelatedHistory = {
+    number: 94, state: 'closed', merged: false, draft: true, base: { ref: 'master' },
+    head: { ref: 'codex/stage3/C900002-a1' },
+    body: 'Stage 3 attempt: C900002-a1\nClaim ref: refs/heads/stage3-claims/C900002-a1',
+  };
+  fixture.github.listPullRequests = async () => [unrelatedHistory, fixture.admission, fixture.rejection];
   const result = await supersedeStage3RejectionForRetry({
     github: fixture.github, git: fixture.git, snapshot: fixture.snapshot, batchId: fixture.batchId,
     attempt: fixture.attempt, rejectionPrNumber: 96,
@@ -444,6 +450,24 @@ test('retry refuses stale, merged, mismatched, or competing state before changin
     ['duplicate rejection-code markers', (fixture) => { fixture.rejection.body += '\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.'; }],
     ['conflicting rejection-code markers', (fixture) => { fixture.rejection.body += '\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.\nStage 3 rejection code: STAGE3_CANONICAL_CONFLICT.'; }],
     ['competing open Stage 3 PR', (fixture) => { fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, { number: 98, state: 'open', head: { ref: 'claude/stage3/C900002-a1' } }]; }],
+    ['second closed same-attempt admission Draft', (fixture) => {
+      fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, {
+        number: 99, state: 'closed', merged: false, draft: true, base: { ref: 'master' },
+        head: { ref: 'claude/stage3/C900001-a1' }, body: `Claim ref: ${fixture.claimRef}`,
+      }];
+    }],
+    ['second closed same-attempt status PR', (fixture) => {
+      fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, {
+        number: 99, state: 'closed', merged: false, base: { ref: 'master' },
+        head: { ref: 'claude/stage3-status/C900001-a1' }, body: `Claim ref: ${fixture.claimRef}`,
+      }];
+    }],
+    ['merged same-attempt status PR competitor', (fixture) => {
+      fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, {
+        number: 99, state: 'closed', merged: true, merged_at: '2026-10-07T00:00:00Z', base: { ref: 'master' },
+        head: { ref: 'claude/stage3-status/C900001-a1' }, body: `Claim ref: ${fixture.claimRef}`,
+      }];
+    }],
   ];
   for (const [label, mutate] of cases) {
     const fixture = stage3RetryFixture();
