@@ -360,6 +360,7 @@ test('a gloss cannot widen to a deferred observation: scope declaration is sourc
   // form) used to pass as scope evidence and is now refused; the genuine meaning word (시간) is accepted above.
   has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = ['용법']; }), 'generic placeholder');
   has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = ['용법은']; }), 'generic placeholder');
+  has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = ['용법까지']; }), 'generic placeholder');
   const surfaceReason = { ...scoped('다른 곳으로 옮겨 가다.') };
   surfaceReason.group_decisions = surfaceReason.group_decisions.map((entry) => (entry.disposition === 'deferred' ? { ...entry, reason: `${go.forms[0].surface}의 ${reason}` } : entry));
   has(await withScope(surfaceReason, (row, review) => { review.scope_declaration.excluded_terms = [go.forms[0].surface]; }), 'observed form or the lemma');
@@ -408,7 +409,8 @@ test('excluded_terms must name the excluded meaning, not a generic word or the o
   // Old syntax-only check accepted all of these (the word occurs in the excluded reason and not in the gloss).
   refused(['쓰임'], 'generic placeholder');
   // A particle cannot hide a placeholder: the comparison is made on the bare word.
-  for (const term of ['쓰임은', '쓰임으로는', '쓰임이다']) refused([term], 'generic placeholder');
+  for (const term of ['쓰임은', '쓰임으로는', '쓰임이다', '쓰임부터', '쓰임조차', '용법까지', '뜻이라는', '뜻 자체']) refused([term], 'generic placeholder');
+  for (const term of ['가꾸고부터', '가꿀까지는', '가꾸다조차']) refused([term], 'observed form or the lemma');
   refused(['가꾸고'], 'observed form or the lemma');
   refused(['가꾸고는'], 'observed form or the lemma');
   refused(['가꾸다'], 'observed form or the lemma');

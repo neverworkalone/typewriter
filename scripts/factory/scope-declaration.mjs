@@ -18,8 +18,8 @@ import { resolveGroupEntries } from './lemma-decisions.mjs';
 //   authored reason of an entry that judges an excluded observation (so it is source-bound), and
 //   no term may occur in the sense gloss;
 // - a term must DENOTE the excluded meaning, not merely be a word that happens to occur: it may not be
-//   a generic placeholder (쓰임, 뜻, …) nor an observed surface form or the lemma itself (optionally with
-//   a particle): those occur in the reason because of the sentence, not because they name a meaning.
+//   a generic placeholder (쓰임, 뜻, … with anything after it) nor an observed surface form or the lemma itself
+//   (optionally with particles): those occur in the reason because of the sentence, not because they name a meaning.
 //   Whether a term names the right meaning stays a source-bound editorial judgment; these are only
 //   the mechanically refutable placeholders;
 // - without excluded observations the term list must be empty.
@@ -31,18 +31,16 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 
 // Words that never name a meaning. They appear in almost any authored reason, so they cannot bind a gloss.
 export const GENERIC_SCOPE_TERMS = Object.freeze(['쓰임', '뜻', '의미', '경우', '용법', '관찰', '판단', '보류', '제외', '포함', '확인']);
-const PARTICLE = /(이다|이라는|으로는|에서는|에는|에서|으로|이|가|을|를|은|는|의|에|로|과|와|도|만)$/u;
-const stripParticle = (word) => { const bare = word.replace(PARTICLE, ''); return bare.length >= 2 ? bare : word; };
-// The bare word with every trailing particle removed (one-syllable words such as 뜻 keep their stem), so a
-// generic placeholder cannot hide behind a particle: 쓰임은, 쓰임으로는, 뜻을 are all the generic word.
-const bareWord = (word) => {
-  let current = word;
-  for (;;) {
-    const next = current.replace(PARTICLE, '');
-    if (next === current || next.length === 0) return current;
-    current = next;
-  }
-};
+// A term that merely repeats the sentence is not a meaning. Both checks are structural, so no particle or
+// ending can disguise a placeholder:
+//   - generic: a token that BEGINS with a generic word is refused whatever follows it (쓰임은, 쓰임부터, 용법까지);
+//   - observed: the term is an observed form, the lemma or its stem followed only by particles (가꾸고는, 가꾸고부터).
+const PARTICLES = ['으로서는', '으로써는', '이라고', '이라는', '이라도', '으로서', '으로써', '에게서', '에서는', '으로는', '에게는', '까지는', '부터는',
+  '이다', '에게', '한테', '께서', '까지', '부터', '조차', '마저', '처럼', '만큼', '보다', '밖에', '마다', '이나', '이며', '이든', '라고', '라는',
+  '에서', '으로', '에는', '이', '가', '을', '를', '은', '는', '의', '에', '로', '과', '와', '도', '만', '나', '며', '든', '랑', '뿐'];
+const PARTICLE_CHAIN = new RegExp(`^(?:${PARTICLES.join('|')})*$`, 'u');
+const beginsWithGeneric = (word) => word.split(/\s+/u).some((token) => GENERIC_SCOPE_TERMS.some((generic) => token.startsWith(generic)));
+const repeatsObserved = (word, observedWords) => observedWords.some((observed) => observed.length >= 2 && word.startsWith(observed) && PARTICLE_CHAIN.test(word.slice(observed.length)));
 
 // Per reviewed sense: the observations it may describe, the others, and the reasons that judge them.
 export function expectedScopes(decision, candidate) {
@@ -95,16 +93,15 @@ export function validateScopeDeclarations({ decision, candidate, senseReviews, r
     }
     if (terms.length === 0) errors.push(`${at}: excluded observations ${excluded.join(', ')} require excluded_terms naming the meaning the gloss must not describe`);
     const gloss = norm(sense.gloss);
-    const observed = new Set([candidate.input, ...(candidate.forms ?? []).map((form) => form.surface)].filter(Boolean).map((word) => norm(word)));
     // The lemma's stem (가꾸다 → 가꾸, 고용하다 → 고용) is the citation form again, not a meaning.
-    const lemmaStem = norm(candidate.input ?? '').replace(/(하)?다$/u, '');
-    const observedBare = new Set([...observed, ...(lemmaStem.length >= 2 ? [lemmaStem] : [])].map(stripParticle));
+    const lemma = norm(candidate.input ?? '');
+    const observedWords = [...new Set([lemma, lemma.replace(/(하)?다$/u, ''), ...(candidate.forms ?? []).map((form) => norm(form.surface))].filter(Boolean))];
     for (const term of terms) {
       const word = norm(term).trim();
       if (gloss.includes(word)) errors.push(`${at}: the gloss contains the excluded term ${term}; it describes a meaning outside its admitted observations`);
       if (!reasons.some((reason) => reason.includes(word))) errors.push(`${at}: excluded term ${term} does not occur in the reason that judges an excluded observation`);
-      if (GENERIC_SCOPE_TERMS.includes(word) || GENERIC_SCOPE_TERMS.includes(bareWord(word))) errors.push(`${at}: excluded term ${term} is a generic placeholder and does not name the excluded meaning`);
-      else if (observed.has(word) || observedBare.has(stripParticle(word))) errors.push(`${at}: excluded term ${term} is an observed form or the lemma, not the excluded meaning`);
+      if (beginsWithGeneric(word)) errors.push(`${at}: excluded term ${term} is a generic placeholder and does not name the excluded meaning`);
+      else if (repeatsObserved(word, observedWords)) errors.push(`${at}: excluded term ${term} is an observed form or the lemma, not the excluded meaning`);
     }
   });
   return errors;
