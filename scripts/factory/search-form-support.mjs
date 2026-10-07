@@ -17,3 +17,22 @@ export async function loadSearchFormSupport(canonicalEntries) {
   });
   return buildSearchFormSupport(projection.rows);
 }
+
+// Same projection, scoped to the canonical sense's POS (issue #391): Map<`${record id}\0${pos}`, Set<form>>.
+// A generated predicate form is safe only for the POS of the canonical sense that generated it; the
+// record-level map above merges every sense of a record and cannot tell a verb form from a noun.
+export async function loadPosScopedSearchFormSupport(canonicalEntries) {
+  const records = canonicalEntries.filter((entry) => entry.record_type === undefined || entry.record_type === 'entry');
+  const support = new Map();
+  if (records.length === 0) return support;
+  const posOf = new Map(records.flatMap((record) => record.senses.map((sense) => [`${record.id}\0${sense.id}`, sense.pos])));
+  const projection = buildSurfaceFormProjection(records, {
+    exceptionManifest: await loadSurfaceFormExceptionManifest(),
+    reviewManifest: await loadSurfaceFormReviewManifest(),
+  });
+  for (const { record_id: recordId, sense_id: senseId, form } of projection.rows) {
+    const key = `${recordId}\0${posOf.get(`${recordId}\0${senseId}`)}`;
+    support.set(key, (support.get(key) ?? new Set()).add(form));
+  }
+  return support;
+}
