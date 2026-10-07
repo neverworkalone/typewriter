@@ -65,7 +65,13 @@ export async function validateCohortBinding(record, root = REPOSITORY_ROOT) {
   const deferred = [];
   const clear = [];
   for (const batch of batches) {
-    const text = await readFile(path.join(root, 'data/reviews', batch, 'decisions.jsonl'), 'utf8').catch(() => '');
+    let text;
+    try {
+      text = await readFile(path.join(root, 'data/reviews', batch, 'decisions.jsonl'), 'utf8');
+    } catch (error) {
+      errors.push(`${batch}: declared universe batch is unreadable (${error.code ?? error.message})`);
+      continue;
+    }
     for (const line of text.split('\n').filter(Boolean)) {
       const decision = JSON.parse(line);
       const id = decision.source_candidate_id;

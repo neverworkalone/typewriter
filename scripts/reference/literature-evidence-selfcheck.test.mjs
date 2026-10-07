@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { readFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { aggregateSelfCheck, loadSelfCheck, validateCohortBinding, validateSelfCheck } from './literature-evidence-selfcheck.mjs';
 
@@ -93,6 +95,26 @@ test('cohort binding rejects an empty cohort rule, swapped candidates and a chan
   const comparison = clone();
   comparison.rows.find((row) => row.group === 'clear_included').candidate_id = 'C000003-0013';
   assert.ok((await validateCohortBinding(comparison)).length > 0);
+});
+
+test('cohort binding fails closed when a declared universe batch is missing or unreadable', async () => {
+  const record = await loadSelfCheck();
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-selfcheck-'));
+  try {
+    const repository = new URL('../../', import.meta.url).pathname;
+    await cp(path.join(repository, 'data/reviews'), path.join(root, 'data/reviews'), { recursive: true });
+    assert.deepEqual(await validateCohortBinding(record, root), []);
+    // C000001 holds no selected candidate: removing it must still fail rather than read as an empty batch.
+    await rm(path.join(root, 'data/reviews/C000001/decisions.jsonl'));
+    assert.ok((await validateCohortBinding(record, root)).some((error) => /C000001: declared universe batch is unreadable/u.test(error)));
+    await mkdir(path.join(root, 'data/reviews/C000001/decisions.jsonl'));
+    assert.ok((await validateCohortBinding(record, root)).some((error) => /C000001: declared universe batch is unreadable/u.test(error)));
+    const typo = JSON.parse(JSON.stringify(record));
+    typo.cohort.universe_batches.push('C999999');
+    assert.ok((await validateCohortBinding(typo, root)).some((error) => /C999999: declared universe batch is unreadable/u.test(error)));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('the published report states exactly the pinned aggregate and the reviewed retrieval condition', async () => {
