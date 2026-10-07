@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { applySurfaceFormDispositions, planSurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
+import { stage3SurfaceFormJudgments, validateSurfaceFormJudgments } from '../scripts/factory/surface-form-judgments.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
@@ -914,4 +915,129 @@ test('restart recognizes REST list merged_at without a merged flag for either ou
   assert.equal((await recover()).status, 'rejection-merged');
   pulls[1].merged_at = null;
   await assert.rejects(recover(), /closed without merging/);
+});
+
+// Explicit Stage 2 surface-form judgments (issue #365): the same shared rule decides what is accepted.
+const judged = (id, senseIndex, classId, reason = `${id} 활용형 판정.`) => ({ source_candidate_id: id, sense_index: senseIndex, class_id: classId, reason });
+const decisionRow = (id, lemma, pos, judgments) => ({
+  source_candidate_id: id,
+  disposition: 'included',
+  target: { kind: 'new_entry' },
+  reviewed_record: { lemma, senses: [{ pos, gloss: '뜻풀이.' }] },
+  ...(judgments ? { surface_form_judgments: judgments.map(({ sense_index, class_id, reason }) => ({ sense_index, class_id, reason })) } : {}),
+});
+const planned = (row, entryId, senseId) => ({ ...row, __entry_id: entryId, __sense_ids: [senseId] });
+
+test('Stage 3 records explicit judgments for a regular and an irregular ㅂ adjective through the same path, without per-word rules', async () => {
+  const root = await surfaceFormRoot([predicate('w1', '자랑스럽다', 'adjective'), predicate('w2', '좁다', 'adjective')]);
+  try {
+    const judgments = [
+      { record_id: 'w1', sense_id: 'w1-s1', class_id: 'm6-2-b-irregular-adjective', reason: 'C000001-0001 ㅂ 불규칙.' },
+      { record_id: 'w2', sense_id: 'w2-s1', class_id: 'm6-3-regular-b-adjective', reason: 'C000001-0002 ㅂ 규칙.' },
+    ];
+    await assert.rejects(planSurfaceFormDispositions({ root }), (error) => error.category === 'lexical' && error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');
+    await assert.rejects(planSurfaceFormDispositions({ root, judgments: judgments.slice(0, 1) }), (error) => error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');
+    assert.deepEqual(await applySurfaceFormDispositions({ root, judgments }), ['data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']);
+    const exceptions = JSON.parse(await readFile(path.join(root, 'data/validation/m6-2-inflection-exceptions.json'), 'utf8')).exceptions;
+    const review = JSON.parse(await readFile(path.join(root, 'data/validation/m6-3-surface-form-review.json'), 'utf8')).dispositions;
+    assert.deepEqual(exceptions, [{ class_id: 'm6-2-b-irregular-adjective', record_id: 'w1', sense_id: 'w1-s1' }]);
+    assert.deepEqual(review, [{ class_id: 'm6-3-regular-b-adjective', record_id: 'w2', sense_id: 'w2-s1', reason: 'C000001-0002 ㅂ 규칙.' }]);
+    assert.deepEqual(await applySurfaceFormDispositions({ root }), [], 'the recorded judgments close the gaps, so replay is a no-op');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Stage 3 rejects unknown, mismatched, duplicated, unneeded or unexplained surface-form judgments before writing anything', async () => {
+  const root = await surfaceFormRoot([predicate('w1', '경이롭다', 'adjective'), predicate('w2', '그러다'), predicate('w3', '걸음', 'noun')]);
+  try {
+    const good = { record_id: 'w1', sense_id: 'w1-s1', class_id: 'm6-2-b-irregular-adjective', reason: 'C000001-0001 ㅂ 불규칙.' };
+    const cases = [
+      [{ ...good, class_id: 'm6-9-no-such-class' }, /unknown surface-form class/u],
+      [{ ...good, class_id: 'm6-2-d-irregular-verb' }, /does not match w1\/w1-s1/u],
+      [{ ...good, class_id: 'm6-3-open-vowel-past-excluded' }, /does not match w1\/w1-s1/u],
+      [{ ...good, record_id: 'w2', sense_id: 'w2-s1' }, /not required/u],
+      [{ ...good, record_id: 'w3', sense_id: 'w3-s1' }, /not required/u],
+      [{ record_id: 'w1', sense_id: 'w1-s1', class_id: 'm6-3-regular-b-adjective', reason: '  ' }, /needs a reason/u],
+    ];
+    for (const [judgment, pattern] of cases) {
+      await assert.rejects(planSurfaceFormDispositions({ root, judgments: [judgment] }), (error) => error.category === 'lexical' && error.code === 'STAGE3_SURFACE_FORM_JUDGMENT_INVALID' && pattern.test(error.message), pattern.source);
+    }
+    await assert.rejects(planSurfaceFormDispositions({ root, judgments: [good, good] }), (error) => error.code === 'STAGE3_SURFACE_FORM_JUDGMENT_INVALID' && /duplicate/u.test(error.message));
+    const files = ['data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json'];
+    const before = await Promise.all(files.map((file) => readFile(path.join(root, file), 'utf8')));
+    await assert.rejects(planSurfaceFormDispositions({ root, judgments: [{ ...good, class_id: 'm6-2-d-irregular-verb' }] }));
+    assert.deepEqual(await Promise.all(files.map((file) => readFile(path.join(root, file), 'utf8'))), before, 'planning never writes');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('Stage 2 judgments are validated against the same shared rule and are required only when a sense needs one', () => {
+  const needs = decisionRow('C000001-0001', '경이롭다', 'adjective');
+  assert.deepEqual(validateSurfaceFormJudgments(needs), [], 'a pending review that predates the field stays valid unless judgments are required');
+  const required = validateSurfaceFormJudgments(needs, { required: true });
+  assert.equal(required.length, 1);
+  assert.match(required[0], /risk coda requires an explicit regular class/u);
+  assert.match(required[0], /surface_form_judgments/u);
+
+  const ok = decisionRow('C000001-0001', '경이롭다', 'adjective', [judged('C000001-0001', 0, 'm6-2-b-irregular-adjective')]);
+  assert.deepEqual(validateSurfaceFormJudgments(ok, { required: true }), []);
+  const regular = decisionRow('C000001-0002', '좁다', 'adjective', [judged('C000001-0002', 0, 'm6-3-regular-b-adjective')]);
+  assert.deepEqual(validateSurfaceFormJudgments(regular, { required: true }), []);
+
+  const bad = [
+    [decisionRow('C000001-0001', '경이롭다', 'adjective', [judged('C000001-0001', 0, 'm6-2-d-irregular-verb')]), /does not match/u],
+    [decisionRow('C000001-0001', '경이롭다', 'adjective', [judged('C000001-0001', 0, 'm6-9-no-such-class')]), /unknown surface-form class/u],
+    [decisionRow('C000001-0001', '경이롭다', 'adjective', [judged('C000001-0001', 1, 'm6-2-b-irregular-adjective')]), /must name a reviewed sense/u],
+    [decisionRow('C000001-0001', '경이롭다', 'adjective', [judged('C000001-0001', 0, 'm6-2-b-irregular-adjective', '활용형 판정.')]), /candidate-specific/u],
+    [decisionRow('C000001-0003', '걸음', 'noun', [judged('C000001-0003', 0, 'm6-2-b-irregular-adjective')]), /not required/u],
+    [decisionRow('C000001-0001', '경이롭다', 'adjective', [judged('C000001-0001', 0, 'm6-2-b-irregular-adjective'), judged('C000001-0001', 0, 'm6-3-regular-b-adjective')]), /duplicate/u],
+    [{ ...decisionRow('C000001-0004', '경이롭다', 'adjective', [judged('C000001-0004', 0, 'm6-2-b-irregular-adjective')]), disposition: 'rejected', reason: '제외.', target: undefined, reviewed_record: undefined }, /only an included or corrected decision/u],
+  ];
+  for (const [row, pattern] of bad) assert.ok(validateSurfaceFormJudgments(row, { required: true }).some((error) => pattern.test(error)), pattern.source);
+});
+
+test('Stage 3 addresses Stage 2 judgments by the allocated canonical entry and sense ids', () => {
+  const row = planned(decisionRow('C000001-0001', '경이롭다', 'adjective', [judged('C000001-0001', 0, 'm6-2-b-irregular-adjective')]), 'w12654', 'w12654-s1');
+  assert.deepEqual(stage3SurfaceFormJudgments([row, { source_candidate_id: 'C000001-0009', disposition: 'rejected' }]), [{
+    record_id: 'w12654', sense_id: 'w12654-s1', class_id: 'm6-2-b-irregular-adjective', reason: 'C000001-0001 활용형 판정.',
+  }]);
+});
+
+test('a Stage 2 judgment on a planned admission closes the surface-form gap under the allocated canonical ids', async () => {
+  const canonicalRecords = [];
+  const recordPathById = new Map();
+  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
+    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      canonicalRecords.push(record);
+      recordPathById.set(record.id, 'data/canonical/' + name);
+    }
+  }
+  const id = 'C900001-0001';
+  const decision = {
+    source_candidate_id: id, disposition: 'included', target: { kind: 'new_entry' },
+    reviewed_record: { lemma: '합성놓다', senses: [{ pos: 'verb', gloss: '합성 시험에서 쓰는 단일 뜻풀이.' }] },
+    surface_form_judgments: [{ sense_index: 0, class_id: 'm6-3-regular-h-verb', reason: `${id} 합성놓다는 ㅎ 받침 규칙 활용으로 판정했다.` }],
+  };
+  assert.deepEqual(validateSurfaceFormJudgments(decision, { required: true }), []);
+  const digest = 'a'.repeat(64);
+  const plan = planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  const [{ record }] = [...plan.records.values()];
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-judged-'));
+  try {
+    for (const file of ['data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']) {
+      await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+      await writeFile(path.join(root, file), await readFile(file, 'utf8'));
+    }
+    const projected = [...canonicalRecords, record];
+    await assert.rejects(planSurfaceFormDispositions({ root, records: projected }), (error) => error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');
+    const files = await planSurfaceFormDispositions({ root, records: projected, judgments: stage3SurfaceFormJudgments(plan.decisions) });
+    const review = JSON.parse(files.find(({ path: relative }) => relative === 'data/validation/m6-3-surface-form-review.json').text);
+    assert.deepEqual(review.dispositions.filter(({ record_id }) => record_id === record.id).map(({ class_id, sense_id }) => ({ class_id, sense_id })), [
+      { class_id: 'm6-3-regular-h-verb', sense_id: record.senses[0].id },
+    ]);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
