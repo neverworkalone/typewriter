@@ -752,11 +752,35 @@
           }
         }
       ],
+      "existing_sense_pairs": [
+        {
+          "existing_sense_id": "w1080-s1",
+          "new_sense_id": "C000008-0056-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "7e49225d539667a29ea128d0a64b4b156d26b8c267afd454cc71f13ba804a3dc",
+          "new_gloss_sha256": "a8f02c7fc95b5897ab05ae0fd56d60c8dc8a71d4b1dc730070839d77b072e8a4",
+          "evidence_basis": "C000008-0056: 기존 w1080-s1와 새 뜻의 원본 문맥을 attempt 1 Claude agent self-check으로 대조했다.",
+          "distinguishing_feature": "C000008-0056: 기존 뜻은 허리나 몸을 실제로 휘어지게 하는 동작이고, 새 뜻은 트렌트가 주장을 굽히지 않았다처럼 자기 주장을 꺾는 마음의 태도이다.",
+          "rationale": "C000008-0056: o03은 트렌트가 주장을 굽히지 않았다라는 쓰임으로 자기 주장을 꺾는 뜻이다."
+        },
+        {
+          "existing_sense_id": "w1080-s2",
+          "new_sense_id": "C000008-0056-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "c85aba6eba0fd998fe709b90fcea798a6a10cbb3d46e39153ba8a5b01ed4c9df",
+          "new_gloss_sha256": "a8f02c7fc95b5897ab05ae0fd56d60c8dc8a71d4b1dc730070839d77b072e8a4",
+          "evidence_basis": "C000008-0056: 기존 w1080-s2와 새 뜻의 원본 문맥을 attempt 1 Claude agent self-check으로 대조했다.",
+          "distinguishing_feature": "C000008-0056: 기존 뜻은 철사나 막대 같은 물체를 휘어지게 하는 일이고, 새 뜻은 물체가 아니라 사람이 자기 주장을 꺾는 일이다.",
+          "rationale": "C000008-0056: o03은 트렌트가 주장을 굽히지 않았다라는 쓰임으로 자기 주장을 꺾는 뜻이다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000008-0056",
         "candidate_record_sha256": "6d5298dde8b09cba947397b14347c71a6800ed09cd6cbdac02a4b0e52977b61a",
-        "decision_evidence_sha256": "6d9c686531deab8e0453ff1fb050b7c6b8dfc2a3c9e9594a2676b7a189cf4ab7",
+        "decision_evidence_sha256": "538e4df573932ddf013da09a7aeab9a8b744913b3d4e569472c33c045b362ded",
         "sense_evidence": [
           {
             "sense_id": "C000008-0056-s1",
@@ -1071,11 +1095,35 @@
           }
         }
       ],
+      "existing_sense_pairs": [
+        {
+          "existing_sense_id": "w420-s1",
+          "new_sense_id": "C000008-0086-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "6f92032de6ed41cbfc7205738884f4038aa7eda647996d5dae67fe290ff8b049",
+          "new_gloss_sha256": "6481355f4e86ab0ba2392171f6bc1159a5c680884eaa49d70d3a78b0a336a31e",
+          "evidence_basis": "C000008-0086: 기존 w420-s1와 새 뜻의 원본 문맥을 attempt 1 Claude agent self-check으로 대조했다.",
+          "distinguishing_feature": "C000008-0086: 기존 뜻은 위에 있던 몸이나 물체가 아래로 가라앉아 무너지는 일이고, 새 뜻은 안개나 햇살이 위에서 내려와 가볍게 머무는 일이다.",
+          "rationale": "C000008-0086: o01의 회색 안개가 내려앉는 광경, o02의 윤슬이 내려앉아 춤을 췄다, o03의 피투성이 육신 위로 내려앉은 햇살은 모두 안개나 빛이 위에서 내려와 머무는 뜻이어서 기존 w420-s1의 몸이나 물체가 아래로 가라앉는 뜻과 구별된다."
+        },
+        {
+          "existing_sense_id": "w420-s2",
+          "new_sense_id": "C000008-0086-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "6e388548f8469e6d2378f0e422ed8b19afb42cf7fbfbf7df6ff292981bd22847",
+          "new_gloss_sha256": "6481355f4e86ab0ba2392171f6bc1159a5c680884eaa49d70d3a78b0a336a31e",
+          "evidence_basis": "C000008-0086: 기존 w420-s2와 새 뜻의 원본 문맥을 attempt 1 Claude agent self-check으로 대조했다.",
+          "distinguishing_feature": "C000008-0086: 기존 뜻은 기세나 분위기가 꺾여 가라앉는 일이고, 새 뜻은 안개와 빛이 실제로 내려와 머무는 모습이다.",
+          "rationale": "C000008-0086: o01의 회색 안개가 내려앉는 광경, o02의 윤슬이 내려앉아 춤을 췄다, o03의 피투성이 육신 위로 내려앉은 햇살은 모두 안개나 빛이 위에서 내려와 머무는 뜻이어서 기존 w420-s1의 몸이나 물체가 아래로 가라앉는 뜻과 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000008-0086",
         "candidate_record_sha256": "f16fea9c27ae66cd7e8d1cf7a347fa3697288f51861dc509cf625b1b5ec46600",
-        "decision_evidence_sha256": "840bbc3af30fa6828da1339dcc41af380a091914421010e755c230b8061507b3",
+        "decision_evidence_sha256": "034048b74ded9b4d97a63eade3d0c01cb9c234d88dc5ad348d94aa345893b2ea",
         "sense_evidence": [
           {
             "sense_id": "C000008-0086-s1",
@@ -1167,11 +1215,35 @@
           }
         }
       ],
+      "existing_sense_pairs": [
+        {
+          "existing_sense_id": "w342-s1",
+          "new_sense_id": "C000008-0100-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "c315bb53c58a6f10b1b1d999e0c06a7d52efbe5d9e7f8015de634a3499c4361a",
+          "new_gloss_sha256": "4978b2fe5f8ccfe2e6ea2578955c9ddc1e35f9eaf3f964c658db778208b9271d",
+          "evidence_basis": "C000008-0100: 기존 w342-s1와 새 뜻의 원본 문맥을 attempt 1 Claude agent self-check으로 대조했다.",
+          "distinguishing_feature": "C000008-0100: 기존 뜻은 손이나 감각으로 어둠 속의 대상을 더듬어 찾는 일이고, 새 뜻은 말을 심하게 더듬는다처럼 말하다가 막히거나 소리를 반복하는 일이다.",
+          "rationale": "C000008-0100: o01은 말을 심하게 더듬고 있다는 쓰임으로 말하다가 막히거나 같은 소리를 반복하는 뜻이어서 기존 w342-s1, w342-s2와 구별된다."
+        },
+        {
+          "existing_sense_id": "w342-s2",
+          "new_sense_id": "C000008-0100-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "7e8ae76b6be64f9d64638dfbc93e9be1c8ff5d1370f2a3778066cd2c6ded182d",
+          "new_gloss_sha256": "4978b2fe5f8ccfe2e6ea2578955c9ddc1e35f9eaf3f964c658db778208b9271d",
+          "evidence_basis": "C000008-0100: 기존 w342-s2와 새 뜻의 원본 문맥을 attempt 1 Claude agent self-check으로 대조했다.",
+          "distinguishing_feature": "C000008-0100: 기존 뜻은 말이나 기억을 떠올리지 못해 어렵게 찾아가는 일이고, 새 뜻은 떠올림과 상관없이 말소리가 막히거나 반복되는 발화의 모양이다.",
+          "rationale": "C000008-0100: o01은 말을 심하게 더듬고 있다는 쓰임으로 말하다가 막히거나 같은 소리를 반복하는 뜻이어서 기존 w342-s1, w342-s2와 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000008-0100",
         "candidate_record_sha256": "ccb2d700b5ccffb809dcba54a34861751ff50cc0b0c4cc29ef1ba1f2b4caf4d6",
-        "decision_evidence_sha256": "db5a136ac382f6bb4c352056f0fa6991f93d2ffaef39a60220e013b3d26dfa5e",
+        "decision_evidence_sha256": "85d2d85b8b2f61642ad481342c0b8c02b9dc7468f4c8f3b8ce36e95c53fc19cd",
         "sense_evidence": [
           {
             "sense_id": "C000008-0100-s1",
@@ -1446,11 +1518,35 @@
           }
         }
       ],
+      "existing_sense_pairs": [
+        {
+          "existing_sense_id": "w340-s1",
+          "new_sense_id": "C000008-0145-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "9b925991e2f6b4b2ace73361871ad8a946a021a3124c9ee69bd806ba77ed614d",
+          "new_gloss_sha256": "cde55f4c2edbfd072a9016eb24ac81d234cb0aec175ec33b3aa08f63dbd49406",
+          "evidence_basis": "C000008-0145: 기존 w340-s1와 새 뜻의 원본 문맥을 attempt 1 Claude agent self-check으로 대조했다.",
+          "distinguishing_feature": "C000008-0145: 기존 뜻은 액체나 색이 주변으로 퍼져 나가는 물리적 현상이고, 새 뜻은 기억이나 분위기가 사람들 사이에 퍼지는 일이다.",
+          "rationale": "C000008-0145: o01의 기억은 역병처럼 번져 나가와 o02의 헤프다는 분위기가 번졌다는 모두 액체나 감정이 아니라 생각이나 소문, 분위기가 퍼져 나가는 뜻이어서 기존 w340-s1, w340-s2와 구별된다."
+        },
+        {
+          "existing_sense_id": "w340-s2",
+          "new_sense_id": "C000008-0145-s1",
+          "relationship": "distinct",
+          "decision": "retain",
+          "existing_gloss_sha256": "3fca0428e184659a05135a76337c696a02d81d8213668159ae07e08380ffcdb0",
+          "new_gloss_sha256": "cde55f4c2edbfd072a9016eb24ac81d234cb0aec175ec33b3aa08f63dbd49406",
+          "evidence_basis": "C000008-0145: 기존 w340-s2와 새 뜻의 원본 문맥을 attempt 1 Claude agent self-check으로 대조했다.",
+          "distinguishing_feature": "C000008-0145: 기존 뜻은 감정이나 표정이 얼굴과 주변에 드러나 퍼지는 일이고, 새 뜻은 헤프다는 분위기나 소문이 사람들 사이에 번지는 일이다.",
+          "rationale": "C000008-0145: o01의 기억은 역병처럼 번져 나가와 o02의 헤프다는 분위기가 번졌다는 모두 액체나 감정이 아니라 생각이나 소문, 분위기가 퍼져 나가는 뜻이어서 기존 w340-s1, w340-s2와 구별된다."
+        }
+      ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000008-0145",
         "candidate_record_sha256": "63e40a6b3c09297d2ec729f0dfb76c26448ebd4354a7859ca03687a710c15792",
-        "decision_evidence_sha256": "81d6dca0101fd31cf758e3b46d1fbb1ff6487bfe1391478d2079df7e413c5cbf",
+        "decision_evidence_sha256": "ccbd3498a9da71302e1b37b5f51231ef3b820917dd1eb0004609c1db2e3cf3d5",
         "sense_evidence": [
           {
             "sense_id": "C000008-0145-s1",
