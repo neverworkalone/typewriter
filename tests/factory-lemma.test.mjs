@@ -359,6 +359,7 @@ test('a gloss cannot widen to a deferred observation: scope declaration is sourc
   // Through the shared review-artifact path: a placeholder that occurs in the reason (generic word, observed
   // form) used to pass as scope evidence and is now refused; the genuine meaning word (시간) is accepted above.
   has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = ['용법']; }), 'generic placeholder');
+  has(await withScope(scoped('다른 곳으로 옮겨 가다.'), (row, review) => { review.scope_declaration.excluded_terms = ['용법은']; }), 'generic placeholder');
   const surfaceReason = { ...scoped('다른 곳으로 옮겨 가다.') };
   surfaceReason.group_decisions = surfaceReason.group_decisions.map((entry) => (entry.disposition === 'deferred' ? { ...entry, reason: `${go.forms[0].surface}의 ${reason}` } : entry));
   has(await withScope(surfaceReason, (row, review) => { review.scope_declaration.excluded_terms = [go.forms[0].surface]; }), 'observed form or the lemma');
@@ -406,9 +407,12 @@ test('excluded_terms must name the excluded meaning, not a generic word or the o
   const refused = (terms, fragment) => assert.ok(check(terms).some((error) => error.includes(fragment)), `${terms}: ${check(terms).join(' | ')}`);
   // Old syntax-only check accepted all of these (the word occurs in the excluded reason and not in the gloss).
   refused(['쓰임'], 'generic placeholder');
+  // A particle cannot hide a placeholder: the comparison is made on the bare word.
+  for (const term of ['쓰임은', '쓰임으로는', '쓰임이다']) refused([term], 'generic placeholder');
   refused(['가꾸고'], 'observed form or the lemma');
   refused(['가꾸고는'], 'observed form or the lemma');
   refused(['가꾸다'], 'observed form or the lemma');
+  refused(['가꾸'], 'observed form or the lemma');
   // A word that denotes the excluded meaning passes.
   assert.deepEqual(check(['식물']), []);
 });
