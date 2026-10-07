@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { applySurfaceFormDispositions, planSurfaceFormDispositions } from '../scripts/factory/surface-form-dispositions.mjs';
 import { stage3SurfaceFormJudgments, validateSurfaceFormJudgments } from '../scripts/factory/surface-form-judgments.mjs';
+import { validateExistingSensePairs } from '../scripts/factory/existing-sense-pairs.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
@@ -1040,4 +1041,121 @@ test('a Stage 2 judgment on a planned admission closes the surface-form gap unde
       { class_id: 'm6-3-regular-h-verb', sense_id: record.senses[0].id },
     ]);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+// Pairwise boundary evidence against every existing same-POS sense (issue #379). Real canonical entries are read
+// (never written): w753 has two noun senses, w6468 exactly one.
+const realCanonical = async () => {
+  const canonicalRecords = [];
+  const recordPathById = new Map();
+  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
+    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      canonicalRecords.push(record);
+      recordPathById.set(record.id, 'data/canonical/' + name);
+    }
+  }
+  return { canonicalRecords, recordPathById };
+};
+const NEW_GLOSSES = ['합성 시험에서 쓰는 첫째 새 뜻풀이.', '합성 시험에서 쓰는 완전히 다른 둘째 새 뜻풀이.'];
+async function appendSenseScenario({ entryId, newCount = 1, context, pairs }) {
+  const { canonicalRecords, recordPathById } = await realCanonical();
+  const target = canonicalRecords.find((record) => record.id === entryId);
+  const id = 'C900001-0001';
+  const decision = {
+    source_candidate_id: id, disposition: 'included', target: { kind: 'new_sense_on_existing_entry', entry_id: entryId, context_sense_id: context ?? target.senses[0].id },
+    reviewed_record: { lemma: target.lemma, senses: NEW_GLOSSES.slice(0, newCount).map((gloss) => ({ pos: 'noun', gloss })) },
+  };
+  const record = reviewedCandidateRecord(decision);
+  const pairBase = (existing, index) => ({
+    existing_sense_id: existing.id, new_sense_id: `${id}-s${index + 1}`, relationship: 'distinct', decision: 'retain',
+    existing_gloss_sha256: sha256Json(existing.gloss), new_gloss_sha256: sha256Json(NEW_GLOSSES[index]),
+    evidence_basis: `${id}: ${existing.id}와 새 뜻 ${index + 1}은 쓰임이 다르다.`, distinguishing_feature: `${id}: ${existing.id}와 구별되는 쓰임이다.`, rationale: `${id}: ${existing.id}와 별개의 뜻으로 유지한다.`,
+  });
+  const row = {
+    source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+    decision_rationale: id + ': 합성 시험 결정.', gloss_judgment: 'fit',
+    sense_reviews: record.senses.map((sense) => ({
+      sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+      boundary_rationale: id + ' ' + sense.id + ': 한 가지 뜻으로 한정된다.', semantic_rationale: id + ' ' + sense.id + ': ' + sense.gloss,
+      relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: id + ' ' + sense.id + ': 관계 없음.',
+    })),
+    boundary_pairs: inspectSenseBoundaryPairs(record).map((pair) => ({
+      left_sense_id: pair.left_sense_id, right_sense_id: pair.right_sense_id, relationship: pair.relationship, decision: 'retain',
+      left_gloss_sha256: sha256Json(record.senses.find((sense) => sense.id === pair.left_sense_id).gloss),
+      right_gloss_sha256: sha256Json(record.senses.find((sense) => sense.id === pair.right_sense_id).gloss),
+      evidence_basis: id + ': 두 새 뜻은 서로 다른 쓰임이다.', distinguishing_feature: id + ': 쓰임이 다르다.', rationale: id + ': 별개의 뜻으로 유지한다.',
+    })),
+  };
+  const all = target.senses.flatMap((existing) => record.senses.map((_, index) => ({ existing, index })));
+  if (pairs) row.existing_sense_pairs = pairs(all.map(({ existing, index }) => pairBase(existing, index)));
+  row.review_binding = authorSemanticReviewBinding(row, record);
+  const digest = 'a'.repeat(64);
+  const plan = planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  const authority = () => buildStage3SemanticAuthority({ root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' });
+  return { authority, decision, row, target, plan, canonicalRecords };
+}
+const rejectsWith = (code) => (error) => error instanceof Stage3AdmissionError && error.category === 'lexical' && error.code === code;
+
+test('an existing entry with two same-POS senses needs pair evidence for each; a single context id no longer suffices', async () => {
+  const { authority } = await appendSenseScenario({ entryId: 'w753' });
+  await assert.rejects(authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+});
+
+test('two existing same-POS senses plus one new sense pass with both pairs, and Stage 3 consumes exactly Stage 2 evidence', async () => {
+  const { authority, target, plan } = await appendSenseScenario({ entryId: 'w753', pairs: (all) => all });
+  const result = await authority();
+  const reviewed = result.sourceObject.authored_review.records.find((review) => review.record_id === 'w753');
+  const newId = plan.records.get('w753').record.senses.at(-1).id;
+  const pairs = reviewed.boundary_review.pairwise.filter((pair) => pair.left_sense_id === newId || pair.right_sense_id === newId);
+  assert.equal(pairs.length, target.senses.length);
+  for (const pair of pairs) assert.match(pair.evidence_basis, /쓰임은 다르다|쓰임이 다르다/u);
+});
+
+test('a missing, duplicated, forged, foreign-entry or wrong-POS existing-sense pair fails closed', async () => {
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.slice(0, 1) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all, all[0]] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all.slice(0, 1), { ...all[1], existing_sense_id: 'w753-s9' }] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all.slice(0, 1), { ...all[1], existing_sense_id: 'w6468-s1' }] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.map((pair) => ({ ...pair, existing_gloss_sha256: 'b'.repeat(64) })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.map((pair) => ({ ...pair, decision: 'merge' })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+});
+
+test('a single existing same-POS sense keeps working with the context id alone', async () => {
+  const { authority } = await appendSenseScenario({ entryId: 'w6468' });
+  assert.ok((await authority()).sourceObject);
+});
+
+test('several new senses need the full existing × new coverage', async () => {
+  const full = await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all });
+  assert.equal(full.row.existing_sense_pairs.length, 4);
+  assert.ok((await full.authority()).sourceObject);
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all.slice(0, 3) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all.filter(({ new_sense_id: id }) => id.endsWith('-s1')) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+});
+
+test('Stage 2 validation computes the required pairs from the canonical entry and rejects every incomplete or invalid set', async () => {
+  const { row, decision, target } = await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all });
+  const ok = validateExistingSensePairs(decision, row, { existingSenses: target.senses, required: true });
+  assert.deepEqual(ok, []);
+  const withPairs = (pairs) => ({ ...row, existing_sense_pairs: pairs });
+  const check = (pairs, pattern, existingSenses = target.senses) => assert.ok(validateExistingSensePairs(decision, withPairs(pairs), { existingSenses, required: true }).some((error) => pattern.test(error)), pattern.source);
+  check(row.existing_sense_pairs.slice(1), /missing existing_sense_pairs/u);
+  check([...row.existing_sense_pairs, row.existing_sense_pairs[0]], /duplicate pair/u);
+  check([...row.existing_sense_pairs.slice(1), { ...row.existing_sense_pairs[0], existing_sense_id: 'w753-s9' }], /not a sense of the target entry/u);
+  check([...row.existing_sense_pairs.slice(1), { ...row.existing_sense_pairs[0], new_sense_id: 'C900001-0001-s9' }], /must name a reviewed sense/u);
+  check(row.existing_sense_pairs.map((pair) => ({ ...pair, existing_gloss_sha256: 'b'.repeat(64) })), /does not bind the canonical gloss/u);
+  check(row.existing_sense_pairs, /is verb, the new sense is noun/u, target.senses.map((sense) => ({ ...sense, pos: 'verb' })));
+  check(row.existing_sense_pairs.map((pair) => ({ ...pair, rationale: '근거.' })), /candidate-specific/u);
+  // One existing same-POS sense: nothing is required, but pairs that are given must still be valid.
+  const single = await appendSenseScenario({ entryId: 'w6468' });
+  assert.deepEqual(validateExistingSensePairs(single.decision, single.row, { existingSenses: single.target.senses, required: true }), []);
+  assert.deepEqual(validateExistingSensePairs({ ...decision, target: { kind: 'new_entry' } }, row, { required: true }).length, 1);
+  // Without a comparable canonical state (stale review) only the structure is checked.
+  assert.deepEqual(validateExistingSensePairs(decision, row, { existingSenses: null, required: true }), []);
 });
