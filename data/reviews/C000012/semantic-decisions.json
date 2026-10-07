@@ -1,0 +1,1694 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "kind": "separately-authored-semantic-decision-source",
+  "batch_id": "C000012",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "authoring_mode": "agent-authored-decision",
+  "provenance": {
+    "human_reviewed": false
+  },
+  "review": {
+    "status": "complete",
+    "reviewer": "codex-agent-self-check",
+    "reviewed_candidate_count": 341,
+    "review_provenance": "agent-self-check",
+    "independent_review": false
+  },
+  "decisions": [
+    {
+      "source_candidate_id": "C000012-0001",
+      "candidate_record_id": "C000012-0001",
+      "candidate_record_sha256": "44a7ee13681ab052065c164323bc36e25cac58b964978bde5a271c8692562e6e",
+      "decision": "included",
+      "decision_rationale": "C000012-0001 attempt 1 Codex agent self-check: o01은 실제로 남아 있는 희망이 실처럼 가늘게 이어지는 한 줄기라는 비유적 확장이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0001-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0001: o01은 실제로 남아 있는 희망이 실처럼 가늘게 이어지는 한 줄기라는 비유적 확장이다.",
+          "semantic_rationale": "C000012-0001: o01은 실제로 남아 있는 희망이 실처럼 가늘게 이어지는 한 줄기라는 비유적 확장이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0001 C000012-0001-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0001.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0001.o02",
+              "C000012-0001.o03"
+            ],
+            "excluded_terms": [
+              "국수",
+              "그림자"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0001",
+        "candidate_record_sha256": "44a7ee13681ab052065c164323bc36e25cac58b964978bde5a271c8692562e6e",
+        "decision_evidence_sha256": "6a340a351144b1c517c04c473312f8c13e42cb4b04ea0c50cfec890bfda2ef6d",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0001-s1",
+            "sense_sha256": "ed1711690b8e65868f08b969bb15c51085e725980e6b823c00221c281a72574d",
+            "gloss_sha256": "9306ac30a74ed1e6274a79a36687a5d14318254485a30db85e0cc170daee3f34",
+            "evidence_sha256": "038d35cd67444556ffab6bd622f37da5805fea173843fac96b071282c493442d"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0007",
+      "candidate_record_id": "C000012-0007",
+      "candidate_record_sha256": "6d5b4231c8b33699b3fdc1edf52105a4c4fdc6c026d07d8e4ff65b324d334b10",
+      "decision": "included",
+      "decision_rationale": "C000012-0007 attempt 1 Codex agent self-check: o01은 남로당 구성원이 되는 것, o02는 팬덤 플리에 들어가는 것을 말해 둘 다 구성원으로 참여하는 가입이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0007-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0007: o01은 남로당 구성원이 되는 것, o02는 팬덤 플리에 들어가는 것을 말해 둘 다 구성원으로 참여하는 가입이다.",
+          "semantic_rationale": "C000012-0007: o01은 남로당 구성원이 되는 것, o02는 팬덤 플리에 들어가는 것을 말해 둘 다 구성원으로 참여하는 가입이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0007 C000012-0007-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0007.o01",
+              "C000012-0007.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0007",
+        "candidate_record_sha256": "6d5b4231c8b33699b3fdc1edf52105a4c4fdc6c026d07d8e4ff65b324d334b10",
+        "decision_evidence_sha256": "560f0ac31198cec542ba0cd6140bfbe24c7d3dcbe3a784fb34d111175d50edd5",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0007-s1",
+            "sense_sha256": "a3b4b613fee584f97dc48441a3e73df7767d1d673132ae10e57099cd24c286c9",
+            "gloss_sha256": "1ab2da927e550352c24f0fb504aee2845f61fc8fa51a01e02644a9b6db216b13",
+            "evidence_sha256": "a79bf50eebc40b268910bd95d493d78dda8f8b87c5df29f8237a2804c859880b"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0015",
+      "candidate_record_id": "C000012-0015",
+      "candidate_record_sha256": "23e1a708f194241dbc07339bd18f4217c64b93e051e42f4ddc7e0750ebd82233",
+      "decision": "included",
+      "decision_rationale": "C000012-0015 attempt 1 Codex agent self-check: o01은 포스트모더니즘 사조를 거인 골리앗에 빗대어 철학계를 지배한 큰 영향력을 표현한다. 몸집이 아닌 힘과 영향력의 비유 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0015-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0015: o01은 포스트모더니즘 사조를 거인 골리앗에 빗대어 철학계를 지배한 큰 영향력을 표현한다. 몸집이 아닌 힘과 영향력의 비유 sense다.",
+          "semantic_rationale": "C000012-0015: o01은 포스트모더니즘 사조를 거인 골리앗에 빗대어 철학계를 지배한 큰 영향력을 표현한다. 몸집이 아닌 힘과 영향력의 비유 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0015 C000012-0015-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0015.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0015",
+        "candidate_record_sha256": "23e1a708f194241dbc07339bd18f4217c64b93e051e42f4ddc7e0750ebd82233",
+        "decision_evidence_sha256": "7bd5d340e5999c936b53ee657f2f9c96d0ad3242bc9d4cbd6951079d4fd13a6c",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0015-s1",
+            "sense_sha256": "03a42763d57fb9f2ce8cf9f21b7568a5a273d027a94b1ab8fa7de76b72beb42a",
+            "gloss_sha256": "bdcdeadc8d8bbca1931e247deeb690fa4593d7d9a0939edfc1835d066cec8b5a",
+            "evidence_sha256": "9114084cf07c7fbd899b50ed0d6e5ca8786779ece052e885ef5f80726ca0ed69"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0021",
+      "candidate_record_id": "C000012-0021",
+      "candidate_record_sha256": "2bcc49395f5c647e8da538d83afe35eec59307396650aece31397f115876f574",
+      "decision": "included",
+      "decision_rationale": "C000012-0021 attempt 1 Codex agent self-check: o01의 특이한 경로는 그림을 손에 넣는 데 거친 획득 방법을 가리킨다. 이동하는 길이나 순서가 아니라 목적에 이르는 과정이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0021-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0021: o01의 특이한 경로는 그림을 손에 넣는 데 거친 획득 방법을 가리킨다. 이동하는 길이나 순서가 아니라 목적에 이르는 과정이다.",
+          "semantic_rationale": "C000012-0021: o01의 특이한 경로는 그림을 손에 넣는 데 거친 획득 방법을 가리킨다. 이동하는 길이나 순서가 아니라 목적에 이르는 과정이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0021 C000012-0021-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0021.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0021",
+        "candidate_record_sha256": "2bcc49395f5c647e8da538d83afe35eec59307396650aece31397f115876f574",
+        "decision_evidence_sha256": "9374ec607c21da90e98da1a5e7108951f39ec74bcc3e8c9b5a9e575290d7ea84",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0021-s1",
+            "sense_sha256": "d8e19792a6b3acd77d5cc112795819e570f68eabadf2f8dfabd3d66a9c5cb610",
+            "gloss_sha256": "d6b76aa694d034f27321d4a8336c818e50a48453a7d0e6f744e7d1151ee9ea6a",
+            "evidence_sha256": "bc6427f42f81e68baf57d369987be841a6b2420be1357b943495c09974b1864c"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0033",
+      "candidate_record_id": "C000012-0033",
+      "candidate_record_sha256": "5adfcc8bcd41c5ffaf2adba99fb882e9a8155b62e4f2fe4f438756c291173261",
+      "decision": "included",
+      "decision_rationale": "C000012-0033 attempt 1 Codex agent self-check: o01에서 아이들이 앵무새와 돌고래에게 먹이를 주고 함께하면서 마음이 통하는 경험을 교감이라고 한다. 학교 운영을 맡는 교감과 다른 상호 감응 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0033-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0033: o01에서 아이들이 앵무새와 돌고래에게 먹이를 주고 함께하면서 마음이 통하는 경험을 교감이라고 한다. 학교 운영을 맡는 교감과 다른 상호 감응 sense다.",
+          "semantic_rationale": "C000012-0033: o01에서 아이들이 앵무새와 돌고래에게 먹이를 주고 함께하면서 마음이 통하는 경험을 교감이라고 한다. 학교 운영을 맡는 교감과 다른 상호 감응 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0033 C000012-0033-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0033.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0033",
+        "candidate_record_sha256": "5adfcc8bcd41c5ffaf2adba99fb882e9a8155b62e4f2fe4f438756c291173261",
+        "decision_evidence_sha256": "3c29b454e401ca724e8c6c6e1c27fa5fad4f9a2e20cf2221c0d72ca459615ba8",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0033-s1",
+            "sense_sha256": "249ea7bb30e2fb8d774ff7f634d9bd2df920167086a11e93f60105333e8668fb",
+            "gloss_sha256": "f8f01f726a29c18dd42dc4c8ce306fb287b180c8e63fb2e119970dcc15c223f5",
+            "evidence_sha256": "3559eb22e2d30525dffcd78bed270a925f0a2e713ae64d008d1379abb486388d"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0052",
+      "candidate_record_id": "C000012-0052",
+      "candidate_record_sha256": "4455fa58fc24b16711f894e89f8575f34f72d9a06d33fa092b9ed9eda6072131",
+      "decision": "included",
+      "decision_rationale": "C000012-0052 attempt 1 Codex agent self-check: o02는 음악 이해와 필요한 기술을 경험으로 알게 되는 것, o03은 작사 기술을 뒤늦게 익힌 것을 말해 배움으로 기술을 익히는 새 sense를 지지한다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0052-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0052: o02는 음악 이해와 필요한 기술을 경험으로 알게 되는 것, o03은 작사 기술을 뒤늦게 익힌 것을 말해 배움으로 기술을 익히는 새 sense를 지지한다.",
+          "semantic_rationale": "C000012-0052: o02는 음악 이해와 필요한 기술을 경험으로 알게 되는 것, o03은 작사 기술을 뒤늦게 익힌 것을 말해 배움으로 기술을 익히는 새 sense를 지지한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0052 C000012-0052-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0052.o02",
+              "C000012-0052.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0052.o01"
+            ],
+            "excluded_terms": [
+              "한글"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0052",
+        "candidate_record_sha256": "4455fa58fc24b16711f894e89f8575f34f72d9a06d33fa092b9ed9eda6072131",
+        "decision_evidence_sha256": "e41076e92abaf09a77d7111f49ca7d8a6e4a49a7ffc6115fe544513a84142e51",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0052-s1",
+            "sense_sha256": "05767966434c9ef6280d273aa136e238ce5ca8160f84c7802de24091e5cb588a",
+            "gloss_sha256": "068864446f44e0540295d7ad92dd15231bfa79224a1fa917530b6a92b653b4af",
+            "evidence_sha256": "26867aef14873257f8fde9c9649537752f426717e4e43a99a4f6c777d603b597"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0053",
+      "candidate_record_id": "C000012-0053",
+      "candidate_record_sha256": "f80c8104b3513dfc1b9d5678c920f92258097d314fe89012645e770acfa647a7",
+      "decision": "included",
+      "decision_rationale": "C000012-0053 attempt 1 Codex agent self-check: o01은 상대가 좋아한 외면만을 껍데기라 부르고, o02는 본질적 자아를 가리는 모든 껍데기를 벗는다고 한다. 물리적 껍질에서 확장된 외적 모습의 비유 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0053-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0053: o01은 상대가 좋아한 외면만을 껍데기라 부르고, o02는 본질적 자아를 가리는 모든 껍데기를 벗는다고 한다. 물리적 껍질에서 확장된 외적 모습의 비유 sense다.",
+          "semantic_rationale": "C000012-0053: o01은 상대가 좋아한 외면만을 껍데기라 부르고, o02는 본질적 자아를 가리는 모든 껍데기를 벗는다고 한다. 물리적 껍질에서 확장된 외적 모습의 비유 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0053 C000012-0053-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0053.o01",
+              "C000012-0053.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0053",
+        "candidate_record_sha256": "f80c8104b3513dfc1b9d5678c920f92258097d314fe89012645e770acfa647a7",
+        "decision_evidence_sha256": "178fe6f16ab44648bbba869403a2225167cd1a366e0d7c678ef80db40eb1e46d",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0053-s1",
+            "sense_sha256": "fe0c2ae6f97520b3c4f5173ac9629511e9b5f58b9b745643da5bed245bd70d72",
+            "gloss_sha256": "a7dedd441bc5afeba47c9cc0e79cd9e7e62277d31856f979c1130db7e57b8ed5",
+            "evidence_sha256": "cabf704750b53a217014050bac0e995c8a3914994f50fe41e19052cf31d83a17"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0055",
+      "candidate_record_id": "C000012-0055",
+      "candidate_record_sha256": "4fd75ddb77a7ffeeceec11f53e25abe742bb52236b4c06eebfce0f8fb8c1b8f6",
+      "decision": "included",
+      "decision_rationale": "C000012-0055 attempt 1 Codex agent self-check: o01은 다과·상차림·가문의 문장·인사 형식을 꿰고 있다고 해 구멍에 실을 통과시키는 동작이 아니라 관련 지식에 통달했음을 말한다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0055-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0055: o01은 다과·상차림·가문의 문장·인사 형식을 꿰고 있다고 해 구멍에 실을 통과시키는 동작이 아니라 관련 지식에 통달했음을 말한다.",
+          "semantic_rationale": "C000012-0055: o01은 다과·상차림·가문의 문장·인사 형식을 꿰고 있다고 해 구멍에 실을 통과시키는 동작이 아니라 관련 지식에 통달했음을 말한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0055 C000012-0055-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0055.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0055",
+        "candidate_record_sha256": "4fd75ddb77a7ffeeceec11f53e25abe742bb52236b4c06eebfce0f8fb8c1b8f6",
+        "decision_evidence_sha256": "c479c983838df563fb8c58460426680811a524eec4f40f2810da1d8c74812c73",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0055-s1",
+            "sense_sha256": "60bb72f0854ccb79294858d8c54b38adcbac28f362ec8542b78b38b730d154ad",
+            "gloss_sha256": "3ab9262745aeb627b2ab3d9a76263521bc4d03b5ba659df880e003d4f57fa631",
+            "evidence_sha256": "feeab1fa3d994969f8ad775a9833a0e531a110b32cde37d3d24ed3cb5d7e1055"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0062",
+      "candidate_record_id": "C000012-0062",
+      "candidate_record_sha256": "e484ff3520ef2976df700bf7514227db0d0dc9a3392861e2c75ba748edf4a9b8",
+      "decision": "included",
+      "decision_rationale": "C000012-0062 attempt 1 Codex agent self-check: o01의 왕 내외는 왕과 왕비를 함께 가리키므로 안팎·범위가 아닌 부부를 함께 이르는 새 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0062-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0062: o01의 왕 내외는 왕과 왕비를 함께 가리키므로 안팎·범위가 아닌 부부를 함께 이르는 새 sense다.",
+          "semantic_rationale": "C000012-0062: o01의 왕 내외는 왕과 왕비를 함께 가리키므로 안팎·범위가 아닌 부부를 함께 이르는 새 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0062 C000012-0062-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0062.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0062",
+        "candidate_record_sha256": "e484ff3520ef2976df700bf7514227db0d0dc9a3392861e2c75ba748edf4a9b8",
+        "decision_evidence_sha256": "5d7cea8ea1f9503aa0685070895a60eb203b4093d37ed0cf1d67fd7ee7974dc2",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0062-s1",
+            "sense_sha256": "04a92dac0c11e285fc5968e3364c257c8f0206c211d133bc2c7a9c9cf04f6edc",
+            "gloss_sha256": "f69f0dbdf4a68499b6d6168e4ad0558f26c40e898d259dbafdb7456286777baf",
+            "evidence_sha256": "3bcea29fda0d9a8b7f24a9160cd8b93afe15f0420fb463ff2e95235627947fdc"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0074",
+      "candidate_record_id": "C000012-0074",
+      "candidate_record_sha256": "aef7baea6c8a9d7e20731dedc97cff6bcaa446516142048d29f6a4f55c849ea8",
+      "decision": "included",
+      "decision_rationale": "C000012-0074 attempt 1 Codex agent self-check: o01은 맥주잔이 놓인 배열을 다이아몬드 모양이라 하여 보석이 아니라 마름모꼴 형태를 뜻한다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0074-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0074: o01은 맥주잔이 놓인 배열을 다이아몬드 모양이라 하여 보석이 아니라 마름모꼴 형태를 뜻한다.",
+          "semantic_rationale": "C000012-0074: o01은 맥주잔이 놓인 배열을 다이아몬드 모양이라 하여 보석이 아니라 마름모꼴 형태를 뜻한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0074 C000012-0074-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0074.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0074.o02"
+            ],
+            "excluded_terms": [
+              "보석"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0074",
+        "candidate_record_sha256": "aef7baea6c8a9d7e20731dedc97cff6bcaa446516142048d29f6a4f55c849ea8",
+        "decision_evidence_sha256": "73b63ae604bd76fd77bac7c9c6d1dc8de76bcbf39e0f3da057ec7b610c2cc9bf",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0074-s1",
+            "sense_sha256": "45dc7abf065f3cb816d0e240e1600b7671c9c6866cbd412e41b0320f4e395eee",
+            "gloss_sha256": "1a12eb7dec37b7c5203522a8a84dcd33d4c3ee078b858796c38f970ea9613048",
+            "evidence_sha256": "9c2a80cc434e360318168b8b4a6277c8a04aae01a42277f690221cb58bc3bf52"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0076",
+      "candidate_record_id": "C000012-0076",
+      "candidate_record_sha256": "fb5570822513a08309d8215963ecd8b7b5c650a8e297a0d2816537fd9b2f2179",
+      "decision": "included",
+      "decision_rationale": "C000012-0076 attempt 1 Codex agent self-check: o01에서 화자는 자신이 젊은 여인에게 끌리는 상황에 무척 당혹스럽게 느낀다. 당혹스럽게는 당혹스럽다의 형용사 활용형이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0076-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0076: o01에서 화자는 자신이 젊은 여인에게 끌리는 상황에 무척 당혹스럽게 느낀다. 당혹스럽게는 당혹스럽다의 형용사 활용형이다.",
+          "semantic_rationale": "C000012-0076: o01에서 화자는 자신이 젊은 여인에게 끌리는 상황에 무척 당혹스럽게 느낀다. 당혹스럽게는 당혹스럽다의 형용사 활용형이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0076 C000012-0076-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0076.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0076",
+        "candidate_record_sha256": "fb5570822513a08309d8215963ecd8b7b5c650a8e297a0d2816537fd9b2f2179",
+        "decision_evidence_sha256": "e3c3b0d584d1e4c456f9e17e4719ed9d2c2c9277e9d25c6c97294b36ec06ce03",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0076-s1",
+            "sense_sha256": "1bba09475c1e0f5ab13d6efe451a6a0705faaa69de850400f63fad3f316ebaf5",
+            "gloss_sha256": "981f74554f325418930c498949c326d4be23a849f3ba447c5c29693881670e5f",
+            "evidence_sha256": "860744634634cd43ac3f404710a16ae0bde02db9c0a31adf5537ac8a0826caf3"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0080",
+      "candidate_record_id": "C000012-0080",
+      "candidate_record_sha256": "742ab97bf0d3cd1e429c12076dd3cf57fd13ea0c45d1ba69f2354d69b86eccdf",
+      "decision": "included",
+      "decision_rationale": "C000012-0080 attempt 1 Codex agent self-check: o01은 우산 끈을 손으로 더듬어 묶고 o03은 손으로 호출 버튼을 찾아 만진다. 말이 막히는 것이 아니라 촉각으로 물건을 찾는 새 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0080-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0080: o01은 우산 끈을 손으로 더듬어 묶고 o03은 손으로 호출 버튼을 찾아 만진다. 말이 막히는 것이 아니라 촉각으로 물건을 찾는 새 sense다.",
+          "semantic_rationale": "C000012-0080: o01은 우산 끈을 손으로 더듬어 묶고 o03은 손으로 호출 버튼을 찾아 만진다. 말이 막히는 것이 아니라 촉각으로 물건을 찾는 새 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0080 C000012-0080-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0080.o01",
+              "C000012-0080.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0080.o02"
+            ],
+            "excluded_terms": [
+              "말"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0080",
+        "candidate_record_sha256": "742ab97bf0d3cd1e429c12076dd3cf57fd13ea0c45d1ba69f2354d69b86eccdf",
+        "decision_evidence_sha256": "b9c92d0b417a13ad28144b3cf97e4e3ec2059469b781224c9f919e9fa7831b98",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0080-s1",
+            "sense_sha256": "53d5e3388c31bdc13c3dbdd7f791a582edef60e2edf3f1f1f3e4f9b1880f0c43",
+            "gloss_sha256": "2d25bdd2989158da2b6a1b39e9d25b905cc019cc330f07416725641f270bcd1a",
+            "evidence_sha256": "b84d79c5eaae5e6eb67b979faea90b4633136cc1c3bb726010f5d5dd6986aae3"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0093",
+      "candidate_record_id": "C000012-0093",
+      "candidate_record_sha256": "a43d0c5fef50a6681c5e95864fea9fa9ce1dfa69ac36877fdc1dbb0c6c4e05bd",
+      "decision": "included",
+      "decision_rationale": "C000012-0093 attempt 1 Codex agent self-check: o01은 우영이 떠나 살 수 있도록 마련된 '나의 둥지'를 말해 새집의 이미지로 익숙하고 보호받는 생활 터전을 나타내는 비유 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0093-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0093: o01은 우영이 떠나 살 수 있도록 마련된 '나의 둥지'를 말해 새집의 이미지로 익숙하고 보호받는 생활 터전을 나타내는 비유 sense다.",
+          "semantic_rationale": "C000012-0093: o01은 우영이 떠나 살 수 있도록 마련된 '나의 둥지'를 말해 새집의 이미지로 익숙하고 보호받는 생활 터전을 나타내는 비유 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0093 C000012-0093-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0093.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0093",
+        "candidate_record_sha256": "a43d0c5fef50a6681c5e95864fea9fa9ce1dfa69ac36877fdc1dbb0c6c4e05bd",
+        "decision_evidence_sha256": "febdf6d2c03f4b3a3ff1070af7c87f548ef84536c0fa3b9b6a6953a57329f3df",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0093-s1",
+            "sense_sha256": "aa57455f4f540f0938b1b636b130270bd3fd970bcf1333655d580b7e37745c93",
+            "gloss_sha256": "8505a4fea9f573073d8c12b5548013097e546bdc504687ddbe906cf868747f08",
+            "evidence_sha256": "f4d2408ca1f749265e58306b2e5842442ce3e41ed0a829df106f1269072ce39b"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0101",
+      "candidate_record_id": "C000012-0101",
+      "candidate_record_sha256": "35093538aa4fc211d56133fac62c08029c8b72507860617617fd662e7be92443",
+      "decision": "included",
+      "decision_rationale": "C000012-0101 attempt 1 Codex agent self-check: o01의 차들은 사람처럼 실내로 들어가는 것이 아니라 운전자의 시야를 갑자기 가로막으며 나타난다. 차량의 급작스러운 출현이라는 확장 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0101-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0101: o01의 차들은 사람처럼 실내로 들어가는 것이 아니라 운전자의 시야를 갑자기 가로막으며 나타난다. 차량의 급작스러운 출현이라는 확장 sense다.",
+          "semantic_rationale": "C000012-0101: o01의 차들은 사람처럼 실내로 들어가는 것이 아니라 운전자의 시야를 갑자기 가로막으며 나타난다. 차량의 급작스러운 출현이라는 확장 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0101 C000012-0101-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0101.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0101.o02"
+            ],
+            "excluded_terms": [
+              "사람"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0101",
+        "candidate_record_sha256": "35093538aa4fc211d56133fac62c08029c8b72507860617617fd662e7be92443",
+        "decision_evidence_sha256": "f3f6accfbaaba43a03b6b8f896c35b35c46749b0d3a7038356076ab07bd47b4e",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0101-s1",
+            "sense_sha256": "8f8605ff660f5568992b7ee43c5c80e93b9a39e4e36fb387ce2a71397dafb9f8",
+            "gloss_sha256": "10d662f2292f8b7a3f9e92ddfc3959b9e1a0e17868a80add82cc025c4105de73",
+            "evidence_sha256": "f186edf75a2cb5ac0c6df49c165af1205ebae411ae09f5472a020de3be6dadd6"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0102",
+      "candidate_record_id": "C000012-0102",
+      "candidate_record_sha256": "4822d0a269dd3dfacc81d9254776d49ff7154f5d846e4e53130c8918e38b0ad9",
+      "decision": "included",
+      "decision_rationale": "C000012-0102 attempt 1 Codex agent self-check: o02는 메이브가 짜증스럽게 논리를 상대에게 제시하는 것으로, 물건을 미는 것이 아니라 주장을 강하게 내세우는 새 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0102-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0102: o02는 메이브가 짜증스럽게 논리를 상대에게 제시하는 것으로, 물건을 미는 것이 아니라 주장을 강하게 내세우는 새 sense다.",
+          "semantic_rationale": "C000012-0102: o02는 메이브가 짜증스럽게 논리를 상대에게 제시하는 것으로, 물건을 미는 것이 아니라 주장을 강하게 내세우는 새 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0102 C000012-0102-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0102.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0102.o01"
+            ],
+            "excluded_terms": [
+              "몸"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0102",
+        "candidate_record_sha256": "4822d0a269dd3dfacc81d9254776d49ff7154f5d846e4e53130c8918e38b0ad9",
+        "decision_evidence_sha256": "bd3a5923c4363d2d1096b4a2fc8f56b63afb07c4f2f74fa2d4e293dc412ee9d7",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0102-s1",
+            "sense_sha256": "e278379404d3427ec08ee20108ac9867eb52c0fb6156cbc26e57a2ab19a24921",
+            "gloss_sha256": "aa02e7b526ba236243283bbab5106f7ec64c610b52e328310346475d0532666c",
+            "evidence_sha256": "dbdbbbce022a0c13af9982dec57054abd5a516f20c337dd802192c783dc23643"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0104",
+      "candidate_record_id": "C000012-0104",
+      "candidate_record_sha256": "f9a7a1b31c8b18a4410adae3d1b3e9142c1905d37ce25a831e9b8bf77873654c",
+      "decision": "included",
+      "decision_rationale": "C000012-0104 attempt 1 Codex agent self-check: o01은 졸며 고개를 떨구고 o02는 곡의 허술함을 발견한 뒤 고개를 떨군다. 물건을 떨어뜨리는 것이 아니라 고개를 아래로 내리는 새 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0104-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0104: o01은 졸며 고개를 떨구고 o02는 곡의 허술함을 발견한 뒤 고개를 떨군다. 물건을 떨어뜨리는 것이 아니라 고개를 아래로 내리는 새 sense다.",
+          "semantic_rationale": "C000012-0104: o01은 졸며 고개를 떨구고 o02는 곡의 허술함을 발견한 뒤 고개를 떨군다. 물건을 떨어뜨리는 것이 아니라 고개를 아래로 내리는 새 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0104 C000012-0104-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0104.o01",
+              "C000012-0104.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0104",
+        "candidate_record_sha256": "f9a7a1b31c8b18a4410adae3d1b3e9142c1905d37ce25a831e9b8bf77873654c",
+        "decision_evidence_sha256": "c61692e439b66ee4bce173207a00d67efb4ac53ecb7800e045c52d29ebfcfd28",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0104-s1",
+            "sense_sha256": "2599572f8739c450b8f40f9c7d5bd9cd7b44eb8e4d94268cef92ba6e918e5637",
+            "gloss_sha256": "193cd86bfcdb0721516b4d00638737a7a137576328d24bcf151e98fea6a4c6de",
+            "evidence_sha256": "3e8cd07baeeaa74fc223605dc409a76c9f8002538319baa6ee4fcc24dc4dfbb3"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0119",
+      "candidate_record_id": "C000012-0119",
+      "candidate_record_sha256": "cdf44d2bf3b31fe879ac4e9ef3b62e2aef1e5e7b80a02793b63a280cac40ae57",
+      "decision": "included",
+      "decision_rationale": "C000012-0119 attempt 1 Codex agent self-check: o01은 여당이 정부를 공격하는 일이 대중에게 어떻게 비칠지에 대한 평가로, 물리적 생김새가 아니라 사회적 인상이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0119-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0119: o01은 여당이 정부를 공격하는 일이 대중에게 어떻게 비칠지에 대한 평가로, 물리적 생김새가 아니라 사회적 인상이다.",
+          "semantic_rationale": "C000012-0119: o01은 여당이 정부를 공격하는 일이 대중에게 어떻게 비칠지에 대한 평가로, 물리적 생김새가 아니라 사회적 인상이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0119 C000012-0119-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0119.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0119.o02",
+              "C000012-0119.o03"
+            ],
+            "excluded_terms": [
+              "생김새"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0119",
+        "candidate_record_sha256": "cdf44d2bf3b31fe879ac4e9ef3b62e2aef1e5e7b80a02793b63a280cac40ae57",
+        "decision_evidence_sha256": "ba103d27f2ea6c9b0d28af5c9c13655e0fb8ae49e4d0c64da6da42e919e92f6a",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0119-s1",
+            "sense_sha256": "d17048944a8690b56b8f5bf6826a704a1fd82faf667e143e2053f7643de9a011",
+            "gloss_sha256": "413389c1eebbe15c8f20d14e8ed4fa952fc3348cc3695b8d80dc448c99a0900f",
+            "evidence_sha256": "9da99302d0ed62d7f6b71cfab7520f2e970106cd00b5265dfa1bf54f7e13d434"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0134",
+      "candidate_record_id": "C000012-0134",
+      "candidate_record_sha256": "3777347a17065eb95445cb4c8ec038ea5416ca32c52510b68b66cb869e3af3ca",
+      "decision": "included",
+      "decision_rationale": "C000012-0134 attempt 1 Codex agent self-check: o02는 경기가 든 아이의 머리를 안아 손으로 지탱하는 동작으로 공손히 섬기는 뜻과 다른 물리적 받침 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0134-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0134: o02는 경기가 든 아이의 머리를 안아 손으로 지탱하는 동작으로 공손히 섬기는 뜻과 다른 물리적 받침 sense다.",
+          "semantic_rationale": "C000012-0134: o02는 경기가 든 아이의 머리를 안아 손으로 지탱하는 동작으로 공손히 섬기는 뜻과 다른 물리적 받침 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0134 C000012-0134-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0134.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0134.o01"
+            ],
+            "excluded_terms": [
+              "존중"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0134",
+        "candidate_record_sha256": "3777347a17065eb95445cb4c8ec038ea5416ca32c52510b68b66cb869e3af3ca",
+        "decision_evidence_sha256": "d222c659ceb3d9bba7dcffd0a9a656940a17b561565323823917d22b561dcd4f",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0134-s1",
+            "sense_sha256": "8b22044423d8f6835271563a5cf3fe6d55791912949521dc3862f9608261716c",
+            "gloss_sha256": "d403e4e07c8f35a8d4cb1235f80bfa8b0293e512fd2b6c52324161fc2ac0b121",
+            "evidence_sha256": "3b12f8d16f3cbe7c723b0632496de4f0adfce7b6e0772aa1c337f5206e43452d"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0144",
+      "candidate_record_id": "C000012-0144",
+      "candidate_record_sha256": "76de15e8763d518bc3f2d485083439aaed4519721221b0a2edbe7edd211e4d48",
+      "decision": "included",
+      "decision_rationale": "C000012-0144 attempt 1 Codex agent self-check: o01 걱정이 이어진 최근 보름과 o02 의식을 회복한 뒤 지난 보름은 달의 날짜가 아니라 열닷새 동안의 기간을 뜻한다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0144-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0144: o01 걱정이 이어진 최근 보름과 o02 의식을 회복한 뒤 지난 보름은 달의 날짜가 아니라 열닷새 동안의 기간을 뜻한다.",
+          "semantic_rationale": "C000012-0144: o01 걱정이 이어진 최근 보름과 o02 의식을 회복한 뒤 지난 보름은 달의 날짜가 아니라 열닷새 동안의 기간을 뜻한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0144 C000012-0144-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0144.o01",
+              "C000012-0144.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0144",
+        "candidate_record_sha256": "76de15e8763d518bc3f2d485083439aaed4519721221b0a2edbe7edd211e4d48",
+        "decision_evidence_sha256": "667e9e87baf10bcc04054de6e45e5ad4d6628d55d13b2ca747aefab13c32969f",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0144-s1",
+            "sense_sha256": "d82d017db86a49f0c51b8a0c8230fcfbe4a2534b15b87124298b63aad2c2e383",
+            "gloss_sha256": "f016e8a16b1331f523fb166ef9b776d484853dc72df0591d719fcb5618356acf",
+            "evidence_sha256": "100c744d9ed85431a1898f751169a96f6e6283d241602135b27a939c0592014b"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0153",
+      "candidate_record_id": "C000012-0153",
+      "candidate_record_sha256": "e67afad3b9e43556b20b09e72e06ab6747e4f6af5a7393063c816a022f72ddaf",
+      "decision": "included",
+      "decision_rationale": "C000012-0153 attempt 1 Codex agent self-check: o03의 '하얗게 불태웠다'는 열정과 노력을 남김없이 쏟았다는 비유로, 물건을 불에 태운다는 기존 sense와 구별된다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0153-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0153: o03의 '하얗게 불태웠다'는 열정과 노력을 남김없이 쏟았다는 비유로, 물건을 불에 태운다는 기존 sense와 구별된다.",
+          "semantic_rationale": "C000012-0153: o03의 '하얗게 불태웠다'는 열정과 노력을 남김없이 쏟았다는 비유로, 물건을 불에 태운다는 기존 sense와 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0153 C000012-0153-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0153.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0153.o01",
+              "C000012-0153.o02"
+            ],
+            "excluded_terms": [
+              "물건"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0153",
+        "candidate_record_sha256": "e67afad3b9e43556b20b09e72e06ab6747e4f6af5a7393063c816a022f72ddaf",
+        "decision_evidence_sha256": "bfc7b8768dfc10e86a5d61fda1b21c1b1eb0b79850717157bed66a147a258ec9",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0153-s1",
+            "sense_sha256": "7169c89e5abb3f06bfee24892b5eb1b9df082c73f0928777cd810c28924a2b14",
+            "gloss_sha256": "0f5c24affc5260c9f31536db61ea3b185fd7e07f7f83b63d4bd604a7a11e2871",
+            "evidence_sha256": "b042312bddbf589312c39b43cb7bb2241cf143878607624756245cd6cabf375a"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0155",
+      "candidate_record_id": "C000012-0155",
+      "candidate_record_sha256": "eb3d301499c887d23485393b77d7ebc69cc2159fc83ec101e88bee1c3036ec1a",
+      "decision": "included",
+      "decision_rationale": "C000012-0155 attempt 1 Codex agent self-check: o01의 비위를 맞춘다는 것은 여성들의 기분이나 취향에 맞추는 것이고, o02의 비위가 상했다는 것은 그 기분이 불쾌해진 것이다. 두 표현은 소화 기관이 아니라 받아들이는 사람의 정서적 반응을 가리킨다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0155-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0155: o01의 비위를 맞춘다는 것은 여성들의 기분이나 취향에 맞추는 것이고, o02의 비위가 상했다는 것은 그 기분이 불쾌해진 것이다. 두 표현은 소화 기관이 아니라 받아들이는 사람의 정서적 반응을 가리킨다.",
+          "semantic_rationale": "C000012-0155: o01의 비위를 맞춘다는 것은 여성들의 기분이나 취향에 맞추는 것이고, o02의 비위가 상했다는 것은 그 기분이 불쾌해진 것이다. 두 표현은 소화 기관이 아니라 받아들이는 사람의 정서적 반응을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0155 C000012-0155-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0155.o01",
+              "C000012-0155.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0155",
+        "candidate_record_sha256": "eb3d301499c887d23485393b77d7ebc69cc2159fc83ec101e88bee1c3036ec1a",
+        "decision_evidence_sha256": "094a7ceb0432f65d4a338b4205a160ce74ad17e27bd74a6a1393c4e30b186098",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0155-s1",
+            "sense_sha256": "c423521c6ea56ff91937dad65cfa373895da483f7fc770d6aaabc9182beeae72",
+            "gloss_sha256": "eeb6f6c9101fe40aaa97bcc19e1786b9ea0509d5bb4b828d01ea5122c4bba3ae",
+            "evidence_sha256": "103580abd01df0275ac56d2eb1339032357523ef8e61a791b801081bcb10e906"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0161",
+      "candidate_record_id": "C000012-0161",
+      "candidate_record_sha256": "72e7bce849ff2b6aed639a008eb8c44b349094851e64616aecb631a1efc62000",
+      "decision": "included",
+      "decision_rationale": "C000012-0161 attempt 1 Codex agent self-check: o02의 '철학의 양대 산맥'은 후설 현상학과 카르납 분석철학을 큰 영향력의 두 주요 흐름에 빗댄 말이다. 실제 지형이 아닌 사상적 세력을 뜻한다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0161-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0161: o02의 '철학의 양대 산맥'은 후설 현상학과 카르납 분석철학을 큰 영향력의 두 주요 흐름에 빗댄 말이다. 실제 지형이 아닌 사상적 세력을 뜻한다.",
+          "semantic_rationale": "C000012-0161: o02의 '철학의 양대 산맥'은 후설 현상학과 카르납 분석철학을 큰 영향력의 두 주요 흐름에 빗댄 말이다. 실제 지형이 아닌 사상적 세력을 뜻한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0161 C000012-0161-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0161.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0161.o01"
+            ],
+            "excluded_terms": [
+              "알프스"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0161",
+        "candidate_record_sha256": "72e7bce849ff2b6aed639a008eb8c44b349094851e64616aecb631a1efc62000",
+        "decision_evidence_sha256": "8205bec4079df1c4f2922ec2278e383545abb3a1e1882036a06cae7f33ef92d6",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0161-s1",
+            "sense_sha256": "953989c4c0e059abff49ca93ab396209dd2fcd390d07d590bcd34e13eb9707f5",
+            "gloss_sha256": "406e20aa643a92a88e212eabad8caaa5953ec1d300bf695aa716aa8ad890f2e6",
+            "evidence_sha256": "043a0c9dd2da3b52d2af28b32548d9768aa6058775466f9df830e6cc068bcc07"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0163",
+      "candidate_record_id": "C000012-0163",
+      "candidate_record_sha256": "42334c5c4c5fdcf33012b0beab2ba8b07b909df38ee5eb9fdf05471eb4016a63",
+      "decision": "included",
+      "decision_rationale": "C000012-0163 attempt 1 Codex agent self-check: o03의 부모님 산소를 찾아간다는 것은 부모님을 모신 묘소를 방문한다는 뜻이며 기체 산소와 동음이의 관계다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0163-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0163: o03의 부모님 산소를 찾아간다는 것은 부모님을 모신 묘소를 방문한다는 뜻이며 기체 산소와 동음이의 관계다.",
+          "semantic_rationale": "C000012-0163: o03의 부모님 산소를 찾아간다는 것은 부모님을 모신 묘소를 방문한다는 뜻이며 기체 산소와 동음이의 관계다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0163 C000012-0163-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0163.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0163.o01",
+              "C000012-0163.o02"
+            ],
+            "excluded_terms": [
+              "기체"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0163",
+        "candidate_record_sha256": "42334c5c4c5fdcf33012b0beab2ba8b07b909df38ee5eb9fdf05471eb4016a63",
+        "decision_evidence_sha256": "dc02045475e1daa97e3d59753949bccb13af117e5e359b592c16116071114957",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0163-s1",
+            "sense_sha256": "fdf1eb2beb1424a0cfd4e90782a823a73f5f0895aa9f7b4b20b099f9e6dae405",
+            "gloss_sha256": "5b600e15756ef0fc9e237601e85802fab700713ce6432f197c0a70774eff2ca1",
+            "evidence_sha256": "774a46f0201ef0817723afc9681fbaa5ec792bc839e225882ec01f9a9964d507"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0169",
+      "candidate_record_id": "C000012-0169",
+      "candidate_record_sha256": "9174918c5d161da685af0f1533ca44e898dbbae4d95494d63ea5aecaecb2176d",
+      "decision": "included",
+      "decision_rationale": "C000012-0169 attempt 1 Codex agent self-check: o01의 나이가 많은 선사는 집에서 난로를 쓰고 고서를 읽는 인물로, 무언가를 건네는 선사(膳賜)가 아니라 선종의 승려(禪師)다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0169-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0169: o01의 나이가 많은 선사는 집에서 난로를 쓰고 고서를 읽는 인물로, 무언가를 건네는 선사(膳賜)가 아니라 선종의 승려(禪師)다.",
+          "semantic_rationale": "C000012-0169: o01의 나이가 많은 선사는 집에서 난로를 쓰고 고서를 읽는 인물로, 무언가를 건네는 선사(膳賜)가 아니라 선종의 승려(禪師)다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0169 C000012-0169-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0169.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0169",
+        "candidate_record_sha256": "9174918c5d161da685af0f1533ca44e898dbbae4d95494d63ea5aecaecb2176d",
+        "decision_evidence_sha256": "455c3dc01805802b7782f26f1e7c5456ea146d8227ddb63316910e2f05756240",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0169-s1",
+            "sense_sha256": "adae2caec9276b5d938910ee83cab55af5a3215b3aca592fb7faa3e97addd56b",
+            "gloss_sha256": "b7d3771ec0e3171aff05897f24a4538f08b34b981ad1005e22e07692d6e0d6eb",
+            "evidence_sha256": "08dd388946f5b2ede756803a16d614f529466d9cce4354e7e68e98070cb32221"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0182",
+      "candidate_record_id": "C000012-0182",
+      "candidate_record_sha256": "d1fb96217d94278439b8f9ac22475e75e8906c682caec140b9b4a4a1905d0b72",
+      "decision": "included",
+      "decision_rationale": "C000012-0182 attempt 1 Codex agent self-check: o02의 의심과 고통의 소용돌이는 감정에 빠져 벗어나기 어려운 혼란스러운 상태를 뜻하는 비유적 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0182-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0182: o02의 의심과 고통의 소용돌이는 감정에 빠져 벗어나기 어려운 혼란스러운 상태를 뜻하는 비유적 sense다.",
+          "semantic_rationale": "C000012-0182: o02의 의심과 고통의 소용돌이는 감정에 빠져 벗어나기 어려운 혼란스러운 상태를 뜻하는 비유적 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0182 C000012-0182-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0182.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0182.o01"
+            ],
+            "excluded_terms": [
+              "공기"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0182",
+        "candidate_record_sha256": "d1fb96217d94278439b8f9ac22475e75e8906c682caec140b9b4a4a1905d0b72",
+        "decision_evidence_sha256": "4a20e79c99f7a1080233a99fd719c2300742c537c316982097c936c7412b2fe8",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0182-s1",
+            "sense_sha256": "67c1be2782253ca4e63f49d38fb89df214954687c8dd7a34daca251dd2c5c879",
+            "gloss_sha256": "fcbf34fdffd8391661a4d321ffa53bd7c5e2c8bffae14dac1e6b933d6294e21f",
+            "evidence_sha256": "8046bda111b5a52e67fd4369db029d2d2df2a17b7915b0d2e6a211fbff31d9f2"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0183",
+      "candidate_record_id": "C000012-0183",
+      "candidate_record_sha256": "e9eca05bd86b3da4952e2ad72fba7880079ff94465cfd212f3ca8f2926d78b5f",
+      "decision": "included",
+      "decision_rationale": "C000012-0183 attempt 1 Codex agent self-check: o01은 상배의 손아귀에 있었다는 수치로, 손 안에 잡힌 것이 아니라 다른 사람의 영향력에 붙들려 있던 상태다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0183-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0183: o01은 상배의 손아귀에 있었다는 수치로, 손 안에 잡힌 것이 아니라 다른 사람의 영향력에 붙들려 있던 상태다.",
+          "semantic_rationale": "C000012-0183: o01은 상배의 손아귀에 있었다는 수치로, 손 안에 잡힌 것이 아니라 다른 사람의 영향력에 붙들려 있던 상태다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0183 C000012-0183-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0183.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0183",
+        "candidate_record_sha256": "e9eca05bd86b3da4952e2ad72fba7880079ff94465cfd212f3ca8f2926d78b5f",
+        "decision_evidence_sha256": "54dd30f63d4b7ed51d4a6e4b6abcebde8730f787edbee109ae429f9ee8b4ecec",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0183-s1",
+            "sense_sha256": "f64122dbc46a9798b1f24009b5340811f300ce4f4dce73b76418e65fb84c1b7d",
+            "gloss_sha256": "e0958aa1eb438754c563ea6bd36a79a4c9645fd229a2f5fe2f2f85afa03a46ef",
+            "evidence_sha256": "afb3f7ca4dd5789a566253bfd6afcbf8dabec1230c6e4eaa36795f932fc4282b"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0191",
+      "candidate_record_id": "C000012-0191",
+      "candidate_record_sha256": "a11d7babd1f224d85d618b595726069a68bcaf16a69340a79b1820007bc7c779",
+      "decision": "included",
+      "decision_rationale": "C000012-0191 attempt 1 Codex agent self-check: o01은 옛 건물에 현대적 숨결을 넣는 감각을 말해 호흡의 흐름이 아니라 공간에 살아 있는 듯한 기운을 뜻한다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0191-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0191: o01은 옛 건물에 현대적 숨결을 넣는 감각을 말해 호흡의 흐름이 아니라 공간에 살아 있는 듯한 기운을 뜻한다.",
+          "semantic_rationale": "C000012-0191: o01은 옛 건물에 현대적 숨결을 넣는 감각을 말해 호흡의 흐름이 아니라 공간에 살아 있는 듯한 기운을 뜻한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0191 C000012-0191-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0191.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0191",
+        "candidate_record_sha256": "a11d7babd1f224d85d618b595726069a68bcaf16a69340a79b1820007bc7c779",
+        "decision_evidence_sha256": "4ed8ecc1fe68f435ad115b99742eee1904641862a661009327a9bac31a05bf1e",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0191-s1",
+            "sense_sha256": "ee028c219ecdcf57003a0ad0d40e455ee991ec6cbeda23b86bab3d842989c8df",
+            "gloss_sha256": "29d87668d644683ead3282ec5d6d4fcebb1788ef4efd5b0a8767025b7664b7ec",
+            "evidence_sha256": "47289f7184aa26d9e350757c8f59b77dad35c2d1cf1e31c9b8b6c87cfbb65e3c"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0206",
+      "candidate_record_id": "C000012-0206",
+      "candidate_record_sha256": "a6b8859d7e0d43c19d216408e42b298303a98fbaed802000412c8a55842fd51b",
+      "decision": "included",
+      "decision_rationale": "C000012-0206 attempt 1 Codex agent self-check: o01은 손이 어깨와 등을 따라 아치를 그리며 움직이는 모양으로, 둥근 윗부분을 가진 문·구조물이 아니라 굽은 선이나 움직임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0206-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0206: o01은 손이 어깨와 등을 따라 아치를 그리며 움직이는 모양으로, 둥근 윗부분을 가진 문·구조물이 아니라 굽은 선이나 움직임이다.",
+          "semantic_rationale": "C000012-0206: o01은 손이 어깨와 등을 따라 아치를 그리며 움직이는 모양으로, 둥근 윗부분을 가진 문·구조물이 아니라 굽은 선이나 움직임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0206 C000012-0206-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0206.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0206",
+        "candidate_record_sha256": "a6b8859d7e0d43c19d216408e42b298303a98fbaed802000412c8a55842fd51b",
+        "decision_evidence_sha256": "1f5ce13d0c50e260ae6dc9f607ea0fc1d8c4e901e6ea1bdc4c24f19fdf42d646",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0206-s1",
+            "sense_sha256": "091a306cba1111db968727606773a815cc3964a7b36e9e189021e559a1e4d344",
+            "gloss_sha256": "0b15e170da577798da30f7735e6294bb6eb763df266a1bd49bdbb636bbe2cd54",
+            "evidence_sha256": "f98aacffa512b0b890555f7156dea22ec072fe7c3c5c7a24aaf3459ab52edfe8"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0228",
+      "candidate_record_id": "C000012-0228",
+      "candidate_record_sha256": "12b5c53d8a358456e263d828916c4ecaf26ad45b470ba92227dab0b0ef3ae3d5",
+      "decision": "included",
+      "decision_rationale": "C000012-0228 attempt 1 Codex agent self-check: o01은 소독약 냄새와 시큼한 냄새가 한데 엉켜 구별하기 어려운 상태로, 물건이 꼬이는 것과 다른 감각적 섞임이다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0228-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0228: o01은 소독약 냄새와 시큼한 냄새가 한데 엉켜 구별하기 어려운 상태로, 물건이 꼬이는 것과 다른 감각적 섞임이다.",
+          "semantic_rationale": "C000012-0228: o01은 소독약 냄새와 시큼한 냄새가 한데 엉켜 구별하기 어려운 상태로, 물건이 꼬이는 것과 다른 감각적 섞임이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0228 C000012-0228-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0228.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0228.o02"
+            ],
+            "excluded_terms": [
+              "스키"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0228",
+        "candidate_record_sha256": "12b5c53d8a358456e263d828916c4ecaf26ad45b470ba92227dab0b0ef3ae3d5",
+        "decision_evidence_sha256": "66fde86fcb0cffd2e976715b168bb795f5c9394fb03bb4a4cd86fb043ff849c6",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0228-s1",
+            "sense_sha256": "6fa1d5ec0fb0b0e723163d70fcb008ac190b2e61e7b53cda0a148d5e95b5f491",
+            "gloss_sha256": "45eea8f522fb7b3e3652f5bc8c3aa226cd05b5dc2605f9b504b5dc91eab10d58",
+            "evidence_sha256": "04d3f7e0b8b7155661840373b4b00e46110c5026782a781111c328fe4a5f71dc"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0236",
+      "candidate_record_id": "C000012-0236",
+      "candidate_record_sha256": "1d35cd0e749ff90b8cbb6e9ccb59bbb624d1878fd09459ba1af29b2ea83d09f1",
+      "decision": "included",
+      "decision_rationale": "C000012-0236 attempt 1 Codex agent self-check: o01은 수소와 결합해 염화수소가 되는 메스클린 행성의 원소 염소를 말한다. 동물 염소와는 별개의 화학 원소 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0236-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0236: o01은 수소와 결합해 염화수소가 되는 메스클린 행성의 원소 염소를 말한다. 동물 염소와는 별개의 화학 원소 sense다.",
+          "semantic_rationale": "C000012-0236: o01은 수소와 결합해 염화수소가 되는 메스클린 행성의 원소 염소를 말한다. 동물 염소와는 별개의 화학 원소 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0236 C000012-0236-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0236.o01"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0236.o02"
+            ],
+            "excluded_terms": [
+              "가축"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0236",
+        "candidate_record_sha256": "1d35cd0e749ff90b8cbb6e9ccb59bbb624d1878fd09459ba1af29b2ea83d09f1",
+        "decision_evidence_sha256": "7da585f3369f61d6b276ee0e2a980b37100540d871e7da2609c3811bee80f6e5",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0236-s1",
+            "sense_sha256": "b345ed714e8cd93e902b720cdb4b6e1600daee87dd034d5f952f03fe673f2021",
+            "gloss_sha256": "50489d6e39b3e63bd0834fe62190fdeadd575ce4bb9e960abd8359c1ff46ff41",
+            "evidence_sha256": "b66bcd5839e869a6909e01295b2f7246b5e16ede14aa18f56a279442bb5fd773"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0239",
+      "candidate_record_id": "C000012-0239",
+      "candidate_record_sha256": "46996f9a1ccd12763ae3a3077a6256725c737e5c153f8eb3df571d8f5ac1c00f",
+      "decision": "included",
+      "decision_rationale": "C000012-0239 attempt 1 Codex agent self-check: o03 날씨 이야기가 대화에 오르내린다는 것은 화제가 거듭 언급된다는 뜻으로 물리적 이동과 구별되는 새 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0239-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0239: o03 날씨 이야기가 대화에 오르내린다는 것은 화제가 거듭 언급된다는 뜻으로 물리적 이동과 구별되는 새 sense다.",
+          "semantic_rationale": "C000012-0239: o03 날씨 이야기가 대화에 오르내린다는 것은 화제가 거듭 언급된다는 뜻으로 물리적 이동과 구별되는 새 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0239 C000012-0239-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0239.o03"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0239.o01",
+              "C000012-0239.o02"
+            ],
+            "excluded_terms": [
+              "계단"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0239",
+        "candidate_record_sha256": "46996f9a1ccd12763ae3a3077a6256725c737e5c153f8eb3df571d8f5ac1c00f",
+        "decision_evidence_sha256": "2efe8e04c00d85fd7e75dca65d64656d6ab10bf77f632d4991cb555f9c14855a",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0239-s1",
+            "sense_sha256": "210ab295b61a76f879e6c08b6c5a740bccec59b2f29153b1aed22534aba26103",
+            "gloss_sha256": "dfd844dbb225d84f8dd583fa9d1e76a8a7ef0959bd5584a48d6dfed84e9ede72",
+            "evidence_sha256": "58a410b6576d91a1f3bff69b278734fa2aa1e81207e5a06256d9c51feff34138"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0252",
+      "candidate_record_id": "C000012-0252",
+      "candidate_record_sha256": "76da8e58cbeed505457a1abe10f1e93f7c736f339357265c153d79dfdc82d499",
+      "decision": "included",
+      "decision_rationale": "C000012-0252 attempt 1 Codex agent self-check: o01의 의외로는 주변 사람들이 많은 관심을 보인다는 내용을 수식해 예상과 달랐음을 나타내는 부사다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0252-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0252: o01의 의외로는 주변 사람들이 많은 관심을 보인다는 내용을 수식해 예상과 달랐음을 나타내는 부사다.",
+          "semantic_rationale": "C000012-0252: o01의 의외로는 주변 사람들이 많은 관심을 보인다는 내용을 수식해 예상과 달랐음을 나타내는 부사다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0252 C000012-0252-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0252.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0252",
+        "candidate_record_sha256": "76da8e58cbeed505457a1abe10f1e93f7c736f339357265c153d79dfdc82d499",
+        "decision_evidence_sha256": "6eedce58144fd077db5971715c3486386f37f8f57be56ea5f0e90ae938feb08c",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0252-s1",
+            "sense_sha256": "98602d27c731ef2d5253935e3c1b967bf01a822fdb97e2fb5b5a26a73970afb8",
+            "gloss_sha256": "b4ed50002606f8a266e52bbe59068072fc564b4786ad029460ecb62412525415",
+            "evidence_sha256": "e469ddc72643b233167f4f789615a91012b3b5421c0079f7e0ea21c998d576e5"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0262",
+      "candidate_record_id": "C000012-0262",
+      "candidate_record_sha256": "1647bceb592797d61c3a32579c881e2cfa133f7b09e6c2b73d9ae2fc0f71fe8d",
+      "decision": "included",
+      "decision_rationale": "C000012-0262 attempt 1 Codex agent self-check: o02는 학생을 집에서 재워 줬다는 숙박 제공 의미로, 잠들게 하는 것과 구별되는 새 sense다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0262-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0262: o02는 학생을 집에서 재워 줬다는 숙박 제공 의미로, 잠들게 하는 것과 구별되는 새 sense다.",
+          "semantic_rationale": "C000012-0262: o02는 학생을 집에서 재워 줬다는 숙박 제공 의미로, 잠들게 하는 것과 구별되는 새 sense다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0262 C000012-0262-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0262.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0262.o01"
+            ],
+            "excluded_terms": [
+              "잠들게"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0262",
+        "candidate_record_sha256": "1647bceb592797d61c3a32579c881e2cfa133f7b09e6c2b73d9ae2fc0f71fe8d",
+        "decision_evidence_sha256": "10ac3417b1590cffe92c078def53bc4c3f11d69dcc368fb266961eb9dc5419b6",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0262-s1",
+            "sense_sha256": "8d0283b28c4608734d10afa94e34eed22888ce2a2f5b8cd6e2bb7c7f80331001",
+            "gloss_sha256": "50bd0900328ee81dc2633c6dae2d87be39f123e5778e52972936588b9a17be6c",
+            "evidence_sha256": "8b962f89c91a6969d3b93f3a07425de9c463c74c03df8cfa85c3a025d30e36b2"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0265",
+      "candidate_record_id": "C000012-0265",
+      "candidate_record_sha256": "6a2e55f248016ac9527e6bb2439cbad9df87f631cf72771b29904aa66f42afe4",
+      "decision": "included",
+      "decision_rationale": "C000012-0265 attempt 1 Codex agent self-check: o01의 나라 전역은 군 복무를 마치는 일이 아니라 해당 나라 전체의 범위를 가리킨다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0265-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0265: o01의 나라 전역은 군 복무를 마치는 일이 아니라 해당 나라 전체의 범위를 가리킨다.",
+          "semantic_rationale": "C000012-0265: o01의 나라 전역은 군 복무를 마치는 일이 아니라 해당 나라 전체의 범위를 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0265 C000012-0265-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0265.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0265",
+        "candidate_record_sha256": "6a2e55f248016ac9527e6bb2439cbad9df87f631cf72771b29904aa66f42afe4",
+        "decision_evidence_sha256": "be0cc90e83e2e55fa377596aa0b70b7f40b9265fe91607bb4b90adbc58e42c19",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0265-s1",
+            "sense_sha256": "a9910bb0ebc93d93db4d6e8e71aef89cab32fe5061ccfbc18d937dac74908ed0",
+            "gloss_sha256": "4c91586496e8deba95ca0ce1b37b86ce45b2ffac1d54e41d8c0b4e83962f3796",
+            "evidence_sha256": "5f481f9019f729298c40d2aa163be9e787f3bae0ac10541325e7185868b198e2"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0266",
+      "candidate_record_id": "C000012-0266",
+      "candidate_record_sha256": "52e1f00fda4e58619c7a56ca43d5086373693d23f42f65ead3d6055a790075de",
+      "decision": "included",
+      "decision_rationale": "C000012-0266 attempt 1 Codex agent self-check: o01은 매출 감소 폭을 2% 전후로 어림해 말하므로 기준 수치 주변의 범위를 뜻한다. 시간상 앞뒤를 가리키는 기존 sense와 다르다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0266-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0266: o01은 매출 감소 폭을 2% 전후로 어림해 말하므로 기준 수치 주변의 범위를 뜻한다. 시간상 앞뒤를 가리키는 기존 sense와 다르다.",
+          "semantic_rationale": "C000012-0266: o01은 매출 감소 폭을 2% 전후로 어림해 말하므로 기준 수치 주변의 범위를 뜻한다. 시간상 앞뒤를 가리키는 기존 sense와 다르다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0266 C000012-0266-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0266.o01"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0266",
+        "candidate_record_sha256": "52e1f00fda4e58619c7a56ca43d5086373693d23f42f65ead3d6055a790075de",
+        "decision_evidence_sha256": "ec6280f01f00869c3473c9f45bf53db8ce0b173358ea5e96a27ec61db50f47a1",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0266-s1",
+            "sense_sha256": "7ebcbff48fdb63ba6c17ae74a79e292a5ddb9af71cc95f06d234efc0c0424172",
+            "gloss_sha256": "167c83feb238d9c1da43f07e8691013758b307779e91d3c245e20b50946d9b72",
+            "evidence_sha256": "2a84cae13c3ba8f8329a41a9614a08ec5de592283e318a0e15fa4c37cbd31630"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0310",
+      "candidate_record_id": "C000012-0310",
+      "candidate_record_sha256": "db095ea035ffeb270c9bc1b242676a0c9998f9034af21d9759eb989e14fdd20a",
+      "decision": "included",
+      "decision_rationale": "C000012-0310 attempt 1 Codex agent self-check: o01은 일상에서 잊힌 것을 되찾는 사이 공간, o02는 문장 사이로 파고드는 표현을 말해 물리적 틈이 아니라 흐름의 빈자리를 뜻한다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0310-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0310: o01은 일상에서 잊힌 것을 되찾는 사이 공간, o02는 문장 사이로 파고드는 표현을 말해 물리적 틈이 아니라 흐름의 빈자리를 뜻한다.",
+          "semantic_rationale": "C000012-0310: o01은 일상에서 잊힌 것을 되찾는 사이 공간, o02는 문장 사이로 파고드는 표현을 말해 물리적 틈이 아니라 흐름의 빈자리를 뜻한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0310 C000012-0310-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0310.o01",
+              "C000012-0310.o02"
+            ],
+            "excluded_observation_ids": [],
+            "excluded_terms": []
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0310",
+        "candidate_record_sha256": "db095ea035ffeb270c9bc1b242676a0c9998f9034af21d9759eb989e14fdd20a",
+        "decision_evidence_sha256": "72acce47092590aaed1b03c0c6ee23fefc4a389060f94b3fa50be5a56a2d38ce",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0310-s1",
+            "sense_sha256": "009abbb5df076262c6e61c1bc554083b48c440a146ecd928e694b676ca192664",
+            "gloss_sha256": "c7709a2e1aa1d63a474a627c5a5a8e527150d98fad0a84ae0a3436c97f0ae4d5",
+            "evidence_sha256": "2dfb18b42d19dd9cdabfbafeb5be7362d0bbb33461fe99a5f3bc848d95c61ada"
+          }
+        ]
+      }
+    },
+    {
+      "source_candidate_id": "C000012-0327",
+      "candidate_record_id": "C000012-0327",
+      "candidate_record_sha256": "244fb1446bdcee7ab1a484a57985b3ec167f1b28b138d30c06cad375ca8f059a",
+      "decision": "included",
+      "decision_rationale": "C000012-0327 attempt 1 Codex agent self-check: o01의 허리띠 졸라매기식 경제와 o02 빚을 갚으려 씀씀이를 줄이는 것은 경제적 어려움 속에서 절약하는 관용적 의미다.",
+      "gloss_judgment": "fit",
+      "sense_reviews": [
+        {
+          "sense_id": "C000012-0327-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000012-0327: o01의 허리띠 졸라매기식 경제와 o02 빚을 갚으려 씀씀이를 줄이는 것은 경제적 어려움 속에서 절약하는 관용적 의미다.",
+          "semantic_rationale": "C000012-0327: o01의 허리띠 졸라매기식 경제와 o02 빚을 갚으려 씀씀이를 줄이는 것은 경제적 어려움 속에서 절약하는 관용적 의미다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000012-0327 C000012-0327-s1: the cited source observations support the reviewed sense but establish no additional candidate-specific relation; zero relations are retained.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
+              "C000012-0327.o01",
+              "C000012-0327.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000012-0327.o03"
+            ],
+            "excluded_terms": [
+              "가운"
+            ]
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "C000012-0327",
+        "candidate_record_sha256": "244fb1446bdcee7ab1a484a57985b3ec167f1b28b138d30c06cad375ca8f059a",
+        "decision_evidence_sha256": "c31075f892a30f962c1bf713189de7c1b38e8738f36763159c6eea21fda67043",
+        "sense_evidence": [
+          {
+            "sense_id": "C000012-0327-s1",
+            "sense_sha256": "0f6a7f62ba22357859989418fcb98fa273d2b027eb5f8efc63627bb928ef8949",
+            "gloss_sha256": "2653da676eb0d8129befc574e5701f734b622ef8660d21b0bb80b70f79d339f7",
+            "evidence_sha256": "f0d98ee1b21d93ead5388b5fd2b961c7d5029f8461faa52bf071a22ec6ce9067"
+          }
+        ]
+      }
+    }
+  ]
+}
