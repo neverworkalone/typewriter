@@ -76,5 +76,5 @@ test('the published report states exactly the pinned aggregate and the reviewed 
   assert.match(report, new RegExp(`완전 해소는 ${PINNED.deferred_fully_resolved}건`, 'u'));
   assert.match(report, new RegExp(`뒷받침 ${u.supports}, 효과 없음 ${u.no_effect}[^,]*, 잡음으로 오히려 방해한 사례 ?${u.misleading_noise}|잡음으로 오히려 방해 ${u.misleading_noise}, 다른 뜻 노출 ${u.exposes_other_sense}`, 'u'));
   assert.match(report, new RegExp(`뒷받침 ${c.supports}, 효과 없음 ${c.no_effect}, 잡음 ${c.misleading_noise}`, 'u'));
-  assert.match(report, /최대 5개 문맥/u);
+  assert.match(report, /`max_contexts=5`/u);
 });
