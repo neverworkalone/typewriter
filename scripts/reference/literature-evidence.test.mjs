@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -11,6 +10,7 @@ import { assertLiteratureFts5Support, createLiteratureSchema, REPOSITORY_DIRECTO
 import {
   assertLocalOutputDirectory,
   DEFAULT_MAX_CONTEXTS,
+  EVIDENCE_OUTPUT_DIRECTORY,
   deriveSearchForms,
   expandContext,
   loadFactoryCandidate,
@@ -190,11 +190,13 @@ test('summary binds DB identity and text-free location digests; text only in the
   assert.match(await readFile(files.markdown, 'utf8'), /합성 시/u);
 });
 
-test('evidence packs can only be written under ignored data/reference', () => {
+test('evidence packs can only be written under ignored data/reference', async () => {
   assert.throws(() => assertLocalOutputDirectory(path.join(REPOSITORY_DIRECTORY, 'data/canonical')), /data\/reference/u);
   assert.throws(() => assertLocalOutputDirectory(path.join(REPOSITORY_DIRECTORY, 'data/reference/../reviews')), /data\/reference/u);
-  const ignored = spawnSync('git', ['check-ignore', '-q', 'data/reference/literature-evidence/C000001/C000001-0001.md'], { cwd: REPOSITORY_DIRECTORY });
-  assert.equal(ignored.status, 0, 'default evidence output must be git-ignored');
+  // `.gitignore` (not `git check-ignore`, which fails for a symlinked data/reference in a worktree).
+  const rules = (await readFile(path.join(REPOSITORY_DIRECTORY, '.gitignore'), 'utf8')).split('\n').map((line) => line.trim());
+  assert.ok(rules.includes('data/reference/'), 'data/reference/ must be git-ignored');
+  assert.ok(EVIDENCE_OUTPUT_DIRECTORY.startsWith(path.join(REPOSITORY_DIRECTORY, 'data/reference') + path.sep));
 });
 
 test('existing literature search behaviour is unchanged by retrieval', needsFts5, async () => {
