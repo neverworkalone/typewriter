@@ -885,10 +885,32 @@ test('review artifacts require pair evidence for each existing same-POS sense of
   const { rows, goDecision, pangDecision } = await lemmaFixture();
   const decisions = [goDecision(), pangDecision()];
   const good = await artifactsFor(rows, decisions);
-  const two = buildCanonicalIndex([{ id: 'w3', record_type: 'entry', lemma: '가다', senses: [{ id: 'w3-s1', pos: 'verb', gloss: 'g' }, { id: 'w3-s2', pos: 'verb', gloss: 'g2' }] }]);
+  const twoSenses = [{ id: 'w3-s1', pos: 'verb', gloss: 'g' }, { id: 'w3-s2', pos: 'verb', gloss: 'g2' }];
+  const two = buildCanonicalIndex([{ id: 'w3', record_type: 'entry', lemma: '가다', senses: twoSenses }]);
   const errorsOf = (extra) => validateReviewArtifacts({ ...good, ...extra });
   assert.deepEqual(errorsOf({ canonicalIndex: INDEX, requireExistingSensePairs: true }), [], 'one existing same-POS sense keeps the context-id path');
   assert.ok(errorsOf({ canonicalIndex: two, requireExistingSensePairs: true }).some((error) => /missing existing_sense_pairs for w3-s1 \/ C000002-0001-s1/u.test(error)));
   assert.deepEqual(errorsOf({ canonicalIndex: two, requireExistingSensePairs: false }), [], 'an unchanged merged review is not required to carry pairs');
   assert.deepEqual(errorsOf({ canonicalIndex: null, requireExistingSensePairs: true }), [], 'a review that is not bound to the current canonical state is only checked structurally');
+
+  // Exercise the real canonical index shape with authored pairs: validation needs the old glosses
+  // to check their digests, and must return an ordinary result instead of hashing undefined.
+  const semanticSource = JSON.parse(good.semanticDecisionsText);
+  const decision = decisions[0];
+  const semanticRow = semanticSource.decisions.find(({ source_candidate_id }) => source_candidate_id === decision.source_candidate_id);
+  const reviewed = reviewedCandidateRecord(decision);
+  semanticRow.existing_sense_pairs = twoSenses.flatMap((existing) => reviewed.senses.map((sense) => ({
+    existing_sense_id: existing.id,
+    new_sense_id: sense.id,
+    relationship: 'distinct',
+    decision: 'retain',
+    existing_gloss_sha256: sha256Json(existing.gloss),
+    new_gloss_sha256: sha256Json(sense.gloss),
+    evidence_basis: `${decision.source_candidate_id}: ${existing.id}와 ${sense.id}의 용례와 뜻풀이가 다르다.`,
+    distinguishing_feature: `${decision.source_candidate_id}: 기존 뜻과 새 뜻의 의미가 구별된다.`,
+    rationale: `${decision.source_candidate_id}: 두 sense를 별개로 유지한다.`,
+  })));
+  semanticRow.review_binding = authorSemanticReviewBinding(semanticRow, reviewed);
+  const paired = { ...good, semanticDecisionsText: JSON.stringify(semanticSource) };
+  assert.deepEqual(errorsOf({ ...paired, canonicalIndex: two, requireExistingSensePairs: true }), []);
 });
