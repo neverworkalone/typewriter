@@ -73,6 +73,27 @@ export function createStage3GitRepository({ root = process.cwd() } = {}) {
     remoteBranchExists(branchName) {
       return Boolean(gitRun(root, ['ls-remote', '--heads', 'origin', 'refs/heads/' + branchName]));
     },
+    async fetchRemoteBranch(branchName) {
+      gitRun(root, ['fetch', 'origin', branchName + ':refs/remotes/origin/' + branchName]);
+    },
+    restorePullRequestBranch(prNumber, branchName, expectedHeadSha) {
+      const status = gitRun(root, ['status', '--porcelain', '--untracked-files=all']);
+      if (status) throw new Error('working tree must be clean before restoring a Stage 3 admission branch');
+      const remote = gitRun(root, ['ls-remote', '--heads', 'origin', 'refs/heads/' + branchName]);
+      if (remote) {
+        const remoteSha = remote.split(/\s+/u)[0];
+        if (remoteSha !== expectedHeadSha) throw new Error('remote admission branch does not match its closed PR head');
+        return remoteSha;
+      }
+      const local = gitRun(root, ['show-ref', '--verify', '--quiet', 'refs/heads/' + branchName], { allowFailure: true });
+      if (local === null) {
+        gitRun(root, ['fetch', 'origin', `refs/pull/${prNumber}/head:refs/heads/${branchName}`]);
+      }
+      const localSha = gitRun(root, ['rev-parse', 'refs/heads/' + branchName + '^{commit}']);
+      if (localSha !== expectedHeadSha) throw new Error('restored admission branch does not match its closed PR head');
+      gitRun(root, ['push', '-u', 'origin', 'refs/heads/' + branchName + ':refs/heads/' + branchName]);
+      return localSha;
+    },
     deleteBranch(branchName) {
       gitRun(root, ['push', 'origin', '--delete', branchName]);
     },
@@ -402,6 +423,137 @@ function statusManifestForRejection(manifest, admissionPr) {
   };
 }
 
+async function verifySupersededRejection({ github, git, rejection, admission, batchId, attempt, claimRef, reviewManifest }) {
+  const branchName = rejection?.head?.ref;
+  const manifestPath = `data/reviews/${batchId}/manifest.json`;
+  if (!['codex', 'claude'].some((agent) => branchName === rejectionBranchName(agent, batchId, attempt))
+    || rejection.base?.ref !== MASTER
+    || !String(rejection.body ?? '').includes(`Claim ref: ${claimRef}`)
+    || !String(rejection.body ?? '').includes(`Closed admission draft: #${admission.number}`)) {
+    throw new Stage3WorkerError(`status PR #${rejection.number} is not the linked status-only rejection for ${batchId}-a${attempt}`, {
+      batchId, attempt, claimCreated: true, prNumber: rejection.number,
+    });
+  }
+  const files = await github.getPullRequestFiles(rejection.number);
+  if (!Array.isArray(files) || files.length !== 1 || files[0]?.filename !== manifestPath) {
+    throw new Stage3WorkerError(`status PR #${rejection.number} is not limited to ${manifestPath}`, {
+      batchId, attempt, claimCreated: true, prNumber: rejection.number,
+    });
+  }
+  if (typeof git.fetchRemoteBranch !== 'function') throw new Stage3WorkerError('Git adapter cannot verify the existing status branch', { batchId, attempt, claimCreated: true, prNumber: rejection.number });
+  await git.fetchRemoteBranch(branchName);
+  const remoteRef = `origin/${branchName}`;
+  if (rejection.head?.sha && git.resolveRef(remoteRef) !== rejection.head.sha) {
+    throw new Stage3WorkerError(`status PR #${rejection.number} head changed during retry recovery`, {
+      batchId, attempt, claimCreated: true, prNumber: rejection.number,
+    });
+  }
+  let branchManifest;
+  try { branchManifest = JSON.parse(git.show(remoteRef, manifestPath)); } catch (error) {
+    throw new Stage3WorkerError(`status PR #${rejection.number} branch has no readable review manifest: ${error.message}`, {
+      batchId, attempt, claimCreated: true, prNumber: rejection.number,
+    });
+  }
+  if (!same(branchManifest, statusManifestForRejection(reviewManifest, admission.number))) {
+    throw new Stage3WorkerError(`status PR #${rejection.number} no longer represents the exact rejected state for ${batchId}-a${attempt}`, {
+      batchId, attempt, claimCreated: true, prNumber: rejection.number,
+    });
+  }
+  return { branchName, manifestPath };
+}
+
+/** Supersedes one exact unmerged rejection PR so its still-ready attempt can be retried. */
+export async function supersedeStage3RejectionForRetry({
+  github, git, snapshot, batchId, attempt, rejectionPrNumber, dryRun = false, log = () => {},
+} = {}) {
+  const claimRef = claimRefFor(batchId, attempt);
+  const [claimRefs, activeLock, allPullRequests, remoteMaster] = await Promise.all([
+    github.listStage3ClaimRefs(), github.getStage3ActiveLock(), github.listPullRequests('all'), github.getBranchHead(MASTER),
+  ]);
+  if (!snapshot?.validated || git.resolveRef('origin/master') !== remoteMaster || snapshot.headSha !== remoteMaster) {
+    throw new Stage3WorkerError('retry recovery requires the validated snapshot to match current GitHub master', { batchId, attempt, claimCreated: true });
+  }
+  const hasClaim = claimRefs.some((ref) => (typeof ref === 'string' ? ref : ref.ref) === claimRef);
+  const otherClaims = claimRefs.filter((ref) => {
+    const name = (typeof ref === 'string' ? ref : ref.ref) || '';
+    return name.startsWith(CLAIM_PREFIX) && name !== claimRef;
+  });
+  if (!activeLock || activeLock.batchId !== batchId || activeLock.attempt !== attempt || !hasClaim || otherClaims.length) {
+    throw new Stage3WorkerError(`${claimRef} does not exclusively own the matching Stage 3 lock and claim`, { batchId, attempt, claimCreated: hasClaim });
+  }
+  const stage3PullRequests = allPullRequests.filter(isStage3PullRequest);
+  const admission = stage3PullRequests.find((pr) => ['codex', 'claude'].some((agent) => pr.head?.ref === branchNameFor(agent, batchId, attempt)));
+  const rejection = stage3PullRequests.find((pr) => pr.number === rejectionPrNumber);
+  const openStage3Pulls = stage3PullRequests.filter((pr) => pr.state === 'open');
+  const rejectionOpen = rejection?.state === 'open';
+  const admissionOpen = admission?.state === 'open';
+  const alreadySuperseded = admissionOpen && rejection?.state === 'closed';
+  const expectedOpenCount = rejectionOpen || admissionOpen ? 1 : 0;
+  if (openStage3Pulls.length !== expectedOpenCount
+    || (rejectionOpen && openStage3Pulls[0]?.number !== rejectionPrNumber)
+    || (admissionOpen && openStage3Pulls[0]?.number !== admission.number)
+    || (rejectionOpen && admissionOpen)) {
+    throw new Stage3WorkerError('retry recovery found another open Stage 3 PR; preserving all PRs and refs', {
+      batchId, attempt, claimCreated: true, prNumber: rejectionPrNumber,
+    });
+  }
+  if (!admission || !['open', 'closed'].includes(admission.state) || admission.merged || admission.merged_at
+    || !/^Stage 3 disposition: lexical-rejection \([A-Z0-9_]+\)\.$/mu.test(admission.body ?? '')
+    || !(admission.body ?? '').includes(`Claim ref: ${claimRef}`)
+    || admission.base?.ref !== MASTER || admission.draft !== true) {
+    throw new Stage3WorkerError(`${batchId}-a${attempt} has no matching closed lexical-rejection Draft PR to reopen`, {
+      batchId, attempt, claimCreated: true, prNumber: admission?.number,
+    });
+  }
+  if (!rejection || rejection.number !== rejectionPrNumber || !['open', 'closed'].includes(rejection.state)
+    || rejection.merged || rejection.merged_at || rejection.base?.ref !== MASTER) {
+    throw new Stage3WorkerError(`PR #${rejectionPrNumber} is not the open, unmerged status PR for ${batchId}-a${attempt}`, {
+      batchId, attempt, claimCreated: true, prNumber: rejectionPrNumber,
+    });
+  }
+  const review = snapshot.reviews?.find((entry) => entry.batchId === batchId);
+  const candidate = snapshot.candidates?.find((entry) => entry.batchId === batchId);
+  if (!review || !candidate || review.manifest.status !== 'ready' || review.manifest.attempt !== attempt
+    || review.manifest.admission !== undefined || !candidate.manifest || candidate.manifest.status !== 'complete') {
+    throw new Stage3WorkerError(`${batchId}-a${attempt} is no longer the same ready attempt on master`, {
+      batchId, attempt, claimCreated: true, prNumber: rejectionPrNumber,
+    });
+  }
+  await verifySupersededRejection({ github, git, rejection, admission, batchId, attempt, claimRef, reviewManifest: review.manifest });
+  if (dryRun) return { status: alreadySuperseded ? 'retry-already-superseded' : 'retry-ready', batchId, attempt, admissionPr: admission.number, rejectionPr: rejectionPrNumber, claimRef };
+
+  try {
+    const restoredSha = git.restorePullRequestBranch(admission.number, admission.head.ref, admission.head.sha);
+    if (restoredSha !== admission.head.sha) throw new Error('restored admission branch SHA does not match its closed Draft PR');
+  } catch (error) {
+    throw new Stage3WorkerError(`could not restore admission PR #${admission.number} branch; status PR remains open: ${error.message}`, {
+      batchId, attempt, claimCreated: true, prNumber: admission.number,
+    });
+  }
+
+  if (!alreadySuperseded) {
+    if (rejectionOpen) await github.closePullRequest(rejectionPrNumber);
+    try {
+      if (!admissionOpen) await github.reopenPullRequest(admission.number);
+      const reopened = await github.getPullRequest(admission.number);
+      if (reopened?.state !== 'open' || reopened?.draft !== true || reopened?.head?.ref !== admission.head.ref) {
+        throw new Error('GitHub did not reopen the same admission Draft PR');
+      }
+    } catch (error) {
+      if (rejectionOpen) {
+        try { await github.reopenPullRequest(rejectionPrNumber); } catch { /* Preserve the original recovery error. */ }
+      }
+      throw new Stage3WorkerError(`superseded status PR #${rejectionPrNumber}; could not safely reopen admission PR #${admission.number}: ${error.message}`, {
+        batchId, attempt, claimCreated: true, prNumber: admission.number,
+      });
+    }
+    log(`Superseded status PR #${rejectionPrNumber} and reopened admission Draft PR #${admission.number} for ${batchId}-a${attempt}.`);
+  } else {
+    log(`Verified admission Draft PR #${admission.number} is already reopened and status PR #${rejectionPrNumber} is closed.`);
+  }
+  return { status: 'retry-ready', batchId, attempt, admissionPr: admission.number, rejectionPr: rejectionPrNumber, claimRef };
+}
+
 function recordLexicalRejection(pr, error) {
   const marker = `Stage 3 disposition: lexical-rejection (${error.code ?? 'STAGE3_LEXICAL_BLOCK'}).`;
   const body = pr.body ?? '';
@@ -416,10 +568,36 @@ export async function createRejectionStatusPullRequest({ github, git, root, clai
   try {
     await git.fetchMaster();
     const baseSha = git.resolveRef('origin/master');
-    git.createBranch(branchName, baseSha);
     const absolute = path.join(root, manifestPath);
     const manifest = JSON.parse(await readFile(absolute, 'utf8'));
     const rejected = statusManifestForRejection(manifest, admissionPr);
+    if (claim.supersededRejectionPr !== undefined) {
+      const prior = await github.getPullRequest(claim.supersededRejectionPr);
+      const admission = await github.getPullRequest(admissionPr);
+      if (prior.state !== 'closed' || prior.merged || prior.merged_at || admission.state !== 'closed' || admission.merged || admission.merged_at) {
+        throw new Stage3WorkerError('superseded Stage 3 PRs are not in the expected closed, unmerged state', {
+          ...claim, claimCreated: true, prNumber: claim.supersededRejectionPr,
+        });
+      }
+      await verifySupersededRejection({
+        github, git, rejection: prior, admission, batchId: claim.batchId, attempt: claim.attempt,
+        claimRef: claim.claimRef, reviewManifest: manifest,
+      });
+      if (!same(JSON.parse(git.show(`origin/${branchName}`, manifestPath)), rejected)) {
+        throw new Stage3WorkerError(`closed status PR #${prior.number} does not match the retry's exact rejection state`, {
+          ...claim, claimCreated: true, prNumber: prior.number,
+        });
+      }
+      const reopened = await github.reopenPullRequest(prior.number);
+      if (reopened?.state !== 'open' || reopened?.head?.ref !== branchName) {
+        throw new Stage3WorkerError(`GitHub did not reopen the unchanged status PR #${prior.number}`, {
+          ...claim, claimCreated: true, prNumber: prior.number,
+        });
+      }
+      log(`Reopened unchanged status PR #${prior.number} for ${claim.batchId}-a${claim.attempt}.`);
+      return { ...claim, admissionPr, branchName, prNumber: prior.number, prUrl: prior.html_url, prState: 'rejection-status' };
+    }
+    git.createBranch(branchName, baseSha);
     await writeFile(absolute, JSON.stringify(rejected, null, 2) + '\n', 'utf8');
     await git.commitAndPush({ branchName, message: `[Stage 3] Reject ${claim.batchId} attempt ${claim.attempt}`, files: [manifestPath] });
     const pullRequest = await github.createPullRequest({

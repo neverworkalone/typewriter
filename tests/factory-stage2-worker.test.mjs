@@ -266,6 +266,30 @@ test('GitHub PR snapshots include reviews, inline and conversation comments, and
   assert.equal(requested.length, 6);
 });
 
+test('Stage 3 retry inspects status-only PR files and reopens only the named pull request', async () => {
+  const calls = [];
+  const github = createGitHubClient({
+    repositoryFullName: 'neverworkalone/typewriter',
+    token: 'test-token',
+    fetchImpl: async (url, init) => {
+      const parsed = new URL(url);
+      calls.push({ path: parsed.pathname, method: init.method, body: init.body ? JSON.parse(init.body) : null });
+      const data = parsed.pathname.endsWith('/pulls/375/files')
+        ? [{ filename: 'data/reviews/C000004/manifest.json' }]
+        : { number: 375, state: 'open' };
+      return new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+  });
+  const files = await github.getPullRequestFiles(375);
+  const reopened = await github.reopenPullRequest(375);
+  assert.deepEqual(files.map(({ filename }) => filename), ['data/reviews/C000004/manifest.json']);
+  assert.deepEqual(reopened, { number: 375, state: 'open' });
+  assert.deepEqual(calls, [
+    { path: '/repos/neverworkalone/typewriter/pulls/375/files', method: 'GET', body: null },
+    { path: '/repos/neverworkalone/typewriter/pulls/375', method: 'PATCH', body: { state: 'open' } },
+  ]);
+});
+
 test('two concurrent workers get one C000001 winner and the loser atomically falls back to C000002', async () => {
   const gitA = snapshotGit({ C000001: candidateArtifacts('C000001'), C000002: candidateArtifacts('C000002') });
   const gitB = snapshotGit({ C000001: candidateArtifacts('C000001'), C000002: candidateArtifacts('C000002') });

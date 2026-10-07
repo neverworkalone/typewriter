@@ -22,9 +22,11 @@ import {
   applyStage3Admission,
   claimNextStage3Batch,
   createStage3Draft,
+  createRejectionStatusPullRequest,
   eligibleStage3Batches,
   processStage3Attempt,
   recoverStage3Attempt,
+  supersedeStage3RejectionForRetry,
   releaseStage3Claim,
   refreshStage3ReportCheckpoints,
   runStage3PreflightCi,
@@ -311,6 +313,128 @@ test('recovery reuses an open admission PR and creates status only when it is mi
   }), /without a recorded lexical-rejection disposition/u);
 });
 
+function stage3RetryFixture({ statusPrNumber = 96, statusState = 'open', admissionState = 'closed' } = {}) {
+  const batchId = 'C900001';
+  const attempt = 1;
+  const claimRef = `refs/heads/stage3-claims/${batchId}-a${attempt}`;
+  const admissionBranch = `codex/stage3/${batchId}-a${attempt}`;
+  const statusBranch = `codex/stage3-status/${batchId}-a${attempt}`;
+  const manifestPath = `data/reviews/${batchId}/manifest.json`;
+  const reviewManifest = { batch_id: batchId, status: 'ready', attempt, history: [], candidates_sha256: digest };
+  const rejectedManifest = {
+    ...reviewManifest, status: 'rejected', rejected_pr: 95, history: [{ attempt, rejected_pr: 95 }],
+  };
+  const admission = {
+    number: 95, state: admissionState, merged: false, draft: true, base: { ref: 'master' },
+    head: { ref: admissionBranch, sha: 'admission-sha' },
+    body: `Stage 3 attempt: ${batchId}-a${attempt}\nClaim ref: ${claimRef}\n\nStage 3 disposition: lexical-rejection (STAGE3_BOUNDARY_CONTEXT_MISSING).`,
+  };
+  const rejection = {
+    number: statusPrNumber, state: statusState, merged: false, base: { ref: 'master' },
+    head: { ref: statusBranch, sha: 'status-sha' },
+    body: `Status-only rejection for ${batchId} attempt ${attempt}.\nClaim ref: ${claimRef}\nClosed admission draft: #95\nThis PR changes only the review manifest to rejected and records the closed admission PR number.`,
+  };
+  const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId, attempt, baseSha: 'old-master-sha', ownerToken: 'owner-token-0001' };
+  const snapshot = {
+    headSha: 'master-sha', validated: true, reviews: [{ batchId, manifest: reviewManifest }],
+    candidates: [{ batchId, manifest: { batch_id: batchId, status: 'complete' } }],
+  };
+  const events = [];
+  const github = {
+    async listStage3ClaimRefs() { return [claimRef]; },
+    async getStage3ActiveLock() { return activeLock; },
+    async listPullRequests() { return [admission, rejection]; },
+    async getBranchHead() { return 'master-sha'; },
+    async getPullRequestFiles(number) { assert.equal(number, statusPrNumber); return [{ filename: manifestPath }]; },
+    async closePullRequest(number) { events.push(`close:${number}`); rejection.state = 'closed'; return rejection; },
+    async reopenPullRequest(number) {
+      events.push(`reopen:${number}`);
+      const pr = number === admission.number ? admission : rejection;
+      pr.state = 'open';
+      return pr;
+    },
+    async getPullRequest(number) { return number === admission.number ? admission : rejection; },
+  };
+  const git = {
+    resolveRef(ref) { return ref === 'origin/master' ? 'master-sha' : ref === `origin/${statusBranch}` ? 'status-sha' : null; },
+    async fetchRemoteBranch(branch) { events.push(`fetch-status:${branch}`); },
+    show(ref, file) { assert.equal(ref, `origin/${statusBranch}`); assert.equal(file, manifestPath); return JSON.stringify(rejectedManifest); },
+    restorePullRequestBranch(number, branch, sha) { events.push(`restore:${number}:${branch}`); assert.equal(sha, 'admission-sha'); return sha; },
+    async fetchMaster() {},
+    createBranch() { throw new Error('a matching superseded PR should be reused'); },
+    async commitAndPush() { throw new Error('a matching superseded PR should be reused'); },
+  };
+  return { batchId, attempt, claimRef, admissionBranch, statusBranch, manifestPath, reviewManifest, rejectedManifest, admission, rejection, activeLock, snapshot, events, github, git };
+}
+
+test('an explicit retry supersedes only the matching open rejection PR and reopens its linked admission draft', async () => {
+  const fixture = stage3RetryFixture();
+  const result = await supersedeStage3RejectionForRetry({
+    github: fixture.github, git: fixture.git, snapshot: fixture.snapshot, batchId: fixture.batchId,
+    attempt: fixture.attempt, rejectionPrNumber: 96,
+  });
+  assert.equal(result.status, 'retry-ready');
+  assert.equal(fixture.admission.state, 'open');
+  assert.equal(fixture.rejection.state, 'closed');
+  assert.deepEqual(fixture.events.slice(-3), [
+    `restore:95:${fixture.admissionBranch}`, 'close:96', 'reopen:95',
+  ]);
+});
+
+test('retry dry-run validates the exact status diff but changes no PR state or branch', async () => {
+  const fixture = stage3RetryFixture();
+  const result = await supersedeStage3RejectionForRetry({
+    github: fixture.github, git: fixture.git, snapshot: fixture.snapshot, batchId: fixture.batchId,
+    attempt: fixture.attempt, rejectionPrNumber: 96, dryRun: true,
+  });
+  assert.equal(result.status, 'retry-ready');
+  assert.equal(fixture.events.some((event) => event.startsWith('restore:') || event.startsWith('close:') || event.startsWith('reopen:')), false);
+  assert.equal(fixture.admission.state, 'closed');
+  assert.equal(fixture.rejection.state, 'open');
+});
+
+test('retry refuses stale, merged, mismatched, or competing state before changing PRs', async () => {
+  const cases = [
+    ['wrong status PR number', (fixture) => { fixture.rejection.number = 97; }],
+    ['merged status PR', (fixture) => { fixture.rejection.merged_at = '2026-10-07T00:00:00Z'; fixture.rejection.state = 'closed'; }],
+    ['non-ready master review', (fixture) => { fixture.snapshot.reviews[0].manifest.status = 'rejected'; }],
+    ['extra attempt claim', (fixture) => { fixture.github.listStage3ClaimRefs = async () => [`${fixture.claimRef}-other`]; }],
+    ['tampered status manifest', (fixture) => { fixture.git.show = () => JSON.stringify({ ...fixture.rejectedManifest, rejected_pr: 999 }); }],
+    ['status PR with extra files', (fixture) => { fixture.github.getPullRequestFiles = async () => [{ filename: fixture.manifestPath }, { filename: 'README.md' }]; }],
+    ['competing open Stage 3 PR', (fixture) => { fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, { number: 98, state: 'open', head: { ref: 'claude/stage3/C900002-a1' } }]; }],
+  ];
+  for (const [label, mutate] of cases) {
+    const fixture = stage3RetryFixture();
+    mutate(fixture);
+    await assert.rejects(supersedeStage3RejectionForRetry({
+      github: fixture.github, git: fixture.git, snapshot: fixture.snapshot, batchId: fixture.batchId,
+      attempt: fixture.attempt, rejectionPrNumber: 96,
+    }), undefined, label);
+    assert.equal(fixture.events.some((event) => event.startsWith('restore:') || event.startsWith('close:') || event.startsWith('reopen:')), false, label);
+  }
+});
+
+test('a retried identical lexical rejection reopens the exact prior status PR instead of creating a duplicate', async () => {
+  const fixture = stage3RetryFixture({ statusState: 'closed' });
+  const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-reuse-rejection-'));
+  try {
+    const reviewPath = path.join(root, 'data/reviews', fixture.batchId, 'manifest.json');
+    await mkdir(path.dirname(reviewPath), { recursive: true });
+    await writeFile(reviewPath, JSON.stringify(fixture.reviewManifest));
+    const result = await createRejectionStatusPullRequest({
+      github: fixture.github, git: fixture.git, root,
+      claim: {
+        batchId: fixture.batchId, attempt: fixture.attempt, claimRef: fixture.claimRef,
+        agent: 'codex', rejectionBranchName: fixture.statusBranch, supersededRejectionPr: 96,
+      },
+      admissionPr: 95,
+    });
+    assert.equal(result.prNumber, 96);
+    assert.equal(fixture.rejection.state, 'open');
+    assert.equal(fixture.events.some((event) => event.startsWith('reopen:96')), true);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('an owned global lock recovers a crash before the per-batch claim was written', async () => {
   const activeLock = { ref: 'refs/heads/stage3-active', sha: 'lock-sha', batchId: 'C000001', attempt: 1, baseSha: 'base-sha', ownerToken: 'owner-token-0001' };
   const recovered = await recoverStage3Attempt({
@@ -437,8 +561,52 @@ test('resume command requires one explicit batch and attempt', () => {
   assert.deepEqual(parseArguments(['--resume-batch', 'C000019', '--attempt', '2']), {
     agent: 'codex', dryRun: false, resumeBatch: 'C000019', resumeAttempt: 2,
   });
+  assert.deepEqual(parseArguments(['--resume-batch', 'C000019', '--attempt', '2', '--supersede-rejection-pr', '275']), {
+    agent: 'codex', dryRun: false, resumeBatch: 'C000019', resumeAttempt: 2, supersedeRejectionPr: 275,
+  });
   assert.throws(() => parseArguments(['--resume-batch', 'C000019']), /supplied together/u);
   assert.throws(() => parseArguments(['--resume-batch', 'C000019', '--attempt', '0']), /positive integer/u);
+  assert.throws(() => parseArguments(['--supersede-rejection-pr', '275']), /requires --resume-batch/u);
+  assert.throws(() => parseArguments(['--resume-batch', 'C000019', '--attempt', '2', '--supersede-rejection-pr', '0']), /positive PR number/u);
+});
+
+test('CLI supersedes only the named rejection PR before resuming its same admission attempt', async () => {
+  const fixture = stage3RetryFixture();
+  const events = fixture.events;
+  const git = {
+    ...fixture.git,
+    originRemote() { return 'https://github.com/o/r.git'; },
+    async fetchMaster() { events.push('fetch-master'); },
+    async refreshBranch(branch) { events.push(`refresh:${branch}`); },
+  };
+  const github = {
+    ...fixture.github,
+    async getBranchHead() { return 'master-sha'; },
+    async listPullRequests() { return [fixture.admission, fixture.rejection]; },
+  };
+  const snapshot = {
+    ...fixture.snapshot,
+    validated: true,
+    candidates: [{
+      batchId: fixture.batchId, manifest: { status: 'complete' }, rows: [], files: [],
+    }],
+    reviews: [{
+      batchId: fixture.batchId, manifest: fixture.reviewManifest, decisions: [], files: [],
+    }],
+  };
+  const result = await runStage3Cli([
+    '--resume-batch', fixture.batchId, '--attempt', '1', '--supersede-rejection-pr', '96',
+  ], {
+    env: { GH_TOKEN: 'fixture-token' }, makeGit: () => git, makeGithub: () => github,
+    loadSnapshot: async () => snapshot,
+    processAttempt: async ({ claim }) => { events.push(`process:${claim.supersededRejectionPr}`); return claim; },
+    callbacks: { async waitForMerge() { return { status: 'stopped-by-primary' }; }, close() {} },
+    log: () => {},
+  });
+  assert.equal(result.status, 'stopped-by-primary');
+  assert.ok(events.indexOf('close:96') < events.indexOf('reopen:95'));
+  assert.ok(events.indexOf('reopen:95') < events.indexOf(`refresh:${fixture.admissionBranch}`));
+  assert.ok(events.includes('process:96'));
 });
 
 for (const { label, remoteBranchExists } of [
