@@ -247,9 +247,9 @@
     {
       "source_candidate_id": "C000009-0021",
       "candidate_record_id": "C000009-0021",
-      "candidate_record_sha256": "ef9477d42ca7a7e1cb1e1f9234523ff5c4a8a125a35770aec0b6ba3bdca184a6",
+      "candidate_record_sha256": "94c2dcb8de136a5da94cf821659fb12a578d84f92095717b6336ca6c19c0780c",
       "decision": "included",
-      "decision_rationale": "C000009-0021 attempt 1 Claude agent self-check: o01은 삶의 한복판에서 건져 올린 서사, o03은 여기서 내가 건질 수 있는 것이 없다는 쓰임으로 속에서 쓸 만한 것을 골라 얻어 내는 뜻이다.",
+      "decision_rationale": "C000009-0021 attempt 1 Claude agent self-check: o01은 삶의 한복판에서 건져 올린 서사, o03은 여기서 내가 건질 수 있는 것이 없다는 쓰임으로 속에 있는 것 가운데 쓸 만한 것을 골라 얻어 내는 뜻이다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -257,8 +257,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000009-0021: o01은 삶의 한복판에서 건져 올린 서사, o03은 여기서 내가 건질 수 있는 것이 없다는 쓰임으로 속에서 쓸 만한 것을 골라 얻어 내는 뜻이다.",
-          "semantic_rationale": "C000009-0021: o01은 삶의 한복판에서 건져 올린 서사, o03은 여기서 내가 건질 수 있는 것이 없다는 쓰임으로 속에서 쓸 만한 것을 골라 얻어 내는 뜻이다.",
+          "boundary_rationale": "C000009-0021: o01은 삶의 한복판에서 건져 올린 서사, o03은 여기서 내가 건질 수 있는 것이 없다는 쓰임으로 속에 있는 것 가운데 쓸 만한 것을 골라 얻어 내는 뜻이다.",
+          "semantic_rationale": "C000009-0021: o01은 삶의 한복판에서 건져 올린 서사, o03은 여기서 내가 건질 수 있는 것이 없다는 쓰임으로 속에 있는 것 가운데 쓸 만한 것을 골라 얻어 내는 뜻이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -280,14 +280,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0021",
-        "candidate_record_sha256": "ef9477d42ca7a7e1cb1e1f9234523ff5c4a8a125a35770aec0b6ba3bdca184a6",
-        "decision_evidence_sha256": "a4d8ad23f59eaaed0617e3b0ed5ce3957b2293d8831b05c3ec7bccd2e3b85763",
+        "candidate_record_sha256": "94c2dcb8de136a5da94cf821659fb12a578d84f92095717b6336ca6c19c0780c",
+        "decision_evidence_sha256": "b037b693f5678bf5e3e4944174a8cfce04c32840f16d853600159ff30cda2dc7",
         "sense_evidence": [
           {
             "sense_id": "C000009-0021-s1",
-            "sense_sha256": "88b2a0460abc393b5dde547e9514694a6a5844f72a7bcf355092d5567bae37ff",
-            "gloss_sha256": "3224b88855dbdd95b5154fe9b448cbdecfe5853796462ebf7786bb7c4f2276b4",
-            "evidence_sha256": "cd3861af74c74e6e623a4c234d7823cec874de8ef49f6ba0c2222b77b672be41"
+            "sense_sha256": "971e790f27977efda49647381e18dff053c6938e5b497049957a8d2ae03e45e0",
+            "gloss_sha256": "c5393653ab0780af70621ef3c8931aa3809fae4ac54740874a23dc350dfe427d",
+            "evidence_sha256": "77e57edd8e5b48b49489f2886184cf605c51962e8c6439d6e27e0184cb43215d"
           }
         ]
       }
@@ -424,9 +424,9 @@
     {
       "source_candidate_id": "C000009-0030",
       "candidate_record_id": "C000009-0030",
-      "candidate_record_sha256": "9ba96a251e63daed12fe6f71b31d9f49a97f4732a9b3f1c4030dc09356ba8d20",
+      "candidate_record_sha256": "963e7c900ea63e5754112baaf585af12523140aa5498e5bef2e61873f47f3668",
       "decision": "included",
-      "decision_rationale": "C000009-0030 attempt 1 Claude agent self-check: o01은 경이로운 기술, o02는 경이로울 정도로 바보스러운 사람으로 놀랍고 신기해서 감탄이 나올 만한 뜻이다.",
+      "decision_rationale": "C000009-0030 attempt 1 Claude agent self-check: o01은 경이로운 기술, o02는 경이로울 정도로 바보스러운 사람이라는 쓰임으로 기술에는 감탄을, 바보스러움에는 반어적인 정도를 나타내므로 감탄 여부가 아니라 놀랍고 신기할 만큼 정도가 대단한 뜻이다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -434,8 +434,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000009-0030: o01은 경이로운 기술, o02는 경이로울 정도로 바보스러운 사람으로 놀랍고 신기해서 감탄이 나올 만한 뜻이다.",
-          "semantic_rationale": "C000009-0030: o01은 경이로운 기술, o02는 경이로울 정도로 바보스러운 사람으로 놀랍고 신기해서 감탄이 나올 만한 뜻이다.",
+          "boundary_rationale": "C000009-0030: o01은 경이로운 기술, o02는 경이로울 정도로 바보스러운 사람이라는 쓰임으로 기술에는 감탄을, 바보스러움에는 반어적인 정도를 나타내므로 감탄 여부가 아니라 놀랍고 신기할 만큼 정도가 대단한 뜻이다.",
+          "semantic_rationale": "C000009-0030: o01은 경이로운 기술, o02는 경이로울 정도로 바보스러운 사람이라는 쓰임으로 기술에는 감탄을, 바보스러움에는 반어적인 정도를 나타내므로 감탄 여부가 아니라 놀랍고 신기할 만큼 정도가 대단한 뜻이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -453,14 +453,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0030",
-        "candidate_record_sha256": "9ba96a251e63daed12fe6f71b31d9f49a97f4732a9b3f1c4030dc09356ba8d20",
-        "decision_evidence_sha256": "2d2f797d27580e076763676532f11b23e11edc56bee8b864ec6043bf09f4204e",
+        "candidate_record_sha256": "963e7c900ea63e5754112baaf585af12523140aa5498e5bef2e61873f47f3668",
+        "decision_evidence_sha256": "4c518f829f380605a6a84a89e0f83f02fa657fa5735da2b394286ba7591aff79",
         "sense_evidence": [
           {
             "sense_id": "C000009-0030-s1",
-            "sense_sha256": "315923095d9eda43d78106f1c896573898a9805b9357a62fda91cb70cafdecda",
-            "gloss_sha256": "88c42ea0affef7b8962c1c45001f1c544f1b7fddc1d75b6c8823ca99cc83f3f1",
-            "evidence_sha256": "0debe09a93e19d5f6976464f3779818315f8da0f1e45150aae72a5b2d1ce05d8"
+            "sense_sha256": "22199cdb833e1a0144241741bf95a824d38d4704615a1aa3d09b58100a8df3d7",
+            "gloss_sha256": "d91382cc400947376231a74e37eb0b81e054d25916d1164a4b314024399e4b73",
+            "evidence_sha256": "7ee62adc2bc622251f6ec648fdeb945612a696747fb28c018bbd75e627db1f00"
           }
         ]
       }
@@ -468,9 +468,9 @@
     {
       "source_candidate_id": "C000009-0035",
       "candidate_record_id": "C000009-0035",
-      "candidate_record_sha256": "798ed40e4355f6a74e2bbd70c897fda3584c57bc38d39cef36a1c419648934b9",
+      "candidate_record_sha256": "1197380ed4b360c6b5e8c7f8e21a2f1e176f653c5c451cdc572ad480c7f6ba65",
       "decision": "included",
-      "decision_rationale": "C000009-0035 attempt 1 Claude agent self-check: o01은 고급스러운 캐시미어 천, o02는 고급스럽고 선비의 고장에 어울리는 표현으로 높은 수준과 값비싼 느낌을 나타낸다.",
+      "decision_rationale": "C000009-0035 attempt 1 Claude agent self-check: o01은 고급스러운 캐시미어 천, o02는 고급스럽고 선비의 고장에 어울리는 표현이라는 쓰임으로 천이든 표현이든 품질이나 수준이 높아 격조가 느껴지는 뜻이며 값이 비싸다는 조건은 두 관찰 모두에서 확인되지 않는다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -478,8 +478,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000009-0035: o01은 고급스러운 캐시미어 천, o02는 고급스럽고 선비의 고장에 어울리는 표현으로 높은 수준과 값비싼 느낌을 나타낸다.",
-          "semantic_rationale": "C000009-0035: o01은 고급스러운 캐시미어 천, o02는 고급스럽고 선비의 고장에 어울리는 표현으로 높은 수준과 값비싼 느낌을 나타낸다.",
+          "boundary_rationale": "C000009-0035: o01은 고급스러운 캐시미어 천, o02는 고급스럽고 선비의 고장에 어울리는 표현이라는 쓰임으로 천이든 표현이든 품질이나 수준이 높아 격조가 느껴지는 뜻이며 값이 비싸다는 조건은 두 관찰 모두에서 확인되지 않는다.",
+          "semantic_rationale": "C000009-0035: o01은 고급스러운 캐시미어 천, o02는 고급스럽고 선비의 고장에 어울리는 표현이라는 쓰임으로 천이든 표현이든 품질이나 수준이 높아 격조가 느껴지는 뜻이며 값이 비싸다는 조건은 두 관찰 모두에서 확인되지 않는다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -497,14 +497,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0035",
-        "candidate_record_sha256": "798ed40e4355f6a74e2bbd70c897fda3584c57bc38d39cef36a1c419648934b9",
-        "decision_evidence_sha256": "e0d89b700e50ea2ee23670dd125ef1758dadbd999336d912567cd0c6973351ac",
+        "candidate_record_sha256": "1197380ed4b360c6b5e8c7f8e21a2f1e176f653c5c451cdc572ad480c7f6ba65",
+        "decision_evidence_sha256": "c8e023cb98852e5ba7638af651f108905a097ee1f683611cb6a4c10705791e64",
         "sense_evidence": [
           {
             "sense_id": "C000009-0035-s1",
-            "sense_sha256": "8321eb0bb3196dca4479269bd0e31a14c6b8ceff55098d688c232d77ebd1cb59",
-            "gloss_sha256": "d49b24049be3d2f446849cb1df8b36be0d25bad0a7c7695398a7e113d22f8141",
-            "evidence_sha256": "6491d269bd007cc8bda375d9e29e3e70a2deb9f8fcb4dfb278e4dbc3f7f3186d"
+            "sense_sha256": "ff10acad0110152ae833beab163460549e2a4bf590453524d584f79556588115",
+            "gloss_sha256": "c70bd3e2af452ce4aac5607f2d5266ff8c989a0a658b0b877d692ef4cb3734c5",
+            "evidence_sha256": "a3a075942e283c81d0a1d19261f87a39f20207795ef48147ae964d5aa6997bc8"
           }
         ]
       }
@@ -830,9 +830,9 @@
     {
       "source_candidate_id": "C000009-0064",
       "candidate_record_id": "C000009-0064",
-      "candidate_record_sha256": "67a63be935f6cad4319700fa34c5385dcd52e9f19850e2e4e5170cdedb318976",
+      "candidate_record_sha256": "8c2c590ac12fc1a3fe93c1f5e97b0c9ea8c41ad706a24d3e5bc8aa72a6e2a645",
       "decision": "included",
-      "decision_rationale": "C000009-0064 attempt 1 Claude agent self-check: o01의 극단적 자본주의 사회체제와 o02의 극단적인 선택은 한쪽으로 크게 치우쳐 끝에 이른 것을 나타낸다.",
+      "decision_rationale": "C000009-0064 attempt 1 Claude agent self-check: o01의 극단적 자본주의 사회체제와 o02의 극단적인 선택은 정도가 한쪽 끝에 이를 만큼 지나친 것을 나타낸다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -840,8 +840,8 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000009-0064: o01의 극단적 자본주의 사회체제와 o02의 극단적인 선택은 한쪽으로 크게 치우쳐 끝에 이른 것을 나타낸다.",
-          "semantic_rationale": "C000009-0064: o01의 극단적 자본주의 사회체제와 o02의 극단적인 선택은 한쪽으로 크게 치우쳐 끝에 이른 것을 나타낸다.",
+          "boundary_rationale": "C000009-0064: o01의 극단적 자본주의 사회체제와 o02의 극단적인 선택은 정도가 한쪽 끝에 이를 만큼 지나친 것을 나타낸다.",
+          "semantic_rationale": "C000009-0064: o01의 극단적 자본주의 사회체제와 o02의 극단적인 선택은 정도가 한쪽 끝에 이를 만큼 지나친 것을 나타낸다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -859,14 +859,14 @@
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000009-0064",
-        "candidate_record_sha256": "67a63be935f6cad4319700fa34c5385dcd52e9f19850e2e4e5170cdedb318976",
-        "decision_evidence_sha256": "027ab03f6e55e2440a99b095e898ff9dafafddbc12eb9a2dbaac6024df48eee7",
+        "candidate_record_sha256": "8c2c590ac12fc1a3fe93c1f5e97b0c9ea8c41ad706a24d3e5bc8aa72a6e2a645",
+        "decision_evidence_sha256": "13bbdf3a7c94d3027042a300ce2c8627545b02107ae76cf568c0b0d7871f9660",
         "sense_evidence": [
           {
             "sense_id": "C000009-0064-s1",
-            "sense_sha256": "f8a88349cfcac8d4a08c62236d2abc5e4c645f600b01577c7f999b4c2fb1d68d",
-            "gloss_sha256": "bb88715bfd90fbaa0505ac08485840b3259c5350e0e4fda131475b06d589d8c5",
-            "evidence_sha256": "28f4a37bfdde63ac17cc1ea2aae23f865de9740af07afb5e37421da6d198a2a1"
+            "sense_sha256": "534792347569a48872e1c624692c5ed567d21fbe6cec9debbd7984d23f27f6e5",
+            "gloss_sha256": "f35f3311950737d0212616dc7194c99d3915f3ce0cebded5f5c14db5a7598bd1",
+            "evidence_sha256": "f2014359c9eae659b69b0a8fda6ada9ae7c36b9d2c5a6a436444e9162be9b251"
           }
         ]
       }
