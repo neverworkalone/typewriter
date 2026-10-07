@@ -18,6 +18,8 @@ import {
   validateBulkGlossProjection,
   validateLexicalSemanticReview,
   validateLexicalRecord,
+  CONFUSABLE_LEMMA_HINTS,
+  findConfusableLemmaHints,
 } from '../scripts/validate/lexical-quality.mjs';
 import { validateLexicalAddition as validateLexicalAdditionImpl } from '../scripts/batch/lexical-admission.mjs';
 import { createCanonicalContext } from '../scripts/validate/canonical-context.mjs';
@@ -2932,4 +2934,42 @@ test('reviewed existing-record correction passes while an unreviewed replacement
     }),
     /does not preserve base record w903|corrected|producer-owned selection output/u,
   );
+});
+
+test('confusable-headword hints are advisory: they name the counterpart but never fail validation', () => {
+  const sense = (gloss, pos = 'verb') => [{ id: 'x-s1', pos, gloss }];
+  const hints = (lemma, gloss, pos) => findConfusableLemmaHints({ lemma, senses: sense(gloss, pos) });
+
+  // The hint helps an author or reviewer: a 쫓다 gloss in 좇다 wording is flagged with its counterpart.
+  const wrong = hints('쫓다', '어떤 이상이나 목표를 이루려고 좇아 따르다.');
+  assert.equal(wrong.length, 1);
+  assert.equal(wrong[0].code, 'CONFUSABLE_LEMMA_HINT');
+  assert.equal(wrong[0].advisory, true);
+  assert.equal(wrong[0].confusable_lemma, '좇다');
+  assert.match(wrong[0].message, /좇다/u);
+  assert.equal(hints('잃어버리다', '기억하고 있던 내용을 떠올리지 못하게 되다.').length, 1);
+  assert.equal(hints('가르치다', '손가락으로 방향을 나타내다.').length, 1);
+
+  // Valid meanings (including ones that share vocabulary with the counterpart) raise no hint.
+  assert.deepEqual(hints('쫓다', '달아나는 대상을 따라가 붙잡으려 하다.'), []);
+  assert.deepEqual(hints('맞추다', '총의 조준점을 과녁에 맞게 조절하다.'), []);
+  assert.deepEqual(hints('맞추다', '둘 이상의 위치나 모양을 서로 맞게 조절하다.'), []);
+  assert.deepEqual(hints('잃다', '사고로 기억을 완전히 상실하다.'), []);
+  assert.deepEqual(hints('늘리다', '소매 길이를 본디보다 더 길게 하다.'), []);
+  assert.deepEqual(hints('쫓다', '어떤 이상이나 목표를 이루려고 따르다.', 'noun'), []);
+  assert.deepEqual(findConfusableLemmaHints({}), []);
+  for (const rule of CONFUSABLE_LEMMA_HINTS) {
+    assert.notEqual(rule.lemma, rule.counterpart);
+    assert.ok(CONFUSABLE_LEMMA_HINTS.some((other) => other.lemma === rule.counterpart && other.counterpart === rule.lemma));
+  }
+
+  // The deterministic validators do not decide this subjective question: neither a hinted gloss
+  // nor a valid one is rejected by the shared record validator.
+  const record = (lemma, gloss) => ({
+    id: 'w9001', record_type: 'entry', role: 'start', candidate_id: 'w9001', lemma, search_forms: [lemma],
+    senses: [{ id: 'w9001-s1', pos: 'verb', gloss }],
+  });
+  assert.doesNotThrow(() => validateLexicalRecord(record('쫓다', '어떤 이상이나 목표를 이루려고 좇아 따르다.'), { mode: 'candidate' }));
+  assert.doesNotThrow(() => validateLexicalRecord(record('맞추다', '총의 조준점을 과녁에 맞게 조절하다.'), { mode: 'candidate' }));
+  assert.doesNotThrow(() => validateLexicalRecord(record('잃다', '사고로 기억을 완전히 상실하다.'), { mode: 'candidate' }));
 });
