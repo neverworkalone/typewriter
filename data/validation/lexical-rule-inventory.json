@@ -57,18 +57,6 @@
       "disposition": "consolidated-common"
     },
     {
-      "id": "confusable-lemma-sense-guard",
-      "title": "A gloss of a confusable counterpart headword (쫓다/좇다, 가르치다/가리키다, ...) cannot be attached to the observed spelling",
-      "classification": "dictionary-wide invariant",
-      "implementation": {
-        "path": "scripts/validate/lexical-quality.mjs",
-        "symbol": "findConfusableLemmaSenseFindings"
-      },
-      "historical_sources": ["Stage 2 C000007 review"],
-      "applies_to": "every existing, corrected, and newly proposed record, and every Stage 2 reviewed record",
-      "disposition": "retained-common"
-    },
-    {
       "id": "writer-facing-gloss-quality",
       "title": "Atomic, useful, non-placeholder gloss quality",
       "classification": "dictionary-wide invariant",

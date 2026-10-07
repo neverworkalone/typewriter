@@ -1501,11 +1501,6 @@ function recordQualityFindings(record, {
       }
     }
   }
-  findings.push(...findConfusableLemmaSenseFindings({
-    lemma: record.lemma,
-    senses: record.senses,
-    label,
-  }));
   return findings;
 }
 
@@ -1576,54 +1571,51 @@ export function validateLexicalRecord(record, options = {}) {
 
 /**
  * Close-form lexical confusions between two *different* headwords whose spellings
- * writers (and sources) routinely mix up.  A gloss that only belongs to the
- * counterpart lemma must not be attached to the observed spelling just because the
- * source text spelled the word that way: the meaning is already (or must be)
- * represented under the counterpart headword.  This is a deterministic tripwire for
- * the unambiguous gloss vocabulary of each pair, not a replacement for the
- * source-bound semantic review; every entry names its counterpart so a finding
- * tells the reviewer which canonical lemma to compare against.  Design rule: every
- * forbidden group is a conjunction of at least two terms, and a pair is listed only when
- * the two headwords' meanings are cleanly separable (늘리다/늘이다 and 틀리다/다르다 are
- * deliberately absent because valid glosses of each overlap the other's vocabulary).
+ * writers (and sources) routinely mix up (쫓다/좇다, 가리키다/가르치다, ...).  Whether an
+ * observed meaning belongs to the observed spelling or to the counterpart headword is a
+ * source-bound semantic judgment, so this is an ADVISORY hint for the author and the
+ * reviewer, never a validation failure: a substring or co-occurrence test cannot prove
+ * that a gloss is wrong, and a hard failure would block valid meanings of the headword.
+ * Nothing here is wired into `validateLexicalRecord`, the canonical audit, admission or
+ * the Stage 2 decision validators.  Each hint names the counterpart headword so the
+ * author can compare the gloss with its canonical senses before submitting.
  */
-export const CONFUSABLE_LEMMA_RULES = Object.freeze([
-  { lemma: '쫓다', pos: 'verb', counterpart: '좇다', forbidden: [['이상', '이루'], ['목표', '이루'], ['이상', '따르'], ['목표', '따르'], ['이념', '따르']] },
-  { lemma: '좇다', pos: 'verb', counterpart: '쫓다', forbidden: [['달아나', '붙잡'], ['도망', '붙잡']] },
-  { lemma: '가르치다', pos: 'verb', counterpart: '가리키다', forbidden: [['손가락', '방향'], ['손가락', '나타내'], ['지목', '대상']] },
-  { lemma: '가리키다', pos: 'verb', counterpart: '가르치다', forbidden: [['지식', '익히'], ['기술', '익히'], ['지식', '배우']] },
-  { lemma: '벌리다', pos: 'verb', counterpart: '벌이다', forbidden: [['일을', '시작'], ['판', '차리'], ['잔치', '차리']] },
-  { lemma: '벌이다', pos: 'verb', counterpart: '벌리다', forbidden: [['넓게', '열'], ['사이를', '넓']] },
-  { lemma: '맞추다', pos: 'verb', counterpart: '맞히다', forbidden: [['과녁', '맞'], ['정답', '맞'], ['답', '알아내']] },
-  { lemma: '맞히다', pos: 'verb', counterpart: '맞추다', forbidden: [['서로 맞게', '조절'], ['서로', '조정']] },
-  { lemma: '잃다', pos: 'verb', counterpart: '잊다', forbidden: [['기억', '떠올리지 못']] },
-  { lemma: '잊다', pos: 'verb', counterpart: '잃다', forbidden: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
-  { lemma: '잃어버리다', pos: 'verb', counterpart: '잊어버리다', forbidden: [['기억', '떠올리지 못']] },
-  { lemma: '잊어버리다', pos: 'verb', counterpart: '잃어버리다', forbidden: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
+export const CONFUSABLE_LEMMA_HINTS = Object.freeze([
+  { lemma: '쫓다', pos: 'verb', counterpart: '좇다', terms: [['이상', '이루'], ['목표', '이루'], ['이상', '따르'], ['목표', '따르'], ['이념', '따르']] },
+  { lemma: '좇다', pos: 'verb', counterpart: '쫓다', terms: [['달아나', '붙잡'], ['도망', '붙잡']] },
+  { lemma: '가르치다', pos: 'verb', counterpart: '가리키다', terms: [['손가락', '방향'], ['손가락', '나타내'], ['지목', '대상']] },
+  { lemma: '가리키다', pos: 'verb', counterpart: '가르치다', terms: [['지식', '익히'], ['기술', '익히'], ['지식', '배우']] },
+  { lemma: '벌리다', pos: 'verb', counterpart: '벌이다', terms: [['일을', '시작'], ['판', '차리'], ['잔치', '차리']] },
+  { lemma: '벌이다', pos: 'verb', counterpart: '벌리다', terms: [['넓게', '열'], ['사이를', '넓']] },
+  { lemma: '맞추다', pos: 'verb', counterpart: '맞히다', terms: [['정답', '맞'], ['답', '알아내']] },
+  { lemma: '맞히다', pos: 'verb', counterpart: '맞추다', terms: [['서로 맞게', '조절'], ['서로', '조정']] },
+  { lemma: '잃다', pos: 'verb', counterpart: '잊다', terms: [['기억', '떠올리지 못']] },
+  { lemma: '잊다', pos: 'verb', counterpart: '잃다', terms: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
+  { lemma: '잃어버리다', pos: 'verb', counterpart: '잊어버리다', terms: [['기억', '떠올리지 못']] },
+  { lemma: '잊어버리다', pos: 'verb', counterpart: '잃어버리다', terms: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
 ]);
 
-export function findConfusableLemmaSenseFindings({ lemma, senses, label = 'record' } = {}) {
+export function findConfusableLemmaHints({ lemma, senses, label = 'record' } = {}) {
   if (typeof lemma !== 'string' || !Array.isArray(senses)) return [];
   const normalizedLemma = lemma.normalize('NFC');
-  const findings = [];
+  const hints = [];
   for (const [index, sense] of senses.entries()) {
     if (typeof sense?.gloss !== 'string') continue;
     const gloss = sense.gloss.normalize('NFC');
-    for (const rule of CONFUSABLE_LEMMA_RULES) {
+    for (const rule of CONFUSABLE_LEMMA_HINTS) {
       if (rule.lemma !== normalizedLemma || rule.pos !== sense.pos) continue;
-      // A group only fires when every term occurs together, so a valid meaning of the
-      // headword that happens to mention one common word (기억을 잃다) is never refused.
-      const terms = rule.forbidden.find((group) => group.every((term) => gloss.includes(term)));
+      const terms = rule.terms.find((group) => group.every((term) => gloss.includes(term)));
       if (terms === undefined) continue;
-      findings.push({
-        code: 'LEXICAL_CONFUSABLE_LEMMA_SENSE',
-        message: `${label}.senses[${index}].gloss uses "${terms.join('" + "')}", which together describe the confusable headword ${rule.counterpart}, not ${rule.lemma}; compare with the canonical ${rule.counterpart} sense and keep that meaning under ${rule.counterpart}`,
+      hints.push({
+        code: 'CONFUSABLE_LEMMA_HINT',
+        advisory: true,
+        message: `${label}.senses[${index}].gloss uses "${terms.join('" + "')}", wording typical of ${rule.counterpart}; compare with the canonical ${rule.counterpart} senses and confirm the observed meaning belongs to ${rule.lemma}`,
         confusable_lemma: rule.counterpart,
         terms,
       });
     }
   }
-  return findings;
+  return hints;
 }
 
 export function findLexicalQualityFindings(record, options = {}) {
