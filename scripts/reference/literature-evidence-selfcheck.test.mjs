@@ -161,19 +161,28 @@ test('the published report states exactly the pinned record: aggregate, outcomes
     assert.ok(report.includes(from), 'fixture text must exist: ' + from);
     assert.notEqual(checkReportContract(report.replace(from, to), record).length, 0, from + ' → ' + to);
   }
-  // Exhaustive: bump each number captured by every prose claim on its own (JSON block untouched).
+  // Exhaustive: bump each number captured by every prose claim on its own, at its true position
+  // (regex `d` indices; equal numbers elsewhere in the claim are left untouched). JSON block untouched.
   let bumped = 0;
   for (const [pattern, expected] of reportProseClaims(aggregateSelfCheck(record))) {
-    const found = pattern.exec(report);
+    const found = new RegExp(pattern.source, pattern.flags + 'd').exec(report);
     assert.ok(found, String(pattern));
     expected.forEach((_, index) => {
-      const groups = found.slice(1);
-      const offset = found[0].indexOf(groups[index], groups.slice(0, index).reduce((end, g) => end + g.length, 0));
-      const mutatedClaim = found[0].slice(0, offset) + (Number(groups[index]) + 1) + found[0].slice(offset + groups[index].length);
-      assert.notEqual(checkReportContract(report.replace(found[0], mutatedClaim), record).length, 0, `${found[0]} [${index}]`);
+      const [start, end] = found.indices[index + 1];
+      const mutated = report.slice(0, start) + (Number(found[index + 1]) + 1) + report.slice(end);
+      assert.equal(mutated.length - report.length, String(Number(found[index + 1]) + 1).length - (end - start));
+      const errors = checkReportContract(mutated, record);
+      assert.ok(errors.some((error) => /^report prose/u.test(error)), `${found[0]} [${index}] → ${errors.join(' | ')}`);
       bumped += 1;
     });
   }
+  // Named reviewer cases: the second comparison figure and the trailing deferred count, each on its own.
+  const comparison = report.replace('비교군 10건: 10건 모두', '비교군 10건: 9건 모두');
+  assert.notEqual(comparison, report);
+  assert.ok(checkReportContract(comparison, record).some((error) => /^report prose/u.test(error)));
+  const trailing = report.replace('나머지 25건은 보류 유지', '나머지 24건은 보류 유지');
+  assert.notEqual(trailing, report);
+  assert.ok(checkReportContract(trailing, record).some((error) => /^report prose/u.test(error)));
   assert.ok(bumped >= 25);
   assert.deepEqual(checkReportContract('no block', record), ['report lacks the selfcheck-contract JSON block']);
 });
