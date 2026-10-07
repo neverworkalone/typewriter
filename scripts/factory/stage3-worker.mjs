@@ -460,8 +460,8 @@ async function verifySupersededRejection({ github, git, rejection, admission, ba
     });
   }
   const rejectionCode = stage3RejectionCode(admission.body);
-  const statusCode = /^Stage 3 rejection code: ([A-Z0-9_]+)\.$/mu.exec(rejection.body ?? '')?.[1];
-  if (!rejectionCode || (statusCode && statusCode !== rejectionCode)) {
+  const statusCodes = [...String(rejection.body ?? '').matchAll(/^Stage 3 rejection code: ([A-Z0-9_]+)\.$/gmu)].map((match) => match[1]);
+  if (!rejectionCode || statusCodes.length > 1 || (statusCodes.length === 1 && statusCodes[0] !== rejectionCode)) {
     throw new Stage3WorkerError(`status PR #${rejection.number} does not bind the admission PR's rejection code`, {
       batchId, attempt, claimCreated: true, prNumber: rejection.number,
     });

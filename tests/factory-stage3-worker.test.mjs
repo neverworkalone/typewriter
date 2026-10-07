@@ -433,6 +433,8 @@ test('retry refuses stale, merged, mismatched, or competing state before changin
     ['extra attempt claim', (fixture) => { fixture.github.listStage3ClaimRefs = async () => [`${fixture.claimRef}-other`]; }],
     ['tampered status manifest', (fixture) => { fixture.git.show = () => JSON.stringify({ ...fixture.rejectedManifest, rejected_pr: 999 }); }],
     ['status PR with extra files', (fixture) => { fixture.github.getPullRequestFiles = async () => [{ filename: fixture.manifestPath }, { filename: 'README.md' }]; }],
+    ['duplicate rejection-code markers', (fixture) => { fixture.rejection.body += '\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.'; }],
+    ['conflicting rejection-code markers', (fixture) => { fixture.rejection.body += '\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.\nStage 3 rejection code: STAGE3_CANONICAL_CONFLICT.'; }],
     ['competing open Stage 3 PR', (fixture) => { fixture.github.listPullRequests = async () => [fixture.admission, fixture.rejection, { number: 98, state: 'open', head: { ref: 'claude/stage3/C900002-a1' } }]; }],
   ];
   for (const [label, mutate] of cases) {
@@ -448,6 +450,7 @@ test('retry refuses stale, merged, mismatched, or competing state before changin
 
 test('a retried identical lexical rejection reopens the exact prior status PR instead of creating a duplicate', async () => {
   const fixture = stage3RetryFixture({ statusState: 'closed', admissionAgent: 'claude', statusAgent: 'claude' });
+  fixture.rejection.body += '\nStage 3 rejection code: STAGE3_BOUNDARY_CONTEXT_MISSING.';
   const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-reuse-rejection-'));
   try {
     const reviewPath = path.join(root, 'data/reviews', fixture.batchId, 'manifest.json');
