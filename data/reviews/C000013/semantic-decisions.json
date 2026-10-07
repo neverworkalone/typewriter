@@ -3628,49 +3628,6 @@
       }
     },
     {
-      "source_candidate_id": "C000013-0086",
-      "candidate_record_id": "C000013-0086",
-      "candidate_record_sha256": "890fe18483ec29cdd1b0ceaea4a4a12a7faec719c7565c792e1e50d475160f02",
-      "decision": "included",
-      "decision_rationale": "C000013-0086 attempt 1 Codex agent self-check: o01의 일명 예술영화의 시대는 1990년대를 그렇게 부르는 별칭을 소개한다.",
-      "gloss_judgment": "fit",
-      "sense_reviews": [
-        {
-          "sense_id": "C000013-0086-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "C000013-0086: o01의 일명 예술영화의 시대는 1990년대를 그렇게 부르는 별칭을 소개한다.",
-          "semantic_rationale": "C000013-0086 C000013-0086-s1: o01의 일명 예술영화의 시대는 1990년대를 그렇게 부르는 별칭을 소개한다.",
-          "relation_decision": "no-relations",
-          "relation_count": 0,
-          "relation_ids": [],
-          "no_relation_rationale": "C000013-0086 C000013-0086-s1: the cited source observations support this reviewed sense but establish no additional candidate-specific writer relation; zero relations are retained.",
-          "scope_declaration": {
-            "admitted_observation_ids": [
-              "C000013-0086.o01"
-            ],
-            "excluded_observation_ids": [],
-            "excluded_terms": []
-          }
-        }
-      ],
-      "review_binding": {
-        "contract_version": "source-bound-semantic-review-v2",
-        "candidate_record_id": "C000013-0086",
-        "candidate_record_sha256": "890fe18483ec29cdd1b0ceaea4a4a12a7faec719c7565c792e1e50d475160f02",
-        "decision_evidence_sha256": "a70057d4e725729edddaabb88801e534f453a132bc0111b50f3109387b0bc540",
-        "sense_evidence": [
-          {
-            "sense_id": "C000013-0086-s1",
-            "sense_sha256": "745ea65b02f82cf2a0c156da632e15dce69ffb1a75518738dfc2effb22822e51",
-            "gloss_sha256": "69cff6f6996c0229966786881eae884a1a8ccc4d175d4246e2fc859c7b84d2b0",
-            "evidence_sha256": "1c0a858ea2af5c5585d7d5c6dad0cce36fabe6345fc54d5328805df89052612e"
-          }
-        ]
-      }
-    },
-    {
       "source_candidate_id": "C000013-0087",
       "candidate_record_id": "C000013-0087",
       "candidate_record_sha256": "4196df37161e05189aea425de038ce5411cae6fb8e77b99682524469c11ad7c8",
