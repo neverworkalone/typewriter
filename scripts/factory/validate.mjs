@@ -177,7 +177,8 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
         // only a new or changed review is required to carry the judgments.
         const artifacts = (strict, judged = strict) => validateReviewArtifacts({
           batchId: batch, adapterId: candidate.manifest.source_adapter, candidates: candidateRows, decisions, semanticDecisionsText, handoffText,
-          requireScopeDeclaration: strict, requireSurfaceFormJudgments: judged,
+          requireScopeDeclaration: strict, requireSurfaceFormJudgments: judged, requireExistingSensePairs: judged,
+          canonicalIndex: manifest.status === 'ready' && canonicalMatchesReview ? canonicalIndex : null,
         }).map((error) => `${batch}: ${error}`);
         const pending = manifest.status !== 'complete';
         const merged = mergedMaster || (base && JSON.stringify(base.review[batch]) === JSON.stringify(manifest) && base.semantic?.[batch] !== undefined

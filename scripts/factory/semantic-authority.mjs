@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { Stage3AdmissionError, canonicalRecordSha256 } from './admission.mjs';
+import { existingSensePairsOf } from './existing-sense-pairs.mjs';
 import {
   buildSemanticAuditFromDecisionSource,
   canonicalRecordsSha256,
@@ -129,14 +130,41 @@ function buildNewSenseReview({ record, sense, sourceCandidateId, semanticSense, 
   };
 }
 
-function crossBoundaryPair({ record, beforeReview, oldSense, newSense, decision, sourceSemanticSense, decisionSourceId }) {
+// Stage 2's explicit pair evidence between each reviewed sense and each existing same-POS sense of the target entry.
+// Each pair is validated against the latest canonical record and consumed exactly once; an entry with two or
+// more existing same-POS senses needs every pair, one existing same-POS sense keeps working with the context id.
+function existingPairMap(decision, semanticRow, beforeRecord, mappedSenses) {
+  const result = new Map();
+  if (decision.target.kind !== 'new_sense_on_existing_entry') {
+    if (existingSensePairsOf(semanticRow).length) failLexical(`${decision.source_candidate_id}: existing-sense pair evidence belongs only to a new_sense_on_existing_entry decision`, 'STAGE3_BOUNDARY_EXISTING_PAIR');
+    return { result, requireAll: () => false };
+  }
+  const oldSenses = beforeRecord?.senses ?? [];
+  for (const pair of existingSensePairsOf(semanticRow)) {
+    const oldSense = oldSenses.find(({ id }) => id === pair.existing_sense_id);
+    const mapped = mappedSenses.find(({ sourceSenseId }) => sourceSenseId === pair.new_sense_id);
+    if (!oldSense || !mapped) failLexical(`${decision.source_candidate_id}: pair evidence names ${pair.existing_sense_id} / ${pair.new_sense_id}, which is not an existing sense of the target entry and a reviewed sense`, 'STAGE3_BOUNDARY_EXISTING_PAIR');
+    if (oldSense.pos !== mapped.sense.pos) failLexical(`${decision.source_candidate_id}: pair evidence compares ${oldSense.id} (${oldSense.pos}) with a ${mapped.sense.pos} sense`, 'STAGE3_BOUNDARY_EXISTING_PAIR');
+    if (pair.relationship !== 'distinct' || pair.decision !== 'retain') failLexical(`${decision.source_candidate_id}: pair evidence must retain a distinct sense (${oldSense.id})`, 'STAGE3_BOUNDARY_EXISTING_PAIR');
+    if (pair.existing_gloss_sha256 !== sha256Json(oldSense.gloss) || pair.new_gloss_sha256 !== sha256Json(mapped.reviewedSense.gloss)) {
+      failLexical(`${decision.source_candidate_id}: pair evidence for ${oldSense.id} no longer binds the canonical and reviewed glosses`, 'STAGE3_BOUNDARY_EXISTING_PAIR');
+    }
+    const key = `${oldSense.id}\u0000${mapped.sense.id}`;
+    if (result.has(key)) failLexical(`${decision.source_candidate_id}: duplicate pair evidence for ${oldSense.id} / ${mapped.sourceSenseId}`, 'STAGE3_BOUNDARY_EXISTING_PAIR');
+    result.set(key, pair);
+  }
+  const samePosCount = (pos) => oldSenses.filter((sense) => sense.pos === pos).length;
+  return { result, requireAll: (pos) => samePosCount(pos) >= 2 };
+}
+
+function crossBoundaryPair({ record, beforeReview, oldSense, newSense, decision, sourceSemanticSense, decisionSourceId, stage2Pair, requireStage2Pair }) {
   const mechanical = inspectSenseBoundaryPairs(record).find((pair) => pair.left_sense_id === oldSense.id && pair.right_sense_id === newSense.id)
     ?? inspectSenseBoundaryPairs(record).find((pair) => pair.left_sense_id === newSense.id && pair.right_sense_id === oldSense.id);
   if (!mechanical || mechanical.relationship !== 'distinct') {
     failLexical(`${decision.source_candidate_id}: a new canonical sense overlaps or mechanically conflicts with existing ${oldSense.id}`, 'STAGE3_CANONICAL_SENSE_CONFLICT');
   }
   if (decision.target.kind === 'new_sense_on_existing_entry' && oldSense.pos === newSense.pos
-    && oldSense.id !== decision.target.context_sense_id) {
+    && (requireStage2Pair ? !stage2Pair : (!stage2Pair && oldSense.id !== decision.target.context_sense_id))) {
     failLexical(`${decision.source_candidate_id}: same-POS new-sense review does not compare against every existing same-POS sense`, 'STAGE3_BOUNDARY_CONTEXT_MISSING');
   }
   const oldReview = beforeReview?.sense_reviews?.find(({ sense_id: id }) => id === oldSense.id);
@@ -147,6 +175,17 @@ function crossBoundaryPair({ record, beforeReview, oldSense, newSense, decision,
   const newText = sourceSemanticSense.semantic_rationale ?? sourceSemanticSense.boundary_rationale ?? decision.source_candidate_id;
   const oldText = oldReview?.review_basis?.rationale ?? oldReview?.sense_boundary?.rationale ?? oldSense.id;
   const context = `Stage 2 ${decision.target.kind}${decision.target.context_sense_id ? ` context ${decision.target.context_sense_id}` : ` POS ${newSense.pos}`}`;
+  if (stage2Pair) {
+    return {
+      left_sense_id: left.id, right_sense_id: right.id,
+      relationship: 'distinct', decision: 'retain',
+      left_gloss_sha256: leftHash, right_gloss_sha256: rightHash,
+      evidence_basis: `${record.id} ${left.id} ${right.id}: ${stage2Pair.evidence_basis}`,
+      distinguishing_feature: `${record.id} ${left.id} ${right.id}: ${stage2Pair.distinguishing_feature}`,
+      rationale: `${record.id} ${left.id} ${right.id} ${leftHash.slice(0, 12)} ${rightHash.slice(0, 12)} [${decision.source_candidate_id}]: ${stage2Pair.rationale}`,
+      decision_source_id: decisionSourceId,
+    };
+  }
   return {
     left_sense_id: left.id, right_sense_id: right.id,
     relationship: 'distinct', decision: 'retain',
@@ -230,12 +269,14 @@ function buildReviewForChangedRecord({ record, beforeRecord, beforeReview, mappe
   if (!isNew) {
     const oldSenses = (beforeRecord?.senses ?? []).filter(({ id }) => beforeSenseIds.has(id));
     const newSenses = mappedSenses.map(({ sense }) => sense);
+    const stage2Pairs = existingPairMap(decision, semanticRow, beforeRecord, mappedSenses);
     for (const newSense of newSenses) {
       const sourceIndex = mappedSenses.find(({ sense }) => sense.id === newSense.id).sourceIndex;
       const sourceSemanticSense = semanticRow.sense_reviews[sourceIndex];
       for (const oldSense of oldSenses) {
         const pair = crossBoundaryPair({
           record, beforeReview, oldSense, newSense, decision, sourceSemanticSense, decisionSourceId: sourceId,
+          stage2Pair: stage2Pairs.result.get(`${oldSense.id}\u0000${newSense.id}`), requireStage2Pair: stage2Pairs.requireAll(newSense.pos),
         });
         pairwiseByKey.set(pairKey(pair.left_sense_id, pair.right_sense_id), pair);
       }
