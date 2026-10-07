@@ -60,9 +60,9 @@
     {
       "source_candidate_id": "C000005-0002",
       "candidate_record_id": "C000005-0002",
-      "candidate_record_sha256": "086c68a9718f8df95ab3ae7ae36af8d4a306a58a55a04bcf85ea2f8082428766",
+      "candidate_record_sha256": "7605ac2b83cfdf82bce546a47e29915509bedf7b4209f83e3e36389cdea50994",
       "decision": "included",
-      "decision_rationale": "C000005-0002 attempt 1 Claude agent self-check: o01은 배가 바닷물 속에 잠겨 아래로 내려앉는 쓰임이다. o02는 목소리가, o03은 화가 약해져 차분해지는 쓰임이다.",
+      "decision_rationale": "C000005-0002 attempt 1 Claude agent self-check: o01은 배가 바닷물 속에 잠겨 아래로 내려앉는 쓰임이다. o02는 충석이가 착 가라앉은 목소리로 현도를 부르는 쓰임으로 목소리의 높이와 기세가 낮아져 차분해진 상태이다. o03은 화가 가라앉지 않는다는 쓰임으로 격한 감정이 약해져 차분해지는 뜻이다.",
       "gloss_judgment": "fit",
       "sense_reviews": [
         {
@@ -85,7 +85,8 @@
               "C000005-0002.o03"
             ],
             "excluded_terms": [
-              "목소리"
+              "목소리",
+              "화"
             ]
           }
         },
@@ -94,22 +95,48 @@
           "boundary_action": "retain",
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
-          "boundary_rationale": "C000005-0002: o02는 목소리가, o03은 화가 약해져 차분해지는 쓰임이다.",
-          "semantic_rationale": "C000005-0002: o02는 목소리가, o03은 화가 약해져 차분해지는 쓰임이다.",
+          "boundary_rationale": "C000005-0002: o02는 충석이가 착 가라앉은 목소리로 현도를 부르는 쓰임으로 목소리의 높이와 기세가 낮아져 차분해진 상태이다.",
+          "semantic_rationale": "C000005-0002: o02는 충석이가 착 가라앉은 목소리로 현도를 부르는 쓰임으로 목소리의 높이와 기세가 낮아져 차분해진 상태이다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
           "no_relation_rationale": "C000005-0002 C000005-0002-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
           "scope_declaration": {
             "admitted_observation_ids": [
-              "C000005-0002.o02",
+              "C000005-0002.o02"
+            ],
+            "excluded_observation_ids": [
+              "C000005-0002.o01",
+              "C000005-0002.o03"
+            ],
+            "excluded_terms": [
+              "바닷물",
+              "화"
+            ]
+          }
+        },
+        {
+          "sense_id": "C000005-0002-s3",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "C000005-0002: o03은 화가 가라앉지 않는다는 쓰임으로 격한 감정이 약해져 차분해지는 뜻이다.",
+          "semantic_rationale": "C000005-0002: o03은 화가 가라앉지 않는다는 쓰임으로 격한 감정이 약해져 차분해지는 뜻이다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "C000005-0002 C000005-0002-s3: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
+          "scope_declaration": {
+            "admitted_observation_ids": [
               "C000005-0002.o03"
             ],
             "excluded_observation_ids": [
-              "C000005-0002.o01"
+              "C000005-0002.o01",
+              "C000005-0002.o02"
             ],
             "excluded_terms": [
-              "바닷물"
+              "바닷물",
+              "목소리"
             ]
           }
         }
@@ -121,29 +148,57 @@
           "relationship": "distinct",
           "decision": "retain",
           "left_gloss_sha256": "2d29cc21bd7928922f65f5dea45263a95f648911591073d6e32930700e9bcc54",
+          "right_gloss_sha256": "90256acea4944231068087572507a51b55417c74ee9cb108f10828c63e17845f",
+          "evidence_basis": "C000005-0002: 서로 다른 관찰 근거를 attempt 1 Claude agent self-check으로 원본 문맥에서 대조했다.",
+          "distinguishing_feature": "C000005-0002: 물 위나 공중에 있던 것이 아래로 내려가 잠기다. 대 목소리가 낮아지고 차분해지다.",
+          "rationale": "C000005-0002: o01은 배가 바닷물 속에 잠겨 아래로 내려앉는 쓰임이다. / o02는 충석이가 착 가라앉은 목소리로 현도를 부르는 쓰임으로 목소리의 높이와 기세가 낮아져 차분해진 상태이다."
+        },
+        {
+          "left_sense_id": "C000005-0002-s1",
+          "right_sense_id": "C000005-0002-s3",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "2d29cc21bd7928922f65f5dea45263a95f648911591073d6e32930700e9bcc54",
           "right_gloss_sha256": "8e57385a914e3aca238f3dbfb95697151be34ff3456a685cc7af1faac402d897",
           "evidence_basis": "C000005-0002: 서로 다른 관찰 근거를 attempt 1 Claude agent self-check으로 원본 문맥에서 대조했다.",
           "distinguishing_feature": "C000005-0002: 물 위나 공중에 있던 것이 아래로 내려가 잠기다. 대 거세거나 들뜬 기운이나 감정이 약해져 차분해지다.",
-          "rationale": "C000005-0002: o01은 배가 바닷물 속에 잠겨 아래로 내려앉는 쓰임이다. / o02는 목소리가, o03은 화가 약해져 차분해지는 쓰임이다."
+          "rationale": "C000005-0002: o01은 배가 바닷물 속에 잠겨 아래로 내려앉는 쓰임이다. / o03은 화가 가라앉지 않는다는 쓰임으로 격한 감정이 약해져 차분해지는 뜻이다."
+        },
+        {
+          "left_sense_id": "C000005-0002-s2",
+          "right_sense_id": "C000005-0002-s3",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "90256acea4944231068087572507a51b55417c74ee9cb108f10828c63e17845f",
+          "right_gloss_sha256": "8e57385a914e3aca238f3dbfb95697151be34ff3456a685cc7af1faac402d897",
+          "evidence_basis": "C000005-0002: 서로 다른 관찰 근거를 attempt 1 Claude agent self-check으로 원본 문맥에서 대조했다.",
+          "distinguishing_feature": "C000005-0002: 목소리가 낮아지고 차분해지다. 대 거세거나 들뜬 기운이나 감정이 약해져 차분해지다.",
+          "rationale": "C000005-0002: o02는 충석이가 착 가라앉은 목소리로 현도를 부르는 쓰임으로 목소리의 높이와 기세가 낮아져 차분해진 상태이다. / o03은 화가 가라앉지 않는다는 쓰임으로 격한 감정이 약해져 차분해지는 뜻이다."
         }
       ],
       "review_binding": {
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "C000005-0002",
-        "candidate_record_sha256": "086c68a9718f8df95ab3ae7ae36af8d4a306a58a55a04bcf85ea2f8082428766",
-        "decision_evidence_sha256": "3470b52810cf49bb060cbf1f7acb9a3b0a33d9fde4dc1b16f3bb33e8990bf7ae",
+        "candidate_record_sha256": "7605ac2b83cfdf82bce546a47e29915509bedf7b4209f83e3e36389cdea50994",
+        "decision_evidence_sha256": "52a5a351d1b1735746d048e46863f71e4b7f018b2a6b0c58a00dddd4325496fe",
         "sense_evidence": [
           {
             "sense_id": "C000005-0002-s1",
             "sense_sha256": "348cbd480a51e0706e41ef850c16608639bac87c50f3e4e089e1ad453e848b50",
             "gloss_sha256": "2d29cc21bd7928922f65f5dea45263a95f648911591073d6e32930700e9bcc54",
-            "evidence_sha256": "18cb0ba43af28021cc3c49450f4fbde57edab53147fd0caa5b17bb7afcf757c0"
+            "evidence_sha256": "0127015e84293cbeea7e88c981cc17ec6c0c7bca63a49db7ff792352ee09c2f2"
           },
           {
             "sense_id": "C000005-0002-s2",
-            "sense_sha256": "8bbe2b1e6169ee3d64c8f5fb22770d6c7508a1ceac7d5b37450954c71dd87ce2",
+            "sense_sha256": "ae91471584aa1b86aae5182b23b84f70035d3b156b10ac5ab777d4542fc77639",
+            "gloss_sha256": "90256acea4944231068087572507a51b55417c74ee9cb108f10828c63e17845f",
+            "evidence_sha256": "0998dba4a5036835ec6800218fc1ca01b5ef1aa806aa3894d6a830523ec1ecad"
+          },
+          {
+            "sense_id": "C000005-0002-s3",
+            "sense_sha256": "1b30816a97f96f59dd82c4673865deb942c65e292ea0df4f2a5695c9e32138d7",
             "gloss_sha256": "8e57385a914e3aca238f3dbfb95697151be34ff3456a685cc7af1faac402d897",
-            "evidence_sha256": "9fb18f45742bd14f7ba07358197d9f1f87e92645d455393a215ca577045c225b"
+            "evidence_sha256": "7417f22c26e263a7b1bd084e1aee3b469ed0df10a67500c5f54a4092a3b20747"
           }
         ]
       }
