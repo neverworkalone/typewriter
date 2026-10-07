@@ -1585,22 +1585,22 @@ export function validateLexicalRecord(record, options = {}) {
  * tells the reviewer which canonical lemma to compare against.
  */
 export const CONFUSABLE_LEMMA_RULES = Object.freeze([
-  { lemma: '쫓다', pos: 'verb', counterpart: '좇다', forbidden_terms: ['이상', '목표', '이념', '이루려', '이룰'] },
-  { lemma: '좇다', pos: 'verb', counterpart: '쫓다', forbidden_terms: ['달아나', '도망', '붙잡'] },
-  { lemma: '가르치다', pos: 'verb', counterpart: '가리키다', forbidden_terms: ['손가락', '방향', '지목'] },
-  { lemma: '가리키다', pos: 'verb', counterpart: '가르치다', forbidden_terms: ['지식', '기술', '익히', '배우'] },
-  { lemma: '틀리다', pos: 'verb', counterpart: '다르다', forbidden_terms: ['같지 않', '서로 다르', '차이가 있'] },
-  { lemma: '다르다', pos: 'adjective', counterpart: '틀리다', forbidden_terms: ['맞지 않', '그르'] },
-  { lemma: '벌리다', pos: 'verb', counterpart: '벌이다', forbidden_terms: ['일을', '판을', '시작'] },
-  { lemma: '벌이다', pos: 'verb', counterpart: '벌리다', forbidden_terms: ['넓게 열', '양쪽', '사이를'] },
-  { lemma: '늘리다', pos: 'verb', counterpart: '늘이다', forbidden_terms: ['길게', '길이', '늘어지'] },
-  { lemma: '늘이다', pos: 'verb', counterpart: '늘리다', forbidden_terms: ['더 많게', '많아지게', '규모'] },
-  { lemma: '잃다', pos: 'verb', counterpart: '잊다', forbidden_terms: ['기억', '떠올리지'] },
-  { lemma: '잊다', pos: 'verb', counterpart: '잃다', forbidden_terms: ['가졌던', '가지지 못', '없어져'] },
-  { lemma: '잃어버리다', pos: 'verb', counterpart: '잊어버리다', forbidden_terms: ['기억', '떠올리지'] },
-  { lemma: '잊어버리다', pos: 'verb', counterpart: '잃어버리다', forbidden_terms: ['가졌던', '가지지 못', '없어져'] },
-  { lemma: '맞추다', pos: 'verb', counterpart: '맞히다', forbidden_terms: ['과녁', '적중'] },
-  { lemma: '맞히다', pos: 'verb', counterpart: '맞추다', forbidden_terms: ['서로 맞게', '조절', '조정'] },
+  { lemma: '쫓다', pos: 'verb', counterpart: '좇다', forbidden: [['이상', '이루'], ['목표', '이루'], ['이상', '따르'], ['목표', '따르'], ['이념', '따르']] },
+  { lemma: '좇다', pos: 'verb', counterpart: '쫓다', forbidden: [['달아나', '붙잡'], ['도망', '붙잡']] },
+  { lemma: '가르치다', pos: 'verb', counterpart: '가리키다', forbidden: [['손가락'], ['지목']] },
+  { lemma: '가리키다', pos: 'verb', counterpart: '가르치다', forbidden: [['지식', '익히'], ['기술', '익히'], ['지식', '배우']] },
+  { lemma: '틀리다', pos: 'verb', counterpart: '다르다', forbidden: [['서로', '같지 않'], ['서로 다르']] },
+  { lemma: '다르다', pos: 'adjective', counterpart: '틀리다', forbidden: [['맞지 않'], ['그르']] },
+  { lemma: '벌리다', pos: 'verb', counterpart: '벌이다', forbidden: [['일을', '시작'], ['판을']] },
+  { lemma: '벌이다', pos: 'verb', counterpart: '벌리다', forbidden: [['넓게', '열'], ['사이를', '넓']] },
+  { lemma: '늘리다', pos: 'verb', counterpart: '늘이다', forbidden: [['길이'], ['늘어지']] },
+  { lemma: '늘이다', pos: 'verb', counterpart: '늘리다', forbidden: [['더 많게'], ['많아지게'], ['수나 양']] },
+  { lemma: '맞추다', pos: 'verb', counterpart: '맞히다', forbidden: [['과녁'], ['적중']] },
+  { lemma: '맞히다', pos: 'verb', counterpart: '맞추다', forbidden: [['서로 맞게'], ['조절'], ['조정']] },
+  { lemma: '잃다', pos: 'verb', counterpart: '잊다', forbidden: [['기억', '떠올리지 못']] },
+  { lemma: '잊다', pos: 'verb', counterpart: '잃다', forbidden: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
+  { lemma: '잃어버리다', pos: 'verb', counterpart: '잊어버리다', forbidden: [['기억', '떠올리지 못']] },
+  { lemma: '잊어버리다', pos: 'verb', counterpart: '잃어버리다', forbidden: [['가졌던', '가지지 못'], ['가지고 있던', '잃']] },
 ]);
 
 export function findConfusableLemmaSenseFindings({ lemma, senses, label = 'record' } = {}) {
@@ -1612,13 +1612,15 @@ export function findConfusableLemmaSenseFindings({ lemma, senses, label = 'recor
     const gloss = sense.gloss.normalize('NFC');
     for (const rule of CONFUSABLE_LEMMA_RULES) {
       if (rule.lemma !== normalizedLemma || rule.pos !== sense.pos) continue;
-      const term = rule.forbidden_terms.find((candidate) => gloss.includes(candidate));
-      if (term === undefined) continue;
+      // A group only fires when every term occurs together, so a valid meaning of the
+      // headword that happens to mention one common word (기억을 잃다) is never refused.
+      const terms = rule.forbidden.find((group) => group.every((term) => gloss.includes(term)));
+      if (terms === undefined) continue;
       findings.push({
         code: 'LEXICAL_CONFUSABLE_LEMMA_SENSE',
-        message: `${label}.senses[${index}].gloss uses "${term}", which describes the confusable headword ${rule.counterpart}, not ${rule.lemma}; compare with the canonical ${rule.counterpart} sense and keep that meaning under ${rule.counterpart}`,
+        message: `${label}.senses[${index}].gloss uses "${terms.join('" + "')}", which together describe the confusable headword ${rule.counterpart}, not ${rule.lemma}; compare with the canonical ${rule.counterpart} sense and keep that meaning under ${rule.counterpart}`,
         confusable_lemma: rule.counterpart,
-        term,
+        terms,
       });
     }
   }
