@@ -35,7 +35,7 @@ node scripts/reference/migrate-local-reference.mjs \
   --source /path/to/typewriter/data/reference
 ```
 
-The default plan is read-only. `--apply` copies files without overwriting and checks their SHA-256 digests. Any differing destination stops the operation before copying. The source remains available for rollback. `--move` removes that one source tree only after every copied file verifies; it refuses removal if it finds a local `venv` or `.venv`. Virtual environments are runtime state and are not migrated as reference data.
+The default plan is read-only. `--apply` copies files without overwriting and checks their SHA-256 digests. Any differing destination stops the operation before copying. The source remains available for rollback. Use `--move` only after legacy writers have stopped. It atomically isolates that source tree, verifies its file inventory and every SHA-256 digest again, then removes it; any mismatch restores and retains the source. It refuses removal if it finds a local `venv` or `.venv`. Virtual environments are runtime state and are not migrated as reference data.
 
 The migration preserves the relative run/source identifiers while mapping the old top-level folders:
 

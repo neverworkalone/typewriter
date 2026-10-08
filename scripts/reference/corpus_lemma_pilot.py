@@ -35,6 +35,14 @@ LOCAL_PILOT_DIRECTORY = TYPEWRITER_CACHE_ROOT / "runs/issue-201-pilot"
 DEFAULT_STAGING_PATH = LOCAL_PILOT_DIRECTORY / "candidate-analysis.sqlite"
 DEFAULT_SELECTION_PATH = LOCAL_PILOT_DIRECTORY / "candidate-selection.json"
 EXTRACTOR_VERSION = "2"
+# These retained v2 producer files produce the same morphology-analysis tables as
+# this version; their changes are limited to cache/output paths or downstream
+# candidate selection. Older or unlisted source digests remain incompatible.
+REUSABLE_ANALYSIS_SOURCE_DIGESTS = frozenset({
+    "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e",
+    "7c18eee629d1c423a3a26ad5d7eede15772c5a420bad1900e6806ed442147c96",
+    "5cb8cb22db737afaccd64585dfe613ea428a3fc74dbb359eac4c4a1a177b6ee6",
+})
 SAMPLE_EVERY_PARAGRAPHS = 20
 TARGET_CANDIDATES = 200
 MAX_CANDIDATE_LIMIT = 500

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -6,7 +7,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+import { removeSourceIfUnchanged } from './migrate-local-reference.mjs';
+
 const SCRIPT = fileURLToPath(new URL('./migrate-local-reference.mjs', import.meta.url));
+const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 async function fixture() {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-reference-migration-'));
@@ -113,6 +117,35 @@ test('--move verifies copies first and retains the source when a runtime environ
     assert.deepEqual(await readFile(path.join(cache, 'corpus', 'source.json')), Buffer.from('source'));
     await readFile(path.join(source, 'corpus', 'source.json'));
     await readFile(path.join(source, 'runs', 'sample', '.venv', 'marker'));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('--move retains a same-size source edit made after copying and initial verification', async () => {
+  const { root, source, cache } = await fixture();
+  try {
+    const relativePath = 'corpus/source.json';
+    const sourceFile = path.join(source, relativePath);
+    const cacheFile = path.join(cache, 'corpus', 'source.json');
+    const copiedBytes = Buffer.from('before');
+    await mkdir(path.dirname(sourceFile), { recursive: true });
+    await mkdir(path.dirname(cacheFile), { recursive: true });
+    await writeFile(sourceFile, copiedBytes);
+    await writeFile(cacheFile, copiedBytes);
+
+    await assert.rejects(() => removeSourceIfUnchanged(source, [{
+      relativePath,
+      size: copiedBytes.length,
+      digest: sha256(copiedBytes),
+    }], {
+      afterIsolation: async (isolatedSource) => {
+        await writeFile(path.join(isolatedSource, relativePath), 'during');
+      },
+    }), /source bytes changed during migration.*original source was restored/u);
+
+    assert.deepEqual(await readFile(sourceFile), Buffer.from('during'));
+    assert.deepEqual(await readFile(cacheFile), copiedBytes);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

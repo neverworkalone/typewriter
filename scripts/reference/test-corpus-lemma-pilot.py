@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import shutil
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -31,6 +32,17 @@ from scripts.python.local_cache import (
     normalize_cache_run_binding,
     typewriter_cache_root,
 )
+
+NODE_RECORD_ANALYSIS_CACHE = """
+import { readFile } from 'node:fs/promises';
+import { recordAnalysisCache } from './scripts/reference/run-corpus-lemma-pilot.mjs';
+const selection = JSON.parse(await readFile(process.argv[1], 'utf8'));
+await recordAnalysisCache({
+  selection,
+  stagingDatabasePath: process.argv[2],
+  mode: 'full-corpus-scan',
+});
+"""
 
 
 class TypewriterCachePathTests(unittest.TestCase):
@@ -370,18 +382,30 @@ class CorpusLemmaPilotTests(unittest.TestCase):
 
     def _select_cached(self, root, name, fixture, include, limit=10, mutate=None):
         index_path, dictionary_path, permission_path = fixture
-        run_directory = root / "runs" / "issue-222"
+        run_directory = root.resolve() / "runs" / "issue-222"
         run_directory.mkdir(parents=True, exist_ok=True)
         analysis_path = run_directory / "candidate-analysis.sqlite"
         shutil.copy2(root / "default-staging.sqlite", analysis_path)
-        selection_path = root / "default-candidates.json"
-        selection = json.loads(selection_path.read_text(encoding="utf-8"))
         with patch.dict(os.environ, {"TYPEWRITER_CACHE_ROOT": str(root.resolve())}):
-            selection["analysis_cache"] = {
-                "database_path": cache_relative_path(analysis_path),
-                "database_sha256": cached.sha256_file(analysis_path),
-                "mode": "full-corpus-scan",
-            }
+            selection_input = root / "default-candidates.json"
+            selection_path = run_directory / "candidate-selection.json"
+            # The JavaScript producer writes the cache-relative binding that the Python reader consumes below.
+            subprocess.run(
+                [
+                    "node",
+                    "--input-type=module",
+                    "-e",
+                    NODE_RECORD_ANALYSIS_CACHE,
+                    str(selection_input),
+                    str(analysis_path),
+                ],
+                cwd=Path(__file__).resolve().parents[2],
+                env=os.environ.copy(),
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            selection = json.loads(selection_path.read_text(encoding="utf-8"))
             if mutate:
                 mutate(selection)
             bound_selection = run_directory / f"{name}-bound-selection.json"
@@ -483,12 +507,27 @@ class CorpusLemmaPilotTests(unittest.TestCase):
                 def other_database_path(selection):
                     selection["analysis_cache"]["database_path"] = "runs/another/candidate-analysis.sqlite"
 
+                def unapproved_historical_extractor(selection):
+                    selection["extractor"]["script_sha256"] = (
+                        "a65060846e1f5f0fb300823590965d569772bc952368be18d95f018ab297faeb"
+                    )
+
+                def incompatible_v1_extractor(selection):
+                    selection["extractor"].update({
+                        "extractor_version": "1",
+                        "script_sha256": "35f8e5d66ad00885bc495f62707086fef8a8daad7437240a95a9e86997ce0786",
+                    })
+
                 with self.assertRaisesRegex(RuntimeError, "different morphology extractor source"):
                     self._select_cached(root, "stale", fixture, True, mutate=other_source)
                 with self.assertRaisesRegex(RuntimeError, "digest does not match"):
                     self._select_cached(root, "tampered", fixture, True, mutate=other_database)
                 with self.assertRaisesRegex(RuntimeError, "different analysis database"):
                     self._select_cached(root, "different-path", fixture, True, mutate=other_database_path)
+                with self.assertRaisesRegex(RuntimeError, "different morphology extractor source"):
+                    self._select_cached(root, "unapproved-source", fixture, True, mutate=unapproved_historical_extractor)
+                with self.assertRaisesRegex(RuntimeError, "different morphology extractor version"):
+                    self._select_cached(root, "incompatible-v1", fixture, True, mutate=incompatible_v1_extractor)
             finally:
                 pilot.SAMPLE_EVERY_PARAGRAPHS = original_sample
 
@@ -500,19 +539,30 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             pilot.SAMPLE_EVERY_PARAGRAPHS = 1
             try:
                 self._extract(root, "default", fixture, False)
+
+                def migrated_legacy_binding(selection):
+                    selection["analysis_cache"]["database_path"] = (
+                        "data/reference/production/issue-222/candidate-analysis.sqlite"
+                    )
+                    selection["extractor"]["script_sha256"] = (
+                        "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e"
+                    )
+
                 result = self._select_cached(
                     root,
                     "legacy-binding",
                     fixture,
                     True,
-                    mutate=lambda selection: selection["analysis_cache"].update({
-                        "database_path": "data/reference/production/issue-222/candidate-analysis.sqlite",
-                    }),
+                    mutate=migrated_legacy_binding,
                 )
                 self.assertEqual(result["analysis_cache"]["mode"], "reused-candidate-analysis")
                 self.assertEqual(
                     result["analysis_cache"]["source_database_path"],
                     "runs/issue-222/candidate-analysis.sqlite",
+                )
+                self.assertEqual(
+                    result["analysis_cache"]["source_extractor_script_sha256"],
+                    "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e",
                 )
             finally:
                 pilot.SAMPLE_EVERY_PARAGRAPHS = original_sample

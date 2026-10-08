@@ -145,7 +145,10 @@ def verify_source_cache(
     current_extractor_sha256 = hashlib.sha256(Path(producer.__file__).read_bytes()).hexdigest()
     if extractor.get("extractor_version") != producer.EXTRACTOR_VERSION:
         raise RuntimeError("Cached analysis uses a different morphology extractor version.")
-    if extractor.get("script_sha256") != current_extractor_sha256:
+    if extractor.get("script_sha256") not in {
+        current_extractor_sha256,
+        *producer.REUSABLE_ANALYSIS_SOURCE_DIGESTS,
+    }:
         raise RuntimeError("Cached analysis was produced by a different morphology extractor source.")
     if extractor.get("python_version") != sys.version.split()[0]:
         raise RuntimeError("Cached analysis uses a different Python version.")

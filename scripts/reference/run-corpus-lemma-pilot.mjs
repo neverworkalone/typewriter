@@ -295,7 +295,7 @@ async function sha256Path(filePath) {
   return hashFileContents(await readFile(filePath));
 }
 
-async function recordAnalysisCache({ selection, stagingDatabasePath, mode }) {
+export async function recordAnalysisCache({ selection, stagingDatabasePath, mode }) {
   const extractorScriptSha256 = await sha256Path(PYTHON_EXTRACTOR_PATH);
   if (mode === 'full-corpus-scan') {
     selection.analysis_cache = {

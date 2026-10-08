@@ -6,6 +6,7 @@ import {
   lstat,
   mkdir,
   readdir,
+  rename,
   rm,
   unlink,
 } from 'node:fs/promises';
@@ -94,6 +95,62 @@ async function listSourceFiles(sourceDirectory) {
   return { files, skipped };
 }
 
+/** Rename the quiescent legacy tree, recheck its exact snapshot, then remove only that snapshot. */
+export async function removeSourceIfUnchanged(sourceDirectory, expectedFiles, { afterIsolation } = {}) {
+  const isolatedSource = path.join(
+    path.dirname(sourceDirectory),
+    `${path.basename(sourceDirectory)}.migration-${process.pid}-${randomBytes(6).toString('hex')}`,
+  );
+  await rename(sourceDirectory, isolatedSource);
+  let removalStarted = false;
+  try {
+    if (afterIsolation) await afterIsolation(isolatedSource);
+    const isolatedStat = await lstat(isolatedSource);
+    if (!isolatedStat.isDirectory() || isolatedStat.isSymbolicLink()) {
+      throw new Error('isolated source is not a real directory');
+    }
+    const current = await listSourceFiles(isolatedSource);
+    if (current.skipped.some(({ reason }) => reason === 'tooling environment; not reference data')) {
+      throw new Error('source now contains a local virtual environment');
+    }
+    const expected = expectedFiles
+      .map(({ relativePath, size, digest }) => ({ relativePath, size, digest }))
+      .sort((left, right) => left.relativePath.localeCompare(right.relativePath, 'en'));
+    if (current.files.length !== expected.length) {
+      throw new Error('source file inventory changed during migration');
+    }
+    for (let index = 0; index < current.files.length; index += 1) {
+      const file = current.files[index];
+      const pinned = expected[index];
+      if (file.relativePath !== pinned.relativePath || file.size !== pinned.size
+        || !pinned.digest || await sha256File(file.path) !== pinned.digest) {
+        throw new Error(`source bytes changed during migration: ${file.relativePath}`);
+      }
+    }
+    try {
+      await lstat(sourceDirectory);
+      throw new Error('source path was recreated during migration');
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+
+    removalStarted = true;
+    await rm(isolatedSource, { recursive: true });
+  } catch (error) {
+    if (!removalStarted) {
+      try {
+        await lstat(sourceDirectory);
+        throw new Error(`${error.message}; isolated source retained at ${isolatedSource}`);
+      } catch (restoreError) {
+        if (restoreError.code !== 'ENOENT') throw restoreError;
+      }
+      await rename(isolatedSource, sourceDirectory);
+      throw new Error(`${error.message}; original source was restored and retained`);
+    }
+    throw new Error(`${error.message}; isolated source remains at ${isolatedSource}`);
+  }
+}
+
 async function copyWithoutOverwrite(source, destination, expectedDigest, size) {
   await mkdir(path.dirname(destination), { recursive: true });
   await assertNoSymlinkComponents(path.dirname(destination), destination);
@@ -130,7 +187,8 @@ async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     console.log('Usage: node scripts/reference/migrate-local-reference.mjs [--source <worktree>/data/reference] [--apply] [--move]');
-    console.log('Default is a read-only plan. --apply copies and verifies; --move removes the source only after full verification.');
+    console.log('Default is a read-only plan. --apply copies and verifies; --move isolates the source, rechecks every digest, then removes it.');
+    console.log('Use --move only after legacy writers have stopped.');
     return;
   }
 
@@ -209,20 +267,19 @@ async function main() {
 
   console.log(`Verified ${plan.length} local reference files in ${cachePaths.root}.`);
   if (options.move) {
-    const currentSource = await listSourceFiles(sourceDirectory);
-    const originalInventory = files.map(({ relativePath, size }) => ({ relativePath, size }));
-    const currentInventory = currentSource.files.map(({ relativePath, size }) => ({ relativePath, size }));
-    if (JSON.stringify(currentInventory) !== JSON.stringify(originalInventory)) {
-      throw new Error('source contents changed during migration; original data was retained');
-    }
     const runtimeEnvironment = skipped.some((entry) => entry.reason === 'tooling environment; not reference data');
     if (runtimeEnvironment) throw new Error('verified reference files were copied, but source removal was skipped because a local venv needs separate handling');
-    await rm(sourceDirectory, { recursive: true });
+    await removeSourceIfUnchanged(sourceDirectory, plan);
     console.log(`Removed migrated source directory ${sourceDirectory}.`);
   }
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exitCode = 1;
-});
+const isMainModule = process.argv[1]
+  && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+if (isMainModule) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}
