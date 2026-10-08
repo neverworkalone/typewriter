@@ -201,8 +201,10 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     if (manifest.status === 'created' && review) errors.push(`${batch}: review exists but candidate is still created`);
   }
   errors.push(...await validateStage3SemanticAuthorityLinks({ root, reviewArtifacts }));
-  errors.push(...validateStage3RecordChanges(reviewArtifacts, canonicalById));
-  errors.push(...validateStage3RelationMappings(reviewArtifacts, canonicalById));
+  const backfillEvents = await readBackfillEvents(root);
+  errors.push(...backfillPacketErrors(backfillEvents, await readBackfillPackets(root)));
+  errors.push(...validateStage3RecordChanges(reviewArtifacts, canonicalById, backfillChangesOf(backfillEvents)));
+  errors.push(...validateStage3RelationMappings(reviewArtifacts, canonicalById, backfillEvents));
   if (base) errors.push(...validateAgainstBase({ base, candidates, reviews, semanticTexts }));
   return errors;
 }
@@ -280,9 +282,48 @@ export function walkStage3History(entryId, canonical, changes) {
   return errors;
 }
 
-function validateStage3RecordChanges(reviewArtifacts, canonicalById) {
+// Relation-only backfill packets (#446) are recorded as semantic-authority events instead of review manifests;
+// their changes join the same digest chain a record's Stage 3 history is walked through.
+async function readBackfillEvents(root) {
+  const text = await readOptional(path.join(root, 'data/validation/canonical-semantic-decision-source.json'));
+  if (text === undefined) return [];
+  let events;
+  try { events = JSON.parse(text).factory_admissions ?? []; } catch { return []; }
+  return events.filter((event) => /^R\d{6}$/u.test(event?.batch_id));
+}
+
+// A backfill event is bound to the exact bytes of its committed packet (`semantic_decisions_sha256`); a missing or
+// altered packet no longer matches the approval that the canonical audit chain recorded.
+export function backfillPacketErrors(events, packets) {
+  const errors = [];
+  for (const event of events) {
+    const text = packets.get(event.batch_id);
+    if (text === undefined) errors.push(`backfill event ${event.batch_id} has no committed packet file data/relation-backfill/${event.batch_id}.json; restore it from Git`);
+    else if (sha256Hex(text) !== event.semantic_decisions_sha256) errors.push(`backfill packet ${event.batch_id} does not match its semantic authority event digest`);
+  }
+  return errors;
+}
+
+async function readBackfillPackets(root) {
+  const dir = path.join(root, 'data/relation-backfill');
+  let names = [];
+  try { names = await readdir(dir); } catch { return new Map(); }
+  const packets = new Map();
+  for (const name of names.filter((file) => /^R\d{6}\.json$/u.test(file))) packets.set(name.slice(0, 7), await readFile(path.join(dir, name), 'utf8'));
+  return packets;
+}
+
+const backfillChangesOf = (events) => events.flatMap((event) => (event.changes ?? []).map((change) => ({
+  ...change, batchId: event.batch_id, decisionById: new Map(), relationAmendments: event.relation_amendments ?? [],
+})));
+
+function validateStage3RecordChanges(reviewArtifacts, canonicalById, backfillChanges = []) {
   const changesByRecord = new Map();
   const relationRecords = new Set();
+  for (const change of backfillChanges) {
+    relationRecords.add(change.entry_id);
+    changesByRecord.set(change.entry_id, [...(changesByRecord.get(change.entry_id) ?? []), change]);
+  }
   for (const { manifest, decisions } of reviewArtifacts.values()) {
     if (manifest.status !== 'complete' || !Array.isArray(manifest.admission?.changes)) continue;
     const decisionById = new Map(decisions.map((row) => [row.source_candidate_id, row]));
@@ -347,8 +388,17 @@ function validateStage3RecordChanges(reviewArtifacts, canonicalById) {
   return errors;
 }
 
-function validateStage3RelationMappings(reviewArtifacts, canonicalById) {
+function validateStage3RelationMappings(reviewArtifacts, canonicalById, backfillEvents = []) {
   const errors = [];
+  // Relations appended after admission (reverse amendments #399, backfill #446) follow the reviewed relations.
+  const appended = new Map();
+  const amendments = [
+    ...[...reviewArtifacts.values()].flatMap(({ manifest }) => (manifest.status === 'complete' ? manifest.admission?.relation_amendments ?? [] : [])),
+    ...backfillEvents.flatMap((event) => event.relation_amendments ?? []),
+  ];
+  for (const item of amendments.filter((entry) => entry.outcome === 'appended')) {
+    appended.set(item.source_sense_id, [...(appended.get(item.source_sense_id) ?? []), JSON.stringify(item.relation)]);
+  }
   const mappings = new Map();
   const aliases = new Map();
   for (const { manifest, decisions } of reviewArtifacts.values()) {
@@ -380,7 +430,10 @@ function validateStage3RelationMappings(reviewArtifacts, canonicalById) {
           const targetSense = senseMapping?.sense_ids?.[Number(relation.target_sense?.match(/-s(\d+)$/u)?.[1] ?? 1) - 1] ?? relation.target_sense;
           return { ...relation, target, ...(relation.target_sense === undefined ? {} : { target_sense: targetSense }) };
         });
-        if (JSON.stringify(actual.relations ?? []) !== JSON.stringify(expectedRelations)) {
+        const actualRelations = actual.relations ?? [];
+        const suffix = actualRelations.slice(expectedRelations.length).map((relation) => JSON.stringify(relation));
+        const prefixOk = JSON.stringify(actualRelations.slice(0, expectedRelations.length)) === JSON.stringify(expectedRelations);
+        if (!prefixOk || JSON.stringify([...suffix].sort()) !== JSON.stringify([...(appended.get(actual.id) ?? [])].sort())) {
           errors.push(`${row.source_candidate_id}: canonical relations do not match the source-bound reviewed relations after reference remapping`);
         }
       }

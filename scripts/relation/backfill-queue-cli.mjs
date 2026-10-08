@@ -6,12 +6,14 @@ import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import {
   BACKFILL_CONTRACT, candidateEvidence, currentCandidatesForDone, packetBoundErrors, inventoryCanonicalSenses, newQueueState, nextPacket, recordOutcomes, retrievePacket, summarizeQueue,
 } from './backfill-queue.mjs';
+import { applyBackfill } from './backfill-apply.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
 // Usage:
 //   node scripts/relation/backfill-queue-cli.mjs status
 //   node scripts/relation/backfill-queue-cli.mjs next [--limit N] [--out packet.json]
 //   node scripts/relation/backfill-queue-cli.mjs record <packet.json> <outcomes.json>
+//   node scripts/relation/backfill-queue-cli.mjs apply     (writes approved, not-yet-present relations into canonical)
 // State lives outside the repository (default ~/.cache/typewriter/relation-backfill/state.json, or --state <path>).
 const args = process.argv.slice(2);
 const flag = (name, fallback) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : fallback; };
@@ -79,7 +81,9 @@ if (command === 'status') {
   await writeFile(temporary, `${JSON.stringify({ ...result.state, canonical_revision: canonical.canonicalRevision }, null, 1)}\n`);
   await rename(temporary, statePath);
   console.log(JSON.stringify(summarizeQueue(rows, result.state, currentCandidatesForDone(canonical, rows, result.state, { index })), null, 2));
+} else if (command === 'apply') {
+  console.log(JSON.stringify(await applyBackfill({ root: process.cwd(), state, index }), null, 2));
 } else {
-  console.error('usage: status | next [--limit N] [--out file] | record <packet> <outcomes>');
+  console.error('usage: status | next [--limit N] [--out file] | record <packet> <outcomes> | apply');
   process.exit(2);
 }

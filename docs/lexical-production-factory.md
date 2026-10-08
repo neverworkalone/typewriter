@@ -403,6 +403,24 @@ Rules carried over unchanged:
   types, relevance or notes), and canonical integrity rejects missing targets,
   self-references and duplicates. A relation defect is a shared-contract fix,
   never a reason to hold or reject a valid lexical sense.
+- **Relation-only backfill (#446).** `backfill-queue-cli.mjs apply` writes approved queue
+  relations that canonical does not yet hold into existing senses, through the same
+  amendment planner and semantic-authority writer as #399, without any lexical admission.
+  The packet id `R######` stands in for the candidate: the semantic-authority event has no
+  entries, its `relation_amendments` carry the packet id as `source_candidate_id`, and the
+  committed `data/relation-backfill/R######.json` keeps the approved tuples and rationales.
+  Git and canonical remain the authority; the local queue state only remembers approvals.
+  `apply` writes the packet file first (the intent record), then canonical, then the
+  semantic-authority event; a packet without its event is an interrupted apply and the next
+  `apply` finishes it (the packet's own tuples are removed from the base, then re-planned).
+  An event without its packet, or whose packet bytes no longer match the event's
+  `semantic_decisions_sha256`, fails closed (in `apply` and in the factory validator). Only
+  approvals that still hold (source gloss and the approved target's owner and meaning unchanged
+  since review, the same check the queue uses) are applied; others go back for re-review. The intent packet also keeps the target meaning digest the
+  reviewer saw, and resuming refuses any not-yet-written tuple whose target has changed meaning. A tuple that is merely already present and
+  claimed by no packet is an exact-tuple no-op, and a different note for the same target is
+  a conflict. A review is not re-queued by the
+  `relation_neighbor_of_related` candidates that its own applied relations bring in.
 - **Stage 2 relation search (#446).** The worker hand-off instructs the agent to run
   `pnpm run relation:candidates <batch> --out <file>` after the sense work and review about
   20 candidates per sense where available. The output is candidates only; the existing

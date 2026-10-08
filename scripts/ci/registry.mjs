@@ -236,8 +236,8 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/relation/candidate-retrieval.test.mjs'],
       ),
       commandCheck(
-        'Test Issue #400 relation enrichment pilot contract and backfill queue',
-        ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs'],
+        'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
+        ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs'],
       ),
       commandCheck(
         'Test Issue #223 review-only import boundary',
