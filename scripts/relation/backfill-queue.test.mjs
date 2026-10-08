@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  isReviewCurrent, candidateEvidence, currentCandidatesForDone, inventoryCanonicalSenses, MAX_PACKET_SIZE, newQueueState, nextPacket, orderInventory, recordOutcomes, retrievePacket, summarizeQueue,
+  ReviewContext, isReviewCurrent, candidateEvidence, currentCandidatesForDone, inventoryCanonicalSenses, MAX_PACKET_SIZE, newQueueState, nextPacket, orderInventory, recordOutcomes, retrievePacket, summarizeQueue,
 } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -96,7 +96,7 @@ test('a review is re-queued when its gloss changed or the canonical now offers a
   assert.ok(candidateEvidence(retrievePacket(revisionB, packet, { index: buildRelationIndex(revisionB) }), buildRelationIndex(revisionB)).get(id).some((candidate) => candidate.id === 'w5-s1'), 'the new candidate is offered');
   assert.equal(pending(rowsB, revisionB), true, 'the unreviewed candidate returns the sense to the queue');
   assert.equal(summarizeQueue(rowsB, state, current(revisionB, state, rowsB)).completed, 0, 'status no longer counts the stale review');
-  assert.equal(pending(rowsB, revisionB, new Map()), true, 'without a current pool the old review fails closed');
+  assert.equal(pending(rowsB, revisionB, new ReviewContext([], buildRelationIndex(revisionB))), true, 'without a current pool the old review fails closed');
 });
 
 test('packets are fed by the production retriever and its fail-closed artifact validator', () => {
@@ -116,7 +116,9 @@ test('a review stays current only while the full reviewed candidate evidence hol
   const original = entry.reviewed_candidates;
   assert.ok(original.length >= 2, 'fixture has several candidates to vary');
   assert.ok(original.every((c) => c.id && c.pos && Array.isArray(c.signals)), 'evidence keeps identity, POS and signals');
-  const check = (current) => isReviewCurrent(row, entry, new Map([[row.sense_id, current]]));
+  const idx = buildRelationIndex(canonical);
+  const ctx = (current) => new ReviewContext([[row.sense_id, current]], idx);
+  const check = (current) => isReviewCurrent(row, entry, ctx(current));
   const edit = (index, change) => original.map((c, i) => (i === index ? { ...c, ...change } : c));
   assert.equal(check(structuredClone(original)), true, 'identical evidence (same revision or no-op change) stays done');
   assert.equal(check(original.slice(1)), true, 'a candidate that disappeared does not invalidate the review');
@@ -128,10 +130,10 @@ test('a review stays current only while the full reviewed candidate evidence hol
   assert.equal(check(edit(0, { meaning_sha256: 'e'.repeat(64) })), false, 'same signals, edited target lemma/gloss');
   assert.equal(check([original[1], original[0], ...original.slice(2)]), false, 'same target ids, different rank order');
   assert.equal(check([...original, { id: 'w9-s1', record_id: 'w9', pos: 'noun', signals: ['gloss_overlap'], literature: [] }]), false, 'a new candidate');
-  const summary = (current) => summarizeQueue(rows, state, new Map([[row.sense_id, current]])).completed;
+  const summary = (current) => summarizeQueue(rows, state, ctx(current)).completed;
   assert.equal(summary(structuredClone(original)), 1);
   assert.equal(summary(edit(0, { pos: 'verb' })), 0, 'status drops the stale completion');
-  assert.ok(nextPacket(rows, state, { limit: 10, currentCandidates: new Map([[row.sense_id, edit(0, { pos: 'verb' })]]) }).some((r) => r.sense_id === row.sense_id), 'next re-offers it');
+  assert.ok(nextPacket(rows, state, { limit: 10, currentCandidates: ctx(edit(0, { pos: 'verb' })) }).some((r) => r.sense_id === row.sense_id), 'next re-offers it');
 });
 
 test('approved relations are verified against canonical and the reviewed pool, then preserved verbatim', () => {
@@ -161,11 +163,43 @@ test('approved relations are verified against canonical and the reviewed pool, t
   assert.notEqual(other.approved_relations[0].relation_id, saved.approved_relations[0].relation_id);
   // The state survives a JSON restart intact; tampering with the preserved approvals invalidates the completion.
   const restored = JSON.parse(JSON.stringify(record(state, packet, [good]).state));
-  const cands = new Map([[row.sense_id, saved.reviewed_candidates]]);
+  const cands = new ReviewContext([[row.sense_id, saved.reviewed_candidates]], buildRelationIndex(canonical));
   assert.equal(isReviewCurrent(row, restored.done[row.sense_id], cands), true);
   const tampered = structuredClone(restored.done[row.sense_id]);
   tampered.approved_relations[0].relation.relevance = 1;
   assert.equal(isReviewCurrent(row, tampered, cands), false, 'edited approval no longer matches its id');
   const stripped = { ...restored.done[row.sense_id], approved_relations: [] };
   assert.equal(isReviewCurrent(row, stripped, cands), false, 'a count without the preserved tuples is not a completed review');
+});
+
+test('an approved target that left canonical (or changed owner) makes the review stale; one merely gone from the pool does not', () => {
+  const state0 = newQueueState(canonical.canonicalRevision);
+  const packet = nextPacket(rows, state0, { limit: 1 });
+  const row = packet[0];
+  const state = record(state0, packet, [outcome(row)]).state;
+  const approved = state.done[row.sense_id].approved_relations[0].relation;
+  const without = (id) => ({ ...canonical, canonicalRevision: 'd'.repeat(64), records: canonical.records.filter((r) => !r.senses.some((s) => s.id === id)) });
+  const status = (cn) => summarizeQueue(rows, state, currentCandidatesForDone(cn, rows, state)).completed;
+  const next = (cn) => nextPacket(rows, state, { limit: 10, currentCandidates: currentCandidatesForDone(cn, rows, state) }).some((r) => r.sense_id === row.sense_id);
+  assert.equal(status(canonical), 1);
+  // Revision B deletes the approved target: the stale completion is hidden from status and re-offered by next.
+  const deleted = without(approved.target_sense);
+  assert.equal(status(deleted), 0);
+  assert.equal(next(deleted), true);
+  // The target still exists but the relation is now canonical, so retrieval no longer offers it: still done.
+  const related = {
+    ...canonical,
+    canonicalRevision: 'e'.repeat(64),
+    records: canonical.records.map((r) => (r.id !== row.record_id ? r : {
+      ...r, senses: r.senses.map((s) => (s.id !== row.sense_id ? s : { ...s, relations: [{ target: approved.target, target_sense: approved.target_sense, type: 'association', note: n(), relevance: 4 }] })),
+    })),
+  };
+  function n() { return '이미 반영된 관계이다.'; }
+  const offered = candidateEvidence(retrievePacket(related, packet, { index: buildRelationIndex(related) }), buildRelationIndex(related)).get(row.sense_id);
+  assert.ok(!offered.some((c) => c.id === approved.target_sense), 'the approved target is no longer a candidate');
+  assert.equal(status(related), 1);
+  assert.equal(next(related), false);
+  // The target id now belongs to a different record: fail closed.
+  const reowned = { ...canonical, canonicalRevision: 'f'.repeat(64), records: canonical.records.map((r) => ({ ...r, senses: r.senses.map((s) => (s.id === approved.target_sense ? { ...s, id: `${r.id}-s9` } : s)) })) };
+  assert.equal(status(reowned), 0);
 });

@@ -65,6 +65,14 @@ export function candidateEvidence(artifact, index) {
   ]));
 }
 
+/** Current candidate evidence by sense id, carrying the canonical index the review is being checked against. */
+export class ReviewContext extends Map {
+  constructor(entries, index) {
+    super(entries);
+    this.index = index;
+  }
+}
+
 /** The preserved approvals must still be exactly what was recorded: ids bind sense, target, type, note and relevance. */
 function approvalsIntact(row, entry) {
   const approved = entry.approved_relations;
@@ -83,7 +91,14 @@ function approvalsIntact(row, entry) {
  */
 export function isReviewCurrent(row, entry, currentCandidates) {
   if (!entry || entry.gloss_sha256 !== row.gloss_sha256 || !approvalsIntact(row, entry)) return false;
-  const current = currentCandidates?.get(row.sense_id);
+  // Every approved target must still be the canonical sense it was approved as, even if it no longer appears as a
+  // candidate (for example because the relation now exists). A deleted or re-owned target makes the review stale.
+  const index = currentCandidates?.index;
+  if (!index) return false;
+  for (const { relation } of entry.approved_relations) {
+    if (index.bySenseId.get(relation.target_sense)?.record_id !== relation.target) return false;
+  }
+  const current = currentCandidates.get(row.sense_id);
   if (!current) return false;
   const reviewed = new Map(entry.reviewed_candidates.map((candidate) => [candidate.id, candidate]));
   for (const candidate of current) {
@@ -97,7 +112,7 @@ export function isReviewCurrent(row, entry, currentCandidates) {
 /** Current candidate evidence for the senses a state marks done (the only ones whose currency must be checked). */
 export function currentCandidatesForDone(canonical, rows, state, { index = buildRelationIndex(canonical) } = {}) {
   const doneRows = rows.filter((row) => state.done[row.sense_id]);
-  const result = new Map();
+  const result = new ReviewContext([], index);
   for (let i = 0; i < doneRows.length; i += MAX_PACKET_SIZE) {
     for (const [id, targets] of candidateEvidence(retrievePacket(canonical, doneRows.slice(i, i + MAX_PACKET_SIZE), { index }), index)) result.set(id, targets);
   }
@@ -108,7 +123,7 @@ export function currentCandidatesForDone(canonical, rows, state, { index = build
  * Next bounded packet of pending senses: never reviewed, or reviewed against a different gloss or an incomplete
  * candidate pool (see isReviewCurrent). A sense that no longer exists is simply dropped from consideration.
  */
-export function nextPacket(rows, state, { limit = 50, currentCandidates = new Map() } = {}) {
+export function nextPacket(rows, state, { limit = 50, currentCandidates = new ReviewContext([], null) } = {}) {
   if (state?.contract !== BACKFILL_CONTRACT) throw new Error('unknown backfill state contract');
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PACKET_SIZE) throw new Error(`limit must be an integer 1-${MAX_PACKET_SIZE}`);
   const pending = orderInventory(rows).filter((row) => !isReviewCurrent(row, state.done[row.sense_id], currentCandidates));
@@ -176,7 +191,7 @@ export function retrievePacket(canonical, packet, { index = buildRelationIndex(c
   return artifact;
 }
 
-export function summarizeQueue(rows, state, currentCandidates = new Map()) {
+export function summarizeQueue(rows, state, currentCandidates = new ReviewContext([], null)) {
   const done = rows.filter((row) => isReviewCurrent(row, state.done[row.sense_id], currentCandidates));
   const outcomes = {};
   for (const row of done) { const o = state.done[row.sense_id].outcome; outcomes[o] = (outcomes[o] ?? 0) + 1; }

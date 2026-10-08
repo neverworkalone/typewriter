@@ -1,10 +1,10 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import {
-  candidateEvidence, currentCandidatesForDone, inventoryCanonicalSenses, newQueueState, nextPacket, recordOutcomes, retrievePacket, summarizeQueue,
+  BACKFILL_CONTRACT, candidateEvidence, currentCandidatesForDone, inventoryCanonicalSenses, newQueueState, nextPacket, recordOutcomes, retrievePacket, summarizeQueue,
 } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -21,8 +21,22 @@ const command = args[0];
 const canonical = await loadCanonicalContext();
 const index = buildRelationIndex(canonical);
 const rows = inventoryCanonicalSenses(index);
+// Only a missing state file means "first run". An unreadable or corrupt file must stop the command: replacing it
+// with an empty state would silently discard every earlier approval on the next write.
 let state;
-try { state = JSON.parse(await readFile(statePath, 'utf8')); } catch { state = newQueueState(canonical.canonicalRevision); }
+try {
+  state = JSON.parse(await readFile(statePath, 'utf8'));
+} catch (error) {
+  if (error?.code !== 'ENOENT') {
+    console.error(`backfill state ${statePath} is unreadable or corrupt (${error.message}); refusing to continue. Restore it or move it aside deliberately.`);
+    process.exit(1);
+  }
+  state = newQueueState(canonical.canonicalRevision);
+}
+if (state?.contract !== BACKFILL_CONTRACT || typeof state.done !== 'object' || state.done === null || Array.isArray(state.done)) {
+  console.error(`backfill state ${statePath} does not match ${BACKFILL_CONTRACT}; refusing to continue.`);
+  process.exit(1);
+}
 
 // Completed reviews are re-checked against today's candidate pool, so a canonical change that surfaces a new
 // candidate returns that sense to the queue instead of silently counting as done.
@@ -51,7 +65,10 @@ if (command === 'status') {
   const result = recordOutcomes(state, packet, outcomes, { candidates: candidateEvidence(artifact, index), index, snapshotDigest: artifact.canonical_snapshot_digest });
   if (result.errors.length) { console.error(result.errors.join('\n')); process.exit(1); }
   await mkdir(path.dirname(statePath), { recursive: true });
-  await writeFile(statePath, `${JSON.stringify({ ...result.state, canonical_revision: canonical.canonicalRevision }, null, 1)}\n`);
+  // Atomic replace: a crash mid-write leaves the previous complete file in place.
+  const temporary = `${statePath}.${process.pid}.tmp`;
+  await writeFile(temporary, `${JSON.stringify({ ...result.state, canonical_revision: canonical.canonicalRevision }, null, 1)}\n`);
+  await rename(temporary, statePath);
   console.log(JSON.stringify(summarizeQueue(rows, result.state, currentCandidatesForDone(canonical, rows, result.state, { index })), null, 2));
 } else {
   console.error('usage: status | next [--limit N] [--out file] | record <packet> <outcomes>');

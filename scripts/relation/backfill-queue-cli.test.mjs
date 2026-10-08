@@ -61,6 +61,20 @@ test('CLI record verifies approved targets, preserves them across a restart, and
     assert.equal(again.status, 0, again.stderr);
     assert.notEqual(JSON.parse(await readFile(path.join(dir, 'packet2.json'), 'utf8')).packet[0].sense_id, row.sense_id);
 
+    // A corrupt or unreadable state file must stop the command and must never be replaced by an empty state.
+    const before = await readFile(state, 'utf8');
+    await writeFile(state, `${before.slice(0, 40)}`);
+    const truncated = await readFile(state, 'utf8');
+    for (const args of [['status'], ['next', '--limit', '1'], ['record', packetPath, outcomesPath]]) {
+      const result = run([...args, '--state', state]);
+      assert.notEqual(result.status, 0, args[0]);
+      assert.match(result.stderr, /unreadable or corrupt/u);
+      assert.equal(await readFile(state, 'utf8'), truncated, 'the damaged file is left exactly as found');
+    }
+    await writeFile(state, JSON.stringify({ contract: 'something-else', done: {} }));
+    assert.match(run(['status', '--state', state]).stderr, /does not match/u);
+    await writeFile(state, before);
+
     // A different relevance is different persistent evidence.
     const otherState = path.join(dir, 'other.json');
     await writeFile(outcomesPath, JSON.stringify(outcome({ target: pick.target.record_id, target_sense: pick.target.sense_id, relevance: 2 })));
