@@ -31,6 +31,27 @@ relation group은 생성하지 않는다. `projectSearchResults()`는 입력 배
 source order나 canonical relation type을 재분류하지 않는다. 우선순위와 동점
 규칙은 [`docs/search-candidates.md`](search-candidates.md)에 고정한다.
 
+## Exploratory relation relevance (#396)
+
+`near`, `mood`, `scene`, `sensory`, `action`, `association` relation은 canonical
+`relevance: 1..9`를 가진다. 이는 서수형 편집 우선순위(1 = 첫 페이지에서 가장
+강하게 경쟁, 3 = 강함, 5 = 분명히 유용, 7 = 더 넓거나 문맥 의존, 9 = 주변적이나
+보존 가치 있음, 2/4/6/8 = 중간 판단)이며 의미 거리·확률·신뢰도·정확한 순위가
+아니다. 밴드 간 숫자 차이는 같은 간격을 뜻하지 않고, 같은 밴드 안의 순서는
+의미를 주장하지 않는다. `direct`와 `antonym`에는 `relevance`를 붙이지 않는다.
+
+- 스키마는 `relevance`를 선택 필드로 받아 과거 snapshot과 호환된다. 현재
+  `data/canonical` 검증(`dataset-integrity`)은 탐색형 relation의 `relevance`를
+  필수로 요구하고 `direct`/`antonym`의 `relevance`를 거부한다.
+- 생성 SQLite `relations.relevance`(NULL 허용, 1..9 CHECK)에 저장하며 schema
+  version은 `3`이다. `relations.position`은 canonical source position이다.
+- `texture`/`association` group은 `relevance ASC`, 같은 값이면 source position
+  순으로 정렬한다(값이 없으면 마지막). 이 tie-break는 의미적 중요도를 뜻하지 않는다.
+- 한 페이지 20개, group당 표시 최대 100개 계약은 그대로다. canonical graph는
+  100개로 자르지 않으며, 101번째 이후 relation도 canonical/runtime/projection에
+  남아 이후 보강으로 `relevance`가 바뀌면 표시 범위로 들어올 수 있다.
+- 관계 개수·밀도 quota는 없다.
+
 `role`은 과거의 relation-closure 편집 분류를 보존하며 직접 검색 eligibility를
 결정하지 않는다. 유효한 in-scope record는 `start`와 `reference-only` 모두
 동일한 exact lookup projection을 사용한다. 관계 항목의

@@ -74,6 +74,7 @@ function expectedRowsFromNormalizedModel(model, generatedSurfaceForms) {
         target_sense_id: relation.target_sense,
         type: relation.type,
         note: relation.note,
+        relevance: relation.relevance ?? null,
       }))
     ))
   ));
@@ -131,6 +132,7 @@ function expectedRowsFromCanonicalRecords(canonicalRecords, generatedSurfaceForm
           target_sense_id: relation.target_sense ?? null,
           type: relation.type,
           note: relation.note,
+          relevance: relation.relevance ?? null,
         }))
       ))
     )),
@@ -216,9 +218,9 @@ function assertRepresentativeQueries(database, model) {
 
 function assertProvenanceMetadata(metadata, expectedWorktreeState = undefined) {
   assert.equal(metadata.dictionary_version, 'm2-pilot-1');
-  assert.equal(metadata.schema_version, '2');
+  assert.equal(metadata.schema_version, '3');
   assert.equal(metadata.normalization_version, '1');
-  assert.equal(metadata.build_contract, 'canonical-jsonl -> normalized-v1 -> sqlite-v2');
+  assert.equal(metadata.build_contract, 'canonical-jsonl -> normalized-v1 -> sqlite-v3');
   assert.equal(metadata.surface_form_projection_version, '1');
   assert.equal(metadata.build_tool_version, '1');
   assert.equal(metadata.node_version, process.version);

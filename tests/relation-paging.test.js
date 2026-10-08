@@ -111,3 +111,56 @@ describe('DictionaryResult 더보기', () => {
     expect(more(host, 'association')).toBeNull();
   });
 });
+
+describe('relevance ordering (#396)', () => {
+  function relations(specs) {
+    return specs.map(([type, relevance], position) => ({
+      position, target: `t${position}`, type, relevance, target_lemma: `단어${position}`,
+    }));
+  }
+  function group(specs, groupId = 'texture') {
+    const record = projectRecord({
+      id: 'w1', record_type: 'entry', role: 'start', lemma: '시험',
+      senses: [{ id: 'w1-s1', pos: 'noun', gloss: '뜻', relations: relations(specs) }],
+    });
+    return record.senses[0].relationGroups[groupId].items;
+  }
+
+  it('moves a later-added relevance-1 relation ahead of weaker ones', () => {
+    const items = group([['near', 5], ['mood', 3], ['near', 1]]);
+    expect(items.map(({ targetId }) => targetId)).toEqual(['t2', 't1', 't0']);
+  });
+
+  it('keeps source position as the deterministic tie-breaker within a band', () => {
+    const items = group([['near', 4], ['mood', 2], ['near', 4], ['mood', 2]]);
+    expect(items.map(({ targetId }) => targetId)).toEqual(['t1', 't3', 't0', 't2']);
+  });
+
+  it('keeps all 101+ relations in the projection while paging exposes the first 100', () => {
+    const specs = Array.from({ length: 105 }, (_, i) => ['scene', (i % 9) + 1]);
+    const items = group(specs, 'association');
+    expect(items).toHaveLength(105);
+    const page = pageRelationItems('association', items, 5);
+    expect(page.items).toHaveLength(100);
+    expect(page.hasMore).toBe(false);
+    // a later relevance-1 addition re-enters the visible window
+    const later = group([...specs, ['sensory', 1]], 'association');
+    expect(pageRelationItems('association', later, 1).items.map(({ targetId }) => targetId))
+      .toContain('t105');
+  });
+
+  it('leaves direct/antonym order untouched', () => {
+    const record = projectRecord({
+      id: 'w1', record_type: 'entry', role: 'start', lemma: '시험',
+      senses: [{
+        id: 'w1-s1', pos: 'noun', gloss: '뜻',
+        relations: [
+          { position: 0, target: 'a', type: 'antonym', target_lemma: 'a' },
+          { position: 1, target: 'b', type: 'antonym', target_lemma: 'b', relevance: 1 },
+        ],
+      }],
+    });
+    expect(record.senses[0].relationGroups.antonyms.items.map(({ targetId }) => targetId))
+      .toEqual(['a', 'b']);
+  });
+});

@@ -55,6 +55,8 @@ function fail(message, code = 'DATASET_INTEGRITY_ERROR') {
   throw new DatasetIntegrityError(message, code);
 }
 
+const EXPLORATORY_RELATION_TYPES = ['near', 'mood', 'scene', 'sensory', 'action', 'association'];
+
 function relationLocation(recordInfo, senseIndex, relationIndex) {
   return sourceLocation(
     recordInfo,
@@ -163,7 +165,7 @@ function validateRoleIdentity(recordInfos) {
   }
 }
 
-function validateRelations(recordInfos, indexes) {
+function validateRelations(recordInfos, indexes, { requireRelevance = false } = {}) {
   for (const sourceInfo of recordInfos) {
     const { record } = sourceInfo;
 
@@ -220,6 +222,27 @@ function validateRelations(recordInfos, indexes) {
               'TARGET_SENSE_RECORD_MISMATCH',
             );
           }
+        }
+
+        if (
+          requireRelevance
+          && EXPLORATORY_RELATION_TYPES.includes(relation.type)
+          && !Object.hasOwn(relation, 'relevance')
+        ) {
+          throw new DatasetIntegrityError(
+            `${location}: ${relation.type} relation requires relevance 1-9`,
+            'RELEVANCE_MISSING',
+          );
+        }
+
+        if (
+          Object.hasOwn(relation, 'relevance')
+          && ['direct', 'antonym'].includes(relation.type)
+        ) {
+          throw new DatasetIntegrityError(
+            `${location}: ${relation.type} relations keep their precision contract and must not carry relevance`,
+            'RELEVANCE_ON_PRECISION_RELATION',
+          );
         }
 
         if (relation.type === 'action') {
@@ -292,6 +315,7 @@ export function validateDatasetRecords(
     requireSurfaceFormProjection = false,
     requireSurfaceFormClassifications,
     requireSurfaceFormCollisionReview,
+    requireRelevance = false,
   } = {},
 ) {
   if (context && !context.derived) context.derived = {};
@@ -302,10 +326,13 @@ export function validateDatasetRecords(
   const memo = context?.records === recordInfos && recordInfos.every(isVerifiedImmutable)
     ? (context.derived.completeRevisionChecks ??= new Set())
     : undefined;
-  if (!memo?.has('role-identity-and-relations')) {
+  const relationCheckKey = requireRelevance
+    ? 'role-identity-and-relations:relevance'
+    : 'role-identity-and-relations';
+  if (!memo?.has(relationCheckKey)) {
     validateRoleIdentity(recordInfos);
-    validateRelations(recordInfos, indexes);
-    memo?.add('role-identity-and-relations');
+    validateRelations(recordInfos, indexes, { requireRelevance });
+    memo?.add(relationCheckKey);
     if (memo) recordCompleteRevisionCheck(context, 'role-relations', 'computed');
   } else {
     recordCompleteRevisionCheck(context, 'role-relations', 'reused');
@@ -444,6 +471,8 @@ export async function validateDatasetDirectory(
     }
   }
   const indexes = validateDatasetRecords(result.records, {
+    // Historical snapshots predate relevance; the live canonical set requires it.
+    requireRelevance: isDefaultCanonical,
     ...options,
     context,
     semanticAudit,

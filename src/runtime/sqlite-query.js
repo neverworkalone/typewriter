@@ -89,6 +89,7 @@ export function getSenseRelations(database, senseId) {
       relations.target_sense_id AS target_sense,
       relations.type,
       relations.note,
+      relations.relevance,
       target_records.lemma AS target_lemma,
       target_senses.pos AS target_pos,
       target_senses.gloss AS target_gloss

@@ -21,6 +21,24 @@ const lexical = (message, code) => { throw new Stage3AdmissionError(message, { c
 const systemic = (message, code) => { throw new Stage3AdmissionError(message, { category: 'systemic', code }); };
 
 export const canonicalRecordSha256 = (record) => sha256Hex(JSON.stringify(record));
+
+// #396: Stage 3 digests recorded before `relevance` existed bind the record without it.
+// Accept such a historical digest only for the same record projected without relevance.
+const EXPLORATORY_TYPES = new Set(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
+export function matchesHistoricalRecordSha256(record, digest) {
+  if (canonicalRecordSha256(record) === digest) return true;
+  return canonicalRecordSha256({
+    ...record,
+    senses: (record.senses ?? []).map((sense) => ({
+      ...sense,
+      relations: sense.relations?.map((relation) => {
+        if (!EXPLORATORY_TYPES.has(relation.type)) return relation;
+        const { relevance, ...rest } = relation;
+        return rest;
+      }),
+    })),
+  }) === digest;
+}
 const nextEntryId = (records, offset = 1) => {
   const max = records.reduce((value, record) => Math.max(value, Number(record.id.match(W_ID)?.[1] ?? 0)), 0);
   return 'w' + String(max + offset).padStart(5, '0');

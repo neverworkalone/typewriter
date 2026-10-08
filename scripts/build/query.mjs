@@ -59,7 +59,7 @@ export function readLogicalDatabaseSnapshot(database) {
       database
         .prepare(
           `SELECT source_sense_id, position, target_record_id,
-                  target_sense_id, type, note
+                  target_sense_id, type, note, relevance
            FROM relations
            ORDER BY source_sense_id, position`,
         )

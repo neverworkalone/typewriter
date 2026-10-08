@@ -67,6 +67,7 @@ CREATE TABLE relations (
     'scene', 'sensory', 'action', 'association'
   )),
   note TEXT NOT NULL,
+  relevance INTEGER CHECK (relevance IS NULL OR relevance BETWEEN 1 AND 9),
   PRIMARY KEY (source_sense_id, position),
   FOREIGN KEY (source_sense_id) REFERENCES senses(id) ON DELETE CASCADE,
   FOREIGN KEY (target_record_id) REFERENCES records(id),

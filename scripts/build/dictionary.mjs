@@ -136,8 +136,8 @@ function insertModel(database, model, metadata, surfaceFormRows) {
   );
   const insertRelation = database.prepare(
     `INSERT INTO relations
-      (source_sense_id, position, target_record_id, target_sense_id, type, note)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+      (source_sense_id, position, target_record_id, target_sense_id, type, note, relevance)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
 
   for (const [key, value] of metadata) {
@@ -183,6 +183,7 @@ function insertModel(database, model, metadata, surfaceFormRows) {
           relation.target_sense,
           relation.type,
           relation.note,
+          relation.relevance ?? null,
         );
       });
     }

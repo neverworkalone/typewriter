@@ -1,3 +1,4 @@
+import { withoutRelevance } from '../validate/relevance-projection.mjs';
 import { loadCanonicalBeforeFactoryAdmissions, restorePreFactoryDecisionSource } from '../validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -594,7 +595,7 @@ export async function validateIssue211({ writeReport = false } = {}) {
   });
   for (const recordInfo of historicalCanonical.records) {
     const record = recordOf(recordInfo);
-    assert.deepEqual(currentCanonicalById.get(record.id), record, `${record.id} frozen Issue #219 base record is unchanged`);
+    assert.deepEqual(withoutRelevance(currentCanonicalById.get(record.id)), record, `${record.id} frozen Issue #219 base record is unchanged`);
   }
   const candidateIds = new Set(semanticSource.candidate_records.map(({ id }) => id));
   assert.equal(candidateIds.size, EXPECTED_LEMMAS.length, 'candidate record identities are unique');
@@ -609,13 +610,13 @@ export async function validateIssue211({ writeReport = false } = {}) {
     const decision = semanticSource.decisions.find(({ candidate_record_id: id }) => id === candidate.id);
     const canonicalRecord = canonicalById.get(candidate.id);
     if (admittedDecisionIds.has(candidate.id)) {
-      assert.deepEqual(canonicalRecord, candidate, `${candidate.id} canonical admission`);
+      assert.deepEqual(withoutRelevance(canonicalRecord), candidate, `${candidate.id} canonical admission`);
     } else {
       assert.equal(canonicalRecord, undefined, `${candidate.id} held candidate is not canonical`);
       assert.equal(decision.decision, 'held', `${candidate.id} non-admitted disposition`);
     }
   }
-  assert.deepEqual(importRecords, semanticSource.candidate_records.filter(({ id }) => admittedDecisionIds.has(id)), 'pre-factory canonical import matches authored candidate records');
+  assert.deepEqual(importRecords.map(withoutRelevance), semanticSource.candidate_records.filter(({ id }) => admittedDecisionIds.has(id)), 'pre-factory canonical import matches authored candidate records');
 
   const baseSeed = {
     ...structuredClone(historicalSeed),
