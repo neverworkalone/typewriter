@@ -349,13 +349,18 @@ test('post-write validation is base-aware like CI: merged reviews are compared t
   const failing = { ...deps, validate: async () => ['C000001: new batch error'] };
   await assert.rejects(() => runStage1([...args, '--base-ref', 'HEAD'], failing), /new batch error/);
   await assert.rejects(() => readdir(path.join(root, 'data/candidates/C000001')), { code: 'ENOENT' });
-  await mkdir(path.join(root, 'scripts/factory'), { recursive: true });
-  await writeFile(path.join(root, 'scripts/factory/working-copy.mjs'), 'export const dirty = true;\n');
-  await assert.rejects(
-    () => runStage1([...args, '--base-ref', 'HEAD'], deps),
-    /producer source files under scripts\/factory must be committed/u,
-  );
-  await assert.rejects(() => readdir(path.join(root, 'data/candidates/C000001')), { code: 'ENOENT' });
+  for (const sourcePath of ['scripts/factory/working-copy.mjs', 'scripts/intake/kiwi-client.mjs']) {
+    const absoluteSource = path.join(root, sourcePath);
+    await mkdir(path.dirname(absoluteSource), { recursive: true });
+    await writeFile(absoluteSource, 'export const dirty = true;\n');
+    await assert.rejects(
+      () => runStage1([...args, '--base-ref', 'HEAD'], deps),
+      /producer source scope has uncommitted changes/u,
+      sourcePath,
+    );
+    await rm(path.dirname(absoluteSource), { recursive: true, force: true });
+    await assert.rejects(() => readdir(path.join(root, 'data/candidates/C000001')), { code: 'ENOENT' });
+  }
 });
 
 test('Git-backed Stage 1 refuses an unresolved HEAD even when base-ref is none', async () => {

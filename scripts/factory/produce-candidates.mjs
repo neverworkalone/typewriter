@@ -103,6 +103,15 @@ export function parseArguments(argv) {
 }
 
 const git = (args, root) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+const STAGE1_SOURCE_PATHS = Object.freeze([
+  'scripts/factory',
+  'scripts/intake',
+  'scripts/reference/corpus-index.mjs',
+  'scripts/reference/short-query-counts.mjs',
+  'scripts/reference/short-query-postings.mjs',
+  'scripts/typewriter-cache.mjs',
+  'scripts/python/env.mjs',
+]);
 
 // Bind generated manifests to the committed producer tree. Synthetic test roots without Git
 // remain supported; a real checkout must not run Stage 1 from modified factory source.
@@ -123,12 +132,12 @@ function producerRevisionFor(root) {
   }
   let sourceStatus;
   try {
-    sourceStatus = git(['status', '--porcelain', '--', 'scripts/factory'], root);
+    sourceStatus = git(['status', '--porcelain', '--untracked-files=all', '--', ...STAGE1_SOURCE_PATHS], root);
   } catch {
     throw new Stage1Error(['cannot verify producer source cleanliness before Stage 1 generation']);
   }
   if (sourceStatus.trim()) {
-    throw new Stage1Error(['Stage 1 producer source files under scripts/factory must be committed before generation']);
+    throw new Stage1Error(['Stage 1 producer source scope has uncommitted changes; commit producer dependencies before generation']);
   }
   return revision;
 }
