@@ -217,7 +217,9 @@ distinct-citation-lemma-v1`; the v1 manifest fields are kept (`task_id`, `batch_
   or `excluded_observations[]` with disposition `prior_produced_lemma` or
   `deferred_lemma`. Excluded observations retain their text-free source reference,
   analysis/observation digests, holds and ensemble trace; they cannot become a new
-  candidate row. `ensemble.counts.observations` reconciles all three sets.
+  candidate row. `ensemble.counts.input_observations` is recorded from the source
+  analysis decisions separately from `counts.observations`, which must equal the
+  candidate + unresolved + excluded disposition total.
   Historical `ensemble-resolution-v2` manifests remain valid and unchanged.
 
 **Before (v1, 3 candidates for one lemma) → after (v2, 1 candidate):**

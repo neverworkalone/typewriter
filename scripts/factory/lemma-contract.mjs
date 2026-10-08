@@ -293,10 +293,10 @@ function validateEnsembleManifest(manifest) {
   if (!isPlainObject(ensemble) || Object.keys(ensemble).sort().join() !== [...ENSEMBLE_MANIFEST_KEYS].sort().join() || !supportedContract || !isSha256(ensemble.trace_sha256)) {
     errors.push(`candidate manifest: ensemble must be {contract: ${LEGACY_ENSEMBLE_CONTRACT} or ${ENSEMBLE_CONTRACT}, counts, trace_sha256}`);
   } else {
-    const expectedCounts = isLegacy ? 'categories,observations,queue' : 'categories,excluded,observations,queue';
+    const expectedCounts = isLegacy ? 'categories,observations,queue' : 'categories,excluded,input_observations,observations,queue';
     if (!isPlainObject(ensemble.counts) || Object.keys(ensemble.counts).sort().join() !== expectedCounts) {
       errors.push(isLegacy ? 'candidate manifest: ensemble.counts must be {observations, categories, queue}'
-        : 'candidate manifest: ensemble.counts must be {observations, categories, queue, excluded}');
+        : 'candidate manifest: ensemble.counts must include {input_observations, observations, categories, queue, excluded}');
     }
     if (isLegacy && manifest.excluded_observations !== undefined) errors.push('candidate manifest: legacy ensemble manifests cannot include excluded_observations');
     if (!isLegacy && !Array.isArray(manifest.excluded_observations)) errors.push('candidate manifest: ensemble v3 requires excluded_observations');
@@ -377,9 +377,10 @@ function validateEnsembleBindings(manifest, rows) {
   const counts = manifest.ensemble.counts;
   if (!isPlainObject(counts) || counts.queue !== manifest.unresolved_observations.length) errors.push('candidate manifest: ensemble.counts.queue must equal the unresolved queue length');
   else if (counts.observations !== manifest.observation_count + manifest.unresolved_observations.length + excluded.length
+    || (isCurrent && counts.input_observations !== counts.observations)
     || (isCurrent && counts.excluded !== excluded.length)
     || JSON.stringify(counts.categories) !== JSON.stringify(Object.fromEntries(CATEGORIES.map((category) => [category, counts.categories?.[category]])))) {
-    errors.push('candidate manifest: ensemble.counts does not match the manifest observation accounting');
+    errors.push('candidate manifest: ensemble.counts does not match the independent input observation count and disposition accounting');
   } else if (CATEGORIES.some((category) => recomputed[category] !== counts.categories[category])) {
     errors.push('candidate manifest: ensemble.counts.categories does not match the candidate, queue and excluded dispositions');
   }

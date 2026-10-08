@@ -82,10 +82,12 @@ Under the ensemble policy the v2 manifest additionally carries (all text-free):
 
 - `analyzer_providers` (exactly the three, in order, each `identity_digest` pinned) and
   `resolution_policy: provider-resolution-v2-ensemble`; `analyzer_digest` binds both;
-- New batches use `ensemble: {contract: ensemble-resolution-v3, counts, trace_sha256}` — `counts.observations`
-  equals candidate observations + unresolved queue + `excluded_observations`; `counts.excluded` equals the latter's
-  length. `trace_sha256` binds the provider identities, every observation digest/trace pair across all three
-  dispositions, row review summaries and recorded context decisions. Historical v2 manifests remain valid as written.
+- New batches use `ensemble: {contract: ensemble-resolution-v3, counts, trace_sha256}` —
+  `counts.input_observations` is counted from the source observation list before disposition; `counts.observations`
+  equals candidate observations + unresolved queue + `excluded_observations`; and `counts.excluded` equals the latter's
+  length. The shared validator requires `input_observations === observations`, independently checking the partition.
+  `trace_sha256` binds the provider identities, every observation digest/trace pair across all three dispositions,
+  row review summaries and recorded context decisions. Historical v2 manifests remain valid as written.
 - `excluded_observations[]`: text-free assigned observations with disposition `prior_produced_lemma` or
   `deferred_lemma`, citation lemma/POS, bounded surface and source reference, analysis digest, holds, observation digest
   and the same ensemble trace record used on candidate observations. These records explain why a provider decision was

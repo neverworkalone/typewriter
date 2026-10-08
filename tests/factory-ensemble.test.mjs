@@ -12,6 +12,7 @@ import {
   ENSEMBLE_POLICY,
   classifyObservation,
   ENSEMBLE_PROVIDER_ORDER,
+  ensembleTraceSha256,
   verifyEnsembleTraces,
 } from '../scripts/factory/ensemble-resolver.mjs';
 import { CONTEXT_PARAGRAPH_LOOKUP_SQL, createCorpusContextSource } from '../scripts/factory/corpus-context-source.mjs';
@@ -589,8 +590,27 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     assert.deepEqual(result.manifest.excluded_observations.map(({ disposition, lemma, pos, surface }) => [disposition, lemma, pos, surface]), [
       ['prior_produced_lemma', '걷다', 'verb', '걸어'],
     ]);
+    assert.equal(result.manifest.ensemble.counts.input_observations, 2);
     assert.equal(result.manifest.ensemble.counts.observations, 2);
     assert.equal(result.manifest.ensemble.counts.excluded, 1);
+    const omitted = structuredClone(result.manifest);
+    omitted.excluded_observations.pop();
+    omitted.ensemble.counts.excluded = omitted.excluded_observations.length;
+    omitted.ensemble.counts.observations = omitted.observation_count + omitted.unresolved_observations.length + omitted.excluded_observations.length;
+    omitted.ensemble.counts.categories = Object.fromEntries(['concordant', 'supported_alternative', 'conflicted', 'unsupported_or_unknown'].map((category) => [category, 0]));
+    for (const row of result.rows) for (const [category, count] of Object.entries(row.review.categories)) omitted.ensemble.counts.categories[category] += count;
+    for (const entry of omitted.unresolved_observations) omitted.ensemble.counts.categories[entry.category] += 1;
+    for (const entry of omitted.excluded_observations) omitted.ensemble.counts.categories[entry.ensemble.category] += 1;
+    omitted.ensemble.trace_sha256 = ensembleTraceSha256({
+      providers: omitted.analyzer_providers,
+      observationTraceDigests: result.rows.flatMap((row) => [JSON.stringify(['review', row.review.trace_sha256]),
+        ...row.observations.map((observation) => JSON.stringify([observation.observation_digest, observation.ensemble.trace_digest]))]),
+      queueTraceDigests: omitted.unresolved_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.trace_digest])),
+      excludedTraceDigests: omitted.excluded_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.ensemble.trace_digest])),
+      contextDecisionsSha256: omitted.context_fallback.decisions_sha256,
+    });
+    assert.match(validateCandidateBatch({ manifest: omitted, candidatesText: result.candidatesText }).join(), /independent input observation count/u,
+      'recomputing disposition counts and trace digest cannot hide a producer input observation');
     const traces = result.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest,
       trace_digest: decision.trace_digest, trace: decision.trace }));
     assert.deepEqual(verifyEnsembleTraces({ rows: result.rows, queue: result.manifest.unresolved_observations,

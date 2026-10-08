@@ -660,6 +660,7 @@ function ensembleManifestFields({ grouped, rows, excludedObservations, providers
     ensemble: {
       contract: ENSEMBLE_CONTRACT,
       counts: {
+        input_observations: grouped.decisions.length,
         observations: rows.reduce((sum, row) => sum + row.observation_total, 0) + grouped.unresolved.length + excludedObservations.length,
         categories,
         queue: grouped.unresolved.length,
