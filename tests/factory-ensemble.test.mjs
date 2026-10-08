@@ -548,11 +548,18 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     assert.equal(result.summary.skippedProducedLemmas, 1);
     assert.deepEqual(await validateFactoryRepository({ root }), []);
 
-    const staleEvidence = { ...evidence, selection: { ...evidence.selection, exclusion_sha256: 'b'.repeat(64) } };
-    await writeFile(path.join(cache.taskDirectory, 'stale-candidate-evidence.json'), JSON.stringify(staleEvidence));
-    await assert.rejects(() => runStage1([
-      '--evidence', 'runs/T000001/stale-candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--dry-run',
-    ], deps), /exclusion digest does not match candidate evidence/u);
+    const malformedCases = [
+      ['stale-candidate-evidence.json', { ...evidence, selection: { ...evidence.selection, exclusion_sha256: 'b'.repeat(64) } }, /exclusion digest does not match candidate evidence/u],
+      ['missing-exclusion-count.json', { ...evidence, selection: (({ excluded_candidate_lemma_count: _omit, ...selection }) => selection)(evidence.selection) }, /exclusion count is missing/u],
+      ['missing-orchestration-digest.json', { ...evidence, orchestration: {} }, /orchestration is missing/u],
+      ['missing-orchestration.json', (({ orchestration: _omit, ...rest }) => rest)(evidence), /orchestration is missing/u],
+    ];
+    for (const [file, malformed, expectedError] of malformedCases) {
+      await writeFile(path.join(cache.taskDirectory, file), JSON.stringify(malformed));
+      await assert.rejects(() => runStage1([
+        '--evidence', `runs/T000001/${file}`, '--task-id', 'T000001', '--base-ref', 'none', '--dry-run',
+      ], deps), expectedError);
+    }
   } finally {
     await rm(root, { recursive: true, force: true });
   }

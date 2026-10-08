@@ -184,7 +184,10 @@ const readJson = async (file, label) => {
 // re-enter a later batch merely because it was absent from the raw proposal list.
 async function evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths }) {
   const selection = evidence?.selection;
-  const hasBinding = selection?.exclusion_sha256 !== undefined
+  const hasBinding = evidence?.schema_version !== undefined
+    || evidence?.publication_state !== undefined
+    || evidence?.orchestration !== undefined
+    || selection?.exclusion_sha256 !== undefined
     || selection?.exclusion_source_artifacts !== undefined;
   if (!hasBinding) return new Set();
   if (!selection || !/^[0-9a-f]{64}$/u.test(String(selection.exclusion_sha256 ?? ''))
@@ -224,11 +227,15 @@ async function evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths 
   if (JSON.stringify(selection.exclusion_source_artifacts) !== JSON.stringify(sources)) {
     throw new Stage1Error(['reviewed-lemma exclusion sources do not match candidate evidence']);
   }
-  if (selection.excluded_candidate_lemma_count !== undefined && selection.excluded_candidate_lemma_count !== lemmas.length) {
-    throw new Stage1Error(['reviewed-lemma exclusion count does not match candidate evidence']);
+  if (!Number.isSafeInteger(selection.excluded_candidate_lemma_count)
+    || selection.excluded_candidate_lemma_count !== lemmas.length) {
+    throw new Stage1Error(['reviewed-lemma exclusion count is missing or does not match candidate evidence']);
   }
-  if (evidence.orchestration?.exclusion_manifest_sha256 !== undefined
-    && evidence.orchestration.exclusion_manifest_sha256 !== computedDigest) {
+  const orchestrationDigest = evidence.orchestration?.exclusion_manifest_sha256;
+  if (!/^[0-9a-f]{64}$/u.test(String(orchestrationDigest ?? ''))) {
+    throw new Stage1Error(['candidate evidence orchestration is missing the prior-lemma exclusion digest']);
+  }
+  if (orchestrationDigest !== computedDigest) {
     throw new Stage1Error(['reviewed-lemma exclusion digest does not match evidence orchestration']);
   }
   return new Set(lemmas);
