@@ -1,4 +1,5 @@
 import { REVIEWABLE_HOLDS } from '../intake/production-handoff.mjs';
+import { validateLiteratureLookup } from './literature-rescue.mjs';
 
 // Stage 2 decision rows for lemma-centered candidates (issue #275). A candidate is one lemma, so
 // its decision row also accounts for every usage group (prospective sense opportunity): no
@@ -81,7 +82,7 @@ export function resolveGroupEntries(row, candidate) {
 export function validateLemmaDecision(row, candidate, { canonicalIndex, support } = {}) {
   const at = `decision ${row.source_candidate_id}`;
   const resolved = resolveGroupEntries(row, candidate);
-  const errors = [...resolved.errors];
+  const errors = [...resolved.errors, ...validateLiteratureLookup(row)];
   if (errors.length && resolved.entries.length === 0) return errors;
   const surfaceOf = new Map(candidate.forms.map((form) => [form.form_id, form.surface]));
   const admitted = ADMITTED.has(row.disposition);

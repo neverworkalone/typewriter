@@ -139,6 +139,7 @@
     "reference:literature:full-build": "node scripts/reference/build-literature-index.mjs full-build",
     "reference:literature:full-verify": "node scripts/reference/build-literature-index.mjs full-verify",
     "reference:literature:search": "node scripts/reference/search-literature-index.mjs",
+    "factory:literature-rescue": "node scripts/factory/literature-rescue-cli.mjs",
     "reference:literature:evidence": "node scripts/reference/literature-evidence-pack.mjs",
     "reference:literature:validate": "node scripts/reference/literature-validation.mjs",
     "reference:literature:boundary:measure": "node scripts/reference/literature-boundary-measure.mjs",
