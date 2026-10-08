@@ -274,3 +274,64 @@ test('hostile amendment JSON yields contract errors, never exceptions, on every 
   }
   assert.deepEqual(validateDecisionRow(decision(), { canonicalIndex: new Map() }), []);
 });
+
+test('two admitted decisions proposing one tuple: first appends, second is an idempotent no-op, through the real authority, audit and validators', async () => {
+  const { records, paths } = await realCanonical();
+  const ledger = JSON.parse(await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8'));
+  const touched = new Set((ledger.factory_admissions ?? []).flatMap((event) => event.changes.map((change) => change.entry_id)));
+  const existing = records.find((record) => !touched.has(record.id) && record.senses.length === 1 && record.senses[0].pos === 'noun');
+  const sense = existing.senses[0];
+  const idA = 'C900001-0001';
+  const idB = 'C900001-0002';
+  const amend = (rationale) => [{
+    source_record_id: existing.id, source_sense_id: sense.id, source_gloss_sha256: sha256Json(sense.gloss),
+    relation: { target: idA, target_sense: `${idA}-s1`, type: 'association', note: '새 낱말에서 거꾸로 떠오르는 연상이다.', relevance: 4 },
+    rationale: `${existing.id} ${sense.id}: ${rationale}`,
+  }];
+  const decisions = [
+    { source_candidate_id: idA, disposition: 'included', target: { kind: 'new_entry' }, reviewed_record: { lemma: '합성시험낱말', senses: [{ pos: 'noun', gloss: '합성 시험에서 쓰는 첫째 뜻풀이.' }] }, relation_amendments: amend('첫째 후보의 근거.') },
+    { source_candidate_id: idB, disposition: 'included', target: { kind: 'new_entry' }, reviewed_record: { lemma: '합성시험단어', senses: [{ pos: 'noun', gloss: '합성 시험에서 쓰는 또 다른 단일 뜻풀이.' }] }, relation_amendments: amend('둘째 후보의 근거.') },
+  ];
+  const rowFor = (decisionRow) => {
+    const id = decisionRow.source_candidate_id;
+    const record = reviewedCandidateRecord(decisionRow);
+    const row = {
+      source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+      decision_rationale: `${id}: 합성 시험 결정.`, gloss_judgment: 'fit',
+      sense_reviews: record.senses.map((item) => ({
+        sense_id: item.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+        boundary_rationale: `${id} ${item.id}: 한 가지 뜻으로 한정된다.`, semantic_rationale: `${id} ${item.id}: ${item.gloss}`,
+        relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: `${id} ${item.id}: 관계 없음.`,
+      })),
+      boundary_pairs: [],
+    };
+    row.review_binding = authorSemanticReviewBinding(row, record);
+    return row;
+  };
+  const admission = planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: decisions.map((row) => ({ candidate_id: row.source_candidate_id })), decisions, canonicalRecords: records, recordPathById: paths, baseCanonicalSnapshotDigest: digest,
+  });
+  assert.deepEqual(admission.relationAmendments.map((item) => item.outcome), ['appended', 'already_present']);
+  assert.equal(admission.records.get(existing.id).record.senses[0].relations.length, 1);
+  const authority = await buildStage3SemanticAuthority({
+    root: process.cwd(), baseCanonicalRecords: records, plan: admission, semanticDecisions: { decisions: decisions.map(rowFor) }, semanticDecisionsText: '{}',
+  });
+  const after = records.map((item) => admission.records.get(item.id)?.record ?? item)
+    .concat([...admission.records.values()].filter((update) => !update.before).map((update) => update.record));
+  const batchDecisionSources = await readAuthoredBatchDecisionSources();
+  assert.doesNotThrow(() => buildSemanticAuditFromDecisionSource(after, authority.sourceObject, {
+    baseRecords: after, batchDecisionSources, artifactId: 'test-duplicate-reverse-relation',
+  }));
+  const manifest = { ...admission.reviewManifest, admission: {
+    ...admission.reviewManifest.admission, canonical_snapshot_digest: digest,
+    semantic_authority: { path: 'data/validation/canonical-semantic-decision-source.json', source_id: authority.sourceObject.source_id, admission_sha256: authority.sourceEvent.sha256 },
+  } };
+  const byId = new Map(after.map((item) => [item.id, item]));
+  assert.deepEqual(validateStage3AdmissionManifest(manifest, decisions, byId), []);
+  const flipped = (mutate) => { const copy = structuredClone(manifest); mutate(copy.admission.relation_amendments); return validateStage3AdmissionManifest(copy, decisions, byId).join('\n'); };
+  assert.match(flipped((list) => { list[1].outcome = 'appended'; }), /outcome does not match|added_relation_ids differ/u);
+  assert.match(flipped((list) => { list[0].outcome = 'already_present'; }), /outcome does not match|added_relation_ids differ/u);
+});

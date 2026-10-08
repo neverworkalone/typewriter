@@ -447,10 +447,22 @@ export function validateStage3AdmissionManifest(reviewManifest, decisions, canon
       if (!['appended', 'already_present'].includes(amendment.outcome)) errors.push(`${here} has an invalid outcome`);
       if (!/^[0-9a-f]{64}$/u.test(amendment.source_gloss_sha256 ?? '') || !/^[0-9a-f]{64}$/u.test(amendment.rationale_sha256 ?? '')) errors.push(`${here} needs gloss and rationale digests`);
       if (!(sense.relations ?? []).some((relation) => JSON.stringify(relation) === JSON.stringify(amendment.relation))) errors.push(`${here} tuple is absent from the canonical source sense`);
-      const change = admission.changes.find((item) => item.entry_id === amendment.source_record_id);
-      const recorded = change?.operation === 'append_relations' && change.added_relation_ids.includes(amendment.relation_id);
-      if ((amendment.outcome === 'appended') !== recorded) errors.push(`${here} outcome does not match the recorded canonical change`);
     }
+    // Outcomes are per amendment, but a canonical append is per tuple: two admitted candidates may legitimately
+    // propose the same tuple, the first appends it and every later one is an idempotent no-op.
+    const firstOfId = new Map();
+    amendments.forEach((amendment, index) => {
+      const key = `${amendment?.source_record_id}\u0000${amendment?.relation_id}`;
+      if (!firstOfId.has(key)) firstOfId.set(key, index);
+    });
+    amendments.forEach((amendment, index) => {
+      const here = `relation amendment ${amendment?.source_candidate_id} ${amendment?.source_sense_id}`;
+      const change = admission.changes.find((item) => item.entry_id === amendment?.source_record_id && item.operation === 'append_relations');
+      const recorded = Boolean(change?.added_relation_ids.includes(amendment?.relation_id));
+      const first = firstOfId.get(`${amendment?.source_record_id}\u0000${amendment?.relation_id}`) === index;
+      const expectedOutcome = recorded && first ? 'appended' : 'already_present';
+      if (amendment?.outcome !== expectedOutcome) errors.push(`${here} outcome does not match the recorded canonical change`);
+    });
     for (const change of admission.changes.filter((item) => item.operation === 'append_relations')) {
       const ids = amendments.filter((item) => item.source_record_id === change.entry_id && item.outcome === 'appended').map((item) => item.relation_id);
       if (!same(ids, change.added_relation_ids)) errors.push(`admission change ${change.entry_id} added_relation_ids differ from its relation amendments`);
