@@ -200,6 +200,29 @@ test('provisional hints respect pos and exact identity', () => {
   assert.ok(batch([{ provisional_id: 'provisional:B/NOPE/x' }]).sources[0].candidates.every((c) => !c.signals.includes('explicit_hint')));
 });
 
+test('self and same-entry targets are excluded for provisional sources and rejected by the validator', () => {
+  const index = buildRelationIndex(synthetic);
+  const prov = (candidate_id, sense_key, pos, extra = {}) => ({ kind: 'provisional', batch_id: 'B', candidate_id, sense_key, lemma: '목표', pos, gloss: '같은 뜻풀이 소리 상태', ...extra });
+  const out = retrieveRelationCandidates(index, [
+    prov('C1', 's1', 'noun', { hints: [{ provisional_id: 'provisional:B/C1/s1' }, { provisional_id: 'provisional:B/C1/s2' }, { lemma: '목표' }] }),
+    prov('C1', 's2', 'adjective'),
+    prov('C2', 's1', 'noun'),
+  ]);
+  const targets = out.sources[0].candidates.map((c) => c.target.provisional_id).filter(Boolean);
+  assert.deepEqual(targets, ['provisional:B/C2/s1']);
+  assert.deepEqual(validateRelationCandidateArtifact(out, index), []);
+  const forged = structuredClone(out);
+  forged.sources[0].candidates.push({ rank: 2, target: { kind: 'provisional', provisional_id: 'provisional:B/C1/s2', candidate_id: 'C1', pos: 'adjective' }, signals: ['explicit_hint'] });
+  assert.ok(validateRelationCandidateArtifact(forged, index).some((e) => e.includes('own entry')));
+  forged.sources[0].candidates.pop();
+  forged.sources[0].candidates[0].target.provisional_id = 'provisional:B/C1/s1';
+  forged.sources[0].candidates[0].target.candidate_id = 'C1';
+  assert.ok(validateRelationCandidateArtifact(forged, index).some((e) => e.includes('own entry')));
+  const canonical = retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1' }]);
+  canonical.sources[0].candidates.push({ rank: canonical.sources[0].candidates.length + 1, target: { kind: 'canonical', record_id: 'w3', sense_id: 'w3-s1', pos: 'noun' }, signals: ['gloss_overlap'] });
+  assert.ok(validateRelationCandidateArtifact(canonical, index).some((e) => e.includes('own entry')));
+});
+
 test('index-time settings cannot be overridden at retrieval time', () => {
   const index = buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.5 });
   const source = [{ kind: 'canonical', sense_id: 'w3-s1' }];
