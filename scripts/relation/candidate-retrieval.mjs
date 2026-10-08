@@ -378,7 +378,7 @@ export function retrieveRelationCandidates(index, rawSources, { config = {}, lit
     contract: RETRIEVER_CONTRACT,
     authority: ARTIFACT_AUTHORITY,
     canonical_snapshot_digest: index.canonical_snapshot_digest,
-    config: { max_candidates: settings.max_candidates, min_shared_bigrams: settings.min_shared_bigrams, min_gloss_cosine: settings.min_gloss_cosine, stop_bigram_df_ratio: settings.stop_bigram_df_ratio },
+    config: { max_candidates: settings.max_candidates, min_shared_bigrams: settings.min_shared_bigrams, min_gloss_cosine: settings.min_gloss_cosine, stop_bigram_df_ratio: settings.stop_bigram_df_ratio, max_literature_digests: settings.max_literature_digests },
     signal_codes: SIGNAL_CODES,
     sources: results,
   };
