@@ -87,7 +87,7 @@ test('literature: digests only, no-hit is not negative evidence', () => {
 
 test('validator rejects editorial fields and stale snapshots', () => {
   const index = buildRelationIndex(synthetic);
-  const artifact = retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1', pos: 'noun', gloss: 'x 소리' }]);
+  const artifact = retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1' }]);
   artifact.sources[0].candidates[0]?.signals && (artifact.sources[0].candidates[0].type = 'near');
   assert.ok(validateRelationCandidateArtifact(artifact, index).some((e) => e.includes('editorial field')));
   const stale = { ...retrieveRelationCandidates(index, []), canonical_snapshot_digest: 'b'.repeat(64) };
