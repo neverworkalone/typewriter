@@ -182,13 +182,14 @@ export function buildRelationIndex(canonical, config = {}) {
   });
 }
 
-const provisionalKey = (source) => `provisional:${source.batch_id ?? ''}/${source.candidate_id}/${source.sense_key}`;
+const provisionalKey = (source) => `provisional:${source.batch_id}/${source.candidate_id}/${source.sense_key}`;
 
 function normalizeSource(source) {
   const isProvisional = source.kind === 'provisional';
   if (isProvisional) {
     if (!source.pos || typeof source.gloss !== 'string') throw new Error('source requires pos and gloss');
-    if (!source.candidate_id || !source.sense_key || !source.lemma) throw new Error('provisional source requires candidate_id, sense_key, lemma');
+    const parts = [source.batch_id, source.candidate_id, source.sense_key];
+    if (parts.some((part) => typeof part !== 'string' || part === '' || part.includes('/')) || !source.lemma) throw new Error('provisional source requires non-empty batch_id, candidate_id, sense_key (without "/") and lemma');
     return { ...source, kind: 'provisional', provisional_id: provisionalKey(source) };
   }
   return { ...source, kind: 'canonical' };
@@ -259,6 +260,7 @@ export function retrieveRelationCandidates(index, rawSources, { config = {}, lit
     if (source.kind === 'canonical' && !index.bySenseId.has(source.sense_id)) throw new Error(`unknown canonical source sense ${source.sense_id}`);
   }
   const provisionals = sources.filter((s) => s.kind === 'provisional');
+  if (new Set(provisionals.map((p) => p.batch_id)).size > 1) throw new Error('provisional sources of one retrieval call must belong to a single batch');
   const provisionalByLemma = new Map();
   for (const p of provisionals) provisionalByLemma.set(p.lemma, [...(provisionalByLemma.get(p.lemma) ?? []), p.provisional_id]);
   const provisionalGrams = new Map(provisionals.map((p) => [p.provisional_id, bigramsOf(`${p.lemma} ${p.gloss}`)]));
@@ -414,7 +416,7 @@ const hasExactKeys = (value, required, optional = []) => {
   const keys = Object.keys(value);
   return required.every((key) => keys.includes(key)) && keys.every((key) => required.includes(key) || optional.includes(key));
 };
-const PROVISIONAL_ID = /^provisional:([^/]*)\/([^/]+)\/([^/]+)$/u;
+const PROVISIONAL_ID = /^provisional:([^/]+)\/([^/]+)\/([^/]+)$/u;
 
 /**
  * Strict structural validation of an artifact; returns error strings (never throws on malformed input).
@@ -435,6 +437,8 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
   if (config === null && !errors.some((e) => e.startsWith('config:'))) errors.push('config must contain exactly the retrieval settings');
   if (!Array.isArray(artifact.sources)) return [...errors, 'sources must be an array'];
 
+  const batches = new Set();
+  const noteBatch = (id) => { const match = PROVISIONAL_ID.exec(id ?? ''); if (match) batches.add(match[1]); };
   const allowed = new Set(SIGNAL_CODES);
   const sourceIds = new Set();
   const provisionalSources = new Map();
@@ -451,6 +455,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
     } else if (source.kind === 'provisional') {
       if (!hasExactKeys(source, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !PROVISIONAL_ID.test(source.provisional_id ?? '') || !source.candidate_id || !source.pos) errors.push(`${at}: invalid provisional source identity`);
       else if (PROVISIONAL_ID.exec(source.provisional_id)[2] !== source.candidate_id) errors.push(`${at}: provisional_id does not carry candidate_id`);
+      noteBatch(source.provisional_id);
       if (sourceIds.has(source.provisional_id)) errors.push(`${at}: duplicate source ${source.provisional_id}`); sourceIds.add(source.provisional_id);
     } else errors.push(`${at}: source kind must be canonical or provisional`);
 
@@ -487,6 +492,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
         if (!hasExactKeys(target, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !match || !target.candidate_id || !target.pos) errors.push(`${here}: invalid provisional target identity`);
         else {
           key = target.provisional_id;
+          noteBatch(target.provisional_id);
           if (match[2] !== target.candidate_id) errors.push(`${here}: provisional_id does not carry candidate_id`);
           const declared = provisionalSources.get(target.provisional_id);
           if (!declared) errors.push(`${here}: provisional target is not a source of this artifact`);
@@ -496,6 +502,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
       if (key !== null) { if (targets.has(key)) errors.push(`${here}: duplicate target ${key}`); targets.add(key); }
     }
   }
+  if (batches.size > 1) errors.push('provisional identities span more than one batch');
   if (expectedSourceIds) {
     for (const id of expectedSourceIds) if (!sourceIds.has(id)) errors.push(`missing expected source ${id}`);
     for (const id of sourceIds) if (!expectedSourceIds.includes(id)) errors.push(`unexpected source ${id}`);

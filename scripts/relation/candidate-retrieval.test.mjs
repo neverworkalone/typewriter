@@ -143,6 +143,24 @@ test('retrieval settings are validated and recorded', () => {
   assert.deepEqual(validateRelationCandidateArtifact(out, index), []);
 });
 
+test('provisional identities are batch-scoped', () => {
+  const index = buildRelationIndex(synthetic);
+  const prov = (batch_id, candidate_id, lemma, extra = {}) => ({ kind: 'provisional', batch_id, candidate_id, sense_key: 's1', lemma, pos: 'noun', gloss: '아무 소리도 없이 잠잠한 상태.', ...extra });
+  assert.throws(() => retrieveRelationCandidates(index, [prov(undefined, 'C1', '잠잠')]), /non-empty batch_id/u);
+  assert.throws(() => retrieveRelationCandidates(index, [prov('', 'C1', '잠잠')]), /non-empty batch_id/u);
+  assert.throws(() => retrieveRelationCandidates(index, [prov('B/1', 'C1', '잠잠')]), /non-empty batch_id/u);
+  assert.throws(() => retrieveRelationCandidates(index, [prov('B1', 'C1', '잠잠', { hints: [{ lemma: '동의' }] }), prov('B2', 'C2', '동의')]), /single batch/u);
+  const ok = retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w4-s1' }, prov('B1', 'C1', '잠잠'), prov('B1', 'C2', '정적')]);
+  assert.deepEqual(validateRelationCandidateArtifact(ok, index), []);
+  const forged = structuredClone(ok);
+  forged.sources[1].candidates[0].target = { kind: 'provisional', provisional_id: 'provisional:B2/C2/s1', candidate_id: 'C2', pos: 'noun' };
+  forged.sources.push({ ...structuredClone(forged.sources[2]), source: { kind: 'provisional', provisional_id: 'provisional:B2/C2/s1', candidate_id: 'C2', pos: 'noun' } });
+  assert.ok(validateRelationCandidateArtifact(forged, index).some((e) => e.includes('more than one batch')));
+  const unbatched = structuredClone(ok);
+  unbatched.sources[1].source.provisional_id = 'provisional:/C1/s1';
+  assert.ok(validateRelationCandidateArtifact(unbatched, index).length > 0);
+});
+
 test('index-time settings cannot be overridden at retrieval time', () => {
   const index = buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.5 });
   const source = [{ kind: 'canonical', sense_id: 'w3-s1' }];
