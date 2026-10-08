@@ -11,7 +11,10 @@ const SHA256 = /^[0-9a-f]{64}$/u;
 const KEYS = ['source_record_id', 'source_sense_id', 'source_gloss_sha256', 'relation', 'rationale'];
 const RELATION_KEYS = ['target', 'target_sense', 'type', 'note', 'relevance'];
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+// Every external JSON field is type-checked before any string operation, so a hostile value can only ever
+// produce a contract error, never an exception from implicit coercion.
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
+const isSha256 = (value) => typeof value === 'string' && SHA256.test(value);
 
 export const AMENDMENT_FIELD = 'relation_amendments';
 
@@ -27,10 +30,12 @@ export function relationAmendmentErrors(row, at) {
       errors.push(`${here} needs exactly ${KEYS.join(', ')}`);
       return;
     }
-    if (!isText(item.source_record_id) || !/^[wr]\d+$/u.test(item.source_record_id)) errors.push(`${here}.source_record_id must be an existing canonical record id`);
-    if (!isText(item.source_sense_id) || !item.source_sense_id.startsWith(`${item.source_record_id}-s`)) errors.push(`${here}.source_sense_id must be a sense of source_record_id`);
-    if (!SHA256.test(item.source_gloss_sha256)) errors.push(`${here}.source_gloss_sha256 must be a sha256 of the source sense gloss`);
-    if (!isText(item.rationale) || !item.rationale.includes(item.source_record_id) || !item.rationale.includes(item.source_sense_id)) {
+    const recordOk = typeof item.source_record_id === 'string' && /^[wr]\d+$/u.test(item.source_record_id);
+    const senseOk = recordOk && typeof item.source_sense_id === 'string' && item.source_sense_id.startsWith(`${item.source_record_id}-s`);
+    if (!recordOk) errors.push(`${here}.source_record_id must be an existing canonical record id`);
+    if (!senseOk) errors.push(`${here}.source_sense_id must be a sense of source_record_id`);
+    if (!isSha256(item.source_gloss_sha256)) errors.push(`${here}.source_gloss_sha256 must be a sha256 of the source sense gloss`);
+    if (!(senseOk && isText(item.rationale) && item.rationale.includes(item.source_record_id) && item.rationale.includes(item.source_sense_id))) {
       errors.push(`${here}.rationale must be source-bound: cite the source record and sense ids`);
     }
     const relation = item.relation;
@@ -47,7 +52,8 @@ export function relationAmendmentErrors(row, at) {
     if (EXPLORATORY_RELATION_TYPES.has(relation.type) && !(Number.isInteger(relation.relevance) && relation.relevance >= 1 && relation.relevance <= 9)) {
       errors.push(`${here}.relation ${relation.type} requires relevance 1-9`);
     }
-    if (relation.target === item.source_record_id || relation.target_sense === item.source_sense_id) errors.push(`${here}.relation must not target its own source`);
+    if (recordOk && (relation.target === item.source_record_id || relation.target_sense === item.source_sense_id)) errors.push(`${here}.relation must not target its own source`);
+    if (!senseOk) return;
     const key = reviewedRelationId(item.source_sense_id, relation);
     if (seen.has(key)) errors.push(`${here} repeats another amendment tuple`);
     seen.add(key);

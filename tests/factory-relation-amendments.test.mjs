@@ -240,3 +240,37 @@ test('each operation may change only what it declares, and a mixed history is ve
   assert.match(walkStage3History('w00001', smuggled, bad).join('\n'), /before digest does not follow/u);
   assert.match(walkStage3History('w00001', structuredClone(smuggled), changes(withSense)).join('\n'), /outside source-bound/u);
 });
+
+test('hostile amendment JSON yields contract errors, never exceptions, on every shared Stage 2 and Stage 3 path', () => {
+  const hostile = [null, 0, 12, true, [], ['x'], {}, { toString: 123 }, { toString: null }, { toString: () => 'w00001' }];
+  const paths = [
+    (item, value) => ({ ...item, source_record_id: value }),
+    (item, value) => ({ ...item, source_sense_id: value }),
+    (item, value) => ({ ...item, source_gloss_sha256: value }),
+    (item, value) => ({ ...item, rationale: value }),
+    (item, value) => ({ ...item, relation: value }),
+    (item, value) => ({ ...item, relation: { ...item.relation, target: value } }),
+    (item, value) => ({ ...item, relation: { ...item.relation, target_sense: value } }),
+    (item, value) => ({ ...item, relation: { ...item.relation, type: value } }),
+    (item, value) => ({ ...item, relation: { ...item.relation, note: value } }),
+    (item, value) => ({ ...item, relation: { ...item.relation, relevance: value } }),
+  ];
+  for (const mutate of paths) {
+    for (const value of hostile) {
+      const row = decision({ relation_amendments: [mutate(amendment(), value)] });
+      // Every JSON round-trip variant: the validator must only ever see plain data.
+      const rows = [row, JSON.parse(JSON.stringify(row))];
+      for (const candidate of rows) {
+        const errors = validateDecisionRow(candidate, { canonicalIndex: new Map() });
+        assert.ok(errors.length > 0 || JSON.stringify(candidate) === JSON.stringify(decision()), 'invalid amendment must be reported');
+        assert.ok(errors.every((error) => typeof error === 'string'));
+        if (errors.length) assert.throws(() => plan([candidate]), lexicalCode('STAGE3_CANONICAL_CONFLICT'));
+      }
+    }
+  }
+  for (const value of hostile) {
+    assert.ok(Array.isArray(validateDecisionRow({ ...decision(), source_candidate_id: value }, { canonicalIndex: new Map() })));
+    assert.ok(Array.isArray(validateDecisionRow(decision({ relation_amendments: value }), { canonicalIndex: new Map() })));
+  }
+  assert.deepEqual(validateDecisionRow(decision(), { canonicalIndex: new Map() }), []);
+});

@@ -22,7 +22,7 @@ export const CURRENT_WRITER_SUPPORT = Object.freeze({
 });
 
 export function validateDecisionRow(row, { canonicalIndex }) {
-  const at = `decision ${row?.source_candidate_id}`;
+  const at = `decision ${typeof row?.source_candidate_id === 'string' ? row.source_candidate_id : '(invalid id)'}`;
   const errors = [];
   if (!DISPOSITIONS.includes(row?.disposition)) return [`${at}: disposition must be one of ${DISPOSITIONS.join(', ')}`];
   if (REASON_REQUIRED.has(row.disposition)) {
