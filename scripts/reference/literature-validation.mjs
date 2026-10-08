@@ -8,7 +8,7 @@ import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 import { evidenceForCandidate, loadEvidenceContext } from './literature-evidence-run.mjs';
 import { DEFAULT_FULL_LITERATURE_INDEX_PATH, REPOSITORY_DIRECTORY } from './literature-index.mjs';
 
-// Issue #392 entry validation (docs/literature-evidence-validation-plan.md). The owner judges; this tool only
+// Issue #392 entry validation (docs/literature-evidence-validation-plan.md). The recorded judge (the owner or an owner-delegated AI, never inferred) judges; this tool only
 // selects, blinds, seals and aggregates. Raw text and the unblinding map stay under the local cache.
 
 const CACHE_PATHS = resolveTypewriterCachePaths();
@@ -51,7 +51,8 @@ function validateJudgment(judgment, phase, contextCount) {
   const errors = [];
   if (!DISPOSITIONS.includes(judgment?.disposition)) errors.push('disposition');
   if (!CONFIDENCES.includes(judgment?.confidence)) errors.push('confidence');
-  if (!Number.isFinite(judgment?.seconds) || judgment.seconds < 0) errors.push('seconds');
+  // Elapsed time is optional: null means unmeasured and is never replaced by 0 or an estimate.
+  if (judgment?.seconds !== null && (!Number.isFinite(judgment?.seconds) || judgment.seconds < 0)) errors.push('seconds');
   if (typeof judgment?.basis !== 'string' || judgment.basis.trim() === '') errors.push('basis');
   if (phase === 2) {
     if (!LITERATURE_ROLES.includes(judgment?.literature_role)) errors.push('literature_role');
@@ -66,6 +67,25 @@ function validateJudgment(judgment, phase, contextCount) {
 }
 
 // Phase 2 needs `contextCounts` (blind id → number of contexts actually revealed) so a citation must exist.
+export const JUDGE_KINDS = ['owner_direct', 'ai_delegate'];
+
+// Who judged is recorded, never inferred: an AI delegate's judgment is not the owner's direct judgment.
+// The judge is a closed discriminated union; contradictory or extra fields (e.g. an owner_direct carrying a model
+// name, or an unverifiable assurance flag) fail closed:
+//   { kind: 'owner_direct' }  |  { kind: 'ai_delegate', name: <non-blank model>, delegated_by: 'owner' }
+const exactKeys = (value, keys) => {
+  const actual = Object.keys(value).sort();
+  return actual.length === keys.length && keys.slice().sort().every((key, index) => key === actual[index]);
+};
+
+export function validateJudge(file) {
+  const judge = file?.judge;
+  if (judge === null || typeof judge !== 'object' || Array.isArray(judge) || !JUDGE_KINDS.includes(judge.kind)) return ['judge.kind'];
+  if (judge.kind === 'owner_direct') return exactKeys(judge, ['kind']) ? [] : ['judge.owner_direct'];
+  const valid = exactKeys(judge, ['kind', 'name', 'delegated_by']) && typeof judge.name === 'string' && judge.name.trim() !== '' && judge.delegated_by === 'owner';
+  return valid ? [] : ['judge.ai_delegate'];
+}
+
 export function validateJudgments(file, blindIds, phase, contextCounts = {}) {
   const errors = [];
   for (const id of blindIds) {
@@ -132,7 +152,7 @@ export function recommend({ harms, misleading, improvements, controlsStable }) {
 
 export function aggregate(cohort, phase1, phase2) {
   const contextCounts = contextCountsOf(cohort);
-  const errors = [...validateJudgments(phase1, cohort.map((entry) => entry.blind_id), 1), ...validateJudgments(phase2, cohort.map((entry) => entry.blind_id), 2, contextCounts)];
+  const errors = [...validateJudge(phase1).map((e) => 'phase1 ' + e), ...validateJudge(phase2).map((e) => 'phase2 ' + e), ...validateJudgments(phase1, cohort.map((entry) => entry.blind_id), 1), ...validateJudgments(phase2, cohort.map((entry) => entry.blind_id), 2, contextCounts)];
   if (errors.length) throw new Error('judgments invalid: ' + errors.join(', '));
   const cases = cohort.map((entry) => ({ entry, ...classifyCase(entry.stratum, phase1.judgments[entry.blind_id], phase2.judgments[entry.blind_id]) }));
   const deferred = cases.filter(({ entry }) => isDeferredStratum(entry.stratum));
@@ -141,8 +161,13 @@ export function aggregate(cohort, phase1, phase2) {
   const harms = cases.filter((item) => item.outcome === 'harm').length;
   const misleading = cohort.filter((entry) => phase2.judgments[entry.blind_id].literature_role === 'misleading').length;
   const controlsStable = controls.every((item) => item.outcome === 'unchanged');
-  const seconds = (phase) => cohort.map((entry) => phase.judgments[entry.blind_id].seconds).sort((a, b) => a - b);
-  const median = (values) => (values.length ? values[Math.floor((values.length - 1) / 2)] : null);
+  // Median elapsed time only when every case was measured; otherwise the comparison is 'not_measurable'.
+  const median = (phase) => {
+    const values = cohort.map((entry) => phase.judgments[entry.blind_id].seconds);
+    if (values.some((value) => value === null)) return 'not_measurable';
+    values.sort((a, b) => a - b);
+    return values[Math.floor((values.length - 1) / 2)];
+  };
   const recommendation = recommend({ harms, misleading, improvements, controlsStable });
   return {
     contract: 'literature-validation-392-aggregate-v1',
@@ -157,10 +182,13 @@ export function aggregate(cohort, phase1, phase2) {
     outcomes: Object.fromEntries(['improvement', 'cautious_deferral', 'unqualified_change', 'unchanged', 'harm'].map((name) => [name, cases.filter((item) => item.outcome === name).length])),
     harm_kinds: [...new Set(cases.flatMap((item) => item.harm))].sort(),
     per_stratum: Object.fromEntries(STRATA.map((stratum) => [stratum.id, Object.fromEntries(['improvement', 'cautious_deferral', 'unqualified_change', 'unchanged', 'harm'].map((name) => [name, cases.filter((item) => item.entry.stratum === stratum.id && item.outcome === name).length]))])),
-    median_seconds_phase1: median(seconds(phase1)),
-    median_seconds_phase2: median(seconds(phase2)),
+    median_seconds_phase1: median(phase1),
+    median_seconds_phase2: median(phase2),
+    judged_by: { phase1: phase1.judge, phase2: phase2.judge },
+    judgment_provenance: [phase1.judge, phase2.judge].some((judge) => judge.kind === 'ai_delegate')
+      ? 'AI delegate judgments are not the owner direct judgments; the final product decision is the owner\'s.' : 'Owner direct judgments.',
     recommendation,
-    limits: 'Twelve owner-judged cases; directional only, not accuracy or generalization.',
+    limits: `Twelve cases judged by ${[...new Set([phase1.judge, phase2.judge].map((judge) => (judge.kind === 'ai_delegate' ? `AI delegate ${judge.name}` : 'the owner directly')))].join(' and ')}; directional only, not accuracy or generalization.`,
   };
 }
 
@@ -247,7 +275,7 @@ function phase2Material(entry, result) {
   return lines.join('\n');
 }
 
-const PHASE1_FIELDS = '{ "disposition": "included|covered|rejected|deferred", "confidence": "high|medium|low", "basis": "짧은 근거", "seconds": 0 }';
+const PHASE1_FIELDS = '{ "disposition": "included|covered|rejected|deferred", "confidence": "high|medium|low", "basis": "짧은 근거", "seconds": null }';
 
 async function prepare() {
   if ((await readOptionalJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json'))).exists) {
@@ -265,14 +293,15 @@ async function prepare() {
     await writeFile(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1', entry.blind_id + '.md'), await phase1Material(entry, context));
     template[entry.blind_id] = { disposition: null, confidence: null, basis: '', seconds: null };
   }
-  await writeJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json'), { phase: 1, fields: PHASE1_FIELDS, judgments: template });
+  await writeJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json'), { phase: 1, judge: null, fields: PHASE1_FIELDS, judgments: template });
   await writeFile(path.join(VALIDATION_DIRECTORY, 'owner', 'README.md'), [
     '# 문학 근거 검증 (#392) — 소유자 안내', '',
     '처분: `included`(새 뜻으로 수록) · `covered`(기존 뜻이 이미 포괄) · `rejected`(독립 항목/뜻으로 세우지 않음) · `deferred`(근거 부족으로 판단 불가).', '',
-    '1. `phase1/V??.md`만 보고 `phase1-judgments.json`을 채운다 (처분, 확신도, 근거, 걸린 초). 문학 근거는 아직 없다.',
+    '1. `phase1/V??.md`만 보고 `phase1-judgments.json`을 채운다 (처분, 확신도, 근거; 걸린 초는 측정했을 때만, 아니면 null). 문학 근거는 아직 없다.',
+    '   파일 최상위 `judge`에 판정자를 기록한다: `{ "kind": "owner_direct" }` 또는 `{ "kind": "ai_delegate", "name": "<모델>", "delegated_by": "owner" }`. AI 위임 판정은 소유자 직접 판정으로 기록하지 않는다.',
     '2. `pnpm run reference:literature:validate -- seal` 로 1단계를 봉인한다 (파일 digest 기록).',
     '3. `pnpm run reference:literature:validate -- reveal` 이 봉인을 확인한 뒤 `phase2/`와 `phase2-judgments.json`을 만든다.',
-    '4. 2단계는 처분·확신도·근거·초 외에 `literature_role`(helpful|irrelevant|misleading), `basis_type`(sense_demonstrated|contrast_exposed|none), `cited_contexts`(문학 문맥 번호), `conflicts_with_source_evidence`, `owner_endorses_final`을 기록한다.',
+    '4. 2단계 파일에도 최상위 `judge`를 같은 형식으로 기록한다(없으면 `report`가 거부한다). 2단계는 처분·확신도·근거·초(null 허용) 외에 `literature_role`(helpful|irrelevant|misleading), `basis_type`(sense_demonstrated|contrast_exposed|none), `cited_contexts`(문학 문맥 번호), `conflicts_with_source_evidence`, `owner_endorses_final`을 기록한다.',
     '5. 봉인 후 1단계 답을 고치지 않는다. `cohort.local.json`(층·후보 id)은 모든 판정이 끝나기 전에 열지 않는다.',
   ].join('\n') + '\n');
   console.log(JSON.stringify({ cohort_sha256: sha(JSON.stringify(cohort)), cases: cohort.length, directory: VALIDATION_DIRECTORY }, null, 2));
@@ -286,7 +315,8 @@ const sealFileIn = (directory) => path.join(directory, 'phase1-seal.local.json')
 export async function sealPhase1(directory = VALIDATION_DIRECTORY) {
   const cohort = await loadCohort(directory);
   const file = path.join(directory, 'owner', 'phase1-judgments.json');
-  const errors = validateJudgments(await readJson(file), cohort.map((entry) => entry.blind_id), 1);
+  const phase1File = await readJson(file);
+  const errors = [...validateJudge(phase1File).map((e) => 'phase1 ' + e), ...validateJudgments(phase1File, cohort.map((entry) => entry.blind_id), 1)];
   if (errors.length) throw new Error('phase 1 incomplete: ' + errors.join(', '));
   const existing = await readSeal(sealFileIn(directory));
   const record = nextSeal(existing, await fileDigest(file), cohortDigest(cohort), new Date().toISOString());
@@ -313,7 +343,7 @@ async function reveal() {
     await writeFile(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2', entry.blind_id + '.md'), phase2Material(entry, result));
     template[entry.blind_id] = { disposition: null, confidence: null, basis: '', seconds: null, literature_role: null, basis_type: null, cited_contexts: [], conflicts_with_source_evidence: null, owner_endorses_final: null };
   }
-  await writeJson(answers, { phase: 2, judgments: template });
+  await writeJson(answers, { phase: 2, judge: null, judgments: template });
   console.log('phase 2 evidence written');
 }
 
