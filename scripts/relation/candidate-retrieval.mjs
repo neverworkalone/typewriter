@@ -237,6 +237,9 @@ function addSignal(map, key, code, weight, extra) {
  * may also be targets for the other sources of the same call (same-batch provisional identities).
  */
 export function retrieveRelationCandidates(index, rawSources, { config = {}, literature = {} } = {}) {
+  if ('stop_bigram_df_ratio' in config && config.stop_bigram_df_ratio !== index.settings.stop_bigram_df_ratio) {
+    throw new Error('stop_bigram_df_ratio is fixed when the index is built and cannot be overridden at retrieval time');
+  }
   const settings = resolveConfig(index.settings, config);
   const sources = rawSources.map(normalizeSource).map((source) => {
     if (source.kind !== 'canonical') return source;
@@ -425,6 +428,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
   if (artifact.authority !== ARTIFACT_AUTHORITY) errors.push('artifact must be candidates_only');
   if (!HEX64.test(artifact.canonical_snapshot_digest ?? '')) errors.push('missing canonical_snapshot_digest');
   if (index && artifact.canonical_snapshot_digest !== index.canonical_snapshot_digest) errors.push('canonical snapshot digest differs from the current canonical');
+  if (index && artifact.config?.stop_bigram_df_ratio !== index.settings.stop_bigram_df_ratio) errors.push('config: stop_bigram_df_ratio differs from the index build setting');
   if (JSON.stringify(artifact.signal_codes) !== JSON.stringify(SIGNAL_CODES)) errors.push('signal_codes mismatch');
   let config = null;
   try { config = isObject(artifact.config) && hasExactKeys(artifact.config, Object.keys(CONFIG_RULES)) ? resolveConfig(artifact.config) : null; } catch (error) { errors.push(`config: ${error.message}`); }

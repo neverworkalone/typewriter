@@ -143,6 +143,18 @@ test('retrieval settings are validated and recorded', () => {
   assert.deepEqual(validateRelationCandidateArtifact(out, index), []);
 });
 
+test('index-time settings cannot be overridden at retrieval time', () => {
+  const index = buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.5 });
+  const source = [{ kind: 'canonical', sense_id: 'w3-s1' }];
+  assert.throws(() => retrieveRelationCandidates(index, source, { config: { stop_bigram_df_ratio: 0.0001 } }), /fixed when the index is built/u);
+  const out = retrieveRelationCandidates(index, source, { config: { stop_bigram_df_ratio: 0.5 } });
+  assert.equal(out.config.stop_bigram_df_ratio, 0.5);
+  assert.deepEqual(validateRelationCandidateArtifact(out, index), []);
+  out.config.stop_bigram_df_ratio = 0.0001;
+  assert.ok(validateRelationCandidateArtifact(out, index).some((e) => e.includes('index build setting')));
+  assert.ok(validateRelationCandidateArtifact(out, buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.0001 })).length === 0);
+});
+
 test('literature hits always keep at least one location digest', () => {
   const index = buildRelationIndex(synthetic);
   const lit = { 'w5-s1': [{ location_digest: 'd'.repeat(64), text: '깊은 고요 속' }] };
