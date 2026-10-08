@@ -265,7 +265,8 @@
       "relation_decision",
       "relation_count",
       "relation_ids",
-      "no_relation_rationale"
+      "no_relation_rationale",
+      "relation_rationale"
     ],
     "canonical_batch_binding_allowed_fields": [
       "source_id",
@@ -946,6 +947,7 @@
             "relation_count": "number",
             "relation_ids": "array<string>",
             "no_relation_rationale": "string",
+            "relation_rationale": "string",
             "review_basis": "object",
             "single_sense_boundary_review": "object",
             "scope_declaration": "object"
@@ -1101,6 +1103,7 @@
           "relation_count",
           "relation_ids",
           "no_relation_rationale",
+          "relation_rationale",
           "review_basis",
           "single_sense_boundary_review",
           "scope_declaration"
@@ -1165,7 +1168,7 @@
           "$.decisions.*.boundary_pairs.*.writer_boundary.right_frame": ["gloss_excerpt", "sentence_frame"],
           "$.decisions.*.boundary_pairs.*.writer_boundary.left_route": ["relation_type"],
           "$.decisions.*.boundary_pairs.*.writer_boundary.right_route": ["relation_type"],
-          "$.decisions.*.sense_reviews.*": ["sense_id", "boundary_action", "boundary_classification", "boundary_decision", "boundary_rationale", "semantic_rationale", "relation_decision", "relation_count", "relation_ids", "no_relation_rationale", "review_basis", "single_sense_boundary_review", "scope_declaration"],
+          "$.decisions.*.sense_reviews.*": ["sense_id", "boundary_action", "boundary_classification", "boundary_decision", "boundary_rationale", "semantic_rationale", "relation_decision", "relation_count", "relation_ids", "no_relation_rationale", "relation_rationale", "review_basis", "single_sense_boundary_review", "scope_declaration"],
           "$.decisions.*.sense_reviews.*.scope_declaration": ["admitted_observation_ids", "excluded_observation_ids", "excluded_terms"],
           "$.decisions.*.sense_reviews.*.single_sense_boundary_review": ["status", "sense_id", "gloss_sha256", "decision_source_id", "decision", "frame_observations", "rationale"],
           "$.decisions.*.sense_reviews.*.single_sense_boundary_review.frame_observations.*": ["gloss_excerpt", "gloss_start", "sentence_frame", "writer_route"],

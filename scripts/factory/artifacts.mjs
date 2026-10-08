@@ -44,7 +44,10 @@ function validateSemanticRow(row, decision, batchId, errors, { candidate, requir
     validateAuthoredDecisionDisposition(row, at, config);
     const senseReviews = decisionSenseReviews(record, row, at, config);
     validateDistinctSenseSemanticRationales(record, senseReviews);
-    validateSenseReviews({ row, candidate: record, senseReviews, label: at, inventoryId: id, decisionSourceId: batchId, config });
+    validateSenseReviews({
+      row, candidate: record, senseReviews, label: at, inventoryId: id, decisionSourceId: batchId, config,
+      reviewedRelations: decision.reviewed_record.senses.map((sense) => sense.relations ?? []),
+    });
     validateAuthoredSemanticReviewBinding(row, record);
   } catch (error) {
     fail(error.message);

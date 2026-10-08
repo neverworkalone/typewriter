@@ -25,6 +25,7 @@ import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory
 import { validateReviewArtifacts } from '../scripts/factory/artifacts.mjs';
 import { toRawCandidate } from '../scripts/factory/identity-adapter.mjs';
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
+import { reviewedRelationId } from '../scripts/batch/authored-semantic-decision-source.mjs';
 import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 import { buildProductionHandoff } from '../scripts/intake/production-handoff.mjs';
@@ -342,6 +343,62 @@ test('per-sense semantic contract: writer-domain boundary decision and review_ba
   assert.ok((await check(fragment, {})).some((e) => /topic_analysis|review_basis/.test(e)));
   // Relation evidence must stay source-bound.
   assert.ok((await check(withGloss('g'), { relation_decision: 'has-relations' })).some((e) => e.includes('relation evidence')));
+});
+
+test('relation enrichment: positive relation evidence must bind the exact reviewed relation tuples', async () => {
+  const id = 'C000001-0001';
+  const senseId = `${id}-s1`;
+  const near = { type: 'near', target: 'w00001', target_sense: 'w00001-s1', note: 'close but not interchangeable', relevance: 6 };
+  const withRelations = (relations) => ({
+    ...included(1), reviewed_record: { lemma: '짠하다', senses: [{ pos: 'adjective', gloss: 'g', relations }] },
+  });
+  const positive = (relations) => ({
+    relation_decision: 'relations-reviewed', relation_count: relations.length, no_relation_rationale: undefined,
+    relation_ids: relations.map((relation) => reviewedRelationId(senseId, relation)),
+    relation_rationale: `${id} ${senseId}: relation search kept the reviewed tuples.`,
+  });
+  const check = async (relations, senseOver) => {
+    const decision = withRelations(relations);
+    const base = await reviewFixture([decision, held(2)]);
+    const row = semanticRow(decision);
+    const patched = { ...row, sense_reviews: [{ ...row.sense_reviews[0], ...senseOver }] };
+    patched.review_binding = authorSemanticReviewBinding(patched, reviewedCandidateRecord(decision));
+    return validateReviewArtifacts({ ...base, decisions: [decision, held(2)], semanticDecisionsText: JSON.stringify(semantic([decision, held(2)], { decisions: [patched] })) });
+  };
+  // Valid: exact tuples; exploratory relevance 1-9; precision types carry no relevance; mixed types.
+  assert.deepEqual(await check([near], positive([near])), []);
+  const direct = { type: 'direct', target: 'w00001', note: 'replaces it' };
+  assert.deepEqual(await check([near, direct], positive([near, direct])), []);
+  // Valid: no relations after a documented enrichment attempt.
+  assert.deepEqual(await check([], {}), []);
+  assert.deepEqual(await check(undefined, {}), []);
+  const fails = async (relations, senseOver, fragment) => {
+    const errors = await check(relations, senseOver);
+    assert.ok(errors.some((e) => e.includes(fragment)), `${fragment}: ${errors}`);
+  };
+  // Count-only or stale evidence does not bind the tuples.
+  await fails([near], {}, 'does not bind the reviewed relation tuples');
+  await fails([near], { ...positive([near]), relation_ids: ['rel-forged'] }, 'does not bind the reviewed relation tuples');
+  await fails([near], { ...positive([near]), relation_decision: 'no-relations' }, 'does not bind the reviewed relation tuples');
+  await fails([near], { ...positive([near]), no_relation_rationale: `${id} ${senseId}: none.` }, 'does not bind the reviewed relation tuples');
+  await fails([near], { ...positive([near]), relation_rationale: 'unbound prose' }, 'relation_rationale must cite');
+  await fails([near], { ...positive([near]), relation_ids: positive([{ ...near, relevance: 7 }]).relation_ids }, 'does not bind the reviewed relation tuples');
+  // The two outcomes are mutually exclusive: no-relations cannot carry positive-relation evidence.
+  const noRel = { relation_rationale: `${id} ${senseId}: 관계 2개를 검토해 채택했다.` };
+  await fails([], noRel, 'relation evidence is not source-bound');
+  await fails([], { relation_rationale: '관계 있다' }, 'relation evidence is not source-bound');
+  await fails([], { relation_decision: 'relations-reviewed' }, 'relation evidence is not source-bound');
+  await fails([], { relation_count: 1 }, 'relation evidence is not source-bound');
+  await fails([near], { relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: `${id} ${senseId}: none.` }, 'does not bind the reviewed relation tuples');
+  // Tuple integrity.
+  const { relevance, ...noRelevance } = near;
+  await fails([noRelevance], positive([noRelevance]), 'requires relevance 1-9');
+  for (const bad of [0, 10, 2.5, '5']) await fails([{ ...near, relevance: bad }], positive([{ ...near, relevance: bad }]), 'requires relevance 1-9');
+  await fails([{ ...direct, relevance: 5 }], positive([{ ...direct, relevance: 5 }]), 'must not carry relevance');
+  await fails([{ ...near, type: 'synonym' }], positive([{ ...near, type: 'synonym' }]), 'not a supported relation type');
+  await fails([{ ...near, target: id }], positive([{ ...near, target: id }]), 'must not target its own source');
+  await fails([near, { ...near, note: 'again' }], positive([near, { ...near, note: 'again' }]), 'duplicates another relation tuple');
+  await fails([{ ...near, note: '' }], positive([{ ...near, note: '' }]), 'note');
 });
 
 test('review artifacts are validated by content and bound to candidates, not only by digest', async () => {

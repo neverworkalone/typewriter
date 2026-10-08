@@ -376,6 +376,19 @@ Rules carried over unchanged:
 - Preserve every hold, reject and defer reason; no dropped or phantom candidates.
 - Zero relations are allowed where the current process allows them; relation
   enrichment never gates lexical admission.
+- Relation enrichment is a non-blocking sub-pass after the sense meaning is
+  fixed. Search is required; creation is not. Each reviewed sense carries either
+  `relation_decision: 'no-relations'` (with a sense-bound `no_relation_rationale`
+  after the enrichment attempt) or `'relations-reviewed'`, where
+  `relation_count`/`relation_ids` equal the exact `reviewed_record.senses[].relations`
+  tuples (`relation_ids` come from `reviewedRelationId`, covering source sense,
+  target, target sense, type, note and `relevance`) and a sense-bound
+  `relation_rationale` is present. Exploratory types need `relevance` 1–9;
+  `direct`/`antonym` carry none. Targets are existing canonical ids or same-batch
+  candidate ids; Stage 3 only remaps and validates them (it never invents
+  types, relevance or notes), and canonical integrity rejects missing targets,
+  self-references and duplicates. A relation defect is a shared-contract fix,
+  never a reason to hold or reject a valid lexical sense.
 - Stage 2 may not introduce a weaker parallel rule set. A rule discovered here
   becomes a shared rule, not a Stage 2 exception (AGENTS.md, *Generalize lexical
   validation*).
