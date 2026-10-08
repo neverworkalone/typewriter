@@ -218,11 +218,11 @@ export function classifyObservation({ hint, results }) {
   const tops = [top.kiwi, top.khaiii, top.mecab];
   const votes = (reading) => tops.filter((other) => readingKey(other) === readingKey(reading)).length;
   const hintMismatch = (assigned) => {
-    if (assigned.lemma !== hint.input || (hint.pos && assigned.pos !== hint.pos)) reasons.push('extractor_hint_mismatch');
+    if ((hint.input && assigned.lemma !== hint.input) || (hint.pos && assigned.pos !== hint.pos)) reasons.push('extractor_hint_mismatch');
   };
   const assignedHolds = (assigned, holds) => {
     hintMismatch(assigned);
-    if (assigned.lemma !== hint.input) holds.push('lemma_mismatch');
+    if (hint.input && assigned.lemma !== hint.input) holds.push('lemma_mismatch');
     else if (hint.pos && assigned.pos !== hint.pos) holds.push('pos_mismatch');
     return holds;
   };
@@ -257,8 +257,10 @@ export function unresolvedHoldsFor(decision, providerResults) {
   return ['analysis_unsupported'];
 }
 
+// The identity is the observed source occurrence, independent of which extractor proposal carried it.
+// Multiple hints at the same source coordinate are retained as one observation and marked as a conflict.
 export const observationDigestOf = (observation) => digest(['ensemble-observation', observation.surface, observation.ref.kind, observation.ref.ref,
-  observation.group ?? '', observation.hint?.input ?? '', observation.hint?.pos ?? '']);
+  observation.group ?? '']);
 
 // Text-free decision trace: surface digest, extractor hint/holds, the Kiwi ranked paths and the
 // best-only readings, the category and its reasons. It carries no corpus snippet or paragraph text.
@@ -269,6 +271,7 @@ export function buildTrace({ observation, results, decision }) {
     contract: ENSEMBLE_CONTRACT,
     surface_digest: analysisInputDigest(observation.surface),
     extractor_hint: { lemma: observation.hint?.input ?? null, pos: observation.hint?.pos ?? null },
+    ...(observation.extractor_hint_conflict ? { extractor_hint_conflict: true } : {}),
     extractor_holds: sortedUnique(observation.holds ?? []),
     providers: Object.fromEntries(ENSEMBLE_PROVIDER_ORDER.map((id) => [id, { outcome: results[id].outcome, identity_digest: results[id].identity_digest,
       paths: results[id].analyses.slice(0, id === 'kiwi' ? 8 : 1).map(slim) }])),
@@ -288,6 +291,7 @@ export function decideObservations({ observations, run }) {
     const results = Object.fromEntries(ENSEMBLE_PROVIDER_ORDER.map((id) => [id, run.byProvider.get(id).get(observation.surface)]));
     const hint = { input: observation.hint?.input, pos: observation.hint?.pos ?? null };
     const decision = classifyObservation({ hint, results });
+    if (observation.extractor_hint_conflict) decision.reasons = sortedUnique([...decision.reasons, 'extractor_hint_mismatch']);
     const trace = buildTrace({ observation, results, decision });
     const extractorHolds = observation.holds ?? [];
     const assigning = ASSIGNING_CATEGORIES.includes(decision.category);

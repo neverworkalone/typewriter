@@ -335,12 +335,18 @@ export async function buildEnsembleGroups({
   // extractor holds so a duplicate can never erase a more restrictive source status.
   const uniqueByDigest = new Map();
   const inputCountsByDigest = new Map();
+  const hintKeyOf = (observation) => JSON.stringify([observation.hint?.input ?? null, observation.hint?.pos ?? null]);
   for (const observation of observations) {
     const digest = observationDigestOf(observation);
     inputCountsByDigest.set(digest, (inputCountsByDigest.get(digest) ?? 0) + 1);
     const known = uniqueByDigest.get(digest);
     if (known) {
       known.holds = [...new Set([...known.holds, ...(observation.holds ?? [])])].sort(compare);
+      if (!known.extractor_hint_conflict && hintKeyOf(known) !== hintKeyOf(observation)) {
+        known.extractor_hint_conflict = true;
+        known.hint = { input: null, pos: null };
+        known.holds = [...new Set([...known.holds, 'analysis_ambiguous'])].sort(compare);
+      }
     } else {
       uniqueByDigest.set(digest, { ...observation, holds: [...new Set(observation.holds ?? [])].sort(compare) });
     }

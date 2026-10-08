@@ -671,8 +671,9 @@ test('v3 source accounting normalizes repeated assigned and unresolved hits to o
   try {
     const evidence = [
       cand('가다', 'verb', [h('d1', '가는')], { ambiguity_status: 'held_ambiguous' }),
-      cand('가다', 'verb', [h('d1', '가는')]),
+      cand('나다', 'verb', [h('d1', '가는')]),
       cand('가다', 'verb', [h('d2', '갈'), h('d2', '갈')]),
+      cand('나다', 'verb', [h('d2', '갈')]),
     ];
     const k = { 가는: [p('가다', 'verb', '가')], 갈: [p('갈', 'noun')] };
     const hh = { 가는: [p('가다', 'verb', '가')], 갈: [p('갈다', 'verb', '갈')] };
@@ -686,7 +687,12 @@ test('v3 source accounting normalizes repeated assigned and unresolved hits to o
     assert.equal(result.manifest.observation_count, 1);
     assert.equal(result.manifest.unresolved_observations.length, 1);
     assert.deepEqual(result.rows[0].observations[0].holds, ['analysis_ambiguous'], 'repeated source identities union and preserve extractor holds');
-    assert.equal(result.summary.metrics.repeated_evidence_merged, 2,
+    assert.ok(result.rows[0].observations[0].ensemble.reasons.includes('extractor_hint_mismatch'),
+      'different hints at one source coordinate stay visible on the assigned disposition');
+    assert.equal(result.manifest.unresolved_observations[0].extractor_hint.lemma, null,
+      'conflicting hints do not select one candidate based on input order');
+    assert.ok(result.manifest.unresolved_observations[0].reasons.includes('extractor_hint_mismatch'));
+    assert.equal(result.summary.metrics.repeated_evidence_merged, 3,
       'assigned and unresolved raw duplicates are both visible in repeat metrics');
     const comparison = await compareResolutionPolicies({
       observations: observationsFromCorpusEvidence(evidenceDoc(evidence)).observations,
@@ -695,6 +701,10 @@ test('v3 source accounting normalizes repeated assigned and unresolved hits to o
     assert.equal(comparison.three_provider_only.assigned_observations, 2,
       'unresolved repeats do not inflate the assigned-observation metric');
     assert.deepEqual(validateCandidateBatch({ manifest: result.manifest, candidatesText: result.candidatesText }), []);
+
+    const reversed = await produce([...evidence].reverse(), triple({ k, h: hh, m: mm }));
+    assert.equal(reversed.candidatesText, result.candidatesText, 'hint conflicts do not select an outcome based on input order');
+    assert.equal(reversed.manifest.ensemble.trace_sha256, result.manifest.ensemble.trace_sha256);
 
     const traces = result.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest,
       trace_digest: decision.trace_digest, trace: decision.trace }));
