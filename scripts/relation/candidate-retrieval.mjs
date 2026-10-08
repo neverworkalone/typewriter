@@ -49,7 +49,7 @@ const CONFIG_RULES = Object.freeze({
   min_shared_bigrams: { integer: true, min: 1, max: 20 },
   min_gloss_cosine: { min: 0, max: 1 },
   stop_bigram_df_ratio: { min: 0.0001, max: 1 },
-  max_literature_digests: { integer: true, min: 0, max: 20 },
+  max_literature_digests: { integer: true, min: 1, max: 20 },
 });
 
 /** Merges and validates retrieval settings; unbounded or malformed values would disable the pool contract. */
@@ -433,8 +433,8 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
 
   const allowed = new Set(SIGNAL_CODES);
   const sourceIds = new Set();
-  const provisionalSources = new Set();
-  for (const entry of artifact.sources) if (entry?.source?.kind === 'provisional') provisionalSources.add(entry.source.provisional_id);
+  const provisionalSources = new Map();
+  for (const entry of artifact.sources) if (entry?.source?.kind === 'provisional') provisionalSources.set(entry.source.provisional_id, entry.source);
   for (const [s, entry] of artifact.sources.entries()) {
     const at = `sources[${s}]`;
     if (!isObject(entry) || !hasExactKeys(entry, ['source', 'literature', 'candidates_total', 'already_related_excluded', 'candidates'])) { errors.push(`${at}: invalid shape`); continue; }
@@ -464,8 +464,9 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
       if (candidate.rank !== position + 1) errors.push(`${here}: rank order broken`);
       if (!Array.isArray(candidate.signals) || candidate.signals.length === 0 || candidate.signals.some((code) => !allowed.has(code))) errors.push(`${here}: invalid signals`);
       const digests = candidate.literature_location_digests;
+      if (candidate.signals?.includes?.('literature_cooccurrence') && (!Array.isArray(digests) || digests.length === 0)) errors.push(`${here}: literature_cooccurrence requires at least one location digest`);
       if (digests !== undefined) {
-        if (!Array.isArray(digests) || !digests.every((d) => HEX64.test(d)) || (config && digests.length > config.max_literature_digests)) errors.push(`${here}: invalid literature_location_digests`);
+        if (!Array.isArray(digests) || digests.length === 0 || !digests.every((d) => HEX64.test(d)) || (config && digests.length > config.max_literature_digests)) errors.push(`${here}: invalid literature_location_digests`);
         if (!candidate.signals?.includes?.('literature_cooccurrence')) errors.push(`${here}: literature digests without literature_cooccurrence signal`);
       }
       const target = candidate.target;
@@ -483,7 +484,9 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
         else {
           key = target.provisional_id;
           if (match[2] !== target.candidate_id) errors.push(`${here}: provisional_id does not carry candidate_id`);
-          if (!provisionalSources.has(target.provisional_id)) errors.push(`${here}: provisional target is not a source of this artifact`);
+          const declared = provisionalSources.get(target.provisional_id);
+          if (!declared) errors.push(`${here}: provisional target is not a source of this artifact`);
+          else if (declared.candidate_id !== target.candidate_id || declared.pos !== target.pos) errors.push(`${here}: provisional target candidate_id/pos differs from its source identity`);
         }
       } else errors.push(`${here}: target kind must be canonical or provisional`);
       if (key !== null) { if (targets.has(key)) errors.push(`${here}: duplicate target ${key}`); targets.add(key); }

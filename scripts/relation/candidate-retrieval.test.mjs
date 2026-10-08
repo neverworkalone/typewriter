@@ -112,6 +112,7 @@ test('validator is fail-closed on tampered producer output', () => {
     'editorial field on candidate': (a) => { a.sources[0].candidates[0].relevance = 5; },
     'source identity removed': (a) => { a.sources[0].source = {}; },
     'duplicate target': (a) => { a.sources[0].candidates.push({ ...a.sources[0].candidates[0], rank: a.sources[0].candidates.length + 1 }); },
+    'provisional target pos changed': (a) => { a.sources[0].candidates.find((x) => x.target.kind === 'provisional').target.pos = 'verb'; },
     'bad literature digest': (a) => { a.sources[0].candidates[0].literature_location_digests = ['x']; },
     'pool above declared max': (a) => { a.config.max_candidates = 0; },
     'unbounded config': (a) => { a.config.max_candidates = null; },
@@ -132,7 +133,7 @@ test('retrieval settings are validated and recorded', () => {
   for (const bad of [Infinity, -1, 0, 1.5, '5', NaN, 100000]) {
     assert.throws(() => retrieveRelationCandidates(index, source, { config: { max_candidates: bad } }), /max_candidates/u);
   }
-  assert.throws(() => retrieveRelationCandidates(index, source, { config: { max_literature_digests: -2 } }), /max_literature_digests/u);
+  assert.throws(() => retrieveRelationCandidates(index, source, { config: { max_literature_digests: 0 } }), /max_literature_digests/u);
   assert.throws(() => retrieveRelationCandidates(index, source, { config: { min_gloss_cosine: 2 } }), /min_gloss_cosine/u);
   assert.throws(() => buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0 }), /stop_bigram_df_ratio/u);
   assert.throws(() => retrieveRelationCandidates(index, source, { config: { unknown: 1 } }), /unknown retrieval setting/u);
@@ -140,6 +141,18 @@ test('retrieval settings are validated and recorded', () => {
   assert.equal(out.config.max_literature_digests, 1);
   assert.equal(out.config.max_candidates, 3);
   assert.deepEqual(validateRelationCandidateArtifact(out, index), []);
+});
+
+test('literature hits always keep at least one location digest', () => {
+  const index = buildRelationIndex(synthetic);
+  const lit = { 'w5-s1': [{ location_digest: 'd'.repeat(64), text: '깊은 고요 속' }] };
+  const out = retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w5-s1' }], { literature: lit });
+  const hit = out.sources[0].candidates.find((c) => c.signals.includes('literature_cooccurrence'));
+  assert.ok(hit.literature_location_digests.length >= 1);
+  hit.literature_location_digests = [];
+  assert.ok(validateRelationCandidateArtifact(out, index).length > 0);
+  delete hit.literature_location_digests;
+  assert.ok(validateRelationCandidateArtifact(out, index).length > 0);
 });
 
 test('revision-less digest covers lemma, pos, search forms and relations', () => {
