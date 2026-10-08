@@ -16,8 +16,6 @@ import { SELFCHECK_PATH, selectCohort, validateJudge } from './literature-valida
 export const JUDGE_DIRECTORY = path.join(resolveTypewriterCachePaths().evidence, 'boundary-414');
 export const SAMPLE_CANDIDATES = 30;
 export const HITS_PER_STRATUM = 5;
-// A cell (candidate × stratum) sampled below its population needs at least this many hits for its sampling variation to be evaluated.
-export const MIN_SELECTED_FOR_INTERVAL = 5;
 export const LABELS = Object.freeze(['same_word', 'other_word', 'unclear']);
 export const OTHER_WORD_TYPES = Object.freeze(['personal_name', 'compound', 'part_of_other_headword', 'hanja_homograph']);
 export const CRITERIA = Object.freeze({ min_relative_other_word_reduction: 1 / 3, max_dropped_same_word_share: 0.1 });
@@ -93,44 +91,84 @@ const rateOf = (list, label) => {
   return base.length ? totalOf(base.filter((row) => row.label === label)) / totalOf(base) : null;
 };
 
-function estimate(rows) {
-  const kept = rows.filter((row) => row.stratum === 'kept');
-  const baselineOther = rateOf(rows, 'other_word');
-  const keptOther = rateOf(kept, 'other_word');
-  const sameAll = totalOf(judgedOf(rows).filter((row) => row.label === 'same_word'));
-  const droppedSame = totalOf(judgedOf(rows.filter((row) => row.stratum === 'dropped')).filter((row) => row.label === 'same_word'));
+// Criteria quantities from per-cell label masses [{stratum, other, same}] (units represented by each label).
+function estimateMasses(cells) {
+  const sum = (list, key) => list.reduce((total, cell) => total + cell[key], 0);
+  const kept = cells.filter((cell) => cell.stratum === 'kept');
+  const dropped = cells.filter((cell) => cell.stratum === 'dropped');
+  const share = (list) => (sum(list, 'other') + sum(list, 'same') ? sum(list, 'other') / (sum(list, 'other') + sum(list, 'same')) : null);
+  const baselineOther = share(cells);
+  const keptOther = share(kept);
+  const sameAll = sum(cells, 'same');
   return {
     baselineOther,
     keptOther,
     reduction: baselineOther && keptOther !== null ? (baselineOther - keptOther) / baselineOther : null,
-    droppedSameShare: sameAll ? droppedSame / sameAll : null,
+    droppedSameShare: sameAll ? sum(dropped, 'same') / sameAll : null,
   };
 }
+
+// (candidate × stratum) cells with their observed label counts.
+function cellsOf(rows) {
+  return [...Map.groupBy(rows, (row) => row.candidate_id + '\0' + row.stratum).values()].map((list) => ({
+    candidate_id: list[0].candidate_id,
+    stratum: list[0].stratum,
+    population: list[0].population,
+    selected: list[0].selected,
+    counts: { other: list.filter((r) => r.label === 'other_word').length, same: list.filter((r) => r.label === 'same_word').length, unclear: list.filter((r) => r.label === 'unclear').length },
+  }));
+}
+
+const observedMasses = (cells) => cells.map((cell) => ({ stratum: cell.stratum, other: (cell.population * cell.counts.other) / cell.selected, same: (cell.population * cell.counts.same) / cell.selected }));
+const estimate = (rows) => estimateMasses(observedMasses(cellsOf(rows)));
 
 const round4 = (value) => (value === null ? null : Number(value.toFixed(4)));
 const percentile = (sorted, q) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(q * sorted.length)))];
 
+export const JEFFREYS_PRIOR = 0.5;
+
+function standardNormal(random) {
+  return Math.sqrt(-2 * Math.log(1 - random())) * Math.cos(2 * Math.PI * random());
+}
+
+// Marsaglia–Tsang gamma(shape, 1); shape < 1 uses the usual boost.
+function gammaSample(shape, random) {
+  if (shape < 1) return gammaSample(shape + 1, random) * random() ** (1 / shape);
+  const d = shape - 1 / 3;
+  const c = 1 / Math.sqrt(9 * d);
+  for (;;) {
+    const x = standardNormal(random);
+    const v = (1 + c * x) ** 3;
+    if (v <= 0) continue;
+    const u = random();
+    if (u < 1 - 0.0331 * x ** 4 || Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+  }
+}
+
 /**
- * Two-stage percentile bootstrap of the two criteria quantities: candidates are resampled with replacement, and inside
- * each drawn candidate every sampled cell (candidate × stratum) redraws its `selected` hits with replacement from the
- * observed ones, so both between-candidate variation and the variation of picking only a few hits from a large stratum
- * are reflected. Cells that are fully enumerated (selected = population) have no sampling variation. If any partly
- * sampled cell has fewer than MIN_SELECTED_FOR_INTERVAL hits, that variation cannot be evaluated reliably and the
- * interval is `null` (not evaluable) instead of a degenerate one.
+ * Two-stage interval for the two criteria quantities (95 %, deterministic). Stage 1 resamples candidates with
+ * replacement. Stage 2 handles each partly sampled cell (candidate × stratum, selected < population) with a Bayesian
+ * Dirichlet(Jeffreys) posterior over its label shares given the observed counts, so the labels of the units that were
+ * not picked stay uncertain even when every picked hit has the same label (a plug-in resample of observed labels would
+ * collapse there). Fully enumerated cells (selected = population) are taken as observed. The interval is `null`
+ * (not evaluable) when too few resamples yield a defined estimate.
  */
 export function bootstrapInterval(rows) {
-  const clusters = [...Map.groupBy(rows, (row) => row.candidate_id).values()]
-    .map((cluster) => [...Map.groupBy(cluster, (row) => row.stratum).values()]);
-  const underSampled = clusters.flat().filter((cell) => cell[0].selected < cell[0].population && cell[0].selected < MIN_SELECTED_FOR_INTERVAL).length;
-  const base = { method: 'two_stage_percentile_bootstrap', clusters: clusters.length, resamples: BOOTSTRAP.resamples, under_sampled_cells: underSampled };
-  if (underSampled > 0) return { ...base, evaluable: false, relative_other_word_reduction: null, same_word_dropped_share: null };
+  const cells = cellsOf(rows);
+  const byCandidate = [...Map.groupBy(cells, (cell) => cell.candidate_id).values()];
   const random = seededRandom('bootstrap-414:' + rows.map((row) => row.candidate_id).sort().join(','));
-  const redraw = (cell) => (cell[0].selected === cell[0].population ? cell : Array.from({ length: cell.length }, () => cell[Math.floor(random() * cell.length)]));
+  const partial = cells.filter((cell) => cell.selected < cell.population).length;
+  const draw = (cell) => {
+    if (cell.selected === cell.population) return { stratum: cell.stratum, other: cell.counts.other, same: cell.counts.same };
+    const gammas = [cell.counts.other, cell.counts.same, cell.counts.unclear].map((count) => gammaSample(count + JEFFREYS_PRIOR, random));
+    const total = gammas.reduce((a, b) => a + b, 0);
+    return { stratum: cell.stratum, other: (cell.population * gammas[0]) / total, same: (cell.population * gammas[1]) / total };
+  };
   const reductions = [];
   const shares = [];
   for (let index = 0; index < BOOTSTRAP.resamples; index += 1) {
-    const sample = Array.from({ length: clusters.length }, () => clusters[Math.floor(random() * clusters.length)]).flat().flatMap(redraw);
-    const { reduction, droppedSameShare } = estimate(sample);
+    const sample = Array.from({ length: byCandidate.length }, () => byCandidate[Math.floor(random() * byCandidate.length)]).flat().map(draw);
+    const { reduction, droppedSameShare } = estimateMasses(sample);
     if (reduction !== null) reductions.push(reduction);
     if (droppedSameShare !== null) shares.push(droppedSameShare);
   }
@@ -139,7 +177,14 @@ export function bootstrapInterval(rows) {
     ? (list.sort((a, b) => a - b), [round4(percentile(list, BOOTSTRAP.interval[0])), round4(percentile(list, BOOTSTRAP.interval[1]))])
     : null);
   const result = { relative_other_word_reduction: interval(reductions), same_word_dropped_share: interval(shares) };
-  return { ...base, evaluable: result.relative_other_word_reduction !== null && result.same_word_dropped_share !== null, ...result };
+  return {
+    method: 'candidate_resampling_with_dirichlet_jeffreys_cells',
+    clusters: byCandidate.length,
+    resamples: BOOTSTRAP.resamples,
+    partly_sampled_cells: partial,
+    evaluable: result.relative_other_word_reduction !== null && result.same_word_dropped_share !== null,
+    ...result,
+  };
 }
 
 /** Rows of one candidate and stratum must agree on population/selected, and `selected` must equal the row count. */

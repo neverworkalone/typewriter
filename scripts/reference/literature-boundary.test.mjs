@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { aggregateLabels, bootstrapInterval, CRITERIA, MIN_SELECTED_FOR_INTERVAL, pickHits, sampleCandidateIds, stratumPopulation, validateLabels } from './literature-boundary-judge.mjs';
+import { aggregateLabels, bootstrapInterval, CRITERIA, pickHits, sampleCandidateIds, stratumPopulation, validateLabels } from './literature-boundary-judge.mjs';
 import { summarize, toleranceVerdict, TOLERANCES } from './literature-boundary-measure.mjs';
 
 // Synthetic, text-free fixtures only (#414 measurement and judged-sample contract).
@@ -127,7 +127,7 @@ test('uncertainty is reported and criteria_met needs the interval, not just the 
   const small = build([...Array(3).fill({ keptLabel: 'same_word' }), ...Array(2).fill({ keptLabel: 'other_word' })]);
   assert.equal(small.point_estimate_meets_criteria, true);
   assert.equal(small.criteria_met, false);
-  assert.equal(small.uncertainty.method, 'two_stage_percentile_bootstrap');
+  assert.equal(small.uncertainty.method, 'candidate_resampling_with_dirichlet_jeffreys_cells');
   assert.equal(small.uncertainty.evaluable, true);
   assert.equal(small.uncertainty.clusters, 5);
   assert.ok(small.uncertainty.relative_other_word_reduction[0] < CRITERIA.min_relative_other_word_reduction);
@@ -139,34 +139,32 @@ test('uncertainty is reported and criteria_met needs the interval, not just the 
   assert.deepEqual(bootstrapInterval([{ candidate_id: 'a', stratum: 'kept', weight: 1, label: 'same_word' }]), bootstrapInterval([{ candidate_id: 'a', stratum: 'kept', weight: 1, label: 'same_word' }]));
 });
 
-test('a partly sampled cell with too few hits makes the interval not evaluable instead of degenerate (#414 review)', () => {
-  const build = (keptSelected, candidates = 30) => {
+test('identical labels in partly sampled cells cannot fake a pass; fully enumerated cells still can (#414 review)', () => {
+  const build = ({ keptPopulation, keptSelected, candidates = 30 }) => {
     const mapping = {};
     const labels = {};
     for (let index = 0; index < candidates; index += 1) {
       const candidate = 'C000001-' + String(index + 1).padStart(4, '0');
       mapping[`D${index}`] = { candidate_id: candidate, stratum: 'dropped', population: 1, selected: 1 }; // fully enumerated
       labels[`D${index}`] = { label: 'other_word', type: 'compound' };
-      for (let hit = 0; hit < keptSelected; hit += 1) { // large kept stratum, identical observed labels in every candidate
-        mapping[`K${index}_${hit}`] = { candidate_id: candidate, stratum: 'kept', population: 500, selected: keptSelected };
+      for (let hit = 0; hit < keptSelected; hit += 1) { // every picked kept hit is same_word
+        mapping[`K${index}_${hit}`] = { candidate_id: candidate, stratum: 'kept', population: keptPopulation, selected: keptSelected };
         labels[`K${index}_${hit}`] = { label: 'same_word' };
       }
     }
     return aggregateLabels(mapping, labels);
   };
-  const thin = build(MIN_SELECTED_FOR_INTERVAL - 1);
-  assert.equal(thin.point_estimate_meets_criteria, true);
-  assert.equal(thin.uncertainty.evaluable, false);
-  assert.equal(thin.uncertainty.under_sampled_cells, 30);
-  assert.equal(thin.uncertainty.relative_other_word_reduction, null);
-  assert.equal(thin.criteria_met, false); // the hidden hit-sampling variation is never turned into a pass
-  const enough = build(MIN_SELECTED_FOR_INTERVAL);
-  assert.equal(enough.uncertainty.evaluable, true);
-  assert.equal(enough.criteria_met, true);
-  // Fully enumerated cells (selected = population) carry no hit-sampling variation and are never "under-sampled".
-  const mapping = { D: { candidate_id: 'C1', stratum: 'dropped', population: 2, selected: 2 }, D2: { candidate_id: 'C1', stratum: 'dropped', population: 2, selected: 2 }, K: { candidate_id: 'C1', stratum: 'kept', population: 1, selected: 1 } };
-  const labels = { D: { label: 'other_word', type: 'compound' }, D2: { label: 'other_word', type: 'compound' }, K: { label: 'same_word' } };
-  assert.equal(aggregateLabels(mapping, labels).uncertainty.under_sampled_cells, 0);
+  // 5 of 500 and 4 of 500, all same_word: the 495/496 unseen labels stay uncertain, so no pass.
+  for (const selected of [4, 5]) {
+    const partial = build({ keptPopulation: 500, keptSelected: selected });
+    assert.equal(partial.uncertainty.evaluable, true);
+    assert.equal(partial.criteria_met, false, `selected ${selected}`);
+    assert.ok(partial.uncertainty.relative_other_word_reduction[0] < CRITERIA.min_relative_other_word_reduction);
+  }
+  // Census control: the same labels with every kept unit enumerated (population = selected) are certain and pass.
+  const census = build({ keptPopulation: 5, keptSelected: 5 });
+  assert.equal(census.criteria_met, true);
+  assert.equal(census.uncertainty.partly_sampled_cells, 0);
 });
 
 test('within-cell hit sampling variation widens the interval even for a single candidate', () => {
