@@ -220,6 +220,11 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText }) {
     'analyzer_version', 'analyzer_digest', 'proposal_contract', 'source_evidence_sha256', 'candidates_sha256', 'status'];
   for (const key of required) if (manifest[key] === undefined) errors.push(`candidate manifest: missing ${key}`);
   if (errors.length) return errors;
+  if (manifest.producer_revision !== undefined
+    && (typeof manifest.producer_revision !== 'string'
+      || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u.test(manifest.producer_revision))) {
+    errors.push('candidate manifest: producer_revision must be a full Git object SHA string');
+  }
   if (manifest.lemma_policy !== LEMMA_POLICY) errors.push(`candidate manifest: lemma_policy must be ${LEMMA_POLICY}`);
   if (!isBatchId(manifest.batch_id)) errors.push('candidate manifest: batch_id must match C000000');
   if (!CANDIDATE_STATUSES.includes(manifest.status)) errors.push(`candidate manifest: status must be one of ${CANDIDATE_STATUSES.join(', ')}`);

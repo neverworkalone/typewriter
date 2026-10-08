@@ -103,6 +103,44 @@ export function parseArguments(argv) {
 }
 
 const git = (args, root) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+const STAGE1_SOURCE_PATHS = Object.freeze([
+  'scripts/factory',
+  'scripts/intake',
+  'scripts/reference/corpus-index.mjs',
+  'scripts/reference/short-query-counts.mjs',
+  'scripts/reference/short-query-postings.mjs',
+  'scripts/typewriter-cache.mjs',
+  'scripts/python/env.mjs',
+]);
+
+// Bind generated manifests to the committed producer tree. Synthetic test roots without Git
+// remain supported; a real checkout must not run Stage 1 from modified factory source.
+function producerRevisionFor(root) {
+  try {
+    git(['rev-parse', '--git-dir'], root);
+  } catch {
+    return null;
+  }
+  let revision;
+  try {
+    revision = git(['rev-parse', 'HEAD'], root).trim();
+  } catch {
+    throw new Stage1Error(['Git-backed Stage 1 checkout has no resolvable HEAD; commit the producer source before generation']);
+  }
+  if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u.test(revision)) {
+    throw new Stage1Error(['cannot record producer_revision: Git HEAD is not a full object SHA']);
+  }
+  let sourceStatus;
+  try {
+    sourceStatus = git(['status', '--porcelain', '--untracked-files=all', '--', ...STAGE1_SOURCE_PATHS], root);
+  } catch {
+    throw new Stage1Error(['cannot verify producer source cleanliness before Stage 1 generation']);
+  }
+  if (sourceStatus.trim()) {
+    throw new Stage1Error(['Stage 1 producer source scope has uncommitted changes; commit producer dependencies before generation']);
+  }
+  return revision;
+}
 
 // Batch ids already used locally or on the merged base; an unresolved base fails closed unless
 // the owner explicitly passes `--base-ref none`.
@@ -303,6 +341,7 @@ export async function runStage1(argv, {
   const canonicalEntries = await loadCanonicalEntries(root);
   const batchId = allocateBatchId(await knownBatchIds(root, options.baseRef));
   const producedLemmaKeys = await producedLemmas(root, options.baseRef);
+  const producerRevision = producerRevisionFor(root);
   for (const lemma of sourceExcludedLemmas) producedLemmaKeys.add(lemma);
   let source = contextSource;
   const ownSource = !source && (options.contextProposals || options.contextReviewPack);
@@ -356,6 +395,7 @@ export async function runStage1(argv, {
     canonicalEntries,
     canonicalDigest: await canonicalSnapshotDigest(root),
     batchId,
+    producerRevision,
     taskId: options.taskId,
     maxCandidates: options.maxCandidates,
     producedLemmas: producedLemmaKeys,

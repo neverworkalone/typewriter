@@ -201,6 +201,10 @@ distinct-citation-lemma-v1`; the v1 manifest fields are kept (`task_id`, `batch_
 `source_*`, `canonical_snapshot_digest`, `analyzer_*`, `proposal_contract`,
 `source_evidence_sha256`, `candidates_sha256`, `status`) with these differences:
 
+- Git-based producer runs include `producer_revision`, the full commit SHA for
+  the producer source. All Stage 1 runtime sources must be clean; the exact source
+  scope is listed in `docs/lexical-factory-contracts.md`. Legacy v2 manifests
+  without this field remain valid.
 - `candidate_count` = **distinct lemmas** = rows; `observation_count` = total
   distinct observations behind them;
 - `selection: {bound, eligible_lemma_count, deferred_lemma_count}` — the bound is a
