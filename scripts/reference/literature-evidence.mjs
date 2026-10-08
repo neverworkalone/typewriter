@@ -21,6 +21,11 @@ export const MAX_BLOCK_CHARS = 1200;
 export const FALLBACK_NEIGHBOR_UNITS = 3;
 export const MIN_FORM_CHARACTERS = 2;
 export const HIT_FETCH_CAP = 2000;
+// `eojeol` (#414): a match counts only where it starts an eojeol (line start or after a non-letter, non-digit),
+// so `선도` no longer hits inside `윤선도` or `꼬리` inside `꾀꼬리`. The right side stays open (조사/어미 결합).
+// `substring` is the pre-#414 behaviour, kept for before/after measurement.
+export const MATCH_MODES = Object.freeze(['substring', 'eojeol']);
+export const DEFAULT_MATCH_MODE = 'eojeol';
 const CACHE_PATHS = resolveTypewriterCachePaths();
 export const EVIDENCE_OUTPUT_DIRECTORY = CACHE_PATHS.evidence;
 
@@ -104,28 +109,54 @@ function metadataOf(database) {
   };
 }
 
-function formQuery(form) {
+const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+
+/** Every occurrence of `form` in `text` as {at, class}: boundary, after_hangul, after_han or after_other. */
+export function matchOccurrences(text, form) {
+  const found = [];
+  for (let at = text.indexOf(form); at !== -1; at = text.indexOf(form, at + 1)) {
+    const previous = at === 0 ? null : [...text.slice(Math.max(0, at - 2), at)].at(-1);
+    let position = 'boundary';
+    if (previous !== null && WORD_CHARACTER.test(previous)) {
+      position = /\p{Script=Hangul}/u.test(previous) ? 'after_hangul' : /\p{Script=Han}/u.test(previous) ? 'after_han' : 'after_other';
+    }
+    found.push({ at, class: position });
+  }
+  return found;
+}
+
+export const hasEojeolMatch = (text, form) => matchOccurrences(text, form).some((o) => o.class === 'boundary');
+
+function assertMatchMode(matchMode) {
+  if (!MATCH_MODES.includes(matchMode)) throw new TypeError('matchMode must be one of ' + MATCH_MODES.join(', ') + '.');
+}
+
+function registerMatchFunction(database) {
+  database.function('tw_eojeol_match', { deterministic: true }, (text, form) => (hasEojeolMatch(text, form) ? 1 : 0));
+}
+
+function formQuery(form, matchMode) {
   const useFts = [...form].length >= 3;
-  const where = (useFts ? 'unit_fts MATCH ? AND ' : '') + 'instr(u.text, ?) > 0';
-  const parameters = [...(useFts ? [ftsPattern(form)] : []), form];
+  const where = (useFts ? 'unit_fts MATCH ? AND ' : '') + 'instr(u.text, ?) > 0' + (matchMode === 'eojeol' ? ' AND tw_eojeol_match(u.text, ?) = 1' : '');
+  const parameters = [...(useFts ? [ftsPattern(form)] : []), form, ...(matchMode === 'eojeol' ? [form] : [])];
   const from = `FROM text_units u JOIN source_files f USING (file_id) JOIN works w ON w.file_id = f.file_id
       ${useFts ? 'JOIN unit_fts ON unit_fts.rowid = u.unit_rowid' : ''} WHERE u.kind = 'text' AND ${where}`;
   return { from, parameters };
 }
 
 // Exact union over all forms, independent of the fetch cap.
-function exactTotals(database, forms) {
-  const parts = forms.map(({ form }) => formQuery(form));
+function exactTotals(database, forms, matchMode) {
+  const parts = forms.map(({ form }) => formQuery(form, matchMode));
   const sql = parts.map(({ from }) => `SELECT u.unit_rowid AS unit, w.work_id AS work ${from}`).join(' UNION ');
   const { units, works } = database.prepare(`SELECT count(*) AS units, count(DISTINCT work) AS works FROM (${sql})`).get(...parts.flatMap(({ parameters }) => parameters));
   return { units, works };
 }
 
-function collectHits(database, forms, fetchCap) {
+function collectHits(database, forms, fetchCap, matchMode) {
   const hits = new Map(); // unit_rowid → hit
   const perForm = [];
   for (const { form } of forms) {
-    const { from, parameters } = formQuery(form);
+    const { from, parameters } = formQuery(form, matchMode);
     const { n, works } = database.prepare(`SELECT count(*) AS n, count(DISTINCT w.work_id) AS works ${from}`).get(...parameters);
     const rows = database.prepare(`
       SELECT u.unit_rowid, u.file_id, u.ordinal, u.block_ordinal, w.work_id, w.author, f.genre, f.source_sha256
@@ -138,6 +169,41 @@ function collectHits(database, forms, fetchCap) {
     }
   }
   return { hits: [...hits.values()], perForm };
+}
+
+/** The substring-match scatter sample (same order and cap as retrieval): [{form, text, location_digest}]. Local use only. */
+export function fetchSubstringUnits({ databasePath = DEFAULT_FULL_LITERATURE_INDEX_PATH, searchForms, hitFetchCap = HIT_FETCH_CAP }) {
+  const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
+  try {
+    return searchForms.forms.flatMap(({ form }) => {
+      const { from, parameters } = formQuery(form, 'substring');
+      return database.prepare(`SELECT u.text AS text, f.source_sha256 AS source_sha256, u.ordinal AS ordinal ${from} ORDER BY (u.unit_rowid * 2654435761) % 4294967296, u.unit_rowid LIMIT ?`)
+        .all(...parameters, hitFetchCap)
+        .map((row) => ({ form, text: row.text, location_digest: sha256(row.source_sha256 + ':' + row.ordinal) }));
+    });
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * Text-free structural census of the substring matches (#414): over the same scatter sample the
+ * retriever would fetch, count units by where their occurrences sit. A unit is `boundary` when any
+ * occurrence starts an eojeol, otherwise it takes the class of its first occurrence. For boundary
+ * units, `trailing_*` buckets the Hangul run right after the form (0 / 1–2 / 3+ syllables).
+ */
+export function classifyMatchSample(options) {
+  const counts = { units: 0, boundary: 0, after_hangul: 0, after_han: 0, after_other: 0, trailing_0: 0, trailing_1_2: 0, trailing_3_plus: 0 };
+  for (const { form, text } of fetchSubstringUnits(options)) {
+    const occurrences = matchOccurrences(text, form);
+    counts.units += 1;
+    const boundary = occurrences.filter((o) => o.class === 'boundary');
+    if (boundary.length === 0) { counts[occurrences[0].class] += 1; continue; }
+    counts.boundary += 1;
+    const run = Math.min(...boundary.map((o) => [...text.slice(o.at + form.length).match(/^\p{Script=Hangul}*/u)[0]].length));
+    counts[run === 0 ? 'trailing_0' : run <= 2 ? 'trailing_1_2' : 'trailing_3_plus'] += 1;
+  }
+  return counts;
 }
 
 /**
@@ -204,14 +270,17 @@ export function retrieveLiteratureEvidence({
   maxContexts = DEFAULT_MAX_CONTEXTS,
   maxPerWork = DEFAULT_MAX_PER_WORK,
   hitFetchCap = HIT_FETCH_CAP,
+  matchMode = DEFAULT_MATCH_MODE,
 }) {
+  assertMatchMode(matchMode);
   if (!searchForms?.forms?.length) throw new Error('No usable search forms.');
   const startedAt = process.hrtime.bigint();
   const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
   try {
+    registerMatchFunction(database);
     const metadata = metadataOf(database);
-    const { hits, perForm } = collectHits(database, searchForms.forms, hitFetchCap);
-    const totals = exactTotals(database, searchForms.forms);
+    const { hits, perForm } = collectHits(database, searchForms.forms, hitFetchCap, matchMode);
+    const totals = exactTotals(database, searchForms.forms, matchMode);
     const seed = (identity.batch_id ?? '') + '/' + (identity.candidate_id ?? '');
     const selected = selectRepresentativeHits(hits, { maxContexts, maxPerWork, seed });
     const contexts = selected.map((hit) => {
@@ -250,6 +319,7 @@ export function retrieveLiteratureEvidence({
       contexts_returned: contexts.length,
       distinct_works_returned: new Set(contexts.map((c) => c.work_id)).size,
       genres_returned: [...new Set(contexts.map((c) => c.genre))].sort(compare),
+      match_mode: matchMode,
       bounds: { max_contexts: maxContexts, max_per_work: maxPerWork, hit_fetch_cap: hitFetchCap },
       useful_evidence: contexts.length > 0,
       no_evidence_note: contexts.length === 0 ? 'no literature hits; this is not negative evidence' : null,
