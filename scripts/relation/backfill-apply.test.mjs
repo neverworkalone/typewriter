@@ -10,7 +10,7 @@ import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
 import { planRelationBackfill, writePlannedRecords } from '../factory/admission.mjs';
-import { approvedAmendments, applyBackfill } from './backfill-apply.mjs';
+import { approvedAmendments, applyBackfill, packetTextFor } from './backfill-apply.mjs';
 import { inventoryCanonicalSenses, newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -150,7 +150,7 @@ async function planOnDisk(root, state, index, packetId = 'R000001') {
   }
   const { amendments } = approvedAmendments(state, index);
   const plan = planRelationBackfill({ packetId, amendments, canonicalRecords: records, recordPathById });
-  const packet = `${JSON.stringify({ packet_id: packetId, relation_amendments: amendments }, null, 1)}\n`;
+  const packet = packetTextFor(packetId, amendments, state);
   return { plan, packet, amendments };
 }
 
@@ -261,6 +261,28 @@ test('an altered committed packet no longer matches its event: apply and the fac
     await writeFile(file, text.replace('회귀 시험용 근거', '회귀 시험용 근거!'));
     await assert.rejects(applyBackfill({ root, state, index, refreshReports: false }), /does not match its semantic authority event/u);
     assert.ok((await validateFactoryRepository({ root })).some((error) => /does not match its semantic authority event/u.test(error)));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('resuming an interrupted packet re-checks the approved target meaning: a changed target is refused, an unchanged one resumes', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { state, target } = oneApproval(canonical, index);
+  const changed = buildRelationIndex({ ...canonical, records: canonical.records.map((info) => (info.record.id !== target.record_id ? info
+    : { ...info, record: { ...info.record, senses: info.record.senses.map((sense) => (sense.id === target.sense_id ? { ...sense, gloss: `${sense.gloss} (뜻이 바뀜)` } : sense)) } })) });
+  const root = await scratchRoot();
+  try {
+    const { packet } = await planOnDisk(root, state, index);
+    await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
+    await writeFile(path.join(root, 'data/relation-backfill/R000001.json'), packet);
+    const recordsBefore = await readRecords(root);
+    const eventsBefore = await authorityEvents(root);
+    await assert.rejects(applyBackfill({ root, state, index: changed, refreshReports: false }), /changed meaning since approval/u);
+    assert.deepEqual(await readRecords(root), recordsBefore);
+    assert.equal(await authorityEvents(root), eventsBefore);
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied', 'positive control: unchanged meaning resumes');
   } finally {
     await rm(root, { recursive: true, force: true });
   }

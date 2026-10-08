@@ -416,7 +416,8 @@ Rules carried over unchanged:
   An event without its packet, or whose packet bytes no longer match the event's
   `semantic_decisions_sha256`, fails closed (in `apply` and in the factory validator). Only
   approvals that still hold (source gloss and the approved target's owner and meaning unchanged
-  since review, the same check the queue uses) are applied; others go back for re-review. A tuple that is merely already present and
+  since review, the same check the queue uses) are applied; others go back for re-review. The intent packet also keeps the target meaning digest the
+  reviewer saw, and resuming refuses any not-yet-written tuple whose target has changed meaning. A tuple that is merely already present and
   claimed by no packet is an exact-tuple no-op, and a different note for the same target is
   a conflict. A review is not re-queued by the
   `relation_neighbor_of_related` candidates that its own applied relations bring in.

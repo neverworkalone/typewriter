@@ -67,6 +67,28 @@ const withoutTuples = (records, packet) => records.map((record) => {
   }) };
 });
 const reviewedId = (item) => reviewedRelationId(item.source_sense_id, item.relation);
+const meaningOf = (index, senseId) => {
+  const sense = index.bySenseId.get(senseId);
+  return sense ? sha256Json([sense.lemma, sense.gloss]) : null;
+};
+
+/**
+ * The intent packet: the amendments plus, per approved tuple, the target meaning digest the reviewer saw. The digest
+ * lives beside the amendments (their shape is the shared Stage 3 contract) so an interrupted apply can be resumed
+ * only while the target still means what it meant when it was approved.
+ */
+export function packetTextFor(packetId, amendments, state) {
+  const targetMeaning = {};
+  for (const item of amendments) {
+    const reviewedTarget = state.done[item.source_sense_id].reviewed_candidates.find((candidate) => candidate.id === item.relation.target_sense);
+    targetMeaning[reviewedId(item)] = reviewedTarget.meaning_sha256;
+  }
+  return `${JSON.stringify({ packet_id: packetId, relation_amendments: amendments, target_meaning_sha256: targetMeaning }, null, 1)}\n`;
+}
+
+const isPresent = (records, item) => records.some((record) => record.id === item.source_record_id
+  && record.senses.some((sense) => sense.id === item.source_sense_id && (sense.relations ?? []).some((relation) => reviewedRelationId(sense.id, relation) === reviewedId(item))));
+
 const BACKFILL_EVENT = /^R\d{6}$/u;
 const nextPacketId = (events) => `R${String(events.reduce((max, event) => Math.max(max, Number(/^R(\d{6})$/u.exec(event.batch_id ?? '')?.[1] ?? 0)), 0) + 1).padStart(6, '0')}`;
 
@@ -120,9 +142,17 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
     if (recorded.has(id)) continue;
     let packet;
     try { packet = JSON.parse(text); } catch { throw new Error(`interrupted packet ${id} is not valid JSON; inspect it before re-running`); }
-    const problems = packet?.packet_id === id && Array.isArray(packet.relation_amendments)
+    const problems = packet?.packet_id === id && Array.isArray(packet.relation_amendments) && packet.target_meaning_sha256 && typeof packet.target_meaning_sha256 === 'object'
       ? relationAmendmentErrors({ relation_amendments: packet.relation_amendments }, id) : [`interrupted packet ${id} is malformed`];
     if (problems.length) throw new Error(problems.join('; '));
+    // Resuming writes whatever the intent has not written yet, so each such tuple must still mean what it meant when
+    // it was approved; tuples already in canonical are only being recorded.
+    for (const item of packet.relation_amendments) {
+      if (isPresent(records, item)) continue;
+      if (packet.target_meaning_sha256[reviewedId(item)] !== meaningOf(index, item.relation.target_sense)) {
+        throw new Error(`interrupted packet ${id}: the target ${item.relation.target_sense} of ${item.source_sense_id} changed meaning since approval; remove the unwritten packet and re-review`);
+      }
+    }
     await applyPacket({ root, records, recordPathById, packetId: id, amendments: packet.relation_amendments, packetText: text });
     written.push(id);
     ({ records, recordPathById, source } = await files());
@@ -135,7 +165,7 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
   let recordsChanged = 0;
   if (pending.length) {
     const packetId = nextPacketId(source.factory_admissions ?? []);
-    const packetText = `${JSON.stringify({ packet_id: packetId, relation_amendments: pending }, null, 1)}\n`;
+    const packetText = packetTextFor(packetId, pending, state);
     recordsChanged = (await applyPacket({ root, records, recordPathById, packetId, amendments: pending, packetText })).changes.length;
     written.push(packetId);
   }
