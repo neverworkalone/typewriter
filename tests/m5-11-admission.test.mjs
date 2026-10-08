@@ -132,6 +132,11 @@ async function createM511PromotionTransactionFixture() {
   const historicalSenseCount = historicalRecords.reduce((sum, record) => sum + record.senses.length, 0);
   const historicalDigest = canonicalRecordsSha256(historicalCanonical.records);
   historicalReview.records = historicalReview.records.filter(({ record_id: recordId }) => historicalIds.has(recordId));
+  // The live review binds relevance-bearing records (#396); this snapshot predates relevance.
+  const historicalById = new Map(historicalRecords.map((record) => [record.id, record]));
+  for (const reviewed of historicalReview.records) {
+    reviewed.record_sha256 = sha256Json(historicalById.get(reviewed.record_id));
+  }
   historicalReview.record_count = historicalRecords.length;
   historicalReview.sense_count = historicalSenseCount;
   historicalReview.source.canonical_records_sha256 = historicalDigest;
