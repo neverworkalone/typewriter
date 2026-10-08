@@ -22,3 +22,5 @@ canonical을 배치/세션당 한 번 `buildRelationIndex`로 색인하고 모�
 ## 산출물
 
 `contract`(`relation-candidate-retrieval-v1`), `canonical_snapshot_digest`, `config`, 원천별 `candidates[{rank, target{kind, record_id|provisional_id, sense_id, pos}, signals, literature_location_digests?}]`. `validateRelationCandidateArtifact`로 구조·스냅샷 일치를 확인한다.
+
+`validateRelationCandidateArtifact`는 fail-closed다: 필수 구조·source/target 식별자(canonical은 index와 대조, provisional은 같은 artifact의 원천이어야 함)·편집 필드 금지·중복·선언된 풀/digest 상한을 모두 강제하고, `expectedSourceIds`로 완전성을 확인한다. 설정(`max_candidates` 등)은 유한한 범위 내 정수/수만 허용하며 알 수 없는 설정은 거부한다. 사용된 모든 설정은 artifact `config`에 기록된다.

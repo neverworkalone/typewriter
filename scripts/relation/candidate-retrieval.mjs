@@ -44,6 +44,27 @@ export const DEFAULT_CONFIG = Object.freeze({
   max_literature_digests: 3,
 });
 
+const CONFIG_RULES = Object.freeze({
+  max_candidates: { integer: true, min: 1, max: 1000 },
+  min_shared_bigrams: { integer: true, min: 1, max: 20 },
+  min_gloss_cosine: { min: 0, max: 1 },
+  stop_bigram_df_ratio: { min: 0.0001, max: 1 },
+  max_literature_digests: { integer: true, min: 0, max: 20 },
+});
+
+/** Merges and validates retrieval settings; unbounded or malformed values would disable the pool contract. */
+export function resolveConfig(...layers) {
+  const settings = Object.assign({}, ...layers);
+  for (const key of Object.keys(settings)) if (!(key in CONFIG_RULES)) throw new Error(`unknown retrieval setting ${key}`);
+  for (const [key, rule] of Object.entries(CONFIG_RULES)) {
+    const value = settings[key];
+    if (typeof value !== 'number' || !Number.isFinite(value) || (rule.integer && !Number.isInteger(value)) || value < rule.min || value > rule.max) {
+      throw new Error(`retrieval setting ${key} must be a finite ${rule.integer ? 'integer' : 'number'} in [${rule.min}, ${rule.max}]`);
+    }
+  }
+  return settings;
+}
+
 const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const HANGUL = /[\p{Script=Hangul}A-Za-z0-9]/u;
@@ -75,7 +96,7 @@ const MIN_FORM_CHARS = 2;
  * `canonical` is `{ canonicalRevision, records }` where each record is a canonical entry or `{ record }`.
  */
 export function buildRelationIndex(canonical, config = {}) {
-  const settings = { ...DEFAULT_CONFIG, ...config };
+  const settings = resolveConfig(DEFAULT_CONFIG, config);
   const senses = [];
   const bySenseId = new Map();
   const byRecordId = new Map();
@@ -216,7 +237,7 @@ function addSignal(map, key, code, weight, extra) {
  * may also be targets for the other sources of the same call (same-batch provisional identities).
  */
 export function retrieveRelationCandidates(index, rawSources, { config = {}, literature = {} } = {}) {
-  const settings = { ...index.settings, ...config };
+  const settings = resolveConfig(index.settings, config);
   const sources = rawSources.map(normalizeSource).map((source) => {
     if (source.kind !== 'canonical') return source;
     // Canonical sources are bound to the snapshot: pos/gloss come from the indexed sense, never the caller.
@@ -384,28 +405,93 @@ export function retrieveRelationCandidates(index, rawSources, { config = {}, lit
   };
 }
 
-/** Structural validation of an artifact; returns error strings. Used by consumers before trusting a file. */
-export function validateRelationCandidateArtifact(artifact, index = null) {
+const HEX64 = /^[0-9a-f]{64}$/u;
+const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const hasExactKeys = (value, required, optional = []) => {
+  const keys = Object.keys(value);
+  return required.every((key) => keys.includes(key)) && keys.every((key) => required.includes(key) || optional.includes(key));
+};
+const PROVISIONAL_ID = /^provisional:([^/]*)\/([^/]+)\/([^/]+)$/u;
+
+/**
+ * Strict structural validation of an artifact; returns error strings (never throws on malformed input).
+ * `index` additionally binds canonical identities and the snapshot digest to the current canonical.
+ */
+export function validateRelationCandidateArtifact(artifact, index = null, { expectedSourceIds = null } = {}) {
   const errors = [];
-  if (artifact?.contract !== RETRIEVER_CONTRACT) errors.push('contract mismatch');
-  if (artifact?.authority !== ARTIFACT_AUTHORITY) errors.push('artifact must be candidates_only');
-  if (!/^[0-9a-f]{64}$/u.test(artifact?.canonical_snapshot_digest ?? '')) errors.push('missing canonical_snapshot_digest');
-  if (index && artifact?.canonical_snapshot_digest !== index.canonical_snapshot_digest) errors.push('canonical snapshot digest differs from the current canonical');
+  if (!isObject(artifact)) return ['artifact must be an object'];
+  if (!hasExactKeys(artifact, ['contract', 'authority', 'canonical_snapshot_digest', 'config', 'signal_codes', 'sources'])) errors.push('artifact must have exactly contract, authority, canonical_snapshot_digest, config, signal_codes, sources');
+  if (artifact.contract !== RETRIEVER_CONTRACT) errors.push('contract mismatch');
+  if (artifact.authority !== ARTIFACT_AUTHORITY) errors.push('artifact must be candidates_only');
+  if (!HEX64.test(artifact.canonical_snapshot_digest ?? '')) errors.push('missing canonical_snapshot_digest');
+  if (index && artifact.canonical_snapshot_digest !== index.canonical_snapshot_digest) errors.push('canonical snapshot digest differs from the current canonical');
+  if (JSON.stringify(artifact.signal_codes) !== JSON.stringify(SIGNAL_CODES)) errors.push('signal_codes mismatch');
+  let config = null;
+  try { config = isObject(artifact.config) && hasExactKeys(artifact.config, Object.keys(CONFIG_RULES)) ? resolveConfig(artifact.config) : null; } catch (error) { errors.push(`config: ${error.message}`); }
+  if (config === null && !errors.some((e) => e.startsWith('config:'))) errors.push('config must contain exactly the retrieval settings');
+  if (!Array.isArray(artifact.sources)) return [...errors, 'sources must be an array'];
+
   const allowed = new Set(SIGNAL_CODES);
-  for (const [s, entry] of (artifact?.sources ?? []).entries()) {
+  const sourceIds = new Set();
+  const provisionalSources = new Set();
+  for (const entry of artifact.sources) if (entry?.source?.kind === 'provisional') provisionalSources.add(entry.source.provisional_id);
+  for (const [s, entry] of artifact.sources.entries()) {
     const at = `sources[${s}]`;
-    if (entry.literature?.no_hit_is_negative_evidence !== false) errors.push(`${at}: literature no-hit must not be negative evidence`);
-    let expectedRank = 1;
-    for (const candidate of entry.candidates ?? []) {
-      if (candidate.rank !== expectedRank++) errors.push(`${at}: rank order broken`);
-      if (!candidate.signals?.length || candidate.signals.some((code) => !allowed.has(code))) errors.push(`${at}: candidate ${candidate.rank} has invalid signals`);
-      if (!candidate.target?.pos) errors.push(`${at}: candidate ${candidate.rank} lacks target pos`);
-      for (const forbidden of ['score', 'type', 'relevance', 'relation_type', 'note']) if (forbidden in candidate) errors.push(`${at}: candidate ${candidate.rank} carries editorial field ${forbidden}`);
-      if (index && candidate.target.kind === 'canonical') {
-        const sense = index.bySenseId.get(candidate.target.sense_id);
-        if (!sense || sense.record_id !== candidate.target.record_id || sense.pos !== candidate.target.pos) errors.push(`${at}: candidate ${candidate.rank} target does not match canonical`);
+    if (!isObject(entry) || !hasExactKeys(entry, ['source', 'literature', 'candidates_total', 'already_related_excluded', 'candidates'])) { errors.push(`${at}: invalid shape`); continue; }
+    const source = entry.source;
+    if (!isObject(source)) errors.push(`${at}: source must be an object`);
+    else if (source.kind === 'canonical') {
+      if (!hasExactKeys(source, ['kind', 'record_id', 'sense_id', 'pos']) || ![source.record_id, source.sense_id, source.pos].every((v) => typeof v === 'string' && v)) errors.push(`${at}: invalid canonical source identity`);
+      else if (index) { const sense = index.bySenseId.get(source.sense_id); if (!sense || sense.record_id !== source.record_id || sense.pos !== source.pos) errors.push(`${at}: source does not match canonical`); }
+      if (sourceIds.has(source.sense_id)) errors.push(`${at}: duplicate source ${source.sense_id}`); sourceIds.add(source.sense_id);
+    } else if (source.kind === 'provisional') {
+      if (!hasExactKeys(source, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !PROVISIONAL_ID.test(source.provisional_id ?? '') || !source.candidate_id || !source.pos) errors.push(`${at}: invalid provisional source identity`);
+      else if (PROVISIONAL_ID.exec(source.provisional_id)[2] !== source.candidate_id) errors.push(`${at}: provisional_id does not carry candidate_id`);
+      if (sourceIds.has(source.provisional_id)) errors.push(`${at}: duplicate source ${source.provisional_id}`); sourceIds.add(source.provisional_id);
+    } else errors.push(`${at}: source kind must be canonical or provisional`);
+
+    const lit = entry.literature;
+    if (!isObject(lit) || !hasExactKeys(lit, ['status', 'contexts_scanned', 'no_hit_is_negative_evidence']) || !['attempted', 'not_provided'].includes(lit.status) || !Number.isInteger(lit.contexts_scanned) || lit.contexts_scanned < 0 || lit.no_hit_is_negative_evidence !== false) errors.push(`${at}: invalid literature record (no-hit must not be negative evidence)`);
+    if (!Array.isArray(entry.candidates)) { errors.push(`${at}: candidates must be an array`); continue; }
+    if (!Number.isInteger(entry.candidates_total) || entry.candidates_total < entry.candidates.length) errors.push(`${at}: invalid candidates_total`);
+    if (!Number.isInteger(entry.already_related_excluded) || entry.already_related_excluded < 0) errors.push(`${at}: invalid already_related_excluded`);
+    if (config && entry.candidates.length > config.max_candidates) errors.push(`${at}: pool exceeds declared max_candidates`);
+
+    const targets = new Set();
+    for (const [position, candidate] of entry.candidates.entries()) {
+      const here = `${at}.candidates[${position}]`;
+      if (!isObject(candidate) || !hasExactKeys(candidate, ['rank', 'target', 'signals'], ['literature_location_digests'])) { errors.push(`${here}: invalid shape (editorial fields are not allowed)`); continue; }
+      if (candidate.rank !== position + 1) errors.push(`${here}: rank order broken`);
+      if (!Array.isArray(candidate.signals) || candidate.signals.length === 0 || candidate.signals.some((code) => !allowed.has(code))) errors.push(`${here}: invalid signals`);
+      const digests = candidate.literature_location_digests;
+      if (digests !== undefined) {
+        if (!Array.isArray(digests) || !digests.every((d) => HEX64.test(d)) || (config && digests.length > config.max_literature_digests)) errors.push(`${here}: invalid literature_location_digests`);
+        if (!candidate.signals?.includes?.('literature_cooccurrence')) errors.push(`${here}: literature digests without literature_cooccurrence signal`);
       }
+      const target = candidate.target;
+      if (!isObject(target)) { errors.push(`${here}: target must be an object`); continue; }
+      let key = null;
+      if (target.kind === 'canonical') {
+        if (!hasExactKeys(target, ['kind', 'record_id', 'sense_id', 'pos']) || ![target.record_id, target.sense_id, target.pos].every((v) => typeof v === 'string' && v)) errors.push(`${here}: invalid canonical target identity`);
+        else {
+          key = target.sense_id;
+          if (index) { const sense = index.bySenseId.get(target.sense_id); if (!sense || sense.record_id !== target.record_id || sense.pos !== target.pos) errors.push(`${here}: target does not match canonical`); }
+        }
+      } else if (target.kind === 'provisional') {
+        const match = PROVISIONAL_ID.exec(target.provisional_id ?? '');
+        if (!hasExactKeys(target, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !match || !target.candidate_id || !target.pos) errors.push(`${here}: invalid provisional target identity`);
+        else {
+          key = target.provisional_id;
+          if (match[2] !== target.candidate_id) errors.push(`${here}: provisional_id does not carry candidate_id`);
+          if (!provisionalSources.has(target.provisional_id)) errors.push(`${here}: provisional target is not a source of this artifact`);
+        }
+      } else errors.push(`${here}: target kind must be canonical or provisional`);
+      if (key !== null) { if (targets.has(key)) errors.push(`${here}: duplicate target ${key}`); targets.add(key); }
     }
+  }
+  if (expectedSourceIds) {
+    for (const id of expectedSourceIds) if (!sourceIds.has(id)) errors.push(`missing expected source ${id}`);
+    for (const id of sourceIds) if (!expectedSourceIds.includes(id)) errors.push(`unexpected source ${id}`);
   }
   return errors;
 }

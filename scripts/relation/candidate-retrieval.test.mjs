@@ -94,6 +94,54 @@ test('validator rejects editorial fields and stale snapshots', () => {
   assert.ok(validateRelationCandidateArtifact(stale, index).some((e) => e.includes('differs')));
 });
 
+test('validator is fail-closed on tampered producer output', () => {
+  const index = buildRelationIndex(synthetic);
+  const make = () => retrieveRelationCandidates(index, [
+    { kind: 'provisional', batch_id: 'B', candidate_id: 'C8', sense_key: 's1', lemma: '잠잠', pos: 'noun', gloss: '아무 소리도 없이 잠잠한 상태.', hints: [{ lemma: '메아리' }, { lemma: '정적' }] },
+    { kind: 'provisional', batch_id: 'B', candidate_id: 'C9', sense_key: 's1', lemma: '정적', pos: 'noun', gloss: '아무 소리도 없이 잠잠하게 가라앉은 상태.' },
+  ]);
+  assert.deepEqual(validateRelationCandidateArtifact(make(), index, { expectedSourceIds: ['provisional:B/C8/s1', 'provisional:B/C9/s1'] }), []);
+  const cases = {
+    'target reduced to pos': (a) => { a.sources[0].candidates[0].target = { pos: 'noun' }; },
+    'target kind missing': (a) => { delete a.sources[0].candidates[0].target.kind; },
+    'canonical record_id removed': (a) => { const c = a.sources[0].candidates.find((x) => x.target.kind === 'canonical'); delete c.target.record_id; },
+    'provisional ids removed': (a) => { const c = a.sources[0].candidates.find((x) => x.target.kind === 'provisional'); delete c.target.provisional_id; delete c.target.candidate_id; },
+    'provisional target not a source': (a) => { a.sources.pop(); },
+    'sources deleted': (a) => { delete a.sources; },
+    'editorial field in target': (a) => { a.sources[0].candidates[0].target.relevance = 5; },
+    'editorial field on candidate': (a) => { a.sources[0].candidates[0].relevance = 5; },
+    'source identity removed': (a) => { a.sources[0].source = {}; },
+    'duplicate target': (a) => { a.sources[0].candidates.push({ ...a.sources[0].candidates[0], rank: a.sources[0].candidates.length + 1 }); },
+    'bad literature digest': (a) => { a.sources[0].candidates[0].literature_location_digests = ['x']; },
+    'pool above declared max': (a) => { a.config.max_candidates = 0; },
+    'unbounded config': (a) => { a.config.max_candidates = null; },
+  };
+  for (const [name, mutate] of Object.entries(cases)) {
+    const artifact = make();
+    mutate(artifact);
+    assert.notDeepEqual(validateRelationCandidateArtifact(artifact, index), [], name);
+  }
+  assert.ok(validateRelationCandidateArtifact(make(), index, { expectedSourceIds: ['provisional:B/C8/s1'] }).some((e) => e.includes('unexpected source')));
+  assert.ok(validateRelationCandidateArtifact(make(), index, { expectedSourceIds: ['provisional:B/C8/s1', 'provisional:B/C9/s1', 'w1-s1'] }).some((e) => e.includes('missing expected source')));
+  assert.equal(validateRelationCandidateArtifact(null).length, 1);
+});
+
+test('retrieval settings are validated and recorded', () => {
+  const index = buildRelationIndex(synthetic);
+  const source = [{ kind: 'canonical', sense_id: 'w3-s1' }];
+  for (const bad of [Infinity, -1, 0, 1.5, '5', NaN, 100000]) {
+    assert.throws(() => retrieveRelationCandidates(index, source, { config: { max_candidates: bad } }), /max_candidates/u);
+  }
+  assert.throws(() => retrieveRelationCandidates(index, source, { config: { max_literature_digests: -2 } }), /max_literature_digests/u);
+  assert.throws(() => retrieveRelationCandidates(index, source, { config: { min_gloss_cosine: 2 } }), /min_gloss_cosine/u);
+  assert.throws(() => buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0 }), /stop_bigram_df_ratio/u);
+  assert.throws(() => retrieveRelationCandidates(index, source, { config: { unknown: 1 } }), /unknown retrieval setting/u);
+  const out = retrieveRelationCandidates(index, source, { config: { max_literature_digests: 1, max_candidates: 3 } });
+  assert.equal(out.config.max_literature_digests, 1);
+  assert.equal(out.config.max_candidates, 3);
+  assert.deepEqual(validateRelationCandidateArtifact(out, index), []);
+});
+
 test('revision-less digest covers lemma, pos, search forms and relations', () => {
   const make = (mutate) => {
     const records = structuredClone(synthetic.records);
