@@ -224,7 +224,7 @@ export const CI_CATEGORIES = Object.freeze({
       ),
       commandCheck(
         'Test Issue #391 Stage 2 literature evidence retriever',
-        ['--test', 'scripts/reference/literature-evidence.test.mjs', 'scripts/reference/literature-evidence-selfcheck.test.mjs', 'scripts/reference/literature-evidence-run.test.mjs', 'scripts/reference/literature-validation.test.mjs'],
+        ['--test', 'scripts/reference/literature-evidence.test.mjs', 'scripts/reference/literature-evidence-selfcheck.test.mjs', 'scripts/reference/literature-evidence-run.test.mjs', 'scripts/reference/literature-validation.test.mjs', 'scripts/reference/literature-boundary.test.mjs'],
       ),
       commandCheck(
         'Test Issue #223 review-only import boundary',

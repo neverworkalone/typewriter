@@ -21,7 +21,7 @@ export function supportedFormsForCandidate(row, canonicalIndex, support) {
     .flatMap((route) => route.existingEntryIds.flatMap((id) => [...(support.get(`${id}\0${route.pos}`) ?? [])])))];
 }
 
-export async function evidenceForCandidate(context, { batchId, candidateId, databasePath, maxContexts, maxPerWork }) {
+export async function evidenceForCandidate(context, { batchId, candidateId, databasePath, maxContexts, maxPerWork, matchMode }) {
   const row = await loadFactoryCandidate({ batchId, candidateId, root: context.root });
   const classification = Array.isArray(row.observations) ? classifyLemmaCandidate(row, context.canonicalIndex) : { routes: [] };
   const routes = [...new Set(classification.routes.map((route) => route.route))];
@@ -32,6 +32,7 @@ export async function evidenceForCandidate(context, { batchId, candidateId, data
     searchForms: deriveSearchForms(row, supportedForms),
     maxContexts,
     maxPerWork,
+    ...(matchMode ? { matchMode } : {}),
   });
   result.summary.trigger_reasons = pilotTriggerReasons(row, routes.includes('new_sense_on_existing_entry') ? 'new_sense_on_existing_entry' : null);
   return result;
