@@ -2794,6 +2794,15 @@ export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) 
       fail(`pre-factory snapshot for ${id} does not match the retained admission history`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
     }
   }
+  // #396: the live review binds relevance-bearing records, while a pre-factory snapshot
+  // predates relevance. Rebind unrestored reviews to the snapshot record; callers separately
+  // compare the frozen snapshot with the live record modulo relevance.
+  for (const [id, review] of reviews) {
+    const snapshotRecord = snapshotById.get(id);
+    if (snapshotRecord && !restored.has(id) && review.record_sha256 !== sha256Json(snapshotRecord)) {
+      reviews.set(id, { ...review, record_sha256: sha256Json(snapshotRecord) });
+    }
+  }
   source.authored_review.records = [...reviews.values()];
   delete source.factory_admissions;
   source.authored_review_sha256 = sha256Json(source.authored_review);
