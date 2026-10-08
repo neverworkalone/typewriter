@@ -4,17 +4,17 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "7a361756e63acd68bd0678ed5d5c172a2a619252f03370ddca1217c0310c0c63",
+    "current_canonical_revision": "27469aa972dff349a8ea1f118c52613f83836a486ad8075a44a0ec02036a3562",
     "source_manifest": [
       {
         "path": "AGENTS.md",
-        "sha256": "f937457df31c2970867a9176b9120d0ad4af0d40fca2feffd627d51d33996fdc",
-        "byte_count": 20244
+        "sha256": "44eb3ede6582cdb74382703854c664f5f53ab2e2c92f9a9d28f0d5364f1a8e6e",
+        "byte_count": 21719
       },
       {
         "path": "config/artifact-policy.json",
-        "sha256": "f18624ee9ed7826e965638726e041668067508fcb965a5f5587fd3091dc93061",
-        "byte_count": 155596
+        "sha256": "8548b39877ffa97817514770d0d26e9df40430c8a3b7969adbce57401b316618",
+        "byte_count": 156355
       },
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -678,8 +678,8 @@
       },
       {
         "path": "data/canonical/m5-10-wave-a.jsonl",
-        "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
-        "byte_count": 15089
+        "sha256": "fc84476e276f9701e6f9094884725fc7ddbd38984cf39400ac01ae8f68bbe30e",
+        "byte_count": 15159
       },
       {
         "path": "data/canonical/m5-10-wave-b.jsonl",
@@ -688,13 +688,13 @@
       },
       {
         "path": "data/canonical/m5-10a-wave-a2.jsonl",
-        "sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-        "byte_count": 14710
+        "sha256": "7b8bf14249044e9d62d30484b3f24158606bce60fdf60a29b9978d6877db39e9",
+        "byte_count": 14794
       },
       {
         "path": "data/canonical/m5-11-expansion.jsonl",
-        "sha256": "0c705194fe1010c89673a2ec6d69c17cbd9ddcc6bf251d7016063ddcf7f290d0",
-        "byte_count": 120684
+        "sha256": "f28ac57528683a4c9e45310884383898654e8569d8b43db21723a3c31f61c856",
+        "byte_count": 120852
       },
       {
         "path": "data/canonical/m5-12a-expansion.jsonl",
@@ -718,28 +718,28 @@
       },
       {
         "path": "data/canonical/m5-3-calibration.jsonl",
-        "sha256": "2a080a0d473a071917d58860621d9e9b965c7737776b753fd1534a96f50c7d3a",
-        "byte_count": 33822
+        "sha256": "2708bbe5d5393466dd795a456d337f8361191fd959e34e91329c3ff13ffd0cc6",
+        "byte_count": 34998
       },
       {
         "path": "data/canonical/m5-5-recalibration.jsonl",
-        "sha256": "8e75e819159891ce60d2c4c5c7821cc89f30f54efcee1c38ea9c5a102fe980a0",
-        "byte_count": 13336
+        "sha256": "7c4136331d9c8de01b50d19c2ebb0ad10082008d73cf0e458c3b1d214f108c4b",
+        "byte_count": 13532
       },
       {
         "path": "data/canonical/m5-7-recalibration.jsonl",
-        "sha256": "a37677f7569e016e5e8f9525b978ec4911ff0c9afb5ba7f65d3c40dae5fc71c1",
-        "byte_count": 11155
+        "sha256": "347ba0d27002e3a313e9e6f124754fcd4f8f6a373386eaf878776216c4a70179",
+        "byte_count": 11253
       },
       {
         "path": "data/canonical/m5-9-expansion.jsonl",
-        "sha256": "a47e9322813780efd2eae29b2b5784bcd2948d7c3f7de621174ebee4a35ce4c4",
-        "byte_count": 27603
+        "sha256": "fb60fb14d4bc4922015c23e9eaccf12cc8580651ab1a57e1fac325297b60898c",
+        "byte_count": 27785
       },
       {
         "path": "data/canonical/pilot.jsonl",
-        "sha256": "dc2faba669cd2761ffdb82138d0b661c5def51afda0c9f91a510dc3d62510e87",
-        "byte_count": 144882
+        "sha256": "9d7a3e0b4a396db34d650ce06856c4c8c173d57a1aa5b65c16d1440d42d1682d",
+        "byte_count": 148704
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
@@ -753,17 +753,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "0646d0a129504fbb876f70a872cb00601d9344186e5c99538524a798ebe8504a",
+        "sha256": "e1d6364b7012f348debf5da96cd9291b501b6251a57a055ede146f25e1167b12",
         "byte_count": 11890104
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "44e25c17292e4fa62fdd274dada56ca93ee7c922bb8815eb33ddf8a92385a60e",
+        "sha256": "c1794f3a1a3e0406fc8a7088cec9f7f818f96902cb6e01b4abb0119e348dcafc",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "c8373c37da2e74ff64444983d438327d83acb15a60baf7c6b8d7ee7eed27272f",
+        "sha256": "bd5abd8b8987825595be97edf2a4ecdf4dec840f74ebb307064c15f875fb099e",
         "byte_count": 29642
       },
       {
@@ -798,12 +798,12 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "908cc43d52fa63a85a8cd2e3bb117de64a193b38b25710bb7c8442ea264b872f",
+        "sha256": "8b58ba80f5d35ae7bd516bdc21090c803aa460f30816efe4e031540bb8669bcc",
         "byte_count": 6007
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "21115dd91a47cc0a70945678c7457e5aa9bcfb261991224c2528e2eb08c6ba44",
+        "sha256": "b39100aeb1ce613fb95e0c54bec1e34134827c1dc1d96842afe4698001700b78",
         "byte_count": 8778
       },
       {
@@ -848,8 +848,8 @@
       },
       {
         "path": "docs/m9-corpus-production.md",
-        "sha256": "30dc8dfa71e9a3bd152c662b3c8b14c6a22db5f343972851bc0571caa84c4b2b",
-        "byte_count": 15836
+        "sha256": "b26c738f684eb5e30320ef57d0a9f88374c3dd0e2db544aadfadd65dc6ed3a5c",
+        "byte_count": 15800
       },
       {
         "path": "docs/pilot-scope.md",
@@ -858,8 +858,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "c14b6f0fa830239e7b459f78f3d7b5cf335bc021a6cadd33e5bde9fefc8affc0",
-        "byte_count": 11480
+        "sha256": "9f04ae1b54ff0d483c3bc893890ff52278672d2f9e2bf62e6e0e76651ee58212",
+        "byte_count": 12685
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -898,38 +898,38 @@
       },
       {
         "path": "scripts/batch/validate-issue-211.mjs",
-        "sha256": "5f726ab85ccd0078422c5d66c5c4d8695e228cdf9b4fa3cb153ed93bf23c818e",
-        "byte_count": 36083
+        "sha256": "dfc5177cde27d916a7d096fb6d3fe208ac6d5ea1909ca287871beae20275d1c3",
+        "byte_count": 36215
       },
       {
         "path": "scripts/batch/validate-issue-219.mjs",
-        "sha256": "1b243007eba190d6206fee2654126c9c180181242643d69e70c310cb1d5d0303",
-        "byte_count": 35049
+        "sha256": "1736364b20811d5298c384c16533cd1145191d2656e70da1d1315df27217a174",
+        "byte_count": 35142
       },
       {
         "path": "scripts/batch/validate-issue-220.mjs",
-        "sha256": "dcb7bcbc6ba9bcff3a9f98f703b595f5478cfeb78dd0a4c1de0746a58aa857da",
-        "byte_count": 58601
+        "sha256": "5b2e88438212d5ff54405969d429f84e56adc992cc1a4c5ba6bede9b0502e2e0",
+        "byte_count": 58712
       },
       {
         "path": "scripts/batch/validate-issue-221.mjs",
-        "sha256": "5058114ab6c7a00c3abba72bfb065f0d6cd313feb7622ff4ff04f357c0f4b650",
-        "byte_count": 26127
+        "sha256": "b27a0d0964da86809064231cbf5a069e391dccf5732e63914fb1168190b36f42",
+        "byte_count": 25880
       },
       {
         "path": "scripts/batch/validate-issue-222.mjs",
-        "sha256": "5cd54127901ab042ac56c8da4dfa765f6fb5fdf363f45b2b5909425b3acad8a7",
-        "byte_count": 63807
+        "sha256": "c953344986fe1167555b06a075f99ac2eb47b86bcbc08182c3f30bafcec4fbdc",
+        "byte_count": 62604
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "b60dc937309c29602455d51973a603e7faeaa56d7363c310d6eda795fd311660",
-        "byte_count": 18822
+        "sha256": "403a3ac245100ea9b8b1d7fab55e1add214941c552570df5e3cd2312373b9588",
+        "byte_count": 20294
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "f7a9113d45fa1db28fed976f04491eb619b4e4f1d0793b8a6c94a258ee45d100",
-        "byte_count": 91921
+        "sha256": "5d4f77e7f031d4eb1a69b1e361e83a5447ed34ac635cf22cf682102a79ecbf15",
+        "byte_count": 91923
       },
       {
         "path": "scripts/reference/corpus-candidate-review.test.mjs",
@@ -938,23 +938,23 @@
       },
       {
         "path": "scripts/reference/corpus_lemma_pilot.py",
-        "sha256": "5cb8cb22db737afaccd64585dfe613ea428a3fc74dbb359eac4c4a1a177b6ee6",
-        "byte_count": 50508
+        "sha256": "d2839754eda5c71d271d0ee033fbd3846a9650edcf3d6a4cd53ef97db562ad95",
+        "byte_count": 51786
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.mjs",
-        "sha256": "acb888a21421824dc61e96deb2a87211c90e1fa0dbf099620739da59de044bab",
-        "byte_count": 31963
+        "sha256": "4ce78c1d6250d8c2a4f5aa67cfe8505bc1137b1756645493fa6fa7c148c0c571",
+        "byte_count": 31992
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.test.mjs",
-        "sha256": "7498a9de34bd0461ebbfbeee58c8851618d0e2b5e778f0515952df85daf9cb4c",
-        "byte_count": 9502
+        "sha256": "c1ae21b3e78196efdbcee3cb78564c0b5d1a43787cdf612421fae6baeac7b4ba",
+        "byte_count": 9638
       },
       {
         "path": "scripts/reference/test-corpus-lemma-pilot.py",
-        "sha256": "3596f783fce5edcd60f00ec4eccdaaefc7dbf566fdefcb8160a4a7ce637a0476",
-        "byte_count": 20841
+        "sha256": "264edbaf395e82f2d36b6b12ec5703e52753b6674f996026d6171d381bd4e492",
+        "byte_count": 28404
       },
       {
         "path": "scripts/reference/validate-corpus-candidate-review.mjs",
@@ -968,13 +968,13 @@
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "1152e01119dcfe7226b2c791eb6c0102815e6c618d3b618daedbc07ed5c43fd4",
-        "byte_count": 128147
+        "sha256": "48420ee22d359e5669709b1393ff1671ddaa13f73babbf7fa529d2c5a219d460",
+        "byte_count": 130463
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",
-        "sha256": "0f5c5a01c6635c3ba6358563e44c9751301440dbb5396f111d9979cfab9b9d15",
-        "byte_count": 8471
+        "sha256": "1005b40b3ff7d1a5e435c00f8039222b3f55eee6fb42815741c1905934449612",
+        "byte_count": 8674
       },
       {
         "path": "tests/issue-211-search.test.mjs",
