@@ -1,0 +1,30 @@
+# 관계 후보 검색 (Issue #397)
+
+Stage 2가 전체 사전을 읽지 않고 제한된 후보 목록만 검토하도록, 현재 canonical에서 관계 대상 후보를 기계적으로 찾는 결정론적 검색 계층이다. 구현: `scripts/relation/candidate-retrieval.mjs`.
+
+## 권한 경계
+
+- 산출물은 `authority: candidates_only`다. 관계 유효성, 관계 유형, `relevance`, note를 판단하지 않고 canonical을 바꾸지 않으며 역방향 간선·관계 쿼터를 만들지 않는다.
+- 내부 유사도 점수는 후보 정렬에만 쓰이고 산출물에 기록하지 않는다(`rank`와 신호 코드만 남는다). 검증기는 `score/type/relevance/note` 필드를 거부한다.
+
+## 입력과 신호
+
+원천은 canonical 의미(sense) 또는 같은 배치의 임시(provisional) 의미(`provisional:<batch>/<candidate>/<sense_key>`, 최종 canonical ID를 만들지 않음). 신호 코드: `explicit_hint`, `relation_neighbor_of_hint`, `relation_neighbor_of_related`, `incoming_relation`, `shared_search_form`, `lemma_in_target_gloss`, `target_lemma_in_gloss`, `gloss_overlap`(lemma+gloss 문자 2-gram IDF 코사인), `literature_cooccurrence`.
+
+- 힌트(writer-route/review 메타데이터)는 신호일 뿐이며 해석되지 않는 힌트는 아무것도 더하지 않는다.
+- 문학 근거는 #391/#392 검색기의 문맥을 메모리에서만 훑고, 산출물에는 `location_digest`만 남긴다. 문학 무히트는 음성 근거가 아니다(`no_hit_is_negative_evidence: false`).
+- 원천 의미와 자기 엔트리의 다른 의미, 이미 관계가 있는 대상은 제외한다. 대상의 POS와 sense 식별자는 보존한다(POS로 거르지 않음).
+
+## 규모
+
+canonical을 배치/세션당 한 번 `buildRelationIndex`로 색인하고 모든 원천에 재사용한다. 모델에 전체 canonical을 보내지 않는다. 후보 풀 한도(`max_candidates` 기본 200 = 탐색 UI 100개의 2배)와 임계값은 설정이며 어휘 진실이 아니다. 현재 ~12.6K sense 실측: 색인 약 0.1–0.2초, 원천당 약 2–3ms. 벡터 DB는 도입하지 않는다.
+
+## 산출물
+
+`contract`(`relation-candidate-retrieval-v1`), `canonical_snapshot_digest`, `config`, 원천별 `candidates[{rank, target{kind, record_id|provisional_id, sense_id, pos}, signals, literature_location_digests?}]`. `validateRelationCandidateArtifact`로 구조·스냅샷 일치를 확인한다.
+
+`validateRelationCandidateArtifact`는 fail-closed다: 필수 구조·source/target 식별자(canonical은 index와 대조, provisional은 같은 artifact의 원천이어야 함)·편집 필드 금지·중복·선언된 풀/digest 상한을 모두 강제하고, `expectedSourceIds`로 완전성을 확인한다. 설정(`max_candidates` 등)은 유한한 범위 내 정수/수만 허용하며 알 수 없는 설정은 거부한다. 사용된 모든 설정은 artifact `config`에 기록된다.
+
+provisional 식별자는 비어 있지 않은 `batch_id`를 필수로 하며(`/` 불가), 한 검색 호출/artifact의 모든 provisional 원천·대상은 단일 배치에 속해야 한다. 다른 배치의 임시 의미는 후보로 만들지 않고 validator도 거부한다.
+
+힌트에서 `provisional_id`/`sense_id`/`record_id`가 주어지면 정확한 식별자가 `lemma`/`pos`보다 우선한다. provisional 원천은 자기 자신과 같은 `candidate_id`(같은 엔트리)의 다른 sense를 후보로 삼지 않으며, canonical 원천과 마찬가지로 validator가 이를 거부한다.
