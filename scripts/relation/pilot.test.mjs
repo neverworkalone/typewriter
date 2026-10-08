@@ -111,3 +111,29 @@ test('the Stage 2 relation source reader admits included and corrected decisions
     await rm(repo, { recursive: true, force: true });
   }
 });
+
+test('the production relation:candidates path takes included and corrected senses, skips held ones, and validates the full source set', async () => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { stage2CandidateArtifact } = await import('./stage2-candidates.mjs');
+  const repo = await mkdtemp(join(tmpdir(), 'stage2-cli-'));
+  try {
+    await mkdir(join(repo, 'data/reviews/C000098'), { recursive: true });
+    const row = (n, disposition) => ({
+      source_candidate_id: `C000098-000${n}`, disposition, target: { kind: 'new_entry' },
+      reviewed_record: { lemma: `새말${n}`, senses: [{ pos: 'noun', gloss: `새말${n}의 뜻풀이.` }] },
+    });
+    await writeFile(join(repo, 'data/reviews/C000098/decisions.jsonl'),
+      ['included', 'corrected', 'deferred', 'rejected'].map((d, i) => JSON.stringify(row(i + 1, d))).join('\n') + '\n');
+    const index = buildRelationIndex({ canonicalRevision: 'd'.repeat(64), records: [{
+      id: 'w1', record_type: 'entry', role: 'start', candidate_id: 'w1', lemma: '기존', search_forms: ['기존'],
+      senses: [{ id: 'w1-s1', pos: 'noun', gloss: '이미 있던 뜻.' }],
+    }] });
+    const artifact = await stage2CandidateArtifact('C000098', { repo, index });
+    assert.deepEqual(artifact.sources.map((source) => source.source.sense_id).sort(),
+      ['provisional:C000098/C000098-0001/s1', 'provisional:C000098/C000098-0002/s1']);
+  } finally {
+    await rm(repo, { recursive: true, force: true });
+  }
+});
