@@ -323,6 +323,14 @@ rather than by the batch data:
 7. If a tool or the permission layer denies the shared-code change, stop and
    report; do not retry another way.
 
+### Prioritize PRs that unblock an active Stage
+
+If active Stage 1/2/3 work is blocked until a shared rule, contract, validator,
+or pipeline fix PR merges, label that PR `urgent` (including an existing PR).
+Use `urgent` only for actual blockers, not routine changes or Stage result PRs.
+It prioritizes the next review selection; normal review and merge rules
+still apply.
+
 ## Validation
 
 Run the validation appropriate to the changed surface.
