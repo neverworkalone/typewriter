@@ -383,6 +383,13 @@ test('relation enrichment: positive relation evidence must bind the exact review
   await fails([near], { ...positive([near]), no_relation_rationale: `${id} ${senseId}: none.` }, 'does not bind the reviewed relation tuples');
   await fails([near], { ...positive([near]), relation_rationale: 'unbound prose' }, 'relation_rationale must cite');
   await fails([near], { ...positive([near]), relation_ids: positive([{ ...near, relevance: 7 }]).relation_ids }, 'does not bind the reviewed relation tuples');
+  // The two outcomes are mutually exclusive: no-relations cannot carry positive-relation evidence.
+  const noRel = { relation_rationale: `${id} ${senseId}: 관계 2개를 검토해 채택했다.` };
+  await fails([], noRel, 'relation evidence is not source-bound');
+  await fails([], { relation_rationale: '관계 있다' }, 'relation evidence is not source-bound');
+  await fails([], { relation_decision: 'relations-reviewed' }, 'relation evidence is not source-bound');
+  await fails([], { relation_count: 1 }, 'relation evidence is not source-bound');
+  await fails([near], { relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: `${id} ${senseId}: none.` }, 'does not bind the reviewed relation tuples');
   // Tuple integrity.
   const { relevance, ...noRelevance } = near;
   await fails([noRelevance], positive([noRelevance]), 'requires relevance 1-9');

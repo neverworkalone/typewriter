@@ -288,7 +288,8 @@ function validateSenseRelationEvidence({ senseReview, sense, relations, senseLab
     if (senseReview.relation_count !== 0
       || !Array.isArray(senseReview.relation_ids)
       || senseReview.relation_ids.length !== 0
-      || senseReview.relation_decision !== 'no-relations') {
+      || senseReview.relation_decision !== 'no-relations'
+      || senseReview.relation_rationale !== undefined) {
       fail(`${senseLabel} relation evidence is not source-bound`, 'DECISION_SOURCE_BINDING', config);
     }
     requireString(senseReview.no_relation_rationale, `${senseLabel}.no_relation_rationale`, config);
