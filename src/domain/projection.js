@@ -4,6 +4,7 @@ import {
   RELATION_GROUP_DEFINITIONS,
   UI_GROUP_IDS,
 } from './relation-groups.js';
+import { isPagedRelationGroup } from './relation-paging.js';
 
 function copyNullable(value) {
   return value === undefined ? null : value;
@@ -28,6 +29,7 @@ export function projectRelation(relation, sourceSenseId, sourcePosition) {
     type: canonicalType,
     groupId,
     note: copyNullable(relation.note),
+    relevance: copyNullable(relation.relevance),
     action: {
       type: 'open-relation-target',
       targetRecordId: relation.target,
@@ -50,8 +52,18 @@ function projectDefinition(sense) {
   };
 }
 
+// relevance is ordinal editorial priority (1 first); source position only
+// breaks ties and carries no semantic meaning. Missing relevance sorts last.
+function compareByRelevance(a, b) {
+  return (a.relevance ?? Infinity) - (b.relevance ?? Infinity)
+    || a.sourcePosition - b.sourcePosition;
+}
+
 function projectRelationGroup(groupDefinition, relations) {
   const items = relations.filter(({ groupId }) => groupId === groupDefinition.id);
+  if (isPagedRelationGroup(groupDefinition.id)) {
+    items.sort(compareByRelevance);
+  }
   if (items.length === 0) {
     return null;
   }

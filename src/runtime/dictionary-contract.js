@@ -1,5 +1,5 @@
 export const DICTIONARY_VERSION = 'm2-pilot-1';
-export const SQLITE_SCHEMA_VERSION = '2';
+export const SQLITE_SCHEMA_VERSION = '3';
 
 export const DICTIONARY_COUNT_QUERIES = Object.freeze({
   record_count: 'SELECT COUNT(*) FROM records',

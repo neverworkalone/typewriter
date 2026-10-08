@@ -22,6 +22,7 @@ export function normalizeRelation(relation) {
     target_sense: relation.target_sense ?? null,
     type: relation.type,
     note: relation.note,
+    relevance: relation.relevance ?? null,
   };
 }
 

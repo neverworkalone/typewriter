@@ -113,7 +113,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       dictionary_version: 'm2-pilot-1',
       schema_version: '2',
       normalization_version: '1',
-      build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v2',
+      build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v3',
       build_tool_version: '1',
       surface_form_projection_version: '1',
       generated_surface_form_count: '0',
