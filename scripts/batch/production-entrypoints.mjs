@@ -51,6 +51,7 @@ export const DERIVED_ARTIFACT_WRITERS = Object.freeze([
   'scripts/batch/build-m5-10a-wave-a2-stage.mjs',
   'scripts/batch/derive-metrics.mjs',
   'scripts/batch/refresh-m5-11-derived-evidence.mjs',
+  'scripts/relation/backfill-queue-cli.mjs',
   'scripts/validate/build-semantic-audit.mjs',
   'scripts/validate/canonical-context.mjs',
   'scripts/validate/rebuild-semantic-evidence.mjs',
