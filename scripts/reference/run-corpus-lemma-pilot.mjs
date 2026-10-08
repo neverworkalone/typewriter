@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildDictionary } from '../build/dictionary.mjs';
+import { isSurfaceToken } from '../factory/lemma-contract.mjs';
 import { assertWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 import { resolveManagedPython } from '../python/env.mjs';
 import {
@@ -383,10 +384,19 @@ export function collectRepresentativeSurfaceHits(candidate, search) {
     .filter((root) => surface.startsWith(root))
     .sort((left, right) => [...right].length - [...left].length
       || (left < right ? -1 : left > right ? 1 : 0))[0];
+  const omittedUnsupportedSurfaceForms = new Set();
   const surfaces = [...(candidate.observed_surface_forms ?? [])]
     .filter(({ surface }) => typeof surface === 'string' && surface.trim() !== '')
     .map((form) => ({ ...form, matched_morpheme_span_surface: surfaceRoot(form.surface) }))
     .filter(({ matched_morpheme_span_surface }) => matched_morpheme_span_surface !== undefined)
+    .filter(({ surface }) => {
+      const boundedEojeol = [...surface].length <= 24 && !/[\s\p{C}]/u.test(surface);
+      if (!isSurfaceToken(surface) && boundedEojeol && /[\p{S}\p{M}]/u.test(surface)) {
+        omittedUnsupportedSurfaceForms.add(surface);
+        return false;
+      }
+      return true;
+    })
     .sort((left, right) => (
       ([...left.surface].length - [...left.matched_morpheme_span_surface].length)
         - ([...right.surface].length - [...right.matched_morpheme_span_surface].length)
@@ -410,9 +420,17 @@ export function collectRepresentativeSurfaceHits(candidate, search) {
       hits.push(evidenceHit({ ...hit, matched_morpheme_span_surface }, surface));
       break;
     }
-    if (hits.length === ROW_RESULT_LIMIT) return hits;
+    if (hits.length === ROW_RESULT_LIMIT) {
+      return {
+        hits,
+        omittedUnsupportedSurfaceFormCount: omittedUnsupportedSurfaceForms.size,
+      };
+    }
   }
-  return hits;
+  return {
+    hits,
+    omittedUnsupportedSurfaceFormCount: omittedUnsupportedSurfaceForms.size,
+  };
 }
 
 export function buildTextFreeCandidateEvidence(inventory) {
@@ -494,6 +512,7 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
   let observedSurfaceLiteralFallbackQueryCount = 0;
   let observedSurfaceQueryCount = 0;
   let observedSurfaceParagraphRowsSearched = 0;
+  let omittedUnsupportedSurfaceFormCount = 0;
   const corpusReader = createCorpusIndexReader({ databasePath: DEFAULT_INDEX_PATH });
   const lookupTiming = new Map();
   const timedLookup = (operation, query, run) => {
@@ -515,7 +534,7 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
       }
 
       const matchCount = timedLookup('count', literalMatchQuery, () => corpusReader.count(literalMatchQuery));
-      const representativeHits = collectRepresentativeSurfaceHits(
+      const representativeEvidence = collectRepresentativeSurfaceHits(
         candidate,
         (surface, limit) => {
           observedSurfaceQueryCount += 1;
@@ -525,6 +544,8 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
           return matches;
         },
       );
+      const representativeHits = representativeEvidence.hits;
+      omittedUnsupportedSurfaceFormCount += representativeEvidence.omittedUnsupportedSurfaceFormCount;
       const searchMode = searchModeFor(literalMatchQuery);
       if (searchMode === 'literal-scan') literalFallbackQueryCount += 1;
       totalLiteralParagraphMatches += matchCount;
@@ -563,6 +584,7 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
       paragraph_path: 'searchCorpusIndex SQL-bounds observed-surface lookups; only exact whole-eojeol forms are retained',
       per_candidate_paragraph_limit: ROW_RESULT_LIMIT,
       candidate_count_with_evidence: candidatesWithEvidence.length,
+      omitted_unsupported_surface_form_count: omittedUnsupportedSurfaceFormCount,
       literal_fallback_query_count: literalFallbackQueryCount,
       observed_surface_literal_fallback_query_count: observedSurfaceLiteralFallbackQueryCount,
       sum_of_per_candidate_literal_paragraph_counts: totalLiteralParagraphMatches,
