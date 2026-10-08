@@ -223,6 +223,32 @@ test('self and same-entry targets are excluded for provisional sources and rejec
   assert.ok(validateRelationCandidateArtifact(canonical, index).some((e) => e.includes('own entry')));
 });
 
+test('validator reports malformed sources as errors instead of throwing', () => {
+  const index = buildRelationIndex(synthetic);
+  const prov = (candidate_id, lemma) => ({ kind: 'provisional', batch_id: 'B', candidate_id, sense_key: 's1', lemma, pos: 'noun', gloss: '아무 소리도 없이 잠잠한 상태.' });
+  const makers = [
+    () => retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1' }]),
+    () => retrieveRelationCandidates(index, [prov('C1', '잠잠'), prov('C2', '정적')]),
+  ];
+  for (const make of makers) {
+    for (const bad of [null, undefined, 7, 'x', [], {}]) {
+      const artifact = make();
+      assert.ok(artifact.sources[0].candidates.length > 0);
+      artifact.sources[0].source = bad;
+      let errors;
+      assert.doesNotThrow(() => { errors = validateRelationCandidateArtifact(artifact, index); });
+      assert.ok(errors.length > 0);
+    }
+  }
+  for (const bad of [null, 7, 'x', []]) {
+    const artifact = makers[0]();
+    artifact.sources[0].candidates[0] = bad;
+    assert.doesNotThrow(() => validateRelationCandidateArtifact(artifact, index));
+    artifact.sources[0] = bad;
+    assert.doesNotThrow(() => validateRelationCandidateArtifact(artifact, index));
+  }
+});
+
 test('index-time settings cannot be overridden at retrieval time', () => {
   const index = buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.5 });
   const source = [{ kind: 'canonical', sense_id: 'w3-s1' }];

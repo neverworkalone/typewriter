@@ -496,7 +496,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
         if (!hasExactKeys(target, ['kind', 'record_id', 'sense_id', 'pos']) || ![target.record_id, target.sense_id].every((v) => typeof v === 'string' && v) || !isPos(target.pos)) errors.push(`${here}: invalid canonical target identity`);
         else {
           key = target.sense_id;
-          if (source.kind === 'canonical' && source.record_id === target.record_id) errors.push(`${here}: target is the source or a sense of the source's own entry`);
+          if (source?.kind === 'canonical' && source.record_id === target.record_id) errors.push(`${here}: target is the source or a sense of the source's own entry`);
           if (index) { const sense = index.bySenseId.get(target.sense_id); if (!sense || sense.record_id !== target.record_id || sense.pos !== target.pos) errors.push(`${here}: target does not match canonical`); }
         }
       } else if (target.kind === 'provisional') {
@@ -506,7 +506,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
           key = target.provisional_id;
           noteBatch(target.provisional_id);
           if (match[2] !== target.candidate_id) errors.push(`${here}: provisional_id does not carry candidate_id`);
-          if (source.kind === 'provisional' && sameProvisionalEntry(source.provisional_id, target.provisional_id)) errors.push(`${here}: target is the source or a sense of the source's own entry`);
+          if (source?.kind === 'provisional' && sameProvisionalEntry(source.provisional_id, target.provisional_id)) errors.push(`${here}: target is the source or a sense of the source's own entry`);
           const declared = provisionalSources.get(target.provisional_id);
           if (!declared) errors.push(`${here}: provisional target is not a source of this artifact`);
           else if (declared.candidate_id !== target.candidate_id || declared.pos !== target.pos) errors.push(`${here}: provisional target candidate_id/pos differs from its source identity`);
