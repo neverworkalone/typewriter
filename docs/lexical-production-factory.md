@@ -120,6 +120,14 @@ schema. The factory is a work-organization layer around the existing contracts.
   `lemma_mismatch`, `pos_mismatch`) together with the candidate rather than
   guessing. Kiwi output is only a candidate proposal; the final semantic and POS
   judgment belongs to Stage 2.
+- When text-free corpus evidence records `selection.exclusion_sha256` and
+  `selection.exclusion_source_artifacts`, the Stage 1 CLI reads the sibling
+  `reviewed-lemma-exclusions.json` in the same cache run directory and verifies
+  its content digest and source-artifact bindings against that evidence. Its
+  normalized lemmas are combined with prior candidate-file lemmas before final
+  row selection, so a provider alternative or contextual fallback cannot
+  reintroduce an excluded lemma. Keep this sidecar in the cache beside
+  `candidate-evidence.json`; it contains no corpus text.
 - Candidate and evidence content follows the existing source discipline: bounded
   text-free provenance only; never copyrighted paragraph text or a corpus
   snapshot in Git ([`DATA-LICENSE.md`](../DATA-LICENSE.md),

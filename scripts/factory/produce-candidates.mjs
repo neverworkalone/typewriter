@@ -11,7 +11,7 @@ import { createCorpusContextSource } from './corpus-context-source.mjs';
 import { createKhaiiiProvider } from './khaiii-provider.mjs';
 import { createMecabProvider } from './mecab-provider.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
-import { parseJsonl } from './contract.mjs';
+import { parseJsonl, sha256Hex } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { validateFactoryRepository, loadBaseManifests, loadCanonicalEntries } from './validate.mjs';
 import {
@@ -179,6 +179,68 @@ const readJson = async (file, label) => {
   }
 };
 
+// Corpus selection exclusions are part of the text-free evidence source. Reapply them after all
+// providers and contextual fallback have resolved observations, so an alternative lemma cannot
+// re-enter a later batch merely because it was absent from the raw proposal list.
+async function evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths }) {
+  const selection = evidence?.selection;
+  const hasBinding = evidence?.schema_version !== undefined
+    || evidence?.publication_state !== undefined
+    || evidence?.orchestration !== undefined
+    || selection?.exclusion_sha256 !== undefined
+    || selection?.exclusion_source_artifacts !== undefined;
+  if (!hasBinding) return new Set();
+  if (!selection || !/^[0-9a-f]{64}$/u.test(String(selection.exclusion_sha256 ?? ''))
+    || !Array.isArray(selection.exclusion_source_artifacts)) {
+    throw new Stage1Error(['candidate evidence has an incomplete prior-lemma exclusion binding']);
+  }
+  const cacheArea = ['runs', 'evidence'].find((area) => isWithinDirectory(cachePaths[area], evidencePath));
+  if (!cacheArea) throw new Stage1Error(['candidate evidence exclusion binding must be inside the shared cache']);
+  const expectedManifestPath = path.join(path.dirname(evidencePath), 'reviewed-lemma-exclusions.json');
+  let exclusionPath;
+  try {
+    const relative = path.relative(cachePaths.root, expectedManifestPath).split(path.sep).join('/');
+    exclusionPath = resolveCacheArtifactPath(relative, { paths: cachePaths, areas: [cacheArea], label: 'reviewed-lemma exclusions bound to evidence' });
+  } catch (error) {
+    throw new Stage1Error([error.message]);
+  }
+  const exclusion = await readJson(exclusionPath, 'reviewed-lemma exclusions bound to evidence');
+  const { schema_version: schema, lemmas, source_artifacts: sources, exclusion_sha256: recordedDigest } = exclusion;
+  if (schema !== 'm9-reviewed-lemma-exclusions-v1' || !Array.isArray(lemmas) || !Array.isArray(sources)) {
+    throw new Stage1Error(['reviewed-lemma exclusions have an unsupported or incomplete contract']);
+  }
+  if (lemmas.some((lemma) => typeof lemma !== 'string' || !lemma || lemma !== lemma.trim() || lemma.normalize('NFC') !== lemma)) {
+    throw new Stage1Error(['reviewed-lemma exclusions must contain trimmed NFC lemmas']);
+  }
+  const sortedLemmas = [...new Set(lemmas)].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+  if (sortedLemmas.length !== lemmas.length || sortedLemmas.some((lemma, index) => lemma !== lemmas[index])) {
+    throw new Stage1Error(['reviewed-lemma exclusions must be unique and deterministically sorted']);
+  }
+  if (sources.some((source) => !source || typeof source.path !== 'string' || !source.path
+    || !/^[0-9a-f]{64}$/u.test(String(source.sha256 ?? '')))) {
+    throw new Stage1Error(['reviewed-lemma exclusion sources must bind paths and SHA-256 digests']);
+  }
+  const payload = { lemmas, schema_version: schema, source_artifacts: sources };
+  const computedDigest = sha256Hex(JSON.stringify(payload));
+  if (recordedDigest !== computedDigest) throw new Stage1Error(['reviewed-lemma exclusion digest does not match its contents']);
+  if (selection.exclusion_sha256 !== computedDigest) throw new Stage1Error(['reviewed-lemma exclusion digest does not match candidate evidence']);
+  if (JSON.stringify(selection.exclusion_source_artifacts) !== JSON.stringify(sources)) {
+    throw new Stage1Error(['reviewed-lemma exclusion sources do not match candidate evidence']);
+  }
+  if (!Number.isSafeInteger(selection.excluded_candidate_lemma_count)
+    || selection.excluded_candidate_lemma_count !== lemmas.length) {
+    throw new Stage1Error(['reviewed-lemma exclusion count is missing or does not match candidate evidence']);
+  }
+  const orchestrationDigest = evidence.orchestration?.exclusion_manifest_sha256;
+  if (!/^[0-9a-f]{64}$/u.test(String(orchestrationDigest ?? ''))) {
+    throw new Stage1Error(['candidate evidence orchestration is missing the prior-lemma exclusion digest']);
+  }
+  if (orchestrationDigest !== computedDigest) {
+    throw new Stage1Error(['reviewed-lemma exclusion digest does not match evidence orchestration']);
+  }
+  return new Set(lemmas);
+}
+
 // Review pack for the contextual fallback: eligible unresolved observations with a bounded window of
 // the ORIGINAL paragraph, for the primary agent's local reading. It is written only to ignored
 // task-scoped cache runs and is never part of a batch.
@@ -237,8 +299,11 @@ export async function runStage1(argv, {
   } catch (error) {
     throw new Stage1Error([`cannot read evidence ${options.evidence}: ${error.message}`]);
   }
+  const sourceExcludedLemmas = await evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths });
   const canonicalEntries = await loadCanonicalEntries(root);
   const batchId = allocateBatchId(await knownBatchIds(root, options.baseRef));
+  const producedLemmaKeys = await producedLemmas(root, options.baseRef);
+  for (const lemma of sourceExcludedLemmas) producedLemmaKeys.add(lemma);
   let source = contextSource;
   const ownSource = !source && (options.contextProposals || options.contextReviewPack);
   if (ownSource) {
@@ -293,7 +358,7 @@ export async function runStage1(argv, {
     batchId,
     taskId: options.taskId,
     maxCandidates: options.maxCandidates,
-    producedLemmas: await producedLemmas(root, options.baseRef),
+    producedLemmas: producedLemmaKeys,
     searchFormSupport: await loadSearchFormSupport(canonicalEntries),
   };
   let produced;
