@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { STRATA, readOptionalJson, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
+import { STRATA, readOptionalJson, readSeal, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
 
 const D = '0'.repeat(64);
 const make = (id, group, evidence_use, outcome) => ({ candidate_id: id, group, evidence_use, outcome, selected_location_digests: [D] });
@@ -94,9 +94,20 @@ test('only a missing seal file counts as unsealed; a corrupt or unreadable one f
   const directory = await mkdtemp(path.join(tmpdir(), 'seal-'));
   try {
     const file = path.join(directory, 'seal.json');
-    assert.equal(await readOptionalJson(file), null);
+    assert.deepEqual(await readOptionalJson(file), { exists: false });
     await writeFile(file, JSON.stringify({ phase1_sha256: 'a' }));
-    assert.deepEqual(await readOptionalJson(file), { phase1_sha256: 'a' });
+    assert.deepEqual(await readOptionalJson(file), { exists: true, value: { phase1_sha256: 'a' } });
+    await writeFile(file, 'null');
+    assert.deepEqual(await readOptionalJson(file), { exists: true, value: null }, 'JSON null is an existing file, not absence');
+    await assert.rejects(readSeal(file), /seal file is invalid/);
+    for (const content of ['{}', '[]', '"x"', JSON.stringify({ phase1_sha256: 'a'.repeat(64), cohort_sha256: 'b', sealed_at: 't' })]) {
+      await writeFile(file, content);
+      await assert.rejects(readSeal(file), /seal file is invalid/, content);
+    }
+    await writeFile(file, JSON.stringify({ phase1_sha256: 'a'.repeat(64), cohort_sha256: 'b'.repeat(64), sealed_at: 't' }));
+    assert.equal((await readSeal(file)).sealed_at, 't');
+    await rm(file);
+    assert.equal(await readSeal(file), null);
     await writeFile(file, '{ corrupt');
     await assert.rejects(readOptionalJson(file), SyntaxError);
     await rm(file);
