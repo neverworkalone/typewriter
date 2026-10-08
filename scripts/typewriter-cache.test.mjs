@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { mkdtemp, mkdir, rm, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -41,7 +42,7 @@ test('two Git worktrees resolve the same machine cache root', async () => {
     const fromFirst = resolveTypewriterCachePaths({ homeDirectory: home, env: {} });
     process.chdir(second);
     const fromSecond = resolveTypewriterCachePaths({ homeDirectory: home, env: {} });
-    assert.equal(fromFirst.root, path.join(home, '.cache', 'typewriter'));
+    assert.equal(fromFirst.root, path.join(realpathSync(home), '.cache', 'typewriter'));
     assert.equal(fromFirst.root, fromSecond.root);
     assert.equal(fromFirst.indexes, fromSecond.indexes);
   } finally {
@@ -54,10 +55,30 @@ test('the root override is shared by every cache area', () => {
     homeDirectory: '/unused/home',
     env: { TYPEWRITER_CACHE_ROOT: '/tmp/typewriter-cache-override' },
   });
-  assert.equal(paths.root, '/tmp/typewriter-cache-override');
-  assert.equal(paths.corpus, '/tmp/typewriter-cache-override/corpus');
-  assert.equal(paths.literature, '/tmp/typewriter-cache-override/literature');
+  const resolvedRoot = path.join(realpathSync('/tmp'), 'typewriter-cache-override');
+  assert.equal(paths.root, resolvedRoot);
+  assert.equal(paths.corpus, path.join(resolvedRoot, 'corpus'));
+  assert.equal(paths.literature, path.join(resolvedRoot, 'literature'));
   assert.throws(() => resolveTypewriterCachePaths({ env: { TYPEWRITER_CACHE_ROOT: 'relative-cache' } }), /absolute path/u);
+  assert.throws(() => resolveTypewriterCachePaths({ env: { TYPEWRITER_CACHE_ROOT: '~someone/cache' } }), /home expansion/u);
+});
+
+test('JavaScript cache roots expand the current home and resolve symlink aliases consistently', async () => {
+  const home = await mkdtemp(path.join(os.tmpdir(), 'typewriter-cache-home-alias-'));
+  const actual = path.join(home, 'actual-cache');
+  const alias = path.join(home, 'cache-alias');
+  temporaryRoots.push(home);
+  await mkdir(actual);
+  await symlink(actual, alias, 'dir');
+
+  assert.equal(resolveTypewriterCachePaths({
+    homeDirectory: home,
+    env: { TYPEWRITER_CACHE_ROOT: '~/shared' },
+  }).root, path.join(realpathSync(home), 'shared'));
+  assert.equal(resolveTypewriterCachePaths({
+    homeDirectory: home,
+    env: { TYPEWRITER_CACHE_ROOT: alias },
+  }).root, realpathSync(actual));
 });
 
 test('corpus and literature consumers resolve their defaults from the shared cache module', () => {
@@ -101,10 +122,12 @@ test('legacy reference paths map into the shared cache areas', () => {
     path.join('runs', 'issue-201-pilot', 'pilot-inventory.json'));
   assert.equal(resolveLegacyReferencePath('data/reference/indexes/corpus.sqlite', {
     paths: resolveTypewriterCachePaths({ homeDirectory: '/tmp/typewriter-home', env: {} }),
-  }), path.join('/tmp/typewriter-home', '.cache', 'typewriter', 'indexes', 'corpus.sqlite'));
+  }), path.join(realpathSync('/tmp'), 'typewriter-home', '.cache', 'typewriter', 'indexes', 'corpus.sqlite'));
   assert.equal(resolveCacheArtifactPath('data/reference/production/issue-222/batch-01/evidence.json', {
     paths: resolveTypewriterCachePaths({ homeDirectory: '/tmp/typewriter-home', env: {} }),
     areas: ['runs'],
-  }), path.join('/tmp/typewriter-home', '.cache', 'typewriter', 'runs', 'issue-222', 'batch-01', 'evidence.json'));
+  }), path.join(realpathSync('/tmp'), 'typewriter-home', '.cache', 'typewriter', 'runs', 'issue-222', 'batch-01', 'evidence.json'));
   assert.throws(() => mapLegacyReferencePath('data/reference/runs/../outside.json'), /traversal/u);
+  assert.throws(() => mapLegacyReferencePath('data/reference/../outside.json'), /traversal/u);
+  assert.throws(() => mapLegacyReferencePath('data/reference/./production/run.json'), /traversal/u);
 });

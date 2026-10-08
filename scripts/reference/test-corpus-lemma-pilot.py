@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import sqlite3
 import sys
 import tempfile
@@ -24,7 +25,12 @@ CACHED_PATH = Path(__file__).with_name("select-corpus-candidates-from-analysis.p
 CACHED_SPEC = importlib.util.spec_from_file_location("select_corpus_candidates_from_analysis", CACHED_PATH)
 cached = importlib.util.module_from_spec(CACHED_SPEC)
 CACHED_SPEC.loader.exec_module(cached)
-from scripts.python.local_cache import assert_cache_path
+from scripts.python.local_cache import (
+    assert_cache_path,
+    cache_relative_path,
+    normalize_cache_run_binding,
+    typewriter_cache_root,
+)
 
 
 class TypewriterCachePathTests(unittest.TestCase):
@@ -46,6 +52,38 @@ class TypewriterCachePathTests(unittest.TestCase):
                 (cache / "runs" / "escape").symlink_to(outside, target_is_directory=True)
                 with self.assertRaisesRegex(ValueError, "outside"):
                     assert_cache_path(cache / "runs" / "escape" / "artifact.json", "runs", "evidence")
+
+    def test_python_cache_root_matches_home_expansion_and_symlink_resolution(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            home = root / "home"
+            home.mkdir()
+            with patch.dict(os.environ, {"HOME": str(home), "TYPEWRITER_CACHE_ROOT": "~/shared"}):
+                self.assertEqual(typewriter_cache_root(), (home / "shared").resolve())
+
+            actual = root / "actual-cache"
+            actual.mkdir()
+            alias = root / "cache-alias"
+            alias.symlink_to(actual, target_is_directory=True)
+            with patch.dict(os.environ, {"TYPEWRITER_CACHE_ROOT": str(alias)}):
+                self.assertEqual(typewriter_cache_root(), actual.resolve())
+
+    def test_analysis_binding_uses_cache_relative_paths_and_maps_legacy_production_paths(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            analysis = root / "runs" / "issue-222" / "candidate-analysis.sqlite"
+            with patch.dict(os.environ, {"TYPEWRITER_CACHE_ROOT": str(root)}):
+                self.assertEqual(cache_relative_path(analysis), "runs/issue-222/candidate-analysis.sqlite")
+                self.assertEqual(
+                    normalize_cache_run_binding("data/reference/production/issue-222/candidate-analysis.sqlite"),
+                    cache_relative_path(analysis),
+                )
+                self.assertEqual(
+                    normalize_cache_run_binding("runs/another/candidate-analysis.sqlite"),
+                    "runs/another/candidate-analysis.sqlite",
+                )
+                with self.assertRaisesRegex(ValueError, "traversal"):
+                    normalize_cache_run_binding("runs/../outside.sqlite")
 
 
 class FakeAnalyzer:
@@ -332,38 +370,41 @@ class CorpusLemmaPilotTests(unittest.TestCase):
 
     def _select_cached(self, root, name, fixture, include, limit=10, mutate=None):
         index_path, dictionary_path, permission_path = fixture
-        cached.ROOT = root.resolve()  # cached artifacts must stay inside the (synthetic) repository root
-        analysis_path = root / "default-staging.sqlite"
+        run_directory = root / "runs" / "issue-222"
+        run_directory.mkdir(parents=True, exist_ok=True)
+        analysis_path = run_directory / "candidate-analysis.sqlite"
+        shutil.copy2(root / "default-staging.sqlite", analysis_path)
         selection_path = root / "default-candidates.json"
         selection = json.loads(selection_path.read_text(encoding="utf-8"))
-        selection["analysis_cache"] = {
-            "database_path": cached.relative_path(analysis_path),
-            "database_sha256": cached.sha256_file(analysis_path),
-            "mode": "full-corpus-scan",
-        }
-        if mutate:
-            mutate(selection)
-        bound_selection = root / f"{name}-bound-selection.json"
-        bound_selection.write_text(json.dumps(selection), encoding="utf-8")
-        exclusion_path = root / "no-exclusions.json"
-        create_exclusion_manifest(exclusion_path, [])
-        original = pilot.DEFAULT_PERMISSION_RECORD_PATH
-        pilot.DEFAULT_PERMISSION_RECORD_PATH = permission_path
-        try:
-            cached.select_from_cached_analysis(
-                analysis_path=analysis_path,
-                selection_path=bound_selection,
-                dictionary_path=dictionary_path,
-                index_path=index_path,
-                staging_path=root / f"{name}-cached-staging.sqlite",
-                candidate_output_path=root / f"{name}-cached-candidates.json",
-                exclusion_manifest_path=exclusion_path,
-                candidate_limit=limit,
-                include_canonical_lemmas=include,
-            )
-            return json.loads((root / f"{name}-cached-candidates.json").read_text(encoding="utf-8"))
-        finally:
-            pilot.DEFAULT_PERMISSION_RECORD_PATH = original
+        with patch.dict(os.environ, {"TYPEWRITER_CACHE_ROOT": str(root.resolve())}):
+            selection["analysis_cache"] = {
+                "database_path": cache_relative_path(analysis_path),
+                "database_sha256": cached.sha256_file(analysis_path),
+                "mode": "full-corpus-scan",
+            }
+            if mutate:
+                mutate(selection)
+            bound_selection = run_directory / f"{name}-bound-selection.json"
+            bound_selection.write_text(json.dumps(selection), encoding="utf-8")
+            exclusion_path = run_directory / "no-exclusions.json"
+            create_exclusion_manifest(exclusion_path, [])
+            original = pilot.DEFAULT_PERMISSION_RECORD_PATH
+            pilot.DEFAULT_PERMISSION_RECORD_PATH = permission_path
+            try:
+                cached.select_from_cached_analysis(
+                    analysis_path=analysis_path,
+                    selection_path=bound_selection,
+                    dictionary_path=dictionary_path,
+                    index_path=index_path,
+                    staging_path=run_directory / f"{name}-cached-staging.sqlite",
+                    candidate_output_path=run_directory / f"{name}-cached-candidates.json",
+                    exclusion_manifest_path=exclusion_path,
+                    candidate_limit=limit,
+                    include_canonical_lemmas=include,
+                )
+                return json.loads((run_directory / f"{name}-cached-candidates.json").read_text(encoding="utf-8"))
+            finally:
+                pilot.DEFAULT_PERMISSION_RECORD_PATH = original
 
     def test_factory_mode_keeps_canonical_lemmas_and_every_pos_in_both_selection_paths(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -439,10 +480,40 @@ class CorpusLemmaPilotTests(unittest.TestCase):
                 def other_database(selection):
                     selection["analysis_cache"]["database_sha256"] = "0" * 64
 
+                def other_database_path(selection):
+                    selection["analysis_cache"]["database_path"] = "runs/another/candidate-analysis.sqlite"
+
                 with self.assertRaisesRegex(RuntimeError, "different morphology extractor source"):
                     self._select_cached(root, "stale", fixture, True, mutate=other_source)
                 with self.assertRaisesRegex(RuntimeError, "digest does not match"):
                     self._select_cached(root, "tampered", fixture, True, mutate=other_database)
+                with self.assertRaisesRegex(RuntimeError, "different analysis database"):
+                    self._select_cached(root, "different-path", fixture, True, mutate=other_database_path)
+            finally:
+                pilot.SAMPLE_EVERY_PARAGRAPHS = original_sample
+
+    def test_cached_selection_accepts_a_moved_legacy_analysis_binding(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            fixture = self._multi_pos_fixture(root)
+            original_sample = pilot.SAMPLE_EVERY_PARAGRAPHS
+            pilot.SAMPLE_EVERY_PARAGRAPHS = 1
+            try:
+                self._extract(root, "default", fixture, False)
+                result = self._select_cached(
+                    root,
+                    "legacy-binding",
+                    fixture,
+                    True,
+                    mutate=lambda selection: selection["analysis_cache"].update({
+                        "database_path": "data/reference/production/issue-222/candidate-analysis.sqlite",
+                    }),
+                )
+                self.assertEqual(result["analysis_cache"]["mode"], "reused-candidate-analysis")
+                self.assertEqual(
+                    result["analysis_cache"]["source_database_path"],
+                    "runs/issue-222/candidate-analysis.sqlite",
+                )
             finally:
                 pilot.SAMPLE_EVERY_PARAGRAPHS = original_sample
 

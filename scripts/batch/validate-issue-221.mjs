@@ -34,7 +34,7 @@ import {
 import { loadCanonicalBeforeFactoryAdmissions, restoreImportRecordsBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
 import { resolveCacheArtifactPath } from '../typewriter-cache.mjs';
-import { assertSourceDigestRetained } from './repository-source-digest.mjs';
+import { assertIssue221SourceDigestsRetained } from './issue-221-source-digests.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -231,12 +231,10 @@ export async function validateIssue221() {
   assert.deepEqual(candidateEvidence.typewriter_surface, candidateReview.source.typewriter_surface);
   const permissionBytes = await readFile(repositoryArtifactPath(candidateReview.source.permission_record_path, 'permission record'));
   assert.equal(sha256Bytes(permissionBytes), candidateReview.source.permission_record_sha256);
-  for (const [label, relativePath, expectedDigest] of [
-    ['extractor', 'scripts/reference/corpus_lemma_pilot.py', candidateReview.source.tools.extractor_script_sha256],
-    ['orchestrator', 'scripts/reference/run-corpus-lemma-pilot.mjs', candidateReview.source.tools.orchestrator_script_sha256],
-  ]) {
-    await assertSourceDigestRetained({ relativePath, expectedDigest, label, repositoryRoot: ROOT });
-  }
+  await assertIssue221SourceDigestsRetained({
+    tools: candidateReview.source.tools,
+    repositoryRoot: ROOT,
+  });
   assert.equal(candidateEvidence.extractor.extractor_version, candidateReview.source.tools.extractor_version);
   assert.equal(candidateEvidence.extractor.python_version, candidateReview.source.tools.python_version);
   assert.equal(candidateEvidence.extractor.kiwipiepy_version, candidateReview.source.tools.kiwipiepy_version);

@@ -211,7 +211,7 @@ export const CI_CATEGORIES = Object.freeze({
       pnpmCheck('Validate Issue #220 M9 historical recovery checkpoint', 'batch:issue-220:check'),
       commandCheck(
         'Test shared Typewriter cache paths and explicit local-reference migration',
-        ['--test', 'scripts/typewriter-cache.test.mjs', 'scripts/reference/migrate-local-reference.test.mjs', 'scripts/reference/run-corpus-lemma-pilot.test.mjs', 'scripts/batch/repository-source-digest.test.mjs'],
+        ['--test', 'scripts/typewriter-cache.test.mjs', 'scripts/reference/migrate-local-reference.test.mjs', 'scripts/reference/run-corpus-lemma-pilot.test.mjs', 'scripts/batch/repository-source-digest.test.mjs', 'scripts/batch/issue-221-source-digests.test.mjs'],
       ),
       pnpmCheck('Validate every tracked M9 corpus candidate review', 'validate:corpus-candidate-review'),
       commandCheck(

@@ -8,10 +8,18 @@ export const TYPEWRITER_CACHE_AREAS = Object.freeze(['root', 'corpus', 'literatu
 
 export function resolveTypewriterCachePaths({ env = process.env, homeDirectory = os.homedir() } = {}) {
   const configuredRoot = env[TYPEWRITER_CACHE_ROOT_ENV];
-  if (configuredRoot && !path.isAbsolute(configuredRoot)) {
+  const expandedRoot = configuredRoot === '~'
+    ? homeDirectory
+    : configuredRoot?.startsWith(`~${path.sep}`)
+      ? path.join(homeDirectory, configuredRoot.slice(2))
+      : configuredRoot;
+  if (configuredRoot?.startsWith('~') && configuredRoot !== '~' && !configuredRoot.startsWith(`~${path.sep}`)) {
+    throw new TypeError(`${TYPEWRITER_CACHE_ROOT_ENV} only supports ~ or ~/... home expansion`);
+  }
+  if (expandedRoot && !path.isAbsolute(expandedRoot)) {
     throw new TypeError(`${TYPEWRITER_CACHE_ROOT_ENV} must be an absolute path so all worktrees share it`);
   }
-  const root = path.resolve(configuredRoot || path.join(homeDirectory, '.cache', 'typewriter'));
+  const root = realpathWithMissingSuffix(path.resolve(expandedRoot || path.join(homeDirectory, '.cache', 'typewriter')));
   return Object.freeze({
     root,
     corpus: path.join(root, 'corpus'),
@@ -84,7 +92,7 @@ export function mapLegacyReferencePath(relativePath) {
   if (!normalized.startsWith(prefix)) throw new TypeError('legacy reference path must start with data/reference/');
   const remainder = normalized.slice(prefix.length);
   const [legacyArea, ...rest] = remainder.split('/').filter(Boolean);
-  if (!legacyArea || rest.some((part) => part === '.' || part === '..')) {
+  if (!legacyArea || legacyArea === '.' || legacyArea === '..' || rest.some((part) => part === '.' || part === '..')) {
     throw new TypeError('legacy reference path must not contain traversal segments');
   }
   let mapped;

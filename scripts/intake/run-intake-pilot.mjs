@@ -1,7 +1,7 @@
 // Local pilot for issue #249: CorpusAdapter → common intake → real Kiwi, and a
 // corpus-disabled synthetic path through the same stages. Output goes to an
 // ignored local directory; nothing here is committed or admitted.
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,7 +18,12 @@ const PILOT_INVENTORY = path.join(CACHE_PATHS.runs, 'issue-201-pilot', 'pilot-in
 
 assertWithinDirectory(CACHE_PATHS.root, OUTPUT, { label: 'Intake pilot output' });
 await mkdir(path.dirname(OUTPUT), { recursive: true });
-await mkdir(OUTPUT);
+try {
+  await lstat(OUTPUT);
+  throw new Error(`Intake pilot output already exists: ${OUTPUT}`);
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
 
 async function canonicalLemmas() {
   const directory = path.join(ROOT, 'data/canonical');
@@ -78,5 +83,11 @@ report.syntheticCorpusDisabledPath = {
   decisions: syntheticRun.decisions.map(({ key, adapterIds, analysisBinding, ...rest }) => rest),
 };
 
-await writeFile(path.join(OUTPUT, 'pilot-report.json'), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
+await mkdir(OUTPUT);
+try {
+  await writeFile(path.join(OUTPUT, 'pilot-report.json'), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
+} catch (error) {
+  await rm(OUTPUT, { recursive: true, force: true });
+  throw error;
+}
 console.log(JSON.stringify(report, null, 2));
