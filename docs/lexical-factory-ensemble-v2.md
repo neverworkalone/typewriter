@@ -83,7 +83,7 @@ Under the ensemble policy the v2 manifest additionally carries (all text-free):
 - `analyzer_providers` (exactly the three, in order, each `identity_digest` pinned) and
   `resolution_policy: provider-resolution-v2-ensemble`; `analyzer_digest` binds both;
 - New batches use `ensemble: {contract: ensemble-resolution-v3, counts, trace_sha256}` —
-  `counts.input_observations` is counted from the source observation list before disposition; `counts.observations`
+  `counts.input_observations` counts distinct source-observation identities normalized from the source list before disposition; repeated raw hits with the same identity are merged once and remain visible in repeat metrics. `counts.observations`
   equals candidate observations + unresolved queue + `excluded_observations`; and `counts.excluded` equals the latter's
   length. The shared validator requires `input_observations === observations`, independently checking the partition.
   `trace_sha256` binds the provider identities, every observation digest/trace pair across all three dispositions,

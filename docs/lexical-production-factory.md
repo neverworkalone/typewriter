@@ -217,9 +217,11 @@ distinct-citation-lemma-v1`; the v1 manifest fields are kept (`task_id`, `batch_
   or `excluded_observations[]` with disposition `prior_produced_lemma` or
   `deferred_lemma`. Excluded observations retain their text-free source reference,
   analysis/observation digests, holds and ensemble trace; they cannot become a new
-  candidate row. `ensemble.counts.input_observations` is recorded from the source
-  analysis decisions separately from `counts.observations`, which must equal the
-  candidate + unresolved + excluded disposition total. `observation_digest` binds
+  candidate row. `ensemble.counts.input_observations` counts distinct source-observation
+  identities normalized from the input decisions before disposition, separately
+  from `counts.observations`, which must equal the candidate + unresolved + excluded
+  disposition total. Repeated raw hits with the same identity are merged once and
+  remain visible in repeat metrics. `observation_digest` binds
   source reference and usage group; a `trace_digest` may be shared when distinct
   source observations have the same surface-level analyzer trace.
   Historical `ensemble-resolution-v2` manifests remain valid and unchanged.

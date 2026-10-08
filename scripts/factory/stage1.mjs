@@ -22,6 +22,7 @@ import {
   decideObservations,
   ensembleCohortMetrics,
   ensembleTraceSha256,
+  observationDigestOf,
   reviewSummary,
   runEnsembleProviders,
 } from './ensemble-resolver.mjs';
@@ -328,16 +329,33 @@ export async function buildLemmaGroups({ observations, analyzer, providers = [cr
 export async function buildEnsembleGroups({
   observations, providers, contextProposals = null, contextReplay = null, contextSource = null, snapshot = '', contextAgent = null,
 }) {
+  // Repeated corpus hits for the same source observation are evidence repeats, not additional
+  // dispositions. Normalize them from the source list before analysis/accounting, keeping all
+  // extractor holds so a duplicate can never erase a more restrictive source status.
+  const uniqueByDigest = new Map();
+  const inputCountsByDigest = new Map();
+  for (const observation of observations) {
+    const digest = observationDigestOf(observation);
+    inputCountsByDigest.set(digest, (inputCountsByDigest.get(digest) ?? 0) + 1);
+    const known = uniqueByDigest.get(digest);
+    if (known) {
+      known.holds = [...new Set([...known.holds, ...(observation.holds ?? [])])].sort(compare);
+    } else {
+      uniqueByDigest.set(digest, { ...observation, holds: [...new Set(observation.holds ?? [])].sort(compare) });
+    }
+  }
+  const sourceObservations = [...uniqueByDigest.values()];
   let run;
   try {
-    run = await runEnsembleProviders({ observations, providers });
+    run = await runEnsembleProviders({ observations: sourceObservations, providers });
   } catch (error) {
     if (error instanceof EnsembleError) throw new Stage1Error(error.errors);
     throw error;
   }
-  const decisions = decideObservations({ observations, run });
+  const decisions = decideObservations({ observations: sourceObservations, run });
+  const decisionByDigest = new Map(decisions.map((decision) => [decision.observation_digest, decision]));
   const queueByDigest = new Map();
-  observations.forEach((observation, index) => {
+  sourceObservations.forEach((observation, index) => {
     const decision = decisions[index];
     if (ASSIGNING_CATEGORIES.includes(decision.category)) return;
     if (queueByDigest.has(decision.observation_digest)) return;
@@ -366,7 +384,8 @@ export async function buildEnsembleGroups({
 
   const lemmas = new Map();
   const queue = [];
-  let repeatsMerged = 0;
+  let repeatsMerged = [...inputCountsByDigest].reduce((sum, [digest, count]) =>
+    sum + (ASSIGNING_CATEGORIES.includes(decisionByDigest.get(digest)?.category) ? count - 1 : 0), 0);
   const addToLemma = ({ lemma, pos, observation, observationDigest, holds, ensemble }) => {
     const group = observation.group ?? '';
     const entry = lemmas.get(lemma) ?? new Map();
@@ -383,7 +402,7 @@ export async function buildEnsembleGroups({
   };
   const sameReading = (a, b) => a.lemma === b.lemma && a.pos === b.pos;
   const queued = new Set();
-  observations.forEach((observation, index) => {
+  sourceObservations.forEach((observation, index) => {
     const decision = decisions[index];
     const base = { category: decision.category, reasons: decision.reasons, trace_digest: decision.trace_digest };
     if (ASSIGNING_CATEGORIES.includes(decision.category)) {
@@ -421,7 +440,7 @@ export async function buildEnsembleGroups({
   const orderedQueue = queue.map((entry) => ({ queue_id: entry.queue_id, surface: entry.surface, evidence: entry.evidence, holds: entry.holds, category: entry.category,
     reasons: entry.reasons, hypotheses: entry.hypotheses, extractor_hint: entry.extractor_hint, extractor_holds: entry.extractor_holds,
     observation_digest: entry.observation_digest, trace_digest: entry.trace_digest, verification: entry.verification }));
-  return { lemmas, unresolved: orderedQueue, repeatsMerged, metadataByProvider: run.metadataByProvider, run, decisions, contextRecords,
+  return { lemmas, unresolved: orderedQueue, repeatsMerged, metadataByProvider: run.metadataByProvider, run, decisions, observations: sourceObservations, contextRecords,
     attemptLog: ENSEMBLE_LOG(run) };
 }
 
@@ -721,7 +740,7 @@ export async function compareResolutionPolicies({ observations, kiwiProvider, en
     kiwi_only: { ...groupedMetrics(baseline, observations), provider_surface_calls: summarizeAttempts(baseline.attemptLog), ms: baselineMs },
     three_provider_only: {
       ...groupedMetrics(ensemble, observations),
-      ...ensembleCohortMetrics({ observations, decisions: ensemble.decisions, run: ensemble.run, independentlyAdjudicated }),
+      ...ensembleCohortMetrics({ observations: ensemble.observations, decisions: ensemble.decisions, run: ensemble.run, independentlyAdjudicated }),
       ms: ensembleMs,
     },
     notes: [
@@ -746,7 +765,7 @@ export async function compareResolutionPolicies({ observations, kiwiProvider, en
     const withContext = await buildEnsembleGroups({ observations, providers: ensembleProviders, ...context });
     report.three_provider_plus_context = {
       ...groupedMetrics(withContext, observations),
-      ...ensembleCohortMetrics({ observations, decisions: withContext.decisions, run: withContext.run, contextOutcomes: withContext.contextRecords, independentlyAdjudicated }),
+      ...ensembleCohortMetrics({ observations: withContext.observations, decisions: withContext.decisions, run: withContext.run, contextOutcomes: withContext.contextRecords, independentlyAdjudicated }),
     };
   }
   return report;
@@ -825,7 +844,7 @@ export async function produceCandidateBatch({
       effectivePolicy: policy,
       providerOrder: ids,
       providerAttempts: ensemble ? grouped.run.calls : summarizeAttempts(attemptLog),
-      ...(ensemble ? { ensemble: ensembleCohortMetrics({ observations, decisions: grouped.decisions, run: grouped.run, contextOutcomes: grouped.contextRecords }) } : {}),
+      ...(ensemble ? { ensemble: ensembleCohortMetrics({ observations: grouped.observations, decisions: grouped.decisions, run: grouped.run, contextOutcomes: grouped.contextRecords }) } : {}),
       candidates: rows.length,
       omittedNonWordFormHits: source.omitted_non_word_form_hits,
       deferredLemmas: deferred,

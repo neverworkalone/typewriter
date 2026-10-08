@@ -666,6 +666,64 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
   }
 });
 
+test('v3 source accounting normalizes repeated assigned and unresolved hits to one disposition each', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-repeated-input-'));
+  try {
+    const evidence = [
+      cand('가다', 'verb', [h('d1', '가는'), h('d1', '가는')]),
+      cand('가다', 'verb', [h('d2', '갈'), h('d2', '갈')]),
+    ];
+    const k = { 가는: [p('가다', 'verb', '가')], 갈: [p('갈', 'noun')] };
+    const hh = { 가는: [p('가다', 'verb', '가')], 갈: [p('갈다', 'verb', '갈')] };
+    const mm = { 가는: [p('가다', 'verb', '가')], 갈: [p('가다', 'verb', '가')] };
+    const result = await produce(evidence, triple({ k, h: hh, m: mm }));
+
+    assert.equal(result.ensemble.decisions.length, 2, 'the producer adjudicates each unique source-observation identity once');
+    assert.equal(result.manifest.ensemble.counts.input_observations, 2,
+      'the independent count is derived from unique source identities before disposition, not output totals');
+    assert.equal(result.manifest.ensemble.counts.observations, 2);
+    assert.equal(result.manifest.observation_count, 1);
+    assert.equal(result.manifest.unresolved_observations.length, 1);
+    assert.equal(result.summary.metrics.repeated_evidence_merged, 1, 'the assigned duplicate remains visible in repeat metrics');
+    assert.deepEqual(validateCandidateBatch({ manifest: result.manifest, candidatesText: result.candidatesText }), []);
+
+    const traces = result.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest,
+      trace_digest: decision.trace_digest, trace: decision.trace }));
+    assert.deepEqual(verifyEnsembleTraces({ rows: result.rows, queue: result.manifest.unresolved_observations,
+      excluded: result.manifest.excluded_observations, traces }), [], 'each normalized input identity has one matching local trace');
+
+    const directory = path.join(root, 'data/candidates', result.manifest.batch_id);
+    await mkdir(directory, { recursive: true });
+    await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(result.manifest));
+    await writeFile(path.join(directory, 'candidates.jsonl'), result.candidatesText);
+    assert.deepEqual(await validateFactoryRepository({ root }), []);
+
+    const missing = structuredClone(result.manifest);
+    missing.unresolved_observations = [];
+    missing.ensemble.counts.queue = 0;
+    missing.ensemble.counts.observations = missing.observation_count + missing.excluded_observations.length;
+    missing.ensemble.counts.categories = { concordant: 0, supported_alternative: 0, conflicted: 0, unsupported_or_unknown: 0 };
+    for (const row of result.rows) for (const [category, count] of Object.entries(row.review.categories)) missing.ensemble.counts.categories[category] += count;
+    for (const entry of missing.excluded_observations) missing.ensemble.counts.categories[entry.ensemble.category] += 1;
+    missing.ensemble.trace_sha256 = ensembleTraceSha256({
+      providers: missing.analyzer_providers,
+      observationTraceDigests: result.rows.flatMap((row) => [JSON.stringify(['review', row.review.trace_sha256]),
+        ...row.observations.map((observation) => JSON.stringify([observation.observation_digest, observation.ensemble.trace_digest]))]),
+      queueTraceDigests: [],
+      excludedTraceDigests: missing.excluded_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.ensemble.trace_digest])),
+      contextDecisionsSha256: missing.context_fallback.decisions_sha256,
+    });
+    const accountingError = /independent input observation count/u;
+    assert.match(validateCandidateBatch({ manifest: missing, candidatesText: result.candidatesText }).join(), accountingError,
+      'dropping the one unique unresolved identity and recomputing all output-derived fields still fails');
+    await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(missing));
+    assert.match((await validateFactoryRepository({ root })).join(), accountingError,
+      'the repository validator rejects the same omitted input identity');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('8/14: same-cohort comparison reports distinct-lemma denominators, honest unknowns, and credits no extractor-missed lemma', async () => {
   const k = { 가는: [p('가다', 'verb', '가')], 가서: [p('가다', 'verb', '가')], 갈: [p('갈', 'noun')], 걸어: [p('걸다', 'verb', '걸'), p('걷다', 'verb', '걷')] };
   const hh = { 가는: [p('가다', 'verb', '가')], 가서: [p('가다', 'verb', '가')], 갈: [p('갈다', 'verb', '갈')], 걸어: [p('걷다', 'verb', '걷')] };
