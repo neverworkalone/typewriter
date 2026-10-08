@@ -199,6 +199,7 @@ function normalizeSource(source) {
 }
 
 function resolveHint(index, hint, provisionalByLemma) {
+  if (hint.provisional_id) return { canonical: [], provisional: provisionalByLemma.exact.has(hint.provisional_id) ? [hint.provisional_id] : [] };
   if (hint.sense_id && index.bySenseId.has(hint.sense_id)) return { canonical: [index.bySenseId.get(hint.sense_id).index], provisional: [] };
   if (hint.record_id && index.byRecordId.has(hint.record_id)) {
     const record = index.byRecordId.get(hint.record_id);
@@ -206,7 +207,8 @@ function resolveHint(index, hint, provisionalByLemma) {
   }
   if (hint.lemma) {
     const canonical = (index.bySearchForm.get(hint.lemma) ?? []).filter((i) => !hint.pos || index.senses[i].pos === hint.pos);
-    return { canonical, provisional: provisionalByLemma.get(hint.lemma) ?? [] };
+    const provisional = (provisionalByLemma.get(hint.lemma) ?? []).filter((p) => !hint.pos || p.pos === hint.pos).map((p) => p.provisional_id);
+    return { canonical, provisional };
   }
   return { canonical: [], provisional: [] };
 }
@@ -265,7 +267,8 @@ export function retrieveRelationCandidates(index, rawSources, { config = {}, lit
   const provisionals = sources.filter((s) => s.kind === 'provisional');
   if (new Set(provisionals.map((p) => p.batch_id)).size > 1) throw new Error('provisional sources of one retrieval call must belong to a single batch');
   const provisionalByLemma = new Map();
-  for (const p of provisionals) provisionalByLemma.set(p.lemma, [...(provisionalByLemma.get(p.lemma) ?? []), p.provisional_id]);
+  for (const p of provisionals) provisionalByLemma.set(p.lemma, [...(provisionalByLemma.get(p.lemma) ?? []), p]);
+  provisionalByLemma.exact = new Set(provisionals.map((p) => p.provisional_id));
   const provisionalGrams = new Map(provisionals.map((p) => [p.provisional_id, bigramsOf(`${p.lemma} ${p.gloss}`)]));
 
   const results = sources.map((source) => {

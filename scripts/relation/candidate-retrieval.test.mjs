@@ -180,6 +180,26 @@ test('provisional pos must be a supported part of speech', () => {
   assert.notDeepEqual(validateRelationCandidateArtifact(canonical), []);
 });
 
+test('provisional hints respect pos and exact identity', () => {
+  const index = buildRelationIndex(synthetic);
+  const prov = (candidate_id, sense_key, pos, extra = {}) => ({ kind: 'provisional', batch_id: 'B', candidate_id, sense_key, lemma: '목표', pos, gloss: `전혀 다른 뜻풀이 ${candidate_id}${sense_key}`, ...extra });
+  const batch = (hints, config) => retrieveRelationCandidates(index, [
+    { ...prov('C1', 's1', 'noun'), lemma: '과녁', hints },
+    prov('C2', 'a1', 'adjective'),
+    prov('C2', 'n1', 'noun'),
+  ], { config });
+  const ids = (out) => out.sources[0].candidates.map((c) => c.target.provisional_id);
+  const withPos = batch([{ lemma: '목표', pos: 'noun' }], { max_candidates: 1 });
+  assert.deepEqual(ids(withPos), ['provisional:B/C2/n1']);
+  assert.equal(withPos.sources[0].candidates[0].target.pos, 'noun');
+  assert.deepEqual(validateRelationCandidateArtifact(withPos, index), []);
+  assert.equal(ids(batch([{ lemma: '목표', pos: 'adjective' }]))[0], 'provisional:B/C2/a1');
+  assert.deepEqual(ids(batch([{ lemma: '목표' }])).slice(0, 2).sort(), ['provisional:B/C2/a1', 'provisional:B/C2/n1']);
+  assert.ok(batch([{ lemma: '목표', pos: 'verb' }]).sources[0].candidates.every((c) => !c.signals.includes('explicit_hint')));
+  assert.equal(ids(batch([{ provisional_id: 'provisional:B/C2/a1' }]))[0], 'provisional:B/C2/a1');
+  assert.ok(batch([{ provisional_id: 'provisional:B/NOPE/x' }]).sources[0].candidates.every((c) => !c.signals.includes('explicit_hint')));
+});
+
 test('index-time settings cannot be overridden at retrieval time', () => {
   const index = buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.5 });
   const source = [{ kind: 'canonical', sense_id: 'w3-s1' }];
