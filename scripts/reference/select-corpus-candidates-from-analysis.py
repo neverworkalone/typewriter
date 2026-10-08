@@ -11,8 +11,10 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import corpus_lemma_pilot as producer
+from scripts.python.local_cache import assert_cache_path
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -425,6 +427,16 @@ def main() -> int:
     parser.add_argument("--candidate-limit", type=int, required=True)
     parser.add_argument("--include-canonical-lemmas", action="store_true")
     arguments = parser.parse_args()
+    arguments.analysis_db = assert_cache_path(arguments.analysis_db, "runs", "--analysis-db")
+    arguments.analysis_selection = assert_cache_path(arguments.analysis_selection, "runs", "--analysis-selection")
+    arguments.index = assert_cache_path(arguments.index, "indexes", "--index")
+    arguments.staging_db = assert_cache_path(arguments.staging_db, "runs", "--staging-db")
+    arguments.candidate_json = assert_cache_path(arguments.candidate_json, "runs", "--candidate-json")
+    arguments.exclusion_manifest = assert_cache_path(arguments.exclusion_manifest, "runs", "--exclusion-manifest")
+    if len({arguments.staging_db.parent, arguments.candidate_json.parent, arguments.exclusion_manifest.parent}) != 1:
+        parser.error("all generated artifacts must stay in one task-scoped cache run directory")
+    if arguments.staging_db.exists() or arguments.candidate_json.exists():
+        parser.error("run output already exists; choose a fresh Typewriter cache run directory")
     try:
         result = select_from_cached_analysis(
             analysis_path=arguments.analysis_db.resolve(),

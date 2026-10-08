@@ -10,7 +10,7 @@
 - 요약 수치: `total_match_units`/`distinct_works_matched`는 상한과 무관한 정확한 합집합이고, `sampled_match_units`/`sampled_works`/`fetch_truncated`가 선택에 쓰인 표본을 구분한다.
 - 선택: 같은 text unit과 같은 block의 중복 히트는 한 번만 센다. 작품당 기본 1개(`--max-per-work`, 최대 3), 기본 8개(`--max-contexts`, 최대 10). 장르 → (미검증·약한) 저자 → 결정적 해시 순으로 다양성을 우선한다. 각 형이 2,000 unit을 넘으면 파일 순서 편향이 없는 결정적 산포 표본에서 고른다(`truncated`로 보고).
 - 문맥: 히트가 속한 block(≤12행, ≤1,200자)을 통째로, 크면 block 안에서 ±3행. 파일·block 경계를 넘지 않는다.
-- 출력(Git 제외, `data/reference/literature-evidence/<batch>/`): `.pack.json`, `.md`(원문 포함, 로컬 전용), `.summary.json`(텍스트 없음: 후보/배치, 표제어·검색형, 총 일치 unit, 작품·장르 수, 반환 수, `index_metadata`의 논리 행 digest·입력 매니페스트 digest, 선택 위치 digest `sha256(source_sha256:unit_ordinal)`, 조회 시간). 출력 경로는 `data/reference/` 밖이면 거부한다.
+- 현재 출력(Git 제외, `~/.cache/typewriter/evidence/<batch>/<candidate-id>/`): `pack.json`, `evidence.md`(원문 포함, 로컬 전용), `summary.json`(텍스트 없음: 후보/배치, 표제어·검색형, 총 일치 unit, 작품·장르 수, 반환 수, `index_metadata`의 논리 행 digest·입력 매니페스트 digest, 선택 위치 digest `sha256(source_sha256:unit_ordinal)`, 조회 시간). #391의 기존 pack은 이전 worktree 경로에서 digest를 확인해 이관한다. 출력은 shared-cache evidence area 안에만 기록한다.
 - 도구는 POS·뜻·`included/covered/rejected/deferred`·직설/비유·관계 유형을 판단하지 않는다. 히트 없음은 부정 근거가 아니다(`no_evidence_note`).
 - 트리거 정책(`pilotTriggerReasons`)은 이유만 보고한다: `new_sense_on_existing_entry`, 복수 usage group/POS 가설, 보류된 관찰. 필수 게이트가 아니다.
 - 재현 측정: `node scripts/reference/literature-evidence-replay.mjs` (모든 과거 `deferred` 결정 + 정본 기존 엔트리에 `included`된 명확 사례 40건의 해시 순 표본).

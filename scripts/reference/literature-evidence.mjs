@@ -4,6 +4,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import { DEFAULT_FULL_LITERATURE_INDEX_PATH, REPOSITORY_DIRECTORY } from './literature-index.mjs';
+import { assertWithinDirectory, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 // When a form exceeds HIT_FETCH_CAP the fetched sample is a deterministic scatter of unit rowids (not the first works in file order).
 // Stage 2 literature-evidence retriever (#391). Evidence supply only: it never decides POS, sense,
@@ -20,7 +21,8 @@ export const MAX_BLOCK_CHARS = 1200;
 export const FALLBACK_NEIGHBOR_UNITS = 3;
 export const MIN_FORM_CHARACTERS = 2;
 export const HIT_FETCH_CAP = 2000;
-export const EVIDENCE_OUTPUT_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/reference/literature-evidence');
+const CACHE_PATHS = resolveTypewriterCachePaths();
+export const EVIDENCE_OUTPUT_DIRECTORY = CACHE_PATHS.evidence;
 
 const BATCH_ID = /^C\d{6}$/u;
 const CANDIDATE_ID = /^C\d{6}-\d{4}$/u;
@@ -264,14 +266,11 @@ export function retrieveLiteratureEvidence({
 
 // ------------------------------------------------------------------------- pack
 
-export function assertLocalOutputDirectory(directory, root = REPOSITORY_DIRECTORY) {
-  const absolute = path.resolve(directory);
-  const allowed = path.resolve(root, 'data/reference');
-  const relative = path.relative(allowed, absolute);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error('Evidence packs may only be written under the ignored data/reference/ directory.');
-  }
-  return absolute;
+export function assertLocalOutputDirectory(directory, cacheRoot = CACHE_PATHS.root) {
+  assertWithinDirectory(cacheRoot, directory, { label: 'Literature evidence output' });
+  return assertWithinDirectory(path.join(cacheRoot, 'evidence'), directory, {
+    label: 'Literature evidence output',
+  });
 }
 
 export function renderEvidenceMarkdown({ summary, contexts }) {
@@ -290,13 +289,18 @@ export function renderEvidenceMarkdown({ summary, contexts }) {
   return lines.join('\n');
 }
 
-export async function writeEvidencePack(result, { outputDirectory = EVIDENCE_OUTPUT_DIRECTORY, root = REPOSITORY_DIRECTORY } = {}) {
-  const directory = assertLocalOutputDirectory(path.join(outputDirectory, result.summary.batch_id), root);
+export async function writeEvidencePack(result, { outputDirectory = EVIDENCE_OUTPUT_DIRECTORY, cacheRoot = CACHE_PATHS.root } = {}) {
+  const directory = assertLocalOutputDirectory(path.join(outputDirectory, result.summary.batch_id), cacheRoot);
   await mkdir(directory, { recursive: true });
-  const base = path.join(directory, result.summary.candidate_id);
-  const files = { pack: base + '.pack.json', markdown: base + '.md', summary: base + '.summary.json' };
-  await writeFile(files.pack, JSON.stringify(result, null, 2) + '\n');
-  await writeFile(files.markdown, renderEvidenceMarkdown(result));
-  await writeFile(files.summary, JSON.stringify(result.summary, null, 2) + '\n');
+  const candidateDirectory = path.join(directory, result.summary.candidate_id);
+  await mkdir(candidateDirectory);
+  const files = {
+    pack: path.join(candidateDirectory, 'pack.json'),
+    markdown: path.join(candidateDirectory, 'evidence.md'),
+    summary: path.join(candidateDirectory, 'summary.json'),
+  };
+  await writeFile(files.pack, JSON.stringify(result, null, 2) + '\n', { flag: 'wx' });
+  await writeFile(files.markdown, renderEvidenceMarkdown(result), { flag: 'wx' });
+  await writeFile(files.summary, JSON.stringify(result.summary, null, 2) + '\n', { flag: 'wx' });
   return files;
 }

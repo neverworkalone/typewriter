@@ -64,11 +64,19 @@ export async function tree() {
   }
   await symlink(path.join(ROOT, 'data/timing'), path.join(temp, 'data/timing'));
   await cp(FIXTURE, path.join(temp, 'fixture'), { recursive: true });
+  const analysisRun = path.join(temp, '.cache', 'typewriter', 'runs', 'fixture');
+  await mkdir(path.dirname(analysisRun), { recursive: true });
+  await cp(FIXTURE, analysisRun, { recursive: true });
   await installStub(path.join(temp, 'kiwi-stub'));
   return temp;
 }
 
-const env = (temp) => ({ ...process.env, PYTHONPATH: path.join(temp, 'kiwi-stub'), TYPEWRITER_PYTHON: process.env.TYPEWRITER_PYTHON_FOR_TESTS || 'python3' });
+const env = (temp) => ({
+  ...process.env,
+  PYTHONPATH: path.join(temp, 'kiwi-stub'),
+  TYPEWRITER_PYTHON: process.env.TYPEWRITER_PYTHON_FOR_TESTS || 'python3',
+  TYPEWRITER_CACHE_ROOT: path.join(temp, '.cache', 'typewriter'),
+});
 export const node = (temp, script, args) => run('node', [path.join(temp, script), ...args], { cwd: temp, env: env(temp), maxBuffer: 64 * 1024 * 1024 });
 export const validate = async (temp) => {
   try {
@@ -82,14 +90,17 @@ export const validate = async (temp) => {
 
 // Real hand-off CLI (build, bind) and the real batch builder with --intake-handoff, in a temp tree.
 export async function buildB16(temp) {
-  const analysis = 'fixture';
+  const analysis = 'runs/fixture';
   const common = [`--batch-id=${B16}`, `--analysis-directory=${analysis}`];
-  await node(temp, 'scripts/intake/production-handoff-cli.mjs', ['build', ...common, '--out=handoff.json']);
-  await cp(path.join(temp, 'fixture/semantic-review-input.json'), path.join(temp, 'input.json'));
-  await node(temp, 'scripts/intake/production-handoff-cli.mjs', ['bind', '--handoff=handoff.json', '--review-input=input.json', `--analysis-directory=${analysis}`, '--authored-decisions=fixture/authored-decisions.json']);
+  const runDirectory = path.join(temp, '.cache', 'typewriter', 'runs', 'fixture');
+  const handoff = 'runs/fixture/intake-handoff.json';
+  await node(temp, 'scripts/intake/production-handoff-cli.mjs', ['build', ...common]);
+  await cp(path.join(temp, 'fixture/semantic-review-input.json'), path.join(runDirectory, 'semantic-review-input.json'));
+  await node(temp, 'scripts/intake/production-handoff-cli.mjs', ['bind', `--handoff=${handoff}`, '--review-input=semantic-review-input.json', `--analysis-directory=${analysis}`, '--authored-decisions=fixture/authored-decisions.json']);
+  await cp(path.join(runDirectory, 'semantic-review-input.json'), path.join(temp, 'input.json'));
   const builderArgs = [...common, '--authored-decisions=fixture/authored-decisions.json', '--semantic-reviews=input.json'];
   return {
     withoutHandoff: () => node(temp, 'scripts/batch/build-issue-223-corpus-batch.mjs', builderArgs),
-    withHandoff: async () => JSON.parse((await node(temp, 'scripts/batch/build-issue-223-corpus-batch.mjs', [...builderArgs, '--intake-handoff=handoff.json'])).stdout),
+    withHandoff: async () => JSON.parse((await node(temp, 'scripts/batch/build-issue-223-corpus-batch.mjs', [...builderArgs, `--intake-handoff=${handoff}`])).stdout),
   };
 }

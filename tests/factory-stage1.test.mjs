@@ -9,12 +9,20 @@ import { expectedAnalyzerDigest, sha256Hex, validateCandidateBatch } from '../sc
 import { buildCanonicalIndex, buildSearchFormSupport, classifyLemmaCandidate, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { MAX_OBSERVATIONS_PER_CANDIDATE } from '../scripts/factory/lemma-contract.mjs';
 import { runStage1 } from '../scripts/factory/produce-candidates.mjs';
+import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
 import { Stage1Error, allocateBatchId, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 
 const METADATA = { service_version: '1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0', top_n: 3, proposal_contract: 'derivation-root-v1' };
 const HEX = 'a'.repeat(64);
+
+async function taskCacheFor(root, taskId = 'T000001') {
+  const cachePaths = resolveTypewriterCachePaths({ homeDirectory: path.join(root, '.test-home'), env: {} });
+  const taskDirectory = path.join(cachePaths.runs, taskId);
+  await mkdir(taskDirectory, { recursive: true });
+  return { cachePaths, taskDirectory, evidenceArgument: `runs/${taskId}/candidate-evidence.json` };
+}
 
 // Synthetic stand-in for kiwi_service: surface → ranked proposal paths.
 const P = (lemma, pos, form = lemma) => ({ lemma, pos, form });
@@ -287,21 +295,22 @@ test('batch ids are serial and collision-free', () => {
 
 test('CLI writes an immutable, valid lemma batch and nothing else; reruns only yield unproduced lemmas', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
-  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
+  const cache = await taskCacheFor(root);
   await mkdir(path.join(root, 'data/canonical'), { recursive: true });
   await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
-  const writeEvidence = (candidates) => writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(candidates)));
+  const writeEvidence = (candidates) => writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(candidates)));
   await writeEvidence([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])]);
-  const deps = { root, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
-  const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
 
   const dry = await runStage1([...args, '--dry-run'], deps);
   await assert.rejects(() => readdir(path.join(root, 'data/candidates')), { code: 'ENOENT' });
+  await assert.rejects(() => readdir(path.join(root, 'data/reference')), { code: 'ENOENT' });
   const first = await runStage1(args, deps);
   assert.equal(first.manifest.batch_id, 'C000001');
   assert.equal(first.candidatesText, dry.candidatesText);
   assert.deepEqual((await readdir(path.join(root, 'data/candidates/C000001'))).sort(), ['candidates.jsonl', 'manifest.json']);
-  assert.deepEqual(await readdir(path.join(root, 'data')).then((names) => names.sort()), ['candidates', 'canonical', 'reference']);
+  assert.deepEqual(await readdir(path.join(root, 'data')).then((names) => names.sort()), ['candidates', 'canonical']);
   assert.equal(await readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'utf8'), first.candidatesText);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
   // Same evidence again: its lemma is already produced, so nothing is regenerated.
@@ -318,17 +327,17 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
 
 test('post-write validation is base-aware like CI: merged reviews are compared to the base, a new batch stays fail-closed', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
-  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
+  const cache = await taskCacheFor(root);
   await mkdir(path.join(root, 'data/canonical'), { recursive: true });
   await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
-  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])])));
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])])));
   const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd: root, stdio: 'pipe' });
   git('init', '-q');
   git('add', 'data/canonical');
   git('commit', '-q', '-m', 'base');
-  const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--policy', 'provider-resolution-v1'];
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--policy', 'provider-resolution-v1'];
   const seen = [];
-  const deps = { root, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, validate: async (options) => { seen.push(options.base); return validateFactoryRepository(options); } };
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, validate: async (options) => { seen.push(options.base); return validateFactoryRepository(options); } };
   await runStage1([...args, '--base-ref', 'HEAD'], deps);
   assert.equal(seen.length, 1);
   assert.match(seen[0].commit, /^[0-9a-f]{40}$/u);
@@ -343,11 +352,11 @@ test('post-write validation is base-aware like CI: merged reviews are compared t
 
 test('CLI fails closed without permission, outside data/reference, on bad arguments and on a missing evidence file', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
-  await mkdir(path.join(root, 'data/reference'), { recursive: true });
-  const deps = { root, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+  const cache = await taskCacheFor(root);
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
   const base = ['--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/x.json', ...base], { ...deps, permission: async () => { throw new Error('Corpus use is not authorized'); } }), /not authorized/);
-  await assert.rejects(() => runStage1(['--evidence', 'elsewhere.json', ...base], deps), /data\/reference/);
+  await assert.rejects(() => runStage1(['--evidence', path.join(root, 'elsewhere.json'), ...base], deps), /must be inside/u);
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/missing.json', ...base], deps), /cannot read evidence/);
   await assert.rejects(() => runStage1(['--task-id', 'T000001'], deps), /--evidence/);
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/x.json'], deps), /--task-id/);

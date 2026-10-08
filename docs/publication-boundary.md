@@ -142,7 +142,8 @@ publication. Issue closure alone is not evidence of that approval.
 | Private editorial/source-review notes that contain unredacted external material | `KEEP-PRIVATE` | Use only for the audit where terms permit; publish a minimal rights/provenance decision only when safe and necessary. |
 | Credentials, private keys, local configuration, local absolute paths, developer machine state, and browser user data | `KEEP-PRIVATE` | Never publish or include in repository artifacts. Revoke/rotate credentials if exposure is found. |
 
-The absence of a tracked `data/draft/` or `data/reference/` directory is intentional.
+The absence of a tracked `data/draft/` or `data/reference/` directory is intentional;
+local reference assets live in the shared cache outside every worktree.
 `docs/data-policy.md` and `docs/repository-structure.md` require raw sources and
 unreviewed drafts to remain outside the repository. Ignore rules alone do not prove
 that this boundary has held across Git history or GitHub-hosted surfaces.

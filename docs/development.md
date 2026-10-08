@@ -255,7 +255,7 @@ start/stop timestamps. The CLI does not accept user-supplied timestamps or
 durations and does not estimate or backfill work.
 
 The first command scans only `data/canonical/` and recursively visits its `.jsonl`
-files. It does not scan `data/draft/`, `data/reference/`, generated output, or test
+files. It does not scan `data/draft/`, the shared `~/.cache/typewriter/` tree, generated output, or test
 fixtures. Each row must also satisfy [`schema/canonical-record.schema.json`](../schema/canonical-record.schema.json).
 A repository with no `data/canonical/` directory is an initial empty state: the
 validator exits successfully and reports zero files and records, but that output does

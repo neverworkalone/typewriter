@@ -15,22 +15,18 @@ import { TextDecoder } from 'node:util';
 
 import { openShortQueryCounts, SHORT_QUERY_LENGTH } from './short-query-counts.mjs';
 import { openShortQueryPostings } from './short-query-postings.mjs';
+import { assertWithinDirectory, isWithinDirectory, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
+const CACHE_PATHS = resolveTypewriterCachePaths();
 
-export const DEFAULT_INPUT_DIRECTORY = path.join(
-  REPOSITORY_DIRECTORY,
-  'data/reference/corpus',
-);
+export const DEFAULT_INPUT_DIRECTORY = CACHE_PATHS.corpus;
 export const DEFAULT_INDEX_PATH = path.join(
-  REPOSITORY_DIRECTORY,
-  'data/reference/indexes/written-corpus-2025.sqlite',
+  CACHE_PATHS.indexes,
+  'written-corpus-2025.sqlite',
 );
-const REPOSITORY_INDEX_DIRECTORY = path.join(
-  REPOSITORY_DIRECTORY,
-  'data/reference/indexes',
-);
+const CACHE_INDEX_DIRECTORY = CACHE_PATHS.indexes;
 export const DEFAULT_PERMISSION_RECORD_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'docs/external-material-review-written-corpus-2025.md',
@@ -601,16 +597,6 @@ async function verifyInputPathSet(inputDirectory, audit) {
   }
 }
 
-function isWithinDirectory(directoryPath, candidatePath) {
-  const relativePath = path.relative(directoryPath, candidatePath);
-  return relativePath === ''
-    || (
-      !path.isAbsolute(relativePath)
-      && relativePath !== '..'
-      && !relativePath.startsWith('..' + path.sep)
-    );
-}
-
 function requireSafeOutputPath(inputDirectory, outputPath) {
   if (isWithinDirectory(inputDirectory, outputPath)) {
     throw new Error(
@@ -619,12 +605,21 @@ function requireSafeOutputPath(inputDirectory, outputPath) {
   }
   if (
     isWithinDirectory(REPOSITORY_DIRECTORY, outputPath)
-    && !isWithinDirectory(REPOSITORY_INDEX_DIRECTORY, outputPath)
+    && !isWithinDirectory(CACHE_INDEX_DIRECTORY, outputPath)
   ) {
     throw new Error(
       'Repository-local SQLite output is restricted to '
-      + REPOSITORY_INDEX_DIRECTORY + ': ' + outputPath,
+      + CACHE_INDEX_DIRECTORY + ': ' + outputPath,
     );
+  }
+  if (
+    isWithinDirectory(CACHE_PATHS.root, outputPath)
+    && !isWithinDirectory(CACHE_PATHS.indexes, outputPath)
+  ) {
+    throw new Error(`Typewriter cache SQLite output is restricted to ${CACHE_PATHS.indexes}: ${outputPath}`);
+  }
+  if (isWithinDirectory(CACHE_PATHS.indexes, outputPath)) {
+    assertWithinDirectory(CACHE_PATHS.indexes, outputPath, { label: 'Corpus index output' });
   }
 }
 

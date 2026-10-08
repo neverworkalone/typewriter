@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -35,6 +34,8 @@ import {
 } from './validate-issue-211.mjs';
 import { loadCanonicalBeforeFactoryAdmissions, restoreImportRecordsBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
+import { resolveCacheArtifactPath } from '../typewriter-cache.mjs';
+import { assertSourceDigestRetained } from './repository-source-digest.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -64,6 +65,10 @@ const recordOf = (recordInfo) => recordInfo?.record ?? recordInfo;
 
 function repositoryArtifactPath(relativePath, label) {
   assert.equal(typeof relativePath, 'string', `${label} path is required`);
+  const normalized = relativePath.replaceAll('\\', '/');
+  if (normalized.startsWith('data/reference/') || normalized.startsWith('runs/') || normalized.startsWith('evidence/')) {
+    return resolveCacheArtifactPath(relativePath, { areas: ['runs', 'evidence'], label });
+  }
   const absolutePath = path.resolve(ROOT, relativePath);
   const relativeToRoot = path.relative(ROOT, absolutePath);
   assert.ok(relativeToRoot && !relativeToRoot.startsWith(`..${path.sep}`)
@@ -158,53 +163,16 @@ function historicalSemanticDecisionConfig(candidateSource, semanticSource) {
   };
 }
 
-function sourceDigestExistsInGitHistory(relativePath, expectedDigest) {
-  let commits;
-  try {
-    commits = execFileSync('git', ['rev-list', '--all', '--', relativePath], {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim().split(/\s+/u).filter(Boolean);
-  } catch {
-    return false;
-  }
-  return commits.some((commit) => {
-    try {
-      const bytes = execFileSync('git', ['show', `${commit}:${relativePath}`], {
-        cwd: ROOT,
-        maxBuffer: 2 * 1024 * 1024,
-        stdio: ['ignore', 'pipe', 'ignore'],
-      });
-      return sha256Bytes(bytes) === expectedDigest;
-    } catch {
-      return false;
-    }
-  });
-}
-
-async function assertPinnedSourceDigest(relativePath, expectedDigest, label) {
-  const currentDigest = sha256Bytes(await readFile(path.join(ROOT, relativePath)));
-  assert.ok(
-    currentDigest === expectedDigest || sourceDigestExistsInGitHistory(relativePath, expectedDigest),
-    `${label} source digest must match the current source or a source version retained in Git history`,
-  );
-}
-
 async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCorpusEvidence = true, liveRecords } = {}) {
   const batchDirectory = path.join(ROOT, 'data/batches');
   const candidateReviewNames = (await readdir(batchDirectory))
     .filter((name) => /^issue-222-m9-d-corpus-batch-\d+-candidate-review\.json$/u.test(name))
     .filter((name) => name !== 'issue-222-m9-d-corpus-batch-01-candidate-review.json')
     .sort((left, right) => left.localeCompare(right, 'en'));
-  const referenceRoot = path.join(ROOT, 'data/reference');
-  const referenceArtifactPath = (relativePath, label) => {
-    const absolutePath = repositoryArtifactPath(relativePath, label);
-    const relativeToReference = path.relative(referenceRoot, absolutePath);
-    assert.ok(relativeToReference && !relativeToReference.startsWith(`..${path.sep}`)
-      && relativeToReference !== '..' && !path.isAbsolute(relativeToReference), `${label} must stay under ignored data/reference`);
-    return absolutePath;
-  };
+  const referenceArtifactPath = (relativePath, label) => resolveCacheArtifactPath(relativePath, {
+    areas: ['runs', 'evidence'],
+    label,
+  });
   const batches = [];
 
   for (const candidateReviewName of candidateReviewNames) {
@@ -282,7 +250,12 @@ async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCo
         ['extractor', 'scripts/reference/corpus_lemma_pilot.py', candidateReview.source.tools.extractor_script_sha256],
         ['orchestrator', 'scripts/reference/run-corpus-lemma-pilot.mjs', candidateReview.source.tools.orchestrator_script_sha256],
       ]) {
-        await assertPinnedSourceDigest(relativePath, expectedDigest, `${candidateLabel} ${label}`);
+        await assertSourceDigestRetained({
+          relativePath,
+          expectedDigest,
+          label: `${candidateLabel} ${label}`,
+          repositoryRoot: ROOT,
+        });
       }
       assert.equal(candidateEvidence.extractor.extractor_version, candidateReview.source.tools.extractor_version);
       assert.equal(candidateEvidence.extractor.python_version, candidateReview.source.tools.python_version);
@@ -369,11 +342,12 @@ async function validateAdditionalCorpusBatches(currentCanonical, { verifyLocalCo
 
     }
     for (const artifact of candidateReview.selection.exclusion_source_artifacts) {
-      await assertPinnedSourceDigest(
-        artifact.path,
-        artifact.sha256,
-        `${candidateLabel} ${artifact.path} exclusion-source digest`,
-      );
+      await assertSourceDigestRetained({
+        relativePath: artifact.path,
+        expectedDigest: artifact.sha256,
+        label: `${candidateLabel} ${artifact.path} exclusion-source`,
+        repositoryRoot: ROOT,
+      });
     }
     const admittedRows = candidateReview.decisions.filter(({ editorial_judgment: judgment }) => judgment.disposition === 'admit');
     const identities = admittedRows.map((row, index) => ({
@@ -513,14 +487,10 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
   delete reviewWithoutDigest.artifact_sha256;
   assert.equal(candidateReview.artifact_sha256, sha256Json(reviewWithoutDigest));
 
-  const referenceRoot = path.join(ROOT, 'data/reference');
-  const referenceArtifactPath = (relativePath, label) => {
-    const absolutePath = repositoryArtifactPath(relativePath, label);
-    const relativeToReference = path.relative(referenceRoot, absolutePath);
-    assert.ok(relativeToReference && !relativeToReference.startsWith(`..${path.sep}`)
-      && relativeToReference !== '..' && !path.isAbsolute(relativeToReference), `${label} must stay under ignored data/reference`);
-    return absolutePath;
-  };
+  const referenceArtifactPath = (relativePath, label) => resolveCacheArtifactPath(relativePath, {
+    areas: ['runs', 'evidence'],
+    label,
+  });
   assert.equal(candidateReview.source_artifacts.candidate_selection_sha256, candidateReview.selection.candidate_selection_sha256);
   assert.equal(candidateReview.source_artifacts.exclusion_manifest_sha256, candidateReview.selection.exclusion_sha256);
   assert.deepEqual(candidateReview.source_artifacts.exclusion_source_artifacts, candidateReview.selection.exclusion_source_artifacts);
@@ -561,7 +531,12 @@ export async function validateIssue222({ verifyLocalCorpusEvidence = true } = {}
       ['extractor', 'scripts/reference/corpus_lemma_pilot.py', candidateReview.source.tools.extractor_script_sha256],
       ['orchestrator', 'scripts/reference/run-corpus-lemma-pilot.mjs', candidateReview.source.tools.orchestrator_script_sha256],
     ]) {
-      await assertPinnedSourceDigest(relativePath, expectedDigest, `Issue #222 batch 01 ${label}`);
+      await assertSourceDigestRetained({
+        relativePath,
+        expectedDigest,
+        label: `Issue #222 batch 01 ${label}`,
+        repositoryRoot: ROOT,
+      });
     }
     assert.equal(candidateEvidence.extractor.extractor_version, candidateReview.source.tools.extractor_version);
     assert.equal(candidateEvidence.extractor.python_version, candidateReview.source.tools.python_version);

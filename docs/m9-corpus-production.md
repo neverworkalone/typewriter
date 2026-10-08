@@ -4,7 +4,7 @@
 
 Corpus analysis is a local reference step. It may establish that a surface and analyzer proposal occur in the approved snapshot; it does not establish lexical admission, writer usefulness, sense boundaries, or relations. Every admitted record remains Typewriter-authored and passes the same source-bound semantic decision and shared lexical admission path used by historical recovery. Empty relation lists are valid.
 
-The local full-corpus index, analysis SQLite database, selection JSON, and paragraph-bearing inventory stay under ignored `data/reference/`. The runner also writes a bounded `candidate-evidence.json` that retains morphology, aggregate counts, and at most three source/document/paragraph identifiers per candidate while omitting paragraph text. Only that text-free metadata and authored decisions may be considered for tracked review artifacts. Never copy contexts or paragraph forms into Git, product output, or a public report. The currently reviewed Written Corpus permission covers local reference use; publication or redistribution remains a separate owner decision.
+The local full-corpus index, analysis SQLite database, selection JSON, and paragraph-bearing inventory stay under `~/.cache/typewriter/`. The runner also writes a bounded `candidate-evidence.json` that retains morphology, aggregate counts, and at most three source/document/paragraph identifiers per candidate while omitting paragraph text. Only that text-free metadata and authored decisions may be considered for tracked review artifacts. Never copy contexts or paragraph forms into Git, product output, or a public report. The currently reviewed Written Corpus permission covers local reference use; publication or redistribution remains a separate owner decision.
 
 ## Produce a bounded batch
 
@@ -15,7 +15,7 @@ npm run reference:corpus:candidates -- \
   --python /path/to/kiwipiepy-0.24.0-venv/bin/python \
   --batch-id m9-d-batch-01-YYYYMMDD \
   --candidate-limit 200 \
-  --output-directory data/reference/production/m9-d/batch-01 \
+  --output-directory runs/m9-d-batch-01-YYYYMMDD \
   --exclude-lemma-source data/inventory/m5-target-seed.json \
   --exclude-lemma-source data/batches/prior-corpus-candidate-review.json
 ```
@@ -62,7 +62,7 @@ When the owner explicitly limits a checkpoint to review decisions, the Issue #22
 
 The first repeatability run used the pinned 2025 Written Corpus snapshot: 3,410 sources/documents and 4,988,970 indexed paragraphs. Stable one-in-twenty sampling analyzed 251,086 paragraphs (5.0328%) without loading the full corpus. The extractor found 55,580 distinct lemma proposals before exact coverage filtering; 2,022 had an exact canonical lemma, 41 had curated/generated surface collisions, 930 had analyzer ambiguity, and 22,845 were OOV proposals. These are extraction-yield counts, not frequency rankings or editorial quality scores. The batch excluded 1,551 prior target/review lemmas and selected 20 candidates with at most three paragraph identifiers each (60 paragraph rows total). Eight short-form literal fallback queries are separately labeled as substring counts, not lemma frequencies.
 
-The authored review included 11 of 20 candidates and held 9 for unresolved morphology or concrete sense-boundary evidence; it rejected none. The formerly held `상태` and `이번` entries were admitted after confirming their noun identity and bounded lexical meanings. Breadth, commonness, missing writer-use evidence, and missing distinctive routes are not lexical blockers. The 11 canonical entries have zero relations because this slice did not author candidate-specific relation evidence. Their Typewriter-authored diagnostic sentence frames and route labels are consistency/enrichment metadata, not corpus quotations or writer-outcome measurements. Only the reviewed candidate/evidence metadata, semantic source, promotion rows, and canonical JSONL are tracked. Local paragraph contexts, index, candidate inventory, selection, and text-free local evidence remain ignored under `data/reference/`.
+The authored review included 11 of 20 candidates and held 9 for unresolved morphology or concrete sense-boundary evidence; it rejected none. The formerly held `상태` and `이번` entries were admitted after confirming their noun identity and bounded lexical meanings. Breadth, commonness, missing writer-use evidence, and missing distinctive routes are not lexical blockers. The 11 canonical entries have zero relations because this slice did not author candidate-specific relation evidence. Their Typewriter-authored diagnostic sentence frames and route labels are consistency/enrichment metadata, not corpus quotations or writer-outcome measurements. Only the reviewed candidate/evidence metadata, semantic source, promotion rows, and canonical JSONL are tracked. Local paragraph contexts, index, candidate inventory, selection, and text-free local evidence remain in the shared cache.
 
 Candidate inventory IDs `m5-5426` through `m5-5445` were allocated after the existing promotion ledger's highest ID (`m5-5425`), including all held rows so later review cannot reuse their identities. The 11 admitted IDs have canonical promotion rows; the M5 target seed remains a historical snapshot and is not rewritten for this corpus batch. Its 20-candidate size, counts, and decisions remain historical and are not rewritten as production evidence.
 
@@ -111,4 +111,4 @@ The local bounded-context review described under *Coverage and review* is reused
 cannot reliably assign (see [`lexical-factory-ensemble-v2.md`](lexical-factory-ensemble-v2.md)). Morphology
 analyzes only the observed eojeol; the original paragraph is what shows meaning. The review is an AI
 self-check recorded as a text-free, digest-bound decision, never as independent or human review; contexts stay
-in ignored `data/reference/` and never enter Git.
+in the shared cache and never enter Git.

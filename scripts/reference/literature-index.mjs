@@ -16,33 +16,34 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TextDecoder } from 'node:util';
+import { assertWithinDirectory, isWithinDirectory, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 // Local-only literary-text pilot index (#332). TXT is the only source format.
 // The literature schema is separate from the NIKL written-corpus index.
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
-const REPOSITORY_INDEX_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/reference/indexes');
+const CACHE_PATHS = resolveTypewriterCachePaths();
+const CACHE_INDEX_DIRECTORY = CACHE_PATHS.indexes;
 
 export const LITERATURE_GENRES = Object.freeze(['poem', 'novel', 'essay']);
 export const DEFAULT_LITERATURE_INPUT_DIRECTORY = path.join(
-  REPOSITORY_DIRECTORY,
-  'data/reference/public-domain',
+  CACHE_PATHS.literature,
 );
 export const DEFAULT_LITERATURE_INDEX_PATH = path.join(
-  REPOSITORY_INDEX_DIRECTORY,
+  CACHE_INDEX_DIRECTORY,
   'literature-pilot-2026.sqlite',
 );
 export const DEFAULT_LITERATURE_MANIFEST_PATH = path.join(
-  REPOSITORY_INDEX_DIRECTORY,
+  CACHE_INDEX_DIRECTORY,
   'literature-pilot-2026.manifest.json',
 );
 export const DEFAULT_FULL_LITERATURE_INDEX_PATH = path.join(
-  REPOSITORY_INDEX_DIRECTORY,
+  CACHE_INDEX_DIRECTORY,
   'public-domain-literature.sqlite',
 );
 export const DEFAULT_FULL_LITERATURE_MANIFEST_PATH = path.join(
-  REPOSITORY_INDEX_DIRECTORY,
+  CACHE_INDEX_DIRECTORY,
   'public-domain-literature.manifest.json',
 );
 export const DEFAULT_LITERATURE_PERMISSION_RECORD_PATH = path.join(
@@ -71,11 +72,6 @@ function compareLexically(left, right) {
 
 function sha256Hex(value) {
   return createHash('sha256').update(value).digest('hex');
-}
-
-function isWithinDirectory(directoryPath, candidatePath) {
-  const relative = path.relative(directoryPath, candidatePath);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 // ---------------------------------------------------------------- permission
@@ -557,9 +553,18 @@ function assertOutputLocation(absoluteInput, absoluteOutput) {
   }
   if (
     isWithinDirectory(REPOSITORY_DIRECTORY, absoluteOutput)
-    && !isWithinDirectory(REPOSITORY_INDEX_DIRECTORY, absoluteOutput)
+    && !isWithinDirectory(CACHE_INDEX_DIRECTORY, absoluteOutput)
   ) {
-    throw new Error('Repository-local SQLite output is restricted to ' + REPOSITORY_INDEX_DIRECTORY);
+    throw new Error('Repository-local SQLite output is restricted to ' + CACHE_INDEX_DIRECTORY);
+  }
+  if (
+    isWithinDirectory(CACHE_PATHS.root, absoluteOutput)
+    && !isWithinDirectory(CACHE_PATHS.indexes, absoluteOutput)
+  ) {
+    throw new Error('Typewriter cache SQLite output is restricted to ' + CACHE_INDEX_DIRECTORY);
+  }
+  if (isWithinDirectory(CACHE_INDEX_DIRECTORY, absoluteOutput)) {
+    assertWithinDirectory(CACHE_INDEX_DIRECTORY, absoluteOutput, { label: 'Literature index output' });
   }
 }
 

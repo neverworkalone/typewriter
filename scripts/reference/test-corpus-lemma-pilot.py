@@ -5,12 +5,14 @@ from __future__ import annotations
 import importlib.util
 import hashlib
 import json
+import os
 from pathlib import Path
 import sqlite3
 import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 
 MODULE_PATH = Path(__file__).with_name("corpus_lemma_pilot.py")
@@ -22,6 +24,28 @@ CACHED_PATH = Path(__file__).with_name("select-corpus-candidates-from-analysis.p
 CACHED_SPEC = importlib.util.spec_from_file_location("select_corpus_candidates_from_analysis", CACHED_PATH)
 cached = importlib.util.module_from_spec(CACHED_SPEC)
 CACHED_SPEC.loader.exec_module(cached)
+from scripts.python.local_cache import assert_cache_path
+
+
+class TypewriterCachePathTests(unittest.TestCase):
+    def test_python_artifact_paths_are_cache_scoped_and_reject_traversal(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            cache = root / "cache"
+            run = cache / "runs" / "task-1"
+            run.mkdir(parents=True)
+            with patch.dict(os.environ, {"TYPEWRITER_CACHE_ROOT": str(cache)}):
+                self.assertEqual(assert_cache_path(run / "evidence.json", "runs", "evidence"), (run / "evidence.json").resolve())
+                with self.assertRaisesRegex(ValueError, "outside"):
+                    assert_cache_path(cache / "runs" / ".." / "outside.json", "runs", "evidence")
+                with patch.dict(os.environ, {"TYPEWRITER_CACHE_ROOT": "relative-cache"}):
+                    with self.assertRaisesRegex(ValueError, "absolute path"):
+                        assert_cache_path(run / "evidence.json", "runs", "evidence")
+                outside = root / "outside"
+                outside.mkdir()
+                (cache / "runs" / "escape").symlink_to(outside, target_is_directory=True)
+                with self.assertRaisesRegex(ValueError, "outside"):
+                    assert_cache_path(cache / "runs" / "escape" / "artifact.json", "runs", "evidence")
 
 
 class FakeAnalyzer:

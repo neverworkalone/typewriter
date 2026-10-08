@@ -1,10 +1,10 @@
 // Local, bounded, no-write smoke of the REAL production route (issue #251).
-// Needs the pinned kiwipiepy 0.24.0 environment (TYPEWRITER_PYTHON) and the
-// ignored local analysis directory; it is intentionally not part of CI.
+// Needs the shared pinned kiwipiepy 0.24.0 environment and the shared-cache
+// analysis run directory; it is intentionally not part of CI.
 //
 //   node scripts/intake/smoke-production-route.mjs \
 //     --batch-id=issue-223-m9-e-corpus-batch-15-20261003 \
-//     --analysis-directory=data/reference/production/issue-247/corpus-batch-15
+//     --analysis-directory=runs/issue-247/corpus-batch-15
 //
 // The repository is copied to a temporary directory with the batch's own
 // artifacts removed (pre-batch state). There, real Kiwi builds the hand-off, the
@@ -12,7 +12,7 @@
 // --intake-handoff` runs. The outputs are compared with the tracked batch
 // artifacts. The working tree is never written.
 import { execFileSync } from 'node:child_process';
-import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,7 +38,6 @@ try {
   for (const directory of ['canonical', 'batches', 'inventory', 'validation']) {
     await cp(path.join(ROOT, 'data', directory), path.join(temp, 'data', directory), { recursive: true });
   }
-  await symlink(path.join(ROOT, 'data/reference'), path.join(temp, 'data/reference'));
   const tracked = {
     review: await readFile(path.join(ROOT, `data/batches/${stem}-candidate-review.json`)),
     semantic: JSON.parse(await readFile(path.join(ROOT, `data/batches/${stem}-semantic-decisions.json`), 'utf8')),

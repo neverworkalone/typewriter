@@ -41,7 +41,7 @@ Raw paragraph text remains in ignored local reference data. Tracked evidence inc
 
 ## Reproducibility
 
-Run `npm run batch:issue-222:report:check` to validate the checkpoint from tracked candidate reviews, semantic decisions, imports, inventories, and current canonical data, including shared admission, semantic coverage, exact direct search, and two identical logical SQLite builds. Run `npm run batch:issue-222:check` locally for the additional permission-bound corpus evidence checks that read ignored `data/reference/` artifacts.
+Run `npm run batch:issue-222:report:check` to validate the checkpoint from tracked candidate reviews, semantic decisions, imports, inventories, and current canonical data, including shared admission, semantic coverage, exact direct search, and two identical logical SQLite builds. Run `npm run batch:issue-222:check` locally for the additional permission-bound corpus evidence checks that read the shared Typewriter cache.
 
 The checkpoint validates 2416 records added since the baseline under exact search with 0 shared admission blockers. Logical database builds compared: 2; identical: true.
 

@@ -34,6 +34,12 @@ import {
   SELF_CHECK_PROVENANCE,
 } from './semantic-self-check.mjs';
 import { checkBatchIntakeHandoff } from './intake-handoff-boundary.mjs';
+import {
+  assertWithinDirectory,
+  isWithinDirectory,
+  resolveCacheArtifactPath,
+  resolveTypewriterCachePaths,
+} from '../typewriter-cache.mjs';
 import { corpusHolds } from '../intake/adapters/corpus-adapter.mjs';
 import { assertIntakeHandoffPolicy } from '../intake/production-handoff.mjs';
 import {
@@ -43,6 +49,27 @@ import {
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
+function repositoryInputPath(value, label) {
+  return assertWithinDirectory(ROOT, path.resolve(ROOT, value), { label });
+}
+
+function cacheOrRepositoryInputPath(value, label, cachePaths) {
+  const normalized = value.replaceAll('\\', '/');
+  const absolute = path.isAbsolute(value) ? path.resolve(value) : null;
+  const legacyRoot = path.join(ROOT, 'data/reference');
+  if (normalized.startsWith('data/reference/')
+    || normalized.startsWith('runs/')
+    || normalized.startsWith('evidence/')
+    || (absolute && isWithinDirectory(cachePaths.root, absolute))
+    || (absolute && isWithinDirectory(legacyRoot, absolute))) {
+    let referencePath = value;
+    if (absolute && isWithinDirectory(legacyRoot, absolute)) {
+      referencePath = path.join('data/reference', path.relative(legacyRoot, absolute));
+    }
+    return resolveCacheArtifactPath(referencePath, { paths: cachePaths, areas: ['runs', 'evidence'], label });
+  }
+  return repositoryInputPath(value, label);
+}
 const PUBLICATION_STATE = 'local_reference_only_pending_owner_publication_confirmation';
 const WRITER_USE_BY_AXIS = Object.freeze({
   A: '사람이나 대상의 행동과 변화를 구체화할 때 출발점으로 쓴다.',
@@ -634,7 +661,7 @@ function requireArgs(args) {
     return [match[1], match[2]];
   }));
   for (const key of ['batch-id', 'analysis-directory', 'authored-decisions']) {
-    if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=data/reference/... --authored-decisions=data/batches/...json [--semantic-reviews=...json] [--reviewer-raw-outputs=...json]`);
+    if (!values[key]) throw new Error(`usage: node scripts/batch/build-issue-223-corpus-batch.mjs --batch-id=... --analysis-directory=runs/<run-id>/... --authored-decisions=data/batches/...json [--semantic-reviews=...json] [--reviewer-raw-outputs=...json]`);
   }
   return { ...values, 'review-only': values['review-only'] === 'true' };
 }
@@ -649,15 +676,19 @@ export function assertBatchIntakeHandoff(args) {
 
 export async function buildIssue223CorpusBatch({
   batchId, analysisDirectory, authoredDecisionsPath, semanticReviewsPath, reviewerRawOutputsPath, reviewOnly = false,
-  intakeHandoffPath,
+  intakeHandoffPath, cachePaths = resolveTypewriterCachePaths(),
 }) {
-  const absoluteAnalysis = path.resolve(ROOT, analysisDirectory);
-  const absoluteReviewInput = path.resolve(ROOT, authoredDecisionsPath);
+  const absoluteReviewInput = repositoryInputPath(authoredDecisionsPath, '--authored-decisions');
   const { ordinal: batchOrdinal, ordinalText: batchNumber, date: batchDate, stem: batchStem } = parseIssue223BatchId(batchId);
   if (reviewOnly) assert.equal(batchOrdinal, 5, 'only B05 is an owner-directed review-only batch');
   // Closes the prior-workflow bypass: batches at or after the activation batch cannot build without the shared hand-off.
   assertIntakeHandoffPolicy({ batchOrdinal, hasHandoff: Boolean(intakeHandoffPath), label: batchId });
-  assert.equal(path.resolve(ROOT, analysisDirectory), absoluteAnalysis);
+  const absoluteAnalysis = cacheOrRepositoryInputPath(analysisDirectory, '--analysis-directory', cachePaths);
+  assertWithinDirectory(cachePaths.runs, absoluteAnalysis, { label: '--analysis-directory' });
+  const absoluteIntakeHandoff = intakeHandoffPath
+    ? cacheOrRepositoryInputPath(intakeHandoffPath, '--intake-handoff', cachePaths)
+    : null;
+  if (absoluteIntakeHandoff) assertWithinDirectory(cachePaths.runs, absoluteIntakeHandoff, { label: '--intake-handoff' });
   const inventoryPath = path.join(absoluteAnalysis, 'candidate-inventory.json');
   const evidencePath = path.join(absoluteAnalysis, 'candidate-evidence.json');
   const selectionPath = path.join(absoluteAnalysis, 'candidate-selection.json');
@@ -858,7 +889,7 @@ export async function buildIssue223CorpusBatch({
   }));
   const semanticSourceId = `${batchId}-semantic-decisions-${batchDate}-r1`;
   assert.ok(semanticReviewsPath, 'admitted records require --semantic-reviews: the builder cannot mint semantic pass evidence');
-  const semanticInputBytes = await readFile(path.resolve(ROOT, semanticReviewsPath));
+  const semanticInputBytes = await readFile(repositoryInputPath(semanticReviewsPath, '--semantic-reviews'));
   const semanticInput = JSON.parse(semanticInputBytes.toString('utf8'));
   assertSemanticReviewEnvelope(semanticInput, batchId);
   const selfCheck = isSelfCheckInput(semanticInput);
@@ -887,7 +918,7 @@ export async function buildIssue223CorpusBatch({
   } else if (batchOrdinal >= REVIEWER_CHECK_FIRST_BATCH) {
     assertReviewerOutcomes(semanticInput.candidate_outcomes, rows);
     assert.ok(reviewerRawOutputsPath, 'this batch requires --reviewer-raw-outputs (staged locally): the reviewers\' original outputs back the tracked run record');
-    reviewerRawArtifact = JSON.parse(await readFile(path.resolve(ROOT, reviewerRawOutputsPath), 'utf8'));
+    reviewerRawArtifact = JSON.parse(await readFile(cacheOrRepositoryInputPath(reviewerRawOutputsPath, '--reviewer-raw-outputs', cachePaths), 'utf8'));
     // The tracked run record is metadata and digests only; the raw outputs stay
     // in ignored local staging (repository policy keeps raw model responses and
     // draft text out of data/batches/).
@@ -913,8 +944,8 @@ export async function buildIssue223CorpusBatch({
   // hand-off the prior workflow runs unchanged. With one, every admitted candidate
   // must be bound to its reviewed hand-off entry, POS and gloss before any write.
   let intakeHandoffBytes = null;
-  if (intakeHandoffPath) {
-    intakeHandoffBytes = await readFile(path.resolve(ROOT, intakeHandoffPath));
+  if (absoluteIntakeHandoff) {
+    intakeHandoffBytes = await readFile(absoluteIntakeHandoff);
     await assertBatchIntakeHandoff({ handoffBytes: intakeHandoffBytes, inventory, evidence, batchId, semanticInput, rows });
   } else {
     assert.equal(semanticInput.intake_handoff, undefined, 'a review input with an intake integration block requires --intake-handoff');
@@ -1043,8 +1074,8 @@ export async function buildIssue223CorpusBatch({
   ]);
 
   if (reviewerRawArtifact) {
-    // Local staging only: this path is under ignored data/reference.
-    await writeFile(path.join(absoluteAnalysis, 'reviewer-raw-outputs.json'), prettyBytes(reviewerRawArtifact));
+    // Local staging only: the run directory is shared by worktrees.
+    await writeFile(path.join(absoluteAnalysis, 'reviewer-raw-outputs.json'), prettyBytes(reviewerRawArtifact), { flag: 'wx' });
   }
 
   const promotionRows = semanticDecisions.map((decision) => ({

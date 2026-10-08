@@ -14,7 +14,7 @@
  * keeps the structure small (rowids only, delta-varint blobs, no text) and the
  * build memory bounded to one Int32Array per rare bigram.
  *
- * The sidecar is derived local reference data under ignored `data/reference/`,
+ * The sidecar is derived local reference data under the shared Typewriter cache,
  * bound to the index's `logical_rows_sha256`, built atomically. A missing,
  * stale, corrupted or unsupported sidecar is ignored and the exact scan runs, so
  * results never depend on whether it exists.

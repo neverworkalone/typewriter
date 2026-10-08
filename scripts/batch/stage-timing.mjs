@@ -27,12 +27,14 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 
+import { assertWithinDirectory, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
+
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
-// Spans are appended while validation runs, and the build provenance refuses a
-// dirty worktree, so the live ledger lives in ignored working space and is
-// snapshotted into tracked `data/timing/` with `publish` at a commit boundary.
-export const TIMING_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/reference/timing');
+// Spans are appended while validation runs; each ledger is shared by batch ID
+// across worktrees and snapshotted into tracked `data/timing/` at a commit boundary.
+const CACHE_PATHS = resolveTypewriterCachePaths();
+export const TIMING_DIRECTORY = path.join(CACHE_PATHS.runs, 'timing');
 export const TRACKED_TIMING_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/timing');
 export const TIMING_SCHEMA_VERSION = 1;
 
@@ -68,7 +70,10 @@ export function ledgerPath(batchId, directory = TIMING_DIRECTORY) {
   if (!BATCH_ID_PATTERN.test(batchId ?? '')) {
     fail('--batch must be a lowercase hyphenated batch id', 'INVALID_BATCH');
   }
-  return path.join(directory, `${batchId}.jsonl`);
+  const file = path.join(directory, `${batchId}.jsonl`);
+  return directory === TIMING_DIRECTORY
+    ? assertWithinDirectory(CACHE_PATHS.root, file, { label: 'Stage timing ledger' })
+    : file;
 }
 
 function gitSha() {

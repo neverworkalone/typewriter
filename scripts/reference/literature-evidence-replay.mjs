@@ -3,13 +3,13 @@ import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import { assertLiteraturePermission, DEFAULT_FULL_LITERATURE_INDEX_PATH, REPOSITORY_DIRECTORY } from './literature-index.mjs';
-import { EVIDENCE_OUTPUT_DIRECTORY } from './literature-evidence.mjs';
 import { deferralCategory } from './literature-evidence-selfcheck.mjs';
 import { evidenceForCandidate, loadEvidenceContext } from './literature-evidence-run.mjs';
+import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 // Bounded replay measurement for #391: every historical `deferred` Stage 2 decision plus a
 // deterministic sample of clear (included, existing-entry) decisions. Retrieval metrics only; it
-// does not re-decide any historical disposition. Output is text-free and written under data/reference.
+// does not re-decide any historical disposition. Output is text-free and written to a namespaced cache run.
 
 const COMPARISON_SAMPLE = 40;
 const sha = (value) => createHash('sha256').update(value).digest('hex');
@@ -67,7 +67,8 @@ const report = {
   comparison_clear_included: stat(group((r) => r.category === 'clear_included')),
   failures,
 };
-const output = path.join(EVIDENCE_OUTPUT_DIRECTORY, 'replay-391.json');
-await mkdir(EVIDENCE_OUTPUT_DIRECTORY, { recursive: true });
-await writeFile(output, JSON.stringify({ report, rows }, null, 2) + '\n');
+const outputDirectory = path.join(resolveTypewriterCachePaths().runs, 'issue-391-literature-evidence-replay');
+const output = path.join(outputDirectory, 'replay-391.json');
+await mkdir(outputDirectory, { recursive: true });
+await writeFile(output, JSON.stringify({ report, rows }, null, 2) + '\n', { flag: 'wx' });
 console.log(JSON.stringify(report, null, 2));

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Bounded, local-only Kiwi lemma candidate extraction for issue #201.
 
-The extractor reads paragraph rows from the ignored SQLite reference index in
-small batches. It writes counts and candidate metadata to ignored local files;
+The extractor reads paragraph rows from the shared-cache SQLite reference index in
+small batches. It writes counts and candidate metadata to local run files;
 it never writes corpus paragraph text. Search evidence is added by the Node
 orchestrator through the shared bounded corpus-index APIs.
 """
@@ -23,11 +23,15 @@ import sys
 import time
 import unicodedata
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.python.local_cache import assert_cache_path, typewriter_cache_root
+
 
 REPOSITORY_DIRECTORY = Path(__file__).resolve().parents[2]
-DEFAULT_INDEX_PATH = REPOSITORY_DIRECTORY / "data/reference/indexes/written-corpus-2025.sqlite"
+TYPEWRITER_CACHE_ROOT = typewriter_cache_root()
+DEFAULT_INDEX_PATH = TYPEWRITER_CACHE_ROOT / "indexes/written-corpus-2025.sqlite"
 DEFAULT_PERMISSION_RECORD_PATH = REPOSITORY_DIRECTORY / "docs/external-material-review-written-corpus-2025.md"
-LOCAL_PILOT_DIRECTORY = REPOSITORY_DIRECTORY / "data/reference/pilots/issue-201"
+LOCAL_PILOT_DIRECTORY = TYPEWRITER_CACHE_ROOT / "runs/issue-201-pilot"
 DEFAULT_STAGING_PATH = LOCAL_PILOT_DIRECTORY / "candidate-analysis.sqlite"
 DEFAULT_SELECTION_PATH = LOCAL_PILOT_DIRECTORY / "candidate-selection.json"
 EXTRACTOR_VERSION = "2"
@@ -1100,6 +1104,12 @@ def main() -> int:
     parser.add_argument("--exclusion-manifest", type=Path)
     parser.add_argument("--include-canonical-lemmas", action="store_true")
     arguments = parser.parse_args()
+    arguments.staging_db = assert_cache_path(arguments.staging_db, "runs", "--staging-db")
+    arguments.candidate_json = assert_cache_path(arguments.candidate_json, "runs", "--candidate-json")
+    if arguments.staging_db.parent != arguments.candidate_json.parent:
+        parser.error("--staging-db and --candidate-json must share one task-scoped run directory")
+    if arguments.staging_db.exists() or arguments.candidate_json.exists():
+        parser.error("run output already exists; choose a fresh Typewriter cache run directory")
     try:
         from kiwipiepy import Kiwi
     except ImportError as error:

@@ -15,6 +15,12 @@ import { parseJsonl } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { validateFactoryRepository, loadBaseManifests, loadCanonicalEntries } from './validate.mjs';
 import {
+  assertWithinDirectory,
+  isWithinDirectory,
+  resolveCacheArtifactPath,
+  resolveTypewriterCachePaths,
+} from '../typewriter-cache.mjs';
+import {
   DEFAULT_MAX_CANDIDATES,
   Stage1Error,
   allocateBatchId,
@@ -26,7 +32,7 @@ import {
 
 // Factory Stage 1 entry point (issue #264): one serial task, one bounded candidate batch per run.
 // Since issue #275 the bound (`--max-candidates`, default 500) counts distinct citation-form lemmas.
-//   pnpm run factory:stage1 --evidence data/reference/<run>/candidate-evidence.json --task-id T000001
+//   pnpm run factory:stage1 --evidence runs/T000001/candidate-evidence.json --task-id T000001
 // Input is the text-free output of `pnpm run reference:corpus:candidates`. Output is
 // data/candidates/C…/{manifest.json,candidates.jsonl} with status `created`; nothing else is written.
 
@@ -76,8 +82,11 @@ export function parseArguments(argv) {
     else if (flag === '--max-candidates') options.maxCandidates = Number(value(index++, flag));
     else throw new Stage1Error([`unknown argument ${flag}`]);
   }
-  if (!options.evidence) throw new Stage1Error(['--evidence <data/reference/.../candidate-evidence.json> is required']);
+  if (!options.evidence) throw new Stage1Error(['--evidence <cache runs/<run>/candidate-evidence.json> is required']);
   if (!options.taskId) throw new Stage1Error(['--task-id T000000 is required']);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/u.test(options.taskId) || options.taskId === '.' || options.taskId === '..') {
+    throw new Stage1Error(['--task-id must be a simple path-safe identifier']);
+  }
   const explicitProviders = options.providers !== null;
   options.providers ??= options.policy === ENSEMBLE_POLICY ? [...ENSEMBLE_PROVIDER_ORDER] : [...DEFAULT_PROVIDER_ORDER];
   if (options.policy === ENSEMBLE_POLICY && JSON.stringify(options.providers) !== JSON.stringify(ENSEMBLE_PROVIDER_ORDER)) {
@@ -143,12 +152,22 @@ async function producedLemmas(root, baseRef) {
 }
 
 // `analyzer` and `permission` are injectable so tests need neither Kiwi nor the corpus.
-// Local-only output (review packs hold original context text; traces hold analyzer paths) must stay
-// inside the ignored data/reference tree and never reach Git.
-function ignoredOutputPath(root, file, flag) {
-  const resolved = path.resolve(root, file);
-  const inside = path.relative(path.join(root, 'data/reference'), resolved);
-  if (!inside || inside.startsWith('..') || path.isAbsolute(inside)) throw new Stage1Error([`${flag} must be inside data/reference/`]);
+// Local Stage 1 artifacts are namespaced by task id in the machine cache.
+function taskArtifactPath(file, flag, taskRunDirectory, cachePaths) {
+  let resolved;
+  try {
+    const normalized = file.replaceAll('\\', '/');
+    const alreadyScoped = path.isAbsolute(file)
+      || normalized.startsWith('data/reference/')
+      || normalized.startsWith('runs/');
+    resolved = alreadyScoped
+      ? resolveCacheArtifactPath(file, { paths: cachePaths, areas: ['runs'], label: flag })
+      : path.resolve(taskRunDirectory, file);
+    assertWithinDirectory(cachePaths.root, resolved, { label: flag });
+    assertWithinDirectory(taskRunDirectory, resolved, { label: `${flag} for this task` });
+  } catch (error) {
+    throw new Stage1Error([error.message]);
+  }
   return resolved;
 }
 
@@ -162,7 +181,7 @@ const readJson = async (file, label) => {
 
 // Review pack for the contextual fallback: eligible unresolved observations with a bounded window of
 // the ORIGINAL paragraph, for the primary agent's local reading. It is written only to ignored
-// data/reference/ and is never part of a batch.
+// task-scoped cache runs and is never part of a batch.
 async function buildContextReviewPack({ queue, contextSource }) {
   const items = [];
   for (const entry of queue) {
@@ -185,14 +204,32 @@ async function buildContextReviewPack({ queue, contextSource }) {
 }
 
 export async function runStage1(argv, {
-  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource, contextDatabasePath, validate = validateFactoryRepository,
+  root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource, contextDatabasePath,
+  validate = validateFactoryRepository, cachePaths = resolveTypewriterCachePaths(),
 } = {}) {
   const options = parseArguments(argv);
-  const evidencePath = path.resolve(root, options.evidence);
-  const relative = path.relative(path.join(root, 'data/reference'), evidencePath);
-  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Stage1Error(['evidence must come from the ignored data/reference/ extractor output']);
+  let evidencePath;
+  try {
+    const normalized = options.evidence.replaceAll('\\', '/');
+    const taskRunDirectory = path.join(cachePaths.runs, options.taskId);
+    const alreadyScoped = path.isAbsolute(options.evidence)
+      || normalized.startsWith('data/reference/')
+      || normalized.startsWith('runs/')
+      || normalized.startsWith('evidence/');
+    evidencePath = alreadyScoped
+      ? resolveCacheArtifactPath(options.evidence, {
+        paths: cachePaths,
+        areas: ['runs', 'evidence'],
+        label: '--evidence',
+      })
+      : path.resolve(taskRunDirectory, options.evidence);
+    if (!['runs', 'evidence'].some((area) => isWithinDirectory(cachePaths[area], evidencePath))) {
+      throw new Error(`--evidence must be inside ${cachePaths.runs} or ${cachePaths.evidence}: ${evidencePath}`);
+    }
+  } catch (error) {
+    throw new Stage1Error([`${error.message}. Use the shared ~/.cache/typewriter/runs/<run-id>/ path.`]);
   }
+  const taskRunDirectory = path.join(cachePaths.runs, options.taskId);
   await permission();
   let evidence;
   try {
@@ -215,13 +252,28 @@ export async function runStage1(argv, {
   let contextReplay = null;
   let contextAgent = null;
   if (options.contextProposals) {
-    const file = await readJson(ignoredOutputPath(root, options.contextProposals, '--context-proposals'), 'context proposals');
+    const file = await readJson(taskArtifactPath(options.contextProposals, '--context-proposals', taskRunDirectory, cachePaths), 'context proposals');
     contextProposals = file.proposals;
     contextAgent = file.agent ?? null; // required: recordContextDecisions refuses a missing author
     if (!Array.isArray(contextProposals)) throw new Stage1Error(['context proposals file must be {agent, proposals: []}']);
   }
   if (options.contextReplay) {
-    const file = await readJson(path.resolve(root, options.contextReplay), 'context replay record');
+    const input = options.contextReplay;
+    const normalized = input.replaceAll('\\', '/');
+    const localCacheInput = path.isAbsolute(input)
+      ? isWithinDirectory(cachePaths.root, input)
+      : normalized.startsWith('data/reference/')
+        || normalized.startsWith('runs/')
+        || normalized.startsWith('evidence/');
+    let filePath;
+    if (localCacheInput) {
+      filePath = resolveCacheArtifactPath(input, { paths: cachePaths, areas: ['runs', 'evidence'], label: '--context-replay' });
+    } else {
+      filePath = path.resolve(root, input);
+      try { assertWithinDirectory(root, filePath, { label: '--context-replay repository input' }); }
+      catch (error) { throw new Stage1Error([error.message]); }
+    }
+    const file = await readJson(filePath, 'context replay record');
     contextReplay = Array.isArray(file) ? file : file.context_fallback?.decisions;
     if (!Array.isArray(contextReplay)) throw new Stage1Error(['context replay record must be a manifest or a decisions array']);
   }
@@ -249,7 +301,9 @@ export async function runStage1(argv, {
     produced = await produceCandidateBatch(produceArguments);
     if (options.contextReviewPack) {
       const pack = await buildContextReviewPack({ queue: produced.manifest.unresolved_observations, contextSource: source });
-      await writeFile(ignoredOutputPath(root, options.contextReviewPack, '--context-review-pack'), `${JSON.stringify(pack, null, 2)}\n`, 'utf8');
+      const outputPath = taskArtifactPath(options.contextReviewPack, '--context-review-pack', taskRunDirectory, cachePaths);
+      await mkdir(path.dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, `${JSON.stringify(pack, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
       options.dryRun = true; // a review pack is read locally before any batch is written
     }
   } finally {
@@ -258,14 +312,15 @@ export async function runStage1(argv, {
   if (options.ensembleTrace && produced.ensemble) {
     // Text-free local trace (provider paths + Kiwi N-best per observation digest); never in Git.
     const lines = produced.ensemble.decisions.map((decision) => JSON.stringify({ observation_digest: decision.observation_digest, trace_digest: decision.trace_digest, trace: decision.trace }));
-    await writeFile(ignoredOutputPath(root, options.ensembleTrace, '--ensemble-trace'), `${lines.join('\n')}\n`, 'utf8');
+    const outputPath = taskArtifactPath(options.ensembleTrace, '--ensemble-trace', taskRunDirectory, cachePaths);
+    await mkdir(path.dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, `${lines.join('\n')}\n`, { encoding: 'utf8', flag: 'wx' });
   }
   if (options.attemptLog) {
-    // Text-free (input digests only); kept in the ignored data/reference tree, never in a batch.
-    const logPath = path.resolve(root, options.attemptLog);
-    const inside = path.relative(path.join(root, 'data/reference'), logPath);
-    if (!inside || inside.startsWith('..') || path.isAbsolute(inside)) throw new Stage1Error(['--attempt-log must be inside data/reference/']);
-    await writeFile(logPath, produced.attemptLog.map((entry) => JSON.stringify(entry)).join('\n') + '\n', 'utf8');
+    // Text-free (input digests only); task-namespaced and never part of a batch.
+    const logPath = taskArtifactPath(options.attemptLog, '--attempt-log', taskRunDirectory, cachePaths);
+    await mkdir(path.dirname(logPath), { recursive: true });
+    await writeFile(logPath, produced.attemptLog.map((entry) => JSON.stringify(entry)).join('\n') + '\n', { encoding: 'utf8', flag: 'wx' });
   }
   const target = path.join(root, 'data/candidates', batchId);
   if (!options.dryRun) {

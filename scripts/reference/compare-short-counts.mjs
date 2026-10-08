@@ -5,7 +5,7 @@
  * results compared one by one. Corpus text is never printed; the output holds
  * only queries' counts and timings. Local/manual: requires the ignored index.
  *
- *   node scripts/reference/compare-short-counts.mjs --inventory=data/reference/production/issue-240/corpus-batch-12/candidate-inventory.json [--repeat=1]
+ *   node scripts/reference/compare-short-counts.mjs --inventory=~/.cache/typewriter/runs/issue-240/corpus-batch-12/candidate-inventory.json [--repeat=1]
  */
 
 import { readFile } from 'node:fs/promises';

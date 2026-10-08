@@ -209,6 +209,10 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/issue-219-content-digest.test.mjs', 'Test Issue #219 portable logical-content digest'),
       pnpmCheck('Validate Issue #219 M9 bounded lexical recovery', 'batch:issue-219:check'),
       pnpmCheck('Validate Issue #220 M9 historical recovery checkpoint', 'batch:issue-220:check'),
+      commandCheck(
+        'Test shared Typewriter cache paths and explicit local-reference migration',
+        ['--test', 'scripts/typewriter-cache.test.mjs', 'scripts/reference/migrate-local-reference.test.mjs', 'scripts/reference/run-corpus-lemma-pilot.test.mjs', 'scripts/batch/repository-source-digest.test.mjs'],
+      ),
       pnpmCheck('Validate every tracked M9 corpus candidate review', 'validate:corpus-candidate-review'),
       commandCheck(
         'Test M9 corpus candidate-review disposition regressions',

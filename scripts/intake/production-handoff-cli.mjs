@@ -20,14 +20,27 @@ import {
   verifyProductionHandoff,
 } from './production-handoff.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
+import { assertWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const CACHE_PATHS = resolveTypewriterCachePaths();
 const args = Object.fromEntries(process.argv.slice(3).map((arg) => {
   const match = /^--([^=]+)=(.*)$/u.exec(arg);
   if (!match) throw new Error(`invalid argument ${arg}; use --key=value`);
   return [match[1], match[2]];
 }));
-const readJson = async (file) => JSON.parse(await readFile(path.resolve(ROOT, file), 'utf8'));
+const trackedPath = (file, label) => assertWithinDirectory(ROOT, path.resolve(ROOT, file), { label });
+const runDirectory = (file, label) => resolveCacheArtifactPath(file, { paths: CACHE_PATHS, areas: ['runs'], label });
+const runArtifact = (file, directory, label) => {
+  const normalized = file.replaceAll('\\', '/');
+  const absolute = path.isAbsolute(file) || normalized.startsWith('runs/') || normalized.startsWith('data/reference/')
+    ? runDirectory(file, label)
+    : path.resolve(directory, file);
+  assertWithinDirectory(CACHE_PATHS.runs, absolute, { label });
+  assertWithinDirectory(directory, absolute, { label: `${label} for this run` });
+  return absolute;
+};
+const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'));
 
 async function canonicalLemmas() {
   const directory = path.join(ROOT, 'data/canonical');
@@ -42,7 +55,7 @@ async function canonicalLemmas() {
 }
 
 async function build() {
-  const directory = args['analysis-directory'];
+  const directory = runDirectory(args['analysis-directory'], '--analysis-directory');
   const inventory = await readJson(path.join(directory, 'candidate-inventory.json'));
   const evidence = await readJson(path.join(directory, 'candidate-evidence.json'));
   const adapterId = args['source-adapter'] ?? CORPUS_ADAPTER_ID;
@@ -55,7 +68,8 @@ async function build() {
     adapterId,
   });
   verifyProductionHandoff(handoff, { rawCandidates, batchId: args['batch-id'], adapterId });
-  await writeFile(path.resolve(ROOT, args.out), `${JSON.stringify(handoff, null, 2)}\n`);
+  const outputPath = runArtifact(args.out ?? 'intake-handoff.json', directory, '--out');
+  await writeFile(outputPath, `${JSON.stringify(handoff, null, 2)}\n`, { flag: 'wx' });
   const counts = {};
   for (const entry of handoff.entries) {
     const key = entry.decision === 'hold' ? `hold:${entry.holds.join('+')}` : entry.decision;
@@ -65,13 +79,14 @@ async function build() {
 }
 
 async function bind() {
-  const handoffBytes = await readFile(path.resolve(ROOT, args.handoff));
+  const directory = runDirectory(args['analysis-directory'], '--analysis-directory');
+  const handoffBytes = await readFile(runArtifact(args.handoff, directory, '--handoff'));
   const handoff = JSON.parse(handoffBytes.toString('utf8'));
-  const inputPath = path.resolve(ROOT, args['review-input']);
+  const inputPath = runArtifact(args['review-input'], directory, '--review-input');
   const input = JSON.parse(await readFile(inputPath, 'utf8'));
-  const analysis = args['analysis-directory'];
+  const analysis = directory;
   const inventory = await readJson(path.join(analysis, 'candidate-inventory.json'));
-  const authored = await readJson(args['authored-decisions']);
+  const authored = await readJson(trackedPath(args['authored-decisions'], '--authored-decisions'));
   const proposed = new Map(inventory.candidates.map((candidate) => [candidate.proposed_lemma, candidate.proposed_pos]));
   const correctedPos = new Map((authored.decisions ?? []).filter((row) => row.corrected_pos).map((row) => [row.lemma, row.corrected_pos]));
   const bindings = {};
