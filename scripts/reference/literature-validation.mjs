@@ -47,7 +47,7 @@ export function selectCohort(rows) {
 
 const isDeferredStratum = (stratum) => stratum.startsWith('deferred_');
 
-function validateJudgment(judgment, phase) {
+function validateJudgment(judgment, phase, contextCount) {
   const errors = [];
   if (!DISPOSITIONS.includes(judgment?.disposition)) errors.push('disposition');
   if (!CONFIDENCES.includes(judgment?.confidence)) errors.push('confidence');
@@ -56,18 +56,21 @@ function validateJudgment(judgment, phase) {
   if (phase === 2) {
     if (!LITERATURE_ROLES.includes(judgment?.literature_role)) errors.push('literature_role');
     if (!BASIS_TYPES.includes(judgment?.basis_type)) errors.push('basis_type');
-    if (!Array.isArray(judgment?.cited_contexts) || judgment.cited_contexts.some((n) => !Number.isInteger(n) || n < 1)) errors.push('cited_contexts');
+    const cited = judgment?.cited_contexts;
+    if (!Array.isArray(cited) || new Set(cited).size !== cited.length
+      || cited.some((n) => !Number.isInteger(n) || n < 1 || n > (contextCount ?? 0))) errors.push('cited_contexts');
     if (typeof judgment?.conflicts_with_source_evidence !== 'boolean') errors.push('conflicts_with_source_evidence');
     if (typeof judgment?.owner_endorses_final !== 'boolean') errors.push('owner_endorses_final');
   }
   return errors;
 }
 
-export function validateJudgments(file, blindIds, phase) {
+// Phase 2 needs `contextCounts` (blind id → number of contexts actually revealed) so a citation must exist.
+export function validateJudgments(file, blindIds, phase, contextCounts = {}) {
   const errors = [];
   for (const id of blindIds) {
     if (!file?.judgments?.[id]) { errors.push(`${id}: missing`); continue; }
-    for (const field of validateJudgment(file.judgments[id], phase)) errors.push(`${id}: ${field}`);
+    for (const field of validateJudgment(file.judgments[id], phase, contextCounts[id])) errors.push(`${id}: ${field}`);
   }
   return errors;
 }
@@ -93,7 +96,24 @@ export function classifyCase(stratum, one, two) {
   return { outcome, harm };
 }
 
-export function aggregate(cohort, phase1, phase2) {
+// A seal is written once. Re-running it is allowed only for the identical answers and cohort; anything else
+// (edited answers, another cohort) fails closed so a late change cannot pass the reveal check.
+export function nextSeal(existing, phase1Digest, cohortDigest, now) {
+  if (existing && (existing.phase1_sha256 !== phase1Digest || existing.cohort_sha256 !== cohortDigest)) {
+    throw new Error('phase 1 is already sealed with different answers or cohort; refusing to reseal.');
+  }
+  return existing ?? { phase1_sha256: phase1Digest, cohort_sha256: cohortDigest, sealed_at: now };
+}
+
+export function assertSealed(seal, phase1Digest, cohortDigest) {
+  if (!seal || seal.phase1_sha256 !== phase1Digest || seal.cohort_sha256 !== cohortDigest) {
+    throw new Error('phase 1 is not sealed (or answers/cohort changed after sealing); refusing to reveal literature evidence.');
+  }
+}
+
+export function aggregate(cohort, phase1, phase2, contextCounts) {
+  const errors = [...validateJudgments(phase1, cohort.map((entry) => entry.blind_id), 1), ...validateJudgments(phase2, cohort.map((entry) => entry.blind_id), 2, contextCounts)];
+  if (errors.length) throw new Error('judgments invalid: ' + errors.join(', '));
   const cases = cohort.map((entry) => ({ entry, ...classifyCase(entry.stratum, phase1.judgments[entry.blind_id], phase2.judgments[entry.blind_id]) }));
   const deferred = cases.filter(({ entry }) => isDeferredStratum(entry.stratum));
   const controls = cases.filter(({ entry }) => !isDeferredStratum(entry.stratum));
@@ -190,6 +210,9 @@ function phase2Material(entry, result) {
 const PHASE1_FIELDS = '{ "disposition": "included|covered|rejected|deferred", "confidence": "high|medium|low", "basis": "짧은 근거", "seconds": 0 }';
 
 async function prepare() {
+  if (await readFile(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json')).then(() => true, () => false)) {
+    throw new Error('validation already prepared; refusing to overwrite recorded judgments.');
+  }
   const record = await readJson(SELFCHECK_PATH);
   const cohort = selectCohort(record.rows);
   const context = await loadEvidenceContext();
@@ -216,44 +239,51 @@ async function prepare() {
 }
 
 async function loadCohort() { return (await readJson(path.join(VALIDATION_DIRECTORY, 'cohort.local.json'))).cohort; }
+const cohortDigest = (cohort) => sha(JSON.stringify(cohort));
+const SEAL_FILE = path.join(VALIDATION_DIRECTORY, 'phase1-seal.local.json');
 
 async function seal() {
   const cohort = await loadCohort();
   const file = path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json');
   const errors = validateJudgments(await readJson(file), cohort.map((entry) => entry.blind_id), 1);
   if (errors.length) throw new Error('phase 1 incomplete: ' + errors.join(', '));
-  await writeJson(path.join(VALIDATION_DIRECTORY, 'phase1-seal.local.json'), { phase1_sha256: await fileDigest(file), sealed_at: new Date().toISOString() });
-  console.log('phase 1 sealed');
+  const existing = await readJson(SEAL_FILE).catch(() => null);
+  const record = nextSeal(existing, await fileDigest(file), cohortDigest(cohort), new Date().toISOString());
+  if (!existing) await writeJson(SEAL_FILE, record);
+  console.log(existing ? 'phase 1 already sealed (unchanged)' : 'phase 1 sealed');
 }
 
 async function reveal() {
   const cohort = await loadCohort();
   const file = path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json');
-  const sealRecord = await readJson(path.join(VALIDATION_DIRECTORY, 'phase1-seal.local.json')).catch(() => null);
-  if (!sealRecord || sealRecord.phase1_sha256 !== await fileDigest(file)) throw new Error('phase 1 is not sealed (or changed after sealing); refusing to reveal literature evidence.');
+  assertSealed(await readJson(SEAL_FILE).catch(() => null), await fileDigest(file), cohortDigest(cohort));
+  const answers = path.join(VALIDATION_DIRECTORY, 'owner', 'phase2-judgments.json');
+  if (await readFile(answers).then(() => true, () => false)) throw new Error('phase 2 already revealed; refusing to overwrite recorded judgments.');
   const context = await loadEvidenceContext();
   await mkdir(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2'), { recursive: true });
   const template = {};
+  const contextCounts = {};
   for (const entry of cohort) {
     const [batchId] = entry.candidate_id.split('-');
     const result = await evidenceForCandidate(context, { batchId, candidateId: entry.candidate_id, databasePath: DEFAULT_FULL_LITERATURE_INDEX_PATH, maxContexts: 5, maxPerWork: 1 });
     const digests = result.contexts.map((item) => item.location_digest);
     if (JSON.stringify(digests) !== JSON.stringify(entry.selected_location_digests)) throw new Error(`${entry.blind_id}: evidence differs from the recorded selection`);
+    contextCounts[entry.blind_id] = result.contexts.length;
     await writeFile(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2', entry.blind_id + '.md'), phase2Material(entry, result));
     template[entry.blind_id] = { disposition: null, confidence: null, basis: '', seconds: null, literature_role: null, basis_type: null, cited_contexts: [], conflicts_with_source_evidence: null, owner_endorses_final: null };
   }
-  await writeJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2-judgments.json'), { phase: 2, judgments: template });
+  await writeJson(path.join(VALIDATION_DIRECTORY, 'context-counts.local.json'), contextCounts);
+  await writeJson(answers, { phase: 2, judgments: template });
   console.log('phase 2 evidence written');
 }
 
 async function report() {
   const cohort = await loadCohort();
-  const ids = cohort.map((entry) => entry.blind_id);
   const phase1 = await readJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json'));
   const phase2 = await readJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2-judgments.json'));
-  const errors = [...validateJudgments(phase1, ids, 1), ...validateJudgments(phase2, ids, 2)];
-  if (errors.length) throw new Error('judgments incomplete: ' + errors.join(', '));
-  console.log(JSON.stringify(aggregate(cohort, phase1, phase2), null, 2));
+  const contextCounts = await readJson(path.join(VALIDATION_DIRECTORY, 'context-counts.local.json'));
+  assertSealed(await readJson(SEAL_FILE).catch(() => null), await fileDigest(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json')), cohortDigest(cohort));
+  console.log(JSON.stringify(aggregate(cohort, phase1, phase2, contextCounts), null, 2));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

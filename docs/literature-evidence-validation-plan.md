@@ -30,9 +30,9 @@
 
 1. **1단계(문학 근거 없음)**: 소유자가 `phase1/V??.md`만 보고 `phase1-judgments.json`에 처분(`included|covered|rejected|deferred`), 확신도, 근거, 걸린 초를 기록한다.
 2. **봉인**: `pnpm run reference:literature:validate -- seal`이 모든 항목이 유효한지 확인하고 1단계 파일의 sha256과 시각을 기록한다.
-3. **공개**: `-- reveal`은 봉인 digest가 현재 1단계 파일과 같을 때만 문학 근거(`phase2/`, 후보당 최대 5개 문맥)를 생성한다. 봉인 후 1단계가 바뀌면 공개를 거부한다.
+3. **공개**: `-- reveal`은 봉인 digest가 현재 1단계 파일과 같을 때만 문학 근거(`phase2/`, 후보당 최대 5개 문맥)를 생성한다. 봉인은 한 번만 기록된다: 같은 답안·코호트의 재실행만 허용하고, 답안이나 코호트 digest가 다르면 재봉인과 공개 모두 거부한다. 공개된 2단계 답안은 덮어쓰지 않는다.
 4. **2단계**: 같은 항목에 처분·확신도·근거·초와 함께 `literature_role`(`helpful|irrelevant|misleading`), `basis_type`(`sense_demonstrated|contrast_exposed|none`), 인용한 문맥 번호, 일반 소스 근거와의 충돌 여부, 최종 기록으로 승인하는지를 기록한다.
-5. `-- report`가 텍스트 없는 집계만 출력한다.
+5. `-- report`는 봉인을 다시 확인하고, 인용 문맥 번호가 공개된 문맥 수(로컬 메타데이터) 안에 있는 중복 없는 값인지 검증한 뒤 텍스트 없는 집계만 출력한다. 범위 밖 번호는 오류이며 개선으로 집계되지 않는다.
 
 ## "더 나은 확정"의 사전 정의 (판정 전에 고정)
 

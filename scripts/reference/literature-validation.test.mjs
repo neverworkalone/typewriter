@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { STRATA, aggregate, classifyCase, selectCohort, validateJudgments } from './literature-validation.mjs';
+import { STRATA, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
 
 const D = '0'.repeat(64);
 const make = (id, group, evidence_use, outcome) => ({ candidate_id: id, group, evidence_use, outcome, selected_location_digests: [D] });
@@ -49,7 +49,7 @@ test('aggregate applies the thresholds over all ten deferred cases and keeps con
     phase1.judgments[entry.blind_id] = one(deferred ? 'deferred' : 'included');
     phase2.judgments[entry.blind_id] = deferred ? (index % 2 === 0 ? two('covered') : two('deferred', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] })) : two('included');
   });
-  const result = aggregate(cohort, phase1, phase2);
+  const result = aggregate(cohort, phase1, phase2, Object.fromEntries(cohort.map((entry) => [entry.blind_id, 3])));
   assert.equal(result.deferred_cases, 10);
   assert.equal(result.harms, 0);
   assert.equal(result.controls_stable, true);
@@ -61,4 +61,27 @@ test('judgment validation rejects missing and malformed entries', () => {
   assert.ok(validateJudgments({ judgments: {} }, ['V01'], 1).length);
   assert.ok(validateJudgments({ judgments: { V01: { ...one('included'), disposition: null } } }, ['V01'], 1).includes('V01: disposition'));
   assert.ok(validateJudgments({ judgments: { V01: one('included') } }, ['V01'], 2).length);
+});
+
+test('a citation must name a revealed context; out-of-range or duplicate numbers are rejected and never count', () => {
+  const counts = { V01: 3 };
+  const file = (extra) => ({ judgments: { V01: two('covered', extra) } });
+  assert.deepEqual(validateJudgments(file({ cited_contexts: [1, 3] }), ['V01'], 2, counts), []);
+  for (const cited of [[999], [4], [0], [1, 1]]) assert.ok(validateJudgments(file({ cited_contexts: cited }), ['V01'], 2, counts).includes('V01: cited_contexts'), JSON.stringify(cited));
+  assert.ok(validateJudgments(file({}), ['V01'], 2, {}).includes('V01: cited_contexts'), 'no revealed contexts → no valid citation');
+  const cohort = selectCohort(rows);
+  const phase1 = { judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
+  const phase2 = { judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: [999] })])) };
+  assert.throws(() => aggregate(cohort, phase1, phase2, Object.fromEntries(cohort.map((entry) => [entry.blind_id, 3]))), /cited_contexts/);
+});
+
+test('the seal is written once: identical re-seal is allowed, changed answers or cohort fail closed, reveal needs both digests', () => {
+  const first = nextSeal(null, 'a'.repeat(64), 'c'.repeat(64), 't0');
+  assert.deepEqual(nextSeal(first, 'a'.repeat(64), 'c'.repeat(64), 't1'), first);
+  assert.throws(() => nextSeal(first, 'b'.repeat(64), 'c'.repeat(64), 't1'), /already sealed/);
+  assert.throws(() => nextSeal(first, 'a'.repeat(64), 'd'.repeat(64), 't1'), /already sealed/);
+  assertSealed(first, 'a'.repeat(64), 'c'.repeat(64));
+  assert.throws(() => assertSealed(first, 'b'.repeat(64), 'c'.repeat(64)), /not sealed/);
+  assert.throws(() => assertSealed(first, 'a'.repeat(64), 'd'.repeat(64)), /not sealed/);
+  assert.throws(() => assertSealed(null, 'a'.repeat(64), 'c'.repeat(64)), /not sealed/);
 });
