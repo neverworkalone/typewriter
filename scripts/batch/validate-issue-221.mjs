@@ -33,6 +33,8 @@ import {
 } from './validate-issue-211.mjs';
 import { loadCanonicalBeforeFactoryAdmissions, restoreImportRecordsBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import { EXACT_SEARCH_ROWS_SQL } from '../../src/runtime/sqlite-query.js';
+import { resolveCacheArtifactPath } from '../typewriter-cache.mjs';
+import { assertIssue221SourceDigestsRetained } from './issue-221-source-digests.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -56,6 +58,10 @@ const recordOf = (recordInfo) => recordInfo?.record ?? recordInfo;
 
 function repositoryArtifactPath(relativePath, label) {
   assert.equal(typeof relativePath, 'string', `${label} path is required`);
+  const normalized = relativePath.replaceAll('\\', '/');
+  if (normalized.startsWith('data/reference/') || normalized.startsWith('runs/') || normalized.startsWith('evidence/')) {
+    return resolveCacheArtifactPath(relativePath, { areas: ['runs', 'evidence'], label });
+  }
   const absolutePath = path.resolve(ROOT, relativePath);
   const relativeToRoot = path.relative(ROOT, absolutePath);
   assert.ok(relativeToRoot && !relativeToRoot.startsWith(`..${path.sep}`)
@@ -189,14 +195,10 @@ export async function validateIssue221() {
   delete reviewWithoutDigest.artifact_sha256;
   assert.equal(candidateReview.artifact_sha256, sha256Json(reviewWithoutDigest));
 
-  const referenceRoot = path.join(ROOT, 'data/reference');
-  const referenceArtifactPath = (relativePath, label) => {
-    const absolutePath = repositoryArtifactPath(relativePath, label);
-    const relativeToReference = path.relative(referenceRoot, absolutePath);
-    assert.ok(relativeToReference && !relativeToReference.startsWith(`..${path.sep}`)
-      && relativeToReference !== '..' && !path.isAbsolute(relativeToReference), `${label} must stay under ignored data/reference`);
-    return absolutePath;
-  };
+  const referenceArtifactPath = (relativePath, label) => resolveCacheArtifactPath(relativePath, {
+    areas: ['runs', 'evidence'],
+    label,
+  });
   const [candidateEvidenceBytes, candidateSelectionBytes] = await Promise.all([
     readFile(referenceArtifactPath(candidateReview.source_artifacts.candidate_evidence_path, 'candidate evidence')),
     readFile(referenceArtifactPath(candidateReview.source_artifacts.candidate_selection_path, 'candidate selection')),
@@ -229,12 +231,10 @@ export async function validateIssue221() {
   assert.deepEqual(candidateEvidence.typewriter_surface, candidateReview.source.typewriter_surface);
   const permissionBytes = await readFile(repositoryArtifactPath(candidateReview.source.permission_record_path, 'permission record'));
   assert.equal(sha256Bytes(permissionBytes), candidateReview.source.permission_record_sha256);
-  for (const [label, relativePath, expectedDigest] of [
-    ['extractor', 'scripts/reference/corpus_lemma_pilot.py', candidateReview.source.tools.extractor_script_sha256],
-    ['orchestrator', 'scripts/reference/run-corpus-lemma-pilot.mjs', candidateReview.source.tools.orchestrator_script_sha256],
-  ]) {
-    assert.equal(sha256Bytes(await readFile(path.join(ROOT, relativePath))), expectedDigest, `${label} source digest`);
-  }
+  await assertIssue221SourceDigestsRetained({
+    tools: candidateReview.source.tools,
+    repositoryRoot: ROOT,
+  });
   assert.equal(candidateEvidence.extractor.extractor_version, candidateReview.source.tools.extractor_version);
   assert.equal(candidateEvidence.extractor.python_version, candidateReview.source.tools.python_version);
   assert.equal(candidateEvidence.extractor.kiwipiepy_version, candidateReview.source.tools.kiwipiepy_version);

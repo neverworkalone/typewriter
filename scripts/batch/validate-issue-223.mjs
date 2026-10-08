@@ -43,11 +43,11 @@ import {
   readSemanticDecisionSourceArtifact,
   sha256Json,
 } from '../validate/semantic-audit.mjs';
+import { resolveCacheArtifactPath } from '../typewriter-cache.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
 const BATCH_DIRECTORY = path.join(ROOT, 'data/batches');
-const REFERENCE_DIRECTORY = path.join(ROOT, 'data/reference');
 const ROOT_SEMANTIC_SOURCE_PATH = path.join(ROOT, 'data/validation/canonical-semantic-decision-source.json');
 const MAX_CANDIDATE_LIMIT = 500;
 const VOLATILE_DATABASE_METADATA = new Set([
@@ -412,10 +412,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
 
     if (verifyLocalCorpusEvidence) {
       const pathUnderReference = (relativePath, label) => {
-        const absolute = path.resolve(ROOT, relativePath);
-        const relative = path.relative(REFERENCE_DIRECTORY, absolute);
-        assert.ok(relative && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative), `${label} must stay under ignored data/reference`);
-        return absolute;
+        return resolveCacheArtifactPath(relativePath, { areas: ['runs', 'evidence'], label });
       };
       const [evidenceBytes, selectionBytes, inventoryBytes] = await Promise.all([
         readFile(pathUnderReference(candidateReview.source_artifacts.candidate_evidence_path, 'candidate evidence')),
@@ -706,15 +703,18 @@ async function validateDeterministicBuild(admittedRecords, canonicalRevision, { 
   }
 }
 
-// The reviewers' raw outputs are staged next to the candidate inventory under
-// ignored data/reference. Only batches that require reviewer checks (B06 on)
+// The reviewers' raw outputs are staged next to the candidate inventory in the
+// shared cache. Only batches that require reviewer checks (B06 on)
 // have them, and the local-evidence mode requires them to be present.
 async function stagedRawArtifact(candidateReview, verifyLocalCorpusEvidence, selfCheck = false) {
   if (!verifyLocalCorpusEvidence) return null;
   const { ordinal } = parseIssue223BatchId(candidateReview.batch_id);
   if (ordinal < REVIEWER_CHECK_FIRST_BATCH) return null;
   if (selfCheck) return null;
-  const inventoryPath = path.resolve(ROOT, candidateReview.source_artifacts.candidate_inventory_path);
+  const inventoryPath = resolveCacheArtifactPath(candidateReview.source_artifacts.candidate_inventory_path, {
+    areas: ['runs', 'evidence'],
+    label: 'candidate inventory',
+  });
   const stagedPath = path.join(path.dirname(inventoryPath), 'reviewer-raw-outputs.json');
   assert.ok(await fileExists(stagedPath), `${candidateReview.batch_id} staged reviewer raw outputs are missing: ${path.relative(ROOT, stagedPath)}`);
   return JSON.parse(await readFile(stagedPath, 'utf8'));

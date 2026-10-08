@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 export const REQUIREMENTS_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'requirements.txt');
 export const CONTRACT_MARKER = 'typewriter-requirements.sha256';
@@ -11,7 +12,7 @@ export const BOOTSTRAP_COMMAND = 'node scripts/python/bootstrap.mjs';
 
 // Shared per machine, never per worktree. TYPEWRITER_PYTHON_VENV relocates the venv;
 // TYPEWRITER_PYTHON names an explicit interpreter and wins over the venv.
-export const defaultVenvDir = (env = process.env) => path.resolve(env.TYPEWRITER_PYTHON_VENV || path.join(os.homedir(), '.cache', 'typewriter', 'venv'));
+export const defaultVenvDir = (env = process.env) => path.resolve(env.TYPEWRITER_PYTHON_VENV || path.join(resolveTypewriterCachePaths({ env }).root, 'venv'));
 export const venvPython = (venv) => path.join(venv, 'bin', 'python');
 export const sharedPythonPath = (env = process.env) => env.TYPEWRITER_PYTHON || venvPython(defaultVenvDir(env));
 

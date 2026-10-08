@@ -5,7 +5,7 @@
 ## 도구
 
 - `npm run reference:literature:full-build` / `full-verify` (`scripts/reference/build-literature-index.mjs`), 검색은 `reference:literature:search`(기본 대상이 전수 DB; 파일럿 DB는 `--index`).
-- 출력(Git 제외): `data/reference/indexes/public-domain-literature.sqlite`, `public-domain-literature.manifest.json`. `written-corpus-2025.sqlite`와 파일럿 DB는 건드리지 않는다. 스키마는 #332 v1 그대로(`source_files`/`works`/`text_units`/`unit_fts`/`index_metadata`), `index_metadata.build_kind = full`만 추가.
+- 현재 출력(Git 제외): `~/.cache/typewriter/indexes/public-domain-literature.sqlite`, `public-domain-literature.manifest.json`. 기존 #334 파일도 #406 이관으로 이 경로를 공유한다. `written-corpus-2025.sqlite`와 파일럿 DB는 건드리지 않는다. 스키마는 #332 v1 그대로(`source_files`/`works`/`text_units`/`unit_fts`/`index_metadata`), `index_metadata.build_kind = full`만 추가.
 - 빌드는 파일 하나씩 디코드·삽입·즉시 DB 재구성 비교하고 본문을 누적하지 않는다. 임시 디렉터리에 스테이징 후 quick_check/FK/FTS integrity-check, 입력 파일 집합(추가·삭제)과 SHA-256 재확인, 논리 digest 재계산을 모두 통과해야 DB와 매니페스트를 `rename`으로 교체한다. 어느 단계든 실패하면 이전 DB/매니페스트는 그대로다. 게시는 `<db>.publish-backup`에 저널과 함께 이전 쌍을 보관한 뒤 교체하며, 프로세스가 도중에 죽어도 다음 `full-build`/`full-verify` 시작 시 `recoverLiteraturePublish`가 완성된 새 쌍이면 유지하고 아니면 이전 쌍을 복원한다.
 - `error` 파일(빈 파일·PUA·해독 불가·U+FFFD 등)은 DB에서 제외하되 매니페스트에 사유와 SHA-256으로 남긴다. 디코더는 완화하지 않았다.
 - `full-verify`: 매니페스트↔DB 결합(digest), 디스크의 TXT 집합·바이트 변경, 포함 작품 전부의 정확 재구성, 제외 파일의 DB 부재, SQLite/FTS 무결성, 논리 행 digest를 확인한다(FTS integrity-check가 INSERT 명령이라 연결은 쓰기 가능하나 트랜잭션을 항상 롤백한다).

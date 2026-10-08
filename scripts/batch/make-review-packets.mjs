@@ -4,10 +4,10 @@
  * Authors and independent reviewers each receive a packet containing only the
  * evidence they need: the candidate's identity fields, coverage state, observed
  * forms, and up to three bounded context windows. The packet holds corpus text,
- * so it is written under ignored `data/reference/` and is never tracked; only
+ * so it is written under a cache run and is never tracked; only
  * its SHA-256 is recorded in the tracked reviewer run record.
  *
- *   node scripts/batch/make-review-packets.mjs --directory=data/reference/production/issue-240/corpus-batch-10 --shards=5
+ *   node scripts/batch/make-review-packets.mjs --directory=runs/issue-240/corpus-batch-10 --shards=5
  */
 
 import { createHash } from 'node:crypto';
@@ -15,7 +15,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+import { resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
+
 const WINDOW_BEFORE = 170;
 const WINDOW_AFTER = 170;
 const TOP_FORMS = 6;
@@ -70,17 +71,17 @@ export function shardRanges(total, shards) {
   return ranges;
 }
 
-export async function makePackets({ directory, shards }) {
-  const absolute = path.resolve(ROOT, directory);
+export async function makePackets({ directory, shards, cachePaths = resolveTypewriterCachePaths() }) {
+  const absolute = resolveCacheArtifactPath(directory, { paths: cachePaths, areas: ['runs'], label: '--directory' });
   const inventory = JSON.parse(await readFile(path.join(absolute, 'candidate-inventory.json'), 'utf8'));
   const candidates = inventory.candidates.map((candidate, index) => packetCandidate(candidate, index + 1));
   const outputDirectory = path.join(absolute, 'packets');
-  await mkdir(outputDirectory, { recursive: true });
+  await mkdir(outputDirectory);
   const manifest = [];
   for (const range of shardRanges(candidates.length, shards)) {
     const packet = {
       kind: 'candidate-evidence-packet',
-      batch_directory: directory,
+      batch_directory: path.relative(cachePaths.root, absolute).split(path.sep).join('/'),
       shard: range.shard,
       first_ordinal: range.first_ordinal,
       last_ordinal: range.last_ordinal,
@@ -88,10 +89,10 @@ export async function makePackets({ directory, shards }) {
     };
     const bytes = Buffer.from(`${JSON.stringify(packet, null, 1)}\n`, 'utf8');
     const name = `packet-${String(range.shard).padStart(2, '0')}.json`;
-    await writeFile(path.join(outputDirectory, name), bytes);
+    await writeFile(path.join(outputDirectory, name), bytes, { flag: 'wx' });
     manifest.push({ ...range, file: `packets/${name}`, packet_sha256: sha256Bytes(bytes), candidate_count: packet.candidates.length });
   }
-  await writeFile(path.join(outputDirectory, 'packet-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFile(path.join(outputDirectory, 'packet-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
   return manifest;
 }
 
@@ -101,7 +102,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (!match) throw new Error(`invalid argument ${argument}; use --name=value`);
     return [match[1], match[2]];
   }));
-  if (!options.directory) throw new Error('usage: make-review-packets.mjs --directory=data/reference/... [--shards=5]');
+  if (!options.directory) throw new Error('usage: make-review-packets.mjs --directory=runs/<run-id>/... [--shards=5]');
   const shards = Number(options.shards ?? 5);
   if (!Number.isSafeInteger(shards) || shards < 1 || shards > 20) throw new Error('--shards must be an integer from 1 to 20');
   console.log(JSON.stringify(await makePackets({ directory: options.directory, shards }), null, 2));

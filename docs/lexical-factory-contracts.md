@@ -95,16 +95,21 @@ policy, the before/after data shape and the operator note: **"500" counts unique
 Single serial Stage 1 entry point; it writes `data/candidates/C…/{manifest.json,candidates.jsonl}` with `status: created` and nothing else (no review rows, glosses, canonical records or paragraph text).
 
 ```bash
-npm run reference:corpus:candidates -- --batch-id <run> --output-directory data/reference/<run> ...   # existing extractor, unchanged
-npm run factory:stage1 -- --evidence data/reference/<run>/candidate-evidence.json --task-id T000001 [--max-candidates 500] [--dry-run]
+npm run reference:corpus:candidates -- --batch-id <run-id> --output-directory runs/<run-id> ...
+npm run factory:stage1 -- --evidence runs/<run-id>/candidate-evidence.json --task-id <task-id> [--max-candidates 500] [--dry-run]
 ```
+
+Stage 1's optional `--attempt-log`, `--ensemble-trace`, `--context-proposals`, and
+`--context-review-pack` paths must stay below `~/.cache/typewriter/runs/<task-id>/`.
+Use a new task ID for each distinct run so separate worktrees never replace each
+other's mutable output.
 
 | Part | Role |
 | --- | --- |
 | `scripts/factory/stage1.mjs` | Library: text-free evidence → usages → rows → manifest |
 | `scripts/factory/produce-candidates.mjs` | CLI: corpus permission check, serial id allocation, atomic write, repository validation |
 
-- **Input** is only the extractor's text-free `candidate-evidence.json` (`m9-corpus-candidate-evidence-v1`) under ignored `data/reference/`. Any field outside the extractor's safe hit fields (a context/paragraph text), a missing index digest, an extractor Kiwi/model version other than pinned `0.24.0`, or an unpinned live analyzer fails the run. The corpus permission record is checked first.
+- **Input** is only the extractor's text-free `candidate-evidence.json` (`m9-corpus-candidate-evidence-v1`) from a shared-cache run or evidence directory. Any field outside the extractor's safe hit fields (a context/paragraph text), a missing index digest, an extractor Kiwi/model version other than pinned `0.24.0`, or an unpinned live analyzer fails the run. The corpus permission record is checked first.
 - **Lemma/POS** are re-derived by the pinned `kiwi_service.py` from each observed (inflected) surface form. The extractor's proposal is a hint: a mismatch or an extra content morpheme the chosen reading does not explain (`lemma_mismatch`/`pos_mismatch`; only the root the analyzer recorded for a derived verb/adjective (`derived_from` plus the root's position `derived_from_index`, added to `kiwi_service.py` proposals for XSV/XSA derivations; exactly that one occurrence), e.g. 망각 within 망각하다, is allowed; any other extra morpheme, including a repeated or prefix one such as 집+집 or 사+사랑하다, is held), a competing ranked reading or a multi-reading result (`analysis_ambiguous`), and missing/stale/unsupported/error outcomes become explicit per-row `holds`; nothing is silently guessed. Original surfaces stay in `observedForms`.
 - **Identity**: one `C<batch>-<NNNN>` row per distinguishable usage, keyed by lemma + POS + evidence reference. Only an identical (lemma, POS, reference) repeats and merges; the same lemma/POS at another reference stays a separate row. Already-canonical lemmas, new POS and new senses are never dropped (`routes` in the run summary uses the factory identity adapter); the legacy `candidateKey`/`dedupeCandidates`/`coveredLemmas` path is not used. Holds are per row and never inherited by siblings.
 - **Batch**: id is the next serial `C…` over local `data/candidates`, `data/reviews` and `--base-ref` (default `origin/master`; unresolved fails closed, `none` skips explicitly). Rows are sorted deterministically by lemma, so replaying the same evidence yields byte-identical output. The bound (`--max-candidates`, default 500, hard max 1000) counts **distinct lemmas**; deferred lemmas are reported in the run summary for a later batch.
@@ -121,7 +126,7 @@ Stage 1 no longer hard-wires Kiwi. `scripts/factory/analyzer-providers.mjs` defi
 - **Resolution policy**: a reading is `resolved`, `needs_verification` or `unresolved`. A provider declaring `n_best: false` reports one best path only, so even a clean reading is `needs_verification` (hold `analysis_ambiguous`); it is settled only by a later N-best provider agreeing on lemma/POS (a disagreement keeps `analysis_mismatch`). Order controls cost, not authority.
 - **Fallback**: the next provider is asked only about the surfaces still unresolved, and only when every hold is one of `analysis_missing|unsupported|error|stale|ambiguous`. `lemma_mismatch`, `pos_mismatch` and all upstream holds (`no_evidence`, `coverage_collision`, extractor `analysis_ambiguous`, …) are never reopened or cleared by a provider. A row still unresolved keeps the union of every attempt's holds. A provider process that fails, or metadata that does not match the provider's pinned identity or the `derivation-root-v1` contract, fails the whole run closed.
 - **Manifest**: for a non-default order the manifest adds `analyzer_providers` (ordered `{provider_id, identity_digest}`) and `resolution_policy`, and `analyzer_digest` additionally binds both, so a different provider, model/version, order or policy cannot share a Kiwi-only digest. The shared `validateCandidateBatch` enforces this. In this issue the pinned Kiwi must appear in every order (it anchors `analyzer_version`); a Kiwi-less order is for the successor issue.
-- **Configure**: `npm run factory:stage1 -- --providers kiwi[,other] …` (default `kiwi`; unknown, repeated or uninstalled providers fail closed). `--attempt-log data/reference/<file>` writes the text-free per-surface attempt log (input digest, provider, outcome, state, holds, fallback eligibility) outside Git-tracked data. All analysis is local; no provider may send candidates or corpus text to a network.
+- **Configure**: `npm run factory:stage1 -- --providers kiwi[,other] …` (default `kiwi`; unknown, repeated or uninstalled providers fail closed). `--attempt-log <file>` writes the text-free per-surface attempt log (input digest, provider, outcome, state, holds, fallback eligibility) under the task's shared-cache run directory. All analysis is local; no provider may send candidates or corpus text to a network.
 - **Add a provider**: pin its implementation/model/version in `identity`, declare honest capabilities, implement `analyze`/`assertMetadata` (emit `proposal_contract: derivation-root-v1` metadata; omit `derived_from*` unless it can report derivations), add one `PROVIDER_REGISTRY` entry in `produce-candidates.mjs`, and add synthetic-fixture regressions in `tests/factory-analyzer-providers.test.mjs`. No other Stage 1 code changes. The fixed-cohort benchmark is #274.
 
 ## Khaiii provider (issue #273, Analyzer 2/3)

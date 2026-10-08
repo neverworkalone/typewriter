@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -18,6 +18,7 @@ import { CONTEXT_PARAGRAPH_LOOKUP_SQL, createCorpusContextSource } from '../scri
 import { createMecabProvider, pinnedMetadata as mecabMetadata } from '../scripts/factory/mecab-provider.mjs';
 import { POLICY_ALIASES, parseArguments, runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { Stage1Error, compareResolutionPolicies, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
+import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import { HEX, hit, item, khaiii, kiwi, stub } from './support/khaiii-fixtures.mjs';
@@ -41,6 +42,12 @@ const evidenceDoc = (candidates) => ({
   extractor: { extractor_version: 'ex-1', kiwipiepy_version: '0.24.0', kiwipiepy_model_version: '0.24.0' },
   candidates,
 });
+async function cacheForTask(root, taskId = 'T000001') {
+  const cachePaths = resolveTypewriterCachePaths({ homeDirectory: path.join(root, '.test-home'), env: {} });
+  const taskDirectory = path.join(cachePaths.runs, taskId);
+  await mkdir(taskDirectory, { recursive: true });
+  return { cachePaths, taskDirectory, evidenceArgument: `runs/${taskId}/candidate-evidence.json` };
+}
 const produce = (candidates, providers, over = {}) => produceCandidateBatch({
   evidence: evidenceDoc(candidates), providers, policy: ENSEMBLE_POLICY, canonicalEntries: [], canonicalDigest: HEX, batchId: 'C000002', taskId: 'T000001', ...over,
 });
@@ -448,47 +455,61 @@ test('CLI: ensemble is the default policy; Kiwi-only or conditional runs need th
   assert.deepEqual(parseArguments([...base, '--policy', 'v1']).providers, ['kiwi']);
   assert.equal(POLICY_ALIASES.ensemble, ENSEMBLE_POLICY);
   assert.throws(() => parseArguments([...base, '--policy', 'v0']), /unknown --policy/);
+  assert.throws(() => parseArguments(['--evidence', 'runs/x/evidence.json', '--task-id', '../../outside']), /path-safe identifier/u);
   assert.throws(() => parseArguments([...base, '--policy', 'v1', '--context-replay', 'm.json']), /require the provider-resolution-v2-ensemble policy|require the/);
   assert.throws(() => parseArguments([...base, '--context-proposals', 'a.json', '--context-replay', 'b.json']), /exclusive/);
 });
 
-test('CLI end to end: effective policy and order are printed; traces/review packs stay in ignored data/reference; replay validates the repository', async () => {
+test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without worktree data/reference', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-'));
-  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
+  const cache = await cacheForTask(root);
   await mkdir(path.join(root, 'data/canonical'), { recursive: true });
-  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  await mkdir(cache.cachePaths.indexes, { recursive: true });
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  const contextSource = createCorpusContextSource({
+    databasePath: syntheticIndex(cache.cachePaths.indexes),
+    permission: async () => {},
+    expectedSnapshot: `corpus:${HEX}:${'b'.repeat(64)}`,
+  });
   const logs = [];
-  const deps = { root, providers: triple(FALLBACK), permission: async () => {}, log: (line) => logs.push(JSON.parse(line)), contextSource: source() };
-  const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none'];
-  const dry = await runStage1([...args, '--dry-run', '--ensemble-trace', 'data/reference/run/trace.jsonl', '--context-review-pack', 'data/reference/run/pack.json'], deps);
+  const deps = { root, cachePaths: cache.cachePaths, providers: triple(FALLBACK), permission: async () => {}, log: (line) => logs.push(JSON.parse(line)), contextSource };
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'];
+  const dry = await runStage1([...args, '--dry-run', '--ensemble-trace', 'trace.jsonl', '--context-review-pack', 'pack.json'], deps);
   assert.equal(logs[0].effectivePolicy, ENSEMBLE_POLICY);
   assert.deepEqual(logs[0].providerOrder, ['kiwi', 'khaiii', 'mecab']);
-  const pack = JSON.parse(await readFile(path.join(root, 'data/reference/run/pack.json'), 'utf8'));
+  const pack = JSON.parse(await readFile(path.join(cache.taskDirectory, 'pack.json'), 'utf8'));
   assert.equal(pack[0].surface, '갈');
   assert.equal(pack[0].aligned, true);
   assert.ok(pack[0].context.includes('갈'), 'the local pack carries bounded original context');
-  const trace = (await readFile(path.join(root, 'data/reference/run/trace.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  const trace = (await readFile(path.join(cache.taskDirectory, 'trace.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   assert.deepEqual(Object.keys(trace[0].trace.providers), ['kiwi', 'khaiii', 'mecab']);
   assert.ok(JSON.stringify(trace).includes('"paths"'), 'Kiwi N-best paths are retained in the local trace');
-  await assert.rejects(() => runStage1([...args, '--dry-run', '--context-review-pack', 'data/candidates/pack.json'], deps), /inside data\/reference/);
-  await assert.rejects(() => runStage1([...args, '--ensemble-trace', 'elsewhere.jsonl'], { ...deps, providers: triple(FALLBACK) }), /inside data\/reference/);
+  const attemptArgs = [...args, '--dry-run', '--attempt-log', 'attempts.jsonl'];
+  await runStage1(attemptArgs, deps);
+  await assert.rejects(() => runStage1(attemptArgs, deps), /EEXIST/u, 'a second worktree run cannot overwrite another task artifact');
+  await assert.rejects(() => runStage1([...args, '--dry-run', '--context-review-pack', path.join(root, 'data/candidates/pack.json')], deps), /must be inside/u);
+  await assert.rejects(() => runStage1([...args, '--ensemble-trace', path.join(root, 'elsewhere.jsonl')], { ...deps, providers: triple(FALLBACK) }), /must be inside/u);
   const entry = dry.manifest.unresolved_observations[0];
-  await writeFile(path.join(root, 'data/reference/run/proposals.json'), JSON.stringify({ agent: 'claude', proposals: [{ observation_digest: entry.observation_digest, outcome: 'context_confirmed', lemma: '가다', pos: 'verb' }] }));
-  const produced = await runStage1([...args, '--context-proposals', 'data/reference/run/proposals.json'], { ...deps, providers: triple(FALLBACK) });
+  await writeFile(path.join(cache.taskDirectory, 'proposals.json'), JSON.stringify({ agent: 'claude', proposals: [{ observation_digest: entry.observation_digest, outcome: 'context_confirmed', lemma: '가다', pos: 'verb' }] }));
+  const produced = await runStage1([...args, '--context-proposals', 'proposals.json'], { ...deps, providers: triple(FALLBACK) });
   assert.equal(produced.rows.length, 1);
+  await assert.rejects(() => readFile(path.join(root, 'data/reference')), { code: 'ENOENT' });
   assert.deepEqual(await validateFactoryRepository({ root }), []);
   // Replay in a fresh checkout-like root (no lemma produced yet) needs no context source and no paragraph.
   const fresh = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-replay-'));
-  await mkdir(path.join(fresh, 'data/reference/run'), { recursive: true });
-  await writeFile(path.join(fresh, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
-  const replayed = await runStage1([...args, '--dry-run', '--context-replay', path.join(root, 'data/candidates/C000001/manifest.json')],
-    { ...deps, root: fresh, providers: triple(FALLBACK), contextSource: undefined });
+  const freshCache = await cacheForTask(fresh);
+  await writeFile(path.join(freshCache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  await mkdir(path.join(fresh, 'data/validation'), { recursive: true });
+  await copyFile(path.join(root, 'data/candidates/C000001/manifest.json'), path.join(fresh, 'data/validation/context-replay.json'));
+  const replayed = await runStage1([...args, '--dry-run', '--context-replay', 'data/validation/context-replay.json'],
+    { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK), contextSource: undefined });
   assert.equal(replayed.candidatesText, produced.candidatesText);
   // A raw-text field in the evidence is still refused under the ensemble policy.
   const bad = structuredClone(evidenceDoc(fallbackEvidence));
   bad.candidates[0].evidence.representative_hits[0].context = '문장 전체';
-  await writeFile(path.join(root, 'data/reference/run/bad.json'), JSON.stringify(bad));
-  await assert.rejects(() => runStage1(['--evidence', 'data/reference/run/bad.json', '--task-id', 'T000001', '--base-ref', 'none'], { ...deps, providers: triple(FALLBACK) }), Stage1Error);
+  await writeFile(path.join(cache.taskDirectory, 'bad.json'), JSON.stringify(bad));
+  await assert.rejects(() => runStage1(['--evidence', 'runs/T000001/bad.json', '--task-id', 'T000001', '--base-ref', 'none'], { ...deps, providers: triple(FALLBACK) }), Stage1Error);
+  contextSource.close();
 });
 
 test('8/14: same-cohort comparison reports distinct-lemma denominators, honest unknowns, and credits no extractor-missed lemma', async () => {
@@ -542,13 +563,13 @@ test('review fix: pack windows come from the exact aligned eojeol, not an earlie
   assert.equal(alignedOffset('가방만 있었다', '가'), null);
   assert.deepEqual(alignedOffset('그는 "갈" 길', '갈'), { start: 4, end: 5 });
   const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-pack-'));
-  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
-  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  const cache = await cacheForTask(root);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
   const padding = '아주 긴 앞부분 '.repeat(30);
   const text = `갈대 ${padding}그는 천천히 갈 길을 정했다.`;
-  await runStage1(['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--context-review-pack', 'data/reference/run/pack.json'],
-    { root, providers: triple(FALLBACK), permission: async () => {}, log: () => {}, contextSource: source({ 'd3#p1': { status: 'ok', text } }) });
-  const [item] = JSON.parse(await readFile(path.join(root, 'data/reference/run/pack.json'), 'utf8'));
+  await runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--context-review-pack', 'pack.json'],
+    { root, cachePaths: cache.cachePaths, providers: triple(FALLBACK), permission: async () => {}, log: () => {}, contextSource: source({ 'd3#p1': { status: 'ok', text } }) });
+  const [item] = JSON.parse(await readFile(path.join(cache.taskDirectory, 'pack.json'), 'utf8'));
   assert.equal(item.aligned, true);
   assert.ok(item.context.includes('천천히 갈 길'), 'the window shows the aligned token, not 갈대 at the start');
   assert.equal(item.context.includes('갈대'), false);
@@ -597,11 +618,11 @@ test('review fix: the authoring agent must be stated explicitly, never defaulted
   assert.deepEqual(codex.manifest.context_fallback.decisions[0].author, { kind: 'agent-self-check', agent: 'codex' });
   // The CLI proposals file must carry `agent`.
   const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-agent-'));
-  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
-  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
-  await writeFile(path.join(root, 'data/reference/run/proposals.json'), JSON.stringify({ proposals }));
-  await assert.rejects(() => runStage1(['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--dry-run', '--context-proposals', 'data/reference/run/proposals.json'],
-    { root, providers: triple(FALLBACK), permission: async () => {}, log: () => {}, contextSource: source() }), /authoring agent must be stated explicitly/);
+  const cache = await cacheForTask(root);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  await writeFile(path.join(cache.taskDirectory, 'proposals.json'), JSON.stringify({ proposals }));
+  await assert.rejects(() => runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--dry-run', '--context-proposals', 'proposals.json'],
+    { root, cachePaths: cache.cachePaths, providers: triple(FALLBACK), permission: async () => {}, log: () => {}, contextSource: source() }), /authoring agent must be stated explicitly/);
 });
 
 test('review fix: a malformed Provider response fails the whole ensemble run closed; an explicit unsupported stays data', async () => {
@@ -790,11 +811,11 @@ test('review fix: the corpus context source verifies the real index metadata aga
 
   // CLI path: the review pack and proposals run bind to the real index file named by the evidence digests.
   const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-clisnap-'));
-  await mkdir(path.join(root, 'data/reference/run'), { recursive: true });
-  await writeFile(path.join(root, 'data/reference/run/candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
-  const args = ['--evidence', 'data/reference/run/candidate-evidence.json', '--task-id', 'T000001', '--base-ref', 'none', '--dry-run', '--context-review-pack', 'data/reference/run/pack.json'];
-  const deps = { root, providers: triple(FALLBACK), permission: async () => {}, log: () => {} };
+  const cache = await cacheForTask(root);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--dry-run', '--context-review-pack', 'pack.json'];
+  const deps = { root, cachePaths: cache.cachePaths, providers: triple(FALLBACK), permission: async () => {}, log: () => {} };
   await runStage1(args, { ...deps, contextDatabasePath: syntheticIndex(dir) });
-  assert.equal(JSON.parse(await readFile(path.join(root, 'data/reference/run/pack.json'), 'utf8'))[0].aligned, true);
+  assert.equal(JSON.parse(await readFile(path.join(cache.taskDirectory, 'pack.json'), 'utf8'))[0].aligned, true);
   await assert.rejects(() => runStage1(args, { ...deps, providers: triple(FALLBACK), contextDatabasePath: syntheticIndex(dir, { rows: '2'.repeat(64) }) }), /does not match the evidence source snapshot/);
 });

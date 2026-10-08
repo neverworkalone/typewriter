@@ -12,7 +12,7 @@ function usage() {
     'Usage: node scripts/reference/build-corpus-index.mjs [options]',
     '',
     'Options:',
-    '  --input-dir <path>  JSON source directory (default: data/reference/corpus/)',
+    '  --input-dir <path>  JSON source directory (default: ~/.cache/typewriter/corpus/)',
     '  --check-only        Run the full schema preflight without building SQLite',
     '  --help              Show this help',
   ].join('\n');

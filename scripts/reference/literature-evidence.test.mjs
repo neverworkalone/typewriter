@@ -21,6 +21,7 @@ import {
   selectRepresentativeHits,
   writeEvidencePack,
 } from './literature-evidence.mjs';
+import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 // Node 24 ships node:sqlite with FTS5; fail loudly instead of skipping if that regresses.
 assertLiteratureFts5Support();
@@ -102,7 +103,7 @@ test('v1 candidate rows use observedForms; trigger policy reports reasons only',
 test('module has no network or extra literature-API dependency', async () => {
   const source = await readFile(new URL('./literature-evidence.mjs', import.meta.url), 'utf8');
   const imports = [...source.matchAll(/from '([^']+)'/gu)].map((m) => m[1]).sort();
-  assert.deepEqual(imports, ['./literature-index.mjs', 'node:crypto', 'node:fs/promises', 'node:path', 'node:sqlite']);
+  assert.deepEqual(imports, ['../typewriter-cache.mjs', './literature-index.mjs', 'node:crypto', 'node:fs/promises', 'node:path', 'node:sqlite']);
   assert.doesNotMatch(source, /fetch\(|https?:\/\/|node:http|node:net/u);
 });
 
@@ -183,19 +184,21 @@ test('summary binds DB identity and text-free location digests; text only in the
   assert.doesNotMatch(JSON.stringify(result.summary), /합성 (시|글)/u);
   assert.match(JSON.stringify(result.contexts), /합성 시/u);
   const root = await tempDirectory();
-  await mkdir(path.join(root, 'data/reference'), { recursive: true });
-  const files = await writeEvidencePack(result, { outputDirectory: path.join(root, 'data/reference/literature-evidence'), root });
+  const cacheRoot = path.join(root, 'machine-cache');
+  const files = await writeEvidencePack(result, { outputDirectory: path.join(cacheRoot, 'evidence'), cacheRoot });
   assert.doesNotMatch(await readFile(files.summary, 'utf8'), /합성 (시|글)/u);
   assert.match(await readFile(files.markdown, 'utf8'), /합성 시/u);
+  await assert.rejects(() => writeEvidencePack(result, { outputDirectory: path.join(cacheRoot, 'evidence'), cacheRoot }), { code: 'EEXIST' });
 });
 
-test('evidence packs can only be written under ignored data/reference', async () => {
-  assert.throws(() => assertLocalOutputDirectory(path.join(REPOSITORY_DIRECTORY, 'data/canonical')), /data\/reference/u);
-  assert.throws(() => assertLocalOutputDirectory(path.join(REPOSITORY_DIRECTORY, 'data/reference/../reviews')), /data\/reference/u);
-  // `.gitignore` (not `git check-ignore`, which fails for a symlinked data/reference in a worktree).
-  const rules = (await readFile(path.join(REPOSITORY_DIRECTORY, '.gitignore'), 'utf8')).split('\n').map((line) => line.trim());
-  assert.ok(rules.includes('data/reference/'), 'data/reference/ must be git-ignored');
-  assert.ok(EVIDENCE_OUTPUT_DIRECTORY.startsWith(path.join(REPOSITORY_DIRECTORY, 'data/reference') + path.sep));
+test('evidence packs can only be written under the shared cache evidence area', async () => {
+  const paths = resolveTypewriterCachePaths();
+  assert.throws(() => assertLocalOutputDirectory(path.join(REPOSITORY_DIRECTORY, 'data/canonical')),
+    /must be below/u);
+  assert.throws(() => assertLocalOutputDirectory(path.join(paths.root, 'reviews')),
+    /must be below/u);
+  assert.ok(EVIDENCE_OUTPUT_DIRECTORY.startsWith(paths.root + path.sep));
+  assert.equal(EVIDENCE_OUTPUT_DIRECTORY, paths.evidence);
 });
 
 test('existing literature search behaviour is unchanged by retrieval', async () => {

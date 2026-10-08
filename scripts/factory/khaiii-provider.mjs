@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 // Optional second Provider: Kakao Khaiii v0.4 (Apache-2.0), issue #273. Khaiii reports one best
 // path and no score, so it declares `n_best: false, derivation: false` and Stage 1 never lets it
@@ -46,7 +47,7 @@ export const NATIVE_RELEASE = Object.freeze({
   provenance_digest: '963e45abf17d44917df2f3b3b845ff465e87e3c764402ee53240ae8db6107f65',
   directory: 'khaiii-0.4-macos-arm64',
 });
-export const DEFAULT_NATIVE_CACHE = path.join(os.homedir(), '.cache', 'typewriter', 'khaiii');
+export const DEFAULT_NATIVE_CACHE = path.join(resolveTypewriterCachePaths().root, 'khaiii');
 export const defaultNativeRoot = (cache = DEFAULT_NATIVE_CACHE) => path.join(cache, NATIVE_RELEASE.tag, NATIVE_RELEASE.directory);
 
 const RUNTIME_PINS = Object.freeze({

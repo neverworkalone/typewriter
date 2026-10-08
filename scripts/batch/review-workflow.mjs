@@ -14,7 +14,7 @@
  * Every function validates its input and refuses to fill in anything a worker
  * did not write: a missing, duplicated, or malformed worker verdict is an
  * error, never a default. Worker outputs and packets carry corpus-derived
- * text and stay under ignored `data/reference/`.
+ * text and stay under the task-scoped Typewriter cache.
  *
  *   node scripts/batch/review-workflow.mjs merge-authors --batch-id=ID --directory=DIR
  */

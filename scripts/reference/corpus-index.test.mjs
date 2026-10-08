@@ -540,7 +540,7 @@ test('build refuses to place SQLite output inside the raw source directory', asy
   assert.deepEqual(await readFile(sourcePath), originalSourceBytes);
 });
 
-test('repository-local SQLite output is restricted to the ignored reference index directory', async () => {
+test('repository-local SQLite output is restricted to the shared cache index directory', async () => {
   const directory = await makeTemporaryDirectory();
   const corpusDirectory = await makeCorpus(directory);
   const publicOutputPath = path.join(REPOSITORY_DIRECTORY, 'public', 'leak.sqlite');
@@ -550,7 +550,7 @@ test('repository-local SQLite output is restricted to the ignored reference inde
       inputDirectory: corpusDirectory,
       outputPath: publicOutputPath,
     }),
-    /Repository-local SQLite output is restricted to .*data[\\/]reference[\\/]indexes/u,
+    /Repository-local SQLite output is restricted to .*\.cache[\\/]typewriter[\\/]indexes/u,
   );
 });
 

@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 // Optional third Provider: MeCab-ko (PyPI `mecab-ko` 1.0.2 + `mecab-ko-dic` 1.0.0), issue #281.
 // Only the single best path (`Tagger.parse`) is used. On the real dictionary `parse` and
@@ -15,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 export const MECAB_SERVICE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mecab_service.py');
 export const MECAB_REQUIREMENTS_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mecab-requirements.txt');
 export const MECAB_BATCH_SIZE = 200;
-export const DEFAULT_MECAB_CACHE = path.join(os.homedir(), '.cache', 'typewriter', 'mecab');
+export const DEFAULT_MECAB_CACHE = path.join(resolveTypewriterCachePaths().root, 'mecab');
 export const defaultMecabPython = (cache = DEFAULT_MECAB_CACHE) => path.join(cache, 'venv', 'bin', 'python');
 
 // Identity of the wrapper, library and dictionary, as observed from a verified install.

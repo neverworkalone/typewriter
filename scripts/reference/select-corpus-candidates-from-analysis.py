@@ -11,11 +11,12 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import corpus_lemma_pilot as producer
+from scripts.python.local_cache import assert_cache_path, cache_relative_path, normalize_cache_run_binding
 
 
-ROOT = Path(__file__).resolve().parents[2]
 ORDERING = [
     "source_count descending",
     "document_count descending",
@@ -83,13 +84,6 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def relative_path(path: Path) -> str:
-    try:
-        return path.resolve().relative_to(ROOT).as_posix()
-    except ValueError as error:
-        raise RuntimeError("Cached candidate artifacts must remain inside the repository.") from error
-
-
 def load_json(path: Path, label: str) -> tuple[dict, bytes]:
     try:
         data = path.read_bytes()
@@ -113,7 +107,12 @@ def verify_source_cache(
     cache = selection.get("analysis_cache")
     if not isinstance(cache, dict):
         raise RuntimeError("Cached selection has no analysis database binding.")
-    if cache.get("database_path") != relative_path(analysis_path):
+    try:
+        recorded_database_path = normalize_cache_run_binding(cache.get("database_path"))
+        actual_database_path = cache_relative_path(analysis_path, "Cached candidate analysis")
+    except ValueError as error:
+        raise RuntimeError(f"Cached selection has an invalid analysis database path binding: {error}") from error
+    if recorded_database_path != actual_database_path:
         raise RuntimeError("Cached selection points at a different analysis database.")
     actual_database_sha256 = sha256_file(analysis_path)
     if cache.get("database_sha256") != actual_database_sha256:
@@ -146,7 +145,10 @@ def verify_source_cache(
     current_extractor_sha256 = hashlib.sha256(Path(producer.__file__).read_bytes()).hexdigest()
     if extractor.get("extractor_version") != producer.EXTRACTOR_VERSION:
         raise RuntimeError("Cached analysis uses a different morphology extractor version.")
-    if extractor.get("script_sha256") != current_extractor_sha256:
+    if extractor.get("script_sha256") not in {
+        current_extractor_sha256,
+        *producer.REUSABLE_ANALYSIS_SOURCE_DIGESTS,
+    }:
         raise RuntimeError("Cached analysis was produced by a different morphology extractor source.")
     if extractor.get("python_version") != sys.version.split()[0]:
         raise RuntimeError("Cached analysis uses a different Python version.")
@@ -191,9 +193,9 @@ def verify_source_cache(
         raise RuntimeError(f"Cached candidate-analysis database is invalid: {error}") from error
 
     return {
-        "source_database_path": relative_path(analysis_path),
+        "source_database_path": actual_database_path,
         "source_database_sha256": actual_database_sha256,
-        "source_selection_path": relative_path(selection_path),
+        "source_selection_path": cache_relative_path(selection_path, "Cached candidate selection"),
         "source_selection_sha256": hashlib.sha256(selection_bytes).hexdigest(),
         "source_extractor_script_sha256": extractor["script_sha256"],
         "source_analysis_elapsed_seconds": (
@@ -425,6 +427,16 @@ def main() -> int:
     parser.add_argument("--candidate-limit", type=int, required=True)
     parser.add_argument("--include-canonical-lemmas", action="store_true")
     arguments = parser.parse_args()
+    arguments.analysis_db = assert_cache_path(arguments.analysis_db, "runs", "--analysis-db")
+    arguments.analysis_selection = assert_cache_path(arguments.analysis_selection, "runs", "--analysis-selection")
+    arguments.index = assert_cache_path(arguments.index, "indexes", "--index")
+    arguments.staging_db = assert_cache_path(arguments.staging_db, "runs", "--staging-db")
+    arguments.candidate_json = assert_cache_path(arguments.candidate_json, "runs", "--candidate-json")
+    arguments.exclusion_manifest = assert_cache_path(arguments.exclusion_manifest, "runs", "--exclusion-manifest")
+    if len({arguments.staging_db.parent, arguments.candidate_json.parent, arguments.exclusion_manifest.parent}) != 1:
+        parser.error("all generated artifacts must stay in one task-scoped cache run directory")
+    if arguments.staging_db.exists() or arguments.candidate_json.exists():
+        parser.error("run output already exists; choose a fresh Typewriter cache run directory")
     try:
         result = select_from_cached_analysis(
             analysis_path=arguments.analysis_db.resolve(),

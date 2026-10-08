@@ -10,7 +10,7 @@
  * two-character substring and later counts become a lookup.
  *
  * The sidecar is derived local reference data (aggregate counts only, no
- * paragraph text) kept beside the index under ignored `data/reference/`. It is
+ * paragraph text) kept beside the index in the shared cache. It is
  * bound to the index's `logical_rows_sha256`; a missing or mismatched sidecar is
  * ignored and the reader falls back to the exact scan, so results never differ.
  */

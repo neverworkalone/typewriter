@@ -2,7 +2,7 @@
 
 ## 자료 정보
 
-- 자료명: 공유마당 만료저작물 중 한국 근현대 시·소설·수필 TXT 컬렉션 (`data/reference/public-domain/{poem,novel,essay}/`)
+- 자료명: 공유마당 만료저작물 중 한국 근현대 시·소설·수필 TXT 컬렉션 (`~/.cache/typewriter/literature/{poem,novel,essay}/`)
 - 제공 기관: 공유마당 (https://gongu.copyright.or.kr)
 - 이용조건: 만료
 - 형식: TXT만 원천 형식으로 사용한다. 이 저장소는 HWP/PDF를 파싱·변환·OCR하지 않는다.
@@ -21,7 +21,7 @@
 
 ## 저장소 정책
 
-원문 TXT, 발췌, 로컬 SQLite 인덱스와 파일럿 매니페스트는 Git과 제품 패키지에 넣지 않고 `data/reference/`(Git 제외)에만 둔다. 테스트 fixture는 프로젝트가 직접 작성한 합성 텍스트만 사용한다.
+원문 TXT, 발췌, 로컬 SQLite 인덱스와 파일럿 매니페스트는 Git과 제품 패키지에 넣지 않고 `~/.cache/typewriter/`에만 둔다. 테스트 fixture는 프로젝트가 직접 작성한 합성 텍스트만 사용한다. 워크트리 간 공유 경로와 명시적 이관 절차는 [`local-reference-cache.md`](local-reference-cache.md)를 따른다.
 
 ## Machine-readable permission gate
 

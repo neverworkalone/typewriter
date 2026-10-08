@@ -156,7 +156,7 @@ Query counts (original run): count 1-char 1, 2-char 77, 3+ 272; search 1–2-cha
 
 ### Operation counts of the original B10–B12 runs
 
-The `Spans` columns in the stage tables above are timing spans/attempts, not work units. The work counts below come from the original discovery runs' own outputs (`evidence_collection` counters and the per-candidate first query form in each run's candidate inventory, kept in ignored `data/reference/`), not from the re-selection. Per-path **time** for these original runs is `unavailable` (not instrumented then); the 2-character count path was served by the exact fallback in B10 and by the warm sidecar in B11/B12.
+The `Spans` columns in the stage tables above are timing spans/attempts, not work units. The work counts below come from the original discovery runs' own outputs (`evidence_collection` counters and the per-candidate first query form in each run's candidate inventory, kept in the then-current worktree-local reference area and migrated to the shared cache), not from the re-selection. Per-path **time** for these original runs is `unavailable` (not instrumented then); the 2-character count path was served by the exact fallback in B10 and by the warm sidecar in B11/B12.
 
 | Batch | Candidates | Count queries 1-char | Count queries 2-char | Count queries 3+ | Search queries 1–2-char (literal scan) | Search queries 3+ (FTS5) | Search queries total |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -272,4 +272,4 @@ Make the 2-character representative-context search index-backed, extending the s
 
 ## Boundaries
 
-No raw corpus passages, corpus indexes, model outputs or secrets are committed. The sidecar and index remain under ignored `data/reference/`. B05–B09 history and the B01–B04 re-review are untouched.
+No raw corpus passages, corpus indexes, model outputs or secrets are committed. The sidecar and index remain under `~/.cache/typewriter/`. B05–B09 history and the B01–B04 re-review are untouched.

@@ -12,7 +12,7 @@ import { sha256Json } from '../validate/semantic-audit.mjs';
 //    range, the digest of the reviewed packet, the digest of the staged raw
 //    output, and for every candidate the reviewed proposal's disposition and
 //    gloss *digest*. Normal CI checks the input against this record.
-// 2. Locally staged raw outputs (ignored `data/reference/`): where present, the
+// 2. Locally staged raw outputs (shared Typewriter cache): where present, the
 //    input and the run record are re-derived from them.
 //
 // Neither layer authenticates who ran the reviewers (see

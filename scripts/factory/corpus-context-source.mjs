@@ -13,7 +13,7 @@ export const CONTEXT_PARAGRAPH_LOOKUP_SQL = `SELECT p.form AS form
 // Local-only source of bounded original paragraph contexts for the contextual fallback (issue #285).
 // It reads the ignored corpus index by the EXACT approved document/paragraph ids of an observation,
 // after the corpus permission record is checked. Nothing is sent to a network or written to Git: the
-// caller keeps the returned text in memory only (review packs go to ignored data/reference/).
+// caller keeps the returned text in memory only (review packs go to a task-scoped shared-cache run).
 //
 // The index is also bound to the evidence it is read for: `expectedSnapshot` (the evidence's
 // `corpus:<input manifest digest>:<logical rows digest>`) must equal the digests recorded in the

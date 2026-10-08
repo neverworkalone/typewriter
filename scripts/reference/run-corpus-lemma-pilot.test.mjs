@@ -8,6 +8,7 @@ import {
   excludedLemmasForArtifact,
   parseArguments,
 } from './run-corpus-lemma-pilot.mjs';
+import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
 test('corpus production defaults to 200 and supports bounded batches through 500', () => {
   assert.equal(DEFAULT_CANDIDATE_LIMIT, 200);
@@ -17,20 +18,22 @@ test('corpus production defaults to 200 and supports bounded batches through 500
   assert.throws(() => parseArguments(['--candidate-limit', '501']), /1 to 500/u);
 });
 
-test('cached morphology reuse stays in ignored reference data and uses a separate output', () => {
+test('cached morphology reuse stays in the shared cache and uses a separate run output', () => {
   const options = parseArguments([
     '--reuse-analysis-from', 'data/reference/production/issue-223/source',
     '--output-directory', 'data/reference/production/issue-223/next',
   ]);
-  assert.match(options.reuseAnalysisFrom, /data\/reference\/production\/issue-223\/source$/u);
-  assert.match(options.outputDirectory, /data\/reference\/production\/issue-223\/next$/u);
+  const runs = resolveTypewriterCachePaths().runs;
+  assert.equal(options.reuseAnalysisFrom, `${runs}/issue-223/source`);
+  assert.equal(options.outputDirectory, `${runs}/issue-223/next`);
   assert.throws(() => parseArguments([
     '--reuse-analysis-from', 'data/reference/production/issue-223/source',
     '--output-directory', 'data/reference/production/issue-223/source',
   ]), /must differ/u);
   assert.throws(() => parseArguments([
     '--reuse-analysis-from', '../../outside-cache',
-  ]), /under ignored data\/reference/u);
+  ]), /must be inside/u);
+  assert.equal(parseArguments([]).outputDirectory, `${runs}/issue-201-pilot`);
 });
 
 test('text-free candidate evidence keeps morphology and bounded provenance without paragraph text', () => {

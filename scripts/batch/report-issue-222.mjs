@@ -135,7 +135,7 @@ export function renderMarkdown(report) {
     '',
     '## Reproducibility',
     '',
-    `Run \`npm run batch:issue-222:report:check\` to validate the checkpoint from tracked candidate reviews, semantic decisions, imports, inventories, and current canonical data, including shared admission, semantic coverage, exact direct search, and two identical logical SQLite builds. Run \`npm run batch:issue-222:check\` locally for the additional permission-bound corpus evidence checks that read ignored \`data/reference/\` artifacts.`,
+    `Run \`npm run batch:issue-222:report:check\` to validate the checkpoint from tracked candidate reviews, semantic decisions, imports, inventories, and current canonical data, including shared admission, semantic coverage, exact direct search, and two identical logical SQLite builds. Run \`npm run batch:issue-222:check\` locally for the additional permission-bound corpus evidence checks that read the shared Typewriter cache.`,
     '',
     `The checkpoint validates ${report.validation.directly_searchable_new_records} records added since the baseline under exact search with ${report.validation.shared_admission_blocking_findings} shared admission blockers. Logical database builds compared: ${report.validation.logical_builds_compared}; identical: ${report.validation.deterministic_logical_contents}.`,
     '',

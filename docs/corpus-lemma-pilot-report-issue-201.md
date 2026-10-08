@@ -88,14 +88,14 @@ and corpus-reference tests remain local/manual and outside normal CI.
 
 ## Local outputs
 
-All three files below are ignored under `data/reference/`:
+These local run artifacts now live under `~/.cache/typewriter/runs/issue-201-pilot/`:
 
-- `data/reference/pilots/issue-201/candidate-analysis.sqlite` — aggregated
+- `candidate-analysis.sqlite` — aggregated
   sample counts, structured coverage provenance, and ambiguity decisions,
   without paragraph text;
-- `data/reference/pilots/issue-201/candidate-selection.json` — the 100
+- `candidate-selection.json` — the 100
   corpus-derived candidate rows before evidence contexts;
-- `data/reference/pilots/issue-201/pilot-inventory.json` — tool/index
+- `pilot-inventory.json` — tool/index
   provenance, the 100 candidates, full literal counts, and up to three local
   paragraph examples per candidate.
 

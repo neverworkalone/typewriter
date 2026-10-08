@@ -6,20 +6,18 @@ extension packaging.
 
 ## Run locally
 
-The local Written Corpus index must already exist at
-`data/reference/indexes/written-corpus-2025.sqlite`, and the permission gate in
+The shared Written Corpus index must already exist at
+`~/.cache/typewriter/indexes/written-corpus-2025.sqlite`, and the permission gate in
 `docs/external-material-review-written-corpus-2025.md` must permit the stated
 reference use.
 
-Install the morphology tool in an ignored local environment. The pilot records
-both package versions in its inventory and does not add them to the product or
-repository dependency graph:
+Use the per-machine Python environment. The pilot records both package versions
+in its inventory and does not add them to the product or repository dependency
+graph:
 
 ```sh
-python3 -m venv data/reference/pilots/issue-201/venv
-data/reference/pilots/issue-201/venv/bin/python -m pip install 'kiwipiepy==0.24.0'
+node scripts/python/bootstrap.mjs
 node scripts/reference/run-corpus-lemma-pilot.mjs \
-  --python data/reference/pilots/issue-201/venv/bin/python
 ```
 
 The run rebuilds the Typewriter SQLite surface from canonical JSONL, then scans
@@ -82,7 +80,7 @@ bounded batch should work; it does not authorize a larger corpus batch in Issue
 
 ## Local outputs and publication gate
 
-The run writes only under ignored `data/reference/pilots/issue-201/`:
+The default run writes only under `~/.cache/typewriter/runs/issue-201-pilot/`:
 
 - `candidate-analysis.sqlite` stores aggregated sample counts without corpus
   paragraphs;

@@ -6,6 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildDictionary } from '../build/dictionary.mjs';
+import { assertWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
+import { resolveManagedPython } from '../python/env.mjs';
 import {
   assertCorpusPermission,
   createCorpusIndexReader,
@@ -16,11 +18,8 @@ import {
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PYTHON_EXTRACTOR_PATH = path.join(SCRIPT_DIRECTORY, 'corpus_lemma_pilot.py');
 const PYTHON_CACHED_SELECTOR_PATH = path.join(SCRIPT_DIRECTORY, 'select-corpus-candidates-from-analysis.py');
-const LOCAL_PILOT_DIRECTORY = path.join(
-  REPOSITORY_DIRECTORY,
-  'data/reference/pilots/issue-201',
-);
-const REFERENCE_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/reference');
+const CACHE_PATHS = resolveTypewriterCachePaths();
+const DEFAULT_PILOT_DIRECTORY = path.join(CACHE_PATHS.runs, 'issue-201-pilot');
 const ROW_RESULT_LIMIT = 3;
 const OBSERVED_SURFACE_SEARCH_LIMIT = 100;
 const MAX_OBSERVED_SURFACE_QUERIES = 5;
@@ -29,9 +28,9 @@ export const MAX_CANDIDATE_LIMIT = 500;
 
 export function parseArguments(argumentsList) {
   const options = {
-    python: process.env.TYPEWRITER_PYTHON || 'python3',
+    python: process.env.TYPEWRITER_PYTHON || null,
     candidateLimit: DEFAULT_CANDIDATE_LIMIT,
-    outputDirectory: LOCAL_PILOT_DIRECTORY,
+    outputDirectory: null,
     reuseAnalysisFrom: null,
     exclusionLemmaSources: [],
     includeCanonicalLemmas: false,
@@ -60,16 +59,16 @@ export function parseArguments(argumentsList) {
     if (argument === '--output-directory') {
       const value = argumentsList[index + 1];
       if (!value || value.startsWith('--')) throw new Error('--output-directory requires a path.');
-      options.outputDirectory = path.resolve(REPOSITORY_DIRECTORY, value);
+      options.outputDirectory = value;
       index += 1;
       continue;
     }
     if (argument === '--reuse-analysis-from') {
       const value = argumentsList[index + 1];
       if (!value || value.startsWith('--')) {
-        throw new Error('--reuse-analysis-from requires a prior data/reference output directory.');
+        throw new Error('--reuse-analysis-from requires a prior shared-cache run directory.');
       }
-      options.reuseAnalysisFrom = path.resolve(REPOSITORY_DIRECTORY, value);
+      options.reuseAnalysisFrom = value;
       index += 1;
       continue;
     }
@@ -101,19 +100,16 @@ export function parseArguments(argumentsList) {
     }
     throw new Error('Unknown argument: ' + argument);
   }
-  const relativeOutputDirectory = path.relative(REFERENCE_DIRECTORY, options.outputDirectory);
-  if (!relativeOutputDirectory
-    || relativeOutputDirectory.startsWith('..')
-    || path.isAbsolute(relativeOutputDirectory)) {
-    throw new Error('Corpus candidate outputs must remain under ignored data/reference/.');
-  }
+  options.outputDirectory = options.outputDirectory
+    ? resolveCacheArtifactPath(options.outputDirectory, { paths: CACHE_PATHS, areas: ['runs'], label: '--output-directory' })
+    : path.join(CACHE_PATHS.runs, options.batchId);
+  assertWithinDirectory(CACHE_PATHS.runs, options.outputDirectory, { label: 'Corpus candidate output directory' });
   if (options.reuseAnalysisFrom) {
-    const relativeSourceDirectory = path.relative(REFERENCE_DIRECTORY, options.reuseAnalysisFrom);
-    if (!relativeSourceDirectory
-      || relativeSourceDirectory.startsWith('..')
-      || path.isAbsolute(relativeSourceDirectory)) {
-      throw new Error('Cached candidate analysis must remain under ignored data/reference/.');
-    }
+    options.reuseAnalysisFrom = resolveCacheArtifactPath(options.reuseAnalysisFrom, {
+      paths: CACHE_PATHS,
+      areas: ['runs'],
+      label: '--reuse-analysis-from',
+    });
     if (options.reuseAnalysisFrom === options.outputDirectory) {
       throw new Error('Cached candidate analysis source and output directories must differ.');
     }
@@ -299,12 +295,12 @@ async function sha256Path(filePath) {
   return hashFileContents(await readFile(filePath));
 }
 
-async function recordAnalysisCache({ selection, stagingDatabasePath, mode }) {
+export async function recordAnalysisCache({ selection, stagingDatabasePath, mode }) {
   const extractorScriptSha256 = await sha256Path(PYTHON_EXTRACTOR_PATH);
   if (mode === 'full-corpus-scan') {
     selection.analysis_cache = {
       mode,
-      database_path: path.relative(REPOSITORY_DIRECTORY, stagingDatabasePath).split(path.sep).join('/'),
+      database_path: path.relative(CACHE_PATHS.root, stagingDatabasePath).split(path.sep).join('/'),
       database_sha256: await sha256Path(stagingDatabasePath),
       analysis_elapsed_seconds: selection.elapsed_seconds,
       extractor_script_sha256: extractorScriptSha256,
@@ -316,7 +312,7 @@ async function recordAnalysisCache({ selection, stagingDatabasePath, mode }) {
     }
     selection.analysis_cache = {
       ...cache,
-      database_path: path.relative(REPOSITORY_DIRECTORY, stagingDatabasePath).split(path.sep).join('/'),
+      database_path: path.relative(CACHE_PATHS.root, stagingDatabasePath).split(path.sep).join('/'),
       database_sha256: await sha256Path(stagingDatabasePath),
       extractor_script_sha256: extractorScriptSha256,
     };
@@ -591,24 +587,26 @@ async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     console.log(
-      'Usage: node scripts/reference/run-corpus-lemma-pilot.mjs --python <venv-python>\n'
-        + 'Runs local/manual bounded candidate production. Options: --candidate-limit 1-500 (default 200), '
-        + '--batch-id <id>, --output-directory data/reference/<path>, repeated '
-        + '--exclude-lemma-source <tracked-json>, --reuse-analysis-from <prior data/reference output directory>. '
-        + 'Requires the ignored full-corpus index '
+      'Usage: node scripts/reference/run-corpus-lemma-pilot.mjs [--python <venv-python>]\n'
+        + 'Runs local/manual bounded candidate production using the shared Typewriter Python environment by default. Options: --candidate-limit 1-500 (default 200), '
+        + '--batch-id <id>, --output-directory ~/.cache/typewriter/runs/<run-id>, repeated '
+        + '--exclude-lemma-source <tracked-json>, --reuse-analysis-from <prior cache run directory>. '
+        + 'Requires the shared full-corpus index '
         + 'and kiwipiepy==0.24.0 installed in the selected Python environment.',
     );
     return;
   }
 
   await assertCorpusPermission();
+  const python = options.python || resolveManagedPython();
   const outputDirectory = options.outputDirectory;
-  await mkdir(outputDirectory, { recursive: true });
+  await mkdir(path.dirname(outputDirectory), { recursive: true });
+  await mkdir(outputDirectory);
   const stagingDatabasePath = path.join(outputDirectory, 'candidate-analysis.sqlite');
   const candidateSelectionPath = path.join(outputDirectory, 'candidate-selection.json');
   const inventoryPath = path.join(
     outputDirectory,
-    outputDirectory === LOCAL_PILOT_DIRECTORY ? 'pilot-inventory.json' : 'candidate-inventory.json',
+    outputDirectory === DEFAULT_PILOT_DIRECTORY ? 'pilot-inventory.json' : 'candidate-inventory.json',
   );
   const textFreeEvidencePath = path.join(outputDirectory, 'candidate-evidence.json');
   const exclusionManifestPath = path.join(outputDirectory, 'reviewed-lemma-exclusions.json');
@@ -637,7 +635,7 @@ async function main() {
 
     const extractorSummary = options.reuseAnalysisFrom
       ? await runPythonCachedSelector({
-        python: options.python,
+        python,
         analysisDirectory: options.reuseAnalysisFrom,
         dictionaryPath,
         stagingDatabasePath,
@@ -647,7 +645,7 @@ async function main() {
         includeCanonicalLemmas: options.includeCanonicalLemmas,
       })
       : await runPythonExtractor({
-        python: options.python,
+        python,
         dictionaryPath,
         stagingDatabasePath,
         candidateSelectionPath,
