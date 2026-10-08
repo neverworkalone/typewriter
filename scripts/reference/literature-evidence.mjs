@@ -21,11 +21,12 @@ export const MAX_BLOCK_CHARS = 1200;
 export const FALLBACK_NEIGHBOR_UNITS = 3;
 export const MIN_FORM_CHARACTERS = 2;
 export const HIT_FETCH_CAP = 2000;
-// `eojeol` (#414): a match counts only where it starts an eojeol (line start or after a non-letter, non-digit),
+// `eojeol` (#414, opt-in): a match counts only where it starts an eojeol (line start or after a non-letter, non-digit),
 // so `선도` no longer hits inside `윤선도` or `꼬리` inside `꾀꼬리`. The right side stays open (조사/어미 결합).
 // `substring` is the pre-#414 behaviour, kept for before/after measurement.
 export const MATCH_MODES = Object.freeze(['substring', 'eojeol']);
-export const DEFAULT_MATCH_MODE = 'eojeol';
+// The default stays `substring` until the held-out judged evaluation (docs/literature-evidence-boundary-issue-414.md, C) meets its criteria and the owner switches it.
+export const DEFAULT_MATCH_MODE = 'substring';
 const CACHE_PATHS = resolveTypewriterCachePaths();
 export const EVIDENCE_OUTPUT_DIRECTORY = CACHE_PATHS.evidence;
 

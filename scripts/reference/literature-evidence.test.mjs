@@ -240,7 +240,7 @@ test('eojeol mode drops mid-eojeol matches and keeps conjugated and particle-att
     { genre: 'essay', author: 'C', blocks: [['가지고 갔다', '지고 간다']] },
   ];
   const databasePath = await makeDatabase(files);
-  assert.equal(DEFAULT_MATCH_MODE, 'eojeol');
+  assert.equal(DEFAULT_MATCH_MODE, 'substring'); // opt-in until the judged evaluation and an owner decision
   const run = (searchForms, matchMode) => retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms, matchMode });
   const substring = run(forms('선도', '꼬리', '지고'), 'substring').summary;
   const eojeol = run(forms('선도', '꼬리', '지고'), 'eojeol');
@@ -248,7 +248,9 @@ test('eojeol mode drops mid-eojeol matches and keeps conjugated and particle-att
   assert.equal(eojeol.summary.total_match_units, 4);
   assert.deepEqual(eojeol.summary.per_form.map((f) => [f.form, f.unit_matches]), [['선도', 1], ['꼬리', 2], ['지고', 1]]);
   assert.equal(eojeol.summary.match_mode, 'eojeol');
-  assert.equal(run(forms('선도'), undefined).summary.match_mode, 'eojeol');
+  const implicit = run(forms('선도', '꼬리', '지고'), undefined).summary;
+  assert.equal(implicit.match_mode, 'substring');
+  assert.equal(implicit.total_match_units, substring.total_match_units); // no silent behaviour change without an explicit mode
   assert.throws(() => run(forms('선도'), 'prefix'), /matchMode/u);
   // 2-character forms use the non-FTS path; 3+ use FTS; both honour the filter.
   assert.equal(run(forms('가지고'), 'eojeol').summary.total_match_units, 1);

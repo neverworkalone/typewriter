@@ -4,7 +4,7 @@ import { assertLiteraturePermission, DEFAULT_FULL_LITERATURE_INDEX_PATH } from '
 import { MATCH_MODES, writeEvidencePack } from './literature-evidence.mjs';
 import { evidenceForCandidate, loadEvidenceContext } from './literature-evidence-run.mjs';
 
-const USAGE = 'Usage: node scripts/reference/literature-evidence-pack.mjs [--index <path>] [--max-contexts <1–10; default 8>] [--max-per-work <1–3; default 1>] [--match-mode <substring|eojeol; default eojeol>] <batch id> <candidate id>';
+const USAGE = 'Usage: node scripts/reference/literature-evidence-pack.mjs [--index <path>] [--max-contexts <1–10; default 8>] [--max-per-work <1–3; default 1>] [--match-mode <substring|eojeol; default substring>] <batch id> <candidate id>';
 
 try {
   const options = { databasePath: DEFAULT_FULL_LITERATURE_INDEX_PATH };

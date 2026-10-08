@@ -45,6 +45,18 @@ export function pickHits(units, perStratum = HITS_PER_STRATUM) {
   return ['dropped', 'kept'].flatMap((stratum) => tagged.filter((unit) => unit.stratum === stratum).slice(0, perStratum));
 }
 
+/** Distinct-unit counts per stratum for one candidate's substring sample (the population the picked hits are drawn from). */
+export function stratumPopulation(units) {
+  const seen = new Set();
+  const population = { dropped: 0, kept: 0 };
+  for (const unit of units) {
+    if (seen.has(unit.location_digest)) continue;
+    seen.add(unit.location_digest);
+    population[boundaryMatches(unit).length ? 'kept' : 'dropped'] += 1;
+  }
+  return population;
+}
+
 export function validateLabels(file, hitIds) {
   const errors = validateJudge(file);
   for (const id of hitIds) {
@@ -58,25 +70,45 @@ export function validateLabels(file, hitIds) {
 
 const rate = (numerator, denominator) => (denominator ? Number((numerator / denominator).toFixed(4)) : null);
 
-/** Text-free aggregate. `mapping` is {hitId: {stratum}}; the substring baseline is dropped + kept together. */
+/**
+ * Text-free, stratum-weighted aggregate. `mapping` is {hitId: {stratum, population, selected}}: the candidate's
+ * distinct substring units in that stratum and how many of them were picked. Each judged hit stands for
+ * population/selected units of its candidate and stratum (Horvitz–Thompson weight), so the over-sampling of the
+ * small dropped stratum cannot move the rates. Rates describe the capped scatter sample the retriever reads, not the
+ * whole corpus. `unclear` hits are excluded from the rates and reported as weighted and unweighted counts.
+ */
 export function aggregateLabels(mapping, labels) {
-  const rows = Object.entries(mapping).map(([id, { stratum }]) => ({ stratum, ...labels[id] }));
+  const rows = Object.entries(mapping).map(([id, entry]) => {
+    const { stratum, population, selected } = entry;
+    if (!['kept', 'dropped'].includes(stratum) || !Number.isSafeInteger(population) || !Number.isSafeInteger(selected) || selected < 1 || population < selected) {
+      throw new Error(`${id}: mapping needs a stratum and integer population >= selected >= 1`);
+    }
+    return { stratum, weight: population / selected, ...labels[id] };
+  });
   const judged = (list) => list.filter((row) => row.label !== 'unclear');
-  const stratum = (name) => rows.filter((row) => row.stratum === name);
-  const otherCount = (list) => judged(list).filter((row) => row.label === 'other_word').length;
-  const baseline = rows;
-  const kept = stratum('kept');
-  const dropped = stratum('dropped');
-  const baselineOther = rate(otherCount(baseline), judged(baseline).length);
-  const keptOther = rate(otherCount(kept), judged(kept).length);
-  const droppedSame = judged(dropped).filter((row) => row.label === 'same_word').length;
-  const sameTotal = judged(baseline).filter((row) => row.label === 'same_word').length;
-  const droppedSameShare = rate(droppedSame, sameTotal);
+  const total = (list) => list.reduce((sum, row) => sum + row.weight, 0);
+  const weightedRate = (list, label) => {
+    const base = judged(list);
+    return base.length ? Number((total(base.filter((row) => row.label === label)) / total(base)).toFixed(4)) : null;
+  };
+  const kept = rows.filter((row) => row.stratum === 'kept');
+  const dropped = rows.filter((row) => row.stratum === 'dropped');
+  const baselineOther = weightedRate(rows, 'other_word');
+  const keptOther = weightedRate(kept, 'other_word');
+  const sameAll = total(judged(rows).filter((row) => row.label === 'same_word'));
+  const droppedSame = total(judged(dropped).filter((row) => row.label === 'same_word'));
+  const droppedSameShare = sameAll ? Number((droppedSame / sameAll).toFixed(4)) : null;
   const reduction = baselineOther ? Number(((baselineOther - keptOther) / baselineOther).toFixed(4)) : null;
-  const types = Object.fromEntries(OTHER_WORD_TYPES.map((type) => [type, { dropped: dropped.filter((r) => r.type === type).length, kept: kept.filter((r) => r.type === type).length }]));
+  const types = Object.fromEntries(OTHER_WORD_TYPES.map((type) => [type, {
+    dropped_weighted: Number(total(dropped.filter((r) => r.type === type)).toFixed(2)),
+    kept_weighted: Number(total(kept.filter((r) => r.type === type)).toFixed(2)),
+  }]));
   return {
-    hits: rows.length,
-    unclear: rows.length - judged(rows).length,
+    estimator: 'stratum_weighted_by_candidate_population_over_selected',
+    sampled_hits: rows.length,
+    sampled_by_stratum: { dropped: dropped.length, kept: kept.length },
+    represented_units: { dropped: Math.round(total(dropped)), kept: Math.round(total(kept)) },
+    unclear: { hits: rows.length - judged(rows).length, weighted_units: Math.round(total(rows) - total(judged(rows))) },
     other_word_rate: { substring: baselineOther, eojeol: keptOther },
     relative_other_word_reduction: reduction,
     same_word_dropped_share: droppedSameShare,
@@ -98,14 +130,17 @@ async function prepare(directory = JUDGE_DIRECTORY) {
     const item = cohort.find((entry) => entry.id === id);
     const row = await loadFactoryCandidate({ batchId: item.batch, candidateId: id });
     const searchForms = deriveSearchForms(row, supportedFormsForCandidate(row, context.canonicalIndex, context.support));
-    for (const unit of pickHits(fetchSubstringUnits({ searchForms }))) picked.push({ ...unit, candidate_id: id, lemma: row.input });
+    const units = fetchSubstringUnits({ searchForms });
+    const population = stratumPopulation(units);
+    const hits = pickHits(units);
+    for (const unit of hits) picked.push({ ...unit, candidate_id: id, lemma: row.input, population: population[unit.stratum], selected: hits.filter((hit) => hit.stratum === unit.stratum).length });
   }
   const shuffled = picked.sort(byKey((hit) => sha('order-414:' + hit.candidate_id + hit.location_digest)));
   const mapping = {};
   const lines = ['# 문학 근거 히트 판정 (#414, 맹검)', '', '각 항목의 일치 형이 표제어 그대로의 쓰임이면 `same_word`, 인명·합성어·다른 표제어의 일부·한자 동형어면 `other_word`(+type), 불명이면 `unclear`.', ''];
   shuffled.forEach((hit, index) => {
     const id = 'H' + String(index + 1).padStart(3, '0');
-    mapping[id] = { candidate_id: hit.candidate_id, stratum: hit.stratum, form: hit.form };
+    mapping[id] = { candidate_id: hit.candidate_id, stratum: hit.stratum, form: hit.form, population: hit.population, selected: hit.selected };
     lines.push(`## ${id} — 표제어 ${hit.lemma} · 검색형 ${hit.form}`, '', hit.text, '');
   });
   await mkdir(directory, { recursive: true });
