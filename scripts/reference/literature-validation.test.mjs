@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { STRATA, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+import { STRATA, readOptionalJson, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
 
 const D = '0'.repeat(64);
 const make = (id, group, evidence_use, outcome) => ({ candidate_id: id, group, evidence_use, outcome, selected_location_digests: [D] });
@@ -84,4 +88,19 @@ test('the seal is written once: identical re-seal is allowed, changed answers or
   assert.throws(() => assertSealed(first, 'b'.repeat(64), 'c'.repeat(64)), /not sealed/);
   assert.throws(() => assertSealed(first, 'a'.repeat(64), 'd'.repeat(64)), /not sealed/);
   assert.throws(() => assertSealed(null, 'a'.repeat(64), 'c'.repeat(64)), /not sealed/);
+});
+
+test('only a missing seal file counts as unsealed; a corrupt or unreadable one fails closed instead of being resealed', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'seal-'));
+  try {
+    const file = path.join(directory, 'seal.json');
+    assert.equal(await readOptionalJson(file), null);
+    await writeFile(file, JSON.stringify({ phase1_sha256: 'a' }));
+    assert.deepEqual(await readOptionalJson(file), { phase1_sha256: 'a' });
+    await writeFile(file, '{ corrupt');
+    await assert.rejects(readOptionalJson(file), SyntaxError);
+    await rm(file);
+    await mkdir(file);
+    await assert.rejects(readOptionalJson(file), (error) => error.code === 'EISDIR');
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

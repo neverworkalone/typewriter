@@ -149,6 +149,12 @@ export function aggregate(cohort, phase1, phase2, contextCounts) {
 // --- local tooling (reads the repository and local caches) ------------------------------------------------
 
 async function readJson(file) { return JSON.parse(await readFile(file, 'utf8')); }
+// Only a missing file is "absent"; an unreadable or corrupt file must fail closed, never read as absent.
+export async function readOptionalJson(file) {
+  let text;
+  try { text = await readFile(file, 'utf8'); } catch (error) { if (error?.code === 'ENOENT') return null; throw error; }
+  return JSON.parse(text);
+}
 async function writeJson(file, value) { await writeFile(file, JSON.stringify(value, null, 2) + '\n'); }
 const fileDigest = async (file) => sha(await readFile(file));
 
@@ -210,7 +216,7 @@ function phase2Material(entry, result) {
 const PHASE1_FIELDS = '{ "disposition": "included|covered|rejected|deferred", "confidence": "high|medium|low", "basis": "짧은 근거", "seconds": 0 }';
 
 async function prepare() {
-  if (await readFile(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json')).then(() => true, () => false)) {
+  if (await readOptionalJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json'))) {
     throw new Error('validation already prepared; refusing to overwrite recorded judgments.');
   }
   const record = await readJson(SELFCHECK_PATH);
@@ -247,7 +253,7 @@ async function seal() {
   const file = path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json');
   const errors = validateJudgments(await readJson(file), cohort.map((entry) => entry.blind_id), 1);
   if (errors.length) throw new Error('phase 1 incomplete: ' + errors.join(', '));
-  const existing = await readJson(SEAL_FILE).catch(() => null);
+  const existing = await readOptionalJson(SEAL_FILE);
   const record = nextSeal(existing, await fileDigest(file), cohortDigest(cohort), new Date().toISOString());
   if (!existing) await writeJson(SEAL_FILE, record);
   console.log(existing ? 'phase 1 already sealed (unchanged)' : 'phase 1 sealed');
@@ -256,9 +262,9 @@ async function seal() {
 async function reveal() {
   const cohort = await loadCohort();
   const file = path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json');
-  assertSealed(await readJson(SEAL_FILE).catch(() => null), await fileDigest(file), cohortDigest(cohort));
+  assertSealed(await readOptionalJson(SEAL_FILE), await fileDigest(file), cohortDigest(cohort));
   const answers = path.join(VALIDATION_DIRECTORY, 'owner', 'phase2-judgments.json');
-  if (await readFile(answers).then(() => true, () => false)) throw new Error('phase 2 already revealed; refusing to overwrite recorded judgments.');
+  if (await readOptionalJson(answers)) throw new Error('phase 2 already revealed; refusing to overwrite recorded judgments.');
   const context = await loadEvidenceContext();
   await mkdir(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2'), { recursive: true });
   const template = {};
@@ -282,7 +288,7 @@ async function report() {
   const phase1 = await readJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json'));
   const phase2 = await readJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2-judgments.json'));
   const contextCounts = await readJson(path.join(VALIDATION_DIRECTORY, 'context-counts.local.json'));
-  assertSealed(await readJson(SEAL_FILE).catch(() => null), await fileDigest(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json')), cohortDigest(cohort));
+  assertSealed(await readOptionalJson(SEAL_FILE), await fileDigest(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json')), cohortDigest(cohort));
   console.log(JSON.stringify(aggregate(cohort, phase1, phase2, contextCounts), null, 2));
 }
 
