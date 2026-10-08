@@ -1,0 +1,1378 @@
+{
+ "contract": "relation-enrichment-pilot-v1",
+ "issue": 400,
+ "canonical_revision": "27469aa972dff349a8ea1f118c52613f83836a486ad8075a44a0ec02036a3562",
+ "master_commit": "8ac9e885a48df6a616e388729860a6c31a22365c",
+ "authoring": "agent self-check (Claude); relation outcomes authored from the bounded retrieval shortlist, not independent or human review",
+ "cohort_rule": {
+  "salt": "relation-pilot-400",
+  "batches": [
+   "C000007",
+   "C000010",
+   "C000012",
+   "C000013"
+  ],
+  "per_batch": 10,
+  "inspect_limit": 10
+ },
+ "senses": [
+  {
+   "sense_ref": "C000007-0020-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "계산",
+   "pos": "noun",
+   "candidate_count": 12,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5905-s1",
+     "type": "near",
+     "note": "같은 말의 셈하는 뜻에서 갈라져 나온, 따져 헤아리는 쓰임이다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8301-s1",
+     "type": "near",
+     "note": "겉으로 드러내지 않고 속으로 이해득실을 헤아리는 마음과 이어진다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000007-0020-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0433-s1",
+   "target_kind": "new_entry",
+   "lemma": "지속되다",
+   "pos": "verb",
+   "candidate_count": 29,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5893-s1",
+     "type": "near",
+     "note": "같은 뿌리의 명사로, 끊기지 않고 이어지는 상태를 가리킨다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5520-s1",
+     "type": "near",
+     "note": "끊어지지 않고 계속된다는 점이 같다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7893-s1",
+     "type": "near",
+     "note": "끊김 없이 이어지는 모양을 서술한다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5499-s1",
+     "type": "near",
+     "note": "중간에 끊기지 않는 상태를 명사로 가리킨다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "same_batch",
+     "target_sense": "C000007-0434-s1",
+     "type": "near",
+     "note": "지속되는 성질을 나타내는 같은 계열의 말이다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000007-0433-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 5개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0465-s1",
+   "target_kind": "new_entry",
+   "lemma": "철학적",
+   "pos": "noun",
+   "candidate_count": 15,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6109-s1",
+     "type": "association",
+     "note": "철학적이라는 말이 기대는 학문 영역이다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w10840-s1",
+     "type": "association",
+     "note": "철학 안에서 존재의 근본을 따지는 분야로 이어지는 연상이다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000007-0465-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0381-s1",
+   "target_kind": "new_entry",
+   "lemma": "장식되다",
+   "pos": "verb",
+   "candidate_count": 19,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "same_batch",
+     "target_sense": "C000007-0382-s1",
+     "type": "near",
+     "note": "꾸미는 쪽과 꾸밈을 받는 쪽으로 짝을 이루는 말이다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5902-s1",
+     "type": "near",
+     "note": "꾸밈의 결과를 명사로 가리킨다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8687-s1",
+     "type": "near",
+     "note": "겉모습을 보기 좋게 꾸민다는 점이 겹친다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000007-0381-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0360-s1",
+   "target_kind": "new_entry",
+   "lemma": "일정하다",
+   "pos": "adjective",
+   "candidate_count": 31,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w9611-s1",
+     "type": "near",
+     "note": "변함없이 같다는 결이 가깝다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5175-s1",
+     "type": "association",
+     "note": "일정한 속도를 지키는 이미지를 떠올리게 한다.",
+     "relevance": 7
+    }
+   ],
+   "rationale": "C000007-0360-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0009-s1",
+   "target_kind": "new_entry",
+   "lemma": "강조하다",
+   "pos": "verb",
+   "candidate_count": 24,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5991-s1",
+     "type": "near",
+     "note": "강조하다의 명사형 행위를 가리킨다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w9356-s1",
+     "type": "near",
+     "note": "두드러지게 드러난다는 점이 가깝다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000007-0009-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0247-s1",
+   "target_kind": "new_entry",
+   "lemma": "순수하다",
+   "pos": "adjective",
+   "candidate_count": 25,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5872-s1",
+     "type": "near",
+     "note": "다른 것이 섞이지 않은 상태를 명사로 가리킨다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7486-s1",
+     "type": "near",
+     "note": "깨끗하고 맑은 상태라는 결이 가깝다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7483-s1",
+     "type": "near",
+     "note": "거짓 없는 마음을 가리킬 때 이어진다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000007-0247-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0468-s1",
+   "target_kind": "new_entry",
+   "lemma": "초대하다",
+   "pos": "verb",
+   "candidate_count": 38,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5990-s1",
+     "type": "near",
+     "note": "초대하다의 행위를 명사로 가리킨다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w9142-s1",
+     "type": "near",
+     "note": "상대에게 와 달라고 청하는 행위가 겹친다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "same_batch",
+     "target_sense": "C000007-0326-s1",
+     "type": "near",
+     "note": "상대에게 요청한다는 점이 겹치지만 초대는 자리로 부르는 일이다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000007-0468-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0047-s1",
+   "target_kind": "new_entry",
+   "lemma": "구성되다",
+   "pos": "verb",
+   "candidate_count": 27,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5620-s2",
+     "type": "direct",
+     "note": "여러 요소가 모여 하나를 이룬다는 풀이가 겹쳐 바꿔 쓸 수 있다."
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w10049-s1",
+     "type": "near",
+     "note": "구조나 계획에 맞게 짜여 이루어지는 쪽으로 가깝다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5941-s1",
+     "type": "near",
+     "note": "구성되는 방식을 명사로 가리킨다.",
+     "relevance": 2
+    }
+   ],
+   "rationale": "C000007-0047-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000007-0343-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "응시하다",
+   "pos": "verb",
+   "candidate_count": 22,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7227-s1",
+     "type": "near",
+     "note": "시험이나 모임에 들어가 참여한다는 점이 겹친다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8227-s1",
+     "type": "association",
+     "note": "응시한 뒤 이어지는 선발 과정으로 연상된다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000007-0343-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000010-0288-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "전원",
+   "pos": "noun",
+   "candidate_count": 28,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w10722-s1",
+     "type": "direct",
+     "note": "모임에 속한 모든 사람을 가리켜 바꿔 쓸 수 있다."
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7467-s1",
+     "type": "association",
+     "note": "전원은 구성원 전체를 묶어 가리킨다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000010-0288-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000010-0270-s1",
+   "target_kind": "new_entry",
+   "lemma": "인용하다",
+   "pos": "verb",
+   "candidate_count": 25,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7038-s1",
+     "type": "near",
+     "note": "인용하다의 행위를 명사로 가리킨다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w11716-s1",
+     "type": "near",
+     "note": "남의 것을 가져와 쓴다는 점이 겹친다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000010-0270-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000010-0296-s1",
+   "target_kind": "new_entry",
+   "lemma": "제출하다",
+   "pos": "verb",
+   "candidate_count": 13,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6974-s1",
+     "type": "near",
+     "note": "제출하다의 행위를 명사로 가리킨다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w2988-s1",
+     "type": "association",
+     "note": "제출하는 대상으로 흔히 떠오르는 것이다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7151-s1",
+     "type": "association",
+     "note": "제출의 기한을 나타내는 시점과 이어진다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000010-0296-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000010-0135-s1",
+   "target_kind": "new_entry",
+   "lemma": "반박하다",
+   "pos": "verb",
+   "candidate_count": 23,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5621-s1",
+     "type": "association",
+     "note": "반박은 상대의 주장을 겨냥한다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w1235-s1",
+     "type": "association",
+     "note": "반박을 뒷받침하는 논리와 이어진다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w1104-s1",
+     "type": "near",
+     "note": "상대에게 물러서지 않고 대항한다는 결이 겹친다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000010-0135-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000010-0174-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "빠뜨리다",
+   "pos": "verb",
+   "candidate_count": 29,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w11092-s1",
+     "type": "direct",
+     "note": "같은 말의 준말형으로 풀이가 같다."
+    }
+   ],
+   "rationale": "C000010-0174-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 1개를 채택했다."
+  },
+  {
+   "sense_ref": "C000010-0104-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "띄우다",
+   "pos": "verb",
+   "candidate_count": 24,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6119-s1",
+     "type": "association",
+     "note": "내용이 나타나는 장소로 연상된다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5427-s1",
+     "type": "near",
+     "note": "보이지 않던 것이 나타난다는 결과와 이어진다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w12405-s1",
+     "type": "association",
+     "note": "화면에 띄워지는 대표적인 내용이다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000010-0104-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000010-0029-s1",
+   "target_kind": "new_entry",
+   "lemma": "공통되다",
+   "pos": "verb",
+   "candidate_count": 46,
+   "inspected_count": 10,
+   "decision": "no-relations",
+   "relations": [],
+   "rationale": "C000010-0029-s1: 검토한 후보 10개는 같은 말의 다른 뜻이거나 단어 일부만 겹쳐, 이 뜻에 정직하게 연결할 관계가 없다."
+  },
+  {
+   "sense_ref": "C000010-0336-s1",
+   "target_kind": "new_entry",
+   "lemma": "출판하다",
+   "pos": "verb",
+   "candidate_count": 22,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w11661-s1",
+     "type": "direct",
+     "note": "책 따위를 인쇄하여 세상에 내놓는다는 풀이가 같다."
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7124-s1",
+     "type": "near",
+     "note": "출판하다의 행위를 명사로 가리킨다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "same_batch",
+     "target_sense": "C000010-0333-s1",
+     "type": "near",
+     "note": "내놓는 쪽과 나오는 쪽으로 짝을 이루는 말이다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7053-s1",
+     "type": "near",
+     "note": "책이나 작품을 내놓는 일을 명사로 가리킨다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7427-s1",
+     "type": "association",
+     "note": "출판에 앞서 거치는 과정이다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000010-0336-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 5개를 채택했다."
+  },
+  {
+   "sense_ref": "C000010-0192-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "서방",
+   "pos": "noun",
+   "candidate_count": 21,
+   "inspected_count": 10,
+   "decision": "no-relations",
+   "relations": [],
+   "rationale": "C000010-0192-s1: 검토한 후보 10개는 같은 말의 다른 뜻이거나 단어 일부만 겹쳐, 이 뜻에 정직하게 연결할 관계가 없다."
+  },
+  {
+   "sense_ref": "C000010-0242-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "영문",
+   "pos": "noun",
+   "candidate_count": 21,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6008-s1",
+     "type": "near",
+     "note": "일이 그렇게 된 이유를 가리키지만 영문은 주로 영문을 모르다처럼 굳은 말에 쓰인다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8688-s1",
+     "type": "near",
+     "note": "일이 그렇게 된 까닭이라는 풀이가 겹치나 영문은 쓰임이 좁다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6229-s1",
+     "type": "near",
+     "note": "일이 놓인 사정으로 이어지지만 이유보다 처지에 가깝다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000010-0242-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0266-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "전후",
+   "pos": "noun",
+   "candidate_count": 26,
+   "inspected_count": 10,
+   "decision": "no-relations",
+   "relations": [],
+   "rationale": "C000012-0266-s1: 검토한 후보 10개는 같은 말의 다른 뜻이거나 단어 일부만 겹쳐, 이 뜻에 정직하게 연결할 관계가 없다."
+  },
+  {
+   "sense_ref": "C000012-0153-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "불태우다",
+   "pos": "verb",
+   "candidate_count": 11,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5795-s1",
+     "type": "association",
+     "note": "불태우는 대상이 되는 마음이다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w4930-s1",
+     "type": "near",
+     "note": "아낌없이 쏟아붓는다는 결이 겹친다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7926-s1",
+     "type": "association",
+     "note": "불길로 태우는 본뜻에서 건너온 비유이다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000012-0153-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0262-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "재우다",
+   "pos": "verb",
+   "candidate_count": 31,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7916-s1",
+     "type": "near",
+     "note": "잠들게 한다는 같은 동작이지만 손님을 맞아 들이는 쪽으로 쓰인다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w2674-s1",
+     "type": "association",
+     "note": "손님을 재우는 곳으로 연상된다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7069-s1",
+     "type": "association",
+     "note": "재움을 받는 사람이다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w9999-s1",
+     "type": "association",
+     "note": "나그네를 재우던 옛 장소로 이어진다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000012-0262-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 4개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0007-s1",
+   "target_kind": "new_entry",
+   "lemma": "가입하다",
+   "pos": "verb",
+   "candidate_count": 33,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8045-s1",
+     "type": "near",
+     "note": "가입하다의 행위를 명사로 가리킨다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7827-s1",
+     "type": "association",
+     "note": "조직의 구성원이 되는 다른 경우이다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000012-0007-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0101-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "들이닥치다",
+   "pos": "verb",
+   "candidate_count": 21,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7977-s1",
+     "type": "near",
+     "note": "갑자기 안으로 밀고 들어온다는 점이 겹친다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w1110-s1",
+     "type": "near",
+     "note": "한꺼번에 들어온다는 결이 가깝다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w11929-s1",
+     "type": "near",
+     "note": "세찬 기세로 안으로 밀려든다는 점이 겹친다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000012-0101-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0310-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "틈새",
+   "pos": "noun",
+   "candidate_count": 24,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w3491-s1",
+     "type": "near",
+     "note": "공간의 벌어진 틈에서 흐름의 틈으로 건너온 비유이다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w2350-s1",
+     "type": "near",
+     "note": "글이나 흐름에서 비어 있는 부분이라는 점이 겹친다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w284-s1",
+     "type": "near",
+     "note": "벌어지거나 비어 있는 곳을 가리킨다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8997-s1",
+     "type": "association",
+     "note": "빠져 남은 빈 곳이라는 이미지가 이어진다.",
+     "relevance": 6
+    }
+   ],
+   "rationale": "C000012-0310-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 4개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0161-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "산맥",
+   "pos": "noun",
+   "candidate_count": 14,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w3422-s1",
+     "type": "association",
+     "note": "산이 길게 이어지는 모습에서 큰 흐름이라는 비유가 나왔다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6432-s1",
+     "type": "near",
+     "note": "집단이 가지는 영향력이라는 점이 겹친다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000012-0161-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0163-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "산소",
+   "pos": "noun",
+   "candidate_count": 11,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6095-s1",
+     "type": "direct",
+     "note": "죽은 사람을 묻은 자리를 가리켜 바꿔 쓸 수 있다."
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w2619-s1",
+     "type": "near",
+     "note": "시신이나 유골을 묻는 땅이라는 점이 가깝다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000012-0163-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0265-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "전역",
+   "pos": "noun",
+   "candidate_count": 19,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5530-s1",
+     "type": "near",
+     "note": "빠짐없이 모두라는 범위의 느낌이 겹친다.",
+     "relevance": 5
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5631-s1",
+     "type": "association",
+     "note": "전역이 가리키는 땅의 범위이다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000012-0265-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000012-0104-s1",
+   "target_kind": "new_sense_on_existing_entry",
+   "lemma": "떨구다",
+   "pos": "verb",
+   "candidate_count": 39,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8836-s1",
+     "type": "near",
+     "note": "시선을 아래로 향하게 한다는 점이 겹친다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w520-s1",
+     "type": "near",
+     "note": "고개를 아래로 내리는 동작이 겹친다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w3813-s1",
+     "type": "near",
+     "note": "고개와 시선을 낮추는 모습이 겹친다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7761-s1",
+     "type": "near",
+     "note": "아래로 떨어뜨린다는 본뜻과 이어진다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w096-s1",
+     "type": "association",
+     "note": "떨군 시선이 향하던 방향이다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000012-0104-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 5개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0109-s1",
+   "target_kind": "new_entry",
+   "lemma": "콤플렉스",
+   "pos": "noun",
+   "candidate_count": 13,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w2198-s1",
+     "type": "near",
+     "note": "열등감과 거의 겹치지만 콤플렉스는 심리적 부담까지 묶는다.",
+     "relevance": 1
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w432-s1",
+     "type": "mood",
+     "note": "부족함이 드러나 부끄러운 감정의 결을 공유한다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w12349-s1",
+     "type": "association",
+     "note": "자기를 의식하는 마음과 이어진다.",
+     "relevance": 6
+    }
+   ],
+   "rationale": "C000013-0109-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0107-s1",
+   "target_kind": "new_entry",
+   "lemma": "친애하다",
+   "pos": "verb",
+   "candidate_count": 27,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5821-s1",
+     "type": "near",
+     "note": "소중히 여긴다는 점이 겹친다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w2113-s1",
+     "type": "near",
+     "note": "상대를 귀하게 여긴다는 점이 겹친다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000013-0107-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0043-s1",
+   "target_kind": "new_entry",
+   "lemma": "보듬다",
+   "pos": "verb",
+   "candidate_count": 33,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w2830-s1",
+     "type": "near",
+     "note": "필요한 것을 살펴 지켜 준다는 점이 겹친다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w725-s1",
+     "type": "near",
+     "note": "감싸 보호하는 동작이 겹친다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w031-s1",
+     "type": "mood",
+     "note": "따뜻하게 대하는 정서의 결이 이어진다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w108-s2",
+     "type": "association",
+     "note": "보듬는 대상이 되는 마음의 아픔이다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000013-0043-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 4개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0074-s1",
+   "target_kind": "new_entry",
+   "lemma": "얼빠지다",
+   "pos": "verb",
+   "candidate_count": 8,
+   "inspected_count": 8,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6644-s1",
+     "type": "near",
+     "note": "정신이 흐릿해 반응이 또렷하지 않다는 점이 겹친다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w896-s1",
+     "type": "near",
+     "note": "어리둥절해 얼떨떨한 상태가 가깝다.",
+     "relevance": 3
+    }
+   ],
+   "rationale": "C000013-0074-s1: 검토한 후보 8개 중 뜻 경계와 유형이 맞는 2개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0024-s1",
+   "target_kind": "new_entry",
+   "lemma": "드라이브",
+   "pos": "noun",
+   "candidate_count": 21,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6021-s1",
+     "type": "association",
+     "note": "드라이브의 수단이 되는 탈것이다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5527-s1",
+     "type": "association",
+     "note": "일상을 떠나 다녀오는 일이라는 점이 이어진다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w134-s1",
+     "type": "sensory",
+     "note": "바람을 쐬는 감각이 드라이브의 핵심 이미지이다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000013-0024-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0014-s1",
+   "target_kind": "new_entry",
+   "lemma": "구리",
+   "pos": "noun",
+   "candidate_count": 30,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w948-s1",
+     "type": "sensory",
+     "note": "구리의 붉은 빛깔을 떠올리게 한다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w929-s1",
+     "type": "sensory",
+     "note": "구리나 금속에서 나는 냄새의 감각이다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6934-s1",
+     "type": "association",
+     "note": "구리가 속하는 물질의 갈래이다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w9729-s1",
+     "type": "association",
+     "note": "구리를 섞어 만든 합금이다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w10245-s1",
+     "type": "association",
+     "note": "구리를 섞어 만든 누런 금속이다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000013-0014-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 5개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0025-s1",
+   "target_kind": "new_entry",
+   "lemma": "뗏목",
+   "pos": "noun",
+   "candidate_count": 11,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w6992-s1",
+     "type": "action",
+     "note": "물 위에 띄워 타는 동작과 이어진다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w11756-s1",
+     "type": "association",
+     "note": "사람이 타는 배라는 갈래가 겹친다.",
+     "relevance": 5
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w269-s1",
+     "type": "association",
+     "note": "재료가 되는 나무에서 이어진다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000013-0025-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0081-s1",
+   "target_kind": "new_entry",
+   "lemma": "위인",
+   "pos": "noun",
+   "candidate_count": 10,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8068-s1",
+     "type": "association",
+     "note": "위인을 위인답게 하는 업적이다.",
+     "relevance": 2
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5836-s1",
+     "type": "association",
+     "note": "위인이 받는 마음이다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w10729-s1",
+     "type": "near",
+     "note": "존경받는 사람이라는 점이 겹친다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w8176-s1",
+     "type": "association",
+     "note": "뛰어난 업적으로 불리는 인물의 칭호이다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000013-0081-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 4개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0026-s1",
+   "target_kind": "new_entry",
+   "lemma": "라이프",
+   "pos": "noun",
+   "candidate_count": 37,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5523-s1",
+     "type": "near",
+     "note": "삶을 이어 간다는 뜻의 동사이다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w12085-s1",
+     "type": "near",
+     "note": "세상에서 살아가는 일이라는 점이 가깝다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w12461-s1",
+     "type": "association",
+     "note": "삶이 이루어지는 실제 생활로 이어진다.",
+     "relevance": 4
+    }
+   ],
+   "rationale": "C000013-0026-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  },
+  {
+   "sense_ref": "C000013-0111-s1",
+   "target_kind": "new_entry",
+   "lemma": "클래식",
+   "pos": "noun",
+   "candidate_count": 11,
+   "inspected_count": 10,
+   "decision": "relations-reviewed",
+   "relations": [
+    {
+     "target_kind": "canonical",
+     "target_sense": "w5684-s1",
+     "type": "association",
+     "note": "클래식이 속하는 예술의 갈래이다.",
+     "relevance": 3
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w7353-s1",
+     "type": "association",
+     "note": "서양이라는 문화적 뿌리와 이어진다.",
+     "relevance": 4
+    },
+    {
+     "target_kind": "canonical",
+     "target_sense": "w11868-s1",
+     "type": "association",
+     "note": "함께 떠오르는 서양 공연 예술이다.",
+     "relevance": 5
+    }
+   ],
+   "rationale": "C000013-0111-s1: 검토한 후보 10개 중 뜻 경계와 유형이 맞는 3개를 채택했다."
+  }
+ ],
+ "amendments": [
+  {
+   "source_sense_id": "w10722-s1",
+   "source_gloss_sha256": "22f97b83e1a6142e3994a9e3f5d6e406df598b169b4ae4be30b593e477e40719",
+   "relation": {
+    "target_sense": "C000010-0288-s1",
+    "type": "direct",
+    "note": "모임에 속한 모든 사람을 가리켜 바꿔 쓸 수 있다."
+   },
+   "rationale": "w10722 w10722-s1: 모임에 속한 모든 사람을 가리켜 바꿔 쓸 수 있다."
+  },
+  {
+   "source_sense_id": "w11661-s1",
+   "source_gloss_sha256": "f51211acc186728b489ac6869eec3b282c433b574d614d32ad050937c3890da7",
+   "relation": {
+    "target_sense": "C000010-0336-s1",
+    "type": "direct",
+    "note": "책 따위를 인쇄하여 세상에 내놓는다는 풀이가 같다."
+   },
+   "rationale": "w11661 w11661-s1: 책 따위를 인쇄하여 세상에 내놓는다는 풀이가 같다."
+  },
+  {
+   "source_sense_id": "w2198-s1",
+   "source_gloss_sha256": "3b1f30a39af383f20052413a0d6228f1584c17f962cceb8efac3065bd2b9cd03",
+   "relation": {
+    "target_sense": "C000013-0109-s1",
+    "type": "near",
+    "note": "부족함에서 오는 마음이라는 점이 겹치며 콤플렉스는 심리적 부담까지 묶는다.",
+    "relevance": 2
+   },
+   "rationale": "w2198 w2198-s1: 부족함에서 오는 마음이라는 점이 겹치며 콤플렉스는 심리적 부담까지 묶는다."
+  },
+  {
+   "source_sense_id": "w5893-s1",
+   "source_gloss_sha256": "061d3a5a333aa2c1b75bda76a33458380cf47dfe2e194f351e2cc7bea3eb9f7f",
+   "relation": {
+    "target_sense": "C000007-0433-s1",
+    "type": "near",
+    "note": "지속의 상태를 서술하는 동사로 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w5893 w5893-s1: 지속의 상태를 서술하는 동사로 이어진다."
+  },
+  {
+   "source_sense_id": "w8836-s1",
+   "source_gloss_sha256": "1f25f1c0d9e27f263f3cbe3c3bb4cbd8a3a2b5902321d282a1cabbfa7e39a3af",
+   "relation": {
+    "target_sense": "C000012-0104-s1",
+    "type": "near",
+    "note": "시선을 아래로 향하게 한다는 점이 겹친다.",
+    "relevance": 3
+   },
+   "rationale": "w8836 w8836-s1: 시선을 아래로 향하게 한다는 점이 겹친다."
+  },
+  {
+   "source_sense_id": "w2830-s1",
+   "source_gloss_sha256": "a3ff8fbc24d38881cdf7711285872ca5c817cda2daa8c27862c9e0a9014e08ab",
+   "relation": {
+    "target_sense": "C000013-0043-s1",
+    "type": "near",
+    "note": "돌보는 마음을 다정하게 감싸는 쪽으로 넓힌 말이다.",
+    "relevance": 3
+   },
+   "rationale": "w2830 w2830-s1: 돌보는 마음을 다정하게 감싸는 쪽으로 넓힌 말이다."
+  },
+  {
+   "source_sense_id": "w6008-s1",
+   "source_gloss_sha256": "c453a26acb9622c357c689ff3d6b421c04f11c7650a99645caa2c9c7fc510f0f",
+   "relation": {
+    "target_sense": "C000010-0242-s1",
+    "type": "near",
+    "note": "이유를 가리키는 넓은 말에서 굳은 쓰임의 영문으로 좁혀진다.",
+    "relevance": 3
+   },
+   "rationale": "w6008 w6008-s1: 이유를 가리키는 넓은 말에서 굳은 쓰임의 영문으로 좁혀진다."
+  },
+  {
+   "source_sense_id": "w8688-s1",
+   "source_gloss_sha256": "0d9874d31f8ed4446be525284c5d03a3557355dd138143ab9e6215653050a09a",
+   "relation": {
+    "target_sense": "C000010-0242-s1",
+    "type": "near",
+    "note": "까닭이라는 풀이가 겹치나 영문은 쓰임이 좁다.",
+    "relevance": 3
+   },
+   "rationale": "w8688 w8688-s1: 까닭이라는 풀이가 겹치나 영문은 쓰임이 좁다."
+  },
+  {
+   "source_sense_id": "w6095-s1",
+   "source_gloss_sha256": "09ae04c34b020bea9c6d5674bac23884352482582d1c01075b5a17b628475b94",
+   "relation": {
+    "target_sense": "C000012-0163-s1",
+    "type": "direct",
+    "note": "죽은 사람을 묻은 자리를 가리켜 바꿔 쓸 수 있다."
+   },
+   "rationale": "w6095 w6095-s1: 죽은 사람을 묻은 자리를 가리켜 바꿔 쓸 수 있다."
+  },
+  {
+   "source_sense_id": "w11092-s1",
+   "source_gloss_sha256": "cd8e67458edfaca657dd64aa0fdcfe19dd4736fde4cb5c8c64f2c7e49c11a3fa",
+   "relation": {
+    "target_sense": "C000010-0174-s1",
+    "type": "direct",
+    "note": "같은 말의 본말형으로 풀이가 같다."
+   },
+   "rationale": "w11092 w11092-s1: 같은 말의 본말형으로 풀이가 같다."
+  },
+  {
+   "source_sense_id": "w5902-s1",
+   "source_gloss_sha256": "924bc1d9dc1661b45522755486889a0b598ceca020f92a3756ca195fc3ad6ccd",
+   "relation": {
+    "target_sense": "C000007-0381-s1",
+    "type": "near",
+    "note": "꾸밈의 결과를 가리키는 명사로 이어진다.",
+    "relevance": 4
+   },
+   "rationale": "w5902 w5902-s1: 꾸밈의 결과를 가리키는 명사로 이어진다."
+  },
+  {
+   "source_sense_id": "w8045-s1",
+   "source_gloss_sha256": "15b03abdfcfad49ea291c69f07969a4688185142d07dd07dd8d6c2df8d8395ff",
+   "relation": {
+    "target_sense": "C000012-0007-s1",
+    "type": "near",
+    "note": "가입이라는 일을 동사로 서술하는 말이다.",
+    "relevance": 3
+   },
+   "rationale": "w8045 w8045-s1: 가입이라는 일을 동사로 서술하는 말이다."
+  }
+ ]
+}
