@@ -131,3 +131,77 @@ test('append_senses comparison keeps an existing relevance but tolerates a backf
     JSON.stringify(sense({ relevance: 4 })),
   );
 });
+
+test('canonicalRecordsBeforeFactoryAdmissions handles relevance on the production append_senses path (#396)', async () => {
+  const { sha256Json, canonicalRecordsBeforeFactoryAdmissions } = await import('../scripts/validate/semantic-audit.mjs');
+  const rel = (relevance) => ({
+    target: 'w90002', target_sense: 'w90002-s1', type: 'near', note: 'n', ...(relevance === undefined ? {} : { relevance }),
+  });
+  const makeRecord = (relevance, extraSense = false) => ({
+    id: 'w90001',
+    role: 'start',
+    lemma: '합성어',
+    senses: [
+      { id: 'w90001-s1', pos: 'noun', gloss: '첫째 뜻', relations: [rel(relevance)] },
+      ...(extraSense ? [{ id: 'w90001-s2', pos: 'noun', gloss: '둘째 뜻' }] : []),
+    ],
+  });
+  // `historicalAfter` is the record whose digest the admission event recorded.
+  function source(original, current, historicalAfter) {
+    const afterDigest = sha256Json(historicalAfter);
+    const previousReview = { record_id: original.id, record_sha256: sha256Json(original) };
+    const review = { record_id: current.id, record_sha256: sha256Json(current) };
+    const change = {
+      entry_id: current.id,
+      operation: 'append_senses',
+      before_sha256: sha256Json(original),
+      after_sha256: afterDigest,
+      previous_semantic_review_sha256: sha256Json(previousReview),
+      semantic_review_sha256: sha256Json({ ...review, record_sha256: afterDigest }),
+      previous_semantic_review: previousReview,
+      previous_record: original,
+      source_candidate_ids: ['C900001-0001'],
+    };
+    const event = {
+      batch_id: 'C900001',
+      attempt: 1,
+      semantic_decisions_sha256: 'c'.repeat(64),
+      entries: [{ source_candidate_id: 'C900001-0001', record_id: current.id, sense_ids: ['w90001-s2'] }],
+      changes: [change],
+    };
+    event.sha256 = sha256Json(event);
+    return { authored_review: { records: [review] }, factory_admissions: [event] };
+  }
+
+  // existing relevance preserved by a normal append: reconstructs the original
+  const original = makeRecord(3);
+  const appended = makeRecord(3, true);
+  assert.deepEqual(
+    canonicalRecordsBeforeFactoryAdmissions([appended], source(original, appended, appended)),
+    [original],
+  );
+
+  // existing relevance changed, with every admission digest re-bound to the altered record
+  const altered = makeRecord(5, true);
+  assert.throws(
+    () => canonicalRecordsBeforeFactoryAdmissions([altered], source(original, altered, altered)),
+    /rewrote an existing canonical payload/,
+  );
+
+  // legacy history without relevance, later backfilled on the current record
+  const legacyOriginal = makeRecord(undefined);
+  const legacyAfter = makeRecord(undefined, true);
+  const backfilled = makeRecord(4, true);
+  assert.deepEqual(
+    canonicalRecordsBeforeFactoryAdmissions([backfilled], source(legacyOriginal, backfilled, legacyAfter)),
+    [legacyOriginal],
+  );
+
+  // a non-relevance edit on top of the backfill is still rejected
+  const edited = makeRecord(4, true);
+  edited.senses[0].gloss = 'rewritten old sense';
+  assert.throws(
+    () => canonicalRecordsBeforeFactoryAdmissions([edited], source(legacyOriginal, edited, legacyAfter)),
+    /does not bind the current canonical record|discontinuous admission chain/,
+  );
+});
