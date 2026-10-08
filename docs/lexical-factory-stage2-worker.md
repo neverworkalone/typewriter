@@ -86,14 +86,14 @@ manifests for the claimed attempt.
 ## Bounded literature rescue of evidence-insufficiency deferrals (#392)
 
 An opportunistic fallback, not an admission gate. Immediately before finalizing
-a candidate's `deferred` decision whose only remaining reason is insufficient
-contextual evidence for its POS/sense or sense boundary (no hard hold; invalid,
+a usage group's `deferred` decision whose only remaining reason is insufficient
+contextual evidence for its POS/sense or sense boundary (no hard hold on that group's own observations; invalid,
 contract, provenance and licensing holds are never eligible), run one lookup:
 
-    pnpm run factory:literature-rescue lookup <batch id> <candidate id>
+    pnpm run factory:literature-rescue lookup <batch id> <candidate id> <group id>
 
 It reuses the #391 local read-only retriever with the default `substring` mode,
-at most 5 contexts and 1 per work, once per candidate. Raw contexts are written
+at most 5 contexts and 1 per work, once per usage group; a sibling group's hold neither blocks nor widens it. Raw contexts are written
 only to the ignored local cache. Stage 2 reads the actual contextual sense and
 keeps full authority: helpful evidence may support an ordinary source-bound
 `included` decision; no hit, noise, a missing or unreadable DB, or a lookup
@@ -101,8 +101,8 @@ error is not negative evidence and the ordinary decision (normally `deferred`)
 stands. Literature never admits a word by itself and never overrides
 contemporary evidence.
 
-The decision row carries an optional, closed, text-free `literature_lookup`
-record (status `attempted|skipped|unavailable`, reason code, location/context
+The group's decision entry carries an optional, closed, text-free `literature_lookup`
+record (`group_id`, status `attempted|skipped|unavailable`, reason code, location/context
 digests, `lookup_ms`, `informed`, `deferral_changed_to_included`), validated by
 `validateLemmaDecision`. Historical rows carry none and stay valid. Canonical
 JSONL is unchanged.

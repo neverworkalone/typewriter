@@ -83,7 +83,7 @@ export function createInteractiveStage2Callbacks({
         claim,
         instructions: [
           'Complete full lexical authoring and source-bound semantic QA on the current branch.',
-          'Before finalizing a deferral whose only remaining reason is insufficient contextual evidence (no hard hold), run one bounded lookup: pnpm run factory:literature-rescue lookup <batch> <candidate>. Judge the actual contexts yourself; record the text-free result as literature_lookup on that decision row (informed / deferral_changed_to_included are yours to set). No hit or an unavailable lookup is not negative evidence.',
+          'Before finalizing a usage-group deferral whose only remaining reason is insufficient contextual evidence (no hard hold), run one bounded lookup: pnpm run factory:literature-rescue lookup <batch> <candidate> <group>. Judge the actual contexts yourself; record the text-free result as literature_lookup on that group_decisions entry (informed / deferral_changed_to_included are yours to set). No hit or an unavailable lookup is not negative evidence.',
           'Run the shared validators and prospective canonical preflight without editing canonical JSONL.',
           'Commit and push the result branch, then create exactly one result PR that closes the tracking Issue.',
           'Reply with {"action":"created","pr_number":123} after the PR exists, or {"action":"stop"} to stop safely.',

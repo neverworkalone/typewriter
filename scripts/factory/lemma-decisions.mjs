@@ -82,17 +82,24 @@ export function resolveGroupEntries(row, candidate) {
 export function validateLemmaDecision(row, candidate, { canonicalIndex, support } = {}) {
   const at = `decision ${row.source_candidate_id}`;
   const resolved = resolveGroupEntries(row, candidate);
-  const errors = [...resolved.errors, ...validateLiteratureLookup(row)];
+  const errors = [...resolved.errors];
+  if (row.literature_lookup !== undefined) errors.push(`${at}: literature_lookup belongs on a group decision entry`);
   if (errors.length && resolved.entries.length === 0) return errors;
   const surfaceOf = new Map(candidate.forms.map((form) => [form.form_id, form.surface]));
   const admitted = ADMITTED.has(row.disposition);
   const senses = row.reviewed_record?.senses ?? [];
   const claimed = new Set();
   let includedCount = 0;
+  const lookedUp = new Set();
   resolved.entries.forEach(({ entry, group, members }) => {
     const here = `${at} group ${group.group_id}`;
     if (!GROUP_DISPOSITIONS.includes(entry.disposition)) { errors.push(`${here}: disposition must be one of ${GROUP_DISPOSITIONS.join(', ')}`); return; }
     if (!isText(entry.reason)) errors.push(`${here}: a candidate-specific reason is required`);
+    errors.push(...validateLiteratureLookup(row, entry));
+    if (entry.literature_lookup !== undefined) {
+      if (lookedUp.has(group.group_id)) errors.push(`${here}: at most one literature lookup per usage group`);
+      lookedUp.add(group.group_id);
+    }
     if (entry.disposition === 'included') {
       includedCount += 1;
       if (!admitted) errors.push(`${here}: included group under a ${row.disposition} candidate`);

@@ -57,15 +57,15 @@ const run = async (candidate, options) => {
   const root = await candidateRoot(candidate);
   const outputDirectory = path.join(resolveTypewriterCachePaths().evidence, 'rescue-test-' + sha(root).slice(0, 12));
   directories.push(outputDirectory);
-  return runBoundedLiteratureLookup({ batchId: 'C000001', candidateId: 'C000001-0001', reasonClass: 'insufficient_context_evidence', root, context: context(root), outputDirectory, ...options });
+  return runBoundedLiteratureLookup({ batchId: 'C000001', candidateId: 'C000001-0001', groupId: 'g1', reasonClass: 'insufficient_context_evidence', root, context: context(root), outputDirectory, ...options });
 };
 
 test('trigger: only evidence insufficiency without a hard hold; other paths are untouched', async () => {
-  assert.equal(isRescueEligible(row(), 'insufficient_context_evidence'), true);
-  assert.equal(isRescueEligible(row([]), 'insufficient_context_evidence'), true);
-  assert.equal(isRescueEligible(row(['proper_noun']), 'insufficient_context_evidence'), false, 'hard hold');
-  assert.equal(isRescueEligible(row(), 'figurative_use'), false);
-  assert.equal(isRescueEligible(row(), undefined), false);
+  assert.equal(isRescueEligible(row(), 'insufficient_context_evidence', 'g1'), true);
+  assert.equal(isRescueEligible(row([]), 'insufficient_context_evidence', 'g1'), true);
+  assert.equal(isRescueEligible(row(['proper_noun']), 'insufficient_context_evidence', 'g1'), false, 'hard hold');
+  assert.equal(isRescueEligible(row(), 'figurative_use', 'g1'), false);
+  assert.equal(isRescueEligible(row(), undefined, 'g1'), false);
   const result = await run(row(), { reasonClass: 'invalid_candidate', databasePath: '/nonexistent.sqlite' });
   assert.deepEqual(result, { eligible: false, record: null, files: null });
 });
@@ -81,7 +81,28 @@ test('useful hit: bounded, text-free record; the author alone decides informed/c
   assert.equal(record.deferral_changed_to_included, false);
   assert.ok(files.pack);
   assert.doesNotMatch(JSON.stringify(record), /하늘|바다/u, 'no literary text in the record');
-  assert.deepEqual(validateLiteratureLookup({ source_candidate_id: 'x', disposition: 'deferred', literature_lookup: record }), []);
+  assert.deepEqual(check(decision(record, 'deferred')), []);
+});
+
+test('lookup is per usage group: a hard-hold sibling neither blocks nor widens an insufficiency group', async () => {
+  const two = {
+    candidate_id: 'C000001-0001', input: '푸르다', pos_hypotheses: ['adjective'],
+    forms: [{ form_id: 'f1', surface: '푸른' }, { form_id: 'f2', surface: '푸르렀다' }],
+    usage_groups: [{ group_id: 'g1', pos: 'adjective' }, { group_id: 'g2', pos: 'adjective' }],
+    observations: [
+      { observation_id: 'o1', form_id: 'f1', group_id: 'g1', pos: 'adjective', holds: ['analysis_ambiguous'] },
+      { observation_id: 'o2', form_id: 'f2', group_id: 'g2', pos: 'adjective', holds: ['proper_noun'] },
+    ],
+  };
+  assert.equal(isRescueEligible(two, 'insufficient_context_evidence', 'g1'), true);
+  assert.equal(isRescueEligible(two, 'insufficient_context_evidence', 'g2'), false);
+  assert.equal(isRescueEligible(two, 'insufficient_context_evidence', 'g9'), false);
+  const databasePath = await makeDatabase(['푸른 하늘.', '들판이 푸르렀다.']);
+  const g1 = await run(two, { databasePath });
+  assert.equal(g1.record.group_id, 'g1');
+  assert.equal(g1.record.location_digests.length, 1, 'only g1 forms are searched');
+  const g2 = await run(two, { databasePath, groupId: 'g2' });
+  assert.deepEqual(g2, { eligible: false, record: null, files: null });
 });
 
 test('no hit and an unreadable DB are not evidence and force nothing', async () => {
@@ -103,18 +124,18 @@ test('a candidate without usable search forms is skipped', async () => {
 });
 
 const attempted = (extra = {}) => ({
-  contract: 'literature-rescue-lookup-v1', trigger: 'insufficient_context_evidence', status: 'attempted', reason_code: null, ...RESCUE_BOUNDS,
+  contract: 'literature-rescue-lookup-v1', group_id: 'g1', trigger: 'insufficient_context_evidence', status: 'attempted', reason_code: null, ...RESCUE_BOUNDS,
   location_digests: ['a'.repeat(64)], context_digests: ['b'.repeat(64)], lookup_ms: 3, informed: true, deferral_changed_to_included: true, ...extra,
 });
-const decision = (record, disposition = 'included') => ({
-  source_candidate_id: 'C000001-0001', disposition, literature_lookup: record,
-  group_decisions: [{ group_id: 'g1', disposition: disposition === 'included' ? 'included' : 'deferred' }],
-});
+const entryOf = (record, disposition = 'included') => ({ group_id: 'g1', disposition: disposition === 'included' ? 'included' : 'deferred', literature_lookup: record });
+const decision = (record, disposition = 'included') => ({ source_candidate_id: 'C000001-0001', disposition, group_decisions: [entryOf(record, disposition)] });
+const check = (d) => validateLiteratureLookup(d, d.group_decisions[0]);
 
 test('review record validation: closed, text-free, internally consistent', () => {
-  const bad = (record, pattern, d = 'included') => assert.match(validateLiteratureLookup(decision(record, d)).join('\n'), pattern);
-  assert.deepEqual(validateLiteratureLookup(decision(attempted())), []);
-  assert.deepEqual(validateLiteratureLookup({ source_candidate_id: 'x' }), [], 'historical rows carry none');
+  const bad = (record, pattern, d = 'included') => assert.match(check(decision(record, d)).join('\n'), pattern);
+  assert.deepEqual(check(decision(attempted())), []);
+  assert.deepEqual(validateLiteratureLookup({ source_candidate_id: 'x' }, { group_id: 'g1' }), [], 'historical rows carry none');
+  bad(attempted({ group_id: 'g2' }), /group_id must equal/u);
   bad({ ...attempted(), quote: '원문' }, /exactly/u);
   bad(attempted({ max_contexts: 8 }), /max_contexts must be 5/u);
   bad(attempted({ match_mode: 'eojeol' }), /match_mode/u);
@@ -129,17 +150,20 @@ test('review record validation: closed, text-free, internally consistent', () =>
 
 test('production validator rejects an inconsistent lookup record on a real lemma decision', () => {
   const candidate = { candidate_id: 'C000001-0001', input: '푸르다', usage_groups: [{ group_id: 'g1', pos: 'adjective' }], forms: [{ form_id: 'f1', surface: '푸른' }], observations: [{ observation_id: 'o1', form_id: 'f1', group_id: 'g1', pos: 'adjective', holds: [] }] };
-  const deferred = { source_candidate_id: 'C000001-0001', disposition: 'deferred', reason: '맥락 부족', group_decisions: [{ group_id: 'g1', disposition: 'deferred', reason: '맥락 부족' }] };
+  const deferredEntry = { group_id: 'g1', disposition: 'deferred', reason: '맥락 부족' };
+  const deferred = { source_candidate_id: 'C000001-0001', disposition: 'deferred', reason: '맥락 부족', group_decisions: [deferredEntry] };
+  const withRecord = (record) => ({ ...deferred, group_decisions: [{ ...deferredEntry, literature_lookup: record }] });
   const none = attempted({ location_digests: [], context_digests: [], informed: false, deferral_changed_to_included: false });
-  assert.deepEqual(validateLemmaDecision({ ...deferred, literature_lookup: none }, candidate), []);
-  assert.match(validateLemmaDecision({ ...deferred, literature_lookup: attempted() }, candidate).join('\n'), /literature_lookup/u);
+  assert.deepEqual(validateLemmaDecision(withRecord(none), candidate), []);
+  assert.match(validateLemmaDecision(withRecord(attempted()), candidate).join('\n'), /literature_lookup/u);
   assert.deepEqual(validateLemmaDecision(deferred, candidate), []);
 });
 
 test('production report counts lookups, rescues and confirms them only after Stage 3', () => {
-  const changed = { source_candidate_id: 'a', literature_lookup: attempted() };
-  const noHit = { source_candidate_id: 'b', literature_lookup: attempted({ location_digests: [], context_digests: [], informed: false, deferral_changed_to_included: false }) };
-  const down = { source_candidate_id: 'c', literature_lookup: attempted({ status: 'unavailable', reason_code: 'lookup_error', location_digests: [], context_digests: [], lookup_ms: null, informed: false, deferral_changed_to_included: false }) };
+  const wrap = (id, record) => ({ source_candidate_id: id, group_decisions: [{ group_id: 'g1', literature_lookup: record }] });
+  const changed = wrap('a', attempted());
+  const noHit = wrap('b', attempted({ location_digests: [], context_digests: [], informed: false, deferral_changed_to_included: false }));
+  const down = wrap('c', attempted({ status: 'unavailable', reason_code: 'lookup_error', location_digests: [], context_digests: [], lookup_ms: null, informed: false, deferral_changed_to_included: false }));
   const report = summarizeLiteratureRescue([
     { batchId: 'C1', status: 'ready', decisions: [changed, noHit, down, { source_candidate_id: 'd' }] },
     { batchId: 'C2', status: 'complete', decisions: [changed] },
