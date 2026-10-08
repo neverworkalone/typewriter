@@ -44,34 +44,51 @@ export function orderInventory(rows) {
 
 export const newQueueState = (canonicalRevision) => ({ contract: BACKFILL_CONTRACT, canonical_revision: canonicalRevision, done: {} });
 
+const targetId = (target) => target.sense_id ?? target.provisional_id;
+
 /**
- * A completed review stays valid only while it still covers what the retriever offers now: the sense's gloss is
- * unchanged AND every current candidate target was among the targets reviewed. A candidate that appeared after a
- * canonical change was never inspected, so the sense returns to the queue. Candidates that disappeared (for example
- * because the reviewed relation now exists) do not invalidate it. Missing current candidates fail closed (re-review).
+ * sense id -> the review-relevant evidence of every retrieved candidate, in rank order: target identity (id, record,
+ * POS), the retrieval signals and the literature location digests. Scores never appear in the artifact.
+ */
+export function candidateEvidence(artifact) {
+  return new Map(artifact.sources.map((source) => [
+    source.source.sense_id,
+    source.candidates.map((candidate) => ({
+      id: targetId(candidate.target),
+      record_id: candidate.target.record_id ?? null,
+      pos: candidate.target.pos,
+      signals: [...candidate.signals],
+      literature: [...(candidate.literature_location_digests ?? [])],
+    })),
+  ]));
+}
+
+/**
+ * A completed review stays valid only while the evidence it reviewed still holds: the gloss is unchanged, every
+ * current candidate was reviewed with identical identity/POS/signals/literature evidence, and the candidates present
+ * in both lists keep their relative order (rank). Candidates that disappeared (for example because the reviewed
+ * relation now exists) do not invalidate the review, which also keeps an applied review from re-queueing itself.
+ * Missing current candidates fail closed (re-review).
  */
 export function isReviewCurrent(row, entry, currentCandidates) {
   if (!entry || entry.gloss_sha256 !== row.gloss_sha256) return false;
   const current = currentCandidates?.get(row.sense_id);
   if (!current) return false;
-  const reviewed = new Set(entry.reviewed_candidates);
-  return current.every((id) => reviewed.has(id));
+  const reviewed = new Map(entry.reviewed_candidates.map((candidate) => [candidate.id, candidate]));
+  for (const candidate of current) {
+    if (JSON.stringify(reviewed.get(candidate.id) ?? null) !== JSON.stringify(candidate)) return false;
+  }
+  const common = new Set(current.map((candidate) => candidate.id));
+  const before = entry.reviewed_candidates.filter((candidate) => common.has(candidate.id)).map((candidate) => candidate.id);
+  return JSON.stringify(before) === JSON.stringify(current.map((candidate) => candidate.id).filter((id) => reviewed.has(id)));
 }
 
-/** sense id -> retrieved candidate target sense ids, from a validated retrieval artifact. */
-export function candidateTargets(artifact) {
-  return new Map(artifact.sources.map((source) => [
-    source.source.sense_id,
-    source.candidates.map((candidate) => candidate.target.sense_id ?? candidate.target.provisional_id),
-  ]));
-}
-
-/** Current candidate targets for the senses a state marks done (the only ones whose currency must be checked). */
+/** Current candidate evidence for the senses a state marks done (the only ones whose currency must be checked). */
 export function currentCandidatesForDone(canonical, rows, state, { index = buildRelationIndex(canonical) } = {}) {
   const doneRows = rows.filter((row) => state.done[row.sense_id]);
   const result = new Map();
   for (let i = 0; i < doneRows.length; i += MAX_PACKET_SIZE) {
-    for (const [id, targets] of candidateTargets(retrievePacket(canonical, doneRows.slice(i, i + MAX_PACKET_SIZE), { index }))) result.set(id, targets);
+    for (const [id, targets] of candidateEvidence(retrievePacket(canonical, doneRows.slice(i, i + MAX_PACKET_SIZE), { index }))) result.set(id, targets);
   }
   return result;
 }
@@ -113,7 +130,7 @@ export function recordOutcomes(state, packet, outcomes, { candidates } = {}) {
     const reviewedCandidates = candidates?.get(outcome.sense_id);
     if (!reviewedCandidates) { errors.push(`${outcome.sense_id}: the reviewed candidate pool must be supplied`); continue; }
     done[outcome.sense_id] = {
-      outcome: outcome.outcome, gloss_sha256: row.gloss_sha256, relation_count: amendments.length, reviewed_candidates: [...new Set(reviewedCandidates)].sort(),
+      outcome: outcome.outcome, gloss_sha256: row.gloss_sha256, relation_count: amendments.length, reviewed_candidates: reviewedCandidates,
     };
   }
   if (errors.length) return { state, errors };

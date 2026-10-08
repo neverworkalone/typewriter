@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  candidateTargets, currentCandidatesForDone, inventoryCanonicalSenses, MAX_PACKET_SIZE, newQueueState, nextPacket, orderInventory, recordOutcomes, retrievePacket, summarizeQueue,
+  isReviewCurrent, candidateEvidence, currentCandidatesForDone, inventoryCanonicalSenses, MAX_PACKET_SIZE, newQueueState, nextPacket, orderInventory, recordOutcomes, retrievePacket, summarizeQueue,
 } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -21,7 +21,7 @@ const canonical = {
 };
 const index = buildRelationIndex(canonical);
 const rows = inventoryCanonicalSenses(index);
-const reviewed = (cn, packet) => candidateTargets(retrievePacket(cn, packet, { index: buildRelationIndex(cn) }));
+const reviewed = (cn, packet) => candidateEvidence(retrievePacket(cn, packet, { index: buildRelationIndex(cn) }));
 const current = (cn, state, rs = inventoryCanonicalSenses(buildRelationIndex(cn))) => currentCandidatesForDone(cn, rs, state);
 const outcome = (row, over = {}) => ({
   sense_id: row.sense_id, outcome: 'relations-reviewed', rationale: `${row.sense_id}: 후보를 검토했다.`,
@@ -86,7 +86,7 @@ test('a review is re-queued when its gloss changed or the canonical now offers a
   const revisionB = { ...canonical, canonicalRevision: 'c'.repeat(64), records: [...canonical.records, entry('w5', '잔향', '소리가 멈춘 뒤에도 남아 되돌아오는 울림.')] };
   const rowsB = inventoryCanonicalSenses(buildRelationIndex(revisionB));
   assert.equal(rowsB.find((row) => row.sense_id === id).gloss_sha256, rows.find((row) => row.sense_id === id).gloss_sha256, 'gloss is unchanged');
-  assert.ok(candidateTargets(retrievePacket(revisionB, packet, { index: buildRelationIndex(revisionB) })).get(id).includes('w5-s1'), 'the new candidate is offered');
+  assert.ok(candidateEvidence(retrievePacket(revisionB, packet, { index: buildRelationIndex(revisionB) })).get(id).some((candidate) => candidate.id === 'w5-s1'), 'the new candidate is offered');
   assert.equal(pending(rowsB, revisionB), true, 'the unreviewed candidate returns the sense to the queue');
   assert.equal(summarizeQueue(rowsB, state, current(revisionB, state, rowsB)).completed, 0, 'status no longer counts the stale review');
   assert.equal(pending(rowsB, revisionB, new Map()), true, 'without a current pool the old review fails closed');
@@ -98,4 +98,30 @@ test('packets are fed by the production retriever and its fail-closed artifact v
   assert.equal(artifact.contract, 'relation-candidate-retrieval-v1');
   assert.equal(artifact.authority, 'candidates_only');
   assert.deepEqual(artifact.sources.map((source) => source.source.sense_id), packet.map((row) => row.sense_id));
+});
+
+test('a review stays current only while the full reviewed candidate evidence holds', () => {
+  let state = newQueueState(canonical.canonicalRevision);
+  const packet = nextPacket(rows, state, { limit: 1 });
+  const [row] = packet;
+  state = recordOutcomes(state, packet, [outcome(row)], { candidates: reviewed(canonical, packet) }).state;
+  const entry = state.done[row.sense_id];
+  const original = entry.reviewed_candidates;
+  assert.ok(original.length >= 2, 'fixture has several candidates to vary');
+  assert.ok(original.every((c) => c.id && c.pos && Array.isArray(c.signals)), 'evidence keeps identity, POS and signals');
+  const check = (current) => isReviewCurrent(row, entry, new Map([[row.sense_id, current]]));
+  const edit = (index, change) => original.map((c, i) => (i === index ? { ...c, ...change } : c));
+  assert.equal(check(structuredClone(original)), true, 'identical evidence (same revision or no-op change) stays done');
+  assert.equal(check(original.slice(1)), true, 'a candidate that disappeared does not invalidate the review');
+  assert.equal(check(edit(0, { pos: 'verb' })), false, 'same target ids, different POS');
+  assert.equal(check(edit(0, { signals: [...original[0].signals, 'literature_cooccurrence'] })), false, 'same target ids, different signals');
+  assert.equal(check(edit(0, { signals: [] })), false);
+  assert.equal(check(edit(0, { literature: ['f'.repeat(64)] })), false, 'different literature evidence');
+  assert.equal(check(edit(0, { record_id: 'w99' })), false, 'different record identity');
+  assert.equal(check([original[1], original[0], ...original.slice(2)]), false, 'same target ids, different rank order');
+  assert.equal(check([...original, { id: 'w9-s1', record_id: 'w9', pos: 'noun', signals: ['gloss_overlap'], literature: [] }]), false, 'a new candidate');
+  const summary = (current) => summarizeQueue(rows, state, new Map([[row.sense_id, current]])).completed;
+  assert.equal(summary(structuredClone(original)), 1);
+  assert.equal(summary(edit(0, { pos: 'verb' })), 0, 'status drops the stale completion');
+  assert.ok(nextPacket(rows, state, { limit: 10, currentCandidates: new Map([[row.sense_id, edit(0, { pos: 'verb' })]]) }).some((r) => r.sense_id === row.sense_id), 'next re-offers it');
 });
