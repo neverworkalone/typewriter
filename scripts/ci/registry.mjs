@@ -236,6 +236,10 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/relation/candidate-retrieval.test.mjs'],
       ),
       commandCheck(
+        'Test Issue #400 relation enrichment pilot contract and backfill queue',
+        ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs'],
+      ),
+      commandCheck(
         'Test Issue #223 review-only import boundary',
         ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
       ),
@@ -317,6 +321,7 @@ export const CI_CATEGORIES = Object.freeze({
       inProcessCheck('Verify shared surface-form projection reuse', 'surface-form-projection-reuse'),
       testCheck('tests/build-dictionary.test.mjs', 'Test SQLite dictionary build'),
       testCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance'),
+      testCheck('tests/relation-enrichment-top100.test.mjs', 'Test Issue #400 Top-100 window through the production append path'),
       testCheck('tests/m2-pipeline.test.mjs', 'Test integrated M2 audit'),
     ],
   },
