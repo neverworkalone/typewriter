@@ -239,3 +239,20 @@ test('malformed outcomes are contract errors that leave state untouched', () => 
     assert.match(result.errors.join('\n'), /each outcome must be an object/u);
   }
 });
+
+test('malformed relation_amendments are contract errors, never exceptions, and leave state untouched', () => {
+  const state = newQueueState(canonical.canonicalRevision);
+  const packet = nextPacket(rows, state, { limit: 1 });
+  const row = packet[0];
+  const base = outcome(row);
+  for (const bad of [{}, 'x', 7, null]) {
+    const result = record(state, packet, [{ ...base, relation_amendments: bad }]);
+    assert.equal(result.state, state);
+    assert.match(result.errors.join('\n'), /relation_amendments must be a list|needs amendments/u, String(bad));
+  }
+  for (const item of [null, 'x', 7, [], {}, { ...base.relation_amendments[0], relation: null }, { ...base.relation_amendments[0], relation: 'near' }]) {
+    const result = record(state, packet, [{ ...base, relation_amendments: [item] }]);
+    assert.equal(result.state, state, JSON.stringify(item));
+    assert.ok(result.errors.length > 0);
+  }
+});

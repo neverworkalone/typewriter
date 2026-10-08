@@ -172,11 +172,14 @@ export function recordOutcomes(state, packet, outcomes, { candidates, index, sna
     if (seen.has(outcome.sense_id)) { errors.push(`${outcome.sense_id}: duplicate outcome`); continue; }
     seen.add(outcome.sense_id);
     if (!OUTCOMES.includes(outcome.outcome)) { errors.push(`${outcome.sense_id}: outcome must be ${OUTCOMES.join(' or ')}`); continue; }
+    if (outcome.relation_amendments !== undefined && !Array.isArray(outcome.relation_amendments)) { errors.push(`${outcome.sense_id}: relation_amendments must be a list`); continue; }
     const amendments = outcome.relation_amendments ?? [];
     if (outcome.outcome === 'no-relations' && amendments.length) { errors.push(`${outcome.sense_id}: no-relations carries amendments`); continue; }
     if (outcome.outcome === 'relations-reviewed' && !amendments.length) { errors.push(`${outcome.sense_id}: relations-reviewed needs amendments`); continue; }
     if (typeof outcome.rationale !== 'string' || !outcome.rationale.includes(outcome.sense_id)) { errors.push(`${outcome.sense_id}: rationale must cite the sense`); continue; }
     const problems = amendments.length ? relationAmendmentErrors({ relation_amendments: amendments }, outcome.sense_id) : [];
+    // The shared validator proves every item is a well-formed object before any field below is read.
+    if (problems.length) { errors.push(...problems); continue; }
     const wrongSource = amendments.filter((a) => a.source_sense_id !== outcome.sense_id || a.source_gloss_sha256 !== row.gloss_sha256);
     if (wrongSource.length) problems.push(`${outcome.sense_id}: amendments must be bound to this sense and its current gloss digest`);
     const reviewedCandidates = candidates?.get(outcome.sense_id);
