@@ -50,8 +50,14 @@ if (command === 'status') {
   const out = flag('--out');
   if (out) await writeFile(out, `${JSON.stringify(payload, null, 1)}\n`); else console.log(JSON.stringify(payload, null, 1));
 } else if (command === 'record') {
-  const packetFile = JSON.parse(await readFile(args[1], 'utf8'));
-  const outcomes = JSON.parse(await readFile(args[2], 'utf8'));
+  const readJson = async (file, what) => {
+    try { return JSON.parse(await readFile(file, 'utf8')); } catch (error) { console.error(`${what} ${file} is unreadable or not JSON (${error.message})`); process.exit(1); }
+  };
+  const packetFile = await readJson(args[1], 'packet file');
+  const outcomes = await readJson(args[2], 'outcomes file');
+  const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!isObject(packetFile) || !Array.isArray(packetFile.packet)) { console.error('packet file must be an object with a packet list'); process.exit(1); }
+  if (!Array.isArray(outcomes)) { console.error('outcomes file must be a list of outcomes'); process.exit(1); }
   // The packet file is only a list of sense ids: rows and candidate evidence are re-derived from the live canonical
   // (and must be the revision the packet was issued for), so an edited packet cannot widen the reviewed pool.
   if (packetFile.canonical_revision !== canonical.canonicalRevision) {

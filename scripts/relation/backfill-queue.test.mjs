@@ -224,3 +224,18 @@ test('a packet is one bounded unit: oversized, empty and repeated-sense packets 
   assert.equal(result.state, state);
   assert.match(result.errors.join('\n'), /bound is 200/u);
 });
+
+test('malformed outcomes are contract errors that leave state untouched', () => {
+  const state = newQueueState(canonical.canonicalRevision);
+  const packet = nextPacket(rows, state, { limit: 1 });
+  for (const bad of [null, {}, 'x', 7]) {
+    const result = record(state, packet, bad);
+    assert.equal(result.state, state);
+    assert.match(result.errors.join('\n'), /outcomes must be a list/u);
+  }
+  for (const entry of [null, 'x', [], { sense_id: 7 }, {}]) {
+    const result = record(state, packet, [entry]);
+    assert.equal(result.state, state);
+    assert.match(result.errors.join('\n'), /each outcome must be an object/u);
+  }
+});

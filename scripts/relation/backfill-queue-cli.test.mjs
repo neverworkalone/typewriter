@@ -81,6 +81,25 @@ test('CLI record verifies approved targets, preserves them across a restart, and
     assert.doesNotMatch(malformed.stderr, /TypeError/u, 'a malformed row is a contract error, not an exception');
     assert.equal(await readFile(state, 'utf8'), live);
 
+    const rejectInput = async (name, packetBody, outcomesBody, pattern) => {
+      const packetFilePath = path.join(dir, `${name}-packet.json`);
+      const outcomesFilePath = path.join(dir, `${name}-outcomes.json`);
+      await writeFile(packetFilePath, packetBody);
+      await writeFile(outcomesFilePath, outcomesBody);
+      const result = run(['record', packetFilePath, outcomesFilePath, '--state', state]);
+      assert.notEqual(result.status, 0, name);
+      assert.match(result.stderr, pattern, name);
+      assert.doesNotMatch(result.stderr, /TypeError|at file:/u, `${name}: an input error, not a runtime exception`);
+      assert.equal(await readFile(state, 'utf8'), live, `${name}: state untouched`);
+    };
+    const goodPacket = JSON.stringify(packetFile);
+    await rejectInput('null-packet', 'null', '[]', /object with a packet list/u);
+    await rejectInput('array-packet', '[]', '[]', /object with a packet list/u);
+    await rejectInput('no-list', JSON.stringify({ canonical_revision: ids.rev }), '[]', /object with a packet list/u);
+    await rejectInput('null-outcomes', goodPacket, 'null', /list of outcomes/u);
+    await rejectInput('object-outcomes', goodPacket, '{}', /list of outcomes/u);
+    await rejectInput('not-json', goodPacket, '{oops', /not JSON/u);
+
     // A corrupt or unreadable state file must stop the command and must never be replaced by an empty state.
     const before = await readFile(state, 'utf8');
     await writeFile(state, `${before.slice(0, 40)}`);

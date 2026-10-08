@@ -160,11 +160,13 @@ export function recordOutcomes(state, packet, outcomes, { candidates, index, sna
   if (!index || typeof snapshotDigest !== 'string' || !snapshotDigest) throw new Error('recordOutcomes needs the canonical index and the retrieval snapshot digest');
   const bound = packetBoundErrors(packet);
   if (bound.length) return { state, errors: bound };
+  if (!Array.isArray(outcomes)) return { state, errors: ['outcomes must be a list'] };
   const byId = new Map(packet.map((row) => [row.sense_id, row]));
   const errors = [];
   const seen = new Set();
   const done = { ...state.done };
   for (const outcome of outcomes) {
+    if (outcome === null || typeof outcome !== 'object' || Array.isArray(outcome) || typeof outcome.sense_id !== 'string') { errors.push('each outcome must be an object with a sense_id'); continue; }
     const row = byId.get(outcome.sense_id);
     if (!row) { errors.push(`${outcome.sense_id}: not part of the supplied packet`); continue; }
     if (seen.has(outcome.sense_id)) { errors.push(`${outcome.sense_id}: duplicate outcome`); continue; }
