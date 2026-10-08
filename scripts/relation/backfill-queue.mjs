@@ -129,6 +129,16 @@ export function currentCandidatesForDone(canonical, rows, state, { index = build
   return result;
 }
 
+/** A packet is one bounded unit of work: 1..MAX_PACKET_SIZE distinct senses. Returns error strings. */
+export function packetBoundErrors(packet) {
+  if (!Array.isArray(packet) || packet.length === 0) return ['packet must be a non-empty list of senses'];
+  const errors = [];
+  if (packet.length > MAX_PACKET_SIZE) errors.push(`packet has ${packet.length} senses; the bound is ${MAX_PACKET_SIZE}`);
+  const ids = packet.map((row) => row?.sense_id);
+  if (new Set(ids).size !== ids.length) errors.push('packet repeats a sense');
+  return errors;
+}
+
 /**
  * Next bounded packet of pending senses: never reviewed, or reviewed against a different gloss or an incomplete
  * candidate pool (see isReviewCurrent). A sense that no longer exists is simply dropped from consideration.
@@ -146,6 +156,8 @@ export function nextPacket(rows, state, { limit = 50, currentCandidates = new Re
  */
 export function recordOutcomes(state, packet, outcomes, { candidates, index, snapshotDigest } = {}) {
   if (!index || typeof snapshotDigest !== 'string' || !snapshotDigest) throw new Error('recordOutcomes needs the canonical index and the retrieval snapshot digest');
+  const bound = packetBoundErrors(packet);
+  if (bound.length) return { state, errors: bound };
   const byId = new Map(packet.map((row) => [row.sense_id, row]));
   const errors = [];
   const seen = new Set();

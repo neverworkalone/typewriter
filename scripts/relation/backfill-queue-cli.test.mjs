@@ -61,6 +61,18 @@ test('CLI record verifies approved targets, preserves them across a restart, and
     assert.equal(again.status, 0, again.stderr);
     assert.notEqual(JSON.parse(await readFile(path.join(dir, 'packet2.json'), 'utf8')).packet[0].sense_id, row.sense_id);
 
+    // One record call is one bounded unit: a packet of more than 200 distinct canonical senses is refused before any
+    // retrieval, and the existing state stays byte-for-byte as it was.
+    const live = await readFile(state, 'utf8');
+    const ids = JSON.parse(execFileSync(process.execPath, ['-e', `import('${path.resolve(import.meta.dirname, '../validate/canonical-context.mjs')}').then(async (m) => { const c = await m.loadCanonicalContext(); console.log(JSON.stringify({ rev: c.canonicalRevision, ids: c.records.flatMap((i) => i.record.senses.map((s) => s.id)).slice(0, 201) })); })`], { encoding: 'utf8' }));
+    assert.equal(new Set(ids.ids).size, 201);
+    const hugePath = path.join(dir, 'huge.json');
+    await writeFile(hugePath, JSON.stringify({ canonical_revision: ids.rev, packet: ids.ids.map((sense_id) => ({ sense_id })) }));
+    const huge = run(['record', hugePath, outcomesPath, '--state', state]);
+    assert.notEqual(huge.status, 0);
+    assert.match(huge.stderr, /the bound is 200/u);
+    assert.equal(await readFile(state, 'utf8'), live, 'an oversized packet never touches state');
+
     // A corrupt or unreadable state file must stop the command and must never be replaced by an empty state.
     const before = await readFile(state, 'utf8');
     await writeFile(state, `${before.slice(0, 40)}`);

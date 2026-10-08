@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import {
-  BACKFILL_CONTRACT, candidateEvidence, currentCandidatesForDone, inventoryCanonicalSenses, newQueueState, nextPacket, recordOutcomes, retrievePacket, summarizeQueue,
+  BACKFILL_CONTRACT, candidateEvidence, currentCandidatesForDone, packetBoundErrors, inventoryCanonicalSenses, newQueueState, nextPacket, recordOutcomes, retrievePacket, summarizeQueue,
 } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -58,6 +58,9 @@ if (command === 'status') {
     console.error(`packet was issued for canonical revision ${packetFile.canonical_revision}; run next again on the current revision`);
     process.exit(1);
   }
+  // Bound the packet before any retrieval: one record call is one bounded unit, never several.
+  const bound = packetBoundErrors(packetFile.packet);
+  if (bound.length) { console.error(bound.join('\n')); process.exit(1); }
   const byId = new Map(rows.map((row) => [row.sense_id, row]));
   const packet = packetFile.packet.map((row) => byId.get(row.sense_id)).filter(Boolean);
   if (packet.length !== packetFile.packet.length) { console.error('packet names a sense that is not in the canonical inventory'); process.exit(1); }

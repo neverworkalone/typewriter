@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  ReviewContext, isReviewCurrent, candidateEvidence, currentCandidatesForDone, inventoryCanonicalSenses, MAX_PACKET_SIZE, newQueueState, nextPacket, orderInventory, recordOutcomes, retrievePacket, summarizeQueue,
+  packetBoundErrors, ReviewContext, isReviewCurrent, candidateEvidence, currentCandidatesForDone, inventoryCanonicalSenses, MAX_PACKET_SIZE, newQueueState, nextPacket, orderInventory, recordOutcomes, retrievePacket, summarizeQueue,
 } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -206,4 +206,16 @@ test('an approved target that left canonical (or changed owner) makes the review
   // The target id now belongs to a different record: fail closed.
   const reowned = { ...canonical, canonicalRevision: 'f'.repeat(64), records: canonical.records.map((r) => ({ ...r, senses: r.senses.map((s) => (s.id === approved.target_sense ? { ...s, id: `${r.id}-s9` } : s)) })) };
   assert.equal(status(reowned), 0);
+});
+
+test('a packet is one bounded unit: oversized, empty and repeated-sense packets are rejected without recording', () => {
+  const state = newQueueState(canonical.canonicalRevision);
+  const big = Array.from({ length: MAX_PACKET_SIZE + 1 }, (_, i) => ({ ...rows[0], sense_id: `w${i}-s1` }));
+  assert.match(packetBoundErrors(big).join('\n'), /bound is 200/u);
+  assert.match(packetBoundErrors([]).join('\n'), /non-empty/u);
+  assert.match(packetBoundErrors([rows[0], rows[0]]).join('\n'), /repeats a sense/u);
+  assert.deepEqual(packetBoundErrors(Array.from({ length: MAX_PACKET_SIZE }, (_, i) => ({ sense_id: `w${i}-s1` }))), []);
+  const result = recordOutcomes(state, big, [], { candidates: new Map(), index: buildRelationIndex(canonical), snapshotDigest: 'x' });
+  assert.equal(result.state, state);
+  assert.match(result.errors.join('\n'), /bound is 200/u);
 });
