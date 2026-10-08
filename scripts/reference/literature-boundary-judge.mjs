@@ -15,7 +15,9 @@ import { SELFCHECK_PATH, selectCohort, validateJudge } from './literature-valida
 
 export const JUDGE_DIRECTORY = path.join(resolveTypewriterCachePaths().evidence, 'boundary-414');
 export const SAMPLE_CANDIDATES = 30;
-export const HITS_PER_STRATUM = 3;
+export const HITS_PER_STRATUM = 5;
+// A cell (candidate × stratum) sampled below its population needs at least this many hits for its sampling variation to be evaluated.
+export const MIN_SELECTED_FOR_INTERVAL = 5;
 export const LABELS = Object.freeze(['same_word', 'other_word', 'unclear']);
 export const OTHER_WORD_TYPES = Object.freeze(['personal_name', 'compound', 'part_of_other_headword', 'hanja_homograph']);
 export const CRITERIA = Object.freeze({ min_relative_other_word_reduction: 1 / 3, max_dropped_same_word_share: 0.1 });
@@ -108,14 +110,26 @@ function estimate(rows) {
 const round4 = (value) => (value === null ? null : Number(value.toFixed(4)));
 const percentile = (sorted, q) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(q * sorted.length)))];
 
-/** Candidate-clustered percentile bootstrap of the two criteria quantities. Null interval = uncertainty not evaluable. */
+/**
+ * Two-stage percentile bootstrap of the two criteria quantities: candidates are resampled with replacement, and inside
+ * each drawn candidate every sampled cell (candidate × stratum) redraws its `selected` hits with replacement from the
+ * observed ones, so both between-candidate variation and the variation of picking only a few hits from a large stratum
+ * are reflected. Cells that are fully enumerated (selected = population) have no sampling variation. If any partly
+ * sampled cell has fewer than MIN_SELECTED_FOR_INTERVAL hits, that variation cannot be evaluated reliably and the
+ * interval is `null` (not evaluable) instead of a degenerate one.
+ */
 export function bootstrapInterval(rows) {
-  const clusters = [...Map.groupBy(rows, (row) => row.candidate_id).values()];
-  const random = seededRandom('bootstrap-414:' + clusters.map((cluster) => cluster[0].candidate_id).sort().join(','));
+  const clusters = [...Map.groupBy(rows, (row) => row.candidate_id).values()]
+    .map((cluster) => [...Map.groupBy(cluster, (row) => row.stratum).values()]);
+  const underSampled = clusters.flat().filter((cell) => cell[0].selected < cell[0].population && cell[0].selected < MIN_SELECTED_FOR_INTERVAL).length;
+  const base = { method: 'two_stage_percentile_bootstrap', clusters: clusters.length, resamples: BOOTSTRAP.resamples, under_sampled_cells: underSampled };
+  if (underSampled > 0) return { ...base, evaluable: false, relative_other_word_reduction: null, same_word_dropped_share: null };
+  const random = seededRandom('bootstrap-414:' + rows.map((row) => row.candidate_id).sort().join(','));
+  const redraw = (cell) => (cell[0].selected === cell[0].population ? cell : Array.from({ length: cell.length }, () => cell[Math.floor(random() * cell.length)]));
   const reductions = [];
   const shares = [];
   for (let index = 0; index < BOOTSTRAP.resamples; index += 1) {
-    const sample = Array.from({ length: clusters.length }, () => clusters[Math.floor(random() * clusters.length)]).flat();
+    const sample = Array.from({ length: clusters.length }, () => clusters[Math.floor(random() * clusters.length)]).flat().flatMap(redraw);
     const { reduction, droppedSameShare } = estimate(sample);
     if (reduction !== null) reductions.push(reduction);
     if (droppedSameShare !== null) shares.push(droppedSameShare);
@@ -124,7 +138,8 @@ export function bootstrapInterval(rows) {
   const interval = (list) => (usable(list)
     ? (list.sort((a, b) => a - b), [round4(percentile(list, BOOTSTRAP.interval[0])), round4(percentile(list, BOOTSTRAP.interval[1]))])
     : null);
-  return { method: 'candidate_clustered_percentile_bootstrap', clusters: clusters.length, resamples: BOOTSTRAP.resamples, relative_other_word_reduction: interval(reductions), same_word_dropped_share: interval(shares) };
+  const result = { relative_other_word_reduction: interval(reductions), same_word_dropped_share: interval(shares) };
+  return { ...base, evaluable: result.relative_other_word_reduction !== null && result.same_word_dropped_share !== null, ...result };
 }
 
 /** Rows of one candidate and stratum must agree on population/selected, and `selected` must equal the row count. */
@@ -144,7 +159,7 @@ function assertConsistentSampling(rows) {
  * candidate's distinct substring units in that stratum and how many of them were picked. Each judged hit stands for
  * population/selected units (Horvitz–Thompson weight), so the over-sampling of the small dropped stratum cannot move
  * the rates. Rates describe the capped scatter sample the retriever reads, not the whole corpus. `unclear` hits are
- * excluded from the rates and reported. `criteria_met` is true only when the 95 % candidate-clustered bootstrap
+ * excluded from the rates and reported. `criteria_met` is true only when the 95 % two-stage bootstrap
  * interval clears both criteria (lower bound of the reduction, upper bound of the dropped same-word share); the
  * point estimates alone are reported as `point_estimate_meets_criteria` and are never a decision.
  */

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { aggregateLabels, bootstrapInterval, CRITERIA, pickHits, sampleCandidateIds, stratumPopulation, validateLabels } from './literature-boundary-judge.mjs';
+import { aggregateLabels, bootstrapInterval, CRITERIA, MIN_SELECTED_FOR_INTERVAL, pickHits, sampleCandidateIds, stratumPopulation, validateLabels } from './literature-boundary-judge.mjs';
 import { summarize, toleranceVerdict, TOLERANCES } from './literature-boundary-measure.mjs';
 
 // Synthetic, text-free fixtures only (#414 measurement and judged-sample contract).
@@ -20,14 +20,14 @@ test('sample excludes the #392 validation cohort, is deterministic and bounded',
 
 test('hit picking separates boundary-kept from dropped units, de-duplicates and caps each side', () => {
   const units = [
-    ...Array.from({ length: 5 }, (_, i) => unit('꼬리', '꾀꼬리 소리' + i, i)),
-    ...Array.from({ length: 5 }, (_, i) => unit('꼬리', '꼬리를 흔든다' + i, 10 + i)),
+    ...Array.from({ length: 8 }, (_, i) => unit('꼬리', '꾀꼬리 소리' + i, i)),
+    ...Array.from({ length: 8 }, (_, i) => unit('꼬리', '꼬리를 흔든다' + i, 10 + i)),
     unit('꼬리', '꼬리를 흔든다0', 10), // duplicate location
   ];
   const picked = pickHits(units);
-  assert.equal(picked.filter((hit) => hit.stratum === 'dropped').length, 3);
-  assert.equal(picked.filter((hit) => hit.stratum === 'kept').length, 3);
-  assert.equal(new Set(picked.map((hit) => hit.location_digest)).size, 6);
+  assert.equal(picked.filter((hit) => hit.stratum === 'dropped').length, 5);
+  assert.equal(picked.filter((hit) => hit.stratum === 'kept').length, 5);
+  assert.equal(new Set(picked.map((hit) => hit.location_digest)).size, 10);
   assert.ok(picked.filter((hit) => hit.stratum === 'dropped').every((hit) => hit.text.startsWith('꾀꼬리')));
 });
 
@@ -127,7 +127,8 @@ test('uncertainty is reported and criteria_met needs the interval, not just the 
   const small = build([...Array(3).fill({ keptLabel: 'same_word' }), ...Array(2).fill({ keptLabel: 'other_word' })]);
   assert.equal(small.point_estimate_meets_criteria, true);
   assert.equal(small.criteria_met, false);
-  assert.equal(small.uncertainty.method, 'candidate_clustered_percentile_bootstrap');
+  assert.equal(small.uncertainty.method, 'two_stage_percentile_bootstrap');
+  assert.equal(small.uncertainty.evaluable, true);
   assert.equal(small.uncertainty.clusters, 5);
   assert.ok(small.uncertainty.relative_other_word_reduction[0] < CRITERIA.min_relative_other_word_reduction);
   // Homogeneous large sample: both point estimate and interval pass.
@@ -136,6 +137,49 @@ test('uncertainty is reported and criteria_met needs the interval, not just the 
   assert.deepEqual(large.uncertainty.relative_other_word_reduction, [1, 1]);
   // Deterministic.
   assert.deepEqual(bootstrapInterval([{ candidate_id: 'a', stratum: 'kept', weight: 1, label: 'same_word' }]), bootstrapInterval([{ candidate_id: 'a', stratum: 'kept', weight: 1, label: 'same_word' }]));
+});
+
+test('a partly sampled cell with too few hits makes the interval not evaluable instead of degenerate (#414 review)', () => {
+  const build = (keptSelected, candidates = 30) => {
+    const mapping = {};
+    const labels = {};
+    for (let index = 0; index < candidates; index += 1) {
+      const candidate = 'C000001-' + String(index + 1).padStart(4, '0');
+      mapping[`D${index}`] = { candidate_id: candidate, stratum: 'dropped', population: 1, selected: 1 }; // fully enumerated
+      labels[`D${index}`] = { label: 'other_word', type: 'compound' };
+      for (let hit = 0; hit < keptSelected; hit += 1) { // large kept stratum, identical observed labels in every candidate
+        mapping[`K${index}_${hit}`] = { candidate_id: candidate, stratum: 'kept', population: 500, selected: keptSelected };
+        labels[`K${index}_${hit}`] = { label: 'same_word' };
+      }
+    }
+    return aggregateLabels(mapping, labels);
+  };
+  const thin = build(MIN_SELECTED_FOR_INTERVAL - 1);
+  assert.equal(thin.point_estimate_meets_criteria, true);
+  assert.equal(thin.uncertainty.evaluable, false);
+  assert.equal(thin.uncertainty.under_sampled_cells, 30);
+  assert.equal(thin.uncertainty.relative_other_word_reduction, null);
+  assert.equal(thin.criteria_met, false); // the hidden hit-sampling variation is never turned into a pass
+  const enough = build(MIN_SELECTED_FOR_INTERVAL);
+  assert.equal(enough.uncertainty.evaluable, true);
+  assert.equal(enough.criteria_met, true);
+  // Fully enumerated cells (selected = population) carry no hit-sampling variation and are never "under-sampled".
+  const mapping = { D: { candidate_id: 'C1', stratum: 'dropped', population: 2, selected: 2 }, D2: { candidate_id: 'C1', stratum: 'dropped', population: 2, selected: 2 }, K: { candidate_id: 'C1', stratum: 'kept', population: 1, selected: 1 } };
+  const labels = { D: { label: 'other_word', type: 'compound' }, D2: { label: 'other_word', type: 'compound' }, K: { label: 'same_word' } };
+  assert.equal(aggregateLabels(mapping, labels).uncertainty.under_sampled_cells, 0);
+});
+
+test('within-cell hit sampling variation widens the interval even for a single candidate', () => {
+  const mapping = {};
+  const labels = {};
+  for (let hit = 0; hit < 5; hit += 1) {
+    mapping[`D${hit}`] = { candidate_id: 'C1', stratum: 'dropped', population: 100, selected: 5 };
+    labels[`D${hit}`] = { label: 'other_word', type: 'compound' };
+    mapping[`K${hit}`] = { candidate_id: 'C1', stratum: 'kept', population: 100, selected: 5 };
+    labels[`K${hit}`] = hit === 0 ? { label: 'other_word', type: 'compound' } : { label: 'same_word' };
+  }
+  const [low, high] = aggregateLabels(mapping, labels).uncertainty.relative_other_word_reduction;
+  assert.ok(low < high, `${low} < ${high}`);
 });
 
 test('measurement summary and tolerance verdict are fail-closed on availability loss', () => {
