@@ -8,7 +8,7 @@ import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 import { evidenceForCandidate, loadEvidenceContext } from './literature-evidence-run.mjs';
 import { DEFAULT_FULL_LITERATURE_INDEX_PATH, REPOSITORY_DIRECTORY } from './literature-index.mjs';
 
-// Issue #392 entry validation (docs/literature-evidence-validation-plan.md). The owner judges; this tool only
+// Issue #392 entry validation (docs/literature-evidence-validation-plan.md). The recorded judge (the owner or an owner-delegated AI, never inferred) judges; this tool only
 // selects, blinds, seals and aggregates. Raw text and the unblinding map stay under the local cache.
 
 const CACHE_PATHS = resolveTypewriterCachePaths();
@@ -70,11 +70,20 @@ function validateJudgment(judgment, phase, contextCount) {
 export const JUDGE_KINDS = ['owner_direct', 'ai_delegate'];
 
 // Who judged is recorded, never inferred: an AI delegate's judgment is not the owner's direct judgment.
+// The judge is a closed discriminated union; contradictory or extra fields (e.g. an owner_direct carrying a model
+// name, or an unverifiable assurance flag) fail closed:
+//   { kind: 'owner_direct' }  |  { kind: 'ai_delegate', name: <non-blank model>, delegated_by: 'owner' }
+const exactKeys = (value, keys) => {
+  const actual = Object.keys(value).sort();
+  return actual.length === keys.length && keys.slice().sort().every((key, index) => key === actual[index]);
+};
+
 export function validateJudge(file) {
   const judge = file?.judge;
-  if (!judge || !JUDGE_KINDS.includes(judge.kind)) return ['judge.kind'];
-  if (judge.kind === 'ai_delegate' && (typeof judge.name !== 'string' || judge.name.trim() === '' || judge.delegated_by !== 'owner')) return ['judge.ai_delegate'];
-  return [];
+  if (judge === null || typeof judge !== 'object' || Array.isArray(judge) || !JUDGE_KINDS.includes(judge.kind)) return ['judge.kind'];
+  if (judge.kind === 'owner_direct') return exactKeys(judge, ['kind']) ? [] : ['judge.owner_direct'];
+  const valid = exactKeys(judge, ['kind', 'name', 'delegated_by']) && typeof judge.name === 'string' && judge.name.trim() !== '' && judge.delegated_by === 'owner';
+  return valid ? [] : ['judge.ai_delegate'];
 }
 
 export function validateJudgments(file, blindIds, phase, contextCounts = {}) {
@@ -292,7 +301,7 @@ async function prepare() {
     '   파일 최상위 `judge`에 판정자를 기록한다: `{ "kind": "owner_direct" }` 또는 `{ "kind": "ai_delegate", "name": "<모델>", "delegated_by": "owner" }`. AI 위임 판정은 소유자 직접 판정으로 기록하지 않는다.',
     '2. `pnpm run reference:literature:validate -- seal` 로 1단계를 봉인한다 (파일 digest 기록).',
     '3. `pnpm run reference:literature:validate -- reveal` 이 봉인을 확인한 뒤 `phase2/`와 `phase2-judgments.json`을 만든다.',
-    '4. 2단계는 처분·확신도·근거·초 외에 `literature_role`(helpful|irrelevant|misleading), `basis_type`(sense_demonstrated|contrast_exposed|none), `cited_contexts`(문학 문맥 번호), `conflicts_with_source_evidence`, `owner_endorses_final`을 기록한다.',
+    '4. 2단계 파일에도 최상위 `judge`를 같은 형식으로 기록한다(없으면 `report`가 거부한다). 2단계는 처분·확신도·근거·초(null 허용) 외에 `literature_role`(helpful|irrelevant|misleading), `basis_type`(sense_demonstrated|contrast_exposed|none), `cited_contexts`(문학 문맥 번호), `conflicts_with_source_evidence`, `owner_endorses_final`을 기록한다.',
     '5. 봉인 후 1단계 답을 고치지 않는다. `cohort.local.json`(층·후보 id)은 모든 판정이 끝나기 전에 열지 않는다.',
   ].join('\n') + '\n');
   console.log(JSON.stringify({ cohort_sha256: sha(JSON.stringify(cohort)), cases: cohort.length, directory: VALIDATION_DIRECTORY }, null, 2));

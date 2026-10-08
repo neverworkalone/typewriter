@@ -214,7 +214,10 @@ test('unmeasured time stays null and its comparison is not_measurable; a measure
 test('the judge must be declared; an AI delegate is never recorded as the owner direct judgment', () => {
   assert.deepEqual(validateJudge({ judge: { kind: 'owner_direct' } }), []);
   assert.deepEqual(validateJudge({ judge: AI }), []);
-  for (const judge of [undefined, null, {}, { kind: 'human' }, { kind: 'ai_delegate' }, { kind: 'ai_delegate', name: 'ChatGPT' }, { kind: 'ai_delegate', name: '', delegated_by: 'owner' }]) {
+  for (const judge of [undefined, null, [], 'owner_direct', {}, { kind: 'human' }, { kind: 'ai_delegate' }, { kind: 'ai_delegate', name: 'ChatGPT' }, { kind: 'ai_delegate', name: '', delegated_by: 'owner' },
+    { kind: 'ai_delegate', name: 'ChatGPT', delegated_by: 'someone' },
+    { kind: 'owner_direct', name: 'ChatGPT', delegated_by: 'owner' }, { kind: 'owner_direct', human_reviewed: true },
+    { ...AI, independent: true }, { ...AI, human_reviewed: true }]) {
     assert.ok(validateJudge({ judge }).length, JSON.stringify(judge));
   }
   const cohort = selectCohort(rows);
@@ -231,4 +234,29 @@ test('the judge must be declared; an AI delegate is never recorded as the owner 
   assert.match(direct.limits, /judged by the owner directly/);
   assert.doesNotMatch(direct.limits, /AI/);
   assert.match(aggregate(cohort, file({ kind: 'owner_direct' }), phase2).limits, /the owner directly and AI delegate ChatGPT/);
+});
+
+test('a contradictory judge fails at seal and at report, in either phase', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'judge-'));
+  try {
+    const cohort = selectCohort(rows);
+    await mkdir(path.join(directory, 'owner'), { recursive: true });
+    await writeFile(path.join(directory, 'cohort.local.json'), JSON.stringify({ cohort }));
+    const phase1 = (judge) => JSON.stringify({ phase: 1, judge, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, { ...one('deferred'), seconds: null }])) });
+    const phase2 = (judge) => JSON.stringify({ phase: 2, judge, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, { ...two('covered'), seconds: null }])) });
+    const contradictory = { kind: 'owner_direct', name: 'ChatGPT', delegated_by: 'owner' };
+    await writeFile(path.join(directory, 'owner', 'phase1-judgments.json'), phase1(contradictory));
+    await assert.rejects(sealPhase1(directory), /judge\.owner_direct/);
+    await writeFile(path.join(directory, 'owner', 'phase1-judgments.json'), phase1(AI));
+    assert.equal(await sealPhase1(directory), 'phase 1 sealed');
+    await writeFile(path.join(directory, 'owner', 'phase2-judgments.json'), phase2(contradictory));
+    await assert.rejects(buildReport(directory), /judge\.owner_direct/);
+    await writeFile(path.join(directory, 'owner', 'phase2-judgments.json'), phase2({ ...AI, independent: true }));
+    await assert.rejects(buildReport(directory), /judge\.ai_delegate/);
+    // Genuine mixed-phase judges (here both AI-delegated, then owner-direct) are accepted and disclosed accurately.
+    await writeFile(path.join(directory, 'owner', 'phase2-judgments.json'), phase2({ kind: 'owner_direct' }));
+    const mixed = await buildReport(directory);
+    assert.match(mixed.limits, /AI delegate ChatGPT and the owner directly/);
+    assert.match(mixed.judgment_provenance, /not the owner direct/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
