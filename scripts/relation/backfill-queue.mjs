@@ -44,6 +44,12 @@ export function orderInventory(rows) {
 
 export const newQueueState = (canonicalRevision) => ({ contract: BACKFILL_CONTRACT, canonical_revision: canonicalRevision, done: {} });
 
+/** Digest of what a reviewer reads about a canonical target: its lemma and gloss. */
+const meaningDigest = (index, senseId) => {
+  const sense = index.bySenseId.get(senseId);
+  return sense ? sha256Json([sense.lemma, sense.gloss]) : null;
+};
+
 const targetId = (target) => target.sense_id ?? target.provisional_id;
 
 /**
@@ -57,7 +63,7 @@ export function candidateEvidence(artifact, index) {
       id: targetId(candidate.target),
       record_id: candidate.target.record_id ?? null,
       // The reviewer judges the target's meaning, so a changed target lemma/gloss is changed evidence too.
-      meaning_sha256: candidate.target.sense_id ? sha256Json([index.bySenseId.get(candidate.target.sense_id).lemma, index.bySenseId.get(candidate.target.sense_id).gloss]) : null,
+      meaning_sha256: candidate.target.sense_id ? meaningDigest(index, candidate.target.sense_id) : null,
       pos: candidate.target.pos,
       signals: [...candidate.signals],
       literature: [...(candidate.literature_location_digests ?? [])],
@@ -97,6 +103,10 @@ export function isReviewCurrent(row, entry, currentCandidates) {
   if (!index) return false;
   for (const { relation } of entry.approved_relations) {
     if (index.bySenseId.get(relation.target_sense)?.record_id !== relation.target) return false;
+    // The approval was judged against the target's meaning at review time; an edited lemma/gloss stales it even
+    // when the target is no longer offered as a candidate.
+    const reviewedTarget = entry.reviewed_candidates.find((candidate) => candidate.id === relation.target_sense);
+    if (!reviewedTarget || reviewedTarget.meaning_sha256 !== meaningDigest(index, relation.target_sense)) return false;
   }
   const current = currentCandidates.get(row.sense_id);
   if (!current) return false;

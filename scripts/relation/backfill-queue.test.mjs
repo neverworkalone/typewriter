@@ -199,6 +199,10 @@ test('an approved target that left canonical (or changed owner) makes the review
   assert.ok(!offered.some((c) => c.id === approved.target_sense), 'the approved target is no longer a candidate');
   assert.equal(status(related), 1);
   assert.equal(next(related), false);
+  // The approved target's lemma/gloss was edited and it is no longer a candidate: the approval is stale.
+  const edited = { ...related, canonicalRevision: '9'.repeat(64), records: related.records.map((r) => ({ ...r, senses: r.senses.map((s) => (s.id === approved.target_sense ? { ...s, gloss: '완전히 달라진 뜻풀이.' } : s)) })) };
+  assert.equal(status(edited), 0);
+  assert.equal(next(edited), true);
   // The target id now belongs to a different record: fail closed.
   const reowned = { ...canonical, canonicalRevision: 'f'.repeat(64), records: canonical.records.map((r) => ({ ...r, senses: r.senses.map((s) => (s.id === approved.target_sense ? { ...s, id: `${r.id}-s9` } : s)) })) };
   assert.equal(status(reowned), 0);
