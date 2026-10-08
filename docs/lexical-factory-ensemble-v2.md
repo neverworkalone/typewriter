@@ -47,17 +47,17 @@ and segmentation compatibility.
 | `concordant` | the three top readings agree, the path explains the whole surface, and no *material* Kiwi alternative competes | assigned to its lemma; no analysis hold |
 | `supported_alternative` | a non-top Kiwi N-best reading is also proposed by Khaiii and/or MeCab; the rival is recorded | assigned to the better supported reading; keeps a reviewable `analysis_ambiguous` hold |
 | `conflicted` | meaningful lemma/POS/segmentation disagreement (one-vs-two, Kiwi isolated, all three differ, extra morpheme, no single target, an unsupported material Kiwi rival, a provider-reported ambiguity) | **not a headword**; unresolved queue |
-| `unsupported_or_unknown` | a provider has no usable output (unsupported/error) | **not a headword**; unresolved queue |
+| `unsupported_or_unknown` | a provider has no usable output (unsupported/error), or returns a lemma outside the supported Hangul citation-form shape | **not a headword**; unresolved queue |
 
 Reason codes are a closed, stable vocabulary (`ENSEMBLE_REASONS`), e.g. `three_way_agreement`,
 `kiwi_alternative_supported`, `one_vs_two_disagreement`, `kiwi_isolated_pair`, `all_three_differ`,
 `kiwi_unsupported_rival`, `segmentation_incompatible`, `no_single_target_morpheme`,
-`extractor_hint_mismatch`, `<provider>_unusable`, `<provider>_reported_ambiguous`. A lower-ranked Kiwi
+`extractor_hint_mismatch`, `unsupported_lemma_shape`, `<provider>_unusable`, `<provider>_reported_ambiguous`. A lower-ranked Kiwi
 path that merely re-segments the same stem (짠 + 하다, bare 짠 for 짠하다) is not a rival; another complete
 lemma (가/noun beside 가다) is.
 
-All competing hypotheses (`{lemma, pos, supporters}` with supporters `kiwi_top|kiwi_alt|khaiii|mecab`) are
-kept: `alternatives` on an assigned observation, `hypotheses` on a queue entry. Extractor/source holds
+All representable competing hypotheses (`{lemma, pos, supporters}` with supporters `kiwi_top|kiwi_alt|khaiii|mecab`) are
+kept: `alternatives` on an assigned observation, `hypotheses` on a queue entry. A provider reading outside the supported Hangul lemma shape is never serialized as a hypothesis; it keeps the observation unresolved with `unsupported_lemma_shape`, while its source-bound trace remains digest-bound. Extractor/source holds
 (`analysis_ambiguous`, `coverage_collision`, `no_evidence`, …) are carried unchanged and are never cleared by
 2-of-3 or 3-of-3 agreement. A clear sibling form does not inherit an ambiguous sibling's state, and a clear
 sibling does not hide the ambiguous form: it is kept (assigned with a hold, or in the queue).

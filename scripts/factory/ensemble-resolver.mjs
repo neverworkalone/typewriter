@@ -22,6 +22,7 @@ export const CATEGORIES = Object.freeze(['concordant', 'supported_alternative', 
 export const ENSEMBLE_REASONS = Object.freeze([
   'three_way_agreement', 'kiwi_alternative_supported', 'one_vs_two_disagreement', 'kiwi_isolated_pair', 'all_three_differ',
   'kiwi_unsupported_rival', 'segmentation_incompatible', 'no_single_target_morpheme', 'extractor_hint_mismatch',
+  'unsupported_lemma_shape',
   'kiwi_unusable', 'khaiii_unusable', 'mecab_unusable', 'kiwi_reported_ambiguous', 'khaiii_reported_ambiguous', 'mecab_reported_ambiguous',
 ]);
 export const SUPPORTERS = Object.freeze(['kiwi_alt', 'kiwi_top', 'khaiii', 'mecab']);
@@ -163,7 +164,9 @@ const sortedUnique = (values) => [...new Set(values)].sort(compare);
 function collectHypotheses(top, kiwiAlternatives) {
   const map = new Map();
   const add = (reading, supporter) => {
-    if (!reading) return;
+    // The manifest hypothesis contract permits Hangul citation-form lemmas only. Invalid provider
+    // readings remain bound by the trace and unresolved reason, but cannot enter typed hypotheses.
+    if (!reading || !KOREAN_WORD.test(String(reading.lemma))) return;
     const entry = map.get(readingKey(reading)) ?? { lemma: reading.lemma, pos: reading.pos, supporters: new Set() };
     entry.supporters.add(supporter);
     map.set(readingKey(reading), entry);
@@ -187,8 +190,12 @@ export function classifyObservation({ hint, results }) {
   const readings = { kiwi: pathReading(kiwiPaths[0], hint), khaiii: usable('khaiii') ? pathReading(results.khaiii.analyses[0], hint) : { reading: null }, mecab: usable('mecab') ? pathReading(results.mecab.analyses[0], hint) : { reading: null } };
   const kiwiAlt = kiwiPaths.slice(1).map((path) => pathReading(path, hint)).filter((entry) => entry.reading && entry.segmentation_ok).map((entry) => entry.reading);
   const top = { kiwi: readings.kiwi.reading, khaiii: readings.khaiii.reading, mecab: readings.mecab.reading };
+  const unsupportedLemmaShape = [top.kiwi, top.khaiii, top.mecab, ...kiwiAlt]
+    .some((reading) => reading && !KOREAN_WORD.test(String(reading.lemma)));
   const hypotheses = collectHypotheses(top, kiwiAlt);
   const trace = { kiwi_top: top.kiwi, khaiii: top.khaiii, mecab: top.mecab, kiwi_alternatives: kiwiAlt };
+  // A structurally valid analyzer response may still be outside the Hangul lemma model.
+  if (unsupportedLemmaShape) reasons.push('unsupported_lemma_shape');
   if (ambiguous.length) {
     ambiguous.forEach((id) => reasons.push(`${id}_reported_ambiguous`));
     unusable.forEach((id) => reasons.push(`${id}_unusable`));
@@ -198,6 +205,7 @@ export function classifyObservation({ hint, results }) {
     unusable.forEach((id) => reasons.push(`${id}_unusable`));
     return finish('unsupported_or_unknown', { hypotheses, trace });
   }
+  if (unsupportedLemmaShape) return finish('unsupported_or_unknown', { hypotheses, trace });
   if (ENSEMBLE_PROVIDER_ORDER.some((id) => !readings[id].reading)) {
     reasons.push('no_single_target_morpheme');
     return finish('conflicted', { hypotheses, trace });
