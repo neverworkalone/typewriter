@@ -258,7 +258,7 @@ export function unresolvedHoldsFor(decision, providerResults) {
 }
 
 export const observationDigestOf = (observation) => digest(['ensemble-observation', observation.surface, observation.ref.kind, observation.ref.ref,
-  observation.hint?.input ?? '', observation.hint?.pos ?? '']);
+  observation.group ?? '', observation.hint?.input ?? '', observation.hint?.pos ?? '']);
 
 // Text-free decision trace: surface digest, extractor hint/holds, the Kiwi ranked paths and the
 // best-only readings, the category and its reasons. It carries no corpus snippet or paragraph text.

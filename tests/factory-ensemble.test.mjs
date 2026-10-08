@@ -563,7 +563,11 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify(exclusionManifest));
     const evidence = {
       ...evidenceDoc([
-        cand('걸다', 'verb', [h('d1', '걸어')]),
+        cand('걸다', 'verb', [
+          { ...h('d1', '걸어'), usage_group: 'usage_a' },
+          { ...h('d2', '걸어'), usage_group: 'usage_a' },
+          { ...h('d1', '걸어'), usage_group: 'usage_b' },
+        ]),
         cand('짠하다', 'adjective', [h('d2', '짠한')]),
       ]),
       selection: {
@@ -587,12 +591,16 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     const result = await runStage1(args, deps);
     assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
     assert.equal(result.summary.skippedProducedLemmas, 1);
-    assert.deepEqual(result.manifest.excluded_observations.map(({ disposition, lemma, pos, surface }) => [disposition, lemma, pos, surface]), [
-      ['prior_produced_lemma', '걷다', 'verb', '걸어'],
-    ]);
-    assert.equal(result.manifest.ensemble.counts.input_observations, 2);
-    assert.equal(result.manifest.ensemble.counts.observations, 2);
-    assert.equal(result.manifest.ensemble.counts.excluded, 1);
+    assert.equal(result.manifest.excluded_observations.length, 3);
+    assert.ok(result.manifest.excluded_observations.every((entry) => entry.disposition === 'prior_produced_lemma'
+      && entry.lemma === '걷다' && entry.pos === 'verb' && entry.surface === '걸어'));
+    assert.equal(new Set(result.manifest.excluded_observations.map((entry) => entry.observation_digest)).size, 3,
+      'separate paragraphs and usage groups have separate source observation identities');
+    assert.equal(new Set(result.manifest.excluded_observations.map((entry) => entry.ensemble.trace_digest)).size, 1,
+      'the same analyzer trace may back distinct source observations');
+    assert.equal(result.manifest.ensemble.counts.input_observations, 4);
+    assert.equal(result.manifest.ensemble.counts.observations, 4);
+    assert.equal(result.manifest.ensemble.counts.excluded, 3);
     const omitted = structuredClone(result.manifest);
     omitted.excluded_observations.pop();
     omitted.ensemble.counts.excluded = omitted.excluded_observations.length;

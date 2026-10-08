@@ -386,12 +386,9 @@ function validateEnsembleBindings(manifest, rows) {
   }
   if (isCurrent) {
     const candidateLemmas = new Set(rows.map((row) => row.input));
-    const excludedTraceDigests = new Set();
     const excludedLemmas = new Map();
     for (const entry of excluded) {
       if (candidateLemmas.has(entry.lemma)) errors.push(`candidate manifest: excluded lemma ${entry.lemma} also appears in candidate rows`);
-      if (excludedTraceDigests.has(entry.ensemble.trace_digest)) errors.push(`candidate manifest: excluded trace ${entry.ensemble.trace_digest.slice(0, 12)} is duplicated`);
-      excludedTraceDigests.add(entry.ensemble.trace_digest);
       const disposition = excludedLemmas.get(entry.lemma);
       if (disposition && disposition !== entry.disposition) errors.push(`candidate manifest: excluded lemma ${entry.lemma} has conflicting dispositions`);
       excludedLemmas.set(entry.lemma, entry.disposition);
