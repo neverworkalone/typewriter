@@ -37,8 +37,8 @@ export async function validateSharedDictionary({
       throw new Error(`shared SQLite foreign-key check failed: ${JSON.stringify(foreignKeys)}`);
     }
     const userVersion = database.prepare('PRAGMA user_version').get().user_version;
-    if (userVersion !== 2) {
-      throw new Error(`shared SQLite schema version must be 2, received ${userVersion}`);
+    if (userVersion !== 3) {
+      throw new Error(`shared SQLite schema version must be 3, received ${userVersion}`);
     }
     const metadata = Object.fromEntries(
       database.prepare('SELECT key, value FROM metadata ORDER BY key').all()
