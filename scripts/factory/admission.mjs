@@ -63,8 +63,8 @@ async function writeCanonicalJsonl(root, file, contents) {
   const relative = path.relative(path.join(root, 'data/canonical'), destination);
   // Temp + rename: an interruption never leaves a truncated canonical JSONL file.
   const final = path.join(root, 'data/canonical', relative);
-  await writeFile(`${final}.tmp`, contents, 'utf8');
-  await rename(`${final}.tmp`, final);
+  await writeFile(`${final}.partial`, contents, 'utf8');
+  await rename(`${final}.partial`, final);
 }
 
 function nextSenseOrdinal(record, reserved) {
