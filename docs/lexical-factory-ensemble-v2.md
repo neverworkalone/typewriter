@@ -91,8 +91,10 @@ Under the ensemble policy the v2 manifest additionally carries (all text-free):
 - `excluded_observations[]`: text-free assigned observations with disposition `prior_produced_lemma` or
   `deferred_lemma`, citation lemma/POS, bounded surface and source reference, analysis digest, holds, observation digest
   and the same ensemble trace record used on candidate observations. These records explain why a provider decision was
-  analyzed but did not create a current candidate row. Source-observation identity includes its usage group. A
-  `trace_digest` may repeat when separate source observations share the same surface-level analysis; uniqueness and
+  analyzed but did not create a current candidate row. Source-observation identity binds the observed surface, source
+  reference and usage group, independently of the extractor hint. Repeated hits at one identity are normalized once;
+  conflicting hints add a mismatch hold/reason without choosing by input order. A `trace_digest` may repeat when separate
+  source observations share the same surface-level analysis; uniqueness and
   disposition coverage are checked by `observation_digest`.
 - `context_fallback: {contract: context-fallback-decisions-v1, decisions, decisions_sha256}`;
 - `unresolved_observations[]`: `{queue_id, surface, evidence, holds, category, reasons, hypotheses, extractor_hint,

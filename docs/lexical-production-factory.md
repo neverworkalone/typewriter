@@ -221,9 +221,10 @@ distinct-citation-lemma-v1`; the v1 manifest fields are kept (`task_id`, `batch_
   identities normalized from the input decisions before disposition, separately
   from `counts.observations`, which must equal the candidate + unresolved + excluded
   disposition total. Repeated raw hits with the same identity are merged once and
-  remain visible in repeat metrics. `observation_digest` binds
-  source reference and usage group; a `trace_digest` may be shared when distinct
-  source observations have the same surface-level analyzer trace.
+  remain visible in repeat metrics. `observation_digest` binds the observed surface,
+  source reference and usage group independently of extractor hint. Conflicting hints
+  add a mismatch hold/reason without choosing one by input order; a `trace_digest` may
+  be shared when distinct source observations have the same surface-level analyzer trace.
   Historical `ensemble-resolution-v2` manifests remain valid and unchanged.
 
 **Before (v1, 3 candidates for one lemma) → after (v2, 1 candidate):**
