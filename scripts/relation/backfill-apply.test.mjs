@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { canonicalRecordsBeforeFactoryAdmissions, restorePreFactoryDecisionSource, validateFactoryAdmissionLedger } from '../validate/semantic-audit.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
-import { applyBackfill } from './backfill-apply.mjs';
+import { planRelationBackfill, writePlannedRecords } from '../factory/admission.mjs';
+import { approvedAmendments, applyBackfill } from './backfill-apply.mjs';
 import { inventoryCanonicalSenses, newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -122,6 +123,43 @@ test('a backfill onto a Stage 3-created record still passes the real factory his
     const baseline = await validateFactoryRepository({ root });
     assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
     assert.deepEqual(await validateFactoryRepository({ root }), baseline);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a run interrupted after the canonical write is recovered: the missing event and packet are added and factory validation holds', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { source, target } = pickPair(index);
+  const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
+  const state = newQueueState(canonical.canonicalRevision);
+  state.done[source.sense_id] = {
+    outcome: 'relations-reviewed', gloss_sha256: inventoryCanonicalSenses(index).find((item) => item.sense_id === source.sense_id).gloss_sha256,
+    rationale: 'x', relation_count: 1, approved_relations: [{ relation_id: 'x', relation, rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.` }], reviewed_candidates: [],
+  };
+  const root = await scratchRoot();
+  try {
+    const baseline = await validateFactoryRepository({ root });
+    // Reproduce the crash: canonical written, process gone before the authority event and packet.
+    const records = await readRecords(root);
+    const recordPathById = new Map();
+    for (const name of await readdir(path.join(root, 'data/canonical'))) {
+      for (const line of (await readFile(path.join(root, 'data/canonical', name), 'utf8')).split('\n')) if (line) recordPathById.set(JSON.parse(line).id, `data/canonical/${name}`);
+    }
+    const { amendments } = approvedAmendments(state, index);
+    await writePlannedRecords(planRelationBackfill({ packetId: 'R000001', amendments, canonicalRecords: records, recordPathById }), root);
+    const events = async () => JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8')).factory_admissions.length;
+    const eventsBefore = await events();
+
+    const result = await applyBackfill({ root, state, index, refreshReports: false });
+    assert.equal(result.status, 'applied');
+    assert.equal(await events(), eventsBefore + 1);
+    assert.equal((await readFile(path.join(root, result.packet_file), 'utf8')).includes(source.sense_id), true);
+    const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find((item) => item.id === source.sense_id);
+    assert.equal(sense.relations.filter((item) => item.target_sense === target.sense_id).length, 1, 'the tuple is not duplicated');
+    assert.deepEqual(await validateFactoryRepository({ root }), baseline);
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'nothing-to-apply');
   } finally {
     await rm(root, { recursive: true, force: true });
   }

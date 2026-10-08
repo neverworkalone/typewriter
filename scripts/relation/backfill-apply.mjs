@@ -49,6 +49,18 @@ async function readCanonicalFiles(root) {
   return { records, recordPathById };
 }
 
+// The canonical records as they were before `pending` was applied: tuples that are already present are removed again.
+const withoutTuples = (records, pending) => records.map((record) => {
+  const mine = pending.filter((item) => item.source_record_id === record.id);
+  if (!mine.length) return record;
+  return { ...record, senses: record.senses.map((sense) => {
+    const drop = mine.filter((item) => item.source_sense_id === sense.id).map((item) => reviewedId(item));
+    if (!drop.length || !sense.relations) return sense;
+    const kept = sense.relations.filter((relation) => !drop.includes(reviewedRelationId(sense.id, relation)));
+    const { relations, ...rest } = sense;
+    return kept.length ? { ...rest, relations: kept } : rest;
+  }) };
+});
 const reviewedId = (item) => reviewedRelationId(item.source_sense_id, item.relation);
 const nextPacketId = (events) => `R${String(events.reduce((max, event) => Math.max(max, Number(/^R(\d{6})$/u.exec(event.batch_id ?? '')?.[1] ?? 0)), 0) + 1).padStart(6, '0')}`;
 
@@ -61,18 +73,23 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
   const { amendments, stale } = approvedAmendments(state, index);
   const { records, recordPathById } = await readCanonicalFiles(root);
   // A conflicting existing tuple is rejected by the shared planner (STAGE3_RELATION_CONFLICT) and stops the run.
-  const probe = planRelationBackfill({ packetId: 'R000000', amendments, canonicalRecords: records, recordPathById });
-  const missing = new Set(probe.relationAmendments.filter((entry) => entry.outcome === 'appended').map((entry) => entry.authored_relation_id));
-  if (missing.size === 0) return { status: 'nothing-to-apply', stale, already_present: probe.relationAmendments.length };
-  const pending = amendments.filter((item) => missing.has(reviewedId(item)));
-
+  planRelationBackfill({ packetId: 'R000000', amendments, canonicalRecords: records, recordPathById });
   const sourcePath = path.join(root, AUTHORITY_PATH);
   const source = JSON.parse(await readFile(sourcePath, 'utf8'));
+  // A tuple is done only when canonical holds it AND a semantic-authority event records it. The files are written
+  // canonical first, so a run interrupted before the event leaves present-but-unrecorded tuples; those are re-applied
+  // from the record minus those tuples, which rewrites identical canonical lines and adds the missing event and packet.
+  const recorded = new Set((source.factory_admissions ?? []).flatMap((event) => (event.relation_amendments ?? [])
+    .filter((entry) => entry.outcome === 'appended').map((entry) => entry.relation_id)));
+  const pending = amendments.filter((item) => !recorded.has(reviewedId(item)));
+  if (pending.length === 0) return { status: 'nothing-to-apply', stale, already_present: amendments.length };
+  const base = withoutTuples(records, pending);
+
   const packetId = nextPacketId(source.factory_admissions ?? []);
-  const plan = planRelationBackfill({ packetId, amendments: pending, canonicalRecords: records, recordPathById });
+  const plan = planRelationBackfill({ packetId, amendments: pending, canonicalRecords: base, recordPathById });
   const packetText = `${JSON.stringify({ packet_id: packetId, relation_amendments: pending }, null, 1)}\n`;
   plan.reviewManifest = { semantic_decisions_sha256: sha256Hex(packetText), admission: {} };
-  const authority = await buildStage3SemanticAuthority({ root, baseCanonicalRecords: records, plan });
+  const authority = await buildStage3SemanticAuthority({ root, baseCanonicalRecords: base, plan });
 
   await writePlannedRecords(plan, root);
   await writeFile(sourcePath, authority.sourceText, 'utf8');

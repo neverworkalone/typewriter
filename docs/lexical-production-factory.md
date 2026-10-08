@@ -396,8 +396,10 @@ Rules carried over unchanged:
   entries, its `relation_amendments` carry the packet id as `source_candidate_id`, and the
   committed `data/relation-backfill/R######.json` keeps the approved tuples and rationales.
   Git and canonical remain the authority; the local queue state only remembers approvals, so
-  an interrupted run is resumed by running `apply` again (present tuples replay as no-ops,
-  a different note for the same target is a conflict). A review is not re-queued by the
+  an interrupted run is resumed by running `apply` again (a tuple is done only when canonical
+  holds it and a semantic-authority event records it, so a run cut off after the canonical write
+  gets its missing event and packet; recorded tuples replay as no-ops; a different note for the
+  same target is a conflict). A review is not re-queued by the
   `relation_neighbor_of_related` candidates that its own applied relations bring in.
 - **Reverse relation amendments (#399).** An admitted decision may carry
   `relation_amendments`: `{source_record_id, source_sense_id, source_gloss_sha256,
