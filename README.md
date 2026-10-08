@@ -57,7 +57,7 @@ Canonical JSONL is the source of truth. SQLite is generated from it. Runtime
 lookup is local and does not depend on an external dictionary or AI service.
 
 The Chrome extension searches its packaged dictionary on-device and stores only
-saved Settings in Chrome's local extension storage. It does not transmit searches
+saved settings in Chrome's local extension storage. It does not transmit searches
 or keep search history. See the [extension privacy disclosure](PRIVACY.md).
 
 ### Lexical data and evidence
