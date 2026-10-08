@@ -141,6 +141,8 @@
     "reference:literature:search": "node scripts/reference/search-literature-index.mjs",
     "reference:literature:evidence": "node scripts/reference/literature-evidence-pack.mjs",
     "reference:literature:validate": "node scripts/reference/literature-validation.mjs",
+    "reference:literature:boundary:measure": "node scripts/reference/literature-boundary-measure.mjs",
+    "reference:literature:boundary:judge": "node scripts/reference/literature-boundary-judge.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "verify:m2": "node scripts/verify/m2-pipeline.mjs",

@@ -12,7 +12,12 @@ import {
   DEFAULT_MAX_CONTEXTS,
   EVIDENCE_OUTPUT_DIRECTORY,
   deriveSearchForms,
+  classifyMatchSample,
+  fetchSubstringUnits,
+  DEFAULT_MATCH_MODE,
   expandContext,
+  hasEojeolMatch,
+  matchOccurrences,
   loadFactoryCandidate,
   MAX_BLOCK_UNITS,
   pilotTriggerReasons,
@@ -226,4 +231,62 @@ test('totals stay exact when the fetch cap is reached; summary and rendering dis
   assert.equal(full.summary.sampled_match_units, 60);
   assert.equal(full.summary.fetch_truncated, false);
   assert.doesNotMatch(renderEvidenceMarkdown(full), /fetch cap reached/u);
+});
+
+test('eojeol mode drops mid-eojeol matches and keeps conjugated and particle-attached forms (#414)', async () => {
+  const files = [
+    { genre: 'novel', author: 'A', blocks: [['윤선도가 지은 시', '꾀꼬리 소리']] }, // 선도/꼬리 only inside other words
+    { genre: 'poem', author: 'B', blocks: [['선도를 달리는 배', '"꼬리를 흔든다', '그 꼬리']] }, // line start, particle, quote, space
+    { genre: 'essay', author: 'C', blocks: [['가지고 갔다', '지고 간다']] },
+  ];
+  const databasePath = await makeDatabase(files);
+  assert.equal(DEFAULT_MATCH_MODE, 'substring'); // opt-in until the judged evaluation and an owner decision
+  const run = (searchForms, matchMode) => retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms, matchMode });
+  const substring = run(forms('선도', '꼬리', '지고'), 'substring').summary;
+  const eojeol = run(forms('선도', '꼬리', '지고'), 'eojeol');
+  assert.equal(substring.total_match_units, 7);
+  assert.equal(eojeol.summary.total_match_units, 4);
+  assert.deepEqual(eojeol.summary.per_form.map((f) => [f.form, f.unit_matches]), [['선도', 1], ['꼬리', 2], ['지고', 1]]);
+  assert.equal(eojeol.summary.match_mode, 'eojeol');
+  const implicit = run(forms('선도', '꼬리', '지고'), undefined).summary;
+  assert.equal(implicit.match_mode, 'substring');
+  assert.equal(implicit.total_match_units, substring.total_match_units); // no silent behaviour change without an explicit mode
+  assert.throws(() => run(forms('선도'), 'prefix'), /matchMode/u);
+  // 2-character forms use the non-FTS path; 3+ use FTS; both honour the filter.
+  assert.equal(run(forms('가지고'), 'eojeol').summary.total_match_units, 1);
+});
+
+test('match positions classify boundary, Hangul, Han and other-letter prefixes', () => {
+  assert.deepEqual(matchOccurrences('윤선도 선도', '선도').map((o) => o.class), ['after_hangul', 'boundary']);
+  assert.deepEqual(matchOccurrences('尹선도 a선도 1선도 “선도', '선도').map((o) => o.class), ['after_han', 'after_other', 'after_other', 'boundary']);
+  assert.equal(hasEojeolMatch('꾀꼬리', '꼬리'), false);
+  assert.equal(hasEojeolMatch('꾀꼬리 꼬리를', '꼬리'), true);
+  assert.equal(hasEojeolMatch('', '꼬리'), false);
+});
+
+test('classifyMatchSample counts units by position and trailing run without text', async () => {
+  const databasePath = await makeDatabase([{ genre: 'novel', author: 'A', blocks: [['꾀꼬리', '꼬리', '꼬리를', '꼬리였던것이', '尹꼬리']] }]);
+  const census = classifyMatchSample({ databasePath, searchForms: forms('꼬리') });
+  assert.deepEqual(census, { units: 5, boundary: 3, after_hangul: 1, after_han: 1, after_other: 0, trailing_0: 1, trailing_1_2: 1, trailing_3_plus: 1 });
+});
+
+test('multi-form units are counted once and agree with the retriever (#414 review)', async () => {
+  const databasePath = await makeDatabase([{ genre: 'novel', author: 'A', blocks: [['쳐다보다가 봤다', '쳐다보다가 갔다', '봤다 보다']] }]);
+  const searchForms = forms('보다', '봤다');
+  const units = fetchSubstringUnits({ databasePath, searchForms });
+  assert.equal(units.length, 3);
+  assert.deepEqual(units.find((u) => u.text === '쳐다보다가 봤다').forms, ['보다', '봤다']);
+  const census = classifyMatchSample({ databasePath, searchForms });
+  const retrieved = retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms, matchMode: 'eojeol' }).summary;
+  assert.equal(census.units, 3);
+  assert.equal(census.boundary, retrieved.total_match_units); // 2 kept units
+  assert.equal(census.after_hangul, 1);
+});
+
+test('dropped multi-form units are classified once by their earliest occurrence, independent of form order (#414 review)', async () => {
+  // `보다` follows a Han character (after_han, earliest); `다가` follows Hangul (after_hangul, later). No eojeol-start match.
+  const databasePath = await makeDatabase([{ genre: 'novel', author: 'A', blocks: [['尹보다 하다가']] }]);
+  const expected = { units: 1, boundary: 0, after_hangul: 0, after_han: 1, after_other: 0, trailing_0: 0, trailing_1_2: 0, trailing_3_plus: 0 };
+  assert.deepEqual(classifyMatchSample({ databasePath, searchForms: forms('보다', '다가') }), expected);
+  assert.deepEqual(classifyMatchSample({ databasePath, searchForms: forms('다가', '보다') }), expected);
 });

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -510,6 +510,59 @@ test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without wo
   await writeFile(path.join(cache.taskDirectory, 'bad.json'), JSON.stringify(bad));
   await assert.rejects(() => runStage1(['--evidence', 'runs/T000001/bad.json', '--task-id', 'T000001', '--base-ref', 'none'], { ...deps, providers: triple(FALLBACK) }), Stage1Error);
   contextSource.close();
+});
+
+test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alternative resolution', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-exclusion-'));
+  try {
+    const cache = await cacheForTask(root);
+    const sourceArtifacts = [{ path: 'data/reference/production/stage1-409/c18/exclude-lemma-source.json', sha256: HEX }];
+    const exclusionPayload = { lemmas: ['걷다'], schema_version: 'm9-reviewed-lemma-exclusions-v1', source_artifacts: sourceArtifacts };
+    const exclusionManifest = { ...exclusionPayload, exclusion_sha256: sha256Hex(JSON.stringify(exclusionPayload)) };
+    await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify(exclusionManifest));
+    const evidence = {
+      ...evidenceDoc([
+        cand('걸다', 'verb', [h('d1', '걸어')]),
+        cand('짠하다', 'adjective', [h('d2', '짠한')]),
+      ]),
+      selection: {
+        excluded_candidate_lemma_count: exclusionPayload.lemmas.length,
+        exclusion_sha256: exclusionManifest.exclusion_sha256,
+        exclusion_source_artifacts: sourceArtifacts,
+      },
+      orchestration: { exclusion_manifest_sha256: exclusionManifest.exclusion_sha256 },
+    };
+    await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidence));
+    const k = {
+      걸어: [p('걸다', 'verb', '걸'), p('걷다', 'verb', '걷')],
+      짠한: [p('짠하다', 'adjective', '짠하')],
+    };
+    const hh = {
+      걸어: [p('걷다', 'verb', '걷')],
+      짠한: [p('짠하다', 'adjective', '짠하')],
+    };
+    const deps = { root, cachePaths: cache.cachePaths, providers: triple({ k, h: hh, m: hh }), permission: async () => {}, log: () => {} };
+    const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'];
+    const result = await runStage1(args, deps);
+    assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
+    assert.equal(result.summary.skippedProducedLemmas, 1);
+    assert.deepEqual(await validateFactoryRepository({ root }), []);
+
+    const malformedCases = [
+      ['stale-candidate-evidence.json', { ...evidence, selection: { ...evidence.selection, exclusion_sha256: 'b'.repeat(64) } }, /exclusion digest does not match candidate evidence/u],
+      ['missing-exclusion-count.json', { ...evidence, selection: (({ excluded_candidate_lemma_count: _omit, ...selection }) => selection)(evidence.selection) }, /exclusion count is missing/u],
+      ['missing-orchestration-digest.json', { ...evidence, orchestration: {} }, /orchestration is missing/u],
+      ['missing-orchestration.json', (({ orchestration: _omit, ...rest }) => rest)(evidence), /orchestration is missing/u],
+    ];
+    for (const [file, malformed, expectedError] of malformedCases) {
+      await writeFile(path.join(cache.taskDirectory, file), JSON.stringify(malformed));
+      await assert.rejects(() => runStage1([
+        '--evidence', `runs/T000001/${file}`, '--task-id', 'T000001', '--base-ref', 'none', '--dry-run',
+      ], deps), expectedError);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('8/14: same-cohort comparison reports distinct-lemma denominators, honest unknowns, and credits no extractor-missed lemma', async () => {

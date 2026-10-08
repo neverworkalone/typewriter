@@ -1,9 +1,8 @@
-import { createHash } from 'node:crypto';
-import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import { assertLiteraturePermission, DEFAULT_FULL_LITERATURE_INDEX_PATH, REPOSITORY_DIRECTORY } from './literature-index.mjs';
-import { deferralCategory } from './literature-evidence-selfcheck.mjs';
+import { collectReplayCohort } from './literature-replay-cohort.mjs';
 import { evidenceForCandidate, loadEvidenceContext } from './literature-evidence-run.mjs';
 import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 
@@ -11,28 +10,9 @@ import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 // deterministic sample of clear (included, existing-entry) decisions. Retrieval metrics only; it
 // does not re-decide any historical disposition. Output is text-free and written to a namespaced cache run.
 
-const COMPARISON_SAMPLE = 40;
-const sha = (value) => createHash('sha256').update(value).digest('hex');
-
-async function collect(root) {
-  const deferred = [];
-  const clear = [];
-  for (const batch of (await readdir(path.join(root, 'data/reviews'))).sort()) {
-    let text;
-    try { text = await readFile(path.join(root, 'data/reviews', batch, 'decisions.jsonl'), 'utf8'); } catch { continue; }
-    for (const line of text.split('\n').filter(Boolean)) {
-      const row = JSON.parse(line);
-      if (row.disposition === 'deferred') deferred.push({ batch, id: row.source_candidate_id, category: deferralCategory(row.reason) });
-      else if (row.disposition === 'included' && row.target?.kind !== 'new_entry') clear.push({ batch, id: row.source_candidate_id, category: 'clear_included' });
-    }
-  }
-  clear.sort((a, b) => (sha(a.id) < sha(b.id) ? -1 : 1));
-  return [...deferred, ...clear.slice(0, COMPARISON_SAMPLE)];
-}
-
 await assertLiteraturePermission();
 const context = await loadEvidenceContext();
-const cohort = await collect(REPOSITORY_DIRECTORY);
+const cohort = await collectReplayCohort(REPOSITORY_DIRECTORY);
 const rows = [];
 const failures = [];
 for (const item of cohort) {
