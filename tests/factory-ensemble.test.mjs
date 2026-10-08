@@ -629,6 +629,26 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     assert.match(validateCandidateBatch({ manifest: missingExcluded, candidatesText: result.candidatesText }).join(), /requires excluded_observations/u);
     assert.deepEqual(await validateFactoryRepository({ root }), []);
 
+    const duplicatedIdentity = structuredClone(result.manifest);
+    duplicatedIdentity.excluded_observations[0].observation_digest = result.rows[0].observations[0].observation_digest;
+    const compare = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
+    duplicatedIdentity.excluded_observations.sort((left, right) => compare(left.disposition, right.disposition)
+      || compare(left.lemma, right.lemma) || compare(left.observation_digest, right.observation_digest));
+    duplicatedIdentity.ensemble.trace_sha256 = ensembleTraceSha256({
+      providers: duplicatedIdentity.analyzer_providers,
+      observationTraceDigests: result.rows.flatMap((row) => [JSON.stringify(['review', row.review.trace_sha256]),
+        ...row.observations.map((observation) => JSON.stringify([observation.observation_digest, observation.ensemble.trace_digest]))]),
+      queueTraceDigests: duplicatedIdentity.unresolved_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.trace_digest])),
+      excludedTraceDigests: duplicatedIdentity.excluded_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.ensemble.trace_digest])),
+      contextDecisionsSha256: duplicatedIdentity.context_fallback.decisions_sha256,
+    });
+    const duplicateIdentityError = /observation appears in more than one ensemble disposition/u;
+    assert.match(validateCandidateBatch({ manifest: duplicatedIdentity, candidatesText: result.candidatesText }).join(), duplicateIdentityError,
+      'the common candidate validator rejects an identity duplicated across candidate and excluded dispositions even with a recomputed digest');
+    await writeFile(path.join(root, 'data/candidates', result.manifest.batch_id, 'manifest.json'), JSON.stringify(duplicatedIdentity));
+    assert.match((await validateFactoryRepository({ root })).join(), duplicateIdentityError,
+      'the repository validator enforces the same cross-disposition identity invariant');
+
     const malformedCases = [
       ['stale-candidate-evidence.json', { ...evidence, selection: { ...evidence.selection, exclusion_sha256: 'b'.repeat(64) } }, /exclusion digest does not match candidate evidence/u],
       ['missing-exclusion-count.json', { ...evidence, selection: (({ excluded_candidate_lemma_count: _omit, ...selection }) => selection)(evidence.selection) }, /exclusion count is missing/u],
