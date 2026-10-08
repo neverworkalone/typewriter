@@ -185,7 +185,7 @@ export function buildRelationIndex(canonical, config = {}) {
   });
 }
 
-const entryOfProvisional = (id) => { const match = PROVISIONAL_ID.exec(id ?? ''); return match ? `${match[1]}/${match[2]}` : null; };
+const entryOfProvisional = (id) => { const match = parseProvisionalId(id); return match ? `${match[1]}/${match[2]}` : null; };
 const sameProvisionalEntry = (a, b) => entryOfProvisional(a) !== null && entryOfProvisional(a) === entryOfProvisional(b);
 
 const provisionalKey = (source) => `provisional:${source.batch_id}/${source.candidate_id}/${source.sense_key}`;
@@ -428,6 +428,10 @@ const hasExactKeys = (value, required, optional = []) => {
   return required.every((key) => keys.includes(key)) && keys.every((key) => required.includes(key) || optional.includes(key));
 };
 const PROVISIONAL_ID = /^provisional:([^/]+)\/([^/]+)\/([^/]+)$/u;
+// Regex methods coerce their argument to a string, which throws for hostile JSON objects (e.g. a
+// `toString` property); only genuine strings may reach them.
+const isHex64 = (value) => typeof value === 'string' && HEX64.test(value);
+function parseProvisionalId(value) { return typeof value === 'string' ? PROVISIONAL_ID.exec(value) : null; }
 
 /**
  * Strict structural validation of an artifact; returns error strings (never throws on malformed input).
@@ -439,7 +443,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
   if (!hasExactKeys(artifact, ['contract', 'authority', 'canonical_snapshot_digest', 'config', 'signal_codes', 'sources'])) errors.push('artifact must have exactly contract, authority, canonical_snapshot_digest, config, signal_codes, sources');
   if (artifact.contract !== RETRIEVER_CONTRACT) errors.push('contract mismatch');
   if (artifact.authority !== ARTIFACT_AUTHORITY) errors.push('artifact must be candidates_only');
-  if (!HEX64.test(artifact.canonical_snapshot_digest ?? '')) errors.push('missing canonical_snapshot_digest');
+  if (!isHex64(artifact.canonical_snapshot_digest)) errors.push('missing canonical_snapshot_digest');
   if (index && artifact.canonical_snapshot_digest !== index.canonical_snapshot_digest) errors.push('canonical snapshot digest differs from the current canonical');
   if (index && artifact.config?.stop_bigram_df_ratio !== index.settings.stop_bigram_df_ratio) errors.push('config: stop_bigram_df_ratio differs from the index build setting');
   if (JSON.stringify(artifact.signal_codes) !== JSON.stringify(SIGNAL_CODES)) errors.push('signal_codes mismatch');
@@ -449,7 +453,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
   if (!Array.isArray(artifact.sources)) return [...errors, 'sources must be an array'];
 
   const batches = new Set();
-  const noteBatch = (id) => { const match = PROVISIONAL_ID.exec(id ?? ''); if (match) batches.add(match[1]); };
+  const noteBatch = (id) => { const match = parseProvisionalId(id); if (match) batches.add(match[1]); };
   const allowed = new Set(SIGNAL_CODES);
   const sourceIds = new Set();
   const provisionalSources = new Map();
@@ -464,8 +468,8 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
       else if (index) { const sense = index.bySenseId.get(source.sense_id); if (!sense || sense.record_id !== source.record_id || sense.pos !== source.pos) errors.push(`${at}: source does not match canonical`); }
       if (sourceIds.has(source.sense_id)) errors.push(`${at}: duplicate source ${source.sense_id}`); sourceIds.add(source.sense_id);
     } else if (source.kind === 'provisional') {
-      if (!hasExactKeys(source, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !PROVISIONAL_ID.test(source.provisional_id ?? '') || !source.candidate_id || !isPos(source.pos)) errors.push(`${at}: invalid provisional source identity`);
-      else if (PROVISIONAL_ID.exec(source.provisional_id)[2] !== source.candidate_id) errors.push(`${at}: provisional_id does not carry candidate_id`);
+      if (!hasExactKeys(source, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !parseProvisionalId(source.provisional_id) || !source.candidate_id || !isPos(source.pos)) errors.push(`${at}: invalid provisional source identity`);
+      else if (parseProvisionalId(source.provisional_id)[2] !== source.candidate_id) errors.push(`${at}: provisional_id does not carry candidate_id`);
       noteBatch(source.provisional_id);
       if (sourceIds.has(source.provisional_id)) errors.push(`${at}: duplicate source ${source.provisional_id}`); sourceIds.add(source.provisional_id);
     } else errors.push(`${at}: source kind must be canonical or provisional`);
@@ -487,7 +491,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
       const digests = candidate.literature_location_digests;
       if (hasLiteratureSignal && (!Array.isArray(digests) || digests.length === 0)) errors.push(`${here}: literature_cooccurrence requires at least one location digest`);
       if (digests !== undefined) {
-        if (!Array.isArray(digests) || digests.length === 0 || !digests.every((d) => HEX64.test(d)) || (config && digests.length > config.max_literature_digests)) errors.push(`${here}: invalid literature_location_digests`);
+        if (!Array.isArray(digests) || digests.length === 0 || !digests.every(isHex64) || (config && digests.length > config.max_literature_digests)) errors.push(`${here}: invalid literature_location_digests`);
         if (!hasLiteratureSignal) errors.push(`${here}: literature digests without literature_cooccurrence signal`);
       }
       const target = candidate.target;
@@ -501,7 +505,7 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
           if (index) { const sense = index.bySenseId.get(target.sense_id); if (!sense || sense.record_id !== target.record_id || sense.pos !== target.pos) errors.push(`${here}: target does not match canonical`); }
         }
       } else if (target.kind === 'provisional') {
-        const match = PROVISIONAL_ID.exec(target.provisional_id ?? '');
+        const match = parseProvisionalId(target.provisional_id);
         if (!hasExactKeys(target, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !match || !target.candidate_id || !isPos(target.pos)) errors.push(`${here}: invalid provisional target identity`);
         else {
           key = target.provisional_id;

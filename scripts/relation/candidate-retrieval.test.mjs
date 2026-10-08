@@ -257,7 +257,7 @@ test('validator never throws: every field of a valid artifact survives hostile v
     retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w5-s1' }], { literature: lit }),
     retrieveRelationCandidates(index, [prov('C1', '잠잠', { hints: [{ lemma: '메아리' }] }), prov('C2', '정적')]),
   ];
-  const hostile = [null, undefined, 0, 123, 'x', true, [], {}, { includes: 123 }, { includes: 'literature_cooccurrence' }, { length: 1e9 }, { every: 1 }, [null], [{}]];
+  const hostile = [null, undefined, 0, 123, 'x', true, [], {}, { includes: 123 }, { includes: 'literature_cooccurrence' }, { length: 1e9 }, { every: 1 }, { toString: 123 }, { toString: null }, { valueOf: 1, toString: 1 }, [{ toString: 123 }], [null], [{}]];
   const walk = (node, path, visit) => {
     visit(path);
     if (node && typeof node === 'object') for (const key of Object.keys(node)) walk(node[key], [...path, key], visit);
