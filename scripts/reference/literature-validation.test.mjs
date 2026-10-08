@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { STRATA, readOptionalJson, readSeal, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
+import { STRATA, contextCountsOf, readOptionalJson, readSeal, recommend, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
 
 const D = '0'.repeat(64);
 const make = (id, group, evidence_use, outcome) => ({ candidate_id: id, group, evidence_use, outcome, selected_location_digests: [D] });
@@ -40,7 +40,7 @@ test('a deferred→confirmed change is an improvement only with every pre-regist
 
 test('misleading evidence that drives a confirmation or displaces a confident judgment is harm', () => {
   assert.equal(classifyCase('deferred_noise', one('deferred'), two('included', { literature_role: 'misleading' })).outcome, 'harm');
-  assert.equal(classifyCase('control_included', one('included', 'high'), two('deferred', { owner_endorses_final: false })).outcome, 'harm');
+  assert.equal(classifyCase('control_included', one('included', 'high'), two('covered', { literature_role: 'misleading' })).outcome, 'harm');
   assert.equal(classifyCase('control_included', one('included'), two('included', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] })).outcome, 'unchanged');
 });
 
@@ -53,7 +53,7 @@ test('aggregate applies the thresholds over all ten deferred cases and keeps con
     phase1.judgments[entry.blind_id] = one(deferred ? 'deferred' : 'included');
     phase2.judgments[entry.blind_id] = deferred ? (index % 2 === 0 ? two('covered') : two('deferred', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] })) : two('included');
   });
-  const result = aggregate(cohort, phase1, phase2, Object.fromEntries(cohort.map((entry) => [entry.blind_id, 3])));
+  const result = aggregate(cohort, phase1, phase2);
   assert.equal(result.deferred_cases, 10);
   assert.equal(result.harms, 0);
   assert.equal(result.controls_stable, true);
@@ -76,7 +76,7 @@ test('a citation must name a revealed context; out-of-range or duplicate numbers
   const cohort = selectCohort(rows);
   const phase1 = { judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
   const phase2 = { judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: [999] })])) };
-  assert.throws(() => aggregate(cohort, phase1, phase2, Object.fromEntries(cohort.map((entry) => [entry.blind_id, 3]))), /cited_contexts/);
+  assert.throws(() => aggregate(cohort, phase1, phase2), /cited_contexts/);
 });
 
 test('the seal is written once: identical re-seal is allowed, changed answers or cohort fail closed, reveal needs both digests', () => {
@@ -114,4 +114,60 @@ test('only a missing seal file counts as unsealed; a corrupt or unreadable one f
     await mkdir(file);
     await assert.rejects(readOptionalJson(file), (error) => error.code === 'EISDIR');
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+const ignored = { literature_role: 'misleading', basis_type: 'none', cited_contexts: [] };
+
+test('harm is an actual harmful change or source conflict, not a diagnostic misleading role alone', () => {
+  assert.equal(classifyCase('control_included', one('included'), two('included', ignored)).outcome, 'unchanged');
+  const cautious = classifyCase('control_included', one('included', 'high'), two('deferred', ignored));
+  assert.equal(cautious.outcome, 'cautious_deferral');
+  assert.deepEqual(cautious.harm, []);
+  assert.equal(classifyCase('deferred_noise', one('deferred'), two('included', { literature_role: 'misleading' })).outcome, 'harm');
+  assert.equal(classifyCase('control_included', one('included', 'high'), two('covered', { literature_role: 'misleading' })).outcome, 'harm');
+  assert.equal(classifyCase('control_included', one('included'), two('included', { conflicts_with_source_evidence: true })).outcome, 'harm');
+  assert.equal(classifyCase('control_included', one('included'), two('deferred', { owner_endorses_final: false, ...ignored })).outcome, 'unqualified_change');
+});
+
+test('the misleading/harm veto takes precedence over the entry-candidate branch', () => {
+  assert.equal(recommend({ harms: 0, misleading: 3, improvements: 5, controlsStable: true }), 'review_retriever_defects_then_hold_392');
+  assert.equal(recommend({ harms: 1, misleading: 0, improvements: 9, controlsStable: true }), 'review_retriever_defects_then_hold_392');
+  assert.equal(recommend({ harms: 0, misleading: 2, improvements: 5, controlsStable: true }), 'candidate_for_392_entry');
+  assert.equal(recommend({ harms: 0, misleading: 0, improvements: 5, controlsStable: false }), 'hold_392_literature_optional');
+  assert.equal(recommend({ harms: 0, misleading: 0, improvements: 4, controlsStable: true }), 'hold_392_literature_optional');
+});
+
+test('aggregate over a real 12-case cohort: 5 improvements plus 3 misleading deferred cases vetoes entry; clean and neutral cohorts do not', () => {
+  const cohort = selectCohort(rows);
+  const deferred = cohort.filter((entry) => entry.stratum.startsWith('deferred_'));
+  const build = (assign) => {
+    const phase1 = { judgments: {} };
+    const phase2 = { judgments: {} };
+    for (const entry of cohort) {
+      const isDeferred = entry.stratum.startsWith('deferred_');
+      phase1.judgments[entry.blind_id] = one(isDeferred ? 'deferred' : 'included');
+      phase2.judgments[entry.blind_id] = isDeferred ? assign(deferred.indexOf(entry)) : two('included', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] });
+    }
+    return aggregate(cohort, phase1, phase2);
+  };
+  const veto = build((index) => (index < 5 ? two('covered') : index < 8 ? two('deferred', ignored) : two('deferred', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] })));
+  assert.equal(veto.improvements, 5);
+  assert.equal(veto.misleading_roles, 3);
+  assert.equal(veto.harms, 0);
+  assert.equal(veto.recommendation, 'review_retriever_defects_then_hold_392');
+  const clean = build((index) => (index < 5 ? two('covered') : two('deferred', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] })));
+  assert.equal(clean.recommendation, 'candidate_for_392_entry');
+  const neutral = build(() => two('deferred', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] }));
+  assert.equal(neutral.recommendation, 'hold_392_literature_optional');
+});
+
+test('citation bounds come from the sealed cohort digests, so a tampered count cannot validate a phantom citation', () => {
+  const cohort = selectCohort(rows);
+  assert.ok(Object.values(contextCountsOf(cohort)).every((count) => count === 1));
+  const phase1 = { judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
+  const at = (cited) => ({ judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: cited })])) });
+  assert.doesNotThrow(() => aggregate(cohort, phase1, at([1])));
+  assert.throws(() => aggregate(cohort, phase1, at([999])), /cited_contexts/);
+  assert.throws(() => aggregate(cohort, phase1, at([2])), /cited_contexts/);
+  assert.deepEqual(contextCountsOf([{ blind_id: 'V01' }]), { V01: 0 });
 });

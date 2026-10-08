@@ -82,18 +82,23 @@ const confident = (confidence) => confidence !== 'low';
 // deferred before the pack; a confirmed disposition with confidence ≥ medium after it; the literature marked
 // helpful with a cited context whose basis is a demonstrated sense or exposed contrast (not frequency or mere
 // co-occurrence); no conflict with the ordinary source evidence; and the owner endorses it as the final record.
+// `harm` is an actual harmful change or explicit source conflict, never the diagnostic `literature_role` alone:
+// a misleading context the owner ignored (same confirmed disposition) is not harm, and a conservative
+// confirmed→deferred move the owner endorses is reported separately as `cautious_deferral`.
 export function classifyCase(stratum, one, two) {
+  const changed = one.disposition !== two.disposition;
   const harm = [];
-  if (confirmed(one.disposition) && confident(one.confidence) && two.disposition !== one.disposition
+  if (confirmed(one.disposition) && confident(one.confidence) && confirmed(two.disposition) && changed
     && (two.literature_role === 'misleading' || !two.owner_endorses_final)) harm.push('confident_judgment_displaced');
-  if (confirmed(two.disposition) && two.literature_role === 'misleading') harm.push('confirmation_driven_by_misleading_evidence');
+  if (confirmed(two.disposition) && changed && two.literature_role === 'misleading') harm.push('confirmation_driven_by_misleading_evidence');
   if (confirmed(two.disposition) && two.conflicts_with_source_evidence) harm.push('conflicts_with_source_evidence');
   const improvement = isDeferredStratum(stratum) && one.disposition === 'deferred' && confirmed(two.disposition)
     && confident(two.confidence) && two.literature_role === 'helpful' && two.cited_contexts.length > 0
     && two.basis_type !== 'none' && !two.conflicts_with_source_evidence && two.owner_endorses_final && harm.length === 0;
-  const changed = one.disposition !== two.disposition;
-  const outcome = harm.length ? 'harm' : improvement ? 'improvement' : changed ? 'unqualified_change' : 'unchanged';
-  return { outcome, harm };
+  const cautious = confirmed(one.disposition) && two.disposition === 'deferred' && two.owner_endorses_final
+    && !two.conflicts_with_source_evidence;
+  const outcome = harm.length ? 'harm' : improvement ? 'improvement' : cautious ? 'cautious_deferral' : changed ? 'unqualified_change' : 'unchanged';
+  return { outcome, harm: [...new Set(harm)] };
 }
 
 // A seal is written once. Re-running it is allowed only for the identical answers and cohort; anything else
@@ -111,7 +116,22 @@ export function assertSealed(seal, phase1Digest, cohortDigest) {
   }
 }
 
-export function aggregate(cohort, phase1, phase2, contextCounts) {
+// The number of citable contexts is derived from the sealed cohort (its selected location digests were verified
+// against the real retrieval at reveal); no separate editable count is trusted.
+export function contextCountsOf(cohort) {
+  return Object.fromEntries(cohort.map((entry) => [entry.blind_id, Array.isArray(entry.selected_location_digests) ? entry.selected_location_digests.length : 0]));
+}
+
+// Precedence is explicit and mutually exclusive: any harm or ≥ MISLEADING_REVIEW_MINIMUM misleading roles vetoes
+// entry; only otherwise do improvements and stable controls make #392 a candidate; everything else holds.
+export function recommend({ harms, misleading, improvements, controlsStable }) {
+  if (harms > 0 || misleading >= MISLEADING_REVIEW_MINIMUM) return 'review_retriever_defects_then_hold_392';
+  if (improvements >= IMPROVEMENT_MINIMUM && controlsStable) return 'candidate_for_392_entry';
+  return 'hold_392_literature_optional';
+}
+
+export function aggregate(cohort, phase1, phase2) {
+  const contextCounts = contextCountsOf(cohort);
   const errors = [...validateJudgments(phase1, cohort.map((entry) => entry.blind_id), 1), ...validateJudgments(phase2, cohort.map((entry) => entry.blind_id), 2, contextCounts)];
   if (errors.length) throw new Error('judgments invalid: ' + errors.join(', '));
   const cases = cohort.map((entry) => ({ entry, ...classifyCase(entry.stratum, phase1.judgments[entry.blind_id], phase2.judgments[entry.blind_id]) }));
@@ -123,9 +143,7 @@ export function aggregate(cohort, phase1, phase2, contextCounts) {
   const controlsStable = controls.every((item) => item.outcome === 'unchanged');
   const seconds = (phase) => cohort.map((entry) => phase.judgments[entry.blind_id].seconds).sort((a, b) => a - b);
   const median = (values) => (values.length ? values[Math.floor((values.length - 1) / 2)] : null);
-  let recommendation = 'hold_392_literature_optional';
-  if (harms === 0 && improvements >= IMPROVEMENT_MINIMUM && controlsStable) recommendation = 'candidate_for_392_entry';
-  else if (harms > 0 || misleading >= MISLEADING_REVIEW_MINIMUM) recommendation = 'review_retriever_defects_then_hold_392';
+  const recommendation = recommend({ harms, misleading, improvements, controlsStable });
   return {
     contract: 'literature-validation-392-aggregate-v1',
     cases: cohort.length,
@@ -136,9 +154,9 @@ export function aggregate(cohort, phase1, phase2, contextCounts) {
     misleading_roles: misleading,
     misleading_review_minimum: MISLEADING_REVIEW_MINIMUM,
     controls_stable: controlsStable,
-    outcomes: Object.fromEntries(['improvement', 'unqualified_change', 'unchanged', 'harm'].map((name) => [name, cases.filter((item) => item.outcome === name).length])),
+    outcomes: Object.fromEntries(['improvement', 'cautious_deferral', 'unqualified_change', 'unchanged', 'harm'].map((name) => [name, cases.filter((item) => item.outcome === name).length])),
     harm_kinds: [...new Set(cases.flatMap((item) => item.harm))].sort(),
-    per_stratum: Object.fromEntries(STRATA.map((stratum) => [stratum.id, Object.fromEntries(['improvement', 'unqualified_change', 'unchanged', 'harm'].map((name) => [name, cases.filter((item) => item.entry.stratum === stratum.id && item.outcome === name).length]))])),
+    per_stratum: Object.fromEntries(STRATA.map((stratum) => [stratum.id, Object.fromEntries(['improvement', 'cautious_deferral', 'unqualified_change', 'unchanged', 'harm'].map((name) => [name, cases.filter((item) => item.entry.stratum === stratum.id && item.outcome === name).length]))])),
     median_seconds_phase1: median(seconds(phase1)),
     median_seconds_phase2: median(seconds(phase2)),
     recommendation,
@@ -284,17 +302,14 @@ async function reveal() {
   const context = await loadEvidenceContext();
   await mkdir(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2'), { recursive: true });
   const template = {};
-  const contextCounts = {};
   for (const entry of cohort) {
     const [batchId] = entry.candidate_id.split('-');
     const result = await evidenceForCandidate(context, { batchId, candidateId: entry.candidate_id, databasePath: DEFAULT_FULL_LITERATURE_INDEX_PATH, maxContexts: 5, maxPerWork: 1 });
     const digests = result.contexts.map((item) => item.location_digest);
     if (JSON.stringify(digests) !== JSON.stringify(entry.selected_location_digests)) throw new Error(`${entry.blind_id}: evidence differs from the recorded selection`);
-    contextCounts[entry.blind_id] = result.contexts.length;
     await writeFile(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2', entry.blind_id + '.md'), phase2Material(entry, result));
     template[entry.blind_id] = { disposition: null, confidence: null, basis: '', seconds: null, literature_role: null, basis_type: null, cited_contexts: [], conflicts_with_source_evidence: null, owner_endorses_final: null };
   }
-  await writeJson(path.join(VALIDATION_DIRECTORY, 'context-counts.local.json'), contextCounts);
   await writeJson(answers, { phase: 2, judgments: template });
   console.log('phase 2 evidence written');
 }
@@ -303,9 +318,8 @@ async function report() {
   const cohort = await loadCohort();
   const phase1 = await readJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json'));
   const phase2 = await readJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2-judgments.json'));
-  const contextCounts = await readJson(path.join(VALIDATION_DIRECTORY, 'context-counts.local.json'));
   assertSealed(await readSeal(SEAL_FILE), await fileDigest(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json')), cohortDigest(cohort));
-  console.log(JSON.stringify(aggregate(cohort, phase1, phase2, contextCounts), null, 2));
+  console.log(JSON.stringify(aggregate(cohort, phase1, phase2), null, 2));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
