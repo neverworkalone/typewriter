@@ -179,7 +179,7 @@ export function aggregate(cohort, phase1, phase2) {
     judgment_provenance: [phase1.judge, phase2.judge].some((judge) => judge.kind === 'ai_delegate')
       ? 'AI delegate judgments are not the owner direct judgments; the final product decision is the owner\'s.' : 'Owner direct judgments.',
     recommendation,
-    limits: 'Twelve owner-judged cases; directional only, not accuracy or generalization.',
+    limits: `Twelve cases judged by ${[...new Set([phase1.judge, phase2.judge].map((judge) => (judge.kind === 'ai_delegate' ? `AI delegate ${judge.name}` : 'the owner directly')))].join(' and ')}; directional only, not accuracy or generalization.`,
   };
 }
 

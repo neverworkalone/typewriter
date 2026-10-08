@@ -224,5 +224,11 @@ test('the judge must be declared; an AI delegate is never recorded as the owner 
   const delegated = aggregate(cohort, file(AI), phase2);
   assert.deepEqual(delegated.judged_by.phase1, AI);
   assert.match(delegated.judgment_provenance, /not the owner direct/);
-  assert.equal(aggregate(cohort, file({ kind: 'owner_direct' }), { ...phase2, judge: { kind: 'owner_direct' } }).judgment_provenance, 'Owner direct judgments.');
+  assert.match(delegated.limits, /AI delegate ChatGPT/);
+  assert.doesNotMatch(delegated.limits, /owner/i, 'an AI delegate result must not read as owner-judged');
+  const direct = aggregate(cohort, file({ kind: 'owner_direct' }), { ...phase2, judge: { kind: 'owner_direct' } });
+  assert.equal(direct.judgment_provenance, 'Owner direct judgments.');
+  assert.match(direct.limits, /judged by the owner directly/);
+  assert.doesNotMatch(direct.limits, /AI/);
+  assert.match(aggregate(cohort, file({ kind: 'owner_direct' }), phase2).limits, /the owner directly and AI delegate ChatGPT/);
 });
