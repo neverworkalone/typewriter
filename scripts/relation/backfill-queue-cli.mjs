@@ -38,7 +38,7 @@ if (command === 'status') {
 } else if (command === 'record') {
   const packetFile = JSON.parse(await readFile(args[1], 'utf8'));
   const outcomes = JSON.parse(await readFile(args[2], 'utf8'));
-  const result = recordOutcomes(state, packetFile.packet, outcomes, { candidates: candidateEvidence(packetFile.candidates) });
+  const result = recordOutcomes(state, packetFile.packet, outcomes, { candidates: candidateEvidence(packetFile.candidates, index) });
   if (result.errors.length) { console.error(result.errors.join('\n')); process.exit(1); }
   await mkdir(path.dirname(statePath), { recursive: true });
   await writeFile(statePath, `${JSON.stringify({ ...result.state, canonical_revision: canonical.canonicalRevision }, null, 1)}\n`);

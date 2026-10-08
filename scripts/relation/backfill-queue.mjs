@@ -48,14 +48,16 @@ const targetId = (target) => target.sense_id ?? target.provisional_id;
 
 /**
  * sense id -> the review-relevant evidence of every retrieved candidate, in rank order: target identity (id, record,
- * POS), the retrieval signals and the literature location digests. Scores never appear in the artifact.
+ * POS, lemma/gloss digest), the retrieval signals and the literature location digests. Scores never appear in the artifact.
  */
-export function candidateEvidence(artifact) {
+export function candidateEvidence(artifact, index) {
   return new Map(artifact.sources.map((source) => [
     source.source.sense_id,
     source.candidates.map((candidate) => ({
       id: targetId(candidate.target),
       record_id: candidate.target.record_id ?? null,
+      // The reviewer judges the target's meaning, so a changed target lemma/gloss is changed evidence too.
+      meaning_sha256: candidate.target.sense_id ? sha256Json([index.bySenseId.get(candidate.target.sense_id).lemma, index.bySenseId.get(candidate.target.sense_id).gloss]) : null,
       pos: candidate.target.pos,
       signals: [...candidate.signals],
       literature: [...(candidate.literature_location_digests ?? [])],
@@ -88,7 +90,7 @@ export function currentCandidatesForDone(canonical, rows, state, { index = build
   const doneRows = rows.filter((row) => state.done[row.sense_id]);
   const result = new Map();
   for (let i = 0; i < doneRows.length; i += MAX_PACKET_SIZE) {
-    for (const [id, targets] of candidateEvidence(retrievePacket(canonical, doneRows.slice(i, i + MAX_PACKET_SIZE), { index }))) result.set(id, targets);
+    for (const [id, targets] of candidateEvidence(retrievePacket(canonical, doneRows.slice(i, i + MAX_PACKET_SIZE), { index }), index)) result.set(id, targets);
   }
   return result;
 }
