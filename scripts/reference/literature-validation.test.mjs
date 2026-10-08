@@ -5,9 +5,10 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { STRATA, buildReport, contextCountsOf, sealPhase1, readOptionalJson, readSeal, recommend, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
+import { STRATA, validateJudge, buildReport, contextCountsOf, sealPhase1, readOptionalJson, readSeal, recommend, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
 
 const D = '0'.repeat(64);
+const AI = { kind: 'ai_delegate', name: 'ChatGPT', delegated_by: 'owner' };
 const make = (id, group, evidence_use, outcome) => ({ candidate_id: id, group, evidence_use, outcome, selected_location_digests: [D] });
 const rows = [];
 for (let i = 0; i < 30; i += 1) {
@@ -46,8 +47,8 @@ test('misleading evidence that drives a confirmation or displaces a confident ju
 
 test('aggregate applies the thresholds over all ten deferred cases and keeps controls stable', () => {
   const cohort = selectCohort(rows);
-  const phase1 = { judgments: {} };
-  const phase2 = { judgments: {} };
+  const phase1 = { judge: AI, judgments: {} };
+  const phase2 = { judge: AI, judgments: {} };
   cohort.forEach((entry, index) => {
     const deferred = entry.stratum.startsWith('deferred_');
     phase1.judgments[entry.blind_id] = one(deferred ? 'deferred' : 'included');
@@ -74,8 +75,8 @@ test('a citation must name a revealed context; out-of-range or duplicate numbers
   for (const cited of [[999], [4], [0], [1, 1]]) assert.ok(validateJudgments(file({ cited_contexts: cited }), ['V01'], 2, counts).includes('V01: cited_contexts'), JSON.stringify(cited));
   assert.ok(validateJudgments(file({}), ['V01'], 2, {}).includes('V01: cited_contexts'), 'no revealed contexts → no valid citation');
   const cohort = selectCohort(rows);
-  const phase1 = { judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
-  const phase2 = { judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: [999] })])) };
+  const phase1 = { judge: AI, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
+  const phase2 = { judge: AI, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: [999] })])) };
   assert.throws(() => aggregate(cohort, phase1, phase2), /cited_contexts/);
 });
 
@@ -141,8 +142,8 @@ test('aggregate over a real 12-case cohort: 5 improvements plus 3 misleading def
   const cohort = selectCohort(rows);
   const deferred = cohort.filter((entry) => entry.stratum.startsWith('deferred_'));
   const build = (assign) => {
-    const phase1 = { judgments: {} };
-    const phase2 = { judgments: {} };
+    const phase1 = { judge: AI, judgments: {} };
+    const phase2 = { judge: AI, judgments: {} };
     for (const entry of cohort) {
       const isDeferred = entry.stratum.startsWith('deferred_');
       phase1.judgments[entry.blind_id] = one(isDeferred ? 'deferred' : 'included');
@@ -164,8 +165,8 @@ test('aggregate over a real 12-case cohort: 5 improvements plus 3 misleading def
 test('citation bounds come from the sealed cohort digests, so a tampered count cannot validate a phantom citation', () => {
   const cohort = selectCohort(rows);
   assert.ok(Object.values(contextCountsOf(cohort)).every((count) => count === 1));
-  const phase1 = { judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
-  const at = (cited) => ({ judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: cited })])) });
+  const phase1 = { judge: AI, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
+  const at = (cited) => ({ judge: AI, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: cited })])) });
   assert.doesNotThrow(() => aggregate(cohort, phase1, at([1])));
   assert.throws(() => aggregate(cohort, phase1, at([999])), /cited_contexts/);
   assert.throws(() => aggregate(cohort, phase1, at([2])), /cited_contexts/);
@@ -178,8 +179,8 @@ test('report boundary: sealed cohort bounds citations; a planted count file or t
     const cohort = selectCohort(rows);
     await mkdir(path.join(directory, 'owner'), { recursive: true });
     await writeFile(path.join(directory, 'cohort.local.json'), JSON.stringify({ cohort }));
-    const phase1 = { phase: 1, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
-    const phase2 = (cited) => ({ phase: 2, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: cited })])) });
+    const phase1 = { phase: 1, judge: AI, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
+    const phase2 = (cited) => ({ phase: 2, judge: AI, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: cited })])) });
     await writeFile(path.join(directory, 'owner', 'phase1-judgments.json'), JSON.stringify(phase1));
     await writeFile(path.join(directory, 'owner', 'phase2-judgments.json'), JSON.stringify(phase2([1])));
     await assert.rejects(buildReport(directory), /not sealed/, 'unsealed phase 1 cannot be reported');
@@ -195,4 +196,33 @@ test('report boundary: sealed cohort bounds citations; a planted count file or t
     await assert.rejects(sealPhase1(directory), /already sealed/);
     await assert.rejects(buildReport(directory), /not sealed/);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('unmeasured time stays null and its comparison is not_measurable; a measured value must be a non-negative number', () => {
+  assert.deepEqual(validateJudgments({ judgments: { V01: { ...one('included'), seconds: null } } }, ['V01'], 1), []);
+  for (const seconds of [-1, Number.NaN, '5', undefined]) assert.ok(validateJudgments({ judgments: { V01: { ...one('included'), seconds } } }, ['V01'], 1).includes('V01: seconds'), String(seconds));
+  const cohort = selectCohort(rows);
+  const timed = (seconds, judge = AI) => ({ judge, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, entry.stratum.startsWith('deferred_') ? { ...one('deferred'), seconds } : { ...one('included'), seconds }])) });
+  const phase2 = (seconds) => ({ judge: AI, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, { ...two(entry.stratum.startsWith('deferred_') ? 'deferred' : 'included', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] }), seconds }])) });
+  const unmeasured = aggregate(cohort, timed(null), phase2(null));
+  assert.equal(unmeasured.median_seconds_phase1, 'not_measurable');
+  assert.equal(unmeasured.median_seconds_phase2, 'not_measurable');
+  assert.equal(aggregate(cohort, timed(30), phase2(null)).median_seconds_phase1, 30);
+  assert.equal(aggregate(cohort, timed(30), phase2(null)).median_seconds_phase2, 'not_measurable');
+});
+
+test('the judge must be declared; an AI delegate is never recorded as the owner direct judgment', () => {
+  assert.deepEqual(validateJudge({ judge: { kind: 'owner_direct' } }), []);
+  assert.deepEqual(validateJudge({ judge: AI }), []);
+  for (const judge of [undefined, null, {}, { kind: 'human' }, { kind: 'ai_delegate' }, { kind: 'ai_delegate', name: 'ChatGPT' }, { kind: 'ai_delegate', name: '', delegated_by: 'owner' }]) {
+    assert.ok(validateJudge({ judge }).length, JSON.stringify(judge));
+  }
+  const cohort = selectCohort(rows);
+  const file = (judge) => ({ judge, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, { ...one('included') }])) });
+  const phase2 = { judge: AI, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('included', { literature_role: 'irrelevant', basis_type: 'none', cited_contexts: [] })])) };
+  assert.throws(() => aggregate(cohort, file(undefined), phase2), /judge/);
+  const delegated = aggregate(cohort, file(AI), phase2);
+  assert.deepEqual(delegated.judged_by.phase1, AI);
+  assert.match(delegated.judgment_provenance, /not the owner direct/);
+  assert.equal(aggregate(cohort, file({ kind: 'owner_direct' }), { ...phase2, judge: { kind: 'owner_direct' } }).judgment_provenance, 'Owner direct judgments.');
 });
