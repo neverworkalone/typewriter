@@ -256,3 +256,36 @@ test('malformed relation_amendments are contract errors, never exceptions, and l
     assert.ok(result.errors.length > 0);
   }
 });
+
+test('applying an approved relation does not re-queue its own review (second-order neighbours are not changed evidence)', () => {
+  const base = {
+    canonicalRevision: 'c'.repeat(64),
+    records: [
+      entry('w5', '물소리', '물이 흐르며 나는 맑은 소리.'),
+      entry('w6', '냇물소리', '냇물이 흐르며 나는 맑은 소리.', [{ target: 'w7', target_sense: 'w7-s1', type: 'scene', note: 'n', relevance: 4 }]),
+      entry('w7', '시냇가', '작은 냇물이 흐르는 가장자리.'),
+    ],
+  };
+  const baseRow = inventoryCanonicalSenses(buildRelationIndex(base)).find((candidate) => candidate.sense_id === 'w5-s1');
+  const pool = reviewed(base, [baseRow]).get('w5-s1');
+  assert.equal(pool[0].id, 'w6-s1', 'fixture: the reviewer is offered 냇물소리');
+  const relation = {
+    target: 'w6', target_sense: 'w6-s1', type: 'near', note: '물소리는 냇물소리보다 넓다.', relevance: 2,
+  };
+  const approval = {
+    sense_id: 'w5-s1', outcome: 'relations-reviewed', rationale: 'w5-s1: 후보를 검토했다.',
+    relation_amendments: [{ source_record_id: 'w5', source_sense_id: 'w5-s1', source_gloss_sha256: baseRow.gloss_sha256, relation, rationale: 'w5 w5-s1: 가까운 말이다.' }],
+  };
+  const state = record(newQueueState(base.canonicalRevision), [baseRow], [approval], base).state;
+  // Canonical after the relation was merged: w5 now has the tuple and w6's neighbour w7 surfaces as a new candidate.
+  const applied = { ...base, records: base.records.map((rec) => (rec.id === 'w5' ? { ...rec, senses: [{ ...rec.senses[0], relations: [relation] }] } : rec)) };
+  const appliedIndex = buildRelationIndex(applied);
+  const appliedRows = inventoryCanonicalSenses(appliedIndex);
+  const ctx = currentCandidatesForDone(applied, appliedRows, state, { index: appliedIndex });
+  assert.ok(ctx.get('w5-s1').some((c) => c.id === 'w7-s1' && c.signals.join() === 'relation_neighbor_of_related'), 'fixture: a second-order candidate appeared');
+  const appliedRow = appliedRows.find((candidate) => candidate.sense_id === 'w5-s1');
+  assert.equal(isReviewCurrent(appliedRow, state.done['w5-s1'], ctx), true);
+  const edited = structuredClone(state.done['w5-s1']);
+  edited.reviewed_candidates[0].meaning_sha256 = 'e'.repeat(64);
+  assert.equal(isReviewCurrent(appliedRow, edited, ctx), false, 'a changed approved target still re-queues');
+});

@@ -389,6 +389,16 @@ Rules carried over unchanged:
   types, relevance or notes), and canonical integrity rejects missing targets,
   self-references and duplicates. A relation defect is a shared-contract fix,
   never a reason to hold or reject a valid lexical sense.
+- **Relation-only backfill (#446).** `backfill-queue-cli.mjs apply` writes approved queue
+  relations that canonical does not yet hold into existing senses, through the same
+  amendment planner and semantic-authority writer as #399, without any lexical admission.
+  The packet id `R######` stands in for the candidate: the semantic-authority event has no
+  entries, its `relation_amendments` carry the packet id as `source_candidate_id`, and the
+  committed `data/relation-backfill/R######.json` keeps the approved tuples and rationales.
+  Git and canonical remain the authority; the local queue state only remembers approvals, so
+  an interrupted run is resumed by running `apply` again (present tuples replay as no-ops,
+  a different note for the same target is a conflict). A review is not re-queued by the
+  `relation_neighbor_of_related` candidates that its own applied relations bring in.
 - **Reverse relation amendments (#399).** An admitted decision may carry
   `relation_amendments`: `{source_record_id, source_sense_id, source_gloss_sha256,
   relation, rationale}` adding one reviewed relation to an *existing* canonical source

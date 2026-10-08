@@ -2428,7 +2428,9 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
     const eventLabel = `${label}.factory_admissions[${eventIndex}]`;
     requireObject(event, eventLabel);
     requireString(event.batch_id, `${eventLabel}.batch_id`);
-    if (!/^C\d{6}$/u.test(event.batch_id) || !Number.isInteger(event.attempt) || event.attempt < 1) {
+    // A relation-only backfill packet (R######, #446) has no candidates: the packet id stands in for the candidate.
+    const backfill = /^R\d{6}$/u.test(event.batch_id);
+    if (!(backfill || /^C\d{6}$/u.test(event.batch_id)) || !Number.isInteger(event.attempt) || event.attempt < 1) {
       fail(`${eventLabel} needs a valid batch and attempt`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
     }
     const eventKey = `${event.batch_id}-a${event.attempt}`;
@@ -2453,6 +2455,9 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
       }
       if (mappings.has(entry.source_candidate_id)) fail(`${eventLabel} repeats ${entry.source_candidate_id}`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       mappings.set(entry.source_candidate_id, entry);
+    }
+    if (backfill && (entries.length > 0 || (event.changes ?? []).some((change) => change?.operation !== 'append_relations'))) {
+      fail(`${eventLabel} is a relation backfill and may only append relations`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
     }
     const changes = requireArray(event.changes, `${eventLabel}.changes`);
     if (changes.length === 0) fail(`${eventLabel}.changes must record at least one canonical record`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
@@ -2487,7 +2492,7 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
         const amended = requireArray(event.relation_amendments, `${eventLabel}.relation_amendments`)
           .filter((item) => item?.source_record_id === change.entry_id && item.outcome === 'appended');
         const ids = amended.map((item) => item.relation_id);
-        if (mappingSources.length === 0 || amended.length === 0 || mappingSources.some((id) => !mappings.has(id))
+        if (mappingSources.length === 0 || amended.length === 0 || mappingSources.some((id) => (backfill ? id !== event.batch_id : !mappings.has(id)))
           || !Array.isArray(change.added_relation_ids) || JSON.stringify(ids) !== JSON.stringify(change.added_relation_ids)) {
           fail(`${changeLabel} relation amendments do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
         }
@@ -2504,7 +2509,7 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
     for (const [amendmentIndex, amendment] of (event.relation_amendments ?? []).entries()) {
       const amendmentLabel = `${eventLabel}.relation_amendments[${amendmentIndex}]`;
       requireObject(amendment, amendmentLabel);
-      if (!mappings.has(amendment.source_candidate_id) || !['appended', 'already_present'].includes(amendment.outcome)
+      if (!(backfill ? amendment.source_candidate_id === event.batch_id : mappings.has(amendment.source_candidate_id)) || !['appended', 'already_present'].includes(amendment.outcome)
         || typeof amendment.source_record_id !== 'string' || typeof amendment.source_sense_id !== 'string'
         || !SHA256_PATTERN.test(amendment.source_gloss_sha256 ?? '') || !SHA256_PATTERN.test(amendment.rationale_sha256 ?? '')
         || typeof amendment.relation_id !== 'string' || !amendment.relation || typeof amendment.relation !== 'object') {
@@ -2784,6 +2789,13 @@ if (isMainModule) {
     });
 }
 
+const dropRelevance = (record) => ({
+  ...record,
+  senses: record.senses.map((sense) => (sense.relations
+    ? { ...sense, relations: sense.relations.map(({ relevance, ...rest }) => rest) }
+    : sense)),
+});
+
 /** Reconstruct a retained pre-factory snapshot; never use this for current admission. */
 export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) {
   const source = structuredClone(currentSource);
@@ -2792,6 +2804,7 @@ export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) 
   }));
   const reviews = new Map(source.authored_review.records.map((row) => [row.record_id, row]));
   const restored = new Set();
+  const priorRecords = new Map(); // earliest retained pre-admission record per restored record
   for (const event of [...(source.factory_admissions ?? [])].reverse()) {
     const unsigned = { ...event }; delete unsigned.sha256;
     if (sha256Json(unsigned) !== event.sha256) {
@@ -2809,14 +2822,22 @@ export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) 
           fail('historical snapshot lacks a bound pre-admission record and review', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
         }
         reviews.set(change.entry_id, structuredClone(change.previous_semantic_review));
+        priorRecords.set(change.entry_id, change.previous_record);
         restored.add(change.entry_id);
       }
     }
   }
   for (const id of restored) {
-    if (reviews.get(id)?.record_sha256 !== sha256Json(snapshotById.get(id))) {
-      fail(`pre-factory snapshot for ${id} does not match the retained admission history`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    const snapshot = snapshotById.get(id);
+    if (reviews.get(id)?.record_sha256 === sha256Json(snapshot)) continue;
+    // #396: a retained pre-admission record may already carry relevance that the frozen snapshot predates. It is the
+    // same record modulo relevance, so its review is rebound to the snapshot exactly like an unrestored review below.
+    const prior = priorRecords.get(id);
+    if (reviews.get(id)?.record_sha256 === sha256Json(prior) && JSON.stringify(dropRelevance(prior)) === JSON.stringify(dropRelevance(snapshot))) {
+      reviews.set(id, { ...reviews.get(id), record_sha256: sha256Json(snapshot) });
+      continue;
     }
+    fail(`pre-factory snapshot for ${id} does not match the retained admission history`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
   }
   // #396: the live review binds relevance-bearing records, while a pre-factory snapshot
   // predates relevance. Rebind unrestored reviews to the snapshot record; callers separately

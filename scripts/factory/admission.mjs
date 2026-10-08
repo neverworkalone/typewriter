@@ -189,6 +189,39 @@ function planRelationAmendments({ decisions, byId, planned, aliases, allRecordId
   return { audit, records };
 }
 
+function relationChangeRows({ audit, records }) {
+  return [...records].map(([entryId, update]) => {
+    const appended = audit.filter((entry) => entry.source_record_id === entryId && entry.outcome === 'appended');
+    return {
+      entry_id: entryId,
+      operation: 'append_relations',
+      path: update.file,
+      source_candidate_ids: [...new Set(appended.map((entry) => entry.source_candidate_id))],
+      added_relation_ids: appended.map((entry) => entry.relation_id),
+      before_sha256: canonicalRecordSha256(update.before),
+      after_sha256: canonicalRecordSha256(update.record),
+    };
+  });
+}
+
+export const BACKFILL_ID = /^R\d{6}$/u;
+
+/**
+ * Relation-only backfill of already-admitted canonical senses (#446 B): the reviewed packet is planned through the
+ * same relation amendment path as Stage 3, with the packet id standing in for the candidate. No lexical admission,
+ * no entries, no new senses. Exact tuples already present are idempotent no-ops (`changes` stays empty).
+ */
+export function planRelationBackfill({ packetId, amendments, canonicalRecords, recordPathById }) {
+  if (!BACKFILL_ID.test(packetId ?? '')) systemic('backfill packet id must look like R000001', 'STAGE3_BACKFILL_ID');
+  const byId = new Map(canonicalRecords.map((record) => [record.id, record]));
+  const allRecordIds = new Set(byId.keys());
+  const allSenseIds = new Set(canonicalRecords.flatMap((record) => (record.senses ?? []).map((sense) => sense.id)));
+  const aliases = { entryBySource: new Map(), senseBySource: new Map(), aliasToEntry: new Map(), aliasToSense: new Map() };
+  const decisions = [{ disposition: 'included', source_candidate_id: packetId, [AMENDMENT_FIELD]: amendments }];
+  const result = planRelationAmendments({ decisions, byId, planned: new Map(), aliases, allRecordIds, allSenseIds, recordPathById });
+  return { batchId: packetId, attempt: 1, decisions: [], entries: [], records: result.records, changes: relationChangeRows(result), relationAmendments: result.audit };
+}
+
 function decisionSenses(row, idStart, aliases, knownRecordIds, knownSenseIds) {
   return row.reviewed_record.senses.map((sense, index) => {
     const result = { id: row.__sense_ids[index], pos: sense.pos, gloss: sense.gloss };
@@ -311,19 +344,8 @@ export function planStage3Admission({
   }
 
   const amendments = planRelationAmendments({ decisions, byId, planned, aliases, allRecordIds, allSenseIds, recordPathById });
-  for (const [entryId, update] of amendments.records) {
-    planned.set(entryId, update);
-    const appended = amendments.audit.filter((entry) => entry.source_record_id === entryId && entry.outcome === 'appended');
-    changeRows.push({
-      entry_id: entryId,
-      operation: 'append_relations',
-      path: update.file,
-      source_candidate_ids: [...new Set(appended.map((entry) => entry.source_candidate_id))],
-      added_relation_ids: appended.map((entry) => entry.relation_id),
-      before_sha256: canonicalRecordSha256(update.before),
-      after_sha256: canonicalRecordSha256(update.record),
-    });
-  }
+  for (const [entryId, update] of amendments.records) planned.set(entryId, update);
+  changeRows.push(...relationChangeRows(amendments));
 
   const entries = decisions.filter((row) => ADMITTED.has(row.disposition)).map((row) => ({
     source_candidate_id: row.source_candidate_id,
@@ -350,6 +372,11 @@ export function planStage3Admission({
 
 export async function applyStage3FileChanges(plan, { root = process.cwd(), reviewManifestPath } = {}) {
   if (!reviewManifestPath) systemic('review manifest path is required', 'STAGE3_FILE_IO');
+  await writePlannedRecords(plan, root);
+  await writeFile(reviewManifestPath, `${JSON.stringify(plan.reviewManifest, null, 2)}\n`, 'utf8');
+}
+
+export async function writePlannedRecords(plan, root) {
   const appendByPath = new Map();
   for (const [entryId, update] of plan.records) {
     if (!update.before) {
@@ -374,7 +401,6 @@ export async function applyStage3FileChanges(plan, { root = process.cwd(), revie
     rows.sort((left, right) => left.id.localeCompare(right.id));
     await writeCanonicalJsonl(root, file, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`);
   }
-  await writeFile(reviewManifestPath, `${JSON.stringify(plan.reviewManifest, null, 2)}\n`, 'utf8');
 }
 
 export function validateStage3AdmissionManifest(reviewManifest, decisions, canonicalById) {

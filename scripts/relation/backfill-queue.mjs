@@ -79,6 +79,13 @@ export class ReviewContext extends Map {
   }
 }
 
+// `relation_neighbor_of_related` is derived from the relations of neighbouring senses, so it shifts whenever any
+// neighbour is enriched, including by applying this review's own approved relations (the target's neighbours become
+// new candidates). It is graph position, not evidence about the pair's meaning, so it never makes a review stale.
+const SECOND_ORDER_SIGNAL = 'relation_neighbor_of_related';
+const withoutSecondOrder = (candidate) => ({ ...candidate, signals: candidate.signals.filter((signal) => signal !== SECOND_ORDER_SIGNAL) });
+const onlySecondOrder = (candidate) => candidate.signals.length > 0 && candidate.signals.every((signal) => signal === SECOND_ORDER_SIGNAL) && candidate.literature.length === 0;
+
 /** The preserved approvals must still be exactly what was recorded: ids bind sense, target, type, note and relevance. */
 function approvalsIntact(row, entry) {
   const approved = entry.approved_relations;
@@ -108,14 +115,16 @@ export function isReviewCurrent(row, entry, currentCandidates) {
     const reviewedTarget = entry.reviewed_candidates.find((candidate) => candidate.id === relation.target_sense);
     if (!reviewedTarget || reviewedTarget.meaning_sha256 !== meaningDigest(index, relation.target_sense)) return false;
   }
-  const current = currentCandidates.get(row.sense_id);
-  if (!current) return false;
-  const reviewed = new Map(entry.reviewed_candidates.map((candidate) => [candidate.id, candidate]));
+  const currentAll = currentCandidates.get(row.sense_id);
+  if (!currentAll) return false;
+  const current = currentAll.filter((candidate) => !onlySecondOrder(candidate)).map(withoutSecondOrder);
+  const reviewedList = entry.reviewed_candidates.filter((candidate) => !onlySecondOrder(candidate)).map(withoutSecondOrder);
+  const reviewed = new Map(reviewedList.map((candidate) => [candidate.id, candidate]));
   for (const candidate of current) {
     if (JSON.stringify(reviewed.get(candidate.id) ?? null) !== JSON.stringify(candidate)) return false;
   }
   const common = new Set(current.map((candidate) => candidate.id));
-  const before = entry.reviewed_candidates.filter((candidate) => common.has(candidate.id)).map((candidate) => candidate.id);
+  const before = reviewedList.filter((candidate) => common.has(candidate.id)).map((candidate) => candidate.id);
   return JSON.stringify(before) === JSON.stringify(current.map((candidate) => candidate.id).filter((id) => reviewed.has(id)));
 }
 
