@@ -93,6 +93,7 @@ shortlist 순위별 채택 수(순위 1→10): 27, 15, 12, 8, 8, 10, 8, 6, 6, 8.
 
 - 인벤토리: canonical 12,620 sense. 관계 없음 12,283 — 이는 결함이 아니다. 수요 신호(다른 sense가 가리키는 수)가 있는 sense는 184개뿐이라 현재 정렬(수요 ↓, 기존 외향 탐색형 관계 수 ↑, id)은 사실상 안정적 id 순이다. 실제 우선순위(검색 로그·빈도 등)는 오너가 신호를 제공할 때 `demand`를 교체한다. 지어낸 빈도로 채우지 않았다.
 - 큐: 상태는 repo 밖(`~/.cache/typewriter/relation-backfill/state.json`)에 두고, `next --limit N`(≤200)·`record`로 재개 가능하게 쪼갠다. 완료 기록은 검토한 후보 근거 전체(대상 id·엔트리·POS·검색 신호·문학 위치 digest와 후보 간 상대 순위)에 묶인다. 뜻풀이 digest가 바뀌었거나, canonical 변경으로 새 후보가 나타나거나 기존 후보의 근거·순위가 달라진 sense는 자동으로 다시 큐에 들어오고(현재 후보를 계산하지 못하면 fail-closed), `status`도 오래된 완료를 세지 않는다.
+- 승인 보존·검증: `record`는 승인된 각 관계의 `target_sense`가 실제 canonical sense이고 `target`이 그 sense의 엔트리이며, 해당 패킷 검색이 실제로 제시한 후보(shortlist)에 있는지 확인한다(없거나 후보 밖이거나 엔트리가 어긋나면 거부, 상태는 쓰지 않는다). 승인 결과는 개수가 아니라 관계 튜플·rationale·relation id·검색 snapshot digest·검토한 후보 근거와 함께 상태에 그대로 보존되고, 다시 읽을 때 id가 튜플과 일치하지 않으면 완료로 인정하지 않는다. CLI `record`는 패킷 파일의 후보를 믿지 않고 현재 canonical에서 다시 검색해 대조하며, 패킷이 발급된 revision과 다르면 거부한다.
 - 같은 경로: 후보는 `retrieveRelationCandidates`·`validateRelationCandidateArtifact`, 결과 검증은 Stage 3의 `relationAmendmentErrors`(유형·relevance·sense 결속 rationale·gloss digest)를 그대로 쓴다. 백필 전용 의미 규칙은 없다.
 - **미해결(오너 결정 필요, 대규모 백필 착수 전):** 새 뜻이 없는 순수 백필 amendment를 canonical에 적용하는 운반체(Stage 3의 결정 행에 묶이지 않는 경로)는 아직 없다. 이 이슈 범위에서 만들지 않았다.
 - 전체 canonical 백필은 시작하지 않았다.

@@ -1,4 +1,4 @@
-import { EXPLORATORY_RELATION_TYPES } from '../batch/authored-semantic-decision-source.mjs';
+import { EXPLORATORY_RELATION_TYPES, reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { buildRelationIndex, retrieveRelationCandidates, validateRelationCandidateArtifact } from './candidate-retrieval.mjs';
@@ -65,6 +65,15 @@ export function candidateEvidence(artifact, index) {
   ]));
 }
 
+/** The preserved approvals must still be exactly what was recorded: ids bind sense, target, type, note and relevance. */
+function approvalsIntact(row, entry) {
+  const approved = entry.approved_relations;
+  if (!Array.isArray(approved) || approved.length !== entry.relation_count) return false;
+  if ((entry.outcome === 'no-relations') !== (approved.length === 0)) return false;
+  return approved.every((item) => item?.relation && typeof item.rationale === 'string'
+    && item.relation_id === reviewedRelationId(row.sense_id, item.relation));
+}
+
 /**
  * A completed review stays valid only while the evidence it reviewed still holds: the gloss is unchanged, every
  * current candidate was reviewed with identical identity/POS/signals/literature evidence, and the candidates present
@@ -73,7 +82,7 @@ export function candidateEvidence(artifact, index) {
  * Missing current candidates fail closed (re-review).
  */
 export function isReviewCurrent(row, entry, currentCandidates) {
-  if (!entry || entry.gloss_sha256 !== row.gloss_sha256) return false;
+  if (!entry || entry.gloss_sha256 !== row.gloss_sha256 || !approvalsIntact(row, entry)) return false;
   const current = currentCandidates?.get(row.sense_id);
   if (!current) return false;
   const reviewed = new Map(entry.reviewed_candidates.map((candidate) => [candidate.id, candidate]));
@@ -110,7 +119,8 @@ export function nextPacket(rows, state, { limit = 50, currentCandidates = new Ma
  * Validates and records review outcomes for a packet. Relation tuples are checked by the shared amendment
  * validator, so a backfill relation obeys exactly the production contract. Returns the updated state (pure).
  */
-export function recordOutcomes(state, packet, outcomes, { candidates } = {}) {
+export function recordOutcomes(state, packet, outcomes, { candidates, index, snapshotDigest } = {}) {
+  if (!index || typeof snapshotDigest !== 'string' || !snapshotDigest) throw new Error('recordOutcomes needs the canonical index and the retrieval snapshot digest');
   const byId = new Map(packet.map((row) => [row.sense_id, row]));
   const errors = [];
   const seen = new Set();
@@ -128,11 +138,29 @@ export function recordOutcomes(state, packet, outcomes, { candidates } = {}) {
     const problems = amendments.length ? relationAmendmentErrors({ relation_amendments: amendments }, outcome.sense_id) : [];
     const wrongSource = amendments.filter((a) => a.source_sense_id !== outcome.sense_id || a.source_gloss_sha256 !== row.gloss_sha256);
     if (wrongSource.length) problems.push(`${outcome.sense_id}: amendments must be bound to this sense and its current gloss digest`);
-    if (problems.length) { errors.push(...problems); continue; }
     const reviewedCandidates = candidates?.get(outcome.sense_id);
     if (!reviewedCandidates) { errors.push(`${outcome.sense_id}: the reviewed candidate pool must be supplied`); continue; }
+    // Every authored target must be a real canonical sense that this packet's retrieval actually offered.
+    const pool = new Set(reviewedCandidates.map((candidate) => candidate.id));
+    for (const { relation } of amendments) {
+      const target = typeof relation?.target_sense === 'string' ? index.bySenseId.get(relation.target_sense) : null;
+      if (!target) problems.push(`${outcome.sense_id}: relation target_sense ${relation?.target_sense} is not a canonical sense`);
+      else if (target.record_id !== relation.target) problems.push(`${outcome.sense_id}: relation target ${relation.target} does not own target_sense ${relation.target_sense}`);
+      if (!pool.has(relation?.target_sense)) problems.push(`${outcome.sense_id}: relation target_sense ${relation?.target_sense} was not among the reviewed candidates`);
+    }
+    if (problems.length) { errors.push(...problems); continue; }
     done[outcome.sense_id] = {
-      outcome: outcome.outcome, gloss_sha256: row.gloss_sha256, relation_count: amendments.length, reviewed_candidates: reviewedCandidates,
+      outcome: outcome.outcome,
+      gloss_sha256: row.gloss_sha256,
+      rationale: outcome.rationale,
+      relation_count: amendments.length,
+      // The approved tuples are preserved verbatim (never reduced to a count) so a resumed queue can recover,
+      // verify and later hand over exactly what was approved, bound to the retrieval snapshot it came from.
+      approved_relations: amendments.map((amendment) => ({
+        relation_id: reviewedRelationId(row.sense_id, amendment.relation), relation: amendment.relation, rationale: amendment.rationale,
+      })),
+      canonical_snapshot_digest: snapshotDigest,
+      reviewed_candidates: reviewedCandidates,
     };
   }
   if (errors.length) return { state, errors };

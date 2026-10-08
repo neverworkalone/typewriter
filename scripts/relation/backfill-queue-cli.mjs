@@ -38,7 +38,17 @@ if (command === 'status') {
 } else if (command === 'record') {
   const packetFile = JSON.parse(await readFile(args[1], 'utf8'));
   const outcomes = JSON.parse(await readFile(args[2], 'utf8'));
-  const result = recordOutcomes(state, packetFile.packet, outcomes, { candidates: candidateEvidence(packetFile.candidates, index) });
+  // The packet file is only a list of sense ids: rows and candidate evidence are re-derived from the live canonical
+  // (and must be the revision the packet was issued for), so an edited packet cannot widen the reviewed pool.
+  if (packetFile.canonical_revision !== canonical.canonicalRevision) {
+    console.error(`packet was issued for canonical revision ${packetFile.canonical_revision}; run next again on the current revision`);
+    process.exit(1);
+  }
+  const byId = new Map(rows.map((row) => [row.sense_id, row]));
+  const packet = packetFile.packet.map((row) => byId.get(row.sense_id)).filter(Boolean);
+  if (packet.length !== packetFile.packet.length) { console.error('packet names a sense that is not in the canonical inventory'); process.exit(1); }
+  const artifact = retrievePacket(canonical, packet, { index });
+  const result = recordOutcomes(state, packet, outcomes, { candidates: candidateEvidence(artifact, index), index, snapshotDigest: artifact.canonical_snapshot_digest });
   if (result.errors.length) { console.error(result.errors.join('\n')); process.exit(1); }
   await mkdir(path.dirname(statePath), { recursive: true });
   await writeFile(statePath, `${JSON.stringify({ ...result.state, canonical_revision: canonical.canonicalRevision }, null, 1)}\n`);

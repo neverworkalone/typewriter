@@ -1,0 +1,73 @@
+import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+
+// Real queue -> CLI record/read path on the live canonical (derived dynamically, so it stays valid as canonical grows).
+const CLI = path.resolve(import.meta.dirname, 'backfill-queue-cli.mjs');
+const run = (args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
+
+test('CLI record verifies approved targets, preserves them across a restart, and rejects off-pool targets', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'backfill-cli-'));
+  try {
+    const state = path.join(dir, 'state.json');
+    const packetPath = path.join(dir, 'packet.json');
+    const next = run(['next', '--limit', '2', '--state', state, '--out', packetPath]);
+    assert.equal(next.status, 0, next.stderr);
+    const packetFile = JSON.parse(await readFile(packetPath, 'utf8'));
+    const [row] = packetFile.packet;
+    const [source, second] = packetFile.candidates.sources;
+    const pick = source.candidates.find((candidate) => candidate.target.kind === 'canonical');
+    assert.ok(pick, 'live canonical offers at least one candidate for the first queued sense');
+    const outcome = (relation, rationale = `${row.sense_id}: 후보를 검토했다.`) => [{
+      sense_id: row.sense_id, outcome: 'relations-reviewed', rationale,
+      relation_amendments: [{
+        source_record_id: row.record_id, source_sense_id: row.sense_id, source_gloss_sha256: row.gloss_sha256,
+        relation: { type: 'association', note: '필자가 떠올릴 만한 연상이다.', relevance: 4, ...relation },
+        rationale: `${row.record_id} ${row.sense_id}: 연상으로 이어진다.`,
+      }],
+    }];
+    const outcomesPath = path.join(dir, 'outcomes.json');
+    const record = async (outcomes) => { await writeFile(outcomesPath, JSON.stringify(outcomes)); return run(['record', packetPath, outcomesPath, '--state', state]); };
+
+    const missing = await record(outcome({ target: 'w99999', target_sense: 'w99999-s1' }));
+    assert.notEqual(missing.status, 0);
+    assert.match(missing.stderr, /not a canonical sense/u);
+    const wrongRecord = await record(outcome({ target: row.record_id, target_sense: pick.target.sense_id }));
+    assert.notEqual(wrongRecord.status, 0);
+    assert.match(wrongRecord.stderr, /does not own target_sense|own source/u);
+    const pool = new Set(source.candidates.map((candidate) => candidate.target.sense_id));
+    const offPool = second.candidates.find((candidate) => candidate.target.kind === 'canonical' && !pool.has(candidate.target.sense_id) && candidate.target.record_id !== row.record_id);
+    assert.ok(offPool, 'the second queued sense offers a canonical target the first never saw');
+    const off = await record(outcome({ target: offPool.target.record_id, target_sense: offPool.target.sense_id }));
+    assert.notEqual(off.status, 0);
+    assert.match(off.stderr, /not among the reviewed candidates/u);
+    await assert.rejects(readFile(state, 'utf8'), 'a rejected record never writes state');
+
+    const ok = await record(outcome({ target: pick.target.record_id, target_sense: pick.target.sense_id }));
+    assert.equal(ok.status, 0, ok.stderr);
+    const saved = JSON.parse(await readFile(state, 'utf8')).done[row.sense_id];
+    assert.equal(saved.approved_relations.length, 1);
+    assert.equal(saved.approved_relations[0].relation.target_sense, pick.target.sense_id);
+    assert.equal(saved.approved_relations[0].relation.relevance, 4);
+    assert.equal(saved.canonical_snapshot_digest, packetFile.candidates.canonical_snapshot_digest);
+
+    // Restart: a fresh process reads the preserved state; the completed sense is current and no longer queued.
+    const status = JSON.parse(execFileSync(process.execPath, [CLI, 'status', '--state', state], { encoding: 'utf8' }));
+    assert.equal(status.completed, 1);
+    const again = run(['next', '--limit', '1', '--state', state, '--out', path.join(dir, 'packet2.json')]);
+    assert.equal(again.status, 0, again.stderr);
+    assert.notEqual(JSON.parse(await readFile(path.join(dir, 'packet2.json'), 'utf8')).packet[0].sense_id, row.sense_id);
+
+    // A different relevance is different persistent evidence.
+    const otherState = path.join(dir, 'other.json');
+    await writeFile(outcomesPath, JSON.stringify(outcome({ target: pick.target.record_id, target_sense: pick.target.sense_id, relevance: 2 })));
+    assert.equal(run(['record', packetPath, outcomesPath, '--state', otherState]).status, 0);
+    const other = JSON.parse(await readFile(otherState, 'utf8')).done[row.sense_id];
+    assert.notEqual(other.approved_relations[0].relation_id, saved.approved_relations[0].relation_id);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
