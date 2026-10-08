@@ -278,20 +278,23 @@ async function prepare() {
   console.log(JSON.stringify({ cohort_sha256: sha(JSON.stringify(cohort)), cases: cohort.length, directory: VALIDATION_DIRECTORY }, null, 2));
 }
 
-async function loadCohort() { return (await readJson(path.join(VALIDATION_DIRECTORY, 'cohort.local.json'))).cohort; }
+async function loadCohort(directory = VALIDATION_DIRECTORY) { return (await readJson(path.join(directory, 'cohort.local.json'))).cohort; }
 const cohortDigest = (cohort) => sha(JSON.stringify(cohort));
 const SEAL_FILE = path.join(VALIDATION_DIRECTORY, 'phase1-seal.local.json');
+const sealFileIn = (directory) => path.join(directory, 'phase1-seal.local.json');
 
-async function seal() {
-  const cohort = await loadCohort();
-  const file = path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json');
+export async function sealPhase1(directory = VALIDATION_DIRECTORY) {
+  const cohort = await loadCohort(directory);
+  const file = path.join(directory, 'owner', 'phase1-judgments.json');
   const errors = validateJudgments(await readJson(file), cohort.map((entry) => entry.blind_id), 1);
   if (errors.length) throw new Error('phase 1 incomplete: ' + errors.join(', '));
-  const existing = await readSeal(SEAL_FILE);
+  const existing = await readSeal(sealFileIn(directory));
   const record = nextSeal(existing, await fileDigest(file), cohortDigest(cohort), new Date().toISOString());
-  if (!existing) await writeJson(SEAL_FILE, record);
-  console.log(existing ? 'phase 1 already sealed (unchanged)' : 'phase 1 sealed');
+  if (!existing) await writeJson(sealFileIn(directory), record);
+  return existing ? 'phase 1 already sealed (unchanged)' : 'phase 1 sealed';
 }
+
+async function seal() { console.log(await sealPhase1()); }
 
 async function reveal() {
   const cohort = await loadCohort();
@@ -314,13 +317,17 @@ async function reveal() {
   console.log('phase 2 evidence written');
 }
 
-async function report() {
-  const cohort = await loadCohort();
-  const phase1 = await readJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json'));
-  const phase2 = await readJson(path.join(VALIDATION_DIRECTORY, 'owner', 'phase2-judgments.json'));
-  assertSealed(await readSeal(SEAL_FILE), await fileDigest(path.join(VALIDATION_DIRECTORY, 'owner', 'phase1-judgments.json')), cohortDigest(cohort));
-  console.log(JSON.stringify(aggregate(cohort, phase1, phase2), null, 2));
+// The report boundary: needs the sealed cohort and both answer files; context bounds come only from the cohort.
+export async function buildReport(directory = VALIDATION_DIRECTORY) {
+  const cohort = await loadCohort(directory);
+  const phase1File = path.join(directory, 'owner', 'phase1-judgments.json');
+  const phase1 = await readJson(phase1File);
+  const phase2 = await readJson(path.join(directory, 'owner', 'phase2-judgments.json'));
+  assertSealed(await readSeal(sealFileIn(directory)), await fileDigest(phase1File), cohortDigest(cohort));
+  return aggregate(cohort, phase1, phase2);
 }
+
+async function report() { console.log(JSON.stringify(await buildReport(), null, 2)); }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const commands = { prepare, seal, reveal, report };

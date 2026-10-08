@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { STRATA, contextCountsOf, readOptionalJson, readSeal, recommend, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
+import { STRATA, buildReport, contextCountsOf, sealPhase1, readOptionalJson, readSeal, recommend, aggregate, assertSealed, classifyCase, nextSeal, selectCohort, validateJudgments } from './literature-validation.mjs';
 
 const D = '0'.repeat(64);
 const make = (id, group, evidence_use, outcome) => ({ candidate_id: id, group, evidence_use, outcome, selected_location_digests: [D] });
@@ -170,4 +170,29 @@ test('citation bounds come from the sealed cohort digests, so a tampered count c
   assert.throws(() => aggregate(cohort, phase1, at([999])), /cited_contexts/);
   assert.throws(() => aggregate(cohort, phase1, at([2])), /cited_contexts/);
   assert.deepEqual(contextCountsOf([{ blind_id: 'V01' }]), { V01: 0 });
+});
+
+test('report boundary: sealed cohort bounds citations; a planted count file or tampered answers cannot approve a phantom citation', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'report-'));
+  try {
+    const cohort = selectCohort(rows);
+    await mkdir(path.join(directory, 'owner'), { recursive: true });
+    await writeFile(path.join(directory, 'cohort.local.json'), JSON.stringify({ cohort }));
+    const phase1 = { phase: 1, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, one('deferred')])) };
+    const phase2 = (cited) => ({ phase: 2, judgments: Object.fromEntries(cohort.map((entry) => [entry.blind_id, two('covered', { cited_contexts: cited })])) });
+    await writeFile(path.join(directory, 'owner', 'phase1-judgments.json'), JSON.stringify(phase1));
+    await writeFile(path.join(directory, 'owner', 'phase2-judgments.json'), JSON.stringify(phase2([1])));
+    await assert.rejects(buildReport(directory), /not sealed/, 'unsealed phase 1 cannot be reported');
+    assert.equal(await sealPhase1(directory), 'phase 1 sealed');
+    assert.equal((await buildReport(directory)).improvements, 10);
+    // A planted, inflated count file is ignored: the phantom citation is still out of the sealed cohort's range.
+    await writeFile(path.join(directory, 'context-counts.local.json'), JSON.stringify(Object.fromEntries(cohort.map((entry) => [entry.blind_id, 999]))));
+    await writeFile(path.join(directory, 'owner', 'phase2-judgments.json'), JSON.stringify(phase2([999])));
+    await assert.rejects(buildReport(directory), /cited_contexts/);
+    // Edited phase 1 answers after sealing cannot be re-sealed or reported.
+    await writeFile(path.join(directory, 'owner', 'phase2-judgments.json'), JSON.stringify(phase2([1])));
+    await writeFile(path.join(directory, 'owner', 'phase1-judgments.json'), JSON.stringify({ ...phase1, judgments: { ...phase1.judgments, V01: one('included') } }));
+    await assert.rejects(sealPhase1(directory), /already sealed/);
+    await assert.rejects(buildReport(directory), /not sealed/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
