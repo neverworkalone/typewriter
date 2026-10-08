@@ -328,7 +328,7 @@ rather than by the batch data:
 If active Stage 1/2/3 work is blocked until a shared rule, contract, validator,
 or pipeline fix PR merges, label that PR `urgent` (including an existing PR).
 Use `urgent` only for actual blockers, not routine changes or Stage result PRs.
-It prioritizes MissCat's next review selection; normal review and merge rules
+It prioritizes the next review selection; normal review and merge rules
 still apply.
 
 ## Validation
