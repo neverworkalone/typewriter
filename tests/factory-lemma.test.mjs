@@ -100,6 +100,19 @@ test('a valid lemma batch passes; the same validator still accepts the historica
   assert.deepEqual(validateCandidateBatch(old), []);
 });
 
+test('producer revision is optional for legacy v2 manifests and validates full Git SHAs when present', async () => {
+  const { manifest, candidatesText } = await batchOf();
+  assert.deepEqual(validateCandidateBatch({ manifest, candidatesText }), []);
+  for (const revision of ['short', 'f'.repeat(39), 'g'.repeat(40)]) {
+    const invalid = { manifest: { ...manifest, producer_revision: revision }, candidatesText };
+    assert.ok(validateCandidateBatch(invalid).some((error) => error.includes('producer_revision')), revision);
+  }
+  for (const revision of ['a'.repeat(40), 'b'.repeat(64)]) {
+    const valid = { manifest: { ...manifest, producer_revision: revision }, candidatesText };
+    assert.deepEqual(validateCandidateBatch(valid), []);
+  }
+});
+
 test('lemma batch fails closed on tampering, stale digests, missing provenance and count mismatches', async () => {
   const { manifest, rows } = await batchOf();
   const check = (mutate, fragment, restampRows = true) => {
