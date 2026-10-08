@@ -214,6 +214,11 @@ test('a packet is one bounded unit: oversized, empty and repeated-sense packets 
   assert.match(packetBoundErrors(big).join('\n'), /bound is 200/u);
   assert.match(packetBoundErrors([]).join('\n'), /non-empty/u);
   assert.match(packetBoundErrors([rows[0], rows[0]]).join('\n'), /repeats a sense/u);
+  for (const bad of [[null], [undefined], ['w1-s1'], [[]], [{}], [{ sense_id: '' }], [{ sense_id: 7 }], [rows[0], null]]) {
+    assert.match(packetBoundErrors(bad).join('\n'), /non-empty sense_id/u);
+    const rejected = recordOutcomes(state, bad, [], { candidates: new Map(), index: buildRelationIndex(canonical), snapshotDigest: 'x' });
+    assert.equal(rejected.state, state, 'a malformed row yields errors, never an exception or a state change');
+  }
   assert.deepEqual(packetBoundErrors(Array.from({ length: MAX_PACKET_SIZE }, (_, i) => ({ sense_id: `w${i}-s1` }))), []);
   const result = recordOutcomes(state, big, [], { candidates: new Map(), index: buildRelationIndex(canonical), snapshotDigest: 'x' });
   assert.equal(result.state, state);

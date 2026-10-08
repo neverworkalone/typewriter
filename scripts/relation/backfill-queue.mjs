@@ -129,12 +129,14 @@ export function currentCandidatesForDone(canonical, rows, state, { index = build
   return result;
 }
 
-/** A packet is one bounded unit of work: 1..MAX_PACKET_SIZE distinct senses. Returns error strings. */
+/** A packet is one bounded unit of work: 1..MAX_PACKET_SIZE distinct, well-formed senses. Returns error strings. */
 export function packetBoundErrors(packet) {
   if (!Array.isArray(packet) || packet.length === 0) return ['packet must be a non-empty list of senses'];
   const errors = [];
   if (packet.length > MAX_PACKET_SIZE) errors.push(`packet has ${packet.length} senses; the bound is ${MAX_PACKET_SIZE}`);
-  const ids = packet.map((row) => row?.sense_id);
+  const malformed = packet.filter((row) => row === null || typeof row !== 'object' || Array.isArray(row) || typeof row.sense_id !== 'string' || row.sense_id === '');
+  if (malformed.length) return [...errors, 'packet rows must be objects with a non-empty sense_id'];
+  const ids = packet.map((row) => row.sense_id);
   if (new Set(ids).size !== ids.length) errors.push('packet repeats a sense');
   return errors;
 }

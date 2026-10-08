@@ -73,6 +73,14 @@ test('CLI record verifies approved targets, preserves them across a restart, and
     assert.match(huge.stderr, /the bound is 200/u);
     assert.equal(await readFile(state, 'utf8'), live, 'an oversized packet never touches state');
 
+    const nullPath = path.join(dir, 'null.json');
+    await writeFile(nullPath, JSON.stringify({ canonical_revision: ids.rev, packet: [null] }));
+    const malformed = run(['record', nullPath, outcomesPath, '--state', state]);
+    assert.notEqual(malformed.status, 0);
+    assert.match(malformed.stderr, /non-empty sense_id/u);
+    assert.doesNotMatch(malformed.stderr, /TypeError/u, 'a malformed row is a contract error, not an exception');
+    assert.equal(await readFile(state, 'utf8'), live);
+
     // A corrupt or unreadable state file must stop the command and must never be replaced by an empty state.
     const before = await readFile(state, 'utf8');
     await writeFile(state, `${before.slice(0, 40)}`);
