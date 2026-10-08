@@ -38,7 +38,7 @@ INSERT INTO senses VALUES
 INSERT INTO records VALUES ('r003', 'entry', 'reference-only', NULL, '빛');
 INSERT INTO search_forms VALUES ('r003', 0, '빛'), ('r003', 1, '빛나다');
 INSERT INTO senses VALUES ('r003-s1', 'r003', 0, 'noun', '밝음');
-INSERT INTO relations VALUES ('w001-s1', 0, 'r003', 'r003-s1', 'near', '연결된 뜻');
+INSERT INTO relations VALUES ('w001-s1', 0, 'r003', 'r003-s1', 'near', '연결된 뜻', 3);
 `;
 
 function seedDatabase(database) {
