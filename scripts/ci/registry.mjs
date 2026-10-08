@@ -231,6 +231,10 @@ export const CI_CATEGORIES = Object.freeze({
         ['--test', 'scripts/reference/literature-rescue.test.mjs'],
       ),
       commandCheck(
+        'Test Issue #397 canonical relation candidate retrieval',
+        ['--test', 'scripts/relation/candidate-retrieval.test.mjs'],
+      ),
+      commandCheck(
         'Test Issue #223 review-only import boundary',
         ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
       ),
