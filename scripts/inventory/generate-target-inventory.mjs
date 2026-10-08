@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
 } from '../validate/canonical-jsonl.mjs';
-import { validateFactoryAdmissionLedger } from '../validate/semantic-audit.mjs';
+import { isAdditiveFactoryAmendment, validateFactoryAdmissionLedger } from '../validate/semantic-audit.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -337,17 +337,14 @@ export function validatePromotionLedgerBindings({
     const amendments = factoryEvents.flatMap((event) => event.changes).filter((change) => change.entry_id === entry.canonical_id);
     if (amendments.length) {
       const first = amendments[0];
-      if (first.operation !== 'append_senses' || !first.previous_semantic_review || !first.previous_record) {
+      if (first.operation === 'create' || !first.previous_semantic_review || !first.previous_record) {
         throw new TargetInventoryGenerationError(`${label} lacks preserved original promotion authority`, 'PROMOTION_LEDGER_BINDING_MISMATCH');
       }
       recordDigest = first.before_sha256;
       review = first.previous_semantic_review;
       // Admission is additive: the historical promoted payload must survive unchanged.
       const original = first.previous_record;
-      const { senses: oldSenses, ...oldIdentity } = original;
-      const { senses: currentSenses, ...currentIdentity } = record;
-      if (JSON.stringify(oldIdentity) !== JSON.stringify(currentIdentity)
-        || oldSenses.some((sense, index) => JSON.stringify(sense) !== JSON.stringify(currentSenses[index]))) {
+      if (!isAdditiveFactoryAmendment(original, record, 'any')) {
         throw new TargetInventoryGenerationError(`${label} admission rewrote the original promoted payload`, 'PROMOTION_LEDGER_BINDING_MISMATCH');
       }
     }

@@ -236,8 +236,8 @@ export function validateDistinctSenseSemanticRationales(candidate, senseReviews)
   return true;
 }
 
-const PRECISION_RELATION_TYPES = new Set(['direct', 'antonym']);
-const EXPLORATORY_RELATION_TYPES = new Set(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
+export const PRECISION_RELATION_TYPES = new Set(['direct', 'antonym']);
+export const EXPLORATORY_RELATION_TYPES = new Set(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
 
 // Deterministic identity of one reviewed relation tuple, bound to its source sense. The evidence must
 // name the exact tuples (including type, note and relevance), not merely how many were reviewed.
