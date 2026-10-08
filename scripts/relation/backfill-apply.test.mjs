@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -128,9 +128,7 @@ test('a backfill onto a Stage 3-created record still passes the real factory his
   }
 });
 
-test('a run interrupted after the canonical write is recovered: the missing event and packet are added and factory validation holds', async () => {
-  const canonical = await loadCanonicalContext();
-  const index = buildRelationIndex(canonical);
+function oneApproval(canonical, index) {
   const { source, target } = pickPair(index);
   const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
   const state = newQueueState(canonical.canonicalRevision);
@@ -138,28 +136,80 @@ test('a run interrupted after the canonical write is recovered: the missing even
     outcome: 'relations-reviewed', gloss_sha256: inventoryCanonicalSenses(index).find((item) => item.sense_id === source.sense_id).gloss_sha256,
     rationale: 'x', relation_count: 1, approved_relations: [{ relation_id: 'x', relation, rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.` }], reviewed_candidates: [],
   };
+  return { source, target, state };
+}
+
+async function planOnDisk(root, state, index, packetId = 'R000001') {
+  const records = await readRecords(root);
+  const recordPathById = new Map();
+  for (const name of await readdir(path.join(root, 'data/canonical'))) {
+    for (const line of (await readFile(path.join(root, 'data/canonical', name), 'utf8')).split('\n')) if (line) recordPathById.set(JSON.parse(line).id, `data/canonical/${name}`);
+  }
+  const { amendments } = approvedAmendments(state, index);
+  const plan = planRelationBackfill({ packetId, amendments, canonicalRecords: records, recordPathById });
+  const packet = `${JSON.stringify({ packet_id: packetId, relation_amendments: amendments }, null, 1)}\n`;
+  return { plan, packet, amendments };
+}
+
+const authorityEvents = async (root) => JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8')).factory_admissions.length;
+
+test('a run interrupted after the packet (and optionally the canonical write) is finished by running apply again', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { source, target, state } = oneApproval(canonical, index);
+  for (const writeCanonical of [false, true]) {
+    const root = await scratchRoot();
+    try {
+      const baseline = await validateFactoryRepository({ root });
+      const { plan, packet } = await planOnDisk(root, state, index);
+      await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
+      await writeFile(path.join(root, 'data/relation-backfill/R000001.json'), packet);
+      if (writeCanonical) await writePlannedRecords(plan, root);
+      const eventsBefore = await authorityEvents(root);
+
+      const result = await applyBackfill({ root, state, index, refreshReports: false });
+      assert.deepEqual(result.packets, ['R000001']);
+      assert.equal(await authorityEvents(root), eventsBefore + 1);
+      assert.equal(await readFile(path.join(root, 'data/relation-backfill/R000001.json'), 'utf8'), packet, 'the intent packet is kept as written');
+      const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find((item) => item.id === source.sense_id);
+      assert.equal(sense.relations.filter((item) => item.target_sense === target.sense_id).length, 1, 'the tuple is not duplicated');
+      assert.deepEqual(await validateFactoryRepository({ root }), baseline);
+      assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'nothing-to-apply');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('an exact tuple that is already present without any packet is a no-op, not an interrupted apply', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { state } = oneApproval(canonical, index);
   const root = await scratchRoot();
   try {
-    const baseline = await validateFactoryRepository({ root });
-    // Reproduce the crash: canonical written, process gone before the authority event and packet.
-    const records = await readRecords(root);
-    const recordPathById = new Map();
-    for (const name of await readdir(path.join(root, 'data/canonical'))) {
-      for (const line of (await readFile(path.join(root, 'data/canonical', name), 'utf8')).split('\n')) if (line) recordPathById.set(JSON.parse(line).id, `data/canonical/${name}`);
-    }
-    const { amendments } = approvedAmendments(state, index);
-    await writePlannedRecords(planRelationBackfill({ packetId: 'R000001', amendments, canonicalRecords: records, recordPathById }), root);
-    const events = async () => JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8')).factory_admissions.length;
-    const eventsBefore = await events();
-
-    const result = await applyBackfill({ root, state, index, refreshReports: false });
-    assert.equal(result.status, 'applied');
-    assert.equal(await events(), eventsBefore + 1);
-    assert.equal((await readFile(path.join(root, result.packet_file), 'utf8')).includes(source.sense_id), true);
-    const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find((item) => item.id === source.sense_id);
-    assert.equal(sense.relations.filter((item) => item.target_sense === target.sense_id).length, 1, 'the tuple is not duplicated');
-    assert.deepEqual(await validateFactoryRepository({ root }), baseline);
+    // Another canonical change added the identical tuple before this approval was applied.
+    const { plan } = await planOnDisk(root, state, index);
+    await writePlannedRecords(plan, root);
+    const recordsBefore = await readRecords(root);
+    const eventsBefore = await authorityEvents(root);
     assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'nothing-to-apply');
+    assert.deepEqual(await readRecords(root), recordsBefore);
+    assert.equal(await authorityEvents(root), eventsBefore);
+    await assert.rejects(readFile(path.join(root, 'data/relation-backfill/R000001.json')), /ENOENT/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a backfill event whose packet file is missing fails closed instead of reporting success', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { state } = oneApproval(canonical, index);
+  const root = await scratchRoot();
+  try {
+    const result = await applyBackfill({ root, state, index, refreshReports: false });
+    await rm(path.join(root, 'data/relation-backfill', `${result.packets[0]}.json`));
+    await assert.rejects(applyBackfill({ root, state, index, refreshReports: false }), /has no committed packet file/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

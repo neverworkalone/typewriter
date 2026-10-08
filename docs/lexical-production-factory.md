@@ -409,11 +409,13 @@ Rules carried over unchanged:
   The packet id `R######` stands in for the candidate: the semantic-authority event has no
   entries, its `relation_amendments` carry the packet id as `source_candidate_id`, and the
   committed `data/relation-backfill/R######.json` keeps the approved tuples and rationales.
-  Git and canonical remain the authority; the local queue state only remembers approvals, so
-  an interrupted run is resumed by running `apply` again (a tuple is done only when canonical
-  holds it and a semantic-authority event records it, so a run cut off after the canonical write
-  gets its missing event and packet; recorded tuples replay as no-ops; a different note for the
-  same target is a conflict). A review is not re-queued by the
+  Git and canonical remain the authority; the local queue state only remembers approvals.
+  `apply` writes the packet file first (the intent record), then canonical, then the
+  semantic-authority event; a packet without its event is an interrupted apply and the next
+  `apply` finishes it (the packet's own tuples are removed from the base, then re-planned).
+  An event without its packet fails closed. A tuple that is merely already present and
+  claimed by no packet is an exact-tuple no-op, and a different note for the same target is
+  a conflict. A review is not re-queued by the
   `relation_neighbor_of_related` candidates that its own applied relations bring in.
 - **Stage 2 relation search (#446).** The worker hand-off instructs the agent to run
   `pnpm run relation:candidates <batch> --out <file>` after the sense work and review about
