@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  COHORT_RULE, measurePilot, pagedGroupStats, selectCohortSenses, senseRefOfTarget, validatePilotRecord,
+  COHORT_RULE, measurePilot, pagedGroupStats, readReviewedBatchSenses, selectCohortSenses, senseRefOfTarget, validatePilotRecord,
 } from './pilot.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -89,4 +89,25 @@ test('paged group statistics report >20 and >100 groups and use the shared UI gr
   assert.deepEqual(stats.texture, { groups: 1, over_20: 1, over_100: 0, max: 21 });
   assert.deepEqual(stats.association, { groups: 1, over_20: 1, over_100: 1, max: 101 });
   assert.equal(senseRefOfTarget({ provisional_id: 'provisional:C000001/C000001-0002/s1' }), 'C000001-0002-s1');
+});
+
+test('the Stage 2 relation source reader admits included and corrected decisions only when asked, never held or rejected ones', async () => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const repo = await mkdtemp(join(tmpdir(), 'stage2-sources-'));
+  try {
+    await mkdir(join(repo, 'data/reviews/C000099'), { recursive: true });
+    const row = (id, disposition) => ({
+      source_candidate_id: id, disposition, target: { kind: 'new_entry' },
+      reviewed_record: { lemma: id, senses: [{ pos: 'noun', gloss: `${id} 뜻.` }] },
+    });
+    await writeFile(join(repo, 'data/reviews/C000099/decisions.jsonl'),
+      ['included', 'corrected', 'deferred', 'rejected'].map((d, i) => JSON.stringify(row(`C000099-000${i + 1}`, d))).join('\n') + '\n');
+    assert.equal((await readReviewedBatchSenses('C000099', repo)).length, 1, 'pilot default stays included-only');
+    const production = await readReviewedBatchSenses('C000099', repo, new Set(['included', 'corrected']));
+    assert.deepEqual(production.map((sense) => sense.candidate_id), ['C000099-0001', 'C000099-0002']);
+  } finally {
+    await rm(repo, { recursive: true, force: true });
+  }
 });
