@@ -27,12 +27,13 @@ const ADMITTED = new Set(['included']);
 const sha = (value) => createHash('sha256').update(value).digest('hex');
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 
-export async function readReviewedBatchSenses(batchId, repo = REPO) {
+// The pilot cohort is included-only; production Stage 2/3 admit `included` and `corrected` (pass that set).
+export async function readReviewedBatchSenses(batchId, repo = REPO, admitted = ADMITTED) {
   const raw = await readFile(path.join(repo, 'data/reviews', batchId, 'decisions.jsonl'), 'utf8');
   const senses = [];
   for (const line of raw.split('\n').filter(Boolean)) {
     const row = JSON.parse(line);
-    if (!ADMITTED.has(row.disposition)) continue;
+    if (!admitted.has(row.disposition)) continue;
     row.reviewed_record.senses.forEach((sense, index) => {
       senses.push({
         batch_id: batchId,

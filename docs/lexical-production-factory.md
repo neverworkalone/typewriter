@@ -403,6 +403,10 @@ Rules carried over unchanged:
   types, relevance or notes), and canonical integrity rejects missing targets,
   self-references and duplicates. A relation defect is a shared-contract fix,
   never a reason to hold or reject a valid lexical sense.
+- **Stage 2 relation search (#446).** The worker hand-off instructs the agent to run
+  `pnpm run relation:candidates <batch> --out <file>` after the sense work and review about
+  20 candidates per sense where available. The output is candidates only; the existing
+  `relations-reviewed` / `no-relations` contract above is the only record.
 - **Reverse relation amendments (#399).** An admitted decision may carry
   `relation_amendments`: `{source_record_id, source_sense_id, source_gloss_sha256,
   relation, rationale}` adding one reviewed relation to an *existing* canonical source
