@@ -12,7 +12,9 @@ import {
   RESCUE_BOUNDS, isRescueEligible, runBoundedLiteratureLookup, summarizeLiteratureRescue, validateLiteratureLookup,
 } from '../factory/literature-rescue.mjs';
 import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
-import { restrictToGroup } from './literature-evidence-run.mjs';
+import { loadPosScopedSearchFormSupport } from '../factory/search-form-support.mjs';
+import { deriveSearchForms } from './literature-evidence.mjs';
+import { restrictToGroup, supportedFormsForCandidate } from './literature-evidence-run.mjs';
 import { assertLiteratureFts5Support, createLiteratureSchema } from './literature-index.mjs';
 
 assertLiteratureFts5Support();
@@ -112,6 +114,19 @@ test('restricting to a group also narrows POS so a sibling POS adds no supported
   const narrowed = restrictToGroup(multi, 'g1');
   assert.deepEqual(narrowed.pos_hypotheses, ['adjective']);
   assert.deepEqual(narrowed.usage_groups.map((g) => g.group_id), ['g1']);
+});
+
+test('a narrowed group adds no sibling-POS supported forms to the final search forms', async () => {
+  const canonical = [{ record_type: 'entry', id: 'w1', lemma: '푸르다', senses: [{ id: 'w1-s1', pos: 'adjective', gloss: 'x', relations: [] }, { id: 'w1-s2', pos: 'noun', gloss: 'x', relations: [] }] }];
+  const index = buildCanonicalIndex(canonical);
+  const support = await loadPosScopedSearchFormSupport(canonical);
+  const multi = { ...row([]), pos_hypotheses: ['adjective', 'noun'], usage_groups: [{ group_id: 'g1', pos: 'adjective' }, { group_id: 'g2', pos: 'noun' }],
+    observations: [{ observation_id: 'o1', form_id: 'f1', group_id: 'g1', pos: 'adjective', holds: [] }, { observation_id: 'o2', form_id: 'f1', group_id: 'g2', pos: 'noun', holds: [] }] };
+  const forms = (r) => deriveSearchForms(r, supportedFormsForCandidate(r, index, support)).forms.map((f) => f.form);
+  const g1 = forms(restrictToGroup(multi, 'g1'));
+  const g2 = forms(restrictToGroup(multi, 'g2'));
+  for (const form of support.get('w1\u0000adjective') ?? []) if (!(support.get('w1\u0000noun') ?? new Set()).has(form) && form !== '푸른') assert.equal(g2.includes(form), false, form);
+  for (const form of support.get('w1\u0000noun') ?? []) if (!(support.get('w1\u0000adjective') ?? new Set()).has(form) && form !== '푸른') assert.equal(g1.includes(form), false, form);
 });
 
 test('no hit and an unreadable DB are not evidence and force nothing', async () => {
