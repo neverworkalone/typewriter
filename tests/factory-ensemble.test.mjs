@@ -81,6 +81,11 @@ test('classification: stable, explicit categories and reason codes for every dis
     }, { input: '짠하다', pos: 'adjective' }, 'concordant', ['three_way_agreement']],
     ['a homograph path (가/noun beside 가다) is still a material rival', { k: ok(gada, p('가', 'noun')), h: ok(gada), m: ok(gada) }, HINT, 'conflicted', ['kiwi_unsupported_rival']],
     ['an unsupported Kiwi rival path blocks concordance', { k: ok(gada, p('가', 'noun')), h: ok(gada), m: ok(gada) }, HINT, 'conflicted', ['kiwi_unsupported_rival']],
+    ['a mixed-script provider lemma is unresolved and excluded from typed hypotheses', {
+      k: ok(p('플랜', 'noun', '플랜'), p('플랜A', 'noun', '플랜A')),
+      h: ok(p('플랜', 'noun', '플랜')),
+      m: ok(p('플랜', 'noun', '플랜')),
+    }, { input: '플랜', pos: 'noun' }, 'unsupported_or_unknown', ['unsupported_lemma_shape']],
     ['missing/unsupported provider output', { k: ok(gada), h: { outcome: 'unsupported', analyses: [] }, m: ok(gada) }, HINT, 'unsupported_or_unknown', ['khaiii_unusable']],
     ['provider error', { k: ok(gada), h: ok(gada), m: { outcome: 'error', analyses: [] } }, HINT, 'unsupported_or_unknown', ['mecab_unusable']],
     ['provider-reported ambiguity is a conflict, never a guess', { k: { outcome: 'ambiguous', analyses: [] }, h: ok(gada), m: ok(gada) }, HINT, 'conflicted', ['kiwi_reported_ambiguous']],
@@ -97,6 +102,35 @@ test('classification: stable, explicit categories and reason codes for every dis
   assert.deepEqual(alt.rivals.map((entry) => entry.lemma), ['걸다']);
   assert.deepEqual(alt.holds, ['analysis_ambiguous'], 'the unsettled rival keeps a reviewable hold');
   assert.deepEqual(classify(cases[1][1], cases[1][2]), alt);
+  const mixed = classify(cases[14][1], cases[14][2]);
+  assert.deepEqual(mixed.hypotheses, [{ lemma: '플랜', pos: 'noun', supporters: ['khaiii', 'kiwi_top', 'mecab'] }]);
+  assert.equal(JSON.stringify(mixed.hypotheses).includes('플랜A'), false);
+});
+
+test('a non-Hangul provider lemma stays held and yields a valid Stage 1 candidate manifest', async () => {
+  const k = {
+    가는: [p('가다', 'verb', '가')],
+    플랜A: [p('플랜', 'noun', '플랜'), p('플랜A', 'noun', '플랜A')],
+  };
+  const hTable = { 가는: p('가다', 'verb', '가'), 플랜A: p('플랜', 'noun', '플랜') };
+  const mTable = { 가는: p('가다', 'verb', '가'), 플랜A: p('플랜', 'noun', '플랜') };
+  const result = await produce([
+    cand('가다', 'verb', [h('d1', '가는')]),
+    cand('플랜', 'noun', [h('d2', '플랜A')]),
+  ], triple({
+    k,
+    h: Object.fromEntries(Object.entries(hTable).map(([surface, path]) => [surface, [path]])),
+    m: Object.fromEntries(Object.entries(mTable).map(([surface, path]) => [surface, [path]])),
+  }));
+
+  assert.deepEqual(result.rows.map((row) => row.input), ['가다'], 'the unsupported analyzer lemma is never admitted');
+  assert.equal(result.manifest.unresolved_observations.length, 1);
+  const [queued] = result.manifest.unresolved_observations;
+  assert.deepEqual([queued.surface, queued.category, queued.holds, queued.reasons], [
+    '플랜A', 'unsupported_or_unknown', ['analysis_unsupported'], ['unsupported_lemma_shape'],
+  ]);
+  assert.deepEqual(queued.hypotheses, [{ lemma: '플랜', pos: 'noun', supporters: ['khaiii', 'kiwi_top', 'mecab'] }]);
+  assert.deepEqual(validateCandidateBatch({ manifest: result.manifest, candidatesText: result.candidatesText }), []);
 });
 
 test('1: all three providers analyze the same complete unique surface set even when Kiwi resolves everything; repeats map to every observation', async () => {
