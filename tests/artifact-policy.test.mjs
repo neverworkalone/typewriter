@@ -1077,6 +1077,19 @@ test('artifact policy accepts a factory decision row addressed by source_candida
     await mkdir(path.dirname(path.join(repositoryDirectory, batchPath)), { recursive: true });
     await writeFile(path.join(repositoryDirectory, batchPath), `${JSON.stringify(source)}\n`, 'utf8');
     await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [batchPath] }), /missing compact field inventory_id/u);
+    // Positive relation evidence (relations-reviewed + relation_rationale) is a registered durable shape;
+    // other unregistered sense-review fields stay rejected.
+    const positive = structuredClone(source);
+    Object.assign(positive.decisions[0].sense_reviews[0], {
+      relation_decision: 'relations-reviewed', relation_count: 1, relation_ids: ['rel-0123456789abcdef01234567'],
+      relation_rationale: 'C000001-0002 C000001-0002-s1: 관계 탐색 후 근거 있는 관계만 남겼다.',
+    });
+    delete positive.decisions[0].sense_reviews[0].no_relation_rationale;
+    await writeFile(filePath, `${JSON.stringify(positive)}\n`, 'utf8');
+    await assert.doesNotReject(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }));
+    positive.decisions[0].sense_reviews[0].unregistered_field = 'x';
+    await writeFile(filePath, `${JSON.stringify(positive)}\n`, 'utf8');
+    await assert.rejects(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }), /unregistered_field/u);
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }

@@ -500,7 +500,7 @@ function validateCompactDecisionSource(value, filePath, semantics) {
       );
       for (const field of semantics.batch_decision_forbidden_fields) {
         if (Object.hasOwn(senseReview, field)
-          && !['sense_id', 'semantic_rationale', 'boundary_rationale', 'relation_decision', 'relation_count', 'relation_ids', 'no_relation_rationale'].includes(field)) {
+          && !['sense_id', 'semantic_rationale', 'boundary_rationale', 'relation_decision', 'relation_count', 'relation_ids', 'no_relation_rationale', 'relation_rationale'].includes(field)) {
           fail(
             `${filePath} decision ${index}.sense_reviews[${senseIndex}] stores reconstructible duplicate field ${field}`,
             'DURABLE_EVIDENCE_DUPLICATION',
