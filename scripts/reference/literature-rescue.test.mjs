@@ -12,6 +12,7 @@ import {
   RESCUE_BOUNDS, isRescueEligible, runBoundedLiteratureLookup, summarizeLiteratureRescue, validateLiteratureLookup,
 } from '../factory/literature-rescue.mjs';
 import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
+import { restrictToGroup } from './literature-evidence-run.mjs';
 import { assertLiteratureFts5Support, createLiteratureSchema } from './literature-index.mjs';
 
 assertLiteratureFts5Support();
@@ -103,6 +104,14 @@ test('lookup is per usage group: a hard-hold sibling neither blocks nor widens a
   assert.equal(g1.record.location_digests.length, 1, 'only g1 forms are searched');
   const g2 = await run(two, { databasePath, groupId: 'g2' });
   assert.deepEqual(g2, { eligible: false, record: null, files: null });
+});
+
+test('restricting to a group also narrows POS so a sibling POS adds no supported forms', () => {
+  const multi = { ...row(), pos_hypotheses: ['adjective', 'noun'], usage_groups: [{ group_id: 'g1', pos: 'adjective' }, { group_id: 'g2', pos: 'noun' }],
+    observations: [{ observation_id: 'o1', form_id: 'f1', group_id: 'g1', pos: 'adjective', holds: [] }, { observation_id: 'o2', form_id: 'f1', group_id: 'g2', pos: 'noun', holds: [] }] };
+  const narrowed = restrictToGroup(multi, 'g1');
+  assert.deepEqual(narrowed.pos_hypotheses, ['adjective']);
+  assert.deepEqual(narrowed.usage_groups.map((g) => g.group_id), ['g1']);
 });
 
 test('no hit and an unreadable DB are not evidence and force nothing', async () => {

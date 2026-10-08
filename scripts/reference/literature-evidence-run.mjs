@@ -26,7 +26,9 @@ export function restrictToGroup(row, groupId) {
   if (groupId === undefined || !Array.isArray(row.observations)) return row;
   const observations = row.observations.filter((o) => o.group_id === groupId);
   const formIds = new Set(observations.map((o) => o.form_id));
-  return { ...row, observations, forms: row.forms.filter((f) => formIds.has(f.form_id)) };
+  const usage_groups = row.usage_groups.filter((g) => g.group_id === groupId);
+  const poses = new Set(usage_groups.map((g) => g.pos));
+  return { ...row, observations, usage_groups, pos_hypotheses: row.pos_hypotheses.filter((pos) => poses.has(pos)), forms: row.forms.filter((f) => formIds.has(f.form_id)) };
 }
 
 export async function evidenceForCandidate(context, { batchId, candidateId, groupId, databasePath, maxContexts, maxPerWork, matchMode }) {
