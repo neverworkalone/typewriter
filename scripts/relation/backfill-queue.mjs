@@ -45,13 +45,45 @@ export function orderInventory(rows) {
 export const newQueueState = (canonicalRevision) => ({ contract: BACKFILL_CONTRACT, canonical_revision: canonicalRevision, done: {} });
 
 /**
- * Next bounded packet of pending senses. A completed sense whose gloss changed since review is stale and returns to
- * the queue (re-review); a sense that no longer exists is simply dropped from consideration.
+ * A completed review stays valid only while it still covers what the retriever offers now: the sense's gloss is
+ * unchanged AND every current candidate target was among the targets reviewed. A candidate that appeared after a
+ * canonical change was never inspected, so the sense returns to the queue. Candidates that disappeared (for example
+ * because the reviewed relation now exists) do not invalidate it. Missing current candidates fail closed (re-review).
  */
-export function nextPacket(rows, state, { limit = 50 } = {}) {
+export function isReviewCurrent(row, entry, currentCandidates) {
+  if (!entry || entry.gloss_sha256 !== row.gloss_sha256) return false;
+  const current = currentCandidates?.get(row.sense_id);
+  if (!current) return false;
+  const reviewed = new Set(entry.reviewed_candidates);
+  return current.every((id) => reviewed.has(id));
+}
+
+/** sense id -> retrieved candidate target sense ids, from a validated retrieval artifact. */
+export function candidateTargets(artifact) {
+  return new Map(artifact.sources.map((source) => [
+    source.source.sense_id,
+    source.candidates.map((candidate) => candidate.target.sense_id ?? candidate.target.provisional_id),
+  ]));
+}
+
+/** Current candidate targets for the senses a state marks done (the only ones whose currency must be checked). */
+export function currentCandidatesForDone(canonical, rows, state, { index = buildRelationIndex(canonical) } = {}) {
+  const doneRows = rows.filter((row) => state.done[row.sense_id]);
+  const result = new Map();
+  for (let i = 0; i < doneRows.length; i += MAX_PACKET_SIZE) {
+    for (const [id, targets] of candidateTargets(retrievePacket(canonical, doneRows.slice(i, i + MAX_PACKET_SIZE), { index }))) result.set(id, targets);
+  }
+  return result;
+}
+
+/**
+ * Next bounded packet of pending senses: never reviewed, or reviewed against a different gloss or an incomplete
+ * candidate pool (see isReviewCurrent). A sense that no longer exists is simply dropped from consideration.
+ */
+export function nextPacket(rows, state, { limit = 50, currentCandidates = new Map() } = {}) {
   if (state?.contract !== BACKFILL_CONTRACT) throw new Error('unknown backfill state contract');
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PACKET_SIZE) throw new Error(`limit must be an integer 1-${MAX_PACKET_SIZE}`);
-  const pending = orderInventory(rows).filter((row) => state.done[row.sense_id]?.gloss_sha256 !== row.gloss_sha256);
+  const pending = orderInventory(rows).filter((row) => !isReviewCurrent(row, state.done[row.sense_id], currentCandidates));
   return pending.slice(0, limit);
 }
 
@@ -59,7 +91,7 @@ export function nextPacket(rows, state, { limit = 50 } = {}) {
  * Validates and records review outcomes for a packet. Relation tuples are checked by the shared amendment
  * validator, so a backfill relation obeys exactly the production contract. Returns the updated state (pure).
  */
-export function recordOutcomes(state, packet, outcomes) {
+export function recordOutcomes(state, packet, outcomes, { candidates } = {}) {
   const byId = new Map(packet.map((row) => [row.sense_id, row]));
   const errors = [];
   const seen = new Set();
@@ -78,7 +110,11 @@ export function recordOutcomes(state, packet, outcomes) {
     const wrongSource = amendments.filter((a) => a.source_sense_id !== outcome.sense_id || a.source_gloss_sha256 !== row.gloss_sha256);
     if (wrongSource.length) problems.push(`${outcome.sense_id}: amendments must be bound to this sense and its current gloss digest`);
     if (problems.length) { errors.push(...problems); continue; }
-    done[outcome.sense_id] = { outcome: outcome.outcome, gloss_sha256: row.gloss_sha256, relation_count: amendments.length };
+    const reviewedCandidates = candidates?.get(outcome.sense_id);
+    if (!reviewedCandidates) { errors.push(`${outcome.sense_id}: the reviewed candidate pool must be supplied`); continue; }
+    done[outcome.sense_id] = {
+      outcome: outcome.outcome, gloss_sha256: row.gloss_sha256, relation_count: amendments.length, reviewed_candidates: [...new Set(reviewedCandidates)].sort(),
+    };
   }
   if (errors.length) return { state, errors };
   return { state: { ...state, done }, errors: [] };
@@ -93,8 +129,8 @@ export function retrievePacket(canonical, packet, { index = buildRelationIndex(c
   return artifact;
 }
 
-export function summarizeQueue(rows, state) {
-  const done = rows.filter((row) => state.done[row.sense_id]?.gloss_sha256 === row.gloss_sha256);
+export function summarizeQueue(rows, state, currentCandidates = new Map()) {
+  const done = rows.filter((row) => isReviewCurrent(row, state.done[row.sense_id], currentCandidates));
   const outcomes = {};
   for (const row of done) { const o = state.done[row.sense_id].outcome; outcomes[o] = (outcomes[o] ?? 0) + 1; }
   return {
