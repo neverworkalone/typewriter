@@ -79,17 +79,21 @@ async function readPackets(root) {
 const readAuthority = async (root) => JSON.parse(await readFile(path.join(root, AUTHORITY_PATH), 'utf8'));
 
 // Packet first (intent), then canonical, then the authority event; the event is what marks the packet complete.
+// Write beside the target and rename, so an interruption leaves either the old file or the complete new one.
+async function writeAtomic(target, text) {
+  await writeFile(`${target}.tmp`, text, 'utf8');
+  await rename(`${target}.tmp`, target);
+}
+
 async function applyPacket({ root, records, recordPathById, packetId, amendments, packetText }) {
   const base = withoutTuples(records, amendments);
   const plan = planRelationBackfill({ packetId, amendments, canonicalRecords: base, recordPathById });
   plan.reviewManifest = { semantic_decisions_sha256: sha256Hex(packetText), admission: {} };
   const authority = await buildStage3SemanticAuthority({ root, baseCanonicalRecords: base, plan });
   await mkdir(path.join(root, BACKFILL_PACKET_DIR), { recursive: true });
-  await writeFile(path.join(root, BACKFILL_PACKET_DIR, `${packetId}.json`), packetText, 'utf8');
+  await writeAtomic(path.join(root, BACKFILL_PACKET_DIR, `${packetId}.json`), packetText);
   await writePlannedRecords(plan, root);
-  const target = path.join(root, AUTHORITY_PATH);
-  await writeFile(`${target}.tmp`, authority.sourceText, 'utf8');
-  await rename(`${target}.tmp`, target);
+  await writeAtomic(path.join(root, AUTHORITY_PATH), authority.sourceText);
   return plan;
 }
 

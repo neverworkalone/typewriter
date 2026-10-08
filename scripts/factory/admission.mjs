@@ -2,7 +2,7 @@ import { validateDecisionHandoff } from './handoff.mjs';
 import { sha256Hex } from './contract.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { AMENDMENT_FIELD } from './relation-amendments.mjs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const ADMITTED = new Set(['included', 'corrected']);
@@ -61,7 +61,10 @@ function canonicalFileOnDisk(root, file) {
 async function writeCanonicalJsonl(root, file, contents) {
   const destination = canonicalFileOnDisk(root, file);
   const relative = path.relative(path.join(root, 'data/canonical'), destination);
-  await writeFile(path.join(root, 'data/canonical', relative), contents, 'utf8');
+  // Temp + rename: an interruption never leaves a truncated canonical JSONL file.
+  const final = path.join(root, 'data/canonical', relative);
+  await writeFile(`${final}.tmp`, contents, 'utf8');
+  await rename(`${final}.tmp`, final);
 }
 
 function nextSenseOrdinal(record, reserved) {

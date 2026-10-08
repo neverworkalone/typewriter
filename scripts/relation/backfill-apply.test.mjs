@@ -165,6 +165,8 @@ test('a run interrupted after the packet (and optionally the canonical write) is
       await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
       await writeFile(path.join(root, 'data/relation-backfill/R000001.json'), packet);
       if (writeCanonical) await writePlannedRecords(plan, root);
+      // An interrupted atomic write leaves only a partial temp file, which is never read as a packet.
+      await writeFile(path.join(root, 'data/relation-backfill/R000002.json.tmp'), '{"packet_id": "R0000');
       const eventsBefore = await authorityEvents(root);
 
       const result = await applyBackfill({ root, state, index, refreshReports: false });
@@ -201,13 +203,18 @@ test('an exact tuple that is already present without any packet is a no-op, not 
   }
 });
 
-test('a backfill event whose packet file is missing fails closed instead of reporting success', async () => {
+test('a partial temp packet from an interrupted write is ignored, and a backfill event whose packet file is missing fails closed', async () => {
   const canonical = await loadCanonicalContext();
   const index = buildRelationIndex(canonical);
   const { state } = oneApproval(canonical, index);
   const root = await scratchRoot();
   try {
+    // A previous run died while writing the packet: only the partial temp file exists, so a normal apply still works.
+    await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
+    await writeFile(path.join(root, 'data/relation-backfill/R000001.json.tmp'), '{"packet_id": "R0000');
     const result = await applyBackfill({ root, state, index, refreshReports: false });
+    assert.deepEqual(result.packets, ['R000001']);
+    JSON.parse(await readFile(path.join(root, 'data/relation-backfill/R000001.json'), 'utf8'));
     await rm(path.join(root, 'data/relation-backfill', `${result.packets[0]}.json`));
     await assert.rejects(applyBackfill({ root, state, index, refreshReports: false }), /has no committed packet file/u);
   } finally {
