@@ -131,7 +131,7 @@ test('the production relation:candidates path takes included and corrected sense
       senses: [{ id: 'w1-s1', pos: 'noun', gloss: '이미 있던 뜻.' }],
     }] });
     const artifact = await stage2CandidateArtifact('C000098', { repo, index });
-    assert.deepEqual(artifact.sources.map((source) => source.source.sense_id).sort(),
+    assert.deepEqual(artifact.sources.map((source) => source.source.provisional_id).sort(),
       ['provisional:C000098/C000098-0001/s1', 'provisional:C000098/C000098-0002/s1']);
   } finally {
     await rm(repo, { recursive: true, force: true });
