@@ -236,13 +236,18 @@ export function preRelevanceRecordSha256(record) {
   return sha256Json(projected);
 }
 
-// Drop only `relevance` that the historical sense never had; any other field difference stays visible.
-function withoutRelevance(sense, historicalSense) {
+// Drop `relevance` only on relations whose historical counterpart never had it; a relevance the
+// historical sense already carried is compared as-is, so changing it is still a rewrite.
+export function withoutRelevance(sense, historicalSense) {
   if (!sense?.relations) return sense;
   return {
     ...sense,
-    relations: sense.relations.map((relation) => {
-      if (!EXPLORATORY_RELATION_TYPES.has(relation.type) || !Object.hasOwn(relation, 'relevance')) return relation;
+    relations: sense.relations.map((relation, index) => {
+      const historical = historicalSense?.relations?.[index];
+      if (!EXPLORATORY_RELATION_TYPES.has(relation.type)
+        || !Object.hasOwn(relation, 'relevance')
+        || !historical
+        || Object.hasOwn(historical, 'relevance')) return relation;
       const { relevance, ...rest } = relation;
       return rest;
     }),

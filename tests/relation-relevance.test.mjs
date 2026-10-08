@@ -112,3 +112,22 @@ test('historical digests bind the pre-relevance record; other edits stay rejecte
   relinked.senses[0].relations[0].note = 'changed';
   assert.ok(!matchesHistoricalRecordSha256(relinked, digest));
 });
+
+test('append_senses comparison keeps an existing relevance but tolerates a backfill (#396)', async () => {
+  const { withoutRelevance } = await import('../scripts/validate/semantic-audit.mjs');
+  const sense = (extra) => ({ id: 's', pos: 'noun', gloss: 'g', relations: [relation({ type: 'near', ...extra })] });
+  // historical sense predates relevance: the backfilled value is ignored
+  assert.equal(
+    JSON.stringify(withoutRelevance(sense({ relevance: 4 }), sense({}))),
+    JSON.stringify(sense({})),
+  );
+  // historical sense already has relevance: unchanged value passes, changed value is visible
+  assert.equal(
+    JSON.stringify(withoutRelevance(sense({ relevance: 4 }), sense({ relevance: 4 }))),
+    JSON.stringify(sense({ relevance: 4 })),
+  );
+  assert.notEqual(
+    JSON.stringify(withoutRelevance(sense({ relevance: 2 }), sense({ relevance: 4 }))),
+    JSON.stringify(sense({ relevance: 4 })),
+  );
+});
