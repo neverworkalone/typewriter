@@ -70,51 +70,120 @@ export function validateLabels(file, hitIds) {
 
 const rate = (numerator, denominator) => (denominator ? Number((numerator / denominator).toFixed(4)) : null);
 
+export const BOOTSTRAP = Object.freeze({ resamples: 2000, interval: [0.025, 0.975], min_valid_share: 0.9 });
+
+// Deterministic PRNG (mulberry32) seeded from the candidate ids, so the report is reproducible.
+function seededRandom(seedText) {
+  let state = parseInt(sha(seedText).slice(0, 8), 16) >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const judgedOf = (list) => list.filter((row) => row.label !== 'unclear');
+const totalOf = (list) => list.reduce((sum, row) => sum + row.weight, 0);
+const rateOf = (list, label) => {
+  const base = judgedOf(list);
+  return base.length ? totalOf(base.filter((row) => row.label === label)) / totalOf(base) : null;
+};
+
+function estimate(rows) {
+  const kept = rows.filter((row) => row.stratum === 'kept');
+  const baselineOther = rateOf(rows, 'other_word');
+  const keptOther = rateOf(kept, 'other_word');
+  const sameAll = totalOf(judgedOf(rows).filter((row) => row.label === 'same_word'));
+  const droppedSame = totalOf(judgedOf(rows.filter((row) => row.stratum === 'dropped')).filter((row) => row.label === 'same_word'));
+  return {
+    baselineOther,
+    keptOther,
+    reduction: baselineOther && keptOther !== null ? (baselineOther - keptOther) / baselineOther : null,
+    droppedSameShare: sameAll ? droppedSame / sameAll : null,
+  };
+}
+
+const round4 = (value) => (value === null ? null : Number(value.toFixed(4)));
+const percentile = (sorted, q) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(q * sorted.length)))];
+
+/** Candidate-clustered percentile bootstrap of the two criteria quantities. Null interval = uncertainty not evaluable. */
+export function bootstrapInterval(rows) {
+  const clusters = [...Map.groupBy(rows, (row) => row.candidate_id).values()];
+  const random = seededRandom('bootstrap-414:' + clusters.map((cluster) => cluster[0].candidate_id).sort().join(','));
+  const reductions = [];
+  const shares = [];
+  for (let index = 0; index < BOOTSTRAP.resamples; index += 1) {
+    const sample = Array.from({ length: clusters.length }, () => clusters[Math.floor(random() * clusters.length)]).flat();
+    const { reduction, droppedSameShare } = estimate(sample);
+    if (reduction !== null) reductions.push(reduction);
+    if (droppedSameShare !== null) shares.push(droppedSameShare);
+  }
+  const usable = (list) => list.length >= BOOTSTRAP.resamples * BOOTSTRAP.min_valid_share;
+  const interval = (list) => (usable(list)
+    ? (list.sort((a, b) => a - b), [round4(percentile(list, BOOTSTRAP.interval[0])), round4(percentile(list, BOOTSTRAP.interval[1]))])
+    : null);
+  return { method: 'candidate_clustered_percentile_bootstrap', clusters: clusters.length, resamples: BOOTSTRAP.resamples, relative_other_word_reduction: interval(reductions), same_word_dropped_share: interval(shares) };
+}
+
+/** Rows of one candidate and stratum must agree on population/selected, and `selected` must equal the row count. */
+function assertConsistentSampling(rows) {
+  const groups = Map.groupBy(rows, (row) => row.candidate_id + '\0' + row.stratum);
+  for (const list of groups.values()) {
+    const { candidate_id: candidate, stratum, population, selected } = list[0];
+    if (list.some((row) => row.population !== population || row.selected !== selected)) {
+      throw new Error(`${candidate}/${stratum}: conflicting population/selected metadata across rows`);
+    }
+    if (list.length !== selected) throw new Error(`${candidate}/${stratum}: selected ${selected} does not match ${list.length} mapping rows`);
+  }
+}
+
 /**
- * Text-free, stratum-weighted aggregate. `mapping` is {hitId: {stratum, population, selected}}: the candidate's
- * distinct substring units in that stratum and how many of them were picked. Each judged hit stands for
- * population/selected units of its candidate and stratum (Horvitz–Thompson weight), so the over-sampling of the
- * small dropped stratum cannot move the rates. Rates describe the capped scatter sample the retriever reads, not the
- * whole corpus. `unclear` hits are excluded from the rates and reported as weighted and unweighted counts.
+ * Text-free, stratum-weighted aggregate. `mapping` is {hitId: {candidate_id, stratum, population, selected}}: the
+ * candidate's distinct substring units in that stratum and how many of them were picked. Each judged hit stands for
+ * population/selected units (Horvitz–Thompson weight), so the over-sampling of the small dropped stratum cannot move
+ * the rates. Rates describe the capped scatter sample the retriever reads, not the whole corpus. `unclear` hits are
+ * excluded from the rates and reported. `criteria_met` is true only when the 95 % candidate-clustered bootstrap
+ * interval clears both criteria (lower bound of the reduction, upper bound of the dropped same-word share); the
+ * point estimates alone are reported as `point_estimate_meets_criteria` and are never a decision.
  */
 export function aggregateLabels(mapping, labels) {
   const rows = Object.entries(mapping).map(([id, entry]) => {
-    const { stratum, population, selected } = entry;
-    if (!['kept', 'dropped'].includes(stratum) || !Number.isSafeInteger(population) || !Number.isSafeInteger(selected) || selected < 1 || population < selected) {
-      throw new Error(`${id}: mapping needs a stratum and integer population >= selected >= 1`);
+    const { candidate_id: candidate, stratum, population, selected } = entry;
+    if (typeof candidate !== 'string' || !['kept', 'dropped'].includes(stratum) || !Number.isSafeInteger(population) || !Number.isSafeInteger(selected) || selected < 1 || population < selected) {
+      throw new Error(`${id}: mapping needs candidate_id, a stratum and integer population >= selected >= 1`);
     }
-    return { stratum, weight: population / selected, ...labels[id] };
+    return { candidate_id: candidate, stratum, population, selected, weight: population / selected, ...labels[id] };
   });
-  const judged = (list) => list.filter((row) => row.label !== 'unclear');
-  const total = (list) => list.reduce((sum, row) => sum + row.weight, 0);
-  const weightedRate = (list, label) => {
-    const base = judged(list);
-    return base.length ? Number((total(base.filter((row) => row.label === label)) / total(base)).toFixed(4)) : null;
-  };
+  assertConsistentSampling(rows);
   const kept = rows.filter((row) => row.stratum === 'kept');
   const dropped = rows.filter((row) => row.stratum === 'dropped');
-  const baselineOther = weightedRate(rows, 'other_word');
-  const keptOther = weightedRate(kept, 'other_word');
-  const sameAll = total(judged(rows).filter((row) => row.label === 'same_word'));
-  const droppedSame = total(judged(dropped).filter((row) => row.label === 'same_word'));
-  const droppedSameShare = sameAll ? Number((droppedSame / sameAll).toFixed(4)) : null;
-  const reduction = baselineOther ? Number(((baselineOther - keptOther) / baselineOther).toFixed(4)) : null;
+  const point = estimate(rows);
+  const interval = bootstrapInterval(rows);
+  const pointMet = point.reduction !== null && point.droppedSameShare !== null
+    && point.reduction >= CRITERIA.min_relative_other_word_reduction && point.droppedSameShare <= CRITERIA.max_dropped_same_word_share;
+  const intervalMet = interval.relative_other_word_reduction !== null && interval.same_word_dropped_share !== null
+    && interval.relative_other_word_reduction[0] >= CRITERIA.min_relative_other_word_reduction
+    && interval.same_word_dropped_share[1] <= CRITERIA.max_dropped_same_word_share;
   const types = Object.fromEntries(OTHER_WORD_TYPES.map((type) => [type, {
-    dropped_weighted: Number(total(dropped.filter((r) => r.type === type)).toFixed(2)),
-    kept_weighted: Number(total(kept.filter((r) => r.type === type)).toFixed(2)),
+    dropped_weighted: Number(totalOf(dropped.filter((r) => r.type === type)).toFixed(2)),
+    kept_weighted: Number(totalOf(kept.filter((r) => r.type === type)).toFixed(2)),
   }]));
   return {
     estimator: 'stratum_weighted_by_candidate_population_over_selected',
     sampled_hits: rows.length,
     sampled_by_stratum: { dropped: dropped.length, kept: kept.length },
-    represented_units: { dropped: Math.round(total(dropped)), kept: Math.round(total(kept)) },
-    unclear: { hits: rows.length - judged(rows).length, weighted_units: Math.round(total(rows) - total(judged(rows))) },
-    other_word_rate: { substring: baselineOther, eojeol: keptOther },
-    relative_other_word_reduction: reduction,
-    same_word_dropped_share: droppedSameShare,
+    represented_units: { dropped: Math.round(totalOf(dropped)), kept: Math.round(totalOf(kept)) },
+    unclear: { hits: rows.length - judgedOf(rows).length, weighted_units: Math.round(totalOf(rows) - totalOf(judgedOf(rows))) },
+    other_word_rate: { substring: round4(point.baselineOther), eojeol: round4(point.keptOther) },
+    relative_other_word_reduction: round4(point.reduction),
+    same_word_dropped_share: round4(point.droppedSameShare),
+    uncertainty: interval,
     other_word_by_type: types,
     criteria: CRITERIA,
-    criteria_met: reduction !== null && droppedSameShare !== null && reduction >= CRITERIA.min_relative_other_word_reduction && droppedSameShare <= CRITERIA.max_dropped_same_word_share,
+    point_estimate_meets_criteria: pointMet,
+    criteria_met: intervalMet,
   };
 }
 

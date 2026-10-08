@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { aggregateLabels, CRITERIA, pickHits, sampleCandidateIds, stratumPopulation, validateLabels } from './literature-boundary-judge.mjs';
+import { aggregateLabels, bootstrapInterval, CRITERIA, pickHits, sampleCandidateIds, stratumPopulation, validateLabels } from './literature-boundary-judge.mjs';
 import { summarize, toleranceVerdict, TOLERANCES } from './literature-boundary-measure.mjs';
 
 // Synthetic, text-free fixtures only (#414 measurement and judged-sample contract).
@@ -53,7 +53,8 @@ test('labels validate against a closed judge and typed other_word', () => {
 test('balanced control: when every unit is sampled the weighted rates equal the plain counts', () => {
   const mapping = {};
   const labels = {};
-  const add = (id, stratum, label, type) => { mapping[id] = { stratum, population: 1, selected: 1 }; labels[id] = type ? { label, type } : { label }; };
+  let n = 0;
+  const add = (id, stratum, label, type) => { mapping[id] = { candidate_id: 'C000001-' + String((n += 1)).padStart(4, '0'), stratum, population: 1, selected: 1 }; labels[id] = type ? { label, type } : { label }; };
   // 6 dropped: 5 other_word, 1 same_word; 6 kept: 1 other_word, 4 same_word, 1 unclear.
   ['a', 'b', 'c', 'd', 'e'].forEach((id) => add('D' + id, 'dropped', 'other_word', id === 'a' ? 'personal_name' : 'compound'));
   add('Df', 'dropped', 'same_word');
@@ -74,10 +75,10 @@ test('balanced control: when every unit is sampled the weighted rates equal the 
 test('imbalanced strata cannot fake a pass: the small dropped stratum is not over-weighted (#414 review)', () => {
   // One candidate: 1 dropped unit (other_word) and 1,000 kept units; 3 kept are sampled, 1 of them other_word.
   // True other_word rate before 401/1001 vs after 400/1000 is a ~0.15 % reduction, not 33 %.
-  const mapping = { D1: { stratum: 'dropped', population: 1, selected: 1 } };
+  const mapping = { D1: { candidate_id: 'C000001-0001', stratum: 'dropped', population: 1, selected: 1 } };
   const labels = { D1: { label: 'other_word', type: 'compound' } };
   [['K1', 'other_word'], ['K2', 'same_word'], ['K3', 'same_word']].forEach(([id, label]) => {
-    mapping[id] = { stratum: 'kept', population: 1000, selected: 3 };
+    mapping[id] = { candidate_id: 'C000001-0001', stratum: 'kept', population: 1000, selected: 3 };
     labels[id] = label === 'other_word' ? { label, type: 'compound' } : { label };
   });
   const result = aggregateLabels(mapping, labels);
@@ -91,9 +92,50 @@ test('population counts are recorded per stratum and validated', () => {
   const units = [unit('꼬리', '꾀꼬리', 1), unit('꼬리', '꼬리를', 2), unit('꼬리', '꼬리를', 2), unit('꼬리', '그 꼬리', 3)];
   assert.deepEqual(stratumPopulation(units), { dropped: 1, kept: 2 });
   const labels = { H1: { label: 'same_word' } };
-  for (const entry of [{ stratum: 'kept' }, { stratum: 'kept', population: 2, selected: 3 }, { stratum: 'kept', population: 2, selected: 0 }, { stratum: 'x', population: 2, selected: 1 }]) {
-    assert.throws(() => aggregateLabels({ H1: entry }, labels), /population >= selected/u);
+  const base = { candidate_id: 'C000001-0001' };
+  for (const entry of [{ ...base, stratum: 'kept' }, { ...base, stratum: 'kept', population: 2, selected: 3 }, { ...base, stratum: 'kept', population: 2, selected: 0 }, { ...base, stratum: 'x', population: 2, selected: 1 }, { stratum: 'kept', population: 2, selected: 1 }]) {
+    assert.throws(() => aggregateLabels({ H1: entry }, labels), /integer population >= selected/u);
   }
+});
+
+test('conflicting or inconsistent sampling metadata is rejected fail-closed (#414 review)', () => {
+  const row = (candidate, stratum, population, selected) => ({ candidate_id: candidate, stratum, population, selected });
+  const labels = { A: { label: 'same_word' }, B: { label: 'same_word' } };
+  // Same candidate and stratum disagreeing on population.
+  assert.throws(() => aggregateLabels({ A: row('C1', 'dropped', 1, 1), B: row('C1', 'dropped', 100, 1) }, labels), /conflicting population\/selected/u);
+  // `selected` must equal the number of mapping rows of that candidate and stratum.
+  assert.throws(() => aggregateLabels({ A: row('C1', 'dropped', 5, 2), B: row('C1', 'kept', 5, 1) }, labels), /selected 2 does not match 1 mapping rows/u);
+  assert.throws(() => aggregateLabels({ A: row('C1', 'dropped', 5, 1), B: row('C1', 'dropped', 5, 1) }, labels), /selected 1 does not match 2 mapping rows/u);
+  // Consistent metadata passes.
+  assert.doesNotThrow(() => aggregateLabels({ A: row('C1', 'dropped', 5, 2), B: row('C1', 'dropped', 5, 2) }, labels));
+});
+
+test('uncertainty is reported and criteria_met needs the interval, not just the point estimate', () => {
+  const build = (candidates) => {
+    const mapping = {};
+    const labels = {};
+    candidates.forEach(({ keptLabel }, index) => {
+      const candidate = 'C000001-' + String(index + 1).padStart(4, '0');
+      mapping[`D${index}`] = { candidate_id: candidate, stratum: 'dropped', population: 1, selected: 1 };
+      labels[`D${index}`] = { label: 'other_word', type: 'compound' };
+      mapping[`K${index}`] = { candidate_id: candidate, stratum: 'kept', population: 1, selected: 1 };
+      labels[`K${index}`] = keptLabel === 'other_word' ? { label: 'other_word', type: 'compound' } : { label: keptLabel };
+    });
+    return aggregateLabels(mapping, labels);
+  };
+  // Heterogeneous small sample: 3 candidates improve, 2 do not. Point estimate passes, interval does not.
+  const small = build([...Array(3).fill({ keptLabel: 'same_word' }), ...Array(2).fill({ keptLabel: 'other_word' })]);
+  assert.equal(small.point_estimate_meets_criteria, true);
+  assert.equal(small.criteria_met, false);
+  assert.equal(small.uncertainty.method, 'candidate_clustered_percentile_bootstrap');
+  assert.equal(small.uncertainty.clusters, 5);
+  assert.ok(small.uncertainty.relative_other_word_reduction[0] < CRITERIA.min_relative_other_word_reduction);
+  // Homogeneous large sample: both point estimate and interval pass.
+  const large = build(Array(30).fill({ keptLabel: 'same_word' }));
+  assert.equal(large.criteria_met, true);
+  assert.deepEqual(large.uncertainty.relative_other_word_reduction, [1, 1]);
+  // Deterministic.
+  assert.deepEqual(bootstrapInterval([{ candidate_id: 'a', stratum: 'kept', weight: 1, label: 'same_word' }]), bootstrapInterval([{ candidate_id: 'a', stratum: 'kept', weight: 1, label: 'same_word' }]));
 });
 
 test('measurement summary and tolerance verdict are fail-closed on availability loss', () => {
