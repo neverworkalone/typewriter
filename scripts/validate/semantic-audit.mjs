@@ -2836,22 +2836,33 @@ export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) 
 const FACTORY_OPERATIONS = ['create', 'append_senses', 'append_relations'];
 
 /**
- * A Stage 3 amendment only adds: identity and every pre-existing sense are unchanged (modulo #396 relevance),
- * except that a sense may gain relations appended after its existing ones; new senses may follow.
+ * A Stage 3 amendment is additive, and only in the way its operation declares (modulo #396 relevance):
+ * `append_senses` keeps every existing sense (relations included) and adds senses; `append_relations` keeps the
+ * sense list, identity and every other field, and only appends relation tuples after the existing ones.
+ * `any` (cumulative history from a promoted original) allows both. `appendedRelations` (relation_amendments of the event) must equal the appended suffix, per source sense.
  */
-export function isAdditiveFactoryAmendment(original, current) {
+export function isAdditiveFactoryAmendment(original, current, operation = 'append_senses', appendedRelations = []) {
   const { senses: oldSenses, ...oldIdentity } = original;
   const { senses: newSenses, ...newIdentity } = current;
   if (JSON.stringify(oldIdentity) !== JSON.stringify(newIdentity)) return false;
-  return oldSenses.every((sense, index) => {
+  if (operation === 'append_relations' ? oldSenses.length !== newSenses.length : newSenses.length < oldSenses.length) return false;
+  const suffixes = new Map();
+  const ok = oldSenses.every((sense, index) => {
     const next = newSenses[index];
-    if (!next) return false;
+    if (!next || next.id !== sense.id) return false;
     const { relations: oldRelations = [], ...oldRest } = sense;
     const { relations: newRelations = [], ...newRest } = withoutRelevance(next, sense);
-    return JSON.stringify(oldRest) === JSON.stringify(newRest)
-      && newRelations.length >= oldRelations.length
-      && oldRelations.every((relation, at) => JSON.stringify(relation) === JSON.stringify(newRelations[at]));
+    if (JSON.stringify(oldRest) !== JSON.stringify(newRest)) return false;
+    if (!oldRelations.every((relation, at) => JSON.stringify(relation) === JSON.stringify(newRelations[at]))) return false;
+    const suffix = newRelations.slice(oldRelations.length);
+    if (operation === 'append_senses') return suffix.length === 0;
+    if (suffix.length) suffixes.set(sense.id, suffix);
+    return true;
   });
+  if (!ok || operation !== 'append_relations') return ok;
+  const expected = new Map();
+  for (const item of appendedRelations) expected.set(item.source_sense_id, [...(expected.get(item.source_sense_id) ?? []), item.relation]);
+  return suffixes.size > 0 && JSON.stringify([...suffixes].sort()) === JSON.stringify([...expected].sort());
 }
 
 /** Historical payload checks use this view; current semantic/build gates still use current records. */
@@ -2873,7 +2884,8 @@ export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSou
       if (!original || sha256Json(original) !== change.before_sha256) {
         fail('historical canonical reconstruction lacks the bound original record', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
-      if (!isAdditiveFactoryAmendment(original, current)) {
+      if (!isAdditiveFactoryAmendment(original, current, change.operation,
+        (event.relation_amendments ?? []).filter((item) => item.source_record_id === change.entry_id && item.outcome === 'appended'))) {
         fail('factory admission rewrote an existing canonical payload', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       records.set(change.entry_id, info.record ? { ...info, record: structuredClone(original) } : structuredClone(original));

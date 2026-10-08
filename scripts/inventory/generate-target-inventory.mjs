@@ -344,7 +344,7 @@ export function validatePromotionLedgerBindings({
       review = first.previous_semantic_review;
       // Admission is additive: the historical promoted payload must survive unchanged.
       const original = first.previous_record;
-      if (!isAdditiveFactoryAmendment(original, record)) {
+      if (!isAdditiveFactoryAmendment(original, record, 'any')) {
         throw new TargetInventoryGenerationError(`${label} admission rewrote the original promoted payload`, 'PROMOTION_LEDGER_BINDING_MISMATCH');
       }
     }

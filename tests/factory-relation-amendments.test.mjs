@@ -6,6 +6,8 @@ import test from 'node:test';
 import {
   Stage3AdmissionError, planStage3Admission, validateStage3AdmissionManifest,
 } from '../scripts/factory/admission.mjs';
+import { walkStage3History } from '../scripts/factory/validate.mjs';
+import { canonicalRecordSha256 } from '../scripts/factory/admission.mjs';
 import { validateDecisionRow } from '../scripts/factory/handoff.mjs';
 import { buildStage3SemanticAuthority } from '../scripts/factory/semantic-authority.mjs';
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
@@ -59,7 +61,7 @@ test('an existing source sense gains a relation to a newly allocated target id, 
   assert.deepEqual({ ...amended, senses: amended.senses.map(({ relations, ...rest }) => rest) },
     { ...original, senses: original.senses });
   assert.equal(amended.senses[1].relations, undefined);
-  assert.equal(isAdditiveFactoryAmendment(original, amended), true);
+  assert.equal(isAdditiveFactoryAmendment(original, amended, 'append_relations', result.relationAmendments), true);
   assert.deepEqual(change.added_relation_ids, [result.relationAmendments[0].relation_id]);
   assert.equal(result.relationAmendments[0].outcome, 'appended');
 });
@@ -207,4 +209,34 @@ test('a reverse amendment on a real canonical record passes the authority and th
   const tampered = structuredClone(manifest);
   tampered.admission.relation_amendments[0].outcome = 'already_present';
   assert.match(validateStage3AdmissionManifest(tampered, [decisionRow], new Map(after.map((item) => [item.id, item]))).join('\n'), /outcome does not match/u);
+});
+
+// Operation-specific invariants (shared by the ledger restore, the promotion check and the factory history walk).
+const rel = (target, note = '관계') => ({ target, type: 'direct', note });
+test('each operation may change only what it declares, and a mixed history is verified exactly', () => {
+  const original = source();
+  const withSense = { ...original, senses: [...original.senses, { id: 'w00001-s3', pos: 'noun', gloss: '추가된 새 뜻.' }] };
+  const unrecorded = structuredClone(withSense);
+  unrecorded.senses[0].relations = [rel('w00009')];
+  const recorded = structuredClone(withSense);
+  recorded.senses[0].relations = [rel('w00007')];
+  const tuple = { source_candidate_id: NEW_ID, source_record_id: 'w00001', source_sense_id: 'w00001-s1', relation_id: 'rel-x', relation: rel('w00007'), outcome: 'appended' };
+
+  assert.equal(isAdditiveFactoryAmendment(original, withSense, 'append_senses'), true);
+  assert.equal(isAdditiveFactoryAmendment(original, unrecorded, 'append_senses'), false);
+  assert.equal(isAdditiveFactoryAmendment(original, recorded, 'append_relations', [tuple]), false, 'senses may not be added by a relation amendment');
+  assert.equal(isAdditiveFactoryAmendment(withSense, recorded, 'append_relations', [tuple]), true);
+  assert.equal(isAdditiveFactoryAmendment(withSense, recorded, 'append_relations', []), false, 'an unrecorded suffix is refused');
+  assert.equal(isAdditiveFactoryAmendment(withSense, recorded, 'append_relations', [{ ...tuple, relation: rel('w00008') }]), false);
+
+  const changes = (afterSenses) => [
+    { batchId: 'C000001', operation: 'append_senses', added_sense_ids: ['w00001-s3'], before_sha256: canonicalRecordSha256(original), after_sha256: canonicalRecordSha256(afterSenses), relationAmendments: [] },
+    { batchId: 'C000002', operation: 'append_relations', added_relation_ids: ['rel-x'], before_sha256: canonicalRecordSha256(withSense), after_sha256: canonicalRecordSha256(recorded), relationAmendments: [tuple] },
+  ];
+  assert.deepEqual(walkStage3History('w00001', recorded, changes(withSense)), []);
+  const smuggled = structuredClone(unrecorded);
+  smuggled.senses[0].relations.push(rel('w00007'));
+  const bad = [changes(unrecorded)[0], { ...changes(unrecorded)[1], before_sha256: canonicalRecordSha256(unrecorded), after_sha256: canonicalRecordSha256(smuggled) }];
+  assert.match(walkStage3History('w00001', smuggled, bad).join('\n'), /before digest does not follow/u);
+  assert.match(walkStage3History('w00001', structuredClone(smuggled), changes(withSense)).join('\n'), /outside source-bound/u);
 });

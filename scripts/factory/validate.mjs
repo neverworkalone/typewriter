@@ -245,6 +245,41 @@ async function validateStage3SemanticAuthorityLinks({ root, reviewArtifacts }) {
   return errors;
 }
 
+// A record with relation-only amendments interleaves sense and relation history, so its sense-order projection
+// is replaced by an exact backward walk over the digest chain: undo the change whose after digest matches the
+// current state (appended senses removed, appended tuples removed), and require the result to match its before
+// digest. A relation or sense change that no recorded operation explains breaks the chain.
+export function walkStage3History(entryId, canonical, changes) {
+  const errors = [];
+  let state = { ...canonical, senses: canonical.senses.map((sense) => ({ ...sense })) };
+  const remaining = [...changes];
+  while (remaining.length) {
+    const index = remaining.findIndex((change) => matchesHistoricalRecordSha256(state, change.after_sha256));
+    if (index < 0) { errors.push(`${entryId}: canonical record contains changes outside source-bound Stage 3 admissions`); break; }
+    const [change] = remaining.splice(index, 1);
+    if (change.operation === 'create') {
+      if (remaining.length) errors.push(`${entryId}: Stage 3 history continues before its create operation`);
+      break;
+    }
+    if (change.operation === 'append_senses') {
+      const ids = new Set(change.added_sense_ids);
+      if (state.senses.filter((sense) => ids.has(sense.id)).length !== ids.size) { errors.push(`${entryId}: amendment ${change.batchId} does not add every declared sense`); break; }
+      state = { ...state, senses: state.senses.filter((sense) => !ids.has(sense.id)) };
+    } else {
+      const added = change.relationAmendments.filter((item) => item.source_record_id === entryId && item.outcome === 'appended' && change.added_relation_ids.includes(item.relation_id));
+      state = { ...state, senses: state.senses.map((sense) => {
+        const mine = added.filter((item) => item.source_sense_id === sense.id).map((item) => JSON.stringify(item.relation));
+        if (!mine.length) return sense;
+        const kept = (sense.relations ?? []).filter((relation) => !mine.includes(JSON.stringify(relation)));
+        const { relations, ...rest } = sense;
+        return kept.length ? { ...rest, relations: kept } : rest;
+      }) };
+    }
+    if (!matchesHistoricalRecordSha256(state, change.before_sha256)) { errors.push(`${entryId}: amendment ${change.batchId} before digest does not follow prior Stage 3 history`); break; }
+  }
+  return errors;
+}
+
 function validateStage3RecordChanges(reviewArtifacts, canonicalById) {
   const changesByRecord = new Map();
   const relationRecords = new Set();
@@ -252,11 +287,9 @@ function validateStage3RecordChanges(reviewArtifacts, canonicalById) {
     if (manifest.status !== 'complete' || !Array.isArray(manifest.admission?.changes)) continue;
     const decisionById = new Map(decisions.map((row) => [row.source_candidate_id, row]));
     for (const change of manifest.admission.changes) {
-      // Relation-only amendments leave no sense-level projection; their digest chain is enforced by the
-      // semantic ledger, and their tuples by the admission manifest validation.
-      if (change.operation === 'append_relations') { relationRecords.add(change.entry_id); continue; }
+      if (change.operation === 'append_relations') relationRecords.add(change.entry_id);
       const list = changesByRecord.get(change.entry_id) ?? [];
-      list.push({ ...change, batchId: manifest.batch_id, decisionById });
+      list.push({ ...change, batchId: manifest.batch_id, decisionById, relationAmendments: manifest.admission.relation_amendments ?? [] });
       changesByRecord.set(change.entry_id, list);
     }
   }
@@ -275,7 +308,7 @@ function validateStage3RecordChanges(reviewArtifacts, canonicalById) {
     for (const senseId of changesBySense.keys()) if (!canonicalSenseIds.has(senseId)) errors.push(`${entryId}: admitted sense ${senseId} is absent from canonical data`);
     const untracked = canonical.senses.filter((sense) => changesBySense.has(sense.id));
     if (untracked.length !== changesBySense.size) continue;
-    if (relationRecords.has(entryId)) continue;
+    if (relationRecords.has(entryId)) { errors.push(...walkStage3History(entryId, canonical, changes)); continue; }
     let projected = { ...canonical, senses: canonical.senses.filter((sense) => !changesBySense.has(sense.id)) };
     const create = changes.find((change) => change.operation === 'create');
     const ordered = [...changes].sort((left, right) => {
