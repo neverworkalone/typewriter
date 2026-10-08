@@ -15,6 +15,7 @@ const RECONSTRUCTIBLE_DECISION_FIELDS = Object.freeze([
   'relation_count',
   'relation_ids',
   'no_relation_rationale',
+  'relation_rationale',
 ]);
 
 export const AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION = 'source-bound-semantic-review-v2';
@@ -183,7 +184,8 @@ export function compactAuthoredSemanticDecisionRow(row) {
           && field !== 'relation_decision'
           && field !== 'relation_count'
           && field !== 'relation_ids'
-          && field !== 'no_relation_rationale') {
+          && field !== 'no_relation_rationale'
+          && field !== 'relation_rationale') {
           delete compact[field];
         }
       }

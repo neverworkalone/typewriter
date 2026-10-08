@@ -236,10 +236,86 @@ export function validateDistinctSenseSemanticRationales(candidate, senseReviews)
   return true;
 }
 
+const PRECISION_RELATION_TYPES = new Set(['direct', 'antonym']);
+const EXPLORATORY_RELATION_TYPES = new Set(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
+
+// Deterministic identity of one reviewed relation tuple, bound to its source sense. The evidence must
+// name the exact tuples (including type, note and relevance), not merely how many were reviewed.
+export function reviewedRelationId(sourceSenseId, relation) {
+  return `rel-${sha256Json({
+    source_sense: sourceSenseId,
+    target: relation.target,
+    target_sense: relation.target_sense ?? null,
+    type: relation.type,
+    note: relation.note,
+    relevance: relation.relevance ?? null,
+  }).slice(0, 24)}`;
+}
+
+function validateReviewedRelationTuples(relations, { sense, inventoryId, senseLabel, config }) {
+  const seen = new Set();
+  for (const [index, relation] of relations.entries()) {
+    const here = `${senseLabel}.relations[${index}]`;
+    requireObject(relation, here, config);
+    const isPrecision = PRECISION_RELATION_TYPES.has(relation.type);
+    if (!isPrecision && !EXPLORATORY_RELATION_TYPES.has(relation.type)) {
+      fail(`${here}.type is not a supported relation type`, 'DECISION_SOURCE_RELATION', config);
+    }
+    requireString(relation.target, `${here}.target`, config);
+    requireString(relation.note, `${here}.note`, config);
+    if (relation.target_sense !== undefined) requireString(relation.target_sense, `${here}.target_sense`, config);
+    if (relation.target === inventoryId || relation.target_sense === sense.id) {
+      fail(`${here} must not target its own source`, 'DECISION_SOURCE_RELATION', config);
+    }
+    if (isPrecision) {
+      if (Object.hasOwn(relation, 'relevance')) {
+        fail(`${here} ${relation.type} relations keep their precision contract and must not carry relevance`, 'DECISION_SOURCE_RELATION', config);
+      }
+    } else if (!Number.isInteger(relation.relevance) || relation.relevance < 1 || relation.relevance > 9) {
+      fail(`${here} ${relation.type} relation requires relevance 1-9`, 'DECISION_SOURCE_RELATION', config);
+    }
+    const key = JSON.stringify([relation.target, relation.target_sense ?? null, relation.type]);
+    if (seen.has(key)) fail(`${here} duplicates another relation tuple`, 'DECISION_SOURCE_RELATION', config);
+    seen.add(key);
+  }
+}
+
+// Relation evidence is either an explicit `no-relations` result (after the enrichment search) or the exact
+// reviewed relation tuples. Zero relations is always a complete, valid result; creation is never required.
+function validateSenseRelationEvidence({ senseReview, sense, relations, senseLabel, inventoryId, config }) {
+  const bound = (text) => typeof text === 'string' && text.includes(inventoryId) && text.includes(sense.id);
+  if (relations.length === 0) {
+    if (senseReview.relation_count !== 0
+      || !Array.isArray(senseReview.relation_ids)
+      || senseReview.relation_ids.length !== 0
+      || senseReview.relation_decision !== 'no-relations') {
+      fail(`${senseLabel} relation evidence is not source-bound`, 'DECISION_SOURCE_BINDING', config);
+    }
+    requireString(senseReview.no_relation_rationale, `${senseLabel}.no_relation_rationale`, config);
+    if (!bound(senseReview.no_relation_rationale)) {
+      fail(`${senseLabel}.no_relation_rationale must cite the source-bound sense`, 'DECISION_SOURCE_BINDING', config);
+    }
+    return;
+  }
+  validateReviewedRelationTuples(relations, { sense, inventoryId, senseLabel, config });
+  const expectedIds = relations.map((relation) => reviewedRelationId(sense.id, relation));
+  if (senseReview.relation_decision !== 'relations-reviewed'
+    || senseReview.relation_count !== relations.length
+    || !Array.isArray(senseReview.relation_ids)
+    || JSON.stringify(senseReview.relation_ids) !== JSON.stringify(expectedIds)
+    || senseReview.no_relation_rationale !== undefined) {
+    fail(`${senseLabel} relation evidence does not bind the reviewed relation tuples`, 'DECISION_SOURCE_BINDING', config);
+  }
+  requireString(senseReview.relation_rationale, `${senseLabel}.relation_rationale`, config);
+  if (!bound(senseReview.relation_rationale)) {
+    fail(`${senseLabel}.relation_rationale must cite the source-bound sense`, 'DECISION_SOURCE_BINDING', config);
+  }
+}
+
 // Per-sense source-bound review contract (boundary, writer-domain, topic-analysis `review_basis`,
 // relation evidence). Independent of selection rank/capacity so factory reviews can reuse it.
 export function validateSenseReviews({
-  row, candidate, senseReviews, label, inventoryId, decisionSourceId, config,
+  row, candidate, senseReviews, label, inventoryId, decisionSourceId, config, reviewedRelations,
 }) {
   for (const [senseIndex, senseReview] of senseReviews.entries()) {
     const senseLabel = `${label}.sense_reviews[${senseIndex}]`;
@@ -294,17 +370,9 @@ export function validateSenseReviews({
       incompleteCode: `${config.errorPrefix}_DECISION_SOURCE_SCOPE`,
       label: `${senseLabel}.review_basis`,
     });
-    if (senseReview.relation_count !== 0
-      || !Array.isArray(senseReview.relation_ids)
-      || senseReview.relation_ids.length !== 0
-      || senseReview.relation_decision !== 'no-relations') {
-      fail(`${senseLabel} relation evidence is not source-bound`, 'DECISION_SOURCE_BINDING', config);
-    }
-    requireString(senseReview.no_relation_rationale, `${senseLabel}.no_relation_rationale`, config);
-    if (!senseReview.no_relation_rationale.includes(inventoryId)
-      || !senseReview.no_relation_rationale.includes(sense.id)) {
-      fail(`${senseLabel}.no_relation_rationale must cite the source-bound sense`, 'DECISION_SOURCE_BINDING', config);
-    }
+    validateSenseRelationEvidence({
+      senseReview, sense, relations: reviewedRelations?.[senseIndex] ?? [], senseLabel, inventoryId, config,
+    });
   }
 }
 

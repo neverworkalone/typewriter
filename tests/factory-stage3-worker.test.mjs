@@ -11,6 +11,7 @@ import test from 'node:test';
 
 import { finalBoundary, buildStage3SemanticAuthority } from '../scripts/factory/semantic-authority.mjs';
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
+import { reviewedRelationId } from '../scripts/batch/authored-semantic-decision-source.mjs';
 import {
   buildSemanticAuditFromDecisionSource, inspectSenseBoundaryPairs, readAuthoredBatchDecisionSources, sha256Json,
 } from '../scripts/validate/semantic-audit.mjs';
@@ -85,6 +86,19 @@ test('Stage 3 deterministically allocates entry ids and remaps candidate and pro
   ]);
   assert.deepEqual(result.records.get('w00002').record.senses[0].relations, [{ type: 'near', target: 'w00003', target_sense: 'w00003-s1' }]);
   assert.deepEqual(result.records.get('w00003').record.senses[0].relations, [{ type: 'near', target: 'w00002', target_sense: 'w00002-s1' }]);
+});
+
+test('Stage 3 remaps a new sense relation to an existing canonical target and rejects unresolved targets', () => {
+  const relation = { type: 'near', target: 'w00001', target_sense: 'w00001-s1', note: 'close', relevance: 5 };
+  const result = plan([decision({ n: 1, lemma: '새롭다', relations: [relation] })]);
+  assert.deepEqual(result.records.get('w00002').record.senses[0].relations, [relation]);
+  const reject = (bad, code) => assert.throws(
+    () => plan([decision({ n: 1, lemma: '새롭다', relations: [bad] })]),
+    (error) => error.code === code,
+  );
+  reject({ ...relation, target: 'w99999', target_sense: undefined }, 'STAGE3_RELATION_TARGET');
+  reject({ ...relation, target_sense: 'w00001-s9' }, 'STAGE3_RELATION_SENSE');
+  reject({ ...relation, target: 'C000001-0009', target_sense: 'C000001-0009-s1' }, 'STAGE3_RELATION_TARGET');
 });
 
 test('Stage 3 appends new POS and new sense without replacing canonical identity', () => {
@@ -971,6 +985,88 @@ test('a new two-sense entry is admitted by the semantic authority and passes the
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
   assert.doesNotThrow(() => buildSemanticAuditFromDecisionSource(afterRecords, authority.sourceObject, {
     baseRecords: afterRecords, batchDecisionSources, artifactId: 'test-complete-semantic-audit',
+  }));
+});
+
+// Production path for positive relation evidence: a new sense relating to an existing canonical target and to
+// another sense of the same batch, one sense with relations and one with an explicit no-relations result.
+test('a new entry with reviewed relations passes the authority and the complete semantic audit', async () => {
+  const canonicalRecords = [];
+  const recordPathById = new Map();
+  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
+    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
+      const record = JSON.parse(line);
+      canonicalRecords.push(record);
+      recordPathById.set(record.id, 'data/canonical/' + name);
+    }
+  }
+  const target = canonicalRecords.find((record) => record.senses.some((sense) => sense.pos === 'noun'));
+  const targetSense = target.senses.find((sense) => sense.pos === 'noun');
+  const idA = 'C900001-0001';
+  const idB = 'C900001-0002';
+  const relationsA = [
+    { type: 'near', target: target.id, target_sense: targetSense.id, note: '가까우나 바꿔 쓸 수는 없다.', relevance: 5 },
+    { type: 'association', target: idB, target_sense: idB + '-s1', note: '같은 장면에서 함께 떠오른다.', relevance: 3 },
+  ];
+  const decisions = [
+    { source_candidate_id: idA, disposition: 'included', target: { kind: 'new_entry' },
+      reviewed_record: { lemma: '합성시험낱말', senses: [{ pos: 'noun', gloss: '합성 시험에서 쓰는 첫째 뜻풀이.', relations: relationsA }, { pos: 'noun', gloss: '합성 시험에서 쓰는 전혀 다른 둘째 뜻풀이.' }] } },
+    { source_candidate_id: idB, disposition: 'included', target: { kind: 'new_entry' },
+      reviewed_record: { lemma: '합성시험단어', senses: [{ pos: 'noun', gloss: '합성 시험에서 쓰는 또 다른 단일 뜻풀이.' }] } },
+  ];
+  const rowFor = (decision) => {
+    const id = decision.source_candidate_id;
+    const record = reviewedCandidateRecord(decision);
+    const row = {
+      source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
+      decision_rationale: id + ': 합성 시험 결정.', gloss_judgment: 'fit',
+      sense_reviews: record.senses.map((sense, index) => {
+        const relations = decision.reviewed_record.senses[index].relations ?? [];
+        return {
+          sense_id: sense.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
+          boundary_rationale: id + ' ' + sense.id + ': 한 가지 뜻으로 한정된다.', semantic_rationale: id + ' ' + sense.id + ': ' + sense.gloss,
+          ...(relations.length === 0
+            ? { relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: id + ' ' + sense.id + ': 관계 없음.' }
+            : {
+              relation_decision: 'relations-reviewed', relation_count: relations.length,
+              relation_ids: relations.map((relation) => reviewedRelationId(sense.id, relation)),
+              relation_rationale: id + ' ' + sense.id + ': 관계 탐색 후 근거 있는 관계만 남겼다.',
+            }),
+        };
+      }),
+      boundary_pairs: inspectSenseBoundaryPairs(record).map((pair) => {
+        const gloss = (senseId) => record.senses.find((sense) => sense.id === senseId).gloss;
+        return {
+          left_sense_id: pair.left_sense_id, right_sense_id: pair.right_sense_id, relationship: pair.relationship, decision: 'retain',
+          left_gloss_sha256: sha256Json(gloss(pair.left_sense_id)), right_gloss_sha256: sha256Json(gloss(pair.right_sense_id)),
+          evidence_basis: id + ': 두 뜻은 서로 다른 쓰임이다.', distinguishing_feature: id + ': 쓰임이 다르다.', rationale: id + ': 별개의 뜻으로 유지한다.',
+        };
+      }),
+    };
+    row.review_binding = authorSemanticReviewBinding(row, record);
+    return row;
+  };
+  const rows = decisions.map(rowFor);
+  const digest = 'a'.repeat(64);
+  const plan = planStage3Admission({
+    batchId: 'C900001', attempt: 1, admissionPr: 1,
+    candidateManifest: { batch_id: 'C900001', status: 'complete', candidates_sha256: digest },
+    reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
+    candidates: [{ candidate_id: idA }, { candidate_id: idB }], decisions, canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
+  });
+  const [entryA, entryB] = plan.entries;
+  const senseA = plan.records.get(entryA.record_id).record.senses[0];
+  assert.deepEqual(senseA.relations.map(({ target, target_sense: ts }) => [target, ts]), [
+    [target.id, targetSense.id], [entryB.record_id, entryB.sense_ids[0]],
+  ]);
+  const authority = await buildStage3SemanticAuthority({
+    root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: rows }, semanticDecisionsText: '{}',
+  });
+  const afterRecords = canonicalRecords.map((existing) => plan.records.get(existing.id)?.record ?? existing)
+    .concat([...plan.records.values()].filter((update) => !update.before).map((update) => update.record));
+  const batchDecisionSources = await readAuthoredBatchDecisionSources();
+  assert.doesNotThrow(() => buildSemanticAuditFromDecisionSource(afterRecords, authority.sourceObject, {
+    baseRecords: afterRecords, batchDecisionSources, artifactId: 'test-relation-semantic-audit',
   }));
 });
 
