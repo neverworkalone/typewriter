@@ -155,6 +155,14 @@ test('index-time settings cannot be overridden at retrieval time', () => {
   assert.ok(validateRelationCandidateArtifact(out, buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.0001 })).length === 0);
 });
 
+test('index settings are immutable after the index is built', () => {
+  const index = buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.5 });
+  assert.throws(() => { index.settings.stop_bigram_df_ratio = 0.0001; }, TypeError);
+  assert.throws(() => { index.settings = {}; }, TypeError);
+  assert.throws(() => { index.canonical_snapshot_digest = 'f'.repeat(64); }, TypeError);
+  assert.equal(index.settings.stop_bigram_df_ratio, 0.5);
+});
+
 test('literature hits always keep at least one location digest', () => {
   const index = buildRelationIndex(synthetic);
   const lit = { 'w5-s1': [{ location_digest: 'd'.repeat(64), text: '깊은 고요 속' }] };

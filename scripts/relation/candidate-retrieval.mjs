@@ -96,7 +96,7 @@ const MIN_FORM_CHARS = 2;
  * `canonical` is `{ canonicalRevision, records }` where each record is a canonical entry or `{ record }`.
  */
 export function buildRelationIndex(canonical, config = {}) {
-  const settings = resolveConfig(DEFAULT_CONFIG, config);
+  const settings = Object.freeze(resolveConfig(DEFAULT_CONFIG, config)); // fixed once postings are built
   const senses = [];
   const bySenseId = new Map();
   const byRecordId = new Map();
@@ -173,13 +173,13 @@ export function buildRelationIndex(canonical, config = {}) {
   }
   const literatureFormLengths = [...new Set([...literatureForms.keys()].map((form) => [...form].length))].sort((a, b) => a - b);
 
-  return {
+  return Object.freeze({
     contract: RETRIEVER_CONTRACT,
     settings,
     canonical_snapshot_digest: canonical.canonicalRevision ?? fallbackDigest(senses),
     senses, bySenseId, byRecordId, byLemma, bySearchForm, outgoing, incoming,
     postings, idf, norms, bigramSets, literatureForms, literatureFormLengths,
-  };
+  });
 }
 
 const provisionalKey = (source) => `provisional:${source.batch_id ?? ''}/${source.candidate_id}/${source.sense_key}`;
