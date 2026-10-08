@@ -275,8 +275,8 @@ function seedDatabase(database) {
       ('r003-s1', 'r003', 0, 'verb', '관계 대상이며 표면형 규칙을 따름'),
       ('w004-s1', 'w004', 0, 'noun', '정확 검색어와 generated form이 충돌할 때의 precedence 대상');
     INSERT INTO relations VALUES
-      ('w001-s1', 0, 'r002', 'r002-s1', 'near', '기준어에서 연결된 보통말'),
-      ('w001-s1', 1, 'r003', 'r003-s1', 'action', '기준어에서 이어지는 동작');
+      ('w001-s1', 0, 'r002', 'r002-s1', 'near', '기준어에서 연결된 보통말', 3),
+      ('w001-s1', 1, 'r003', 'r003-s1', 'action', '기준어에서 이어지는 동작', 4);
     INSERT INTO generated_surface_forms VALUES
       ('다듬는', 'r003', 'r003-s1', 'verb-present-adnominal-neun'),
       ('다듬은', 'r003', 'r003-s1', 'verb-past-adnominal-eun');

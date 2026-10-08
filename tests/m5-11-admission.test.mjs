@@ -3,7 +3,7 @@ import { restorePreFactoryDecisionSource } from '../scripts/validate/semantic-au
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -81,8 +81,25 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-async function createM511PromotionTransactionFixture() {
-  const temporaryDirectory = await mkdtemp(path.join(process.cwd(), '.m5-11-semantic-authority-'));
+const SCRATCH_PREFIX = '.m5-11-semantic-authority-';
+
+// The scratch tree lives under the repository root; remove it if setup fails so an aborted
+// run cannot leave untracked output that a later `git add` would publish.
+async function withScratchDirectory(build) {
+  const temporaryDirectory = await mkdtemp(path.join(process.cwd(), SCRATCH_PREFIX));
+  try {
+    return await build(temporaryDirectory);
+  } catch (error) {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function createM511PromotionTransactionFixture() {
+  return withScratchDirectory(buildM511PromotionTransactionFixture);
+}
+
+async function buildM511PromotionTransactionFixture(temporaryDirectory) {
   const currentCanonicalDirectory = path.join(temporaryDirectory, 'current-canonical');
   const prospectiveDirectory = path.join(temporaryDirectory, 'prospective');
   const prospectiveCanonicalDirectory = path.join(prospectiveDirectory, 'canonical');
@@ -132,6 +149,11 @@ async function createM511PromotionTransactionFixture() {
   const historicalSenseCount = historicalRecords.reduce((sum, record) => sum + record.senses.length, 0);
   const historicalDigest = canonicalRecordsSha256(historicalCanonical.records);
   historicalReview.records = historicalReview.records.filter(({ record_id: recordId }) => historicalIds.has(recordId));
+  // The live review binds relevance-bearing records (#396); this snapshot predates relevance.
+  const historicalById = new Map(historicalRecords.map((record) => [record.id, record]));
+  for (const reviewed of historicalReview.records) {
+    reviewed.record_sha256 = sha256Json(historicalById.get(reviewed.record_id));
+  }
   historicalReview.record_count = historicalRecords.length;
   historicalReview.sense_count = historicalSenseCount;
   historicalReview.source.canonical_records_sha256 = historicalDigest;
@@ -2282,4 +2304,22 @@ test('M5-11 post-promotion validation uses portable durable evidence after exter
     }),
     /decision evidence/u,
   );
+});
+
+test('M5-11 scratch directories are ignored, untracked and removed when fixture setup fails', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const git = (...args) => execFileSync('git', args, { encoding: 'utf8' });
+  assert.equal(git('ls-files', '--', `${SCRATCH_PREFIX}*`).trim(), '', 'no M5-11 scratch output may be tracked');
+  git('check-ignore', '-q', `${SCRATCH_PREFIX}probe/x.json`);
+
+  const listScratch = async () => (await readdir(process.cwd())).filter((name) => name.startsWith(SCRATCH_PREFIX));
+  const before = await listScratch();
+  await assert.rejects(
+    withScratchDirectory(async (directory) => {
+      await writeFile(path.join(directory, 'partial.json'), '{}');
+      throw new Error('injected setup failure');
+    }),
+    /injected setup failure/,
+  );
+  assert.deepEqual(await listScratch(), before, 'failed fixture setup leaves no scratch directory');
 });

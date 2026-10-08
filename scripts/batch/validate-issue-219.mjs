@@ -1,3 +1,4 @@
+import { withoutRelevance } from '../validate/relevance-projection.mjs';
 import { historicalAdmissionContext } from './historical-canonical.mjs';
 import { loadCanonicalBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
@@ -342,7 +343,7 @@ export async function validateIssue219({ writeReport = false } = {}) {
   const historicalById = new Map(historicalCanonical.records.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
   const currentById = new Map((await loadCanonicalBeforeFactoryAdmissions(currentCanonical.records)).map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
   for (const [id, record] of historicalById) {
-    assert.deepEqual(currentById.get(id), record, `${id} frozen baseline record remains unchanged`);
+    assert.deepEqual(withoutRelevance(currentById.get(id)), record, `${id} frozen baseline record remains unchanged`);
   }
 
   const selectedInventoryIds = selection.selected_candidates.map(({ source_inventory_id: id }) => id);

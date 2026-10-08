@@ -161,6 +161,10 @@ function matchesSchema(value, schema) {
     return typeof value === 'string';
   }
 
+  if (resolvedSchema.type === 'integer') {
+    return Number.isInteger(value);
+  }
+
   return true;
 }
 
@@ -187,6 +191,22 @@ function validateSchemaValue(value, schema, pathParts = []) {
     }
 
     return [schemaError(pathParts, `must be a ${resolvedSchema.type}`)];
+  }
+
+  if (resolvedSchema.type === 'integer') {
+    if (
+      (resolvedSchema.minimum !== undefined && value < resolvedSchema.minimum)
+      || (resolvedSchema.maximum !== undefined && value > resolvedSchema.maximum)
+    ) {
+      errors.push(
+        schemaError(
+          pathParts,
+          `must be between ${resolvedSchema.minimum} and ${resolvedSchema.maximum}`,
+        ),
+      );
+    }
+
+    return errors;
   }
 
   if (resolvedSchema.type === 'string') {

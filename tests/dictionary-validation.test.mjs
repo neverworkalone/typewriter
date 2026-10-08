@@ -47,8 +47,8 @@ test('validates current packaged schema, version, revision, integrity, and row c
 });
 
 test('rejects a schema metadata or SQLite user_version mismatch before queries run', () => {
-  const metadataMismatch = createDictionary({ metadataOverrides: { schema_version: '3' } });
-  const pragmaMismatch = createDictionary({ userVersion: '3' });
+  const metadataMismatch = createDictionary({ metadataOverrides: { schema_version: '4' } });
+  const pragmaMismatch = createDictionary({ userVersion: '4' });
   try {
     assert.throws(() => validatePackagedDictionary(metadataMismatch), {
       code: 'DATABASE_SCHEMA_MISMATCH',

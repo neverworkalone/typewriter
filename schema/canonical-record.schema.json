@@ -160,6 +160,12 @@
         "note": {
           "type": "string",
           "pattern": "\\S"
+        },
+        "relevance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9,
+          "description": "Ordinal editorial priority for exploratory relations (1 highest, 9 peripheral). Not a distance score, probability or exact rank."
         }
       }
     }

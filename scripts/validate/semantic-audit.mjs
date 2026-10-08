@@ -217,6 +217,48 @@ export function sha256Json(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
 }
 
+const EXPLORATORY_RELATION_TYPES = new Set(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
+
+/**
+ * #396 backward compatibility: hashes recorded before exploratory relations
+ * gained `relevance` (correction/admission history) bind the record without
+ * that field. Project the record that way ONLY to compare against such a
+ * historical hash; current bindings keep using the full record digest. Any other
+ * field difference still changes the projected digest and is rejected.
+ */
+export function preRelevanceRecordSha256(record) {
+  const projected = structuredClone(record);
+  for (const sense of projected.senses ?? []) {
+    for (const relation of sense.relations ?? []) {
+      if (EXPLORATORY_RELATION_TYPES.has(relation.type)) delete relation.relevance;
+    }
+  }
+  return sha256Json(projected);
+}
+
+// Drop `relevance` only on relations whose historical counterpart never had it; a relevance the
+// historical sense already carried is compared as-is, so changing it is still a rewrite.
+export function withoutRelevance(sense, historicalSense) {
+  if (!sense?.relations) return sense;
+  return {
+    ...sense,
+    relations: sense.relations.map((relation, index) => {
+      const historical = historicalSense?.relations?.[index];
+      if (!EXPLORATORY_RELATION_TYPES.has(relation.type)
+        || !Object.hasOwn(relation, 'relevance')
+        || !historical
+        || Object.hasOwn(historical, 'relevance')) return relation;
+      const { relevance, ...rest } = relation;
+      return rest;
+    }),
+  };
+}
+
+function matchesHistoricalRecordDigest(record, digest, hashCache) {
+  return cachedSha256Json(record, hashCache) === digest
+    || preRelevanceRecordSha256(record) === digest;
+}
+
 const CANONICAL_AUDIT_CACHE_TOKEN = Symbol('canonical-audit-cache');
 
 export function createCanonicalAuditCache(recordInfos) {
@@ -1971,7 +2013,7 @@ function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache, f
         }
       }
     }
-    if (expectedCurrentDigest !== cachedSha256Json(record, hashCache)) {
+    if (!matchesHistoricalRecordDigest(record, expectedCurrentDigest, hashCache)) {
       fail(
         `${label}.review_pass.correction_history and source-bound Stage 3 admission history for ${recordId} do not bind the current canonical record`,
         'SEMANTIC_AUDIT_CONTENT_MISMATCH',
@@ -2456,7 +2498,12 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
     const record = canonicalById.get(recordId);
     const review = reviewById.get(recordId);
     if (!record || !review) fail(`${label}.factory_admissions latest change for ${recordId} has no canonical record or semantic review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
-    if (cachedSha256Json(record) !== change.after_sha256 || sha256Json(review) !== change.semantic_review_sha256) {
+    const fullDigest = cachedSha256Json(record);
+    const reviewAtAdmission = review.record_sha256 === fullDigest && change.after_sha256 !== fullDigest
+      ? { ...review, record_sha256: change.after_sha256 }
+      : review;
+    if (!matchesHistoricalRecordDigest(record, change.after_sha256)
+      || sha256Json(reviewAtAdmission) !== change.semantic_review_sha256) {
       fail(`${label}.factory_admissions latest change for ${recordId} does not bind the current canonical record and review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
     }
   }
@@ -2752,6 +2799,15 @@ export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) 
       fail(`pre-factory snapshot for ${id} does not match the retained admission history`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
     }
   }
+  // #396: the live review binds relevance-bearing records, while a pre-factory snapshot
+  // predates relevance. Rebind unrestored reviews to the snapshot record; callers separately
+  // compare the frozen snapshot with the live record modulo relevance.
+  for (const [id, review] of reviews) {
+    const snapshotRecord = snapshotById.get(id);
+    if (snapshotRecord && !restored.has(id) && review.record_sha256 !== sha256Json(snapshotRecord)) {
+      reviews.set(id, { ...review, record_sha256: sha256Json(snapshotRecord) });
+    }
+  }
   source.authored_review.records = [...reviews.values()];
   delete source.factory_admissions;
   source.authored_review_sha256 = sha256Json(source.authored_review);
@@ -2766,7 +2822,7 @@ export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSou
     for (const change of event.changes) {
       const info = records.get(change.entry_id);
       const current = recordOf(info);
-      if (!current || sha256Json(current) !== change.after_sha256) {
+      if (!current || !matchesHistoricalRecordDigest(current, change.after_sha256)) {
         fail('historical canonical reconstruction has a discontinuous admission chain', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       if (change.operation === 'create') {
@@ -2780,7 +2836,7 @@ export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSou
       const { senses: oldSenses, ...oldIdentity } = original;
       const { senses: newSenses, ...newIdentity } = current;
       if (JSON.stringify(oldIdentity) !== JSON.stringify(newIdentity)
-        || oldSenses.some((sense, index) => JSON.stringify(sense) !== JSON.stringify(newSenses[index]))) {
+        || oldSenses.some((sense, index) => JSON.stringify(sense) !== JSON.stringify(withoutRelevance(newSenses[index], sense)))) {
         fail('factory admission rewrote an existing canonical payload', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       records.set(change.entry_id, info.record ? { ...info, record: structuredClone(original) } : structuredClone(original));

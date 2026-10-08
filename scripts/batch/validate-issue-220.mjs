@@ -1,3 +1,4 @@
+import { withoutRelevance } from '../validate/relevance-projection.mjs';
 import { historicalAdmissionContext } from './historical-canonical.mjs';
 import { loadCanonicalBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
 import assert from 'node:assert/strict';
@@ -628,7 +629,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
   const currentById = new Map((await loadCanonicalBeforeFactoryAdmissions(currentCanonical.records)).map((info) => [recordOf(info).id, recordOf(info)]));
   const historicalIds = new Set(historicalRecords.map((record) => record.id));
   for (const record of historicalRecords) {
-    assert.deepEqual(currentById.get(record.id), record, `${record.id} frozen Issue #220 baseline remains unchanged`);
+    assert.deepEqual(withoutRelevance(currentById.get(record.id)), record, `${record.id} frozen Issue #220 baseline remains unchanged`);
   }
 
   const batchResults = [];
@@ -717,7 +718,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
     [...allImports].sort((left, right) => left.id.localeCompare(right.id)),
     'current canonical data preserves both complete Issue #220 admitted imports alongside later batches',
   );
-  for (const record of allImports) assert.deepEqual(currentById.get(record.id), record, `${record.id} live canonical admission`);
+  for (const record of allImports) assert.deepEqual(withoutRelevance(currentById.get(record.id)), record, `${record.id} live canonical admission`);
 
   const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(CURRENT_ROOT_SOURCE_PATH);
   const currentDigest = canonicalRecordsSha256(currentCanonical.records);
