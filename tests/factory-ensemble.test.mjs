@@ -18,7 +18,7 @@ import {
 import { CONTEXT_PARAGRAPH_LOOKUP_SQL, createCorpusContextSource } from '../scripts/factory/corpus-context-source.mjs';
 import { createMecabProvider, pinnedMetadata as mecabMetadata } from '../scripts/factory/mecab-provider.mjs';
 import { POLICY_ALIASES, parseArguments, runStage1 } from '../scripts/factory/produce-candidates.mjs';
-import { Stage1Error, compareResolutionPolicies, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
+import { Stage1Error, compareResolutionPolicies, observationsFromCorpusEvidence, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
@@ -670,7 +670,8 @@ test('v3 source accounting normalizes repeated assigned and unresolved hits to o
   const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-repeated-input-'));
   try {
     const evidence = [
-      cand('가다', 'verb', [h('d1', '가는'), h('d1', '가는')]),
+      cand('가다', 'verb', [h('d1', '가는')], { ambiguity_status: 'held_ambiguous' }),
+      cand('가다', 'verb', [h('d1', '가는')]),
       cand('가다', 'verb', [h('d2', '갈'), h('d2', '갈')]),
     ];
     const k = { 가는: [p('가다', 'verb', '가')], 갈: [p('갈', 'noun')] };
@@ -684,7 +685,15 @@ test('v3 source accounting normalizes repeated assigned and unresolved hits to o
     assert.equal(result.manifest.ensemble.counts.observations, 2);
     assert.equal(result.manifest.observation_count, 1);
     assert.equal(result.manifest.unresolved_observations.length, 1);
-    assert.equal(result.summary.metrics.repeated_evidence_merged, 1, 'the assigned duplicate remains visible in repeat metrics');
+    assert.deepEqual(result.rows[0].observations[0].holds, ['analysis_ambiguous'], 'repeated source identities union and preserve extractor holds');
+    assert.equal(result.summary.metrics.repeated_evidence_merged, 2,
+      'assigned and unresolved raw duplicates are both visible in repeat metrics');
+    const comparison = await compareResolutionPolicies({
+      observations: observationsFromCorpusEvidence(evidenceDoc(evidence)).observations,
+      kiwiProvider: kiwi(k), ensembleProviders: triple({ k, h: hh, m: mm }),
+    });
+    assert.equal(comparison.three_provider_only.assigned_observations, 2,
+      'unresolved repeats do not inflate the assigned-observation metric');
     assert.deepEqual(validateCandidateBatch({ manifest: result.manifest, candidatesText: result.candidatesText }), []);
 
     const traces = result.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest,

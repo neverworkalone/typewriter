@@ -318,7 +318,8 @@ export async function buildLemmaGroups({ observations, analyzer, providers = [cr
     }
     lemmas.set(resolved.lemma, entry);
   }
-  return { lemmas, unresolved: [...unresolved.values()].sort((a, b) => compare(a.surface, b.surface) || compare(a.evidence.ref, b.evidence.ref)), repeatsMerged, metadataByProvider, attemptLog };
+  return { lemmas, unresolved: [...unresolved.values()].sort((a, b) => compare(a.surface, b.surface) || compare(a.evidence.ref, b.evidence.ref)),
+    repeatsMerged, assignedRepeatsMerged: repeatsMerged, metadataByProvider, attemptLog };
 }
 
 // Ensemble grouping (issue #285). Kiwi, Khaiii and MeCab all analyze every unique surface; each
@@ -384,8 +385,9 @@ export async function buildEnsembleGroups({
 
   const lemmas = new Map();
   const queue = [];
-  let repeatsMerged = [...inputCountsByDigest].reduce((sum, [digest, count]) =>
-    sum + (ASSIGNING_CATEGORIES.includes(decisionByDigest.get(digest)?.category) ? count - 1 : 0), 0);
+  let repeatsMerged = [...inputCountsByDigest].reduce((sum, [, count]) => sum + count - 1, 0);
+  let assignedRepeatsMerged = [...inputCountsByDigest].reduce((sum, [digest, count]) =>
+    sum + (ASSIGNING_CATEGORIES.includes(decisionByDigest.get(digest)?.category) || replayed.resolved.has(digest) ? count - 1 : 0), 0);
   const addToLemma = ({ lemma, pos, observation, observationDigest, holds, ensemble }) => {
     const group = observation.group ?? '';
     const entry = lemmas.get(lemma) ?? new Map();
@@ -393,6 +395,7 @@ export async function buildEnsembleGroups({
     const known = entry.get(key);
     if (known) {
       repeatsMerged += 1;
+      assignedRepeatsMerged += 1;
       for (const hold of holds) known.holds.add(hold);
     } else {
       entry.set(key, { key, pos, group, surface: observation.surface, evidence: observation.ref, digest: analysisInputDigest(observation.surface),
@@ -440,7 +443,8 @@ export async function buildEnsembleGroups({
   const orderedQueue = queue.map((entry) => ({ queue_id: entry.queue_id, surface: entry.surface, evidence: entry.evidence, holds: entry.holds, category: entry.category,
     reasons: entry.reasons, hypotheses: entry.hypotheses, extractor_hint: entry.extractor_hint, extractor_holds: entry.extractor_holds,
     observation_digest: entry.observation_digest, trace_digest: entry.trace_digest, verification: entry.verification }));
-  return { lemmas, unresolved: orderedQueue, repeatsMerged, metadataByProvider: run.metadataByProvider, run, decisions, observations: sourceObservations, contextRecords,
+  return { lemmas, unresolved: orderedQueue, repeatsMerged, assignedRepeatsMerged, metadataByProvider: run.metadataByProvider, run,
+    decisions, observations: sourceObservations, contextRecords,
     attemptLog: ENSEMBLE_LOG(run) };
 }
 
@@ -714,13 +718,14 @@ const groupedMetrics = (grouped, observations) => {
     pos += kinds.size;
     if (lemmaHeld) heldLemmas += 1;
   }
+  const assignedRepeatsMerged = grouped.assignedRepeatsMerged ?? grouped.repeatsMerged;
   return {
     original_observations: observations.length,
     unique_surfaces: new Set(observations.map((observation) => observation.surface)).size,
     unique_lemmas: grouped.lemmas.size,
     distinct_pos_group_opportunities: pos,
-    assigned_observations: assigned + grouped.repeatsMerged,
-    assigned_without_holds: assigned + grouped.repeatsMerged - held,
+    assigned_observations: assigned + assignedRepeatsMerged,
+    assigned_without_holds: assigned + assignedRepeatsMerged - held,
     held_observations: held,
     held_lemmas: heldLemmas,
     unresolved_observations: grouped.unresolved.length,
