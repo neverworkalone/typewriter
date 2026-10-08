@@ -56,6 +56,12 @@ const bigramsOf = (text) => {
 };
 
 // Dictionary-form stem: 먹다 -> 먹, 따뜻하다 -> 따뜻하 -> kept whole when the stem is a single character.
+// Without a trusted canonical revision, hash every canonical field retrieval depends on.
+const fallbackDigest = (senses) => sha256(JSON.stringify(senses.map((s) => [
+  s.record_id, s.sense_id, s.pos, s.lemma, s.gloss, s.search_forms,
+  s.relations.map((r) => [r.target, r.target_sense]),
+])));
+
 const stemOf = (lemma, pos) => {
   const chars = [...lemma];
   const isPredicate = pos === 'verb' || pos === 'adjective';
@@ -149,7 +155,7 @@ export function buildRelationIndex(canonical, config = {}) {
   return {
     contract: RETRIEVER_CONTRACT,
     settings,
-    canonical_snapshot_digest: canonical.canonicalRevision ?? sha256(JSON.stringify(senses.map((s) => [s.sense_id, s.gloss]))),
+    canonical_snapshot_digest: canonical.canonicalRevision ?? fallbackDigest(senses),
     senses, bySenseId, byRecordId, byLemma, bySearchForm, outgoing, incoming,
     postings, idf, norms, bigramSets, literatureForms, literatureFormLengths,
   };

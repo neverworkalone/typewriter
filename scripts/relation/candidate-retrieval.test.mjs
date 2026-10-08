@@ -94,6 +94,28 @@ test('validator rejects editorial fields and stale snapshots', () => {
   assert.ok(validateRelationCandidateArtifact(stale, index).some((e) => e.includes('differs')));
 });
 
+test('revision-less digest covers lemma, pos, search forms and relations', () => {
+  const make = (mutate) => {
+    const records = structuredClone(synthetic.records);
+    mutate(records);
+    return buildRelationIndex({ records });
+  };
+  const base = make(() => {});
+  assert.equal(base.canonical_snapshot_digest, make(() => {}).canonical_snapshot_digest);
+  const variants = [
+    (r) => { r[3].lemma = '정적'; },
+    (r) => { r[3].senses[0].pos = 'adjective'; },
+    (r) => { r[3].search_forms = ['고요', '고요함']; },
+    (r) => { r[3].senses[0].relations = [{ target: 'w2', target_sense: 'w2-s1', type: 'near', note: 'n', relevance: 1 }]; },
+  ];
+  const artifact = retrieveRelationCandidates(base, [{ kind: 'canonical', sense_id: 'w3-s1' }]);
+  for (const mutate of variants) {
+    const changed = make(mutate);
+    assert.notEqual(changed.canonical_snapshot_digest, base.canonical_snapshot_digest);
+    assert.ok(validateRelationCandidateArtifact(artifact, changed).some((e) => e.includes('differs')));
+  }
+});
+
 test('real canonical replay: deterministic, bounded cost, no mutation, no relations created', async () => {
   const context = await loadCanonicalContext();
   const canonical = { canonicalRevision: context.canonicalRevision, records: context.records };
@@ -117,6 +139,13 @@ test('real canonical replay: deterministic, bounded cost, no mutation, no relati
     const existing = new Set(own.relations.map((r) => r.target_sense));
     assert.ok(result.candidates.every((c) => !existing.has(c.target.sense_id) && c.target.sense_id !== own.sense_id));
   }
+  const text = '그는 깊은 고요 속에서 오래된 소리의 울림과 서늘한 감각을 떠올렸다. '.repeat(18);
+  const literature = Object.fromEntries(sample.map((s) => [s.sense_id, Array.from({ length: 8 }, (_, i) => ({ location_digest: String(i).repeat(64).slice(0, 64), text }))]));
+  const t2 = performance.now();
+  const withLit = retrieveRelationCandidates(index, sample, { literature });
+  const litPerSourceMs = (performance.now() - t2) / sample.length;
+  assert.deepEqual(validateRelationCandidateArtifact(withLit, index), []);
+  assert.ok(litPerSourceMs < 1000, `literature per-source ${litPerSourceMs}ms`);
   assert.ok(buildMs < 10_000, `index build ${buildMs}ms`);
   assert.ok(perSourceMs < 500, `per-source ${perSourceMs}ms`);
   console.log(`# replay: ${index.senses.length} senses, build ${Math.round(buildMs)}ms, ${perSourceMs.toFixed(1)}ms/source, median pool ${[...first.sources.map((s) => s.candidates_total)].sort((a, b) => a - b)[Math.floor(sample.length / 2)]}`);
