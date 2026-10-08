@@ -323,6 +323,26 @@ rather than by the batch data:
 7. If a tool or the permission layer denies the shared-code change, stop and
    report; do not retry another way.
 
+### Prioritize PRs that unblock an active Stage
+
+When an active Stage 1, 2, or 3 is **blocked from continuing** until a shared
+rule, contract, validator, or pipeline fix PR merges, the assigned implementing
+agent must label **that blocking fix PR** exactly `urgent` as soon as it exists.
+If the needed fix PR is already open, reuse it and add the label there rather
+than creating another PR. For example: `gh pr edit <PR-number> --add-label urgent`.
+
+- Reserve `urgent` for a **real, current Stage blocker**. Do not apply it to
+  routine enhancements, future preparation, or ordinary batch/result PRs.
+- This label only raises the PR's priority for MissCat's **next review
+  selection**; it does not interrupt a running review, skip validation, start
+  a review, or authorize the implementing agent to review or merge the PR.
+- MissCat excludes PRs labeled `no-review` even when they have `urgent`.
+  Never remove `no-review` merely to get priority; report that conflict to
+  the owner if it blocks progress.
+- If the dependency is definitively no longer a blocker while the PR remains
+  open, remove `urgent` only when no other active Stage depends on it. A
+  merged PR needs no label cleanup.
+
 ## Validation
 
 Run the validation appropriate to the changed surface.
