@@ -13,6 +13,7 @@ import {
   EVIDENCE_OUTPUT_DIRECTORY,
   deriveSearchForms,
   classifyMatchSample,
+  fetchSubstringUnits,
   DEFAULT_MATCH_MODE,
   expandContext,
   hasEojeolMatch,
@@ -265,4 +266,17 @@ test('classifyMatchSample counts units by position and trailing run without text
   const databasePath = await makeDatabase([{ genre: 'novel', author: 'A', blocks: [['꾀꼬리', '꼬리', '꼬리를', '꼬리였던것이', '尹꼬리']] }]);
   const census = classifyMatchSample({ databasePath, searchForms: forms('꼬리') });
   assert.deepEqual(census, { units: 5, boundary: 3, after_hangul: 1, after_han: 1, after_other: 0, trailing_0: 1, trailing_1_2: 1, trailing_3_plus: 1 });
+});
+
+test('multi-form units are counted once and agree with the retriever (#414 review)', async () => {
+  const databasePath = await makeDatabase([{ genre: 'novel', author: 'A', blocks: [['쳐다보다가 봤다', '쳐다보다가 갔다', '봤다 보다']] }]);
+  const searchForms = forms('보다', '봤다');
+  const units = fetchSubstringUnits({ databasePath, searchForms });
+  assert.equal(units.length, 3);
+  assert.deepEqual(units.find((u) => u.text === '쳐다보다가 봤다').forms, ['보다', '봤다']);
+  const census = classifyMatchSample({ databasePath, searchForms });
+  const retrieved = retrieveLiteratureEvidence({ databasePath, identity: ID, searchForms, matchMode: 'eojeol' }).summary;
+  assert.equal(census.units, 3);
+  assert.equal(census.boundary, retrieved.total_match_units); // 2 kept units
+  assert.equal(census.after_hangul, 1);
 });

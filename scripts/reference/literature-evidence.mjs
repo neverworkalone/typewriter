@@ -171,36 +171,50 @@ function collectHits(database, forms, fetchCap, matchMode) {
   return { hits: [...hits.values()], perForm };
 }
 
-/** The substring-match scatter sample (same order and cap as retrieval): [{form, text, location_digest}]. Local use only. */
+/**
+ * The substring-match scatter sample (same order and cap as retrieval), one entry per distinct text unit:
+ * [{forms, text, location_digest}] where `forms` lists every search form that matched it. Local use only.
+ */
 export function fetchSubstringUnits({ databasePath = DEFAULT_FULL_LITERATURE_INDEX_PATH, searchForms, hitFetchCap = HIT_FETCH_CAP }) {
   const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
   try {
-    return searchForms.forms.flatMap(({ form }) => {
+    const units = new Map();
+    for (const { form } of searchForms.forms) {
       const { from, parameters } = formQuery(form, 'substring');
-      return database.prepare(`SELECT u.text AS text, f.source_sha256 AS source_sha256, u.ordinal AS ordinal ${from} ORDER BY (u.unit_rowid * 2654435761) % 4294967296, u.unit_rowid LIMIT ?`)
-        .all(...parameters, hitFetchCap)
-        .map((row) => ({ form, text: row.text, location_digest: sha256(row.source_sha256 + ':' + row.ordinal) }));
-    });
+      const rows = database.prepare(`SELECT u.unit_rowid AS unit, u.text AS text, f.source_sha256 AS source_sha256, u.ordinal AS ordinal ${from} ORDER BY (u.unit_rowid * 2654435761) % 4294967296, u.unit_rowid LIMIT ?`)
+        .all(...parameters, hitFetchCap);
+      for (const row of rows) {
+        const unit = units.get(row.unit) ?? { forms: [], text: row.text, location_digest: sha256(row.source_sha256 + ':' + row.ordinal) };
+        unit.forms.push(form);
+        units.set(row.unit, unit);
+      }
+    }
+    return [...units.values()];
   } finally {
     database.close();
   }
 }
 
+/** Eojeol-start occurrences of any of the unit's forms, as {form, at}. A unit is kept by the retriever iff this is non-empty. */
+export function boundaryMatches(unit) {
+  return unit.forms.flatMap((form) => matchOccurrences(unit.text, form).filter((o) => o.class === 'boundary').map((o) => ({ form, at: o.at })));
+}
+
 /**
  * Text-free structural census of the substring matches (#414): over the same scatter sample the
- * retriever would fetch, count units by where their occurrences sit. A unit is `boundary` when any
- * occurrence starts an eojeol, otherwise it takes the class of its first occurrence. For boundary
- * units, `trailing_*` buckets the Hangul run right after the form (0 / 1–2 / 3+ syllables).
+ * retriever would fetch, count distinct units (a unit matched by several forms counts once) by where
+ * their occurrences sit. A unit is `boundary` when any form occurs at an eojeol start, otherwise it
+ * takes the class of its first occurrence. For boundary units, `trailing_*` buckets the shortest
+ * Hangul run right after a boundary occurrence (0 / 1–2 / 3+ syllables).
  */
 export function classifyMatchSample(options) {
   const counts = { units: 0, boundary: 0, after_hangul: 0, after_han: 0, after_other: 0, trailing_0: 0, trailing_1_2: 0, trailing_3_plus: 0 };
-  for (const { form, text } of fetchSubstringUnits(options)) {
-    const occurrences = matchOccurrences(text, form);
+  for (const unit of fetchSubstringUnits(options)) {
     counts.units += 1;
-    const boundary = occurrences.filter((o) => o.class === 'boundary');
-    if (boundary.length === 0) { counts[occurrences[0].class] += 1; continue; }
+    const boundary = boundaryMatches(unit);
+    if (boundary.length === 0) { counts[matchOccurrences(unit.text, unit.forms[0])[0].class] += 1; continue; }
     counts.boundary += 1;
-    const run = Math.min(...boundary.map((o) => [...text.slice(o.at + form.length).match(/^\p{Script=Hangul}*/u)[0]].length));
+    const run = Math.min(...boundary.map(({ form, at }) => [...unit.text.slice(at + form.length).match(/^\p{Script=Hangul}*/u)[0]].length));
     counts[run === 0 ? 'trailing_0' : run <= 2 ? 'trailing_1_2' : 'trailing_3_plus'] += 1;
   }
   return counts;

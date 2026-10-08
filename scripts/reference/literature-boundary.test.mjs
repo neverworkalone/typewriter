@@ -6,7 +6,7 @@ import { summarize, toleranceVerdict, TOLERANCES } from './literature-boundary-m
 
 // Synthetic, text-free fixtures only (#414 measurement and judged-sample contract).
 
-const unit = (form, text, n) => ({ form, text, location_digest: String(n).padStart(64, '0') });
+const unit = (form, text, n) => ({ forms: [form], text, location_digest: String(n).padStart(64, '0') });
 
 test('sample excludes the #392 validation cohort, is deterministic and bounded', () => {
   const ids = Array.from({ length: 50 }, (_, i) => `C000001-${String(i + 1).padStart(4, '0')}`);
@@ -29,6 +29,15 @@ test('hit picking separates boundary-kept from dropped units, de-duplicates and 
   assert.equal(picked.filter((hit) => hit.stratum === 'kept').length, 3);
   assert.equal(new Set(picked.map((hit) => hit.location_digest)).size, 6);
   assert.ok(picked.filter((hit) => hit.stratum === 'dropped').every((hit) => hit.text.startsWith('꾀꼬리')));
+});
+
+test('a unit matched by several forms is kept when any form starts an eojeol', () => {
+  // `보다` only inside `쳐다보다`, `봤다` at an eojeol start: the retriever keeps this unit.
+  const mixed = { forms: ['보다', '봤다'], text: '쳐다보다가 봤다', location_digest: '1'.repeat(64) };
+  const [hit] = pickHits([mixed]);
+  assert.equal(hit.stratum, 'kept');
+  assert.equal(hit.form, '봤다');
+  assert.equal(pickHits([{ ...mixed, forms: ['보다'] }])[0].stratum, 'dropped');
 });
 
 test('labels validate against a closed judge and typed other_word', () => {

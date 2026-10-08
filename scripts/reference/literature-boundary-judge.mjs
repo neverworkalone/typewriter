@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
-import { deriveSearchForms, fetchSubstringUnits, hasEojeolMatch, loadFactoryCandidate } from './literature-evidence.mjs';
+import { boundaryMatches, deriveSearchForms, fetchSubstringUnits, loadFactoryCandidate } from './literature-evidence.mjs';
 import { loadEvidenceContext, supportedFormsForCandidate } from './literature-evidence-run.mjs';
 import { assertLiteraturePermission, REPOSITORY_DIRECTORY } from './literature-index.mjs';
 import { collectReplayCohort } from './literature-replay-cohort.mjs';
@@ -29,11 +29,18 @@ export function sampleCandidateIds(deferredIds, excludedIds, count = SAMPLE_CAND
   return deferredIds.filter((id) => !excluded.has(id)).sort(byKey((id) => sha('sample-414:' + id))).slice(0, count);
 }
 
-/** Per candidate: up to HITS_PER_STRATUM dropped and kept units, ordered by sha256("hit-414:" + location digest). */
+/**
+ * Per candidate: up to HITS_PER_STRATUM dropped and kept units, ordered by sha256("hit-414:" + location digest).
+ * `units` are distinct ({forms, text, location_digest}); a unit is kept iff any of its forms starts an eojeol,
+ * exactly as the retriever decides. The shown `form` is a boundary form for kept units, the first form otherwise.
+ */
 export function pickHits(units, perStratum = HITS_PER_STRATUM) {
   const seen = new Set();
   const tagged = units.filter((unit) => !seen.has(unit.location_digest) && seen.add(unit.location_digest))
-    .map((unit) => ({ ...unit, stratum: hasEojeolMatch(unit.text, unit.form) ? 'kept' : 'dropped' }))
+    .map((unit) => {
+      const boundary = boundaryMatches(unit);
+      return { ...unit, form: boundary[0]?.form ?? unit.forms[0], stratum: boundary.length ? 'kept' : 'dropped' };
+    })
     .sort(byKey((unit) => sha('hit-414:' + unit.location_digest)));
   return ['dropped', 'kept'].flatMap((stratum) => tagged.filter((unit) => unit.stratum === stratum).slice(0, perStratum));
 }
