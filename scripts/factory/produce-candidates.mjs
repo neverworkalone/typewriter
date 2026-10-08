@@ -107,11 +107,16 @@ const git = (args, root) => execFileSync('git', args, { cwd: root, encoding: 'ut
 // Bind generated manifests to the committed producer tree. Synthetic test roots without Git
 // remain supported; a real checkout must not run Stage 1 from modified factory source.
 function producerRevisionFor(root) {
+  try {
+    git(['rev-parse', '--git-dir'], root);
+  } catch {
+    return null;
+  }
   let revision;
   try {
     revision = git(['rev-parse', 'HEAD'], root).trim();
   } catch {
-    return null;
+    throw new Stage1Error(['Git-backed Stage 1 checkout has no resolvable HEAD; commit the producer source before generation']);
   }
   if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u.test(revision)) {
     throw new Stage1Error(['cannot record producer_revision: Git HEAD is not a full object SHA']);

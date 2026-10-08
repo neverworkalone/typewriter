@@ -358,6 +358,24 @@ test('post-write validation is base-aware like CI: merged reviews are compared t
   await assert.rejects(() => readdir(path.join(root, 'data/candidates/C000001')), { code: 'ENOENT' });
 });
 
+test('Git-backed Stage 1 refuses an unresolved HEAD even when base-ref is none', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-unborn-git-'));
+  try {
+    const cache = await taskCacheFor(root);
+    await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+    await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+    await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])])));
+    execFileSync('git', ['init', '-q'], { cwd: root, stdio: 'pipe' });
+    const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+    await assert.rejects(() => runStage1([
+      '--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1',
+    ], deps), /Git-backed Stage 1 checkout has no resolvable HEAD/u);
+    await assert.rejects(() => readdir(path.join(root, 'data/candidates')), { code: 'ENOENT' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('CLI fails closed without permission, outside data/reference, on bad arguments and on a missing evidence file', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
   const cache = await taskCacheFor(root);
