@@ -236,20 +236,25 @@ async function validateStage3SemanticAuthorityLinks({ root, reviewArtifacts }) {
       || !same(event.entries, manifest.admission.entries)) {
       errors.push(`${at} semantic authority event does not match the reviewed Stage 2 source and admission map`);
     }
-    const eventChanges = (event.changes ?? []).map(({ entry_id, operation, path: changePath, source_candidate_ids, added_sense_ids, before_sha256, after_sha256 }) => ({
-      entry_id, operation, path: changePath, source_candidate_ids, added_sense_ids, before_sha256, after_sha256,
+    const eventChanges = (event.changes ?? []).map(({ entry_id, operation, path: changePath, source_candidate_ids, added_sense_ids, added_relation_ids, before_sha256, after_sha256 }) => ({
+      entry_id, operation, path: changePath, source_candidate_ids, added_sense_ids, added_relation_ids, before_sha256, after_sha256,
     }));
     if (!same(eventChanges, manifest.admission.changes)) errors.push(`${at} semantic authority event does not match the canonical change set`);
+    if (!same(event.relation_amendments ?? [], manifest.admission.relation_amendments ?? [])) errors.push(`${at} semantic authority event does not match the relation amendments`);
   }
   return errors;
 }
 
 function validateStage3RecordChanges(reviewArtifacts, canonicalById) {
   const changesByRecord = new Map();
+  const relationRecords = new Set();
   for (const { manifest, decisions } of reviewArtifacts.values()) {
     if (manifest.status !== 'complete' || !Array.isArray(manifest.admission?.changes)) continue;
     const decisionById = new Map(decisions.map((row) => [row.source_candidate_id, row]));
     for (const change of manifest.admission.changes) {
+      // Relation-only amendments leave no sense-level projection; their digest chain is enforced by the
+      // semantic ledger, and their tuples by the admission manifest validation.
+      if (change.operation === 'append_relations') { relationRecords.add(change.entry_id); continue; }
       const list = changesByRecord.get(change.entry_id) ?? [];
       list.push({ ...change, batchId: manifest.batch_id, decisionById });
       changesByRecord.set(change.entry_id, list);
@@ -270,6 +275,7 @@ function validateStage3RecordChanges(reviewArtifacts, canonicalById) {
     for (const senseId of changesBySense.keys()) if (!canonicalSenseIds.has(senseId)) errors.push(`${entryId}: admitted sense ${senseId} is absent from canonical data`);
     const untracked = canonical.senses.filter((sense) => changesBySense.has(sense.id));
     if (untracked.length !== changesBySense.size) continue;
+    if (relationRecords.has(entryId)) continue;
     let projected = { ...canonical, senses: canonical.senses.filter((sense) => !changesBySense.has(sense.id)) };
     const create = changes.find((change) => change.operation === 'create');
     const ordered = [...changes].sort((left, right) => {

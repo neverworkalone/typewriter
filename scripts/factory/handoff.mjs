@@ -1,5 +1,6 @@
 import { findConfusableLemmaHints } from '../validate/lexical-quality.mjs';
 import { DISPOSITIONS, TARGET_KINDS } from './contract.mjs';
+import { AMENDMENT_FIELD, relationAmendmentErrors } from './relation-amendments.mjs';
 
 // Typed Stage 2 → Stage 3 decision handoff (design §5.1). Pure validation against a
 // canonical index (see identity-adapter `buildCanonicalIndex`); it writes nothing.
@@ -27,8 +28,10 @@ export function validateDecisionRow(row, { canonicalIndex }) {
   if (REASON_REQUIRED.has(row.disposition)) {
     if (typeof row.reason !== 'string' || !row.reason) errors.push(`${at}: ${row.disposition} requires a candidate-specific reason`);
     if (row.target !== undefined || row.reviewed_record !== undefined) errors.push(`${at}: ${row.disposition} must not carry a target or reviewed record`);
+    if (row[AMENDMENT_FIELD] !== undefined) errors.push(`${at}: ${row.disposition} must not carry ${AMENDMENT_FIELD}`);
     return errors;
   }
+  errors.push(...relationAmendmentErrors(row, at));
   const kind = row.target?.kind;
   if (!TARGET_KINDS.includes(kind)) return [...errors, `${at}: target.kind must be one of ${TARGET_KINDS.join(', ')}`];
   const record = row.reviewed_record;

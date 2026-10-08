@@ -165,6 +165,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/factory-ensemble-native-smoke.test.mjs', 'Test real three-native-provider ensemble smoke (skipped with the reason where Kiwi, Khaiii native or MeCab-ko is absent; no mock substitute)'),
       testCheck('tests/factory-stage2-worker.test.mjs', 'Test Stage 2 atomic claims, merge-gated session loop, and cleanup'),
       testCheck('tests/factory-stage3-worker.test.mjs', 'Test Stage 3 serial admission, rejection, recovery, and ID/reference allocation'),
+      testCheck('tests/factory-relation-amendments.test.mjs', 'Test Stage 3 reverse relation amendments: remapping, staleness, idempotence, semantic authority and audit'),
     ],
   },
 

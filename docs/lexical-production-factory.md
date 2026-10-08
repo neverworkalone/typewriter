@@ -389,6 +389,25 @@ Rules carried over unchanged:
   types, relevance or notes), and canonical integrity rejects missing targets,
   self-references and duplicates. A relation defect is a shared-contract fix,
   never a reason to hold or reject a valid lexical sense.
+- **Reverse relation amendments (#399).** An admitted decision may carry
+  `relation_amendments`: `{source_record_id, source_sense_id, source_gloss_sha256,
+  relation, rationale}` adding one reviewed relation to an *existing* canonical source
+  sense (the new-sense direction stays in `reviewed_record.senses[].relations`). Stage 3
+  applies it as the relation-only operation `append_relations` against latest master: the
+  source sense is bound by its gloss digest (a changed or missing sense is a lexical
+  `STAGE3_STALE_RELATION_SOURCE`), never by the whole-record digest, so unrelated
+  concurrent appends do not stale it. The tuple is appended after the existing relations
+  (no rewrite or re-rank; runtime projection orders by `relevance`); an exact tuple already
+  present is an idempotent `already_present` outcome with no canonical change; the same
+  target/type with a different note or relevance is `STAGE3_RELATION_CONFLICT`; a source the
+  same batch also appends senses to is `STAGE3_RELATION_SOURCE_CONFLICT`. The relation
+  target may be a canonical id or same-batch candidate id/`provisional_ref` and is remapped
+  like any reviewed relation. No reverse edge is synthesized. The review manifest
+  `admission.relation_amendments` and the semantic-authority event record, per tuple, the
+  authoring candidate, source sense and gloss digest, authored and resolved tuple (type,
+  relevance), rationale digest and `appended`/`already_present` outcome; the amended
+  record's semantic review keeps its preserved evidence and rebinds only the amended
+  sense's relation outcome.
 - Stage 2 may not introduce a weaker parallel rule set. A rule discovered here
   becomes a shared rule, not a Stage 2 exception (AGENTS.md, *Generalize lexical
   validation*).

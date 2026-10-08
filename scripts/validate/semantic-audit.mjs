@@ -2007,7 +2007,7 @@ function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache, f
     let expectedCurrentDigest = lastCorrection.after_record_sha256;
     for (const event of factoryAdmissions) {
       for (const change of event.changes ?? []) {
-        if (change.entry_id === recordId && change.operation === 'append_senses'
+        if (change.entry_id === recordId && change.operation !== 'create'
           && change.before_sha256 === expectedCurrentDigest) {
           expectedCurrentDigest = change.after_sha256;
         }
@@ -2461,7 +2461,7 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
       const changeLabel = `${eventLabel}.changes[${changeIndex}]`;
       requireObject(change, changeLabel);
       requireString(change.entry_id, `${changeLabel}.entry_id`);
-      if (!['create', 'append_senses'].includes(change.operation)) fail(`${changeLabel}.operation is unsupported`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      if (!FACTORY_OPERATIONS.includes(change.operation)) fail(`${changeLabel}.operation is unsupported`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       if (seenRecords.has(change.entry_id)) fail(`${eventLabel} repeats canonical record ${change.entry_id}`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       seenRecords.add(change.entry_id);
       if (change.operation === 'create' ? change.before_sha256 !== null : !SHA256_PATTERN.test(change.before_sha256 ?? '')) {
@@ -2473,7 +2473,7 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
       }
       requireDigest(change.semantic_review_sha256, `${changeLabel}.semantic_review_sha256`);
       if (change.previous_semantic_review !== undefined || change.previous_record !== undefined) {
-        if (change.operation !== 'append_senses'
+        if (change.operation === 'create'
           || sha256Json(change.previous_semantic_review) !== change.previous_semantic_review_sha256
           || sha256Json(change.previous_record) !== change.before_sha256
           || change.previous_semantic_review?.record_sha256 !== change.before_sha256
@@ -2482,15 +2482,34 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
         }
       }
       const mappingSources = requireArray(change.source_candidate_ids, `${changeLabel}.source_candidate_ids`);
-      if (mappingSources.length === 0 || mappingSources.some((sourceCandidateId) => mappings.get(sourceCandidateId)?.record_id !== change.entry_id)) {
+      if (change.operation === 'append_relations') {
+        // A relation-only amendment is bound by the admitted candidate's recorded relation amendment, not by its new entry.
+        const amended = requireArray(event.relation_amendments, `${eventLabel}.relation_amendments`)
+          .filter((item) => item?.source_record_id === change.entry_id && item.outcome === 'appended');
+        const ids = amended.map((item) => item.relation_id);
+        if (mappingSources.length === 0 || amended.length === 0 || mappingSources.some((id) => !mappings.has(id))
+          || !Array.isArray(change.added_relation_ids) || JSON.stringify(ids) !== JSON.stringify(change.added_relation_ids)) {
+          fail(`${changeLabel} relation amendments do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+      } else if (mappingSources.length === 0 || mappingSources.some((sourceCandidateId) => mappings.get(sourceCandidateId)?.record_id !== change.entry_id)) {
         fail(`${changeLabel}.source_candidate_ids do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       const previous = latestChangeByRecord.get(change.entry_id);
-      if (previous && (change.operation !== 'append_senses' || change.before_sha256 !== previous.after_sha256
+      if (previous && (change.operation === 'create' || change.before_sha256 !== previous.after_sha256
         || change.previous_semantic_review_sha256 !== previous.semantic_review_sha256)) {
         fail(`${changeLabel} does not continue the previous Stage 3 record and semantic review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       latestChangeByRecord.set(change.entry_id, change);
+    }
+    for (const [amendmentIndex, amendment] of (event.relation_amendments ?? []).entries()) {
+      const amendmentLabel = `${eventLabel}.relation_amendments[${amendmentIndex}]`;
+      requireObject(amendment, amendmentLabel);
+      if (!mappings.has(amendment.source_candidate_id) || !['appended', 'already_present'].includes(amendment.outcome)
+        || typeof amendment.source_record_id !== 'string' || typeof amendment.source_sense_id !== 'string'
+        || !SHA256_PATTERN.test(amendment.source_gloss_sha256 ?? '') || !SHA256_PATTERN.test(amendment.rationale_sha256 ?? '')
+        || typeof amendment.relation_id !== 'string' || !amendment.relation || typeof amendment.relation !== 'object') {
+        fail(`${amendmentLabel} is not a source-bound relation amendment`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
     }
     if (entries.some((entry) => !seenRecords.has(entry.record_id))) fail(`${eventLabel} has a candidate mapping without a canonical change`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
   }
@@ -2814,6 +2833,27 @@ export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) 
   return source;
 }
 
+const FACTORY_OPERATIONS = ['create', 'append_senses', 'append_relations'];
+
+/**
+ * A Stage 3 amendment only adds: identity and every pre-existing sense are unchanged (modulo #396 relevance),
+ * except that a sense may gain relations appended after its existing ones; new senses may follow.
+ */
+export function isAdditiveFactoryAmendment(original, current) {
+  const { senses: oldSenses, ...oldIdentity } = original;
+  const { senses: newSenses, ...newIdentity } = current;
+  if (JSON.stringify(oldIdentity) !== JSON.stringify(newIdentity)) return false;
+  return oldSenses.every((sense, index) => {
+    const next = newSenses[index];
+    if (!next) return false;
+    const { relations: oldRelations = [], ...oldRest } = sense;
+    const { relations: newRelations = [], ...newRest } = withoutRelevance(next, sense);
+    return JSON.stringify(oldRest) === JSON.stringify(newRest)
+      && newRelations.length >= oldRelations.length
+      && oldRelations.every((relation, at) => JSON.stringify(relation) === JSON.stringify(newRelations[at]));
+  });
+}
+
 /** Historical payload checks use this view; current semantic/build gates still use current records. */
 export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSource) {
   const events = validateFactoryAdmissionLedger(decisionSource, recordInfos, 'historical canonical authority');
@@ -2833,10 +2873,7 @@ export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSou
       if (!original || sha256Json(original) !== change.before_sha256) {
         fail('historical canonical reconstruction lacks the bound original record', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
-      const { senses: oldSenses, ...oldIdentity } = original;
-      const { senses: newSenses, ...newIdentity } = current;
-      if (JSON.stringify(oldIdentity) !== JSON.stringify(newIdentity)
-        || oldSenses.some((sense, index) => JSON.stringify(sense) !== JSON.stringify(withoutRelevance(newSenses[index], sense)))) {
+      if (!isAdditiveFactoryAmendment(original, current)) {
         fail('factory admission rewrote an existing canonical payload', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       records.set(change.entry_id, info.record ? { ...info, record: structuredClone(original) } : structuredClone(original));

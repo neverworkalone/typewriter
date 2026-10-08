@@ -1,5 +1,7 @@
 import { validateDecisionHandoff } from './handoff.mjs';
 import { sha256Hex } from './contract.mjs';
+import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
+import { AMENDMENT_FIELD } from './relation-amendments.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -117,6 +119,74 @@ function remapRelations(sense, { aliases, knownRecordIds, knownSenseIds, sourceC
     }
     return remapped;
   });
+}
+
+// Canonical tuple key order (target, target_sense, type, note, relevance), independent of authoring order.
+const canonicalTuple = ({ target, target_sense: targetSense, type, note, relevance }) => ({
+  target, ...(targetSense === undefined ? {} : { target_sense: targetSense }), type, note, ...(relevance === undefined ? {} : { relevance }),
+});
+const tupleLocator = (relation) => JSON.stringify([relation.target, relation.target_sense ?? null, relation.type]);
+
+/**
+ * Relation-only amendments (#399). Each reviewed tuple is bound to an existing canonical source sense by its gloss
+ * digest; the whole-record digest is deliberately NOT bound so unrelated concurrent appends never make it stale.
+ * Existing relations are never rewritten or re-ranked; an exact tuple already present is an idempotent no-op.
+ */
+function planRelationAmendments({ decisions, byId, planned, aliases, allRecordIds, allSenseIds, recordPathById }) {
+  const working = new Map();
+  const audit = [];
+  for (const row of decisions) {
+    if (!ADMITTED.has(row.disposition)) continue;
+    for (const item of row[AMENDMENT_FIELD] ?? []) {
+      const at = `${row.source_candidate_id}: relation amendment on ${item.source_record_id} ${item.source_sense_id}`;
+      const base = byId.get(item.source_record_id);
+      const baseSense = base?.senses?.find(({ id }) => id === item.source_sense_id);
+      if (!baseSense) lexical(`${at} no longer exists on latest master; the enrichment is stale and needs re-review`, 'STAGE3_STALE_RELATION_SOURCE');
+      if (canonicalRecordSha256(baseSense.gloss) !== item.source_gloss_sha256) {
+        lexical(`${at} changed meaning since Stage 2 reviewed it; the enrichment is stale and needs re-review`, 'STAGE3_STALE_RELATION_SOURCE');
+      }
+      if (planned.has(item.source_record_id)) {
+        lexical(`${at} targets a record this batch also appends senses to; use the normal new-sense relation path`, 'STAGE3_RELATION_SOURCE_CONFLICT');
+      }
+      const [remapped] = remapRelations({ relations: [item.relation] }, { aliases, knownRecordIds: allRecordIds, knownSenseIds: allSenseIds, sourceCandidateId: row.source_candidate_id });
+      const relation = canonicalTuple(remapped);
+      if (relation.target === item.source_record_id || relation.target_sense === item.source_sense_id) {
+        lexical(`${at} resolves to a self-reference`, 'STAGE3_RELATION_SELF');
+      }
+      const record = working.get(item.source_record_id) ?? { ...base, senses: base.senses.map((sense) => ({ ...sense })) };
+      working.set(item.source_record_id, record);
+      const sense = record.senses.find(({ id }) => id === item.source_sense_id);
+      const existing = (sense.relations ?? []).find((candidate) => tupleLocator(candidate) === tupleLocator(relation));
+      let outcome = 'appended';
+      if (existing) {
+        if (JSON.stringify(canonicalTuple(existing)) !== JSON.stringify(relation)) {
+          lexical(`${at} conflicts with an existing ${relation.type} relation to the same target that carries a different note or relevance; Stage 3 does not rewrite existing relations`, 'STAGE3_RELATION_CONFLICT');
+        }
+        outcome = 'already_present';
+      } else {
+        sense.relations = [...(sense.relations ?? []), relation];
+      }
+      audit.push({
+        source_candidate_id: row.source_candidate_id,
+        source_record_id: item.source_record_id,
+        source_sense_id: item.source_sense_id,
+        source_gloss_sha256: item.source_gloss_sha256,
+        authored_relation_id: reviewedRelationId(item.source_sense_id, item.relation),
+        relation_id: reviewedRelationId(item.source_sense_id, relation),
+        relation,
+        rationale_sha256: canonicalRecordSha256(item.rationale),
+        outcome,
+      });
+    }
+  }
+  const records = new Map();
+  for (const [id, record] of working) {
+    if (!audit.some((entry) => entry.source_record_id === id && entry.outcome === 'appended')) continue;
+    const file = recordPathById?.get(id);
+    if (!file) systemic(`canonical source path is unknown for ${id}`, 'STAGE3_CANONICAL_PATH');
+    records.set(id, { record, file, before: byId.get(id) });
+  }
+  return { audit, records };
 }
 
 function decisionSenses(row, idStart, aliases, knownRecordIds, knownSenseIds) {
@@ -240,6 +310,21 @@ export function planStage3Admission({
     });
   }
 
+  const amendments = planRelationAmendments({ decisions, byId, planned, aliases, allRecordIds, allSenseIds, recordPathById });
+  for (const [entryId, update] of amendments.records) {
+    planned.set(entryId, update);
+    const appended = amendments.audit.filter((entry) => entry.source_record_id === entryId && entry.outcome === 'appended');
+    changeRows.push({
+      entry_id: entryId,
+      operation: 'append_relations',
+      path: update.file,
+      source_candidate_ids: [...new Set(appended.map((entry) => entry.source_candidate_id))],
+      added_relation_ids: appended.map((entry) => entry.relation_id),
+      before_sha256: canonicalRecordSha256(update.before),
+      after_sha256: canonicalRecordSha256(update.record),
+    });
+  }
+
   const entries = decisions.filter((row) => ADMITTED.has(row.disposition)).map((row) => ({
     source_candidate_id: row.source_candidate_id,
     record_id: row.__entry_id,
@@ -255,11 +340,12 @@ export function planStage3Admission({
       base_canonical_snapshot_digest: baseCanonicalSnapshotDigest,
       canonical_snapshot_digest: null,
       entries,
+      ...(amendments.audit.length ? { relation_amendments: amendments.audit } : {}),
       changes: changeRows.sort((left, right) => left.entry_id.localeCompare(right.entry_id)),
     },
   };
   delete nextReviewManifest.rejected_pr;
-  return { batchId, attempt, decisions, records: planned, reviewManifest: nextReviewManifest, entries, changes: nextReviewManifest.admission.changes };
+  return { batchId, attempt, decisions, records: planned, reviewManifest: nextReviewManifest, entries, changes: nextReviewManifest.admission.changes, relationAmendments: amendments.audit };
 }
 
 export async function applyStage3FileChanges(plan, { root = process.cwd(), reviewManifestPath } = {}) {
@@ -337,14 +423,37 @@ export function validateStage3AdmissionManifest(reviewManifest, decisions, canon
   }
   for (const change of admission.changes) {
     if (!canonicalById.has(change.entry_id)) errors.push(`admission change references missing canonical entry ${change.entry_id}`);
-    if (!['create', 'append_senses'].includes(change.operation)) errors.push(`admission change ${change.entry_id} has an invalid operation`);
+    if (!['create', 'append_senses', 'append_relations'].includes(change.operation)) errors.push(`admission change ${change.entry_id} has an invalid operation`);
     if (typeof change.path !== 'string' || !change.path.startsWith('data/canonical/') || !change.path.endsWith('.jsonl')) errors.push(`admission change ${change.entry_id} has an invalid canonical path`);
     if (change.operation === 'create' && change.before_sha256 !== null) errors.push(`new canonical entry ${change.entry_id} must not have a before digest`);
-    if (change.operation === 'append_senses' && !/^[0-9a-f]{64}$/u.test(change.before_sha256 ?? '')) errors.push(`canonical amendment ${change.entry_id} needs a before digest`);
+    if (change.operation !== 'create' && !/^[0-9a-f]{64}$/u.test(change.before_sha256 ?? '')) errors.push(`canonical amendment ${change.entry_id} needs a before digest`);
     if (!/^[0-9a-f]{64}$/u.test(change.after_sha256 ?? '')) errors.push(`admission change ${change.entry_id} needs an after digest`);
-    if (!Array.isArray(change.source_candidate_ids) || !Array.isArray(change.added_sense_ids)
-      || change.source_candidate_ids.length === 0 || change.added_sense_ids.length === 0) {
-      errors.push(`admission change ${change.entry_id} needs source candidate and added sense ids`);
+    const addedKey = change.operation === 'append_relations' ? 'added_relation_ids' : 'added_sense_ids';
+    if (!Array.isArray(change.source_candidate_ids) || !Array.isArray(change[addedKey])
+      || change.source_candidate_ids.length === 0 || change[addedKey].length === 0) {
+      errors.push(`admission change ${change.entry_id} needs source candidate and ${addedKey}`);
+    }
+  }
+  const amendments = admission.relation_amendments ?? [];
+  if (!Array.isArray(amendments)) errors.push('admission relation_amendments must be an array');
+  else {
+    const admitted = new Set(expected);
+    for (const amendment of amendments) {
+      const here = `relation amendment ${amendment?.source_candidate_id} ${amendment?.source_sense_id}`;
+      const source = canonicalById.get(amendment?.source_record_id);
+      const sense = source?.senses?.find(({ id }) => id === amendment.source_sense_id);
+      if (!admitted.has(amendment?.source_candidate_id)) errors.push(`${here} is not bound to an admitted source candidate`);
+      if (!sense) { errors.push(`${here} names a missing canonical source sense`); continue; }
+      if (!['appended', 'already_present'].includes(amendment.outcome)) errors.push(`${here} has an invalid outcome`);
+      if (!/^[0-9a-f]{64}$/u.test(amendment.source_gloss_sha256 ?? '') || !/^[0-9a-f]{64}$/u.test(amendment.rationale_sha256 ?? '')) errors.push(`${here} needs gloss and rationale digests`);
+      if (!(sense.relations ?? []).some((relation) => JSON.stringify(relation) === JSON.stringify(amendment.relation))) errors.push(`${here} tuple is absent from the canonical source sense`);
+      const change = admission.changes.find((item) => item.entry_id === amendment.source_record_id);
+      const recorded = change?.operation === 'append_relations' && change.added_relation_ids.includes(amendment.relation_id);
+      if ((amendment.outcome === 'appended') !== recorded) errors.push(`${here} outcome does not match the recorded canonical change`);
+    }
+    for (const change of admission.changes.filter((item) => item.operation === 'append_relations')) {
+      const ids = amendments.filter((item) => item.source_record_id === change.entry_id && item.outcome === 'appended').map((item) => item.relation_id);
+      if (!same(ids, change.added_relation_ids)) errors.push(`admission change ${change.entry_id} added_relation_ids differ from its relation amendments`);
     }
   }
   return errors;
