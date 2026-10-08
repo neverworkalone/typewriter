@@ -21,6 +21,19 @@
 - Execute file edits, verification, commits, and pushes as
 separate tool operations, not as one compound shell command.
 
+## Root-Cause Fixes
+
+**Fix the cause, not the symptom.** For implementation defects and PR feedback:
+
+- Identify the underlying cause and violated invariant before editing.
+- Check other relevant paths in the affected module for the same cause. Fix the
+  shared function, contract, or boundary instead of only the reported example.
+- Add a shared regression for that defect class, including appropriate valid
+  and invalid inputs, so future cases are covered.
+- Before pushing, confirm the same cause is addressed across those paths.
+- Keep the fix focused: no unrelated refactors, extra validation layers, or
+  new issues. Preserve existing required checks.
+
 ## Cross-agent invocation — all implementation work
 
 The prohibition on lexical subagents also applies to invoking **other AI agents
