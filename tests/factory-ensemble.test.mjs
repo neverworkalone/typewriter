@@ -12,12 +12,13 @@ import {
   ENSEMBLE_POLICY,
   classifyObservation,
   ENSEMBLE_PROVIDER_ORDER,
+  ensembleTraceSha256,
   verifyEnsembleTraces,
 } from '../scripts/factory/ensemble-resolver.mjs';
 import { CONTEXT_PARAGRAPH_LOOKUP_SQL, createCorpusContextSource } from '../scripts/factory/corpus-context-source.mjs';
 import { createMecabProvider, pinnedMetadata as mecabMetadata } from '../scripts/factory/mecab-provider.mjs';
 import { POLICY_ALIASES, parseArguments, runStage1 } from '../scripts/factory/produce-candidates.mjs';
-import { Stage1Error, compareResolutionPolicies, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
+import { Stage1Error, compareResolutionPolicies, observationsFromCorpusEvidence, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
@@ -334,7 +335,7 @@ test('12: recorded decisions replay deterministically without raw paragraphs; ta
   await assert.rejects(() => produceCandidateBatch({ evidence: evidenceDoc(fallbackEvidence), providers: [kiwi(FALLBACK.k)], canonicalEntries: [], canonicalDigest: HEX, batchId: 'C000002', taskId: 'T000001', contextReplay: decisions }), /only valid under/);
 });
 
-test('bounded batches record only resolving context decisions linked to retained lemma rows', async () => {
+test('bounded batches record context decisions linked to rows, excluded lemmas, and verification queue', async () => {
   const evidence = [
     cand('가다', 'verb', [h('d1', '가는'), h('d3', '갈'), h('d4', '갈'), h('d5', '갈')]),
   ];
@@ -356,20 +357,26 @@ test('bounded batches record only resolving context decisions linked to retained
   });
   assert.deepEqual(bounded.rows.map((row) => row.input), ['가다']);
   assert.deepEqual(bounded.summary.deferredLemmas, ['갈다']);
-  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002']);
-  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.outcome), ['context_confirmed', 'truth_unknown']);
-  assert.equal(bounded.rows[0].observations.find((observation) => observation.ensemble.resolution === 'context').ensemble.context_decision, 'D0001');
-  assert.equal(queueOf(bounded)[0].verification.decision_id, 'D0002');
+  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002', 'D0003']);
+  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.outcome), ['context_confirmed', 'context_confirmed', 'truth_unknown']);
+  assert.equal(bounded.rows[0].observations.find((observation) => observation.ensemble.resolution === 'context').ensemble.context_decision, 'D0002');
+  assert.equal(bounded.manifest.excluded_observations[0].ensemble.context_decision, 'D0001');
+  assert.equal(queueOf(bounded)[0].verification.decision_id, 'D0003');
+  assert.equal(bounded.manifest.ensemble.counts.observations, 4);
+  assert.equal(bounded.manifest.ensemble.counts.excluded, 1);
   assert.deepEqual(validateCandidateBatch({ manifest: bounded.manifest, candidatesText: bounded.candidatesText }), []);
 
   const deferred = await produce(evidence, providers, {
     maxCandidates: 1, producedLemmas: new Set(['가다']), contextProposals, contextSource, contextAgent: 'codex',
   });
   assert.deepEqual(deferred.rows.map((row) => row.input), ['갈다']);
-  assert.deepEqual(deferred.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002']);
+  assert.deepEqual(deferred.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002', 'D0003']);
   assert.equal(deferred.manifest.context_fallback.decisions[0].lemma, '갈다', 'the deferred decision is recorded when its lemma is selected');
   assert.equal(deferred.rows[0].observations[0].ensemble.context_decision, deferred.manifest.context_fallback.decisions[0].decision_id);
-  assert.equal(queueOf(deferred)[0].verification.decision_id, 'D0002');
+  assert.equal(deferred.manifest.excluded_observations.length, 2);
+  assert.ok(deferred.manifest.excluded_observations.every((entry) => entry.disposition === 'prior_produced_lemma' && entry.lemma === '가다'));
+  assert.equal(deferred.manifest.excluded_observations.find((entry) => entry.ensemble.context_decision)?.ensemble.context_decision, 'D0002');
+  assert.equal(queueOf(deferred)[0].verification.decision_id, 'D0003');
   assert.deepEqual(validateCandidateBatch({ manifest: deferred.manifest, candidatesText: deferred.candidatesText }), []);
 });
 
@@ -556,7 +563,11 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify(exclusionManifest));
     const evidence = {
       ...evidenceDoc([
-        cand('걸다', 'verb', [h('d1', '걸어')]),
+        cand('걸다', 'verb', [
+          { ...h('d1', '걸어'), usage_group: 'usage_a' },
+          { ...h('d2', '걸어'), usage_group: 'usage_a' },
+          { ...h('d1', '걸어'), usage_group: 'usage_b' },
+        ]),
         cand('짠하다', 'adjective', [h('d2', '짠한')]),
       ]),
       selection: {
@@ -580,7 +591,63 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     const result = await runStage1(args, deps);
     assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
     assert.equal(result.summary.skippedProducedLemmas, 1);
+    assert.equal(result.manifest.excluded_observations.length, 3);
+    assert.ok(result.manifest.excluded_observations.every((entry) => entry.disposition === 'prior_produced_lemma'
+      && entry.lemma === '걷다' && entry.pos === 'verb' && entry.surface === '걸어'));
+    assert.equal(new Set(result.manifest.excluded_observations.map((entry) => entry.observation_digest)).size, 3,
+      'separate paragraphs and usage groups have separate source observation identities');
+    assert.equal(new Set(result.manifest.excluded_observations.map((entry) => entry.ensemble.trace_digest)).size, 1,
+      'the same analyzer trace may back distinct source observations');
+    assert.equal(result.manifest.ensemble.counts.input_observations, 4);
+    assert.equal(result.manifest.ensemble.counts.observations, 4);
+    assert.equal(result.manifest.ensemble.counts.excluded, 3);
+    const omitted = structuredClone(result.manifest);
+    omitted.excluded_observations.pop();
+    omitted.ensemble.counts.excluded = omitted.excluded_observations.length;
+    omitted.ensemble.counts.observations = omitted.observation_count + omitted.unresolved_observations.length + omitted.excluded_observations.length;
+    omitted.ensemble.counts.categories = Object.fromEntries(['concordant', 'supported_alternative', 'conflicted', 'unsupported_or_unknown'].map((category) => [category, 0]));
+    for (const row of result.rows) for (const [category, count] of Object.entries(row.review.categories)) omitted.ensemble.counts.categories[category] += count;
+    for (const entry of omitted.unresolved_observations) omitted.ensemble.counts.categories[entry.category] += 1;
+    for (const entry of omitted.excluded_observations) omitted.ensemble.counts.categories[entry.ensemble.category] += 1;
+    omitted.ensemble.trace_sha256 = ensembleTraceSha256({
+      providers: omitted.analyzer_providers,
+      observationTraceDigests: result.rows.flatMap((row) => [JSON.stringify(['review', row.review.trace_sha256]),
+        ...row.observations.map((observation) => JSON.stringify([observation.observation_digest, observation.ensemble.trace_digest]))]),
+      queueTraceDigests: omitted.unresolved_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.trace_digest])),
+      excludedTraceDigests: omitted.excluded_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.ensemble.trace_digest])),
+      contextDecisionsSha256: omitted.context_fallback.decisions_sha256,
+    });
+    assert.match(validateCandidateBatch({ manifest: omitted, candidatesText: result.candidatesText }).join(), /independent input observation count/u,
+      'recomputing disposition counts and trace digest cannot hide a producer input observation');
+    const traces = result.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest,
+      trace_digest: decision.trace_digest, trace: decision.trace }));
+    assert.deepEqual(verifyEnsembleTraces({ rows: result.rows, queue: result.manifest.unresolved_observations,
+      excluded: result.manifest.excluded_observations, traces }), [], 'candidate, queue, and prior-produced observations cover every analysis trace');
+    assert.match(verifyEnsembleTraces({ rows: result.rows, queue: result.manifest.unresolved_observations, traces }).join(), /no recorded disposition/u);
+    const missingExcluded = { ...result.manifest };
+    delete missingExcluded.excluded_observations;
+    assert.match(validateCandidateBatch({ manifest: missingExcluded, candidatesText: result.candidatesText }).join(), /requires excluded_observations/u);
     assert.deepEqual(await validateFactoryRepository({ root }), []);
+
+    const duplicatedIdentity = structuredClone(result.manifest);
+    duplicatedIdentity.excluded_observations[0].observation_digest = result.rows[0].observations[0].observation_digest;
+    const compare = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
+    duplicatedIdentity.excluded_observations.sort((left, right) => compare(left.disposition, right.disposition)
+      || compare(left.lemma, right.lemma) || compare(left.observation_digest, right.observation_digest));
+    duplicatedIdentity.ensemble.trace_sha256 = ensembleTraceSha256({
+      providers: duplicatedIdentity.analyzer_providers,
+      observationTraceDigests: result.rows.flatMap((row) => [JSON.stringify(['review', row.review.trace_sha256]),
+        ...row.observations.map((observation) => JSON.stringify([observation.observation_digest, observation.ensemble.trace_digest]))]),
+      queueTraceDigests: duplicatedIdentity.unresolved_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.trace_digest])),
+      excludedTraceDigests: duplicatedIdentity.excluded_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.ensemble.trace_digest])),
+      contextDecisionsSha256: duplicatedIdentity.context_fallback.decisions_sha256,
+    });
+    const duplicateIdentityError = /observation appears in more than one ensemble disposition/u;
+    assert.match(validateCandidateBatch({ manifest: duplicatedIdentity, candidatesText: result.candidatesText }).join(), duplicateIdentityError,
+      'the common candidate validator rejects an identity duplicated across candidate and excluded dispositions even with a recomputed digest');
+    await writeFile(path.join(root, 'data/candidates', result.manifest.batch_id, 'manifest.json'), JSON.stringify(duplicatedIdentity));
+    assert.match((await validateFactoryRepository({ root })).join(), duplicateIdentityError,
+      'the repository validator enforces the same cross-disposition identity invariant');
 
     const malformedCases = [
       ['stale-candidate-evidence.json', { ...evidence, selection: { ...evidence.selection, exclusion_sha256: 'b'.repeat(64) } }, /exclusion digest does not match candidate evidence/u],
@@ -594,6 +661,83 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
         '--evidence', `runs/T000001/${file}`, '--task-id', 'T000001', '--base-ref', 'none', '--dry-run',
       ], deps), expectedError);
     }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('v3 source accounting normalizes repeated assigned and unresolved hits to one disposition each', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-repeated-input-'));
+  try {
+    const evidence = [
+      cand('가다', 'verb', [h('d1', '가는')], { ambiguity_status: 'held_ambiguous' }),
+      cand('나다', 'verb', [h('d1', '가는')]),
+      cand('가다', 'verb', [h('d2', '갈'), h('d2', '갈')]),
+      cand('나다', 'verb', [h('d2', '갈')]),
+    ];
+    const k = { 가는: [p('가다', 'verb', '가')], 갈: [p('갈', 'noun')] };
+    const hh = { 가는: [p('가다', 'verb', '가')], 갈: [p('갈다', 'verb', '갈')] };
+    const mm = { 가는: [p('가다', 'verb', '가')], 갈: [p('가다', 'verb', '가')] };
+    const result = await produce(evidence, triple({ k, h: hh, m: mm }));
+
+    assert.equal(result.ensemble.decisions.length, 2, 'the producer adjudicates each unique source-observation identity once');
+    assert.equal(result.manifest.ensemble.counts.input_observations, 2,
+      'the independent count is derived from unique source identities before disposition, not output totals');
+    assert.equal(result.manifest.ensemble.counts.observations, 2);
+    assert.equal(result.manifest.observation_count, 1);
+    assert.equal(result.manifest.unresolved_observations.length, 1);
+    assert.deepEqual(result.rows[0].observations[0].holds, ['analysis_ambiguous'], 'repeated source identities union and preserve extractor holds');
+    assert.ok(result.rows[0].observations[0].ensemble.reasons.includes('extractor_hint_mismatch'),
+      'different hints at one source coordinate stay visible on the assigned disposition');
+    assert.equal(result.manifest.unresolved_observations[0].extractor_hint.lemma, null,
+      'conflicting hints do not select one candidate based on input order');
+    assert.ok(result.manifest.unresolved_observations[0].reasons.includes('extractor_hint_mismatch'));
+    assert.equal(result.summary.metrics.repeated_evidence_merged, 3,
+      'assigned and unresolved raw duplicates are both visible in repeat metrics');
+    const comparison = await compareResolutionPolicies({
+      observations: observationsFromCorpusEvidence(evidenceDoc(evidence)).observations,
+      kiwiProvider: kiwi(k), ensembleProviders: triple({ k, h: hh, m: mm }),
+    });
+    assert.equal(comparison.three_provider_only.assigned_observations, 2,
+      'unresolved repeats do not inflate the assigned-observation metric');
+    assert.deepEqual(validateCandidateBatch({ manifest: result.manifest, candidatesText: result.candidatesText }), []);
+
+    const reversed = await produce([...evidence].reverse(), triple({ k, h: hh, m: mm }));
+    assert.equal(reversed.candidatesText, result.candidatesText, 'hint conflicts do not select an outcome based on input order');
+    assert.equal(reversed.manifest.ensemble.trace_sha256, result.manifest.ensemble.trace_sha256);
+
+    const traces = result.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest,
+      trace_digest: decision.trace_digest, trace: decision.trace }));
+    assert.deepEqual(verifyEnsembleTraces({ rows: result.rows, queue: result.manifest.unresolved_observations,
+      excluded: result.manifest.excluded_observations, traces }), [], 'each normalized input identity has one matching local trace');
+
+    const directory = path.join(root, 'data/candidates', result.manifest.batch_id);
+    await mkdir(directory, { recursive: true });
+    await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(result.manifest));
+    await writeFile(path.join(directory, 'candidates.jsonl'), result.candidatesText);
+    assert.deepEqual(await validateFactoryRepository({ root }), []);
+
+    const missing = structuredClone(result.manifest);
+    missing.unresolved_observations = [];
+    missing.ensemble.counts.queue = 0;
+    missing.ensemble.counts.observations = missing.observation_count + missing.excluded_observations.length;
+    missing.ensemble.counts.categories = { concordant: 0, supported_alternative: 0, conflicted: 0, unsupported_or_unknown: 0 };
+    for (const row of result.rows) for (const [category, count] of Object.entries(row.review.categories)) missing.ensemble.counts.categories[category] += count;
+    for (const entry of missing.excluded_observations) missing.ensemble.counts.categories[entry.ensemble.category] += 1;
+    missing.ensemble.trace_sha256 = ensembleTraceSha256({
+      providers: missing.analyzer_providers,
+      observationTraceDigests: result.rows.flatMap((row) => [JSON.stringify(['review', row.review.trace_sha256]),
+        ...row.observations.map((observation) => JSON.stringify([observation.observation_digest, observation.ensemble.trace_digest]))]),
+      queueTraceDigests: [],
+      excludedTraceDigests: missing.excluded_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.ensemble.trace_digest])),
+      contextDecisionsSha256: missing.context_fallback.decisions_sha256,
+    });
+    const accountingError = /independent input observation count/u;
+    assert.match(validateCandidateBatch({ manifest: missing, candidatesText: result.candidatesText }).join(), accountingError,
+      'dropping the one unique unresolved identity and recomputing all output-derived fields still fails');
+    await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(missing));
+    assert.match((await validateFactoryRepository({ root })).join(), accountingError,
+      'the repository validator rejects the same omitted input identity');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -773,7 +917,7 @@ test('review fix: the ensemble policy never omits an observation, so no unseen h
   assert.match(check((r, m) => { r.observations[0].ensemble.category = 'supported_alternative'; }), /supported_alternative must|review does not match/);
   assert.match(check((r, m) => { m.ensemble.counts.categories.concordant = 63; }), /does not match/);
   // The local trace check proves recorded categories/holds against the real analysis (ignored trace file).
-  const traces = full.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace }));
+  const traces = full.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest, trace_digest: decision.trace_digest, trace: decision.trace }));
   const rowsOf = full.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
   assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf, queue: [], traces }), []);
   const forged = structuredClone(rowsOf);
@@ -790,7 +934,7 @@ test('review fix: local trace verification accepts correct queue/context records
     cand('낮다', 'verb', [h('d4', '낯')], { coverage_status: 'covered_elsewhere' }), // (b) unresolved with a source hold
   ];
   const result = await produce(evidence, triple({ k, h: hh, m: mm }));
-  const tracesOf = (r) => r.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace }));
+  const tracesOf = (r) => r.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest, trace_digest: decision.trace_digest, trace: decision.trace }));
   const rowsOf = (r) => r.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
   const queue = result.manifest.unresolved_observations;
   assert.ok(queue.some((entry) => entry.extractor_holds.includes('coverage_collision')) && queue.some((entry) => entry.extractor_holds.length === 0));

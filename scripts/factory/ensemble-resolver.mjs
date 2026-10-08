@@ -13,7 +13,8 @@ import { normalizeProviderResult, providerDescriptor } from './analyzer-provider
 // probability. It depends only on leaf modules so lemma-contract/contract can import its validators.
 
 export const ENSEMBLE_POLICY = 'provider-resolution-v2-ensemble';
-export const ENSEMBLE_CONTRACT = 'ensemble-resolution-v2';
+export const LEGACY_ENSEMBLE_CONTRACT = 'ensemble-resolution-v2';
+export const ENSEMBLE_CONTRACT = 'ensemble-resolution-v3';
 export const ENSEMBLE_PROVIDER_ORDER = Object.freeze(['kiwi', 'khaiii', 'mecab']);
 export const PROPOSAL_CONTRACT_REQUIRED = 'derivation-root-v1';
 
@@ -217,11 +218,11 @@ export function classifyObservation({ hint, results }) {
   const tops = [top.kiwi, top.khaiii, top.mecab];
   const votes = (reading) => tops.filter((other) => readingKey(other) === readingKey(reading)).length;
   const hintMismatch = (assigned) => {
-    if (assigned.lemma !== hint.input || (hint.pos && assigned.pos !== hint.pos)) reasons.push('extractor_hint_mismatch');
+    if ((hint.input && assigned.lemma !== hint.input) || (hint.pos && assigned.pos !== hint.pos)) reasons.push('extractor_hint_mismatch');
   };
   const assignedHolds = (assigned, holds) => {
     hintMismatch(assigned);
-    if (assigned.lemma !== hint.input) holds.push('lemma_mismatch');
+    if (hint.input && assigned.lemma !== hint.input) holds.push('lemma_mismatch');
     else if (hint.pos && assigned.pos !== hint.pos) holds.push('pos_mismatch');
     return holds;
   };
@@ -256,8 +257,10 @@ export function unresolvedHoldsFor(decision, providerResults) {
   return ['analysis_unsupported'];
 }
 
+// The identity is the observed source occurrence, independent of which extractor proposal carried it.
+// Multiple hints at the same source coordinate are retained as one observation and marked as a conflict.
 export const observationDigestOf = (observation) => digest(['ensemble-observation', observation.surface, observation.ref.kind, observation.ref.ref,
-  observation.hint?.input ?? '', observation.hint?.pos ?? '']);
+  observation.group ?? '']);
 
 // Text-free decision trace: surface digest, extractor hint/holds, the Kiwi ranked paths and the
 // best-only readings, the category and its reasons. It carries no corpus snippet or paragraph text.
@@ -268,6 +271,7 @@ export function buildTrace({ observation, results, decision }) {
     contract: ENSEMBLE_CONTRACT,
     surface_digest: analysisInputDigest(observation.surface),
     extractor_hint: { lemma: observation.hint?.input ?? null, pos: observation.hint?.pos ?? null },
+    ...(observation.extractor_hint_conflict ? { extractor_hint_conflict: true } : {}),
     extractor_holds: sortedUnique(observation.holds ?? []),
     providers: Object.fromEntries(ENSEMBLE_PROVIDER_ORDER.map((id) => [id, { outcome: results[id].outcome, identity_digest: results[id].identity_digest,
       paths: results[id].analyses.slice(0, id === 'kiwi' ? 8 : 1).map(slim) }])),
@@ -287,6 +291,7 @@ export function decideObservations({ observations, run }) {
     const results = Object.fromEntries(ENSEMBLE_PROVIDER_ORDER.map((id) => [id, run.byProvider.get(id).get(observation.surface)]));
     const hint = { input: observation.hint?.input, pos: observation.hint?.pos ?? null };
     const decision = classifyObservation({ hint, results });
+    if (observation.extractor_hint_conflict) decision.reasons = sortedUnique([...decision.reasons, 'extractor_hint_mismatch']);
     const trace = buildTrace({ observation, results, decision });
     const extractorHolds = observation.holds ?? [];
     const assigning = ASSIGNING_CATEGORIES.includes(decision.category);
@@ -401,9 +406,28 @@ export function validateReviewField(review, observations, observationTotal, at) 
 // LOCAL integration check (needs the ignored `--ensemble-trace` file, never part of routine CI):
 // every observation and queue record must be backed by a trace whose digest, category and hold
 // state agree. This proves recorded categories/holds against the real analysis.
-export function verifyEnsembleTraces({ rows, queue = [], traces }) {
-  const byDigest = new Map(traces.map((entry) => [entry.trace_digest, entry.trace]));
+export function verifyEnsembleTraces({ rows, queue = [], excluded = [], traces }) {
   const errors = [];
+  if (!Array.isArray(traces)) return ['local ensemble traces must be an array'];
+  const byObservation = new Map();
+  const byTrace = new Map();
+  const inputObservations = new Set();
+  for (const [index, entry] of traces.entries()) {
+    if (!isObject(entry) || !SHA256.test(String(entry.trace_digest ?? '')) || !isObject(entry.trace)) {
+      errors.push(`local trace ${index + 1}: trace_digest and trace are required`);
+      continue;
+    }
+    if (!SHA256.test(String(entry.observation_digest ?? ''))) errors.push(`local trace ${index + 1}: observation_digest is required`);
+    else if (inputObservations.has(entry.observation_digest)) errors.push(`local trace ${index + 1}: duplicate observation_digest`);
+    else {
+      inputObservations.add(entry.observation_digest);
+      byObservation.set(entry.observation_digest, entry);
+    }
+    const sameTrace = byTrace.get(entry.trace_digest) ?? [];
+    sameTrace.push(entry);
+    byTrace.set(entry.trace_digest, sameTrace);
+  }
+  const represented = new Set();
   const sameList = (left, right) => JSON.stringify(sortedUnique(left)) === JSON.stringify(sortedUnique(right));
   // `holds` is the full recorded hold list; `kind` says how it relates to the trace's pre-context
   // `observation_holds` (the extractor holds, plus the ensemble's own holds for an assigned reading):
@@ -411,8 +435,16 @@ export function verifyEnsembleTraces({ rows, queue = [], traces }) {
   //   queue — the entry's extractor_holds exactly equal the trace holds (an unassigned observation
   //   carries only its extractor holds, never an ensemble-made one).
   const check = (at, record) => {
-    const trace = byDigest.get(record.trace_digest);
-    if (!trace) { errors.push(`${at}: no local trace for ${record.trace_digest.slice(0, 12)}`); return; }
+    let local = record.observation_digest ? byObservation.get(record.observation_digest) : null;
+    if (!local && record.trace_digest) local = (byTrace.get(record.trace_digest) ?? []).find((entry) => !represented.has(entry.observation_digest));
+    if (!local) { errors.push(`${at}: no local trace for ${record.trace_digest.slice(0, 12)}`); return; }
+    if (represented.has(local.observation_digest)) errors.push(`${at}: observation is assigned to more than one disposition`);
+    represented.add(local.observation_digest);
+    if (local.trace_digest !== record.trace_digest) errors.push(`${at}: recorded trace digest differs from the local observation trace`);
+    const { trace } = local;
+    if (record.observation_digest && record.observation_digest !== local.observation_digest) {
+      errors.push(`${at}: observation_digest differs from the local trace`);
+    }
     if (traceDigest(trace) !== record.trace_digest) errors.push(`${at}: local trace does not hash to its digest`);
     if (trace.category !== record.category) errors.push(`${at}: recorded category ${record.category} differs from the trace (${trace.category})`);
     const traced = trace.observation_holds;
@@ -423,19 +455,31 @@ export function verifyEnsembleTraces({ rows, queue = [], traces }) {
   };
   for (const row of rows) {
     for (const observation of row.observations) {
-      check(`${row.candidate_id} ${observation.observation_id}`, { trace_digest: observation.ensemble.trace_digest, category: observation.ensemble.category,
+      check(`${row.candidate_id} ${observation.observation_id}`, { observation_digest: observation.observation_digest,
+        trace_digest: observation.ensemble.trace_digest, category: observation.ensemble.category,
         holds: observation.holds, kind: observation.ensemble.resolution === 'context' ? 'context' : 'assigned' });
     }
   }
-  for (const entry of queue) check(entry.queue_id, { trace_digest: entry.trace_digest, category: entry.category, holds: entry.extractor_holds, kind: 'queue' });
+  for (const entry of queue) check(entry.queue_id, { observation_digest: entry.observation_digest, trace_digest: entry.trace_digest,
+    category: entry.category, holds: entry.extractor_holds, kind: 'queue' });
+  for (const entry of excluded) check(`${entry.disposition} ${entry.observation_digest}`, { observation_digest: entry.observation_digest,
+    trace_digest: entry.ensemble?.trace_digest, category: entry.ensemble?.category, holds: entry.holds,
+    kind: entry.ensemble?.resolution === 'context' ? 'context' : 'assigned' });
+  for (const [observationDigest, entry] of byObservation) {
+    if (!represented.has(observationDigest)) errors.push(`local trace ${entry.trace_digest.slice(0, 12)} for observation ${observationDigest.slice(0, 12)} has no recorded disposition`);
+  }
   return errors;
 }
 
 // Manifest `ensemble` block and the digest that binds the providers, every observation's trace and
 // the recorded context decisions: changing a provider, the order, the policy or any result changes it.
 export const ENSEMBLE_MANIFEST_KEYS = ['contract', 'counts', 'trace_sha256'];
-export function ensembleTraceSha256({ providers, observationTraceDigests, queueTraceDigests, contextDecisionsSha256 }) {
-  return digest(['ensemble-trace', ENSEMBLE_CONTRACT, ENSEMBLE_POLICY, JSON.stringify(providers), observationTraceDigests, queueTraceDigests, contextDecisionsSha256]);
+export function ensembleTraceSha256({ providers, observationTraceDigests, queueTraceDigests, excludedTraceDigests = [], contextDecisionsSha256,
+  contract = ENSEMBLE_CONTRACT }) {
+  if (contract === LEGACY_ENSEMBLE_CONTRACT) {
+    return digest(['ensemble-trace', contract, ENSEMBLE_POLICY, JSON.stringify(providers), observationTraceDigests, queueTraceDigests, contextDecisionsSha256]);
+  }
+  return digest(['ensemble-trace', contract, ENSEMBLE_POLICY, JSON.stringify(providers), observationTraceDigests, queueTraceDigests, excludedTraceDigests, contextDecisionsSha256]);
 }
 
 export const ensembleProviderDescriptors = (providers) => providers.map(providerDescriptor);

@@ -212,6 +212,20 @@ distinct-citation-lemma-v1`; the v1 manifest fields are kept (`task_id`, `batch_
 - `unresolved_observations: [{surface, evidence, holds}]` — observations with no
   reliable lemma/POS (`analysis_missing|stale|error|unsupported`), preserved for
   verification and not counted as headwords.
+- New ensemble manifests use `ensemble-resolution-v3` accounting. Every analyzed
+  observation is represented by a candidate observation, an unresolved queue row,
+  or `excluded_observations[]` with disposition `prior_produced_lemma` or
+  `deferred_lemma`. Excluded observations retain their text-free source reference,
+  analysis/observation digests, holds and ensemble trace; they cannot become a new
+  candidate row. `ensemble.counts.input_observations` counts distinct source-observation
+  identities normalized from the input decisions before disposition, separately
+  from `counts.observations`, which must equal the candidate + unresolved + excluded
+  disposition total. Repeated raw hits with the same identity are merged once and
+  remain visible in repeat metrics. `observation_digest` binds the observed surface,
+  source reference and usage group independently of extractor hint. Conflicting hints
+  add a mismatch hold/reason without choosing one by input order; a `trace_digest` may
+  be shared when distinct source observations have the same surface-level analyzer trace.
+  Historical `ensemble-resolution-v2` manifests remain valid and unchanged.
 
 **Before (v1, 3 candidates for one lemma) → after (v2, 1 candidate):**
 
