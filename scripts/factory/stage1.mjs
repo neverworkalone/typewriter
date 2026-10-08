@@ -710,7 +710,7 @@ export async function compareResolutionPolicies({ observations, kiwiProvider, en
 // Pure producer: evidence + analyzer + canonical → v2 manifest and candidates.jsonl text.
 export async function produceCandidateBatch({
   evidence, analyzer, providers, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES,
-  producedLemmas = new Set(), searchFormSupport = new Map(),
+  producedLemmas = new Set(), searchFormSupport = new Map(), producerRevision = null,
   // `provider-resolution-v1` (conditional fallback, default order [kiwi]) stays the explicit compatibility/A-B baseline of
   // the library; the production CLI selects the all-three ensemble by default (docs/lexical-factory-ensemble-v2.md).
   policy = RESOLUTION_POLICY, contextProposals = null, contextReplay = null, contextSource = null, contextAgent = null,
@@ -755,6 +755,7 @@ export async function produceCandidateBatch({
     source_adapter: CORPUS_SOURCE_ADAPTER,
     source_snapshot: source.source_snapshot,
     canonical_snapshot_digest: canonicalDigest,
+    ...(producerRevision ? { producer_revision: producerRevision } : {}),
     extractor_version: source.extractor_version,
     analyzer_version: anchor.analyzer_version,
     analyzer_digest: expectedAnalyzerDigest(anchor),
