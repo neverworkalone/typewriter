@@ -204,7 +204,7 @@ export function boundaryMatches(unit) {
  * Text-free structural census of the substring matches (#414): over the same scatter sample the
  * retriever would fetch, count distinct units (a unit matched by several forms counts once) by where
  * their occurrences sit. A unit is `boundary` when any form occurs at an eojeol start, otherwise it
- * takes the class of its first occurrence. For boundary units, `trailing_*` buckets the shortest
+ * takes the class of its earliest occurrence in the text across all matched forms. For boundary units, `trailing_*` buckets the shortest
  * Hangul run right after a boundary occurrence (0 / 1–2 / 3+ syllables).
  */
 export function classifyMatchSample(options) {
@@ -212,7 +212,12 @@ export function classifyMatchSample(options) {
   for (const unit of fetchSubstringUnits(options)) {
     counts.units += 1;
     const boundary = boundaryMatches(unit);
-    if (boundary.length === 0) { counts[matchOccurrences(unit.text, unit.forms[0])[0].class] += 1; continue; }
+    if (boundary.length === 0) {
+      // Earliest occurrence in the text across all matched forms (ties: class name), so form order never matters.
+      const earliest = unit.forms.flatMap((form) => matchOccurrences(unit.text, form)).sort((a, b) => a.at - b.at || (a.class < b.class ? -1 : a.class > b.class ? 1 : 0))[0];
+      counts[earliest.class] += 1;
+      continue;
+    }
     counts.boundary += 1;
     const run = Math.min(...boundary.map(({ form, at }) => [...unit.text.slice(at + form.length).match(/^\p{Script=Hangul}*/u)[0]].length));
     counts[run === 0 ? 'trailing_0' : run <= 2 ? 'trailing_1_2' : 'trailing_3_plus'] += 1;

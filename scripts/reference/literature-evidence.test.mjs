@@ -280,3 +280,11 @@ test('multi-form units are counted once and agree with the retriever (#414 revie
   assert.equal(census.boundary, retrieved.total_match_units); // 2 kept units
   assert.equal(census.after_hangul, 1);
 });
+
+test('dropped multi-form units are classified once by their earliest occurrence, independent of form order (#414 review)', async () => {
+  // `보다` follows a Han character (after_han, earliest); `다가` follows Hangul (after_hangul, later). No eojeol-start match.
+  const databasePath = await makeDatabase([{ genre: 'novel', author: 'A', blocks: [['尹보다 하다가']] }]);
+  const expected = { units: 1, boundary: 0, after_hangul: 0, after_han: 1, after_other: 0, trailing_0: 0, trailing_1_2: 0, trailing_3_plus: 0 };
+  assert.deepEqual(classifyMatchSample({ databasePath, searchForms: forms('보다', '다가') }), expected);
+  assert.deepEqual(classifyMatchSample({ databasePath, searchForms: forms('다가', '보다') }), expected);
+});
