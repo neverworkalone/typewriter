@@ -413,7 +413,10 @@ Rules carried over unchanged:
   `apply` writes the packet file first (the intent record), then canonical, then the
   semantic-authority event; a packet without its event is an interrupted apply and the next
   `apply` finishes it (the packet's own tuples are removed from the base, then re-planned).
-  An event without its packet fails closed. A tuple that is merely already present and
+  An event without its packet, or whose packet bytes no longer match the event's
+  `semantic_decisions_sha256`, fails closed (in `apply` and in the factory validator). Only
+  approvals that still hold (source gloss and the approved target's owner and meaning unchanged
+  since review, the same check the queue uses) are applied; others go back for re-review. A tuple that is merely already present and
   claimed by no packet is an exact-tuple no-op, and a different note for the same target is
   a conflict. A review is not re-queued by the
   `relation_neighbor_of_related` candidates that its own applied relations bring in.

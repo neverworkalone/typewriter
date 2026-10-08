@@ -8,6 +8,8 @@ import { sha256Hex } from '../factory/contract.mjs';
 import { buildStage3SemanticAuthority, AUTHORITY_PATH } from '../factory/semantic-authority.mjs';
 import { refreshStage3ReportCheckpoints } from '../factory/stage3-worker.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
+import { backfillPacketErrors } from '../factory/validate.mjs';
+import { approvalsStillHold } from './backfill-queue.mjs';
 
 // Relation-only canonical backfill (#446 B): the bridge from approved queue outcomes to a canonical PR. It reuses the
 // Stage 3 relation amendment planner and semantic-authority writer; no lexical admission is involved. Progress is the
@@ -25,8 +27,9 @@ export function approvedAmendments(state, index) {
     const entry = state.done[senseId];
     if (!entry.approved_relations?.length) continue;
     const sense = index.bySenseId.get(senseId);
-    // A removed sense or changed gloss means the review no longer holds; the queue returns it for re-review.
-    if (!sense || sha256Json(sense.gloss) !== entry.gloss_sha256) { stale.push(senseId); continue; }
+    // The same check the queue uses: a removed sense, changed source gloss, or a target whose owner or meaning changed
+    // since the review means the approval no longer holds, so nothing is written and the queue returns it for re-review.
+    if (!sense || !approvalsStillHold({ sense_id: senseId, gloss_sha256: sha256Json(sense.gloss) }, entry, index)) { stale.push(senseId); continue; }
     for (const { relation, rationale } of entry.approved_relations) {
       amendments.push({
         source_record_id: sense.record_id, source_sense_id: senseId, source_gloss_sha256: entry.gloss_sha256, relation, rationale,
@@ -107,10 +110,11 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
   const files = async () => ({ ...(await readCanonicalFiles(root)), source: await readAuthority(root) });
   let { records, recordPathById, source } = await files();
   const packets = await readPackets(root);
-  const recorded = new Set((source.factory_admissions ?? []).map((event) => event.batch_id).filter((id) => BACKFILL_EVENT.test(id)));
-  for (const id of recorded) {
-    if (!packets.has(id)) throw new Error(`backfill event ${id} has no committed packet file ${BACKFILL_PACKET_DIR}/${id}.json; restore it from Git`);
-  }
+  const events = (source.factory_admissions ?? []).filter((event) => BACKFILL_EVENT.test(event.batch_id));
+  const recorded = new Set(events.map((event) => event.batch_id));
+  // A recorded packet must be the exact file its event was bound to; a missing or altered packet fails closed.
+  const bound = backfillPacketErrors(events, packets);
+  if (bound.length) throw new Error(bound.join('; '));
   const written = [];
   for (const [id, text] of packets) {
     if (recorded.has(id)) continue;

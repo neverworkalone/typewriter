@@ -102,11 +102,10 @@ function approvalsIntact(row, entry) {
  * relation now exists) do not invalidate the review, which also keeps an applied review from re-queueing itself.
  * Missing current candidates fail closed (re-review).
  */
-export function isReviewCurrent(row, entry, currentCandidates) {
+export function approvalsStillHold(row, entry, index) {
   if (!entry || entry.gloss_sha256 !== row.gloss_sha256 || !approvalsIntact(row, entry)) return false;
   // Every approved target must still be the canonical sense it was approved as, even if it no longer appears as a
   // candidate (for example because the relation now exists). A deleted or re-owned target makes the review stale.
-  const index = currentCandidates?.index;
   if (!index) return false;
   for (const { relation } of entry.approved_relations) {
     if (index.bySenseId.get(relation.target_sense)?.record_id !== relation.target) return false;
@@ -115,6 +114,11 @@ export function isReviewCurrent(row, entry, currentCandidates) {
     const reviewedTarget = entry.reviewed_candidates.find((candidate) => candidate.id === relation.target_sense);
     if (!reviewedTarget || reviewedTarget.meaning_sha256 !== meaningDigest(index, relation.target_sense)) return false;
   }
+  return true;
+}
+
+export function isReviewCurrent(row, entry, currentCandidates) {
+  if (!approvalsStillHold(row, entry, currentCandidates?.index)) return false;
   const currentAll = currentCandidates.get(row.sense_id);
   if (!currentAll) return false;
   const current = currentAll.filter((candidate) => !onlySecondOrder(candidate)).map(withoutSecondOrder);

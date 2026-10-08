@@ -5,8 +5,9 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { canonicalRecordsBeforeFactoryAdmissions, restorePreFactoryDecisionSource, validateFactoryAdmissionLedger } from '../validate/semantic-audit.mjs';
+import { canonicalRecordsBeforeFactoryAdmissions, restorePreFactoryDecisionSource, sha256Json, validateFactoryAdmissionLedger } from '../validate/semantic-audit.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
+import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
 import { planRelationBackfill, writePlannedRecords } from '../factory/admission.mjs';
 import { approvedAmendments, applyBackfill } from './backfill-apply.mjs';
@@ -38,6 +39,17 @@ const readRecords = async (root) => {
   return records;
 };
 
+// A queue entry as `record` stores it: the approved tuple bound to the source gloss and to the target's reviewed meaning.
+function approvedEntry(index, sourceSenseId, relation, rationale) {
+  const source = index.bySenseId.get(sourceSenseId);
+  const target = index.bySenseId.get(relation.target_sense);
+  return {
+    outcome: 'relations-reviewed', gloss_sha256: sha256Json(source.gloss), rationale: 'x', relation_count: 1,
+    approved_relations: [{ relation_id: reviewedRelationId(sourceSenseId, relation), relation, rationale }],
+    reviewed_candidates: [{ id: relation.target_sense, meaning_sha256: sha256Json([target.lemma, target.gloss]) }],
+  };
+}
+
 // A source sense whose relations already carry #396 relevance (the realistic pilot-record case) and an unrelated target.
 function pickPair(index) {
   const source = index.senses.find((sense) => sense.relations.some((relation) => relation.relevance !== undefined));
@@ -55,10 +67,7 @@ test('an approved relation is written once as a candidate-less backfill event th
   const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
   const rationale = `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`;
   const state = newQueueState(canonical.canonicalRevision);
-  state.done[source.sense_id] = {
-    outcome: 'relations-reviewed', gloss_sha256: sourceRow.gloss_sha256, rationale, relation_count: 1,
-    approved_relations: [{ relation_id: 'x', relation, rationale }], reviewed_candidates: [],
-  };
+  state.done[source.sense_id] = approvedEntry(index, source.sense_id, relation, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
   const root = await scratchRoot();
   try {
     const before = await readRecords(root);
@@ -94,7 +103,7 @@ test('an approved relation is written once as a candidate-less backfill event th
 
     // A different note for the same target is a conflict and is rejected, not rewritten.
     const conflicting = structuredClone(state);
-    conflicting.done[source.sense_id].approved_relations[0].relation = { ...relation, note: '다른 설명이다.' };
+    conflicting.done[source.sense_id] = approvedEntry(index, source.sense_id, { ...relation, note: '다른 설명이다.' }, rationale);
     await assert.rejects(
       applyBackfill({ root, state: conflicting, index: buildRelationIndex({ ...canonical, records: after }), refreshReports: false }),
       /does not rewrite existing relations/u,
@@ -113,10 +122,7 @@ test('a backfill onto a Stage 3-created record still passes the real factory his
   const target = index.senses.find((sense) => sense.record_id !== source.record_id && !source.relations.some((relation) => relation.target_sense === sense.sense_id));
   const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
   const state = newQueueState(canonical.canonicalRevision);
-  state.done[source.sense_id] = {
-    outcome: 'relations-reviewed', gloss_sha256: inventoryCanonicalSenses(index).find((item) => item.sense_id === source.sense_id).gloss_sha256,
-    rationale: 'x', relation_count: 1, approved_relations: [{ relation_id: 'x', relation, rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.` }], reviewed_candidates: [],
-  };
+  state.done[source.sense_id] = approvedEntry(index, source.sense_id, relation, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
   const root = await scratchRoot();
   try {
     // The scratch root lacks some unrelated data files, so compare against its own baseline: the backfill adds nothing.
@@ -132,10 +138,7 @@ function oneApproval(canonical, index) {
   const { source, target } = pickPair(index);
   const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
   const state = newQueueState(canonical.canonicalRevision);
-  state.done[source.sense_id] = {
-    outcome: 'relations-reviewed', gloss_sha256: inventoryCanonicalSenses(index).find((item) => item.sense_id === source.sense_id).gloss_sha256,
-    rationale: 'x', relation_count: 1, approved_relations: [{ relation_id: 'x', relation, rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.` }], reviewed_candidates: [],
-  };
+  state.done[source.sense_id] = approvedEntry(index, source.sense_id, relation, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
   return { source, target, state };
 }
 
@@ -217,6 +220,47 @@ test('a partial temp packet from an interrupted write is ignored, and a backfill
     JSON.parse(await readFile(path.join(root, 'data/relation-backfill/R000001.json'), 'utf8'));
     await rm(path.join(root, 'data/relation-backfill', `${result.packets[0]}.json`));
     await assert.rejects(applyBackfill({ root, state, index, refreshReports: false }), /has no committed packet file/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('an approval whose target meaning changed since review is stale: nothing is written, the queue re-reviews it', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { state, target } = oneApproval(canonical, index);
+  const changed = buildRelationIndex({ ...canonical, records: canonical.records.map((info) => (info.record.id !== target.record_id ? info
+    : { ...info, record: { ...info.record, senses: info.record.senses.map((sense) => (sense.id === target.sense_id ? { ...sense, gloss: `${sense.gloss} (뜻이 바뀜)` } : sense)) } })) });
+  const root = await scratchRoot();
+  try {
+    const recordsBefore = await readRecords(root);
+    const eventsBefore = await authorityEvents(root);
+    const result = await applyBackfill({ root, state, index: changed, refreshReports: false });
+    assert.equal(result.status, 'nothing-to-apply');
+    assert.equal(result.stale.length, 1);
+    assert.deepEqual(await readRecords(root), recordsBefore);
+    assert.equal(await authorityEvents(root), eventsBefore);
+    // Positive control: with the reviewed target meaning unchanged the same approval is applied.
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('an altered committed packet no longer matches its event: apply and the factory validator both reject it', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { state } = oneApproval(canonical, index);
+  const root = await scratchRoot();
+  try {
+    const baseline = await validateFactoryRepository({ root });
+    const { packets: [id] } = await applyBackfill({ root, state, index, refreshReports: false });
+    assert.deepEqual(await validateFactoryRepository({ root }), baseline, 'the genuine packet validates');
+    const file = path.join(root, 'data/relation-backfill', `${id}.json`);
+    const text = await readFile(file, 'utf8');
+    await writeFile(file, text.replace('회귀 시험용 근거', '회귀 시험용 근거!'));
+    await assert.rejects(applyBackfill({ root, state, index, refreshReports: false }), /does not match its semantic authority event/u);
+    assert.ok((await validateFactoryRepository({ root })).some((error) => /does not match its semantic authority event/u.test(error)));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

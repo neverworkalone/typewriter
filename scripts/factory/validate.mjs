@@ -202,6 +202,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   }
   errors.push(...await validateStage3SemanticAuthorityLinks({ root, reviewArtifacts }));
   const backfillEvents = await readBackfillEvents(root);
+  errors.push(...backfillPacketErrors(backfillEvents, await readBackfillPackets(root)));
   errors.push(...validateStage3RecordChanges(reviewArtifacts, canonicalById, backfillChangesOf(backfillEvents)));
   errors.push(...validateStage3RelationMappings(reviewArtifacts, canonicalById, backfillEvents));
   if (base) errors.push(...validateAgainstBase({ base, candidates, reviews, semanticTexts }));
@@ -289,6 +290,27 @@ async function readBackfillEvents(root) {
   let events;
   try { events = JSON.parse(text).factory_admissions ?? []; } catch { return []; }
   return events.filter((event) => /^R\d{6}$/u.test(event?.batch_id));
+}
+
+// A backfill event is bound to the exact bytes of its committed packet (`semantic_decisions_sha256`); a missing or
+// altered packet no longer matches the approval that the canonical audit chain recorded.
+export function backfillPacketErrors(events, packets) {
+  const errors = [];
+  for (const event of events) {
+    const text = packets.get(event.batch_id);
+    if (text === undefined) errors.push(`backfill event ${event.batch_id} has no committed packet file data/relation-backfill/${event.batch_id}.json; restore it from Git`);
+    else if (sha256Hex(text) !== event.semantic_decisions_sha256) errors.push(`backfill packet ${event.batch_id} does not match its semantic authority event digest`);
+  }
+  return errors;
+}
+
+async function readBackfillPackets(root) {
+  const dir = path.join(root, 'data/relation-backfill');
+  let names = [];
+  try { names = await readdir(dir); } catch { return new Map(); }
+  const packets = new Map();
+  for (const name of names.filter((file) => /^R\d{6}\.json$/u.test(file))) packets.set(name.slice(0, 7), await readFile(path.join(dir, name), 'utf8'));
+  return packets;
 }
 
 const backfillChangesOf = (events) => events.flatMap((event) => (event.changes ?? []).map((change) => ({
