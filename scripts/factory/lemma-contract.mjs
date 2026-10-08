@@ -3,6 +3,7 @@ import { analysisInputDigest } from '../intake/pipeline.mjs';
 import {
   CATEGORIES,
   ENSEMBLE_CONTRACT,
+  LEGACY_ENSEMBLE_CONTRACT,
   ENSEMBLE_MANIFEST_KEYS,
   ENSEMBLE_POLICY,
   ensembleTraceSha256,
@@ -53,6 +54,7 @@ export const isSurfaceToken = (value) => typeof value === 'string' && SURFACE_TO
 export const isReferenceToken = (value) => typeof value === 'string' && REFERENCE_TOKEN.test(value);
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const suffix = (letter, ordinal) => `${letter}${String(ordinal).padStart(2, '0')}`;
+const sortedUnique = (values) => [...new Set(values)].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
 
 export const isLemmaManifest = (manifest) => manifest?.contract === LEMMA_CANDIDATE_MANIFEST_CONTRACT;
 // Shape test for rows (a v2 row never has a top-level `pos`).
@@ -118,9 +120,11 @@ export function validateLemmaCandidateRecord(record, { batchId, ordinal, ensembl
   const seen = new Set();
   observations.forEach((observation, index) => {
     const here = `${at} observation ${index + 1}`;
-    const allowedKeys = ['observation_id', 'form_id', 'group_id', 'pos', 'evidence', 'analysis', 'holds', ...(ensemble ? ['ensemble'] : [])];
+    const currentEnsemble = ensemble?.contract === ENSEMBLE_CONTRACT;
+    const allowedKeys = ['observation_id', ...(currentEnsemble ? ['observation_digest'] : []), 'form_id', 'group_id', 'pos', 'evidence', 'analysis', 'holds', ...(ensemble ? ['ensemble'] : [])];
     if (!isPlainObject(observation) || Object.keys(observation).some((key) => !allowedKeys.includes(key))) { errors.push(`${here}: unknown or missing fields`); return; }
     if (observation.observation_id !== observationIdFor(id, index + 1)) errors.push(`${here}: observation_id must be ${observationIdFor(id, index + 1)}`);
+    if (currentEnsemble && !isSha256(observation.observation_digest)) errors.push(`${here}: observation_digest must bind a source observation in ensemble v3`);
     if (!formIds.has(observation.form_id)) errors.push(`${here}: form_id does not name an observed form`);
     if (!groupPos.has(observation.group_id)) errors.push(`${here}: group_id does not name a usage group`);
     else if (groupPos.get(observation.group_id) !== observation.pos) errors.push(`${here}: pos differs from its usage group`);
@@ -253,8 +257,13 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText }) {
     if (selection.eligible_lemma_count !== manifest.candidate_count + selection.deferred_lemma_count) errors.push('candidate manifest: eligible lemmas must equal candidates plus deferred lemmas');
   }
   const ensemble = manifest.resolution_policy === ENSEMBLE_POLICY;
+  const decisionIds = new Set((manifest.context_fallback?.decisions ?? [])
+    .filter((entry) => RESOLVING_OUTCOMES.includes(entry?.outcome)).map((entry) => entry.decision_id));
   errors.push(...validateUnresolved(manifest.unresolved_observations, ensemble));
-  if (ensemble) errors.push(...validateEnsembleManifest(manifest));
+  if (ensemble) {
+    errors.push(...validateEnsembleManifest(manifest));
+    errors.push(...validateExcludedObservations(manifest, decisionIds));
+  }
   else if (manifest.ensemble !== undefined || manifest.context_fallback !== undefined) errors.push('candidate manifest: ensemble and context_fallback exist only under the ensemble policy');
   if (typeof candidatesText !== 'string') return [...errors, 'candidates.jsonl is missing'];
   if (sha256Hex(candidatesText) !== manifest.candidates_sha256) errors.push('candidates.jsonl bytes do not match candidates_sha256');
@@ -262,9 +271,9 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText }) {
   if (rows.length !== manifest.candidate_count) errors.push(`candidates.jsonl has ${rows.length} rows but candidate_count is ${manifest.candidate_count}`);
   const lemmas = new Set();
   let observations = 0;
-  const decisionIds = new Set((manifest.context_fallback?.decisions ?? []).filter((entry) => RESOLVING_OUTCOMES.includes(entry?.outcome)).map((entry) => entry.decision_id));
   rows.forEach((row, index) => {
-    errors.push(...validateLemmaCandidateRecord(row, { batchId: manifest.batch_id, ordinal: index + 1, ensemble: ensemble ? { decisionIds } : null }));
+    errors.push(...validateLemmaCandidateRecord(row, { batchId: manifest.batch_id, ordinal: index + 1,
+      ensemble: ensemble ? { decisionIds, contract: manifest.ensemble?.contract } : null }));
     if (lemmas.has(row.input)) errors.push(`candidate ${row.candidate_id}: lemma ${row.input} repeats within the batch (one candidate per lemma)`);
     lemmas.add(row.input);
     if (index > 0 && !(rows[index - 1].input < row.input)) errors.push(`candidate ${row.candidate_id}: rows must be ordered by lemma`);
@@ -279,10 +288,18 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText }) {
 function validateEnsembleManifest(manifest) {
   const errors = [];
   const { ensemble, context_fallback: fallback } = manifest;
-  if (!isPlainObject(ensemble) || Object.keys(ensemble).sort().join() !== [...ENSEMBLE_MANIFEST_KEYS].sort().join() || ensemble.contract !== ENSEMBLE_CONTRACT || !isSha256(ensemble.trace_sha256)) {
-    errors.push(`candidate manifest: ensemble must be {contract: ${ENSEMBLE_CONTRACT}, counts, trace_sha256}`);
-  } else if (!isPlainObject(ensemble.counts) || Object.keys(ensemble.counts).sort().join() !== 'categories,observations,queue') {
-    errors.push('candidate manifest: ensemble.counts must be {observations, categories, queue}');
+  const isLegacy = ensemble?.contract === LEGACY_ENSEMBLE_CONTRACT;
+  const supportedContract = isLegacy || ensemble?.contract === ENSEMBLE_CONTRACT;
+  if (!isPlainObject(ensemble) || Object.keys(ensemble).sort().join() !== [...ENSEMBLE_MANIFEST_KEYS].sort().join() || !supportedContract || !isSha256(ensemble.trace_sha256)) {
+    errors.push(`candidate manifest: ensemble must be {contract: ${LEGACY_ENSEMBLE_CONTRACT} or ${ENSEMBLE_CONTRACT}, counts, trace_sha256}`);
+  } else {
+    const expectedCounts = isLegacy ? 'categories,observations,queue' : 'categories,excluded,observations,queue';
+    if (!isPlainObject(ensemble.counts) || Object.keys(ensemble.counts).sort().join() !== expectedCounts) {
+      errors.push(isLegacy ? 'candidate manifest: ensemble.counts must be {observations, categories, queue}'
+        : 'candidate manifest: ensemble.counts must be {observations, categories, queue, excluded}');
+    }
+    if (isLegacy && manifest.excluded_observations !== undefined) errors.push('candidate manifest: legacy ensemble manifests cannot include excluded_observations');
+    if (!isLegacy && !Array.isArray(manifest.excluded_observations)) errors.push('candidate manifest: ensemble v3 requires excluded_observations');
   }
   if (!isPlainObject(fallback) || Object.keys(fallback).sort().join() !== 'contract,decisions,decisions_sha256' || fallback.contract !== 'context-fallback-decisions-v1') {
     errors.push('candidate manifest: context_fallback must be {contract: context-fallback-decisions-v1, decisions, decisions_sha256}');
@@ -295,6 +312,41 @@ function validateEnsembleManifest(manifest) {
   return errors;
 }
 
+function validateExcludedObservations(manifest, decisionIds) {
+  const errors = [];
+  if (manifest.ensemble?.contract !== ENSEMBLE_CONTRACT) return errors;
+  const entries = manifest.excluded_observations;
+  if (!Array.isArray(entries)) return errors;
+  const digests = new Set();
+  let previousOrder = null;
+  for (const [index, entry] of entries.entries()) {
+    const at = `candidate manifest excluded_observations[${index}]`;
+    const allowed = ['analysis', 'disposition', 'ensemble', 'evidence', 'holds', 'lemma', 'observation_digest', 'pos', 'surface'];
+    if (!isPlainObject(entry) || Object.keys(entry).sort().join() !== allowed.sort().join()) {
+      errors.push(`${at}: excluded observation has an invalid field set`);
+      continue;
+    }
+    if (!['prior_produced_lemma', 'deferred_lemma'].includes(entry.disposition)) errors.push(`${at}: disposition must be prior_produced_lemma or deferred_lemma`);
+    if (typeof entry.lemma !== 'string' || !KOREAN_WORD.test(entry.lemma)) errors.push(`${at}: lemma must be a Korean citation-form word`);
+    if (!POS_VALUES.includes(entry.pos)) errors.push(`${at}: pos must be one of ${POS_VALUES.join(', ')}`);
+    if (!isSurfaceToken(entry.surface)) errors.push(`${at}: surface must be a single bounded word form`);
+    if (!isPlainObject(entry.evidence) || !isReferenceToken(entry.evidence.kind) || !isReferenceToken(entry.evidence.ref)
+      || Object.keys(entry.evidence).some((key) => key !== 'kind' && key !== 'ref')) errors.push(`${at}: evidence must be a text-free reference`);
+    if (!isPlainObject(entry.analysis) || entry.analysis.status !== 'ok' || !isSha256(entry.analysis.input_digest)
+      || Object.keys(entry.analysis).length !== 2) errors.push(`${at}: analysis must be {status: ok, input_digest}`);
+    if (!Array.isArray(entry.holds) || entry.holds.some((hold) => !HOLD_REASONS.includes(hold))
+      || JSON.stringify(entry.holds) !== JSON.stringify(sortedUnique(entry.holds))) errors.push(`${at}: holds must be sorted, unique known hold reasons`);
+    if (!isSha256(entry.observation_digest)) errors.push(`${at}: observation_digest must be sha256 hex`);
+    else if (digests.has(entry.observation_digest)) errors.push(`${at}: observation_digest is duplicated`);
+    else digests.add(entry.observation_digest);
+    errors.push(...validateEnsembleObservation(entry.ensemble, at, { decisionIds, holds: entry.holds }));
+    const order = `${entry.disposition}\u0000${entry.lemma}\u0000${entry.observation_digest}`;
+    if (previousOrder !== null && !(previousOrder < order)) errors.push(`${at}: excluded observations must be uniquely and deterministically sorted`);
+    previousOrder = order;
+  }
+  return errors;
+}
+
 // Cross-checks that need the rows: observation counts by category, the trace digest over every
 // provider identity, row trace and decision, and the two-way link between context decisions, the
 // recovered observations and the still-unresolved queue.
@@ -302,22 +354,49 @@ function validateEnsembleBindings(manifest, rows) {
   const errors = [];
   const decisions = manifest.context_fallback.decisions;
   const providers = manifest.analyzer_providers;
-  const observationDigests = rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest)]);
-  const queueDigests = manifest.unresolved_observations.map((entry) => entry.trace_digest);
-  if (ensembleTraceSha256({ providers, observationTraceDigests: observationDigests, queueTraceDigests: queueDigests, contextDecisionsSha256: manifest.context_fallback.decisions_sha256 }) !== manifest.ensemble.trace_sha256) {
-    errors.push('candidate manifest: ensemble.trace_sha256 does not bind the providers, observation traces, queue and context decisions');
+  const isCurrent = manifest.ensemble.contract === ENSEMBLE_CONTRACT;
+  const excluded = isCurrent ? manifest.excluded_observations : [];
+  const observationDigests = isCurrent
+    ? rows.flatMap((row) => [JSON.stringify(['review', row.review.trace_sha256]),
+      ...row.observations.map((observation) => JSON.stringify([observation.observation_digest, observation.ensemble.trace_digest]))])
+    : rows.flatMap((row) => [row.review.trace_sha256, ...row.observations.map((observation) => observation.ensemble.trace_digest)]);
+  const queueDigests = isCurrent ? manifest.unresolved_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.trace_digest]))
+    : manifest.unresolved_observations.map((entry) => entry.trace_digest);
+  const excludedDigests = excluded.map((entry) => JSON.stringify([entry.observation_digest, entry.ensemble.trace_digest]));
+  if (ensembleTraceSha256({ contract: manifest.ensemble.contract, providers, observationTraceDigests: observationDigests,
+    queueTraceDigests: queueDigests, ...(isCurrent ? { excludedTraceDigests: excludedDigests } : {}),
+    contextDecisionsSha256: manifest.context_fallback.decisions_sha256 }) !== manifest.ensemble.trace_sha256) {
+    errors.push('candidate manifest: ensemble.trace_sha256 does not bind the providers, every disposition trace and context decisions');
   }
   const retained = rows.reduce((sum, row) => sum + row.observations.length, 0);
   const recomputed = {};
   for (const category of CATEGORIES) recomputed[category] = 0;
   for (const row of rows) for (const [category, count] of Object.entries(row.review.categories)) recomputed[category] += count;
   for (const entry of manifest.unresolved_observations) recomputed[entry.category] += 1;
+  for (const entry of excluded) recomputed[entry.ensemble.category] += 1;
   const counts = manifest.ensemble.counts;
   if (!isPlainObject(counts) || counts.queue !== manifest.unresolved_observations.length) errors.push('candidate manifest: ensemble.counts.queue must equal the unresolved queue length');
-  else if (counts.observations !== manifest.observation_count + manifest.unresolved_observations.length || JSON.stringify(counts.categories) !== JSON.stringify(Object.fromEntries(CATEGORIES.map((category) => [category, counts.categories?.[category]])))) {
+  else if (counts.observations !== manifest.observation_count + manifest.unresolved_observations.length + excluded.length
+    || (isCurrent && counts.excluded !== excluded.length)
+    || JSON.stringify(counts.categories) !== JSON.stringify(Object.fromEntries(CATEGORIES.map((category) => [category, counts.categories?.[category]])))) {
     errors.push('candidate manifest: ensemble.counts does not match the manifest observation accounting');
   } else if (CATEGORIES.some((category) => recomputed[category] !== counts.categories[category])) {
-    errors.push('candidate manifest: ensemble.counts.categories does not match the rows and the unresolved queue');
+    errors.push('candidate manifest: ensemble.counts.categories does not match the candidate, queue and excluded dispositions');
+  }
+  if (isCurrent) {
+    const candidateLemmas = new Set(rows.map((row) => row.input));
+    const excludedTraceDigests = new Set();
+    const excludedLemmas = new Map();
+    for (const entry of excluded) {
+      if (candidateLemmas.has(entry.lemma)) errors.push(`candidate manifest: excluded lemma ${entry.lemma} also appears in candidate rows`);
+      if (excludedTraceDigests.has(entry.ensemble.trace_digest)) errors.push(`candidate manifest: excluded trace ${entry.ensemble.trace_digest.slice(0, 12)} is duplicated`);
+      excludedTraceDigests.add(entry.ensemble.trace_digest);
+      const disposition = excludedLemmas.get(entry.lemma);
+      if (disposition && disposition !== entry.disposition) errors.push(`candidate manifest: excluded lemma ${entry.lemma} has conflicting dispositions`);
+      excludedLemmas.set(entry.lemma, entry.disposition);
+    }
+    const deferredLemmaCount = [...excludedLemmas.values()].filter((disposition) => disposition === 'deferred_lemma').length;
+    if (deferredLemmaCount !== manifest.selection.deferred_lemma_count) errors.push('candidate manifest: deferred exclusions do not match selection.deferred_lemma_count');
   }
   const byId = new Map(decisions.map((decision) => [decision.decision_id, decision]));
   const linked = new Set();
@@ -335,6 +414,18 @@ function validateEnsembleBindings(manifest, rows) {
       if (!observation.holds.includes('analysis_ambiguous')) errors.push(`${row.candidate_id}: ${observation.observation_id} was recovered by an AI self-check and must keep a reviewable analysis_ambiguous hold`);
     }
   }
+  for (const entry of excluded) {
+    if (entry.ensemble.resolution !== 'context') continue;
+    const decision = byId.get(entry.ensemble.context_decision);
+    if (!decision || !RESOLVING_OUTCOMES.includes(decision.outcome)) { errors.push(`candidate manifest: excluded observation ${entry.observation_digest} names no resolving context decision`); continue; }
+    linked.add(decision.decision_id);
+    if (decision.lemma !== entry.lemma || decision.pos !== entry.pos || decision.surface !== entry.surface
+      || JSON.stringify(decision.evidence) !== JSON.stringify(entry.evidence) || decision.observation_digest !== entry.observation_digest
+      || decision.trace_digest !== entry.ensemble.trace_digest) {
+      errors.push(`candidate manifest: excluded observation ${entry.observation_digest} does not match its context decision ${decision.decision_id}`);
+    }
+    if (!entry.holds.includes('analysis_ambiguous')) errors.push(`candidate manifest: excluded observation ${entry.observation_digest} was recovered by contextual self-check and must keep analysis_ambiguous`);
+  }
   const unknownLinked = new Set(manifest.unresolved_observations.filter((entry) => entry.verification.state === 'truth_unknown').map((entry) => entry.verification.decision_id));
   for (const decision of decisions) {
     const resolving = RESOLVING_OUTCOMES.includes(decision.outcome);
@@ -348,8 +439,13 @@ function validateEnsembleBindings(manifest, rows) {
       errors.push(`candidate manifest: ${entry.queue_id} does not match its truth_unknown decision`);
     }
   }
+  const dispositionIdentities = [
+    ...rows.flatMap((row) => row.observations.map((observation) => observation.observation_digest)),
+    ...manifest.unresolved_observations.map((entry) => entry.observation_digest),
+    ...excluded.map((entry) => entry.observation_digest),
+  ];
+  if (isCurrent && new Set(dispositionIdentities).size !== dispositionIdentities.length) errors.push('candidate manifest: an observation appears in more than one ensemble disposition');
   const queueKeys = new Set(manifest.unresolved_observations.map((entry) => `${entry.surface}\u0000${entry.evidence.kind}\u0000${entry.evidence.ref}\u0000${entry.extractor_hint.lemma}\u0000${entry.extractor_hint.pos}`));
   if (queueKeys.size !== manifest.unresolved_observations.length) errors.push('candidate manifest: the unresolved queue repeats an observation');
   return errors;
 }
-

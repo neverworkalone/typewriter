@@ -334,7 +334,7 @@ test('12: recorded decisions replay deterministically without raw paragraphs; ta
   await assert.rejects(() => produceCandidateBatch({ evidence: evidenceDoc(fallbackEvidence), providers: [kiwi(FALLBACK.k)], canonicalEntries: [], canonicalDigest: HEX, batchId: 'C000002', taskId: 'T000001', contextReplay: decisions }), /only valid under/);
 });
 
-test('bounded batches record only resolving context decisions linked to retained lemma rows', async () => {
+test('bounded batches record context decisions linked to rows, excluded lemmas, and verification queue', async () => {
   const evidence = [
     cand('가다', 'verb', [h('d1', '가는'), h('d3', '갈'), h('d4', '갈'), h('d5', '갈')]),
   ];
@@ -356,20 +356,26 @@ test('bounded batches record only resolving context decisions linked to retained
   });
   assert.deepEqual(bounded.rows.map((row) => row.input), ['가다']);
   assert.deepEqual(bounded.summary.deferredLemmas, ['갈다']);
-  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002']);
-  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.outcome), ['context_confirmed', 'truth_unknown']);
-  assert.equal(bounded.rows[0].observations.find((observation) => observation.ensemble.resolution === 'context').ensemble.context_decision, 'D0001');
-  assert.equal(queueOf(bounded)[0].verification.decision_id, 'D0002');
+  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002', 'D0003']);
+  assert.deepEqual(bounded.manifest.context_fallback.decisions.map((decision) => decision.outcome), ['context_confirmed', 'context_confirmed', 'truth_unknown']);
+  assert.equal(bounded.rows[0].observations.find((observation) => observation.ensemble.resolution === 'context').ensemble.context_decision, 'D0002');
+  assert.equal(bounded.manifest.excluded_observations[0].ensemble.context_decision, 'D0001');
+  assert.equal(queueOf(bounded)[0].verification.decision_id, 'D0003');
+  assert.equal(bounded.manifest.ensemble.counts.observations, 4);
+  assert.equal(bounded.manifest.ensemble.counts.excluded, 1);
   assert.deepEqual(validateCandidateBatch({ manifest: bounded.manifest, candidatesText: bounded.candidatesText }), []);
 
   const deferred = await produce(evidence, providers, {
     maxCandidates: 1, producedLemmas: new Set(['가다']), contextProposals, contextSource, contextAgent: 'codex',
   });
   assert.deepEqual(deferred.rows.map((row) => row.input), ['갈다']);
-  assert.deepEqual(deferred.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002']);
+  assert.deepEqual(deferred.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002', 'D0003']);
   assert.equal(deferred.manifest.context_fallback.decisions[0].lemma, '갈다', 'the deferred decision is recorded when its lemma is selected');
   assert.equal(deferred.rows[0].observations[0].ensemble.context_decision, deferred.manifest.context_fallback.decisions[0].decision_id);
-  assert.equal(queueOf(deferred)[0].verification.decision_id, 'D0002');
+  assert.equal(deferred.manifest.excluded_observations.length, 2);
+  assert.ok(deferred.manifest.excluded_observations.every((entry) => entry.disposition === 'prior_produced_lemma' && entry.lemma === '가다'));
+  assert.equal(deferred.manifest.excluded_observations.find((entry) => entry.ensemble.context_decision)?.ensemble.context_decision, 'D0002');
+  assert.equal(queueOf(deferred)[0].verification.decision_id, 'D0003');
   assert.deepEqual(validateCandidateBatch({ manifest: deferred.manifest, candidatesText: deferred.candidatesText }), []);
 });
 
@@ -580,6 +586,19 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     const result = await runStage1(args, deps);
     assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
     assert.equal(result.summary.skippedProducedLemmas, 1);
+    assert.deepEqual(result.manifest.excluded_observations.map(({ disposition, lemma, pos, surface }) => [disposition, lemma, pos, surface]), [
+      ['prior_produced_lemma', '걷다', 'verb', '걸어'],
+    ]);
+    assert.equal(result.manifest.ensemble.counts.observations, 2);
+    assert.equal(result.manifest.ensemble.counts.excluded, 1);
+    const traces = result.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest,
+      trace_digest: decision.trace_digest, trace: decision.trace }));
+    assert.deepEqual(verifyEnsembleTraces({ rows: result.rows, queue: result.manifest.unresolved_observations,
+      excluded: result.manifest.excluded_observations, traces }), [], 'candidate, queue, and prior-produced observations cover every analysis trace');
+    assert.match(verifyEnsembleTraces({ rows: result.rows, queue: result.manifest.unresolved_observations, traces }).join(), /no recorded disposition/u);
+    const missingExcluded = { ...result.manifest };
+    delete missingExcluded.excluded_observations;
+    assert.match(validateCandidateBatch({ manifest: missingExcluded, candidatesText: result.candidatesText }).join(), /requires excluded_observations/u);
     assert.deepEqual(await validateFactoryRepository({ root }), []);
 
     const malformedCases = [
@@ -773,7 +792,7 @@ test('review fix: the ensemble policy never omits an observation, so no unseen h
   assert.match(check((r, m) => { r.observations[0].ensemble.category = 'supported_alternative'; }), /supported_alternative must|review does not match/);
   assert.match(check((r, m) => { m.ensemble.counts.categories.concordant = 63; }), /does not match/);
   // The local trace check proves recorded categories/holds against the real analysis (ignored trace file).
-  const traces = full.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace }));
+  const traces = full.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest, trace_digest: decision.trace_digest, trace: decision.trace }));
   const rowsOf = full.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
   assert.deepEqual(verifyEnsembleTraces({ rows: rowsOf, queue: [], traces }), []);
   const forged = structuredClone(rowsOf);
@@ -790,7 +809,7 @@ test('review fix: local trace verification accepts correct queue/context records
     cand('낮다', 'verb', [h('d4', '낯')], { coverage_status: 'covered_elsewhere' }), // (b) unresolved with a source hold
   ];
   const result = await produce(evidence, triple({ k, h: hh, m: mm }));
-  const tracesOf = (r) => r.ensemble.decisions.map((decision) => ({ trace_digest: decision.trace_digest, trace: decision.trace }));
+  const tracesOf = (r) => r.ensemble.decisions.map((decision) => ({ observation_digest: decision.observation_digest, trace_digest: decision.trace_digest, trace: decision.trace }));
   const rowsOf = (r) => r.candidatesText.trim().split('\n').map((line) => JSON.parse(line));
   const queue = result.manifest.unresolved_observations;
   assert.ok(queue.some((entry) => entry.extractor_holds.includes('coverage_collision')) && queue.some((entry) => entry.extractor_holds.length === 0));
