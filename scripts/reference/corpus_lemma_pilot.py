@@ -39,6 +39,7 @@ EXTRACTOR_VERSION = "2"
 # this version; their changes are limited to cache/output paths or downstream
 # candidate selection. Older or unlisted source digests remain incompatible.
 REUSABLE_ANALYSIS_SOURCE_DIGESTS = frozenset({
+    "a65060846e1f5f0fb300823590965d569772bc952368be18d95f018ab297faeb",
     "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e",
     "7c18eee629d1c423a3a26ad5d7eede15772c5a420bad1900e6806ed442147c96",
     "5cb8cb22db737afaccd64585dfe613ea428a3fc74dbb359eac4c4a1a177b6ee6",

@@ -508,9 +508,7 @@ class CorpusLemmaPilotTests(unittest.TestCase):
                     selection["analysis_cache"]["database_path"] = "runs/another/candidate-analysis.sqlite"
 
                 def unapproved_historical_extractor(selection):
-                    selection["extractor"]["script_sha256"] = (
-                        "a65060846e1f5f0fb300823590965d569772bc952368be18d95f018ab297faeb"
-                    )
+                    selection["extractor"]["script_sha256"] = "f" * 64
 
                 def incompatible_v1_extractor(selection):
                     selection["extractor"].update({
@@ -540,30 +538,30 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             try:
                 self._extract(root, "default", fixture, False)
 
-                def migrated_legacy_binding(selection):
-                    selection["analysis_cache"]["database_path"] = (
-                        "data/reference/production/issue-222/candidate-analysis.sqlite"
-                    )
-                    selection["extractor"]["script_sha256"] = (
-                        "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e"
-                    )
-
-                result = self._select_cached(
-                    root,
-                    "legacy-binding",
-                    fixture,
-                    True,
-                    mutate=migrated_legacy_binding,
-                )
-                self.assertEqual(result["analysis_cache"]["mode"], "reused-candidate-analysis")
-                self.assertEqual(
-                    result["analysis_cache"]["source_database_path"],
-                    "runs/issue-222/candidate-analysis.sqlite",
-                )
-                self.assertEqual(
-                    result["analysis_cache"]["source_extractor_script_sha256"],
+                compatible_historical_digests = (
                     "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e",
+                    "a65060846e1f5f0fb300823590965d569772bc952368be18d95f018ab297faeb",
                 )
+                for index, digest in enumerate(compatible_historical_digests):
+                    def migrated_legacy_binding(selection):
+                        selection["analysis_cache"]["database_path"] = (
+                            "data/reference/production/issue-222/candidate-analysis.sqlite"
+                        )
+                        selection["extractor"]["script_sha256"] = digest
+
+                    result = self._select_cached(
+                        root,
+                        f"legacy-binding-{index}",
+                        fixture,
+                        True,
+                        mutate=migrated_legacy_binding,
+                    )
+                    self.assertEqual(result["analysis_cache"]["mode"], "reused-candidate-analysis")
+                    self.assertEqual(
+                        result["analysis_cache"]["source_database_path"],
+                        "runs/issue-222/candidate-analysis.sqlite",
+                    )
+                    self.assertEqual(result["analysis_cache"]["source_extractor_script_sha256"], digest)
             finally:
                 pilot.SAMPLE_EVERY_PARAGRAPHS = original_sample
 
