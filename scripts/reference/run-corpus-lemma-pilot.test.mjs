@@ -135,7 +135,7 @@ test('representative evidence uses exact analyzed eojeol forms and rejects subst
     ],
   };
   const calls = [];
-  const { hits, omittedUnsupportedSymbolSurfaceFormCount } = collectRepresentativeSurfaceHits(candidate, (query, limit) => {
+  const { hits, omittedUnsupportedSurfaceFormCount } = collectRepresentativeSurfaceHits(candidate, (query, limit) => {
     calls.push({ query, limit });
     const forms = {
       '간부들이': [
@@ -179,7 +179,7 @@ test('representative evidence uses exact analyzed eojeol forms and rejects subst
     '간부',
     '간부',
   ]);
-  assert.equal(omittedUnsupportedSymbolSurfaceFormCount, 0);
+  assert.equal(omittedUnsupportedSurfaceFormCount, 0);
 });
 
 test('representative evidence rejects analyzed morphemes at the end of a larger eojeol', () => {
@@ -192,7 +192,7 @@ test('representative evidence rejects analyzed morphemes at the end of a larger 
     ],
   };
   const calls = [];
-  const { hits, omittedUnsupportedSymbolSurfaceFormCount } = collectRepresentativeSurfaceHits(candidate, (query, limit) => {
+  const { hits, omittedUnsupportedSurfaceFormCount } = collectRepresentativeSurfaceHits(candidate, (query, limit) => {
     calls.push({ query, limit });
     const forms = {
       스키: [
@@ -219,10 +219,10 @@ test('representative evidence rejects analyzed morphemes at the end of a larger 
   ]);
   assert.deepEqual(hits.map(({ paragraph_id }) => paragraph_id), ['ski', 'ski-particle']);
   assert.ok(hits.every(({ matched_morpheme_span_surface }) => matched_morpheme_span_surface === '스키'));
-  assert.equal(omittedUnsupportedSymbolSurfaceFormCount, 0);
+  assert.equal(omittedUnsupportedSurfaceFormCount, 0);
 });
 
-test('symbol-bearing corpus surface forms are omitted before Stage 1 evidence and counted', () => {
+test('unsupported symbol and Mark corpus surface forms are omitted before Stage 1 evidence and counted', () => {
   const candidate = {
     proposed_lemma: '야옹',
     observed_morpheme_spans: [{ surface: '야옹' }],
@@ -248,18 +248,24 @@ test('symbol-bearing corpus surface forms are omitted before Stage 1 evidence an
   });
   assert.deepEqual(calls, [{ query: '야옹', limit: 100 }]);
   assert.deepEqual(result.hits.map(({ matched_surface_form }) => matched_surface_form), ['야옹']);
-  assert.equal(result.omittedUnsupportedSymbolSurfaceFormCount, 1);
+  assert.equal(result.omittedUnsupportedSurfaceFormCount, 1);
 
+  const keycapForm = `문구점1${String.fromCodePoint(0xfe0f, 0x20e3)}`;
+  const combiningMarkForm = `문구점${String.fromCodePoint(0x0301)}`;
+  const unsupportedForms = [keycapForm, combiningMarkForm, '문구점>'];
   const unsupportedOnly = collectRepresentativeSurfaceHits({
     ...candidate,
     proposed_lemma: '문구점',
     observed_morpheme_spans: [{ surface: '문구점' }],
-    observed_surface_forms: [{ surface: '문구점>', kiwi_morpheme_occurrences_in_sample: 2 }],
+    observed_surface_forms: unsupportedForms.map((surface) => ({
+      surface,
+      kiwi_morpheme_occurrences_in_sample: 2,
+    })),
   }, () => {
-    throw new Error('unsupported symbol forms must not reach corpus lookup');
+    throw new Error('unsupported symbol/Mark forms must not reach corpus lookup');
   });
   assert.deepEqual(unsupportedOnly.hits, []);
-  assert.equal(unsupportedOnly.omittedUnsupportedSymbolSurfaceFormCount, 1);
+  assert.equal(unsupportedOnly.omittedUnsupportedSurfaceFormCount, 3);
 
   const inventory = {
     publication_state: 'local_reference_only_pending_owner_publication_confirmation',
@@ -275,7 +281,7 @@ test('symbol-bearing corpus surface forms are omitted before Stage 1 evidence an
     yield: {},
     analysis_cache: {},
     evidence_collection: {
-      omitted_unsupported_symbol_surface_form_count: unsupportedOnly.omittedUnsupportedSymbolSurfaceFormCount,
+      omitted_unsupported_surface_form_count: unsupportedOnly.omittedUnsupportedSurfaceFormCount,
     },
     orchestration: {
       batch_id: 'stage1-surface-test',
@@ -290,11 +296,11 @@ test('symbol-bearing corpus surface forms are omitted before Stage 1 evidence an
     candidates: [{
       proposed_lemma: '문구점',
       proposed_pos: 'noun',
-      observed_surface_forms: [{ surface: '문구점>' }],
+      observed_surface_forms: [{ surface: keycapForm }],
       observed_morpheme_spans: [{ surface: '문구점' }],
       evidence: {
         evidence_type: 'candidate_morpheme_rooted_eojeol_contexts_and_literal_text_match_count',
-        literal_match_query: '문구점>',
+        literal_match_query: keycapForm,
         literal_match_count: 1,
         count_method: 'countCorpusMatches SQL COUNT(*) aggregate',
         search_mode: 'literal-scan',
@@ -304,7 +310,7 @@ test('symbol-bearing corpus surface forms are omitted before Stage 1 evidence an
     }],
   };
   const textFreeEvidence = buildTextFreeCandidateEvidence(inventory);
-  assert.equal(textFreeEvidence.evidence_collection.omitted_unsupported_symbol_surface_form_count, 1);
+  assert.equal(textFreeEvidence.evidence_collection.omitted_unsupported_surface_form_count, 3);
   const stage1 = observationsFromCorpusEvidence(textFreeEvidence);
   assert.deepEqual(stage1.observations, [{
     hint: { input: '문구점', pos: 'noun' },
@@ -312,6 +318,25 @@ test('symbol-bearing corpus surface forms are omitted before Stage 1 evidence an
     surface: '문구점',
     ref: { kind: 'corpus-surface', ref: '문구점' },
   }]);
+
+  for (const surface of ['문구점 을', `문구점${String.fromCharCode(7)}`, '가'.repeat(25)]) {
+    const malformedInventory = structuredClone(inventory);
+    malformedInventory.candidates[0].observed_surface_forms = [{ surface: '문구점' }];
+    malformedInventory.candidates[0].evidence.representative_hits = [{
+      source_path: 'source.json',
+      corpus_id: 'corpus-1',
+      document_id: 'document-1',
+      document_ordinal: 0,
+      paragraph_id: 'malformed-hit',
+      paragraph_ordinal: 0,
+      source_category: 'literature',
+      source_year: '2025',
+      matched_surface_form: surface,
+      matched_morpheme_span_surface: '문구점',
+    }];
+    const malformedEvidence = buildTextFreeCandidateEvidence(malformedInventory);
+    assert.throws(() => observationsFromCorpusEvidence(malformedEvidence), /single bounded word form/);
+  }
 });
 
 test('reviewed corpus decisions and target seed rows can exclude earlier lemma ownership', () => {

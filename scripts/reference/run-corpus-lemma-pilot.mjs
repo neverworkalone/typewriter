@@ -384,15 +384,15 @@ export function collectRepresentativeSurfaceHits(candidate, search) {
     .filter((root) => surface.startsWith(root))
     .sort((left, right) => [...right].length - [...left].length
       || (left < right ? -1 : left > right ? 1 : 0))[0];
-  const omittedUnsupportedSymbolSurfaceForms = new Set();
+  const omittedUnsupportedSurfaceForms = new Set();
   const surfaces = [...(candidate.observed_surface_forms ?? [])]
     .filter(({ surface }) => typeof surface === 'string' && surface.trim() !== '')
     .map((form) => ({ ...form, matched_morpheme_span_surface: surfaceRoot(form.surface) }))
     .filter(({ matched_morpheme_span_surface }) => matched_morpheme_span_surface !== undefined)
     .filter(({ surface }) => {
       const boundedEojeol = [...surface].length <= 24 && !/[\s\p{C}]/u.test(surface);
-      if (!isSurfaceToken(surface) && boundedEojeol && /\p{S}/u.test(surface)) {
-        omittedUnsupportedSymbolSurfaceForms.add(surface);
+      if (!isSurfaceToken(surface) && boundedEojeol && /[\p{S}\p{M}]/u.test(surface)) {
+        omittedUnsupportedSurfaceForms.add(surface);
         return false;
       }
       return true;
@@ -423,13 +423,13 @@ export function collectRepresentativeSurfaceHits(candidate, search) {
     if (hits.length === ROW_RESULT_LIMIT) {
       return {
         hits,
-        omittedUnsupportedSymbolSurfaceFormCount: omittedUnsupportedSymbolSurfaceForms.size,
+        omittedUnsupportedSurfaceFormCount: omittedUnsupportedSurfaceForms.size,
       };
     }
   }
   return {
     hits,
-    omittedUnsupportedSymbolSurfaceFormCount: omittedUnsupportedSymbolSurfaceForms.size,
+    omittedUnsupportedSurfaceFormCount: omittedUnsupportedSurfaceForms.size,
   };
 }
 
@@ -512,7 +512,7 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
   let observedSurfaceLiteralFallbackQueryCount = 0;
   let observedSurfaceQueryCount = 0;
   let observedSurfaceParagraphRowsSearched = 0;
-  let omittedUnsupportedSymbolSurfaceFormCount = 0;
+  let omittedUnsupportedSurfaceFormCount = 0;
   const corpusReader = createCorpusIndexReader({ databasePath: DEFAULT_INDEX_PATH });
   const lookupTiming = new Map();
   const timedLookup = (operation, query, run) => {
@@ -545,7 +545,7 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
         },
       );
       const representativeHits = representativeEvidence.hits;
-      omittedUnsupportedSymbolSurfaceFormCount += representativeEvidence.omittedUnsupportedSymbolSurfaceFormCount;
+      omittedUnsupportedSurfaceFormCount += representativeEvidence.omittedUnsupportedSurfaceFormCount;
       const searchMode = searchModeFor(literalMatchQuery);
       if (searchMode === 'literal-scan') literalFallbackQueryCount += 1;
       totalLiteralParagraphMatches += matchCount;
@@ -584,7 +584,7 @@ async function addBoundedCorpusEvidence(selection, candidateLimit) {
       paragraph_path: 'searchCorpusIndex SQL-bounds observed-surface lookups; only exact whole-eojeol forms are retained',
       per_candidate_paragraph_limit: ROW_RESULT_LIMIT,
       candidate_count_with_evidence: candidatesWithEvidence.length,
-      omitted_unsupported_symbol_surface_form_count: omittedUnsupportedSymbolSurfaceFormCount,
+      omitted_unsupported_surface_form_count: omittedUnsupportedSurfaceFormCount,
       literal_fallback_query_count: literalFallbackQueryCount,
       observed_surface_literal_fallback_query_count: observedSurfaceLiteralFallbackQueryCount,
       sum_of_per_candidate_literal_paragraph_counts: totalLiteralParagraphMatches,
