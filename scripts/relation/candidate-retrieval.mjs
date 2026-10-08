@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 
+import { PARTS_OF_SPEECH } from '../validate/canonical-jsonl.mjs';
+
 // Relation candidate retrieval (issue #397). Cheap, deterministic, machine-only shortlist of plausible
 // relation TARGET senses for reviewed source senses, so Stage 2 inspects a bounded list instead of the
 // whole dictionary. This module only proposes candidates: it never judges validity, never picks a relation
@@ -67,6 +69,7 @@ export function resolveConfig(...layers) {
 
 const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+const isPos = (value) => typeof value === 'string' && PARTS_OF_SPEECH.includes(value);
 const HANGUL = /[\p{Script=Hangul}A-Za-z0-9]/u;
 
 const bigramsOf = (text) => {
@@ -187,7 +190,7 @@ const provisionalKey = (source) => `provisional:${source.batch_id}/${source.cand
 function normalizeSource(source) {
   const isProvisional = source.kind === 'provisional';
   if (isProvisional) {
-    if (!source.pos || typeof source.gloss !== 'string') throw new Error('source requires pos and gloss');
+    if (!isPos(source.pos) || typeof source.gloss !== 'string') throw new Error('provisional source requires a supported pos and a gloss');
     const parts = [source.batch_id, source.candidate_id, source.sense_key];
     if (parts.some((part) => typeof part !== 'string' || part === '' || part.includes('/')) || !source.lemma) throw new Error('provisional source requires non-empty batch_id, candidate_id, sense_key (without "/") and lemma');
     return { ...source, kind: 'provisional', provisional_id: provisionalKey(source) };
@@ -449,11 +452,11 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
     const source = entry.source;
     if (!isObject(source)) errors.push(`${at}: source must be an object`);
     else if (source.kind === 'canonical') {
-      if (!hasExactKeys(source, ['kind', 'record_id', 'sense_id', 'pos']) || ![source.record_id, source.sense_id, source.pos].every((v) => typeof v === 'string' && v)) errors.push(`${at}: invalid canonical source identity`);
+      if (!hasExactKeys(source, ['kind', 'record_id', 'sense_id', 'pos']) || ![source.record_id, source.sense_id].every((v) => typeof v === 'string' && v) || !isPos(source.pos)) errors.push(`${at}: invalid canonical source identity`);
       else if (index) { const sense = index.bySenseId.get(source.sense_id); if (!sense || sense.record_id !== source.record_id || sense.pos !== source.pos) errors.push(`${at}: source does not match canonical`); }
       if (sourceIds.has(source.sense_id)) errors.push(`${at}: duplicate source ${source.sense_id}`); sourceIds.add(source.sense_id);
     } else if (source.kind === 'provisional') {
-      if (!hasExactKeys(source, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !PROVISIONAL_ID.test(source.provisional_id ?? '') || !source.candidate_id || !source.pos) errors.push(`${at}: invalid provisional source identity`);
+      if (!hasExactKeys(source, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !PROVISIONAL_ID.test(source.provisional_id ?? '') || !source.candidate_id || !isPos(source.pos)) errors.push(`${at}: invalid provisional source identity`);
       else if (PROVISIONAL_ID.exec(source.provisional_id)[2] !== source.candidate_id) errors.push(`${at}: provisional_id does not carry candidate_id`);
       noteBatch(source.provisional_id);
       if (sourceIds.has(source.provisional_id)) errors.push(`${at}: duplicate source ${source.provisional_id}`); sourceIds.add(source.provisional_id);
@@ -482,14 +485,14 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
       if (!isObject(target)) { errors.push(`${here}: target must be an object`); continue; }
       let key = null;
       if (target.kind === 'canonical') {
-        if (!hasExactKeys(target, ['kind', 'record_id', 'sense_id', 'pos']) || ![target.record_id, target.sense_id, target.pos].every((v) => typeof v === 'string' && v)) errors.push(`${here}: invalid canonical target identity`);
+        if (!hasExactKeys(target, ['kind', 'record_id', 'sense_id', 'pos']) || ![target.record_id, target.sense_id].every((v) => typeof v === 'string' && v) || !isPos(target.pos)) errors.push(`${here}: invalid canonical target identity`);
         else {
           key = target.sense_id;
           if (index) { const sense = index.bySenseId.get(target.sense_id); if (!sense || sense.record_id !== target.record_id || sense.pos !== target.pos) errors.push(`${here}: target does not match canonical`); }
         }
       } else if (target.kind === 'provisional') {
         const match = PROVISIONAL_ID.exec(target.provisional_id ?? '');
-        if (!hasExactKeys(target, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !match || !target.candidate_id || !target.pos) errors.push(`${here}: invalid provisional target identity`);
+        if (!hasExactKeys(target, ['kind', 'provisional_id', 'candidate_id', 'pos']) || !match || !target.candidate_id || !isPos(target.pos)) errors.push(`${here}: invalid provisional target identity`);
         else {
           key = target.provisional_id;
           noteBatch(target.provisional_id);

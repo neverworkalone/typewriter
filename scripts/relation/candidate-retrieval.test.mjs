@@ -161,6 +161,25 @@ test('provisional identities are batch-scoped', () => {
   assert.ok(validateRelationCandidateArtifact(unbatched, index).length > 0);
 });
 
+test('provisional pos must be a supported part of speech', () => {
+  const index = buildRelationIndex(synthetic);
+  const prov = (pos) => ({ kind: 'provisional', batch_id: 'B', candidate_id: 'C1', sense_key: 's1', lemma: '잠잠', pos, gloss: '아무 소리도 없이 잠잠한 상태.' });
+  for (const bad of [42, 'gerund', '', undefined, null]) assert.throws(() => retrieveRelationCandidates(index, [prov(bad)]), /supported pos/u);
+  const ok = retrieveRelationCandidates(index, [prov('noun'), { ...prov('noun'), candidate_id: 'C2', lemma: '정적' }]);
+  assert.deepEqual(validateRelationCandidateArtifact(ok, index), []);
+  for (const bad of [42, 'gerund']) {
+    const forged = structuredClone(ok);
+    for (const entry of forged.sources) {
+      if (entry.source.kind === 'provisional') entry.source.pos = bad;
+      for (const c of entry.candidates) if (c.target.kind === 'provisional') c.target.pos = bad;
+    }
+    assert.notDeepEqual(validateRelationCandidateArtifact(forged, index), [], String(bad));
+  }
+  const canonical = retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1' }]);
+  canonical.sources[0].source.pos = 'gerund';
+  assert.notDeepEqual(validateRelationCandidateArtifact(canonical), []);
+});
+
 test('index-time settings cannot be overridden at retrieval time', () => {
   const index = buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.5 });
   const source = [{ kind: 'canonical', sense_id: 'w3-s1' }];
