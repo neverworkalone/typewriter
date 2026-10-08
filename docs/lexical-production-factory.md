@@ -212,6 +212,20 @@ distinct-citation-lemma-v1`; the v1 manifest fields are kept (`task_id`, `batch_
 - `unresolved_observations: [{surface, evidence, holds}]` — observations with no
   reliable lemma/POS (`analysis_missing|stale|error|unsupported`), preserved for
   verification and not counted as headwords.
+- New ensemble manifests use `ensemble-resolution-v3` accounting. Every analyzed
+  observation is represented by a candidate observation, an unresolved queue row,
+  or `excluded_observations[]` with disposition `prior_produced_lemma` or
+  `deferred_lemma`. Excluded observations retain their text-free source reference,
+  analysis/observation digests, holds and ensemble trace; they cannot become a new
+  candidate row. `ensemble.counts.input_observations` counts distinct source-observation
+  identities normalized from the input decisions before disposition, separately
+  from `counts.observations`, which must equal the candidate + unresolved + excluded
+  disposition total. Repeated raw hits with the same identity are merged once and
+  remain visible in repeat metrics. `observation_digest` binds the observed surface,
+  source reference and usage group independently of extractor hint. Conflicting hints
+  add a mismatch hold/reason without choosing one by input order; a `trace_digest` may
+  be shared when distinct source observations have the same surface-level analyzer trace.
+  Historical `ensemble-resolution-v2` manifests remain valid and unchanged.
 
 **Before (v1, 3 candidates for one lemma) → after (v2, 1 candidate):**
 
@@ -401,6 +415,10 @@ Rules carried over unchanged:
   gets its missing event and packet; recorded tuples replay as no-ops; a different note for the
   same target is a conflict). A review is not re-queued by the
   `relation_neighbor_of_related` candidates that its own applied relations bring in.
+- **Stage 2 relation search (#446).** The worker hand-off instructs the agent to run
+  `pnpm run relation:candidates <batch> --out <file>` after the sense work and review about
+  20 candidates per sense where available. The output is candidates only; the existing
+  `relations-reviewed` / `no-relations` contract above is the only record.
 - **Reverse relation amendments (#399).** An admitted decision may carry
   `relation_amendments`: `{source_record_id, source_sense_id, source_gloss_sha256,
   relation, rationale}` adding one reviewed relation to an *existing* canonical source

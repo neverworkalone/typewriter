@@ -67,11 +67,13 @@ sibling does not hide the ambiguous form: it is kept (assigned with a hold, or i
 Each row carries `review: {priority, categories, held, trace_sha256}`, recomputed **exactly** by the shared validator from the
 row's observations: `verify_first` (a rival reading, a hold or an unresolved category exists), `high` (two or more
 independent source observations, all concordant and hold-free), `standard`. `trace_sha256` is an order-independent
-commitment to every observation's `(trace_digest, category, held)`. Under the ensemble policy **no observation is ever
-omitted**: a lemma needing more than the 64-observation bound fails the run (split the evidence), because an unseen
+commitment to every observation's `(trace_digest, category, held)`. Under the ensemble policy **no analysis observation is ever
+omitted from accounting**: a lemma needing more than the 64-observation bound fails the run (split the evidence), because an unseen
 observation could hide a hold or category that no tracked artifact shows and the portable validator cannot re-derive
-analyzer output. Authenticity of recorded categories/holds against the real analysis is proven by the local
-`verifyEnsembleTraces` check (needs the ignored `--ensemble-trace` file; not part of routine CI). Priority orders Stage 2
+analyzer output. Assigned observations whose lemma is already produced or deferred by the batch bound do not become candidate rows;
+v3 manifests preserve them in `excluded_observations` with their disposition and trace binding. They are not misclassified as
+unresolved. Authenticity of recorded categories/holds against the real analysis is proven by the local `verifyEnsembleTraces`
+check (needs the ignored `--ensemble-trace` file; not part of routine CI); it also rejects orphan traces. Priority orders Stage 2
 review effort only; per `AGENTS.md`, usefulness never admits, holds or rejects a lexical entry.
 
 ## Artifacts (still exactly `manifest.json` + `candidates.jsonl`, #284)
@@ -80,9 +82,20 @@ Under the ensemble policy the v2 manifest additionally carries (all text-free):
 
 - `analyzer_providers` (exactly the three, in order, each `identity_digest` pinned) and
   `resolution_policy: provider-resolution-v2-ensemble`; `analyzer_digest` binds both;
-- `ensemble: {contract: ensemble-resolution-v2, counts, trace_sha256}` — `trace_sha256` binds the provider
-  identities, every retained observation's `trace_digest`, every queue entry's `trace_digest` and the recorded
-  context decisions, so changing a provider/version/dictionary, the order, the policy or any result changes it;
+- New batches use `ensemble: {contract: ensemble-resolution-v3, counts, trace_sha256}` —
+  `counts.input_observations` counts distinct source-observation identities normalized from the source list before disposition; repeated raw hits with the same identity are merged once and remain visible in repeat metrics. `counts.observations`
+  equals candidate observations + unresolved queue + `excluded_observations`; and `counts.excluded` equals the latter's
+  length. The shared validator requires `input_observations === observations`, independently checking the partition.
+  `trace_sha256` binds the provider identities, every observation digest/trace pair across all three dispositions,
+  row review summaries and recorded context decisions. Historical v2 manifests remain valid as written.
+- `excluded_observations[]`: text-free assigned observations with disposition `prior_produced_lemma` or
+  `deferred_lemma`, citation lemma/POS, bounded surface and source reference, analysis digest, holds, observation digest
+  and the same ensemble trace record used on candidate observations. These records explain why a provider decision was
+  analyzed but did not create a current candidate row. Source-observation identity binds the observed surface, source
+  reference and usage group, independently of the extractor hint. Repeated hits at one identity are normalized once;
+  conflicting hints add a mismatch hold/reason without choosing by input order. A `trace_digest` may repeat when separate
+  source observations share the same surface-level analysis; uniqueness and
+  disposition coverage are checked by `observation_digest`.
 - `context_fallback: {contract: context-fallback-decisions-v1, decisions, decisions_sha256}`;
 - `unresolved_observations[]`: `{queue_id, surface, evidence, holds, category, reasons, hypotheses, extractor_hint,
   extractor_holds, observation_digest, trace_digest, verification}` with `verification.state`
