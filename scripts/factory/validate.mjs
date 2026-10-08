@@ -5,7 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { validateReviewArtifacts } from './artifacts.mjs';
-import { canonicalRecordSha256, validateStage3AdmissionManifest } from './admission.mjs';
+import { matchesHistoricalRecordSha256, validateStage3AdmissionManifest } from './admission.mjs';
 import {
   parseJsonl,
   sha256Hex,
@@ -285,22 +285,22 @@ function validateStage3RecordChanges(reviewArtifacts, canonicalById) {
       projected = { ...canonical, senses: initialSenses };
       if (baseSenses.length) errors.push(`${entryId}: created factory entry contains untracked canonical senses`);
       const createRecord = { ...canonical, senses: initialSenses };
-      if (canonicalRecordSha256(createRecord) !== create.after_sha256) errors.push(`${entryId}: Stage 3 create digest does not match its canonical record`);
+      if (!matchesHistoricalRecordSha256(createRecord, create.after_sha256)) errors.push(`${entryId}: Stage 3 create digest does not match its canonical record`);
       const rest = ordered.filter((change) => change !== create);
       for (const change of rest) {
-        if (canonicalRecordSha256(projected) !== change.before_sha256) errors.push(`${entryId}: amendment ${change.batchId} before digest does not follow prior Stage 3 history`);
+        if (!matchesHistoricalRecordSha256(projected, change.before_sha256)) errors.push(`${entryId}: amendment ${change.batchId} before digest does not follow prior Stage 3 history`);
         const ids = new Set(change.added_sense_ids);
         projected = { ...projected, senses: [...projected.senses, ...canonical.senses.filter((sense) => ids.has(sense.id))] };
-        if (canonicalRecordSha256(projected) !== change.after_sha256) errors.push(`${entryId}: amendment ${change.batchId} after digest does not match its canonical senses`);
+        if (!matchesHistoricalRecordSha256(projected, change.after_sha256)) errors.push(`${entryId}: amendment ${change.batchId} after digest does not match its canonical senses`);
       }
     } else {
       for (const change of ordered) {
-        if (canonicalRecordSha256(projected) !== change.before_sha256) errors.push(`${entryId}: amendment ${change.batchId} before digest does not follow prior Stage 3 history`);
+        if (!matchesHistoricalRecordSha256(projected, change.before_sha256)) errors.push(`${entryId}: amendment ${change.batchId} before digest does not follow prior Stage 3 history`);
         const ids = new Set(change.added_sense_ids);
         const additions = canonical.senses.filter((sense) => ids.has(sense.id));
         if (additions.length !== ids.size) errors.push(`${entryId}: amendment ${change.batchId} does not add every declared sense`);
         projected = { ...projected, senses: [...projected.senses, ...additions] };
-        if (canonicalRecordSha256(projected) !== change.after_sha256) errors.push(`${entryId}: amendment ${change.batchId} after digest does not match its canonical senses`);
+        if (!matchesHistoricalRecordSha256(projected, change.after_sha256)) errors.push(`${entryId}: amendment ${change.batchId} after digest does not match its canonical senses`);
       }
     }
     if (JSON.stringify(projected) !== JSON.stringify(canonical)) errors.push(`${entryId}: canonical record contains changes outside source-bound Stage 3 admissions`);

@@ -94,3 +94,21 @@ test('SQLite persists relevance and keeps every relation past 100', async () => 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('historical digests bind the pre-relevance record; other edits stay rejected (#396)', async () => {
+  const { matchesHistoricalRecordSha256, canonicalRecordSha256 } = await import('../scripts/factory/admission.mjs');
+  const { preRelevanceRecordSha256, sha256Json } = await import('../scripts/validate/semantic-audit.mjs');
+  const legacy = record('r000001', [relation({ type: 'near' }), relation({ type: 'direct' })]);
+  const current = structuredClone(legacy);
+  current.senses[0].relations[0].relevance = 3;
+  const digest = canonicalRecordSha256(legacy);
+  assert.ok(matchesHistoricalRecordSha256(current, digest));
+  assert.equal(preRelevanceRecordSha256(current), sha256Json(legacy));
+  const edited = structuredClone(current);
+  edited.senses[0].gloss = 'changed';
+  assert.ok(!matchesHistoricalRecordSha256(edited, digest));
+  assert.notEqual(preRelevanceRecordSha256(edited), sha256Json(legacy));
+  const relinked = structuredClone(current);
+  relinked.senses[0].relations[0].note = 'changed';
+  assert.ok(!matchesHistoricalRecordSha256(relinked, digest));
+});
