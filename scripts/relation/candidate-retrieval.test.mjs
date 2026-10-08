@@ -249,6 +249,45 @@ test('validator reports malformed sources as errors instead of throwing', () => 
   }
 });
 
+test('validator never throws: every field of a valid artifact survives hostile values', () => {
+  const index = buildRelationIndex(synthetic);
+  const prov = (candidate_id, lemma, extra = {}) => ({ kind: 'provisional', batch_id: 'B', candidate_id, sense_key: 's1', lemma, pos: 'noun', gloss: '아무 소리도 없이 잠잠한 상태.', ...extra });
+  const lit = { 'w5-s1': [{ location_digest: 'd'.repeat(64), text: '깊은 고요 속' }] };
+  const artifacts = [
+    retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w5-s1' }], { literature: lit }),
+    retrieveRelationCandidates(index, [prov('C1', '잠잠', { hints: [{ lemma: '메아리' }] }), prov('C2', '정적')]),
+  ];
+  const hostile = [null, undefined, 0, 123, 'x', true, [], {}, { includes: 123 }, { includes: 'literature_cooccurrence' }, { length: 1e9 }, { every: 1 }, [null], [{}]];
+  const walk = (node, path, visit) => {
+    visit(path);
+    if (node && typeof node === 'object') for (const key of Object.keys(node)) walk(node[key], [...path, key], visit);
+  };
+  let probes = 0;
+  for (const base of artifacts) {
+    assert.deepEqual(validateRelationCandidateArtifact(base, index), []);
+    const paths = [];
+    walk(base, [], (path) => paths.push(path));
+    for (const path of paths) {
+      for (const value of hostile) {
+        const artifact = structuredClone(base);
+        if (path.length === 0) continue;
+        const parent = path.slice(0, -1).reduce((node, key) => node[key], artifact);
+        parent[path.at(-1)] = value;
+        assert.doesNotThrow(() => validateRelationCandidateArtifact(artifact, index), `${path.join('.')} = ${JSON.stringify(value)}`);
+        assert.doesNotThrow(() => validateRelationCandidateArtifact(artifact), `${path.join('.')} (no index)`);
+        probes += 1;
+      }
+    }
+  }
+  assert.ok(probes > 500);
+  for (const signals of [null, 5, 'literature_cooccurrence', {}, { includes: 123 }, { includes: 'literature_cooccurrence' }]) {
+    const artifact = structuredClone(artifacts[0]);
+    artifact.sources[0].candidates[0].signals = signals;
+    const errors = validateRelationCandidateArtifact(artifact, index);
+    assert.ok(errors.some((e) => e.includes('invalid signals')), JSON.stringify(signals));
+  }
+});
+
 test('index-time settings cannot be overridden at retrieval time', () => {
   const index = buildRelationIndex(synthetic, { stop_bigram_df_ratio: 0.5 });
   const source = [{ kind: 'canonical', sense_id: 'w3-s1' }];

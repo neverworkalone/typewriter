@@ -483,11 +483,12 @@ export function validateRelationCandidateArtifact(artifact, index = null, { expe
       if (!isObject(candidate) || !hasExactKeys(candidate, ['rank', 'target', 'signals'], ['literature_location_digests'])) { errors.push(`${here}: invalid shape (editorial fields are not allowed)`); continue; }
       if (candidate.rank !== position + 1) errors.push(`${here}: rank order broken`);
       if (!Array.isArray(candidate.signals) || candidate.signals.length === 0 || candidate.signals.some((code) => !allowed.has(code))) errors.push(`${here}: invalid signals`);
+      const hasLiteratureSignal = Array.isArray(candidate.signals) && candidate.signals.includes('literature_cooccurrence');
       const digests = candidate.literature_location_digests;
-      if (candidate.signals?.includes?.('literature_cooccurrence') && (!Array.isArray(digests) || digests.length === 0)) errors.push(`${here}: literature_cooccurrence requires at least one location digest`);
+      if (hasLiteratureSignal && (!Array.isArray(digests) || digests.length === 0)) errors.push(`${here}: literature_cooccurrence requires at least one location digest`);
       if (digests !== undefined) {
         if (!Array.isArray(digests) || digests.length === 0 || !digests.every((d) => HEX64.test(d)) || (config && digests.length > config.max_literature_digests)) errors.push(`${here}: invalid literature_location_digests`);
-        if (!candidate.signals?.includes?.('literature_cooccurrence')) errors.push(`${here}: literature digests without literature_cooccurrence signal`);
+        if (!hasLiteratureSignal) errors.push(`${here}: literature digests without literature_cooccurrence signal`);
       }
       const target = candidate.target;
       if (!isObject(target)) { errors.push(`${here}: target must be an object`); continue; }
