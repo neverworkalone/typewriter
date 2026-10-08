@@ -159,8 +159,8 @@ const provisionalKey = (source) => `provisional:${source.batch_id ?? ''}/${sourc
 
 function normalizeSource(source) {
   const isProvisional = source.kind === 'provisional';
-  if (!source.pos || typeof source.gloss !== 'string') throw new Error('source requires pos and gloss');
   if (isProvisional) {
+    if (!source.pos || typeof source.gloss !== 'string') throw new Error('source requires pos and gloss');
     if (!source.candidate_id || !source.sense_key || !source.lemma) throw new Error('provisional source requires candidate_id, sense_key, lemma');
     return { ...source, kind: 'provisional', provisional_id: provisionalKey(source) };
   }
@@ -211,7 +211,16 @@ function addSignal(map, key, code, weight, extra) {
  */
 export function retrieveRelationCandidates(index, rawSources, { config = {}, literature = {} } = {}) {
   const settings = { ...index.settings, ...config };
-  const sources = rawSources.map(normalizeSource);
+  const sources = rawSources.map(normalizeSource).map((source) => {
+    if (source.kind !== 'canonical') return source;
+    // Canonical sources are bound to the snapshot: pos/gloss come from the indexed sense, never the caller.
+    const sense = index.bySenseId.get(source.sense_id);
+    if (!sense) throw new Error(`unknown canonical source sense ${source.sense_id}`);
+    if ((source.pos !== undefined && source.pos !== sense.pos) || (source.gloss !== undefined && source.gloss !== sense.gloss)) {
+      throw new Error(`canonical source ${source.sense_id} pos/gloss differs from the canonical snapshot`);
+    }
+    return { ...source, pos: sense.pos, gloss: sense.gloss };
+  });
   const seen = new Set();
   for (const source of sources) {
     const id = source.kind === 'provisional' ? source.provisional_id : source.sense_id;

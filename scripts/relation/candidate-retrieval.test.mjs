@@ -38,6 +38,15 @@ test('canonical source: deterministic, bounded, candidates only, preserves ident
   assert.equal(retrieveRelationCandidates(index, [source], { config: { max_candidates: 1 } }).sources[0].candidates.length, 1);
 });
 
+test('canonical source gloss/pos are bound to the snapshot', () => {
+  const index = buildRelationIndex(synthetic);
+  const bare = retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1' }]);
+  const full = retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1', pos: 'noun', gloss: synthetic.records[2].senses[0].gloss }]);
+  assert.deepEqual(bare, full);
+  assert.throws(() => retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1', pos: 'noun', gloss: '다른 stale gloss 냉감' }]), /differs from the canonical snapshot/u);
+  assert.throws(() => retrieveRelationCandidates(index, [{ kind: 'canonical', sense_id: 'w3-s1', pos: 'verb' }]), /differs/u);
+});
+
 test('same-batch provisional targets use provisional identities and no canonical ids', () => {
   const index = buildRelationIndex(synthetic);
   const out = retrieveRelationCandidates(index, [
