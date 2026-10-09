@@ -4,12 +4,12 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "0da5f7a9d6a5f85ca267dca5c382f9bfbba78a4f515d8f13793ad502900b05f2",
+    "current_canonical_revision": "145c91590c6c4eb084570d0227c0aab66bb2c456e90cca5b9958952c72350e53",
     "source_manifest": [
       {
         "path": "AGENTS.md",
-        "sha256": "8335fcff780489530dd3214244a3eeccc2e245852ed9ad9a166600aa90ee5ac5",
-        "byte_count": 25242
+        "sha256": "09e3d0d213d85881951eca6e964f0385ead45cb1706ebc559943e5977806bcfc",
+        "byte_count": 25381
       },
       {
         "path": "config/artifact-policy.json",
@@ -658,8 +658,8 @@
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-12.jsonl",
-        "sha256": "d0422019cdd8c7d8122fe3eb707f5655ca9385f42d01954932d539a4711d1ef6",
-        "byte_count": 65336
+        "sha256": "7f629b332c67b2adf5f6d2887d6ec54aa6953394cd0627dbf8b7470a0bba70f3",
+        "byte_count": 65380
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-13.jsonl",
@@ -718,8 +718,8 @@
       },
       {
         "path": "data/canonical/m5-3-calibration.jsonl",
-        "sha256": "5baef62cdfced4f62c4f1c9921482d8af6b67e27b20ac28cd8da4b24e01b3e72",
-        "byte_count": 66910
+        "sha256": "33ebb8998d4be491f2d9b328aaa829be6d6dfd903c138995edea27fd56fa212c",
+        "byte_count": 67223
       },
       {
         "path": "data/canonical/m5-5-recalibration.jsonl",
@@ -738,8 +738,8 @@
       },
       {
         "path": "data/canonical/pilot.jsonl",
-        "sha256": "2571d5bf9c8897535132b569bcdf7da78eb43224acdcfb06947a798fcda863eb",
-        "byte_count": 334235
+        "sha256": "49316e2a25b6ca046d8b60c845905d05cebb1086e54d7d780e72a153a69e96c6",
+        "byte_count": 335310
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
@@ -753,17 +753,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "64a890345a5e3adb9d47f2bb9cd8f3c0c1f81ec2b28efb67f9781c1a84df8172",
-        "byte_count": 15738898
+        "sha256": "7355f89d869f66a13afd2d96e9b8c1ce8df4a7cac8c383d30d5cccdaa89b8a9c",
+        "byte_count": 15740203
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "a7a77b917e776c49a8b6df9c708bf882cc4d55c737604ac60771eb0ae4a186f9",
+        "sha256": "1052a1d81ea89e259b061b27ca60aaf9b99671a37b68172a08bbe7ea050bb6c6",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "2f158e146580c9fef3c90b934f277ff8b9acd8b66c3af9b2e036476386a94345",
+        "sha256": "9252f18630aebab16ab29b54396c3965dc107046f97a8a0912f08028b055de4b",
         "byte_count": 29643
       },
       {
@@ -778,8 +778,8 @@
       },
       {
         "path": "docs/editorial-model.md",
-        "sha256": "94b936d0ce1cce168bcfab4dbfce7a536ed0f5955bb09294dc2d9b909ba3d479",
-        "byte_count": 105902
+        "sha256": "40a4ac66831a65fa1ec3e2f31ea2504a6c4fa492cf8459ceae65f78bd5f85bf2",
+        "byte_count": 106701
       },
       {
         "path": "docs/external-material-review-customs-terminology.md",
@@ -803,7 +803,7 @@
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "dc35f5e0794334781bd6c105e94627ba71b12c2634aadc0e7184e1673dc8d972",
+        "sha256": "012b66716a8fc9986fffbd906d36aadd0807453a6f27abbf6ff2bf1c259ab8cb",
         "byte_count": 8780
       },
       {
@@ -968,8 +968,8 @@
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "36aa57769c05a08165ff9df93e951906d5efc8efdacfdef0003cab0db1b8409a",
-        "byte_count": 138260
+        "sha256": "c88179e01a58abd5f8b10a7383bf69e11f9d5a69073e2edbf212f57f8b98f502",
+        "byte_count": 140085
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",
