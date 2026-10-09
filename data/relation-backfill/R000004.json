@@ -9354,11 +9354,11 @@
    "relation": {
     "target": "w4915",
     "target_sense": "w4915-s1",
-    "type": "near",
-    "note": "놓아버리다는 잡거나 이어 가던 것을 더 이상 붙들지 않는다는 뜻이라 포기하다와 가깝다.",
+    "type": "association",
+    "note": "놓아버리다는 잡거나 이어 가던 것을 더 이상 붙들지 않는다는 뜻이라, 일을 이어 가지 않기로 하는 포기하다보다 잡고 있던 것을 놓는 쪽까지 넓어 포기하다에서 놓아버리다 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w227-s1: 후보 검토에서 w4915-s1를 near 관계로 판단했다."
+   "rationale": "w227-s1 w4915-s1: 대상 gloss는 \"잡거나 이어 가던 것\"을 모두 말해 잡고 있던 것을 놓는 경우까지 덮는데 출발 gloss는 이어 가지 않기로 하는 일만 말한다. 대상이 범위를 더해 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w227",
@@ -9602,19 +9602,6 @@
     "relevance": 5
    },
    "rationale": "w2374-s1: 후보 검토에서 w001-s1를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w2374",
-   "source_sense_id": "w2374-s1",
-   "source_gloss_sha256": "d0bc9d831a7914a7eab91de503c3806a29ce134de6707d4b550bdb9ff0289533",
-   "relation": {
-    "target": "w057",
-    "target_sense": "w057-s1",
-    "type": "near",
-    "note": "적막은 소리와 인기척이 끊겨 고요한 상태라 정적과 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w2374-s1: 후보 검토에서 w057-s1를 near 관계로 판단했다."
   },
   {
    "source_record_id": "w2377",
@@ -11615,19 +11602,6 @@
    "source_sense_id": "w284-s2",
    "source_gloss_sha256": "76855cd1c8024484ccc7149a34856267bba94111f1144f5db1ec042f084be6d8",
    "relation": {
-    "target": "w286",
-    "target_sense": "w286-s2",
-    "type": "near",
-    "note": "사이의 둘째 뜻은 두 시점 사이의 시간 간격이라 틈의 이 뜻과 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w284-s2: 후보 검토에서 w286-s2를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w284",
-   "source_sense_id": "w284-s2",
-   "source_gloss_sha256": "76855cd1c8024484ccc7149a34856267bba94111f1144f5db1ec042f084be6d8",
-   "relation": {
     "target": "w2097",
     "target_sense": "w2097-s1",
     "type": "association",
@@ -11648,19 +11622,6 @@
     "relevance": 4
    },
    "rationale": "w284-s2: 후보 검토에서 w2280-s1를 association 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w284",
-   "source_sense_id": "w284-s3",
-   "source_gloss_sha256": "8fb0569d991329ea19f39068a81ea9c584d5b233bd0c10609bc4656fc82ebe95",
-   "relation": {
-    "target": "w286",
-    "target_sense": "w286-s3",
-    "type": "near",
-    "note": "사이의 셋째 뜻은 사람 사이의 관계나 거리라 틈의 이 뜻과 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w284-s3: 후보 검토에서 w286-s3를 near 관계로 판단했다."
   },
   {
    "source_record_id": "w284",
@@ -13105,11 +13066,11 @@
    "relation": {
     "target": "w460",
     "target_sense": "w460-s1",
-    "type": "near",
-    "note": "따스하다의 첫째 뜻은 온기가 느껴져 몸이 포근하고 춥지 않다는 뜻이라 포근하다와 가깝다.",
+    "type": "association",
+    "note": "따스하다는 온기가 느껴져 몸이 포근하고 춥지 않다는 뜻이라, 감싸 주는 듯 부드러운 느낌을 말하는 포근하다에서 온기가 느껴지는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w323-s1: 후보 검토에서 w460-s1를 near 관계로 판단했다."
+   "rationale": "w323-s1 w460-s1: 출발 gloss는 감싸 주는 부드러운 느낌, 대상 gloss는 온기와 춥지 않음이라 덮는 범위가 다르고 기존 역방향도 sensory라 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w323",
@@ -13442,11 +13403,11 @@
    "relation": {
     "target": "w462",
     "target_sense": "w462-s1",
-    "type": "near",
-    "note": "씁쓸하다는 입안에 쓴맛이 느껴져 맛이 쓰다는 뜻이라 쌉싸름하다와 가깝다.",
+    "type": "association",
+    "note": "씁쓸하다는 입안에 쓴맛이 느껴져 맛이 쓰다는 뜻이라, 쓴맛이 조금 남으면서도 부드럽고 은근한 쌉싸름하다에서 쓴맛이 그대로 느껴지는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w327-s1: 후보 검토에서 w462-s1를 near 관계로 판단했다."
+   "rationale": "w327-s1 w462-s1: 출발 gloss는 쓴맛이 조금 남으면서 부드럽고 은근한 맛, 대상 gloss는 쓴맛이 느껴져 쓴 맛으로 정도와 결이 다르고 기존 역방향도 sensory라 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w328",
@@ -13533,11 +13494,11 @@
    "relation": {
     "target": "w3283",
     "target_sense": "w3283-s1",
-    "type": "near",
-    "note": "보슬비는 가늘고 부드러운 빗줄기가 조용히 내리는 비라 이슬비와 가깝다.",
+    "type": "association",
+    "note": "보슬비는 가늘고 부드러운 빗줄기가 조용히 내리는 비라, 빗방울이 작고 약하게 내려 오래 젖게 하는 이슬비에서 빗줄기의 모양과 소리 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w3282-s1: 후보 검토에서 w3283-s1를 near 관계로 판단했다."
+   "rationale": "w3282-s1 w3283-s1: 출발 gloss는 오래 젖게 하는 약한 비, 대상 gloss는 가늘고 부드러운 빗줄기가 조용히 내리는 비로 짚는 면이 달라 같은 범위로 볼 수 없어 association으로 정리했다."
   },
   {
    "source_record_id": "w3282",
@@ -19194,11 +19155,11 @@
    "relation": {
     "target": "w322",
     "target_sense": "w322-s1",
-    "type": "near",
-    "note": "까슬하다는 표면이 매끈하지 않고 조금 거칠게 느껴진다는 뜻이라 가슬가슬하다와 가깝다.",
+    "type": "association",
+    "note": "까슬하다는 표면이 매끈하지 않고 조금 거칠게 느껴진다는 뜻이라, 거칠고 마른 느낌까지 담는 가슬가슬하다에서 거친 촉감 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w927-s1: 후보 검토에서 w322-s1를 near 관계로 판단했다."
+   "rationale": "w927-s1 w322-s1: 출발 gloss는 거칠고 마른 느낌, 대상 gloss는 매끈하지 않고 조금 거칠게 느껴짐으로 마른 느낌이 대상에 없어 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w927",
@@ -20702,7 +20663,7 @@
   "rel-091a72fb87bf7e7fd43c1aed": "74b5e41d67b305962778e3e3ae0fdd28f6b827d087c1d907d7d2b510cf76d0a7",
   "rel-cf0a82fe9266a6432fa0eef1": "af3d141546d4fadd6fdbe7a1d2b6257fdd0546afec7181590b99520101f073d4",
   "rel-cb0a68b6ee559a00185f61ad": "9534636b232efeb6a2b0b5245bc15100f57b354f04c2efaedb4cd69d5e6538e3",
-  "rel-5ced4e7999e9c65bc5e13618": "591b02cb4aab994b7c642baf1d309322ecf54d3c222fc0151a4dd4422cecdc68",
+  "rel-c920ad5f75b952d480b739b3": "591b02cb4aab994b7c642baf1d309322ecf54d3c222fc0151a4dd4422cecdc68",
   "rel-2c8e526bd5d940d516fbd74e": "468530bc01953fa114660bc59ff66bb86b2fabfdafff5f5228df82df0490524b",
   "rel-2ef9ba182812183a85443354": "5823ee7e49efac117c01b8e1790b8b969ecb7f9ecfda95b5c4646f0c68710a04",
   "rel-7fb70f428c2c0caa0a9b094c": "485e1be99c7fdf73d8f4945659768b17498dea8d94bc12b2e7851c1a95de65f4",
@@ -20722,7 +20683,6 @@
   "rel-7c3dd81aa7be9548decf5732": "bc39210e8e1dacde74777bf79eb5264c013d65a432e78d483b98d0e1d3c1cbd3",
   "rel-09a1a4205bcaff9e15e17343": "c630dce0c860c1d0e7c517f07fa610908d28bd564faf597a6edcf080c832f824",
   "rel-4afef605efbec74efaffb1f0": "6c88fc044bd6b0cf6b0605405559d4b21b9da0944983cadc7d8d35f43cc65b1e",
-  "rel-5987e008c5bb51eeb1160e77": "991085a377d89fc91ef9237cc966b8e53f34e2c45ef2223d38d601b364b43320",
   "rel-3b26f63b18a8f3e377b6830c": "7c38b0cabbd20737dcbaa8521dc8c567a326329b37cca4468ee4457bf6c9493c",
   "rel-5bdd9eb4547f4fe1984b746a": "66ae496cf8537fec392a05e048ef2215796b448e6b51359659d75eff112de057",
   "rel-4f644288f91bcf4bc72cdb81": "cd5aaf6415e475265b4093d9e7418ad6e9600a538b4b1e818374b2c3a5816b42",
@@ -20877,10 +20837,8 @@
   "rel-04a83dc78a672ae6d254bdca": "cb3a7f8165a92864c9c0b6a92a12b5ea979a9a930275d721f0c485273fa96b88",
   "rel-07773fb0620d617fe85d650d": "9ff62b6957f867a9780100450a9f58881ce5ee9be51b66d28f06b8321d1cf4eb",
   "rel-0c600cc356a1d4429fe398b0": "6a22b498aa777db0af86d9ddf00e4ee1aaf9663a7fc54e4637f6de90fb9ae8fb",
-  "rel-764c2d9bc1118308c799db70": "9cba9853d7e57627c329ab5a3afa4064f6c516f1a57b997916cafd9fee9c01b0",
   "rel-e0b8a3c5d290cfdcc7a61db5": "f67a91967e031e762b7580a5b73819c7264b5294e59547b563437677cb168bc7",
   "rel-ee477285eea12831fa1c9ff3": "8f53eafb29858a9a8d4ee9b3a9e4cf3ac8df512ff9ca5ee34f5bb9ab647d4585",
-  "rel-bd54fe83c53398113a9ff85e": "c5d43d66ce565a7c80d45e03c8141f12bca30b40e4056be209d443eecaa26b6e",
   "rel-20264983ef50e336f4d7d370": "33a32c112b0f38512fd9e4a24db5dfd80f84196a52f5a4d29140798b3a2f2838",
   "rel-3c55be89e3ee0fe078ff1482": "8f53eafb29858a9a8d4ee9b3a9e4cf3ac8df512ff9ca5ee34f5bb9ab647d4585",
   "rel-5a59dfa105551c137f960c3f": "d64ed6c9430ec48b4c01bef7ed3f911694e5dfcf4fe323522d1ac01d6934a77d",
@@ -20992,7 +20950,7 @@
   "rel-032b71855482a6910567ac96": "07265592a6f986ca2ff3393fcb72c663a27af14595e5856ebf6bf2fdc4477b63",
   "rel-4949edf6b0ffb3a87fa96970": "112ebb86b8f87704269892b4d883f0e7cc480c0ebe6aa0f2aee40ec9ce85da71",
   "rel-f60c983232d322c5a4b37f87": "07265592a6f986ca2ff3393fcb72c663a27af14595e5856ebf6bf2fdc4477b63",
-  "rel-1bab6e76ffc51f43d9325da6": "b4fea2b44f46a332c4cce6c237abbf19a0397d753156b58fd185290c89eead40",
+  "rel-55328a1ba56493d52a53fd77": "b4fea2b44f46a332c4cce6c237abbf19a0397d753156b58fd185290c89eead40",
   "rel-16174234b0f8df426698e2f6": "2277704d3e2c8af7700cb7006250ea52f98e16116f76650f1a62ea82771acc28",
   "rel-513df0aba67d778fcde046ce": "40a3ab15dc9232b7ed80dc40aec4214803ff8c8913a3187f6f35c1408118df84",
   "rel-3def663655fe5637309b50c2": "ed9a3a41a8ac962681e47b70c25d6f2ef7f8adec7a79a55e0621a4038af0d217",
@@ -21018,14 +20976,14 @@
   "rel-7411c817edb0825ee7b25aea": "72109ae4bcdcbb3e60100ae8ca6bc3675e20e346572a48fdea07825997b08581",
   "rel-d919db7e8aba398f49e4577b": "f21a1a1e1fcfe97eef7b57ef68419846fb902e09675bb54239509b93eddb95c3",
   "rel-b0f0876af57f660e43c319b4": "c501e9755d8c3e2cdf22f84a6971a715676e14965c5af77ea10a384a6ab2a93c",
-  "rel-7c0caf264dfc928da9bb68a4": "4fe470f9ab81c41cd6857b5adb184a6d89884fdc1636f6ab300213eae01b4ef2",
+  "rel-99f24f476ea9b78797437290": "4fe470f9ab81c41cd6857b5adb184a6d89884fdc1636f6ab300213eae01b4ef2",
   "rel-b6d85e5383e0f25d84c410f5": "0881668c72398baceaba029846df75a9735ec93db7a33e7ed24a8328892794f3",
   "rel-f66690fd3d20ca956f7f7e17": "0be0ca02d74905853cfddac46fde1ac87d1819926b8cebf1866116ef90cc8db2",
   "rel-2704697b7492cfeaf3457813": "4f904b1d9429a2bb368339aec65aa325a16b6d6ede80c54d49969c71b826d013",
   "rel-88bcfcf6c7b03ed9ae535783": "48c576b3ea3377523ddac8d160d6d21ea4b8803fb108f9294fbb826b4e127850",
   "rel-6704ca530dc026440a589761": "e6ac92a8f5bf6ffe272242e8a34b97dfdbf4af74c677fc5e07e6272730e66233",
   "rel-6e033f0ad027abb730ea7eb4": "1465e62495cfc922f21a7610e026f0e840ec88217600e859deca401fccc256e6",
-  "rel-eb988f7779b00c37ff3064af": "f3fb74bb15918e1474b87449258d22cc4075b5065f881903ef0d5291c023c8ea",
+  "rel-0c52d2826eb9e55168360466": "f3fb74bb15918e1474b87449258d22cc4075b5065f881903ef0d5291c023c8ea",
   "rel-a11f2c14e50edb25be655f00": "5d9094014eb35dcd4a1fa16068d49dffc94028c9da8a04a3452ec6694ff623eb",
   "rel-ba912cc692fd63d39017681b": "9fe74c9f1f24cc9bda901a3e8e9fbbaa05ad0acf13ea949eb5170f162f8f6c0d",
   "rel-154bf4db8c4ff6d81869d7de": "5d9094014eb35dcd4a1fa16068d49dffc94028c9da8a04a3452ec6694ff623eb",
@@ -21462,7 +21420,7 @@
   "rel-7257dbc9c23b368cf92bb489": "991085a377d89fc91ef9237cc966b8e53f34e2c45ef2223d38d601b364b43320",
   "rel-23b3993c8bae5b80ce05db04": "0af21c6cf3176ea36a507c5be2ea47f2d0a8dc1a5bd4da51dd797c9eb9865c1d",
   "rel-a1dd7bca9a3db64642ea39b4": "280e245478eeaa7d78f3685936e6dd69cee2a6dc6440d2058006fa837ce72d66",
-  "rel-7ed355e89e47edc4af14954b": "21d972196de4a95f8a72141806f9ae15598e2a5a3e1fe0cff06fa7c5c344a2e9",
+  "rel-deedde9a9c103bd514b5e604": "21d972196de4a95f8a72141806f9ae15598e2a5a3e1fe0cff06fa7c5c344a2e9",
   "rel-113d17a7f2a60274a9870cc3": "bb20b05ca6735255327b12bf2545f702f658f9622b793ff991ceeaeef776a6a5",
   "rel-44f263fc7a8c37deed8512e0": "890129eb3593f5282f7b2445b9204868f53af973a9d304b23108fdd639e0f632",
   "rel-b4b2a918fc6472959fcf2937": "cda017f36f833e70f707ee49635d72c74a37814618744c301a2a178e3c7e2125",
