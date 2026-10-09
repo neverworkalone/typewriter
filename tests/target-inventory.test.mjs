@@ -218,10 +218,17 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
 
   try {
     await mkdir(canonicalDirectory, { recursive: true });
-    const canonicalText = await readFile(
+    const pilotRows = (await readFile(
       path.join(path.dirname(DEFAULT_CANONICAL_DIRECTORY), 'canonical/pilot.jsonl'),
       'utf8',
-    );
+    )).split('\n').filter(Boolean).map((line) => JSON.parse(line));
+    // Only this file is copied, so a relation to a record held in another canonical file would dangle.
+    const copiedIds = new Set(pilotRows.map((row) => row.id));
+    const canonicalText = pilotRows.map((row) => `${JSON.stringify({
+      ...row,
+      senses: row.senses.map((sense) => (sense.relations
+        ? { ...sense, relations: sense.relations.filter((relation) => copiedIds.has(relation.target)) } : sense)),
+    })}\n`).join('');
     const promotedRecord = {
       id: 'w301',
       record_type: 'entry',
