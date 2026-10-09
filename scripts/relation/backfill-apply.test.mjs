@@ -5,8 +5,8 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { buildCanonicalSemanticAudit, canonicalRecordsBeforeFactoryAdmissions, restorePreFactoryDecisionSource, sha256Json, validateFactoryAdmissionLedger, validateSemanticAuditCoverage } from '../validate/semantic-audit.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { buildCanonicalSemanticAudit, canonicalRecordsBeforeFactoryAdmissions, restorePreFactoryDecisionSource, readSemanticAuditArtifact, sha256Json, validateFactoryAdmissionLedger, validateSemanticAuditCoverage } from '../validate/semantic-audit.mjs';
+import { validateDatasetDirectory, validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import { loadCanonicalContext, readCanonicalContext, writeCanonicalContext } from '../validate/canonical-context.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
@@ -331,6 +331,22 @@ test('a relation-only backfill of a record with correction history passes the sh
     const reread = await readCanonicalContext(contextPath);
     assert.doesNotThrow(() => validateSemanticAuditCoverage(reread.records, reread.semanticAudit, { baseRecords: reread.records }));
     assert.doesNotThrow(() => validateDatasetRecords(reread.records, { semanticAudit: reread.semanticAudit, requireSemanticAudit: true, context: reread }));
+
+    // A separately saved audit JSON has no in-memory ledger: bare coverage rejects it, the dataset consumer restores the validated ledger.
+    const auditPath = path.join(root, 'saved-audit.json');
+    await writeFile(auditPath, JSON.stringify(built.artifact));
+    const saved = await readSemanticAuditArtifact(auditPath);
+    assert.throws(() => validateSemanticAuditCoverage(built.canonical.records, saved, { baseRecords: built.canonical.records }), /correction_history and source-bound Stage 3 admission history/u);
+    await assert.doesNotReject(() => validateDatasetDirectory(path.join(root, 'data/canonical'), {
+      semanticAuditPath: auditPath, decisionSourcePath: path.join(root, AUTHORITY), requireSemanticAudit: true,
+    }));
+
+    // A serialized context whose stored ledger event digest was altered is rejected on rehydration, not trusted.
+    const brokenContext = JSON.parse(await readFile(contextPath, 'utf8'));
+    brokenContext.semantic_decision_source.factory_admissions.at(-1).sha256 = 'd'.repeat(64);
+    const brokenContextPath = path.join(root, 'broken-context.json');
+    await writeFile(brokenContextPath, JSON.stringify(brokenContext));
+    await assert.rejects(() => readCanonicalContext(brokenContextPath), /sha256|bind|digest/u);
 
     // A tampered before digest on the amendment, resealed so the ledger itself must reject it.
     const forged = JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8'));

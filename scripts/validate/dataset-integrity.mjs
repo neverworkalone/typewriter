@@ -14,6 +14,8 @@ import {
   buildCanonicalSemanticAudit,
   buildSemanticTopicEvidence,
   readSemanticAuditArtifact,
+  readSemanticDecisionSourceArtifact,
+  restoreFactoryAdmissions,
   validateSemanticAuditCoverage,
 } from './semantic-audit.mjs';
 import {
@@ -461,6 +463,11 @@ export async function validateDatasetDirectory(
   if (requireSemanticAudit && semanticAudit === undefined) {
     if (options.semanticAuditPath) {
       semanticAudit = await readSemanticAuditArtifact(options.semanticAuditPath);
+      // The saved audit has no ledger; take it from the decision source the audit is bound to (when it has one).
+      const decisionSource = await readSemanticDecisionSourceArtifact(options.decisionSourcePath).catch(() => undefined);
+      if (decisionSource?.source_id === semanticAudit.decision_source?.source_id) {
+        restoreFactoryAdmissions(semanticAudit, decisionSource, context.records, 'persisted semantic audit');
+      }
     } else if (isDefaultCanonical) {
       ({ artifact: semanticAudit } = await buildCanonicalSemanticAudit({
         canonicalDirectory: directory,

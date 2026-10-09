@@ -2453,6 +2453,20 @@ export function attachFactoryAdmissions(review, factoryAdmissions) {
   return review;
 }
 
+/**
+ * A serialized audit (or a context holding one) has lost its in-memory ledger. Only the ledger that validates
+ * against the current canonical records, taken from the decision source the audit is bound to, may be attached;
+ * a ledger with a broken event digest or chain is rejected here rather than trusted by the correction check.
+ */
+export function restoreFactoryAdmissions(artifact, decisionSource, recordInfos, label = 'restored semantic audit') {
+  if (!decisionSource?.factory_admissions?.length || !artifact?.review) return artifact;
+  if (artifact.decision_source?.source_id !== decisionSource.source_id) {
+    fail(`${label} is not bound to the supplied decision source`, 'SEMANTIC_AUDIT_PROVENANCE');
+  }
+  attachFactoryAdmissions(artifact.review, validateFactoryAdmissionLedger(decisionSource, recordInfos, label));
+  return artifact;
+}
+
 export function factoryAdmissionsOf(review) {
   return review?.[FACTORY_ADMISSIONS] ?? [];
 }
