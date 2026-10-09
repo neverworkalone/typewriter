@@ -954,11 +954,17 @@ test('artifact policy closes factory admission history and preserved snapshots r
     entries: [{ source_candidate_id: 'C999999-0001', record_id: 'w1001', sense_ids: ['w1001-s2'] }],
     changes: [{
       entry_id: 'w1001', operation: 'append_senses', path: 'data/canonical/example.jsonl',
-      source_candidate_ids: ['C999999-0001'], added_sense_ids: ['w1001-s2'],
+      source_candidate_ids: ['C999999-0001'], added_sense_ids: ['w1001-s2'], added_relation_ids: ['rel-aaaaaaaaaaaaaaaaaaaaaaaa'],
       before_sha256: 'b'.repeat(64), after_sha256: 'c'.repeat(64),
       previous_semantic_review_sha256: 'd'.repeat(64), semantic_review_sha256: 'e'.repeat(64),
       previous_record: candidateRecordFixture({ relation: true }),
       previous_semantic_review: structuredClone(source.authored_review.records[0]),
+    }],
+    relation_amendments: [{
+      source_candidate_id: 'C999999-0001', source_record_id: 'w1001', source_sense_id: 'w1001-s1',
+      source_gloss_sha256: 'a'.repeat(64), authored_relation_id: 'rel-aaaaaaaaaaaaaaaaaaaaaaaa',
+      relation_id: 'rel-aaaaaaaaaaaaaaaaaaaaaaaa', rationale_sha256: 'b'.repeat(64), outcome: 'appended',
+      relation: { target: 'w1002', target_sense: 'w1002-s1', type: 'near', note: '가까운 말이다.', relevance: 3 },
     }], sha256: 'f'.repeat(64),
   }];
   const check = async (value) => {
@@ -976,16 +982,29 @@ test('artifact policy closes factory admission history and preserved snapshots r
       (event) => { event.changes[0].previous_record.senses[0].raw_evidence = {}; },
       (event) => { event.changes[0].previous_record.senses[0].relations[0].raw_evidence = {}; },
       (event) => { event.changes[0].previous_semantic_review.raw_evidence = {}; },
+      (event) => { event.relation_amendments[0].raw_evidence = {}; },
+      (event) => { event.relation_amendments[0].relation.raw_evidence = {}; },
     ]) {
       const invalid = structuredClone(source);
       inject(invalid.factory_admissions[0]);
       await assert.rejects(check(invalid),
         (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE');
     }
-    const invalidType = structuredClone(source);
-    invalidType.factory_admissions[0].attempt = '1';
-    await assert.rejects(check(invalidType),
-      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE');
+    // Relation-bearing admission events keep their declared types, including the nested relation tuple.
+    for (const retype of [
+      (event) => { event.attempt = '1'; },
+      (event) => { event.relation_amendments = 'appended'; },
+      (event) => { event.relation_amendments[0].source_sense_id = 7; },
+      (event) => { event.relation_amendments[0].relation = 'near'; },
+      (event) => { event.relation_amendments[0].relation.relevance = '3'; },
+      (event) => { event.changes[0].added_relation_ids = 'rel-aaaaaaaaaaaaaaaaaaaaaaaa'; },
+      (event) => { event.changes[0].added_relation_ids = [7]; },
+    ]) {
+      const invalidType = structuredClone(source);
+      retype(invalidType.factory_admissions[0]);
+      await assert.rejects(check(invalidType),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE');
+    }
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }

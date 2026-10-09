@@ -10,7 +10,7 @@ import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
 import { planRelationBackfill, writePlannedRecords } from '../factory/admission.mjs';
-import { approvedAmendments, applyBackfill, packetTextFor } from './backfill-apply.mjs';
+import { approvedAmendments, applyBackfill, nextPacketId, packetTextFor } from './backfill-apply.mjs';
 import { inventoryCanonicalSenses, newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
@@ -27,8 +27,13 @@ async function scratchRoot() {
   await cp(path.join(REPO, AUTHORITY), path.join(root, AUTHORITY));
   // Factory batches are only read; link them instead of copying.
   for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.join(REPO, dir), path.join(root, dir));
+  // Packets already committed for earlier backfills belong to the copied ledger; a test applies on top of them.
+  await cp(path.join(REPO, 'data/relation-backfill'), path.join(root, 'data/relation-backfill'), { recursive: true }).catch((error) => { if (error?.code !== 'ENOENT') throw error; });
   return root;
 }
+
+// The packet id the next apply allocates, so tests hold whatever backfills the real ledger already contains.
+const nextId = async (root) => nextPacketId(JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8')).factory_admissions ?? []);
 
 const readRecords = async (root) => {
   const dir = path.join(root, 'data/canonical');
@@ -142,7 +147,8 @@ function oneApproval(canonical, index) {
   return { source, target, state };
 }
 
-async function planOnDisk(root, state, index, packetId = 'R000001') {
+async function planOnDisk(root, state, index, packetId = null) {
+  packetId ??= await nextId(root);
   const records = await readRecords(root);
   const recordPathById = new Map();
   for (const name of await readdir(path.join(root, 'data/canonical'))) {
@@ -165,17 +171,18 @@ test('a run interrupted after the packet (and optionally the canonical write) is
     try {
       const baseline = await validateFactoryRepository({ root });
       const { plan, packet } = await planOnDisk(root, state, index);
+      const id = await nextId(root);
       await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
-      await writeFile(path.join(root, 'data/relation-backfill/R000001.json'), packet);
+      await writeFile(path.join(root, `data/relation-backfill/${id}.json`), packet);
       if (writeCanonical) await writePlannedRecords(plan, root);
       // An interrupted atomic write leaves only a partial temp file, which is never read as a packet.
-      await writeFile(path.join(root, 'data/relation-backfill/R000002.json.tmp'), '{"packet_id": "R0000');
+      await writeFile(path.join(root, 'data/relation-backfill/R999999.json.tmp'), '{"packet_id": "R0000');
       const eventsBefore = await authorityEvents(root);
 
       const result = await applyBackfill({ root, state, index, refreshReports: false });
-      assert.deepEqual(result.packets, ['R000001']);
+      assert.deepEqual(result.packets, [id]);
       assert.equal(await authorityEvents(root), eventsBefore + 1);
-      assert.equal(await readFile(path.join(root, 'data/relation-backfill/R000001.json'), 'utf8'), packet, 'the intent packet is kept as written');
+      assert.equal(await readFile(path.join(root, `data/relation-backfill/${id}.json`), 'utf8'), packet, 'the intent packet is kept as written');
       const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find((item) => item.id === source.sense_id);
       assert.equal(sense.relations.filter((item) => item.target_sense === target.sense_id).length, 1, 'the tuple is not duplicated');
       assert.deepEqual(await validateFactoryRepository({ root }), baseline);
@@ -200,7 +207,7 @@ test('an exact tuple that is already present without any packet is a no-op, not 
     assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'nothing-to-apply');
     assert.deepEqual(await readRecords(root), recordsBefore);
     assert.equal(await authorityEvents(root), eventsBefore);
-    await assert.rejects(readFile(path.join(root, 'data/relation-backfill/R000001.json')), /ENOENT/u);
+    await assert.rejects(readFile(path.join(root, `data/relation-backfill/${await nextId(root)}.json`)), /ENOENT/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -213,11 +220,12 @@ test('a partial temp packet from an interrupted write is ignored, and a backfill
   const root = await scratchRoot();
   try {
     // A previous run died while writing the packet: only the partial temp file exists, so a normal apply still works.
+    const id = await nextId(root);
     await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
-    await writeFile(path.join(root, 'data/relation-backfill/R000001.json.tmp'), '{"packet_id": "R0000');
+    await writeFile(path.join(root, `data/relation-backfill/${id}.json.tmp`), '{"packet_id": "R0000');
     const result = await applyBackfill({ root, state, index, refreshReports: false });
-    assert.deepEqual(result.packets, ['R000001']);
-    JSON.parse(await readFile(path.join(root, 'data/relation-backfill/R000001.json'), 'utf8'));
+    assert.deepEqual(result.packets, [id]);
+    JSON.parse(await readFile(path.join(root, `data/relation-backfill/${id}.json`), 'utf8'));
     await rm(path.join(root, 'data/relation-backfill', `${result.packets[0]}.json`));
     await assert.rejects(applyBackfill({ root, state, index, refreshReports: false }), /has no committed packet file/u);
   } finally {
@@ -276,7 +284,7 @@ test('resuming an interrupted packet re-checks the approved target meaning: a ch
   try {
     const { packet } = await planOnDisk(root, state, index);
     await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
-    await writeFile(path.join(root, 'data/relation-backfill/R000001.json'), packet);
+    await writeFile(path.join(root, `data/relation-backfill/${await nextId(root)}.json`), packet);
     const recordsBefore = await readRecords(root);
     const eventsBefore = await authorityEvents(root);
     await assert.rejects(applyBackfill({ root, state, index: changed, refreshReports: false }), /changed meaning since approval/u);

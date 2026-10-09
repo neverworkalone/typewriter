@@ -73,18 +73,24 @@ export function candidateEvidence(artifact, index) {
 
 /** Current candidate evidence by sense id, carrying the canonical index the review is being checked against. */
 export class ReviewContext extends Map {
-  constructor(entries, index) {
+  // `explainedIncoming`: sense id -> ids of senses whose relation to it was approved in this queue (see below).
+  constructor(entries, index, explainedIncoming = new Map()) {
     super(entries);
     this.index = index;
+    this.explainedIncoming = explainedIncoming;
   }
 }
 
 // `relation_neighbor_of_related` is derived from the relations of neighbouring senses, so it shifts whenever any
 // neighbour is enriched, including by applying this review's own approved relations (the target's neighbours become
 // new candidates). It is graph position, not evidence about the pair's meaning, so it never makes a review stale.
+// The same holds for an `incoming_relation` that exists only because another sense's relation to this one was approved
+// in this queue and applied: it is the queue's own write, not independent evidence. Without this, every applied packet
+// re-queues the reviews of the senses it points at.
 const SECOND_ORDER_SIGNAL = 'relation_neighbor_of_related';
-const withoutSecondOrder = (candidate) => ({ ...candidate, signals: candidate.signals.filter((signal) => signal !== SECOND_ORDER_SIGNAL) });
-const onlySecondOrder = (candidate) => candidate.signals.length > 0 && candidate.signals.every((signal) => signal === SECOND_ORDER_SIGNAL) && candidate.literature.length === 0;
+const evidenceSignals = (candidate, explained) => candidate.signals.filter((signal) => signal !== SECOND_ORDER_SIGNAL && !(signal === 'incoming_relation' && explained.has(candidate.id)));
+const withoutGraphPosition = (explained) => (candidate) => ({ ...candidate, signals: evidenceSignals(candidate, explained) });
+const onlyGraphPosition = (explained) => (candidate) => candidate.signals.length > 0 && evidenceSignals(candidate, explained).length === 0 && candidate.literature.length === 0;
 
 /** The preserved approvals must still be exactly what was recorded: ids bind sense, target, type, note and relevance. */
 function approvalsIntact(row, entry) {
@@ -121,21 +127,38 @@ export function isReviewCurrent(row, entry, currentCandidates) {
   if (!approvalsStillHold(row, entry, currentCandidates?.index)) return false;
   const currentAll = currentCandidates.get(row.sense_id);
   if (!currentAll) return false;
-  const current = currentAll.filter((candidate) => !onlySecondOrder(candidate)).map(withoutSecondOrder);
-  const reviewedList = entry.reviewed_candidates.filter((candidate) => !onlySecondOrder(candidate)).map(withoutSecondOrder);
+  const explained = currentCandidates.explainedIncoming?.get(row.sense_id) ?? new Set();
+  const current = currentAll.filter((candidate) => !onlyGraphPosition(explained)(candidate)).map(withoutGraphPosition(explained));
+  const reviewedList = entry.reviewed_candidates.filter((candidate) => !onlyGraphPosition(explained)(candidate)).map(withoutGraphPosition(explained));
   const reviewed = new Map(reviewedList.map((candidate) => [candidate.id, candidate]));
   for (const candidate of current) {
     if (JSON.stringify(reviewed.get(candidate.id) ?? null) !== JSON.stringify(candidate)) return false;
   }
-  const common = new Set(current.map((candidate) => candidate.id));
+  // Rank order only over candidates whose raw signals are exactly as reviewed: a boost from the queue's own approved
+  // link can legitimately move one candidate past others without changing what the reviewer judged.
+  const reviewedRaw = new Map(entry.reviewed_candidates.map((candidate) => [candidate.id, JSON.stringify(candidate.signals)]));
+  const stable = (candidate) => reviewedRaw.get(candidate.id) === JSON.stringify(currentAll.find((item) => item.id === candidate.id)?.signals);
+  const common = new Set(current.filter(stable).map((candidate) => candidate.id));
   const before = reviewedList.filter((candidate) => common.has(candidate.id)).map((candidate) => candidate.id);
-  return JSON.stringify(before) === JSON.stringify(current.map((candidate) => candidate.id).filter((id) => reviewed.has(id)));
+  return JSON.stringify(before) === JSON.stringify(current.map((candidate) => candidate.id).filter((id) => common.has(id)));
 }
 
 /** Current candidate evidence for the senses a state marks done (the only ones whose currency must be checked). */
 export function currentCandidatesForDone(canonical, rows, state, { index = buildRelationIndex(canonical) } = {}) {
   const doneRows = rows.filter((row) => state.done[row.sense_id]);
-  const result = new ReviewContext([], index);
+  // Incoming links the queue itself approved: target sense -> the senses whose approved relation points at it.
+  const explainedIncoming = new Map();
+  // Only approvals that still hold count: a stale (gloss or target changed) approval is never applied, so it must not
+  // hide an incoming link that something else created.
+  const rowById = new Map(rows.map((row) => [row.sense_id, row]));
+  for (const [sourceId, entry] of Object.entries(state.done)) {
+    const sourceRow = rowById.get(sourceId);
+    if (!sourceRow || !approvalsStillHold(sourceRow, entry, index)) continue;
+    for (const { relation } of entry.approved_relations ?? []) {
+      if (typeof relation?.target_sense === 'string') explainedIncoming.set(relation.target_sense, (explainedIncoming.get(relation.target_sense) ?? new Set()).add(sourceId));
+    }
+  }
+  const result = new ReviewContext([], index, explainedIncoming);
   for (let i = 0; i < doneRows.length; i += MAX_PACKET_SIZE) {
     for (const [id, targets] of candidateEvidence(retrievePacket(canonical, doneRows.slice(i, i + MAX_PACKET_SIZE), { index }), index)) result.set(id, targets);
   }
