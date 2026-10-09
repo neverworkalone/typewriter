@@ -202,11 +202,11 @@
    "relation": {
     "target": "w006",
     "target_sense": "w006-s1",
-    "type": "near",
-    "note": "쓸쓸함은 곁에 사람이 없어 허전한 느낌이라, 고독이 가진 홀로 있음의 느낌과 겹친다.",
+    "type": "association",
+    "note": "쓸쓸함은 곁이 비어 허전한 정서에 초점이 있어, 홀로 있음을 깊이 느끼는 고독과 겹치지만 서로 바꿔 쓸 말은 아니다.",
     "relevance": 4
    },
-   "rationale": "r033-s1: 후보 검토에서 w006-s1를 near 관계로 판단했다."
+   "rationale": "r033-s1은 혼자 있는 상태를 깊이 느끼는 마음이고 w006-s1은 곁이 비어 허전한 느낌이라, 같은 정서권에서 이어 찾지만 초점이 달라 near 대체어가 아니다."
   },
   {
    "source_record_id": "r033",
@@ -254,11 +254,11 @@
    "relation": {
     "target": "w11004",
     "target_sense": "w11004-s1",
-    "type": "near",
-    "note": "탄복은 훌륭함에 깊이 감동하여 감탄하는 일이라, 감탄 가운데 깊이 감동한 경우를 말해 가깝게 쓸 수 있다.",
+    "type": "association",
+    "note": "탄복은 깊이 감동한 경우로 좁혀진 감탄이라, 일반적인 감탄에서 더 강한 반응을 찾을 때 이어 볼 수 있다.",
     "relevance": 5
    },
-   "rationale": "r036-s1: 후보 검토에서 w11004-s1를 near 관계로 판단했다."
+   "rationale": "r036-s1은 크게 반응하는 마음 일반이고 w11004-s1은 깊이 감동한 경우로 좁으므로, 같은 반응에서 이어 찾지만 범위가 달라 near 대체어가 아니다."
   },
   {
    "source_record_id": "r036",
@@ -384,11 +384,11 @@
    "relation": {
     "target": "w321",
     "target_sense": "w321-s1",
-    "type": "near",
-    "note": "미지근하다의 첫째 뜻은 온도가 뜨겁지도 차갑지도 않다는 것이라, 온도가 뜨겁지 않고 미적지근한 미온과 바꿔 쓸 수 있다.",
+    "type": "association",
+    "note": "미지근하다의 첫째 뜻은 온도를 서술하는 형용사라, 상태를 이름 붙이는 명사 미온에서 온도 쪽 표현으로 이어 찾을 수 있지만 서로 바꿔 쓸 말은 아니다.",
     "relevance": 5
    },
-   "rationale": "r042-s1: 후보 검토에서 w321-s1를 near 관계로 판단했다."
+   "rationale": "r042-s1은 온도나 반응의 상태를 가리키는 명사이고 w321-s1은 온도를 서술하는 형용사 뜻이므로, 같은 온도 상황에서 이어 찾지만 명사와 서술어라 near 대체어가 아니다."
   },
   {
    "source_record_id": "r042",
@@ -397,11 +397,11 @@
    "relation": {
     "target": "w321",
     "target_sense": "w321-s2",
-    "type": "near",
-    "note": "미지근하다의 둘째 뜻은 반응이나 태도가 적극적이지 않고 시큰둥하다는 것이라, 미온이 가리키는 반응의 미적지근함과 바꿔 쓸 수 있다.",
+    "type": "association",
+    "note": "미지근하다의 둘째 뜻은 반응이나 태도가 적극적이지 않다고 서술하는 형용사라, 명사 미온의 반응 쪽에서 이어 찾을 수 있지만 서로 바꿔 쓸 말은 아니다.",
     "relevance": 5
    },
-   "rationale": "r042-s1: 후보 검토에서 w321-s2를 near 관계로 판단했다."
+   "rationale": "r042-s1은 온도나 반응의 상태를 가리키는 명사이고 w321-s2는 반응이나 태도를 서술하는 형용사 뜻이므로, 같은 반응 상황에서 이어 찾지만 명사와 서술어라 near 대체어가 아니다."
   },
   {
    "source_record_id": "r042",
@@ -954,11 +954,11 @@
    "relation": {
     "target": "r029",
     "target_sense": "r029-s1",
-    "type": "near",
-    "note": "색조는 색이 띠는 느낌과 밝고 어두운 정도를 가리켜, 장면이 띠는 색의 느낌을 말하는 색채와 같은 대상을 다른 쪽에서 말한다.",
+    "type": "association",
+    "note": "색조는 색의 느낌과 밝고 어두운 정도로 초점이 좁아, 장면의 색 느낌과 구성을 말하는 색채에서 이어 찾을 수 있다.",
     "relevance": 5
    },
-   "rationale": "w071-s1: 후보 검토에서 r029-s1를 near 관계로 판단했다."
+   "rationale": "w071-s1은 사물이나 장면이 띠는 색의 느낌과 구성이고 r029-s1은 색의 느낌과 밝고 어두운 정도로 초점이 좁으므로, 같은 대상에서 이어 찾지만 near 대체어가 아니다."
   },
   {
    "source_record_id": "w071",
@@ -1370,11 +1370,11 @@
    "relation": {
     "target": "w920",
     "target_sense": "w920-s1",
-    "type": "near",
-    "note": "황량하다는 비어 있고 쓸쓸한 느낌이 든다는 뜻이라, 휑하다처럼 비어 있는 공간의 쓸쓸한 분위기를 말한다.",
+    "type": "association",
+    "note": "황량하다는 비어 있고 쓸쓸한 풍경 쪽으로 좁아, 휑하다의 허전한 느낌에서 공간 분위기로 이어 찾을 수 있다.",
     "relevance": 4
    },
-   "rationale": "w10169-s1: 후보 검토에서 w920-s1를 near 관계로 판단했다."
+   "rationale": "w10169-s1은 텅 비어 쓸쓸하고 허전한 느낌이고 w920-s1은 비어 있는 풍경의 쓸쓸한 분위기로 좁으므로, 같은 정서에서 이어 찾지만 near 대체어가 아니다."
   },
   {
    "source_record_id": "w10169",
@@ -1565,11 +1565,11 @@
    "relation": {
     "target": "w10167",
     "target_sense": "w10167-s1",
-    "type": "near",
-    "note": "저녁때는 저녁 무렵의 시간이라, 하루의 일이 끝나고 밤으로 넘어가는 때인 저녁과 바꿔 쓸 수 있는 말이다.",
+    "type": "association",
+    "note": "저녁때는 저녁 무렵의 시간을 가리켜, 하루의 일이 끝나고 밤으로 넘어가는 때 전체를 말하는 저녁보다 범위가 좁은 이어 찾기용 말이다.",
     "relevance": 6
    },
-   "rationale": "w124-s1: 후보 검토에서 w10167-s1를 near 관계로 판단했다."
+   "rationale": "w124-s1은 일이 끝나고 밤으로 넘어가는 때 전체이고 w10167-s1은 저녁 무렵의 시간으로 범위가 좁으므로, 같은 시간대에서 이어 찾지만 near 대체어가 아니다."
   },
   {
    "source_record_id": "w124",
@@ -1864,11 +1864,11 @@
    "relation": {
     "target": "w5749",
     "target_sense": "w5749-s1",
-    "type": "near",
-    "note": "찾아내다는 살펴보거나 찾아서 감춰진 대상이나 답을 발견한다는 뜻이라, 잃었거나 보이지 않는 것을 발견하려고 살피는 찾다와 같은 일의 결과까지 말한다.",
+    "type": "association",
+    "note": "찾아내다는 찾은 끝에 발견하는 결과까지 말해, 발견하려고 살피는 행위인 찾다에서 결과 쪽 표현으로 이어 찾을 수 있다.",
     "relevance": 5
    },
-   "rationale": "w191-s1: 후보 검토에서 w5749-s1를 near 관계로 판단했다."
+   "rationale": "w191-s1은 발견하려고 살피는 행위이고 w5749-s1은 발견에 이르는 결과를 함의하므로, 같은 탐색 상황이지만 시도와 결과가 달라 near 대체어가 아니다."
   },
   {
    "source_record_id": "w191",
@@ -2449,11 +2449,11 @@
    "relation": {
     "target": "w1271",
     "target_sense": "w1271-s1",
-    "type": "near",
-    "note": "귀를 세우다는 작은 소리에도 주의를 기울여 듣는다는 뜻이라, 주의를 집중하여 소리를 듣는다는 귀를 기울이다와 바꿔 쓸 수 있다.",
+    "type": "association",
+    "note": "귀를 세우다는 작은 소리에도 주의를 곤두세워 듣는다는 뜻이라, 일반적인 집중 청취인 귀를 기울이다에서 더 긴장된 듣기로 이어 찾을 수 있다.",
     "relevance": 5
    },
-   "rationale": "w297-s1: 후보 검토에서 w1271-s1를 near 관계로 판단했다."
+   "rationale": "w297-s1은 주의를 집중해 듣는 일반 동작이고 w1271-s1은 작은 소리에도 곤두선 듣기로 좁으므로, 같은 듣기에서 이어 찾지만 near 대체어가 아니다."
   },
   {
    "source_record_id": "w297",
@@ -2693,11 +2693,9 @@
   "rel-b6eb7fa3831561e1b96d368b": "1867e7541cb53c82639d3afdfdcd811065acb27494b0e66b9d87ab241c43c73b",
   "rel-7bae811d52a0d59e3f078708": "90d4e35a46ba786a024a78a2d0ffcececacaa7037c9131e1681fc7843943e6f4",
   "rel-9bf90ed8dc7611e13042c829": "9ac4fb0560bb2a65b5a08efcc368a27227be514eea764268ed954234468a9227",
-  "rel-d8a11c3a1b95ecb789b61d8d": "e890d2cefaad96e5f6059392d1e4340adc274fdb29e6e8834b1bc41b07b4b4bb",
   "rel-be3b0803118fd48c30855d79": "2ea4788939281cbd501ebac5b985db6762fbce3a2092cad56b8ceceab61f124d",
   "rel-7e52d5e0ea1e0a8074f5c727": "70740f740012684e5617c69b0bb66a2b2c9f2193f1487bd2a53aa32c72ee0e36",
   "rel-00d6cf57b01d68025f14d193": "6ad3fddaafb3d44655c588b7a71d66304daadcc8c31eeb53e715feb9134fe10b",
-  "rel-91c2717e347b8ebc2fa9610f": "60009d868902392f5066801f0dd0c21d310d17012ad383f0dcb937c44230edc1",
   "rel-4dc8d9b7da074e0ca76bd4fb": "39172ad3b5f86add2f05a2f2af4786a8cbda2fcb7aa8c34e195403d713867191",
   "rel-d340dd4c621dff6b6a464377": "99f5d28ef0e74c641f021b403f2f587c22db2cf1f4693db46d6f0cf6c8a24501",
   "rel-7b2f7c55109a8dbf8721abfa": "a88eefc7285def9d4b8a619644cdadf4c2ac61d66d53d0081bad093afb065ed9",
@@ -2707,8 +2705,6 @@
   "rel-a56818ab494ca1bc83cc17d2": "839ebc3d51cbd5f27707c91db741d55c57983bc8173ef1353f889d61d621ecd6",
   "rel-0e47930cc2406536fd2b2a43": "bb7a57889be63eba8dec3c102f4a082cb9faccf4c64314d5a1db8348eff0f207",
   "rel-eefd3aff7571e6d66b5662ac": "636b501ef2ceb7168635370b47851dab3e5ac2b19b2921c1a515f79cdabc43b6",
-  "rel-01cff34034a514a5f21b8446": "c2fad3eace530679f23a9f46c4ed4b698237f1e19c97a06a88c6fefaacbaa2d8",
-  "rel-06f6e10c786d058c1988b96d": "ce2d8039a8282e5b7e671cae0f22822819f05e4c1113b5e51fb765c7f50a3c7f",
   "rel-3fe87f8a08301e964cfa66c5": "d2cad5ceaf4d59cc15d1549741e504d6543dd87022cbba9667ac99cafaed443f",
   "rel-c614a521c7d8eb951f58c044": "ab11852643232e9da7db7b7f7d97fac3ed3bf48db84eaf694be3a58f8fa8ffc2",
   "rel-4f6ffc75c30b8c0fb5d0694f": "f160c043754a68bc44781af1a551fc2c5e63e9e49c561444f096a8c619640498",
@@ -2751,7 +2747,6 @@
   "rel-a54f37b8545b3e2beb0de32f": "2968004f78527f511da50fc1351b88ea65a56ca59fa50dff1667854fd06c8c9a",
   "rel-da7b63e2f8b61381d952accc": "d38f7e25d537354843abfeea734b951a9be9ab42171e01aff89a2646a06446bb",
   "rel-860596360dc958fc07b80d0a": "a6ff1c7bbbe4950a668b9fdb94cf2cebb27e8cb902199aa405d6c9d32aa62a94",
-  "rel-6b1cb83b36c4a1578a64728e": "1ad6c5a176de4d492be0f02d6c2f407ba6cc06274dce4ecae356c902e28d1b36",
   "rel-7d0a42be50276ed3a0ecfee4": "f86fdefe53a31fed01dcc0291d3afabfe6d9539682ff6a0010512ae17b5f261c",
   "rel-5903feb8cc3477c63c33da9d": "ce7cbd088d2689bb80eb618c728d73b1c5991ef13f2d1c13ef34d4308d0f69da",
   "rel-11f65a984c104961c01dc094": "d505ec6d49fd57a3061928cf1d5b286ed0316de4a15f322b0adddee1d542e64a",
@@ -2783,7 +2778,6 @@
   "rel-7f8574e1a7ff3bb17d879bcd": "34f3af8b19ec8e1ec06bd6486caa3165f4bf701dd6190d47e9a2b6882f1fe3c9",
   "rel-7916bbf0e2c3dd0136426479": "a75a0a4871bbb3953f96837f98d44fb49bacb838524d9fa4a002da52b281f5c7",
   "rel-45e9077e5ad8a7e40d07e20c": "c736a48fd45edf47f5e94253492f71e714477537374f4e77b29ff5f63c6b5673",
-  "rel-4c631adfa44bc900437e8a27": "9070da53891c6187dd8964a4e61fa0143092660dc19980092802c356e12c5dfc",
   "rel-bc434f991bfde7cbf3b024d8": "cbb20e59ff08ec4abf46ab00fe5ed470ab553b9e9a0b3cd2fdfe35d627af4ded",
   "rel-f8b534db1a7be43aa3b2e8c0": "c6b18d4f55fa57a5315d2ec724e9aeee489297b36ae49237e94c31bac2f6eaf0",
   "rel-2f9ff42a55f169a2edfec257": "7c50c46e87124e46fff720e6a5e574bf4ea6cc928fcf6d130a416333aa92433f",
@@ -2798,7 +2792,6 @@
   "rel-6d3ec35500fa1eb115ca5e8b": "2968004f78527f511da50fc1351b88ea65a56ca59fa50dff1667854fd06c8c9a",
   "rel-255ea558b18011cfc5f4ee49": "632dd6d934e2018a7821fd0135dbfee9f0ea03cbdc8be358cf3f57cfce5d92bd",
   "rel-c94698c4cdb80a2914f0b0dd": "1c8909a8d8eb27dfb47a1c5a198b471e9f38f2ef0e92e92f9f1b3af388ec51ee",
-  "rel-06287a35d9c7f5c25279ef55": "a14d2ab2749b4f433428cd4e3f64ce24aaf0a395410121ac82ebedfc12f29287",
   "rel-e890d73cf77a5d61e88be8f3": "0450f7d8e0e2f1667648b3546c4012061505d0cfff12889830c5d65aedffb3a2",
   "rel-9fa57bddd55cf1cec30bdc33": "ac08d1c584929c943966fe2a675e10b5cc64d57ae88a443eb628c1fbf3e92d54",
   "rel-93571713ae468cd88eea2ac8": "d52683c3c983db743a944b80653e951a0b84ea9a8d36dd4ed0fd1f9a8ebfafe9",
@@ -2821,7 +2814,6 @@
   "rel-4c690bf6107aac23f03e4299": "8484db6600bd1d09959792516214281336808959a8618cd16c7fe6fee5af55d5",
   "rel-f467d5e23fe497309dcb0f11": "bb9187167ab7604046305c2cfe0993e89711f26a1e2c45feddd4bd60b326ea90",
   "rel-1e1456213821bccfa9b20533": "39f1e6bd76073951f2a39076a1dd7944dd121c118d2f4977202ca4127807d4a0",
-  "rel-b86402f3ebf82af335b9116f": "8b97dd175e144d6cc9bf01cba15c56c1eff89071af18090ac3229b2a628953c5",
   "rel-0a1b41b99a461815d0b2ef39": "731057de30c172a91388131f41f8cb3828d8c4c1632d5755136e83ffaa18655c",
   "rel-d682ada38336c651c858f46c": "ddd112647868ae7e0dd23c38343937ede1df250c8aec6f719013853b0871c7ad",
   "rel-d8cf3ea45c7e3afd878bb544": "bebe0c353f2f059b603d11b142df98823cd413040c8c0fb3ed49b020e0474b4e",
@@ -2866,7 +2858,6 @@
   "rel-b1d4668c124d201a255c4103": "9963b794fd2b05e31894c344db668fe5bb371c02101f95a8923e40bfbd3b5bcb",
   "rel-d07d580d6daf2eba1bc502f6": "b751607e25cdffdc017084e606b79f981c3b771057c04b7f25c1bd021f404da6",
   "rel-5e0c9fada80ad68cd9d7a682": "4e650abe7fcc8430321469ec2951b0aaf16da2f4921687474a4412b4d1c44826",
-  "rel-e33620e624df8f0816c6a909": "b7b6a56f9cf64d2c35bd094cb89b3c990ddc2aa480cdf3ee44070459e041ab4b",
   "rel-01883704ef41ce1e8aaf5a3c": "81a5c40e744daaba6f2561a3c082fa7b0676afbead78c298a30ea20d1ba20c23",
   "rel-965ecf2a39ab74c6ab342eec": "78eaefee6095f831475e283b7279a3d25709fc4edfea12416685cb396eb042e4",
   "rel-567f928fb52c126a9eeeb24f": "6f48a0fbdc22cd4e4e58285f9223831bf2be44ebf5622814cbffd5c5de1433f9",
@@ -2883,6 +2874,15 @@
   "rel-27117d89589330bbab9db4b4": "6995f0a7863a699ed2ef74d74b662303cefd3d1ad7170036490330f2f0372244",
   "rel-a3e39a8cec01b732a961ade3": "688498f851f364ee2f126eea73594ec4da76867683d6355f3ae78ee46caaa17e",
   "rel-f03fbe5254f1531960b1b470": "5f2f7074db0d7cd535984b8ea8816e80a3e1a8936e2496aebcd278cd7f55566c",
-  "rel-a1170476eb04b8583d855f62": "36c1b99dcbe5bd8d2e42cf778448c9cf62ae153ad1e55be7e262fb2bb99acf4f"
+  "rel-a1170476eb04b8583d855f62": "36c1b99dcbe5bd8d2e42cf778448c9cf62ae153ad1e55be7e262fb2bb99acf4f",
+  "rel-79e8bc238238247c5cef0d3e": "c2fad3eace530679f23a9f46c4ed4b698237f1e19c97a06a88c6fefaacbaa2d8",
+  "rel-70a1b40890c8768ef892cf5f": "ce2d8039a8282e5b7e671cae0f22822819f05e4c1113b5e51fb765c7f50a3c7f",
+  "rel-0a1e60882af6d68dbc5d4916": "8b97dd175e144d6cc9bf01cba15c56c1eff89071af18090ac3229b2a628953c5",
+  "rel-b0eb1d4cf5e12fedebd1832e": "a14d2ab2749b4f433428cd4e3f64ce24aaf0a395410121ac82ebedfc12f29287",
+  "rel-ee1a186e74b338368b7b60bc": "1ad6c5a176de4d492be0f02d6c2f407ba6cc06274dce4ecae356c902e28d1b36",
+  "rel-3ac150e5f12155eebaaa2d8c": "e890d2cefaad96e5f6059392d1e4340adc274fdb29e6e8834b1bc41b07b4b4bb",
+  "rel-010839547c83491615d268d9": "60009d868902392f5066801f0dd0c21d310d17012ad383f0dcb937c44230edc1",
+  "rel-faf8ff93ca58e4ccd3725382": "b7b6a56f9cf64d2c35bd094cb89b3c990ddc2aa480cdf3ee44070459e041ab4b",
+  "rel-f9433755ff96b4c4954f6ab1": "9070da53891c6187dd8964a4e61fa0143092660dc19980092802c356e12c5dfc"
  }
 }
