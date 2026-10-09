@@ -13,7 +13,7 @@ import { buildStage3SemanticAuthority } from '../scripts/factory/semantic-author
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import {
   buildSemanticAuditFromDecisionSource, canonicalRecordsBeforeFactoryAdmissions, inspectSenseBoundaryPairs,
-  isAdditiveFactoryAmendment, readAuthoredBatchDecisionSources, sha256Json,
+  isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, relationAmendmentFollowsDigest, sha256Json,
 } from '../scripts/validate/semantic-audit.mjs';
 import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 
@@ -334,4 +334,22 @@ test('two admitted decisions proposing one tuple: first appends, second is an id
   const flipped = (mutate) => { const copy = structuredClone(manifest); mutate(copy.admission.relation_amendments); return validateStage3AdmissionManifest(copy, decisions, byId).join('\n'); };
   assert.match(flipped((list) => { list[1].outcome = 'appended'; }), /outcome does not match|added_relation_ids differ/u);
   assert.match(flipped((list) => { list[0].outcome = 'already_present'; }), /outcome does not match|added_relation_ids differ/u);
+});
+
+test('a relation-only amendment continues a correction digest recorded before relation relevance existed', () => {
+  const baseRelation = { target: 'w00009', target_sense: 'w00009-s1', type: 'association', note: '이어 찾을 수 있다.', relevance: 4 };
+  const addedRelation = { target: 'w00010', target_sense: 'w00010-s1', type: 'near', note: '가깝게 쓸 수 있다.', relevance: 5 };
+  const base = { ...source(), senses: [{ ...source().senses[0], relations: [baseRelation] }, source().senses[1]] };
+  const current = { ...base, senses: [{ ...base.senses[0], relations: [baseRelation, addedRelation] }, base.senses[1]] };
+  const change = { entry_id: base.id, operation: 'append_relations', before_sha256: sha256Json(base), after_sha256: sha256Json(current) };
+  const events = [{ relation_amendments: [{ source_record_id: base.id, source_sense_id: 'w00001-s1', relation: addedRelation, outcome: 'appended' }] }];
+  const correctionDigest = preRelevanceRecordSha256(base);
+  assert.notEqual(correctionDigest, change.before_sha256, 'the correction digest predates relevance, so exact equality cannot link it');
+  assert.equal(relationAmendmentFollowsDigest(current, events, change, correctionDigest), true);
+  // The same amendment must not continue an unrelated correction, a rewritten base, or a non-relation operation.
+  assert.equal(relationAmendmentFollowsDigest(current, events, change, 'b'.repeat(64)), false);
+  assert.equal(relationAmendmentFollowsDigest(current, events, { ...change, before_sha256: 'c'.repeat(64) }, correctionDigest), false);
+  assert.equal(relationAmendmentFollowsDigest(current, events, { ...change, operation: 'append_senses' }, correctionDigest), false);
+  const rewritten = { ...current, senses: [{ ...current.senses[0], gloss: '다른 뜻이다.' }, current.senses[1]] };
+  assert.equal(relationAmendmentFollowsDigest(rewritten, events, change, correctionDigest), false);
 });

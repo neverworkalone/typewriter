@@ -259,6 +259,30 @@ function matchesHistoricalRecordDigest(record, digest, hashCache) {
     || preRelevanceRecordSha256(record) === digest;
 }
 
+/**
+ * A correction digest recorded before exploratory relations gained `relevance` binds the record without that field,
+ * while a later relation-only amendment records the full digest of the record it amended. The amendment continues
+ * the correction when undoing it (and every later amendment) from the current record yields a base whose full
+ * digest is the amendment's before digest and whose pre-relevance projection is the correction's digest.
+ */
+export function relationAmendmentFollowsDigest(record, events, change, expectedDigest) {
+  if (change.operation !== 'append_relations') return false;
+  const added = events.flatMap((event) => (event.relation_amendments ?? [])
+    .filter((item) => item.source_record_id === record.id && item.outcome === 'appended')
+    .map((item) => ({ senseId: item.source_sense_id, relation: JSON.stringify(item.relation) })));
+  const base = {
+    ...record,
+    senses: (record.senses ?? []).map((sense) => {
+      const mine = added.filter((item) => item.senseId === sense.id).map((item) => item.relation);
+      if (!mine.length) return sense;
+      const kept = (sense.relations ?? []).filter((relation) => !mine.includes(JSON.stringify(relation)));
+      const { relations, ...rest } = sense;
+      return kept.length ? { ...rest, relations: kept } : rest;
+    }),
+  };
+  return sha256Json(base) === change.before_sha256 && preRelevanceRecordSha256(base) === expectedDigest;
+}
+
 const CANONICAL_AUDIT_CACHE_TOKEN = Symbol('canonical-audit-cache');
 
 export function createCanonicalAuditCache(recordInfos) {
@@ -2005,10 +2029,11 @@ function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache, f
     const record = recordsById.get(recordId);
     const lastCorrection = recordHistory.at(-1);
     let expectedCurrentDigest = lastCorrection.after_record_sha256;
-    for (const event of factoryAdmissions) {
+    for (const [eventIndex, event] of factoryAdmissions.entries()) {
       for (const change of event.changes ?? []) {
         if (change.entry_id === recordId && change.operation !== 'create'
-          && change.before_sha256 === expectedCurrentDigest) {
+          && (change.before_sha256 === expectedCurrentDigest
+            || relationAmendmentFollowsDigest(record, factoryAdmissions.slice(eventIndex), change, expectedCurrentDigest))) {
           expectedCurrentDigest = change.after_sha256;
         }
       }
@@ -2547,6 +2572,7 @@ export function validateSemanticAuditCoverage(
     requireDecisionSource = true,
     requireTopicAnalysis = true,
     hashCache,
+    factoryAdmissions = [],
   } = {},
 ) {
   requireObject(artifact, label);
@@ -2583,6 +2609,7 @@ export function validateSemanticAuditCoverage(
     requireDecisionSource,
     requireTopicAnalysis,
     hashCache,
+    factoryAdmissions,
   });
   if (coverage.source.canonical_records_sha256 !== review.source.canonical_records_sha256) {
     fail(`${label} coverage and review source digests differ`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
@@ -2760,7 +2787,7 @@ export async function validateCanonicalSemanticAudit(
   auditPath,
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
 ) {
-  const { canonical, artifact } = await buildCanonicalSemanticAudit({
+  const { canonical, artifact, decisionSource } = await buildCanonicalSemanticAudit({
     canonicalDirectory: directory,
     decisionSourcePath,
   });
@@ -2774,6 +2801,7 @@ export async function validateCanonicalSemanticAudit(
   }
   return validateSemanticAuditCoverage(canonical.records, artifact, {
     baseRecords: canonical.records,
+    factoryAdmissions: decisionSource?.factory_admissions ?? [],
   });
 }
 
