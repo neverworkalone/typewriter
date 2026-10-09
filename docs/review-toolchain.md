@@ -22,11 +22,13 @@ the check itself is still valid.
 Validator changes must include evidence that known-invalid input fails and
 valid input passes.
 
-Otherwise, a passing deterministic check is sufficient evidence for the
-property it covers. CI success proves **only its tested properties**: Stage 2
-must not assert that unrun native, corpus, visual or other manual checks passed.
-Read passing CI logs when the workflow, validator, fixture or expected behavior
-changed, or when source code contradicts a claimed result. A status badge
+A deterministic check can establish only the property it actually covers.
+**Stage 2 evaluates validation source, design and test adequacy without inspecting,
+retrieving or waiting for CI status/logs**; it must not claim unrun native,
+corpus, visual or other manual checks passed. **Stage 3 alone verifies required
+exact-HEAD CI**. CI success proves only its tested properties; Stage 3 must read
+passing CI logs when the workflow, validator, fixture or expected behavior
+changed, or when source code contradicts a claimed result. A green badge
 alone cannot establish the adequacy of newly changed validation.
 
 For lexical validators and regression tests:
@@ -43,9 +45,12 @@ For lexical validators and regression tests:
 ## PR workflow / exact-HEAD CI classification
 
 `.github/workflows/ci.yml` runs on `pull_request`, not post-merge `master`
-pushes. Stage 2 checks the **complete changed-path list and actual
-successful exact-HEAD workflow result**, including the summary of any skip;
-Stage 3 verifies that gate, while Stage 1 never checks or waits for CI.
+pushes. **Stage 3 exclusively owns the CI gate**: check the complete changed-path
+list and actual successful **exact-HEAD** workflow result, including the summary
+of any authorized skip. **Stages 1 and 2 never inspect, retrieve or wait for CI
+status, workflow runs or logs**; their `+1`/`+2` do not assert CI success.
+Pending CI means Stage 3 waits and rechecks without requesting another `+2`;
+failed, missing, stale or incorrectly skipped CI blocks merge.
 
 1. **Documentation-only:** every changed path must be beneath `docs/**`
    (including non-Markdown files) or exactly `README.md` or `REVIEW.md`.
