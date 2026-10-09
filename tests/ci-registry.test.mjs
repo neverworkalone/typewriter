@@ -611,10 +611,10 @@ test('ci:historical requires one valid scope and selects only matching manual re
   );
 });
 
-test('Deep CI Gate runs exact-head ci:all for Deep contracts and fails closed on unknown path evidence', async () => {
+test('Deep coverage selects exact-head ci:all inside the existing PR check and fails closed on unknown paths', async () => {
   for (const pathValue of [
     '.github/workflows/deep.yml',
-    '.github/workflows/deep-gate.yml',
+    '.github/workflows/ci.yml',
     'scripts/ci/run-category.mjs',
     'scripts/factory/admission.mjs',
     'scripts/relation/backfill-queue.mjs',
@@ -682,15 +682,20 @@ test('Deep CI Gate runs exact-head ci:all for Deep contracts and fails closed on
   );
 
   const workflow = await readFile(
-    path.resolve(TEST_DIRECTORY, '../.github/workflows/deep-gate.yml'),
+    path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'),
     'utf8',
   );
-  assert.match(workflow, /^name: Deep CI Gate$/mu);
-  assert.match(workflow, /^  pull_request:$/mu);
-  assert.match(workflow, /classifyDeepGatePaths|scripts\/ci\/deep-gate\.mjs/u);
+  assert.match(workflow, /^name: CI$/mu);
+  assert.match(workflow, /^  validate:$/mu);
+  assert.match(workflow, /name: Classify changed files/u);
+  assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u);
+  assert.match(workflow, /continue-on-error: true/u);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
   assert.match(workflow, /pnpm run ci:all/u);
-  assert.match(workflow, /needs\.classify\.result != 'success'/u);
+  assert.match(workflow, /steps\.changes\.outcome != 'success'/u);
+  assert.match(workflow, /steps\.changes\.outputs\.run_deep == 'true'/u);
+  assert.doesNotMatch(workflow, /name: Classify Deep coverage/u);
+  assert.doesNotMatch(workflow, /^  classify:$/mu);
 });
 
 
@@ -699,18 +704,15 @@ test('Deep CI Gate runs exact-head ci:all for Deep contracts and fails closed on
 test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate gate', async (t) => {
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   const block = workflow.split('      - name: Classify changed files\n')[1]
-    ?.split('      - name: Set up pnpm\n')[0];
-  assert.ok(block, 'workflow must classify PR changes before pnpm and Node setup');
-  const script = block.split('        run: |\n')[1]
+    ?.split('      - name: Install pinned dependencies\n')[0];
+  assert.ok(block, 'workflow must classify PR changes before validation');
+  const scriptBlock = block.split('\n          # The Deep path decision stays inside this PR check; it is not a separate check run.\n')[0];
+  const script = scriptBlock.split('        run: |\n')[1]
     ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
-  assert.equal(
-    (workflow.match(/if: steps\.changes\.outputs\.run_level != 'none'/gu) ?? []).length,
-    3,
-    'pnpm setup, Node setup and install must run for candidate and normal PRs',
-  );
-  assert.match(workflow, /if: steps\.changes\.outputs\.run_level == 'candidates'\n\s+run: pnpm run ci:candidates/u);
-  assert.match(workflow, /if: steps\.changes\.outputs\.run_level == 'normal'\n\s+run: pnpm run ci:normal/u);
+  assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u, 'Deep classification must run inside the existing classifier step');
+  assert.match(workflow, /if: \$\{\{ steps\.changes\.outcome == 'success' && steps\.changes\.outputs\.run_level == 'candidates'/u);
+  assert.match(workflow, /if: \$\{\{ steps\.changes\.outcome == 'success' && steps\.changes\.outputs\.run_level == 'normal'/u);
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -751,9 +753,9 @@ test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate g
     });
     assert.equal(await readFile(output, 'utf8'), `run_level=${expectedLevel}\n`, name);
     const expectedSummary = {
-      none: /Documentation-only PR: CI checks intentionally skipped/u,
-      candidates: /Stage 1 candidate-only PR: running ci:candidates/u,
-      normal: /Full ci:normal required/u,
+      none: /Changed-path classification: none/u,
+      candidates: /Changed-path classification: candidates/u,
+      normal: /Changed-path classification: normal/u,
     };
     assert.match(await readFile(summary, 'utf8'), expectedSummary[expectedLevel], name);
   };
@@ -827,9 +829,10 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
     path.resolve(TEST_DIRECTORY, '../.github/workflows/deep.yml'),
     'utf8',
   );
-  const deepGateWorkflow = await readFile(
-    path.resolve(TEST_DIRECTORY, '../.github/workflows/deep-gate.yml'),
-    'utf8',
+  await assert.rejects(
+    readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/deep-gate.yml')),
+    { code: 'ENOENT' },
+    'Deep coverage must not publish a separate PR check workflow',
   );
   const pagesWorkflow = await readFile(
     path.resolve(TEST_DIRECTORY, '../.github/workflows/pages.yml'),
@@ -849,6 +852,14 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /name: Normal validation \(fast checkpoint \+ continuation\)/u);
   assert.match(workflow, /run: pnpm run ci:normal/u);
   assert.equal((workflow.match(/run: pnpm run ci:normal/gu) ?? []).length, 1);
+  assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u);
+  assert.match(workflow, /name: Deep validation \(Normal \+ current Deep\)/u);
+  assert.match(workflow, /run: pnpm run ci:all/u);
+  assert.match(workflow, /steps\.changes\.outcome != 'success'/u);
+  assert.match(workflow, /steps\.changes\.outputs\.run_deep == 'true'/u);
+  assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
+  assert.doesNotMatch(workflow, /name: Classify Deep coverage/u);
+  assert.doesNotMatch(workflow, /^  classify:$/mu);
   assert.match(workflow, /runs-on: ubuntu-24\.04/u);
   assert.match(workflow, /actions\/checkout@v7/u);
   assert.match(workflow, /actions\/setup-node@v7/u);
@@ -860,7 +871,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.doesNotMatch(workflow, /run: pnpm run ci:fast/u);
   assert.equal(packageJson.scripts['ci:candidates'], 'node scripts/ci/run-category.mjs candidates');
   assert.equal(packageJson.scripts['ci:historical'], 'node scripts/ci/run-category.mjs historical');
-  assert.doesNotMatch(workflow, /pnpm run ci:all/u);
+  assert.equal((workflow.match(/run: pnpm run ci:all/gu) ?? []).length, 1);
 
   assert.match(deepWorkflow, /^name: Deep CI$/mu);
   assert.match(deepWorkflow, /schedule:\n\s+- cron: '0 22 \* \* 0'/u);
@@ -876,13 +887,6 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(deepWorkflow, /node-version: 24\.x/u);
   assert.match(deepWorkflow, /ref: \$\{\{ github\.sha \}\}/u);
   assert.doesNotMatch(deepWorkflow, /pull_request:/u);
-
-  assert.match(deepGateWorkflow, /^name: Deep CI Gate$/mu);
-  assert.match(deepGateWorkflow, /^  pull_request:$/mu);
-  assert.match(deepGateWorkflow, /scripts\/ci\/deep-gate\.mjs/u);
-  assert.match(deepGateWorkflow, /needs\.classify\.result != 'success'/u);
-  assert.match(deepGateWorkflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
-  assert.match(deepGateWorkflow, /run: pnpm run ci:all/u);
 
   const pagesEvents = pagesWorkflow.split('\non:\n')[1]?.split('\npermissions:\n')[0]?.trim();
   assert.equal(pagesEvents, 'push:\n    branches:\n      - master');

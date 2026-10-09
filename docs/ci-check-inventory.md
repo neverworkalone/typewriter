@@ -13,7 +13,9 @@ documentation and product files are an exact allowlist in
 [`scripts/ci/deep-gate-known-non-deep-paths.json`](../scripts/ci/deep-gate-known-non-deep-paths.json);
 pure Stage 1 candidate skips are limited to `manifest.json` and `candidates.jsonl`
 at the candidate directory root when no Deep check registers that input. Any
-unlisted path runs Deep.
+unlisted path runs Deep. The Deep decision and any resulting `ci:all` run live
+inside the existing `Validate and test Typewriter` PR check; classification
+does not publish a separate status check.
 
 ## Classification
 

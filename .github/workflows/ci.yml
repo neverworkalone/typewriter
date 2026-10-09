@@ -15,10 +15,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: pnpm
 
       - name: Classify changed files
         id: changes
+        continue-on-error: true
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -60,31 +71,35 @@ jobs:
           fi
 
           echo "run_level=$run_level" >> "$GITHUB_OUTPUT"
-          case "$run_level" in
-            none) echo "Documentation-only PR: CI checks intentionally skipped." >> "$GITHUB_STEP_SUMMARY" ;;
-            candidates) echo "Stage 1 candidate-only PR: running ci:candidates." >> "$GITHUB_STEP_SUMMARY" ;;
-            normal) echo "Full ci:normal required for this PR." >> "$GITHUB_STEP_SUMMARY" ;;
-          esac
-
-      - name: Set up pnpm
-        if: steps.changes.outputs.run_level != 'none'
-        uses: pnpm/action-setup@v6
-
-      - name: Set up Node.js
-        if: steps.changes.outputs.run_level != 'none'
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.x
-          cache: pnpm
+          echo "Changed-path classification: $run_level." >> "$GITHUB_STEP_SUMMARY"
+          # The Deep path decision stays inside this PR check; it is not a separate check run.
+          if ! node scripts/ci/deep-gate.mjs "$BASE_SHA" "$HEAD_SHA"; then
+            echo "Deep path classification failed; running ci:all fail-closed." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          run_deep="$(sed -n 's/^run_deep=//p' "$GITHUB_OUTPUT" | tail -n 1)"
+          if [[ "$run_deep" == true ]]; then
+            echo "Running exact-head ci:all (Normal + current Deep) inside this PR check." >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$run_level" == none ]]; then
+            echo "Documentation-only PR: ci:normal skipped; no Deep input changed." >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$run_level" == candidates ]]; then
+            echo "Pure Stage 1 candidate artifacts: running ci:candidates." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Ordinary PR changes: running ci:normal." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Install pinned dependencies
-        if: steps.changes.outputs.run_level != 'none'
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Candidate validation (Stage 1 artifacts only)
-        if: steps.changes.outputs.run_level == 'candidates'
+        if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'candidates' && steps.changes.outputs.run_deep != 'true' }}
         run: pnpm run ci:candidates
 
       - name: Normal validation (fast checkpoint + continuation)
-        if: steps.changes.outputs.run_level == 'normal'
+        if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'normal' && steps.changes.outputs.run_deep != 'true' }}
         run: pnpm run ci:normal
+
+      - name: Deep validation (Normal + current Deep)
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_deep == 'true' }}
+        run: pnpm run ci:all

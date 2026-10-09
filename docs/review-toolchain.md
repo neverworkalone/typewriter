@@ -77,13 +77,14 @@ gate.
 When Deep workflow/Deep contracts change, require **successful exact-HEAD
 Deep** evidence; a scheduled run on another SHA, a skipped Deep gate or
 ordinary green Normal cannot substitute. At this document's #469 baseline,
-#464 rollout PR #470 adds scoped `ci:historical` and an exact-HEAD
-`Deep CI Gate`. Verify the actual workflow and registry on the PR HEAD before
-selecting the required Deep evidence. The Deep Gate derives data inputs from
-Deep check registry metadata. It skips only exact known non-Deep files and
-recognized Stage 1 artifacts without Deep consumers; unknown or unclassifiable
-paths trigger `ci:all`, and a classifier failure also runs validation. No new
-CI gates are invented by this review policy.
+#464 rollout PR #470 adds scoped `ci:historical` and exact-HEAD Deep selection.
+The existing `Validate and test Typewriter` PR check performs the path
+classification; when Deep is required, that same check runs `ci:all`. The
+classifier does not publish a separate PR check. Deep data inputs come from
+Deep check registry metadata. The classifier skips only exact known non-Deep
+files and recognized Stage 1 artifacts without Deep consumers; unknown or
+unclassifiable paths trigger `ci:all`, and a classifier failure also runs
+validation. No new CI gates are invented by this review policy.
 
 ## Canonical and CI architecture changes
 
