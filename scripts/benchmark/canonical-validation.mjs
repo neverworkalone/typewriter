@@ -208,13 +208,22 @@ const BENCHMARK_PAIRWISE_TEMPLATES = [
   },
 ];
 
+// The live authority stores records changed by a Stage 3 admission or a relation backfill with inline review text, while
+// untouched records reference shared rationale templates by code. The benchmark borrows template codes, so it must start
+// from a record that actually carries them instead of whichever record sorts first.
+export function pickCodedTemplateRecord(records) {
+  const coded = (record) => record.boundary_review?.evidence?.some((item) => item.evidence_basis_code && item.rationale_code)
+    && record.boundary_review?.rationale_code;
+  return records.find(coded) ?? records.find((record) => record.boundary_review);
+}
+
 function createSyntheticDecisionSource(recordInfos, template, scale, hashCache) {
   const records = recordInfos.map(recordOf);
   const canonicalDigest = hashCache?.canonicalDigest ?? canonicalRecordsSha256(recordInfos);
   const sourceId = `synthetic-canonical-benchmark-${scale}`;
   const templateReview = template.authored_review;
   const templatePass = templateReview.review_pass;
-  const templateRecord = templateReview.records.find((record) => record.boundary_review);
+  const templateRecord = pickCodedTemplateRecord(templateReview.records);
   const templatePairwiseRecord = templateReview.records.find(
     (record) => record.boundary_review?.pairwise?.length > 0,
   );

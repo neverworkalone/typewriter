@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   benchmarkCanonicalValidation,
+  pickCodedTemplateRecord,
   createSyntheticBenchmarkRecord,
   runBenchmarkCli,
 } from '../scripts/benchmark/canonical-validation.mjs';
@@ -721,4 +722,14 @@ test('synthetic benchmark decision source passes the shared semantic audit again
   assert.equal(report.results.length, 1);
   assert.equal(report.results[0].failure_stage, null);
   assert.equal(report.results[0].error, null);
+});
+
+test('the synthetic decision source borrows rationale codes from a coded record even when an inline-text record sorts first', () => {
+  // Records changed by a Stage 3 admission or a relation backfill carry inline review text; only untouched records
+  // reference shared rationale templates by code.
+  const inline = { record_id: 'a1', boundary_review: { evidence: [{ sense_id: 'a1-s1', evidence_basis: 'text', rationale: 'text' }], rationale: 'text' } };
+  const coded = { record_id: 'b1', boundary_review: { evidence: [{ sense_id: 'b1-s1', evidence_basis_code: 'reason-1', rationale_code: 'reason-2' }], rationale_code: 'reason-3' } };
+  assert.equal(pickCodedTemplateRecord([inline, coded]), coded);
+  assert.equal(pickCodedTemplateRecord([coded, inline]), coded);
+  assert.equal(pickCodedTemplateRecord([inline]), inline);
 });
