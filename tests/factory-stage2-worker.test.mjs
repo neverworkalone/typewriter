@@ -9,6 +9,7 @@ import { createInteractiveStage2Callbacks, runStage2Cli } from '../scripts/facto
 import {
   Stage2WorkerError,
   claimNextStage2Batch,
+  createGitRepository,
   eligibleBatches,
   loadFactorySnapshot,
   releaseClaimAfterMerge,
@@ -590,4 +591,21 @@ test('only a genuine Stage 2 tracking Issue is prior-issue evidence; a bare clai
   prior.issues.push({ number: 9, state: 'open', ...genuine });
   await assert.rejects(runClaim(prior, snapshotGit({ C000001: candidateArtifacts('C000001') })), /owner-directed recovery/u);
   assert.equal(prior.refs.has(claimRef), true);
+});
+
+test('the production Git adapter and snapshot loader accept the committed relation backfill packets and still fail closed on a missing or altered one', async () => {
+  // A semantic-authority backfill event is bound to its committed packet file (#446). The real tracked data goes through the
+  // real `createGitRepository` adapter, so a path the adapter does not list (or the loader does not stage) is caught here.
+  const root = new URL('..', import.meta.url).pathname;
+  const git = createGitRepository({ root });
+  const packets = git.listFiles('HEAD').filter((file) => /^data\/relation-backfill\/R\d{6}\.json$/u.test(file));
+  assert.ok(packets.length >= 1, 'the production adapter lists the committed relation backfill packets');
+  const snapshot = await loadFactorySnapshot({ git, headSha: 'HEAD' });
+  assert.equal(snapshot.validated, true);
+
+  const withoutPacket = { ...git, listFiles: (ref) => git.listFiles(ref).filter((file) => file !== packets[0]) };
+  await assert.rejects(loadFactorySnapshot({ git: withoutPacket, headSha: 'HEAD' }), /has no committed packet file/u);
+
+  const alteredPacket = { ...git, show: (ref, file) => (file === packets[0] ? git.show(ref, file) + ' ' : git.show(ref, file)) };
+  await assert.rejects(loadFactorySnapshot({ git: alteredPacket, headSha: 'HEAD' }), /does not match its semantic authority event digest/u);
 });
