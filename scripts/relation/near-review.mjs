@@ -15,6 +15,23 @@ const sense = (index, id) => {
   return entry ? { sense_id: id, lemma: entry.lemma, pos: entry.pos, gloss: entry.gloss } : { sense_id: id, missing: true };
 };
 
+// Content words that only one of the two glosses contains. It is a rough surface comparison (whitespace tokens with a
+// trailing particle removed; words that share their first two syllables count as the same word), meant to make an added
+// or missing qualifier easy to see. The glosses decide, not this.
+const TRAILING_PARTICLE = /(으로|에서|이나|이며|에는|이|가|은|는|을|를|의|에|로|와|과|도|고|며|서|나)$/u;
+const contentWords = (text) => [...new Set(String(text ?? '').split(/[^0-9A-Za-z가-힣]+/u).filter(Boolean)
+  .map((word) => { const stem = word.replace(TRAILING_PARTICLE, ''); return stem.length >= 2 ? stem : word; })
+  .filter((word) => word.length >= 2))];
+const sharesStem = (word, others) => others.some((other) => other.slice(0, 2) === word.slice(0, 2));
+export function glossDelta(sourceGloss, targetGloss) {
+  const source = contentWords(sourceGloss);
+  const target = contentWords(targetGloss);
+  return {
+    only_in_source: source.filter((word) => !sharesStem(word, target)),
+    only_in_target: target.filter((word) => !sharesStem(word, source)),
+  };
+}
+
 /**
  * `tuples` are `{ source_sense_id, target_sense, type, note? }`. Links already in canonical are read from the index;
  * the other tuples of the same input count as siblings too, so a packet can be read before it is applied.
@@ -42,6 +59,7 @@ export function nearReviewEvidence(index, tuples) {
       source: sense(index, tuple.source_sense_id),
       target: sense(index, tuple.target_sense),
       note: tuple.note ?? null,
+      gloss_delta: glossDelta(index.bySenseId.get(tuple.source_sense_id)?.gloss, index.bySenseId.get(tuple.target_sense)?.gloss),
       reverse: reverse ? { type: reverse.type, note: reverse.note } : null,
       siblings,
     };
@@ -54,6 +72,8 @@ export function renderNearReview(evidence) {
     `${item.source.sense_id} → ${item.target.sense_id}`,
     `  source : ${line(item.source)}`,
     `  target : ${line(item.target)}`,
+    `  only in source gloss: ${item.gloss_delta.only_in_source.join(' ') || '-'}`,
+    `  only in target gloss: ${item.gloss_delta.only_in_target.join(' ') || '-'}`,
     `  note   : ${item.note ?? 'none'}`,
     `  reverse: ${item.reverse ? `${item.reverse.type} — ${item.reverse.note ?? ''}` : 'none'}`,
     ...item.siblings.flatMap((sibling) => [

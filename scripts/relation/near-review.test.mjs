@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
-import { nearReviewEvidence, renderNearReview, tuplesFromPacket } from './near-review.mjs';
+import { glossDelta, nearReviewEvidence, renderNearReview, tuplesFromPacket } from './near-review.mjs';
 
 // The evidence is read from the real canonical, because it only helps if it shows what a reviewer would have needed to see.
 
@@ -54,4 +54,16 @@ test('a packet is read as tuples and rendered as text without any verdict', () =
   const resonance = nearReviewEvidence(index, tuples)[0].siblings.find((sibling) => sibling.sense_id === 'w087-s1');
   assert.ok(resonance.note.length > 0);
   assert.ok(text.includes(`note: ${resonance.note}`), 'the sibling note is rendered');
+});
+
+test('the gloss delta shows the qualifier one gloss adds, so a wider or narrower target is visible', () => {
+  // 단정하다 (차림새·모습) to 말끔하다 (더러움 없이 깨끗하고 단정): the target adds cleanliness the source never names.
+  const [wide] = nearReviewEvidence(index, [near('w310-s1', 'w663-s1')]);
+  assert.ok(wide.gloss_delta.only_in_target.includes('더러움'), 'the added qualifier is listed');
+  assert.ok(wide.gloss_delta.only_in_source.includes('차림새'), 'the qualifier only the source has is listed');
+  // Equal glosses show no difference, so a genuinely same-extent pair is not made to look suspicious.
+  const [same] = nearReviewEvidence(index, [near('w10010-s1', 'w9799-s1')]);
+  assert.deepEqual(same.gloss_delta, { only_in_source: [], only_in_target: [] });
+  assert.deepEqual(glossDelta('', undefined), { only_in_source: [], only_in_target: [] });
+  assert.match(renderNearReview([wide]), /only in target gloss: .*더러움/u);
 });

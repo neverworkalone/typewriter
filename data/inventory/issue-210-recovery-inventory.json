@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "f31775ac891ad6d7c5bafcf4b13a23297c449b8d511ee16555a31b7777267013",
+    "current_canonical_revision": "01c20b1aa776c5a12c86bf68fc14495bb48b111bfb7307d654c353b7d9eb663b",
     "source_manifest": [
       {
         "path": "AGENTS.md",
@@ -568,8 +568,8 @@
       },
       {
         "path": "data/canonical/issue-222-m9-d-corpus-batch-03.jsonl",
-        "sha256": "63cc3909ba0faa8a624b1aa47055951384aa48c62201394050e3165982911347",
-        "byte_count": 91335
+        "sha256": "cc1fe7619f3ebead2c1dccbeff992b5052403ebf975755c07bdc038e5efc3497",
+        "byte_count": 91423
       },
       {
         "path": "data/canonical/issue-222-m9-d-corpus-batch-04.jsonl",
@@ -678,8 +678,8 @@
       },
       {
         "path": "data/canonical/m5-10-wave-a.jsonl",
-        "sha256": "a483950ee5929739905d1108b00cb4b84fe5b1743bc74aba48f84ffe73328475",
-        "byte_count": 18137
+        "sha256": "e2097b09c5a15994a7e90dc89140b97f474be91324645f75485ae9d8f0846812",
+        "byte_count": 18219
       },
       {
         "path": "data/canonical/m5-10-wave-b.jsonl",
@@ -693,8 +693,8 @@
       },
       {
         "path": "data/canonical/m5-11-expansion.jsonl",
-        "sha256": "15f67e3b1dd85996207e8c7411e7a42c0d3f29cf51cc62e45ce2e47f2f52bf25",
-        "byte_count": 147552
+        "sha256": "5cfd383cd6fbf5f80a6ae18d6daa71db563048399870cac931e7d01da12de1ac",
+        "byte_count": 147892
       },
       {
         "path": "data/canonical/m5-12a-expansion.jsonl",
@@ -703,8 +703,8 @@
       },
       {
         "path": "data/canonical/m5-13-expansion.jsonl",
-        "sha256": "076b122dd08ab8b6891e40d843503132f0249e682cd5f3ef23622958970d0545",
-        "byte_count": 291121
+        "sha256": "25662d8d280fae4358e20bb00a29cf0364d3daaa2a13f29413bc487494465afd",
+        "byte_count": 291380
       },
       {
         "path": "data/canonical/m5-14-expansion.jsonl",
@@ -718,8 +718,8 @@
       },
       {
         "path": "data/canonical/m5-3-calibration.jsonl",
-        "sha256": "8d10c7edfae8a71cea1e91a7291864922eeec2f8fb8c9b9d4d954b5c7bf766b0",
-        "byte_count": 67397
+        "sha256": "7cfe37ebd78e9444820564d2db9b00de782a3892955bceb56ec71fd69d06b460",
+        "byte_count": 67584
       },
       {
         "path": "data/canonical/m5-5-recalibration.jsonl",
@@ -733,13 +733,13 @@
       },
       {
         "path": "data/canonical/m5-9-expansion.jsonl",
-        "sha256": "5ef9bec699c262fcfba808472f2103fcde5fae730d7182877438b9a6ee9cc272",
-        "byte_count": 41572
+        "sha256": "4d3519a998071ba08b044e41287398cb2efc40176b515d71739a03c2b671a7b3",
+        "byte_count": 41714
       },
       {
         "path": "data/canonical/pilot.jsonl",
-        "sha256": "db340cd7539454e8a6cac04dd37fb27054fe46fc145de1953756bab16c767af6",
-        "byte_count": 336842
+        "sha256": "54e6d0b1dc261b67f2b9c092158ecc4cd38f76fc6c4d90824c9a637bf2bd4dd5",
+        "byte_count": 337662
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
@@ -753,17 +753,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "f24019acaa87facbb8b60847479dca61eb4c1afd02bc550fb43b261b97f59112",
-        "byte_count": 15745482
+        "sha256": "0d554511bc339942c01db444014f38c192a6a88eba4a44cb3a17b31a24dc2b21",
+        "byte_count": 15747561
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "1b47c26176439d57647461907234a8f431214b9a30d256c6ea3b4203f9be8b89",
+        "sha256": "65f41f18323386000ad5c3fab151b3e314bc1c0c82c169eef2560a19b535d94b",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "d40918180c66ea428539bf303dc6ce4c46eeb45a2c7ad2ccbe6b198fef076a4a",
+        "sha256": "7282e09b719fa20dfecfaf2df1b3bca826c50cbd31e908b4cf680e7da900448f",
         "byte_count": 29643
       },
       {
@@ -778,8 +778,8 @@
       },
       {
         "path": "docs/editorial-model.md",
-        "sha256": "a703f55d64e3d70f5acc09692fd9e0305d0ae0add6252c5513e2871f03ced674",
-        "byte_count": 110097
+        "sha256": "e94eab05613304819a12eb5d3081296864d85564d0586c016632dd4dc6aa3978",
+        "byte_count": 110455
       },
       {
         "path": "docs/external-material-review-customs-terminology.md",
@@ -803,7 +803,7 @@
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "750da21511033330d2357161d028cba304e340b33ec86326abd8365af4d1f2ab",
+        "sha256": "af1685f1214c8471e6e837e24c3cee2f42db368b8ab3fcdc82b38df5586d0ec3",
         "byte_count": 8780
       },
       {
