@@ -32,43 +32,59 @@ jobs:
           # Disable renames so moving code into docs/ cannot hide a source-file deletion.
           git diff --no-renames --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
           # Read NUL-delimited paths (including whitespace safely); Bash 3.2 compatible.
-          run_normal=false
+          docs_only=true
+          stage1_only=true
           saw_file=false
           while IFS= read -r -d '' file; do
             saw_file=true
             case "$file" in
-              docs/*|README.md|REVIEW.md) ;;
-              *) run_normal=true; break ;;
+              docs/*.md|README.md|REVIEW.md|AGENTS.md|CLAUDE.md) ;;
+              *) docs_only=false ;;
+            esac
+            case "$file" in
+              data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/manifest.json|data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/candidates.jsonl) ;;
+              *) stage1_only=false ;;
             esac
           done < "$paths_file"
 
-          # Empty or unclassifiable diffs must run full CI.
+          # Only pure Stage 1 candidate artifacts get the fast gate.
+          # Mixed changes, empty diffs, and all other PRs keep the normal gate.
           if [[ "$saw_file" != true ]]; then
-            run_normal=true
+            run_level=normal
+          elif [[ "$docs_only" == true ]]; then
+            run_level=none
+          elif [[ "$stage1_only" == true ]]; then
+            run_level=fast
+          else
+            run_level=normal
           fi
 
-          echo "run_normal=$run_normal" >> "$GITHUB_OUTPUT"
-          if [[ "$run_normal" == true ]]; then
-            echo "Full ci:normal required for this PR." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Documentation-only PR: ci:normal intentionally skipped." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "run_level=$run_level" >> "$GITHUB_OUTPUT"
+          case "$run_level" in
+            none) echo "Documentation-only PR: CI checks intentionally skipped." >> "$GITHUB_STEP_SUMMARY" ;;
+            fast) echo "Stage 1 candidate-only PR: running ci:fast." >> "$GITHUB_STEP_SUMMARY" ;;
+            normal) echo "Full ci:normal required for this PR." >> "$GITHUB_STEP_SUMMARY" ;;
+          esac
 
       - name: Set up pnpm
-        if: steps.changes.outputs.run_normal == 'true'
+        if: steps.changes.outputs.run_level != 'none'
         uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
-        if: steps.changes.outputs.run_normal == 'true'
+        if: steps.changes.outputs.run_level != 'none'
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
           cache: pnpm
 
       - name: Install pinned dependencies
-        if: steps.changes.outputs.run_normal == 'true'
+        if: steps.changes.outputs.run_level != 'none'
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Fast validation (Stage 1 candidates only)
+        if: steps.changes.outputs.run_level == 'fast'
+        run: pnpm run ci:fast
+
       - name: Normal validation (fast checkpoint + continuation)
-        if: steps.changes.outputs.run_normal == 'true'
+        if: steps.changes.outputs.run_level == 'normal'
         run: pnpm run ci:normal
