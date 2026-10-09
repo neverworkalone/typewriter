@@ -1,0 +1,105 @@
+{
+ "packet_id": "R000003",
+ "relation_amendments": [
+  {
+   "source_record_id": "r049",
+   "source_sense_id": "r049-s1",
+   "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+   "relation": {
+    "target": "w927",
+    "target_sense": "w927-s1",
+    "type": "sensory",
+    "note": "가슬가슬하다는 표면이 거칠고 마른 촉감을 나타내므로, 물체 바깥면에서 느끼는 질감 이미지다.",
+    "relevance": 6
+   },
+   "rationale": "r049-s1은 물체나 공간의 바깥쪽 면이고 w927-s1은 그 표면에서 느껴지는 거칠고 마른 촉감이므로, source가 전하는 촉각 이미지를 잇는 sensory 관계다."
+  },
+  {
+   "source_record_id": "r049",
+   "source_sense_id": "r049-s1",
+   "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+   "relation": {
+    "target": "w4877",
+    "target_sense": "w4877-s1",
+    "type": "action",
+    "note": "비벼대다는 두 표면을 마주 댄 채 여러 번 문지르는 동작이라, 표면의 마찰을 구체적인 행동으로 찾게 한다.",
+    "relevance": 4
+   },
+   "rationale": "r049-s1은 물체의 바깥쪽 면이고 w4877-s1은 두 표면을 맞대어 반복해 문지르는 동작이므로, 표면에 가해지는 구체적인 action이다."
+  },
+  {
+   "source_record_id": "r049",
+   "source_sense_id": "r049-s1",
+   "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+   "relation": {
+    "target": "w4878",
+    "target_sense": "w4878-s1",
+    "type": "action",
+    "note": "두드려 보다는 표면을 두드려 소리나 단단함을 살펴보는 동작이라, 표면을 확인하는 구체적인 action이다.",
+    "relevance": 5
+   },
+   "rationale": "r049-s1은 물체나 공간의 바깥쪽 면이고 w4878-s1은 그 표면을 두드려 소리나 단단함을 확인하는 동작이므로, 표면을 살피는 구체적인 action이다."
+  },
+  {
+   "source_record_id": "r049",
+   "source_sense_id": "r049-s1",
+   "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+   "relation": {
+    "target": "w4887",
+    "target_sense": "w4887-s1",
+    "type": "action",
+    "note": "갈아내다는 표면을 문지르거나 깎아 거친 부분을 없애는 동작이라, 표면을 다듬는 작업으로 이어진다.",
+    "relevance": 5
+   },
+   "rationale": "r049-s1은 물체의 바깥쪽 면이고 w4887-s1은 그 표면을 문지르거나 깎아 거친 곳을 없애는 동작이므로, 표면을 다듬는 구체적인 action이다."
+  },
+  {
+   "source_record_id": "w086",
+   "source_sense_id": "w086-s1",
+   "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+   "relation": {
+    "target": "w2766",
+    "target_sense": "w2766-s1",
+    "type": "action",
+    "note": "퍼지다는 소리도 주변으로 넓게 번져 나가는 일을 말하므로, 귀에 들리는 소리의 진행을 서술하는 동작으로 이어진다.",
+    "relevance": 6
+   },
+   "rationale": "w086-s1은 물체의 움직임이나 목소리에서 귀로 느끼는 울림이고 w2766-s1은 소리도 주변으로 번져 나가는 동작이므로, 소리의 진행을 구체화하는 action이지 대체어는 아니다."
+  },
+  {
+   "source_record_id": "w086",
+   "source_sense_id": "w086-s1",
+   "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+   "relation": {
+    "target": "w3181",
+    "target_sense": "w3181-s1",
+    "type": "association",
+    "note": "공명은 물체나 공간이 특정 소리에 반응해 함께 울리는 현상이라, 소리가 주변에 남기는 울림으로 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w086-s1은 귀로 느끼는 소리이고 w3181-s1은 물체나 공간이 특정 소리에 반응해 함께 울리는 현상이므로, 소리가 주변에 일으키는 현상을 연결하는 association이다."
+  },
+  {
+   "source_record_id": "w086",
+   "source_sense_id": "w086-s1",
+   "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+   "relation": {
+    "target": "w4281",
+    "target_sense": "w4281-s1",
+    "type": "association",
+    "note": "반향은 벽이나 바닥에 부딪힌 소리가 되돌아와 겹쳐 들리는 현상이라, 소리의 되울림을 구체화한다.",
+    "relevance": 5
+   },
+   "rationale": "w086-s1의 소리에서 w4281-s1의 벽·바닥에 부딪혀 되돌아오는 현상으로 이어지므로, 소리가 만드는 특정 현상을 잇는 association이다."
+  }
+ ],
+ "target_meaning_sha256": {
+  "rel-732c1610a21f27dcf2ca82b9": "06a9a8805d917516657fdede36a6e048e23a144b2491d62322162e4f12ec73be",
+  "rel-7c81c9525f093e3b2d6a43f3": "4cfae132a170ce9a1323d8b6f6a1f62ef5f60d25f06a7300d4d9dd7450a2bc04",
+  "rel-4416c621fd17abbff1014d04": "89774d91dd15305ee806a50dc260e70ecbb907b54a6960ad558f93e8ab4d49b2",
+  "rel-e7585f4f61147ce31dffcf40": "866040b824c510aba6bf5cd5ed26244ccfc1bbb377b2b8cd6fe014b86736fa4a",
+  "rel-19f1f64fff772758c9d1c2ad": "6ca2485accf41bf94efcb2aaa3af2a68b7652d4d37455d395939dc1f6f1d6dde",
+  "rel-449852a46174417cdd7919d7": "ca9ad9f17285258003b040b1e90da09dc673adc0316cd0e16fe61f021746f4b6",
+  "rel-8820242dd364003d9907a97d": "83211ece694b90df282d6610aa844ec5ece0042b294c79945081fb6cc2857992"
+ }
+}

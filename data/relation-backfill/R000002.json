@@ -1,0 +1,2888 @@
+{
+ "packet_id": "R000002",
+ "relation_amendments": [
+  {
+   "source_record_id": "r001",
+   "source_sense_id": "r001-s1",
+   "source_gloss_sha256": "73262ca00b25a1ee469689c2f9c20eac79d512ea7ee8069d98d4bb37f2579c46",
+   "relation": {
+    "target": "w061",
+    "target_sense": "w061-s1",
+    "type": "near",
+    "note": "향기는 기분 좋게 느껴지는 냄새라, 냄새로 느껴지는 향기를 가리키는 향내와 바꿔 쓸 수 있는 말이다.",
+    "relevance": 6
+   },
+   "rationale": "r001-s1: 후보 검토에서 w061-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r001",
+   "source_sense_id": "r001-s1",
+   "source_gloss_sha256": "73262ca00b25a1ee469689c2f9c20eac79d512ea7ee8069d98d4bb37f2579c46",
+   "relation": {
+    "target": "w973",
+    "target_sense": "w973-s1",
+    "type": "near",
+    "note": "향취는 특정한 대상에서 느껴지는 향기라, 향내와 같은 좋은 냄새를 대상 쪽에서 말한다.",
+    "relevance": 5
+   },
+   "rationale": "r001-s1: 후보 검토에서 w973-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r001",
+   "source_sense_id": "r001-s1",
+   "source_gloss_sha256": "73262ca00b25a1ee469689c2f9c20eac79d512ea7ee8069d98d4bb37f2579c46",
+   "relation": {
+    "target": "w062",
+    "target_sense": "w062-s1",
+    "type": "association",
+    "note": "냄새는 좋고 나쁨을 가리지 않는 넓은 말이라, 향기로운 냄새만 가리키는 향내의 상위 범주다.",
+    "relevance": 4
+   },
+   "rationale": "r001-s1: 후보 검토에서 w062-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r001",
+   "source_sense_id": "r001-s1",
+   "source_gloss_sha256": "73262ca00b25a1ee469689c2f9c20eac79d512ea7ee8069d98d4bb37f2579c46",
+   "relation": {
+    "target": "w11188",
+    "target_sense": "w11188-s1",
+    "type": "association",
+    "note": "내음은 코로 맡는 향기나 냄새를 모두 가리켜, 향기로운 쪽에 한정된 향내보다 범위가 넓다.",
+    "relevance": 4
+   },
+   "rationale": "r001-s1: 후보 검토에서 w11188-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r001",
+   "source_sense_id": "r001-s1",
+   "source_gloss_sha256": "73262ca00b25a1ee469689c2f9c20eac79d512ea7ee8069d98d4bb37f2579c46",
+   "relation": {
+    "target": "w319",
+    "target_sense": "w319-s1",
+    "type": "sensory",
+    "note": "향긋하다는 냄새가 은은하고 기분 좋다는 형용사라, 향내가 코에 전하는 느낌이다.",
+    "relevance": 4
+   },
+   "rationale": "r001-s1: 후보 검토에서 w319-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r001",
+   "source_sense_id": "r001-s1",
+   "source_gloss_sha256": "73262ca00b25a1ee469689c2f9c20eac79d512ea7ee8069d98d4bb37f2579c46",
+   "relation": {
+    "target": "w931",
+    "target_sense": "w931-s1",
+    "type": "association",
+    "note": "꽃향기는 꽃에서 풍기는 향긋한 냄새라, 향내의 한 종류다.",
+    "relevance": 4
+   },
+   "rationale": "r001-s1: 후보 검토에서 w931-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r009",
+   "source_sense_id": "r009-s1",
+   "source_gloss_sha256": "9e54b7f82e31ea1338130ee4f9bb2e902c6fd13b2443dd9d4605d0733c2a3fe4",
+   "relation": {
+    "target": "w030",
+    "target_sense": "w030-s1",
+    "type": "near",
+    "note": "평온은 마음이나 주변이 어지럽지 않고 잔잔한 상태라, 마음이 편하고 주변이 안정된 평안과 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "rationale": "r009-s1: 후보 검토에서 w030-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r009",
+   "source_sense_id": "r009-s1",
+   "source_gloss_sha256": "9e54b7f82e31ea1338130ee4f9bb2e902c6fd13b2443dd9d4605d0733c2a3fe4",
+   "relation": {
+    "target": "w2101",
+    "target_sense": "w2101-s1",
+    "type": "near",
+    "note": "편안함은 몸과 마음에 긴장이나 불편이 없어 안정된 느낌이라, 평안과 같은 상태를 느낌으로 말한다.",
+    "relevance": 5
+   },
+   "rationale": "r009-s1: 후보 검토에서 w2101-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r009",
+   "source_sense_id": "r009-s1",
+   "source_gloss_sha256": "9e54b7f82e31ea1338130ee4f9bb2e902c6fd13b2443dd9d4605d0733c2a3fe4",
+   "relation": {
+    "target": "w5741",
+    "target_sense": "w5741-s1",
+    "type": "association",
+    "note": "평화는 싸움이나 갈등 없이 안정된 상태라, 평안이 사회나 관계로 넓어진 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "r009-s1: 후보 검토에서 w5741-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r009",
+   "source_sense_id": "r009-s1",
+   "source_gloss_sha256": "9e54b7f82e31ea1338130ee4f9bb2e902c6fd13b2443dd9d4605d0733c2a3fe4",
+   "relation": {
+    "target": "w9071",
+    "target_sense": "w9071-s1",
+    "type": "association",
+    "note": "안식은 몸과 마음이 편안하게 쉬는 상태라, 평안 가운데 쉼에 초점을 둔다.",
+    "relevance": 4
+   },
+   "rationale": "r009-s1: 후보 검토에서 w9071-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r009",
+   "source_sense_id": "r009-s1",
+   "source_gloss_sha256": "9e54b7f82e31ea1338130ee4f9bb2e902c6fd13b2443dd9d4605d0733c2a3fe4",
+   "relation": {
+    "target": "w11411",
+    "target_sense": "w11411-s1",
+    "type": "antonym",
+    "note": "불안감은 마음이 편하지 않고 걱정스러운 느낌이라, 마음이 편하고 안정된 평안과 반대된다."
+   },
+   "rationale": "r009-s1: 후보 검토에서 w11411-s1를 antonym 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r031",
+   "source_sense_id": "r031-s1",
+   "source_gloss_sha256": "e4ff0e844f96975e49256b65cbe1a9090a91f40dd5c56edaaadc0166886a45e7",
+   "relation": {
+    "target": "w6245",
+    "target_sense": "w6245-s1",
+    "type": "association",
+    "note": "휴식은 일을 멈추고 몸과 마음을 쉬게 하는 일이고, 쉬다는 그 동작을 가리키므로 같은 쉼의 상황에서 이어 찾을 수 있지만 서로 바꿔 쓸 말은 아니다.",
+    "relevance": 6
+   },
+   "rationale": "r031-s1의 gloss는 활동을 멈춰 몸과 마음을 편하게 하는 동작이고 w6245-s1은 일이나 활동을 멈춰 몸과 마음을 쉬게 하는 일을 명사로 가리키므로, 같은 쉼의 상황에서 이어 찾지만 동작과 명사 개념은 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "r031",
+   "source_sense_id": "r031-s1",
+   "source_gloss_sha256": "e4ff0e844f96975e49256b65cbe1a9090a91f40dd5c56edaaadc0166886a45e7",
+   "relation": {
+    "target": "w296",
+    "target_sense": "w296-s1",
+    "type": "association",
+    "note": "숨을 고르다는 가빠진 호흡을 가라앉히는 동작이라, 쉬는 동안 몸이 하는 한 모습이다.",
+    "relevance": 4
+   },
+   "rationale": "r031-s1: 후보 검토에서 w296-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r031",
+   "source_sense_id": "r031-s1",
+   "source_gloss_sha256": "e4ff0e844f96975e49256b65cbe1a9090a91f40dd5c56edaaadc0166886a45e7",
+   "relation": {
+    "target": "w183",
+    "target_sense": "w183-s1",
+    "type": "association",
+    "note": "멈추다는 움직이던 일을 그치는 일반 동작이라, 쉬기 위해 먼저 하게 되는 행동이다.",
+    "relevance": 3
+   },
+   "rationale": "r031-s1: 후보 검토에서 w183-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r033",
+   "source_sense_id": "r033-s1",
+   "source_gloss_sha256": "1aafe0e4baca99e385f6274e145cfd3960bb7127813f0ae6870765f761285678",
+   "relation": {
+    "target": "w007",
+    "target_sense": "w007-s1",
+    "type": "near",
+    "note": "외로움은 주변에 함께할 사람이 없어 홀로라고 느끼는 마음이라, 혼자 있는 상태를 깊이 느끼는 고독과 가깝게 바꿔 쓸 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "r033-s1: 후보 검토에서 w007-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r033",
+   "source_sense_id": "r033-s1",
+   "source_gloss_sha256": "1aafe0e4baca99e385f6274e145cfd3960bb7127813f0ae6870765f761285678",
+   "relation": {
+    "target": "w006",
+    "target_sense": "w006-s1",
+    "type": "association",
+    "note": "쓸쓸함은 곁이 비어 허전한 정서에 초점이 있어, 홀로 있음을 깊이 느끼는 고독과 겹치지만 서로 바꿔 쓸 말은 아니다.",
+    "relevance": 4
+   },
+   "rationale": "r033-s1은 혼자 있는 상태를 깊이 느끼는 마음이고 w006-s1은 곁이 비어 허전한 느낌이라, 같은 정서권에서 이어 찾지만 초점이 달라 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "r033",
+   "source_sense_id": "r033-s1",
+   "source_gloss_sha256": "1aafe0e4baca99e385f6274e145cfd3960bb7127813f0ae6870765f761285678",
+   "relation": {
+    "target": "w2211",
+    "target_sense": "w2211-s1",
+    "type": "association",
+    "note": "고립감은 주변 사람들과 떨어져 혼자 남겨졌다고 느끼는 상태라, 고독이 사람들과의 단절 쪽으로 이어진 느낌이다.",
+    "relevance": 4
+   },
+   "rationale": "r033-s1: 후보 검토에서 w2211-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r033",
+   "source_sense_id": "r033-s1",
+   "source_gloss_sha256": "1aafe0e4baca99e385f6274e145cfd3960bb7127813f0ae6870765f761285678",
+   "relation": {
+    "target": "w11759",
+    "target_sense": "w11759-s1",
+    "type": "scene",
+    "note": "독방은 혼자 있게 하는 방이라, 고독이 놓이는 대표적인 장소로 떠오른다.",
+    "relevance": 3
+   },
+   "rationale": "r033-s1: 후보 검토에서 w11759-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r036",
+   "source_sense_id": "r036-s1",
+   "source_gloss_sha256": "66a7820eb5d3f28b309cbcf8e9447fce6027b46d16d48ce4f0e9f0c4767803b1",
+   "relation": {
+    "target": "w781",
+    "target_sense": "w781-s1",
+    "type": "near",
+    "note": "경탄은 훌륭한 대상을 보고 느끼는 감탄이라, 감탄과 거의 같은 뜻으로 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "rationale": "r036-s1: 후보 검토에서 w781-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r036",
+   "source_sense_id": "r036-s1",
+   "source_gloss_sha256": "66a7820eb5d3f28b309cbcf8e9447fce6027b46d16d48ce4f0e9f0c4767803b1",
+   "relation": {
+    "target": "w11004",
+    "target_sense": "w11004-s1",
+    "type": "association",
+    "note": "탄복은 깊이 감동한 경우로 좁혀진 감탄이라, 일반적인 감탄에서 더 강한 반응을 찾을 때 이어 볼 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "r036-s1은 크게 반응하는 마음 일반이고 w11004-s1은 깊이 감동한 경우로 좁으므로, 같은 반응에서 이어 찾지만 범위가 달라 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "r036",
+   "source_sense_id": "r036-s1",
+   "source_gloss_sha256": "66a7820eb5d3f28b309cbcf8e9447fce6027b46d16d48ce4f0e9f0c4767803b1",
+   "relation": {
+    "target": "w2886",
+    "target_sense": "w2886-s1",
+    "type": "association",
+    "note": "감탄은 훌륭함을 느껴 크게 반응하는 마음이고, 감탄하다는 그 반응을 드러내는 동작이므로 같은 경험에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "r036-s1은 훌륭하고 인상 깊은 대상을 느껴 크게 반응하는 마음이고 w2886-s1은 그 대상을 훌륭하다고 느껴 놀라며 칭찬하는 동작이므로, 같은 경험에서 이어 찾지만 마음과 동사는 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "r036",
+   "source_sense_id": "r036-s1",
+   "source_gloss_sha256": "66a7820eb5d3f28b309cbcf8e9447fce6027b46d16d48ce4f0e9f0c4767803b1",
+   "relation": {
+    "target": "w529",
+    "target_sense": "w529-s1",
+    "type": "association",
+    "note": "감탄스럽다는 감탄할 만하다는 형용사라, 감탄을 일으키는 대상의 성질을 말한다.",
+    "relevance": 4
+   },
+   "rationale": "r036-s1: 후보 검토에서 w529-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r036",
+   "source_sense_id": "r036-s1",
+   "source_gloss_sha256": "66a7820eb5d3f28b309cbcf8e9447fce6027b46d16d48ce4f0e9f0c4767803b1",
+   "relation": {
+    "target": "w307",
+    "target_sense": "w307-s1",
+    "type": "association",
+    "note": "경외감은 크고 뛰어난 대상 앞에서 두려움과 감탄을 함께 느끼는 마음이라, 감탄에 두려움이 더해진 쪽이다.",
+    "relevance": 3
+   },
+   "rationale": "r036-s1: 후보 검토에서 w307-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r037",
+   "source_sense_id": "r037-s1",
+   "source_gloss_sha256": "f0dc089d0ec121466c0418347b3b3816679d871394845370c62e3fda6418b25c",
+   "relation": {
+    "target": "w437",
+    "target_sense": "w437-s1",
+    "type": "association",
+    "note": "공허는 의미가 빠진 듯한 느낌을 이름 붙이고, 공허하다는 마음이나 삶이 비어 있는 상태를 서술하므로 같은 상태의 개념과 서술을 잇는다.",
+    "relevance": 6
+   },
+   "rationale": "r037-s1은 안이 비어 의미가 빠진 느낌을 이름 붙이는 명사이고 w437-s1은 마음이나 삶에서 의미와 내용이 빠진 상태를 서술하는 형용사이므로, 같은 상태를 가리키지만 파생 관계만으로 near가 되지 않는다."
+  },
+  {
+   "source_record_id": "r037",
+   "source_sense_id": "r037-s1",
+   "source_gloss_sha256": "f0dc089d0ec121466c0418347b3b3816679d871394845370c62e3fda6418b25c",
+   "relation": {
+    "target": "w2122",
+    "target_sense": "w2122-s1",
+    "type": "near",
+    "note": "허전함은 무언가 빠져나간 듯 마음 한쪽이 비어 있는 느낌이라, 공허가 가진 허전한 느낌과 겹친다.",
+    "relevance": 5
+   },
+   "rationale": "r037-s1: 후보 검토에서 w2122-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r037",
+   "source_sense_id": "r037-s1",
+   "source_gloss_sha256": "f0dc089d0ec121466c0418347b3b3816679d871394845370c62e3fda6418b25c",
+   "relation": {
+    "target": "w397",
+    "target_sense": "w397-s1",
+    "type": "association",
+    "note": "허무함은 애써 이룬 일에서 의미가 빠져나간 듯한 마음이라, 공허가 가진 의미의 빠짐 쪽에 초점을 둔다.",
+    "relevance": 4
+   },
+   "rationale": "r037-s1: 후보 검토에서 w397-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r037",
+   "source_sense_id": "r037-s1",
+   "source_gloss_sha256": "f0dc089d0ec121466c0418347b3b3816679d871394845370c62e3fda6418b25c",
+   "relation": {
+    "target": "w303",
+    "target_sense": "w303-s1",
+    "type": "association",
+    "note": "허탈감은 애쓴 일이 끝난 뒤 힘과 의미가 빠져나간 마음이라, 공허가 생기는 한 계기와 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "r037-s1: 후보 검토에서 w303-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r037",
+   "source_sense_id": "r037-s1",
+   "source_gloss_sha256": "f0dc089d0ec121466c0418347b3b3816679d871394845370c62e3fda6418b25c",
+   "relation": {
+    "target": "w10169",
+    "target_sense": "w10169-s1",
+    "type": "mood",
+    "note": "휑하다는 텅 비어 쓸쓸하고 허전하다는 뜻이라, 공허의 비어 있는 느낌을 공간의 분위기로 보탠다.",
+    "relevance": 4
+   },
+   "rationale": "r037-s1: 후보 검토에서 w10169-s1를 mood 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r037",
+   "source_sense_id": "r037-s1",
+   "source_gloss_sha256": "f0dc089d0ec121466c0418347b3b3816679d871394845370c62e3fda6418b25c",
+   "relation": {
+    "target": "w8997",
+    "target_sense": "w8997-s1",
+    "type": "association",
+    "note": "빈자리는 있던 사람이나 물건이 빠져 남은 자리라, 공허가 놓이는 구체적인 빈 곳이다.",
+    "relevance": 3
+   },
+   "rationale": "r037-s1: 후보 검토에서 w8997-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r042",
+   "source_sense_id": "r042-s1",
+   "source_gloss_sha256": "4fbdb08613579cf4f793b09132575024323063c6cf4cee56a6387071ecb15ad1",
+   "relation": {
+    "target": "w321",
+    "target_sense": "w321-s1",
+    "type": "association",
+    "note": "미지근하다의 첫째 뜻은 온도를 서술하는 형용사라, 상태를 이름 붙이는 명사 미온에서 온도 쪽 표현으로 이어 찾을 수 있지만 서로 바꿔 쓸 말은 아니다.",
+    "relevance": 5
+   },
+   "rationale": "r042-s1은 온도나 반응의 상태를 가리키는 명사이고 w321-s1은 온도를 서술하는 형용사 뜻이므로, 같은 온도 상황에서 이어 찾지만 명사와 서술어라 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "r042",
+   "source_sense_id": "r042-s1",
+   "source_gloss_sha256": "4fbdb08613579cf4f793b09132575024323063c6cf4cee56a6387071ecb15ad1",
+   "relation": {
+    "target": "w321",
+    "target_sense": "w321-s2",
+    "type": "association",
+    "note": "미지근하다의 둘째 뜻은 반응이나 태도가 적극적이지 않다고 서술하는 형용사라, 명사 미온의 반응 쪽에서 이어 찾을 수 있지만 서로 바꿔 쓸 말은 아니다.",
+    "relevance": 5
+   },
+   "rationale": "r042-s1은 온도나 반응의 상태를 가리키는 명사이고 w321-s2는 반응이나 태도를 서술하는 형용사 뜻이므로, 같은 반응 상황에서 이어 찾지만 명사와 서술어라 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "r042",
+   "source_sense_id": "r042-s1",
+   "source_gloss_sha256": "4fbdb08613579cf4f793b09132575024323063c6cf4cee56a6387071ecb15ad1",
+   "relation": {
+    "target": "w2260",
+    "target_sense": "w2260-s1",
+    "type": "near",
+    "note": "미지근함은 뜨겁지도 차갑지도 않고 약하게 따뜻한 상태라, 미온이 가리키는 온도의 미적지근함과 같은 상태다.",
+    "relevance": 6
+   },
+   "rationale": "r042-s1: 후보 검토에서 w2260-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r042",
+   "source_sense_id": "r042-s1",
+   "source_gloss_sha256": "4fbdb08613579cf4f793b09132575024323063c6cf4cee56a6387071ecb15ad1",
+   "relation": {
+    "target": "w995",
+    "target_sense": "w995-s1",
+    "type": "association",
+    "note": "미온수는 뜨겁지도 차갑지도 않은 물이라, 미온이 온도로 쓰이는 대표적인 대상이다.",
+    "relevance": 3
+   },
+   "rationale": "r042-s1: 후보 검토에서 w995-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r045",
+   "source_sense_id": "r045-s1",
+   "source_gloss_sha256": "042b2de74ad461bb4c93b9f8f3f52db6b75fef15386f3407acb9e7bb3683a4ed",
+   "relation": {
+    "target": "w060",
+    "target_sense": "w060-s1",
+    "type": "association",
+    "note": "여운은 끝난 뒤에도 마음이나 감각에 남는 느낌이라, 자극이 사라진 뒤 눈이나 마음에 남는 잔상과 이어지지만 시각 쪽으로 한정되지 않는다.",
+    "relevance": 5
+   },
+   "rationale": "r045-s1: 후보 검토에서 w060-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r045",
+   "source_sense_id": "r045-s1",
+   "source_gloss_sha256": "042b2de74ad461bb4c93b9f8f3f52db6b75fef15386f3407acb9e7bb3683a4ed",
+   "relation": {
+    "target": "w5808",
+    "target_sense": "w5808-s1",
+    "type": "association",
+    "note": "흔적은 사물이나 일이 지나간 뒤에 남은 자국이나 모습이라, 잔상이 남기는 자국을 넓게 말한다.",
+    "relevance": 4
+   },
+   "rationale": "r045-s1: 후보 검토에서 w5808-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r045",
+   "source_sense_id": "r045-s1",
+   "source_gloss_sha256": "042b2de74ad461bb4c93b9f8f3f52db6b75fef15386f3407acb9e7bb3683a4ed",
+   "relation": {
+    "target": "w349",
+    "target_sense": "w349-s2",
+    "type": "association",
+    "note": "얼룩은 기억이나 평판에 지워지지 않고 남은 흔적이라, 마음에 남는 잔상과 비유적으로 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "r045-s1: 후보 검토에서 w349-s2를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r049",
+   "source_sense_id": "r049-s1",
+   "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+   "relation": {
+    "target": "w3375",
+    "target_sense": "w3375-s1",
+    "type": "association",
+    "note": "수면은 물의 표면이라, 표면 가운데 물에 한정된 한 경우다.",
+    "relevance": 4
+   },
+   "rationale": "r049-s1: 후보 검토에서 w3375-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r049",
+   "source_sense_id": "r049-s1",
+   "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+   "relation": {
+    "target": "w12148",
+    "target_sense": "w12148-s1",
+    "type": "association",
+    "note": "평면은 평평한 표면이라, 표면 가운데 평평한 경우다.",
+    "relevance": 4
+   },
+   "rationale": "r049-s1: 후보 검토에서 w12148-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r049",
+   "source_sense_id": "r049-s1",
+   "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+   "relation": {
+    "target": "w044",
+    "target_sense": "w044-s1",
+    "type": "sensory",
+    "note": "거칠다는 표면이 매끄럽지 않고 까슬까슬한 느낌이라, 표면이 손에 전하는 질감을 말한다.",
+    "relevance": 3
+   },
+   "rationale": "r049-s1: 후보 검토에서 w044-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "r049",
+   "source_sense_id": "r049-s1",
+   "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+   "relation": {
+    "target": "w045",
+    "target_sense": "w045-s1",
+    "type": "sensory",
+    "note": "부드럽다는 표면이 매끈하고 닿는 느낌이 거칠지 않다는 뜻이라, 표면이 손에 전하는 질감을 말한다.",
+    "relevance": 3
+   },
+   "rationale": "r049-s1: 후보 검토에서 w045-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w007",
+   "source_sense_id": "w007-s1",
+   "source_gloss_sha256": "2058d039ce0f045365c0edd2856b409e3d0fc3efcda7ee5932a71158e4318f2b",
+   "relation": {
+    "target": "w029",
+    "target_sense": "w029-s1",
+    "type": "mood",
+    "note": "허전하다는 곁이 비어 마음이 채워지지 않는 결이라, 홀로라고 느끼는 외로움의 분위기를 함께 떠올리게 한다.",
+    "relevance": 5
+   },
+   "rationale": "w007-s1: 후보 검토에서 w029-s1를 mood 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w007",
+   "source_sense_id": "w007-s1",
+   "source_gloss_sha256": "2058d039ce0f045365c0edd2856b409e3d0fc3efcda7ee5932a71158e4318f2b",
+   "relation": {
+    "target": "w11429",
+    "target_sense": "w11429-s1",
+    "type": "association",
+    "note": "상실감은 무엇을 잃어 생긴 허전함이라, 외로움이 생기는 한 원인으로 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w007-s1: 후보 검토에서 w11429-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w007",
+   "source_sense_id": "w007-s1",
+   "source_gloss_sha256": "2058d039ce0f045365c0edd2856b409e3d0fc3efcda7ee5932a71158e4318f2b",
+   "relation": {
+    "target": "w004",
+    "target_sense": "w004-s1",
+    "type": "association",
+    "note": "그리움은 떠난 대상을 다시 바라는 마음이라, 곁에 없는 사람을 향한 외로움과 함께 떠오른다.",
+    "relevance": 3
+   },
+   "rationale": "w007-s1: 후보 검토에서 w004-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w012",
+   "source_sense_id": "w012-s1",
+   "source_gloss_sha256": "b5f1e28f8239729796841502d753061ca2d3491ab65cc4ccca1df40518e3272f",
+   "relation": {
+    "target": "w195",
+    "target_sense": "w195-s3",
+    "type": "action",
+    "note": "놓다는 미련이나 감정을 더 붙들지 않고 내려놓는 동작이라, 미련을 거두는 쪽의 행동이다.",
+    "relevance": 4
+   },
+   "rationale": "w012-s1: 후보 검토에서 w195-s3를 action 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w012",
+   "source_sense_id": "w012-s1",
+   "source_gloss_sha256": "b5f1e28f8239729796841502d753061ca2d3491ab65cc4ccca1df40518e3272f",
+   "relation": {
+    "target": "w2040",
+    "target_sense": "w2040-s1",
+    "type": "action",
+    "note": "마음에서 지우다는 미련이 된 대상을 더는 붙들지 않으려고 기억에서 떼어 내는 동작이라, 미련을 정리하려는 행동이다.",
+    "relevance": 3
+   },
+   "rationale": "w012-s1: 후보 검토에서 w2040-s1를 action 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w012",
+   "source_sense_id": "w012-s1",
+   "source_gloss_sha256": "b5f1e28f8239729796841502d753061ca2d3491ab65cc4ccca1df40518e3272f",
+   "relation": {
+    "target": "w060",
+    "target_sense": "w060-s1",
+    "type": "association",
+    "note": "여운은 끝난 뒤에도 마음에 남는 느낌이라, 쉽게 놓지 못하고 남는 미련과 함께 떠오른다.",
+    "relevance": 3
+   },
+   "rationale": "w012-s1: 후보 검토에서 w060-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w032",
+   "source_sense_id": "w032-s1",
+   "source_gloss_sha256": "71eded52317791e9759082334b76854991ad9036f56c8d09960f14e8f9d92897",
+   "relation": {
+    "target": "w911",
+    "target_sense": "w911-s1",
+    "type": "antonym",
+    "note": "친절하다는 남을 배려하고 따뜻하게 대한다는 뜻이라, 감정을 드러내지 않고 차갑게 대하는 냉정하다와 반대된다."
+   },
+   "rationale": "w032-s1: 후보 검토에서 w911-s1를 antonym 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w032",
+   "source_sense_id": "w032-s1",
+   "source_gloss_sha256": "71eded52317791e9759082334b76854991ad9036f56c8d09960f14e8f9d92897",
+   "relation": {
+    "target": "w025",
+    "target_sense": "w025-s1",
+    "type": "association",
+    "note": "무심하다는 관심이나 감정을 겉으로 드러내지 않고 지나치는 태도라, 냉정하다와 겹치지만 사람을 차갑게 대한다는 한정이 없다.",
+    "relevance": 5
+   },
+   "rationale": "w032-s1: 후보 검토에서 w025-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w032",
+   "source_sense_id": "w032-s1",
+   "source_gloss_sha256": "71eded52317791e9759082334b76854991ad9036f56c8d09960f14e8f9d92897",
+   "relation": {
+    "target": "w033",
+    "target_sense": "w033-s1",
+    "type": "association",
+    "note": "무뚝뚝하다는 말과 행동에 정감이 드러나지 않는 태도라, 냉정하다와 닮았지만 차갑게 대한다기보다 표현이 적은 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w032-s1: 후보 검토에서 w033-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w032",
+   "source_sense_id": "w032-s1",
+   "source_gloss_sha256": "71eded52317791e9759082334b76854991ad9036f56c8d09960f14e8f9d92897",
+   "relation": {
+    "target": "w2148",
+    "target_sense": "w2148-s1",
+    "type": "association",
+    "note": "냉담함은 따뜻한 관심을 보이지 않고 차갑게 대하는 태도를 명사로 말한 것이라, 냉정하다가 가리키는 태도와 가깝지만 품사가 다르다.",
+    "relevance": 4
+   },
+   "rationale": "w032-s1: 후보 검토에서 w2148-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w036",
+   "source_sense_id": "w036-s1",
+   "source_gloss_sha256": "2a0efdcc96314977747b47fa186cf6ba0cdc38ad9299d7c415dd1193b6251026",
+   "relation": {
+    "target": "w2227",
+    "target_sense": "w2227-s1",
+    "type": "association",
+    "note": "어색함은 말과 행동이 굳는 불편한 상태를 이름 붙여, 어색하다와 같은 장면에서 이어 찾을 수 있는 명사 개념이다.",
+    "relevance": 6
+   },
+   "rationale": "w036-s1은 사람이나 상황 사이가 자연스럽지 않아 말과 행동이 굳는 상태를 서술하고 w2227-s1은 그 상황에서 느끼는 불편한 상태를 명사로 가리키므로, 같은 상태의 서술과 명사 개념은 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w036",
+   "source_sense_id": "w036-s1",
+   "source_gloss_sha256": "2a0efdcc96314977747b47fa186cf6ba0cdc38ad9299d7c415dd1193b6251026",
+   "relation": {
+    "target": "w037",
+    "target_sense": "w037-s1",
+    "type": "antonym",
+    "note": "자연스럽다는 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다는 뜻이라, 자연스럽지 않아 굳는 어색하다와 반대된다."
+   },
+   "rationale": "w036-s1: 후보 검토에서 w037-s1를 antonym 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w036",
+   "source_sense_id": "w036-s1",
+   "source_gloss_sha256": "2a0efdcc96314977747b47fa186cf6ba0cdc38ad9299d7c415dd1193b6251026",
+   "relation": {
+    "target": "w11354",
+    "target_sense": "w11354-s1",
+    "type": "association",
+    "note": "겸연쩍다는 쑥스럽고 어색하다는 뜻이라, 어색하다 가운데 쑥스러움이 더해진 쪽이다.",
+    "relevance": 5
+   },
+   "rationale": "w036-s1: 후보 검토에서 w11354-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w036",
+   "source_sense_id": "w036-s1",
+   "source_gloss_sha256": "2a0efdcc96314977747b47fa186cf6ba0cdc38ad9299d7c415dd1193b6251026",
+   "relation": {
+    "target": "w8772",
+    "target_sense": "w8772-s1",
+    "type": "association",
+    "note": "멋쩍다는 어색하고 쑥스러운 기분이 든다는 뜻이라, 어색하다 가운데 쑥스러움이 더해진 쪽이다.",
+    "relevance": 5
+   },
+   "rationale": "w036-s1: 후보 검토에서 w8772-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w036",
+   "source_sense_id": "w036-s1",
+   "source_gloss_sha256": "2a0efdcc96314977747b47fa186cf6ba0cdc38ad9299d7c415dd1193b6251026",
+   "relation": {
+    "target": "w5606",
+    "target_sense": "w5606-s1",
+    "type": "association",
+    "note": "낯설다는 익숙하지 않아 새롭거나 어색하게 느껴진다는 뜻이라, 어색함이 익숙하지 않음에서 오는 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w036-s1: 후보 검토에서 w5606-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w036",
+   "source_sense_id": "w036-s1",
+   "source_gloss_sha256": "2a0efdcc96314977747b47fa186cf6ba0cdc38ad9299d7c415dd1193b6251026",
+   "relation": {
+    "target": "w2377",
+    "target_sense": "w2377-s1",
+    "type": "association",
+    "note": "경직은 몸이나 생각이 굳어 자연스러운 움직임이 어려운 상태라, 어색할 때 몸이 굳는 모습과 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w036-s1: 후보 검토에서 w2377-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w055",
+   "source_sense_id": "w055-s1",
+   "source_gloss_sha256": "621f48453d47574741219afdd3b6aa44a6c68a47059f5b2bf1446223166f7c8b",
+   "relation": {
+    "target": "w975",
+    "target_sense": "w975-s1",
+    "type": "near",
+    "note": "훈기는 따뜻하게 느껴지는 기운이라, 따뜻하게 느껴지는 기운이나 열을 뜻하는 온기와 거의 같은 뜻이다.",
+    "relevance": 7
+   },
+   "rationale": "w055-s1: 후보 검토에서 w975-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w055",
+   "source_sense_id": "w055-s1",
+   "source_gloss_sha256": "621f48453d47574741219afdd3b6aa44a6c68a47059f5b2bf1446223166f7c8b",
+   "relation": {
+    "target": "r041",
+    "target_sense": "r041-s1",
+    "type": "near",
+    "note": "따스함은 몸이나 마음에 따뜻하게 느껴지는 기운이라, 온기와 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "rationale": "w055-s1: 후보 검토에서 r041-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w055",
+   "source_sense_id": "w055-s1",
+   "source_gloss_sha256": "621f48453d47574741219afdd3b6aa44a6c68a47059f5b2bf1446223166f7c8b",
+   "relation": {
+    "target": "w2099",
+    "target_sense": "w2099-s1",
+    "type": "association",
+    "note": "따뜻함은 온기가 느껴지거나 상대를 다정하게 대하는 성질이라, 온기가 마음의 다정함으로 넓어진 쪽까지 쓰인다.",
+    "relevance": 5
+   },
+   "rationale": "w055-s1: 후보 검토에서 w2099-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w055",
+   "source_sense_id": "w055-s1",
+   "source_gloss_sha256": "621f48453d47574741219afdd3b6aa44a6c68a47059f5b2bf1446223166f7c8b",
+   "relation": {
+    "target": "w5462",
+    "target_sense": "w5462-s1",
+    "type": "association",
+    "note": "따뜻하다는 온도가 높아 몸에 포근하게 느껴진다는 형용사라, 온기를 서술어로 말한다.",
+    "relevance": 4
+   },
+   "rationale": "w055-s1: 후보 검토에서 w5462-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w055",
+   "source_sense_id": "w055-s1",
+   "source_gloss_sha256": "621f48453d47574741219afdd3b6aa44a6c68a47059f5b2bf1446223166f7c8b",
+   "relation": {
+    "target": "w460",
+    "target_sense": "w460-s1",
+    "type": "association",
+    "note": "따스하다는 온기가 느껴져 몸이 포근하고 춥지 않다는 형용사라, 온기를 서술어로 말한다.",
+    "relevance": 4
+   },
+   "rationale": "w055-s1: 후보 검토에서 w460-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w055",
+   "source_sense_id": "w055-s1",
+   "source_gloss_sha256": "621f48453d47574741219afdd3b6aa44a6c68a47059f5b2bf1446223166f7c8b",
+   "relation": {
+    "target": "w076",
+    "target_sense": "w076-s1",
+    "type": "association",
+    "note": "열기는 공기나 물체에서 느껴지는 뜨거운 기운이라, 온기보다 더 뜨거운 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w055-s1: 후보 검토에서 w076-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w057",
+   "source_sense_id": "w057-s1",
+   "source_gloss_sha256": "c0c83533dfab3e4c1382201078679ef9953ca554e240e4705488ebe353e96416",
+   "relation": {
+    "target": "w2374",
+    "target_sense": "w2374-s1",
+    "type": "near",
+    "note": "정적은 움직임이 없거나 매우 적어 고요하게 머무는 상태라, 소리와 인기척이 끊겨 고요한 적막과 가깝게 쓸 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w057-s1: 후보 검토에서 w2374-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w057",
+   "source_sense_id": "w057-s1",
+   "source_gloss_sha256": "c0c83533dfab3e4c1382201078679ef9953ca554e240e4705488ebe353e96416",
+   "relation": {
+    "target": "w059",
+    "target_sense": "w059-s1",
+    "type": "association",
+    "note": "침묵은 말이나 소리를 내지 않는 상태라, 적막이 이루는 소리 없음의 한 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w057-s1: 후보 검토에서 w059-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w057",
+   "source_sense_id": "w057-s1",
+   "source_gloss_sha256": "c0c83533dfab3e4c1382201078679ef9953ca554e240e4705488ebe353e96416",
+   "relation": {
+    "target": "w589",
+    "target_sense": "w589-s1",
+    "type": "association",
+    "note": "고즈넉하다는 고요하고 아늑하여 깊은 정취가 느껴진다는 뜻이라, 적막에 쓸쓸함 대신 아늑함이 더해진 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w057-s1: 후보 검토에서 w589-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w057",
+   "source_sense_id": "w057-s1",
+   "source_gloss_sha256": "c0c83533dfab3e4c1382201078679ef9953ca554e240e4705488ebe353e96416",
+   "relation": {
+    "target": "w920",
+    "target_sense": "w920-s1",
+    "type": "mood",
+    "note": "황량하다는 비어 있고 쓸쓸한 느낌이 든다는 뜻이라, 적막의 쓸쓸함을 공간의 분위기로 보탠다.",
+    "relevance": 3
+   },
+   "rationale": "w057-s1: 후보 검토에서 w920-s1를 mood 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w057",
+   "source_sense_id": "w057-s1",
+   "source_gloss_sha256": "c0c83533dfab3e4c1382201078679ef9953ca554e240e4705488ebe353e96416",
+   "relation": {
+    "target": "w8092",
+    "target_sense": "w8092-s1",
+    "type": "association",
+    "note": "인기척은 사람이 가까이 있음을 소리나 움직임으로 느끼게 하는 기척이라, 적막에서 끊긴 것의 한 가지다.",
+    "relevance": 3
+   },
+   "rationale": "w057-s1: 후보 검토에서 w8092-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w057",
+   "source_sense_id": "w057-s1",
+   "source_gloss_sha256": "c0c83533dfab3e4c1382201078679ef9953ca554e240e4705488ebe353e96416",
+   "relation": {
+    "target": "w4570",
+    "target_sense": "w4570-s1",
+    "type": "scene",
+    "note": "기차 지나간 역구내는 열차가 떠난 뒤 고요가 남은 곳이라, 적막이 놓이는 대표적인 장면이다.",
+    "relevance": 4
+   },
+   "rationale": "w057-s1: 후보 검토에서 w4570-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w069",
+   "source_sense_id": "w069-s1",
+   "source_gloss_sha256": "afe0eacb7b6c41deb80af135bedb4cc9525674f1490250674da29b70f9b14b0d",
+   "relation": {
+    "target": "w5662",
+    "target_sense": "w5662-s1",
+    "type": "association",
+    "note": "반짝임은 작은 빛이 순간적으로 드러나는 모습이고, 빛나다는 빛을 내거나 반사하는 동작을 넓게 말해 특정한 빛의 모습과 그 동작을 잇는다.",
+    "relevance": 5
+   },
+   "rationale": "w069-s1은 작은 빛이 순간적으로 밝게 나타나는 모습이고 w5662-s1은 빛을 내거나 밝게 반사하는 동작을 넓게 가리키므로, 순간적인 빛의 모습과 일반적인 발광 동작은 가까운 대체어가 아니라 연상 관계다."
+  },
+  {
+   "source_record_id": "w069",
+   "source_sense_id": "w069-s1",
+   "source_gloss_sha256": "afe0eacb7b6c41deb80af135bedb4cc9525674f1490250674da29b70f9b14b0d",
+   "relation": {
+    "target": "w687",
+    "target_sense": "w687-s1",
+    "type": "association",
+    "note": "번쩍이다는 빛이 순간적으로 세게 반사되어 빛난다는 뜻이라, 반짝임보다 더 강하고 날카로운 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w069-s1: 후보 검토에서 w687-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w069",
+   "source_sense_id": "w069-s1",
+   "source_gloss_sha256": "afe0eacb7b6c41deb80af135bedb4cc9525674f1490250674da29b70f9b14b0d",
+   "relation": {
+    "target": "w137",
+    "target_sense": "w137-s1",
+    "type": "scene",
+    "note": "햇살은 햇빛이 비추어 오는 밝은 기운이라, 반짝임이 일어나는 장면의 빛이다.",
+    "relevance": 4
+   },
+   "rationale": "w069-s1: 후보 검토에서 w137-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w069",
+   "source_sense_id": "w069-s1",
+   "source_gloss_sha256": "afe0eacb7b6c41deb80af135bedb4cc9525674f1490250674da29b70f9b14b0d",
+   "relation": {
+    "target": "w139",
+    "target_sense": "w139-s1",
+    "type": "scene",
+    "note": "별빛은 밤하늘의 별에서 보이는 작고 먼 빛이라, 반짝임이 대표적으로 보이는 장면이다.",
+    "relevance": 4
+   },
+   "rationale": "w069-s1: 후보 검토에서 w139-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w069",
+   "source_sense_id": "w069-s1",
+   "source_gloss_sha256": "afe0eacb7b6c41deb80af135bedb4cc9525674f1490250674da29b70f9b14b0d",
+   "relation": {
+    "target": "w5352",
+    "target_sense": "w5352-s1",
+    "type": "association",
+    "note": "순간은 매우 짧게 이어지는 특정한 때라, 반짝임이 일어나는 짧은 시간과 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w069-s1: 후보 검토에서 w5352-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w071",
+   "source_sense_id": "w071-s1",
+   "source_gloss_sha256": "9c170631af674aa9e25fd3fe588ba9d8260ced09cc97cd42d2ad9446ce790185",
+   "relation": {
+    "target": "r029",
+    "target_sense": "r029-s1",
+    "type": "association",
+    "note": "색조는 색의 느낌과 밝고 어두운 정도로 초점이 좁아, 장면의 색 느낌과 구성을 말하는 색채에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w071-s1은 사물이나 장면이 띠는 색의 느낌과 구성이고 r029-s1은 색의 느낌과 밝고 어두운 정도로 초점이 좁으므로, 같은 대상에서 이어 찾지만 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w071",
+   "source_sense_id": "w071-s1",
+   "source_gloss_sha256": "9c170631af674aa9e25fd3fe588ba9d8260ced09cc97cd42d2ad9446ce790185",
+   "relation": {
+    "target": "w950",
+    "target_sense": "w950-s1",
+    "type": "near",
+    "note": "빛깔은 빛이 드러내는 색의 느낌이라, 사물이 띠는 색의 느낌을 가리키는 색채와 바꿔 쓸 수 있는 말이다.",
+    "relevance": 4
+   },
+   "rationale": "w071-s1: 후보 검토에서 w950-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w071",
+   "source_sense_id": "w071-s1",
+   "source_gloss_sha256": "9c170631af674aa9e25fd3fe588ba9d8260ced09cc97cd42d2ad9446ce790185",
+   "relation": {
+    "target": "w072",
+    "target_sense": "w072-s1",
+    "type": "association",
+    "note": "붉음은 붉은 빛을 띠는 성질이라, 색채를 이루는 한 색의 성질로 떠오른다.",
+    "relevance": 3
+   },
+   "rationale": "w071-s1: 후보 검토에서 w072-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w081",
+   "source_sense_id": "w081-s1",
+   "source_gloss_sha256": "41650b5bd09d578cd3a240c0a9bd05875f1f22199e2309a401610df07899144c",
+   "relation": {
+    "target": "w979",
+    "target_sense": "w979-s1",
+    "type": "near",
+    "note": "서늘한기운은 차갑고 가라앉은 듯한 기운이라, 덥지 않고 약간 차갑게 느껴지는 기운인 서늘함과 거의 같은 뜻이다.",
+    "relevance": 7
+   },
+   "rationale": "w081-s1: 후보 검토에서 w979-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w081",
+   "source_sense_id": "w081-s1",
+   "source_gloss_sha256": "41650b5bd09d578cd3a240c0a9bd05875f1f22199e2309a401610df07899144c",
+   "relation": {
+    "target": "w4288",
+    "target_sense": "w4288-s1",
+    "type": "association",
+    "note": "냉감은 피부나 물체가 차갑게 닿아 서늘하게 느껴지는 감각이라, 서늘함이 몸에 전해지는 감각 쪽이다.",
+    "relevance": 5
+   },
+   "rationale": "w081-s1: 후보 검토에서 w4288-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w081",
+   "source_sense_id": "w081-s1",
+   "source_gloss_sha256": "41650b5bd09d578cd3a240c0a9bd05875f1f22199e2309a401610df07899144c",
+   "relation": {
+    "target": "w083",
+    "target_sense": "w083-s1",
+    "type": "association",
+    "note": "차가움은 손이나 몸에 차게 느껴지는 상태라, 서늘함보다 더 차가운 쪽이다.",
+    "relevance": 5
+   },
+   "rationale": "w081-s1: 후보 검토에서 w083-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w081",
+   "source_sense_id": "w081-s1",
+   "source_gloss_sha256": "41650b5bd09d578cd3a240c0a9bd05875f1f22199e2309a401610df07899144c",
+   "relation": {
+    "target": "w996",
+    "target_sense": "w996-s1",
+    "type": "association",
+    "note": "한기는 몸을 움츠리게 하는 찬 기운이라, 서늘함보다 몸이 떨리는 쪽으로 더 차갑다.",
+    "relevance": 4
+   },
+   "rationale": "w081-s1: 후보 검토에서 w996-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w081",
+   "source_sense_id": "w081-s1",
+   "source_gloss_sha256": "41650b5bd09d578cd3a240c0a9bd05875f1f22199e2309a401610df07899144c",
+   "relation": {
+    "target": "w969",
+    "target_sense": "w969-s1",
+    "type": "association",
+    "note": "찬바람은 차갑게 느껴지는 바람이라, 서늘함이 바람을 타고 전해지는 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w081-s1: 후보 검토에서 w969-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w081",
+   "source_sense_id": "w081-s1",
+   "source_gloss_sha256": "41650b5bd09d578cd3a240c0a9bd05875f1f22199e2309a401610df07899144c",
+   "relation": {
+    "target": "w131",
+    "target_sense": "w131-s1",
+    "type": "scene",
+    "note": "겨울은 날씨가 춥고 밤이 긴 계절이라, 서늘함보다 훨씬 찬 계절의 장면이다.",
+    "relevance": 4
+   },
+   "rationale": "w081-s1: 후보 검토에서 w131-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w083",
+   "source_sense_id": "w083-s1",
+   "source_gloss_sha256": "c74a2601276de26b44db9bfb252506b4bd58f85ad0c6dcc2fcf8e6095dbe44c9",
+   "relation": {
+    "target": "w081",
+    "target_sense": "w081-s1",
+    "type": "association",
+    "note": "서늘함은 덥지 않고 약간 차갑게 느껴지는 기운이라, 차가움보다 약한 정도의 느낌으로 이어진다.",
+    "relevance": 4
+   },
+   "rationale": "w083-s1: 후보 검토에서 w081-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w083",
+   "source_sense_id": "w083-s1",
+   "source_gloss_sha256": "c74a2601276de26b44db9bfb252506b4bd58f85ad0c6dcc2fcf8e6095dbe44c9",
+   "relation": {
+    "target": "w4288",
+    "target_sense": "w4288-s1",
+    "type": "association",
+    "note": "냉감은 피부에 차갑게 닿아 서늘하게 느껴지는 감각이라, 차가움이 몸에 전해지는 감각 쪽을 가리킨다.",
+    "relevance": 5
+   },
+   "rationale": "w083-s1: 후보 검토에서 w4288-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w083",
+   "source_sense_id": "w083-s1",
+   "source_gloss_sha256": "c74a2601276de26b44db9bfb252506b4bd58f85ad0c6dcc2fcf8e6095dbe44c9",
+   "relation": {
+    "target": "w459",
+    "target_sense": "w459-s1",
+    "type": "sensory",
+    "note": "시리다는 차거나 아픈 자극에 감각이 저린 상태라, 차가움이 닿을 때의 몸의 느낌을 보탠다.",
+    "relevance": 4
+   },
+   "rationale": "w083-s1: 후보 검토에서 w459-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w083",
+   "source_sense_id": "w083-s1",
+   "source_gloss_sha256": "c74a2601276de26b44db9bfb252506b4bd58f85ad0c6dcc2fcf8e6095dbe44c9",
+   "relation": {
+    "target": "w266",
+    "target_sense": "w266-s1",
+    "type": "scene",
+    "note": "얼음은 물이 얼어 단단해진 고체라, 차가움을 손으로 느끼는 대표적인 장면의 대상이다.",
+    "relevance": 4
+   },
+   "rationale": "w083-s1: 후보 검토에서 w266-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w083",
+   "source_sense_id": "w083-s1",
+   "source_gloss_sha256": "c74a2601276de26b44db9bfb252506b4bd58f85ad0c6dcc2fcf8e6095dbe44c9",
+   "relation": {
+    "target": "w996",
+    "target_sense": "w996-s1",
+    "type": "association",
+    "note": "한기는 몸을 움츠리게 하는 찬 기운이라, 차가움이 몸을 떨게 하는 쪽으로 이어진다.",
+    "relevance": 4
+   },
+   "rationale": "w083-s1: 후보 검토에서 w996-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w086",
+   "source_sense_id": "w086-s1",
+   "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+   "relation": {
+    "target": "w092",
+    "target_sense": "w092-s1",
+    "type": "association",
+    "note": "발소리는 걷는 사람이나 동물이 내는 소리라, 소리 가운데 걸음에서 나는 한 종류다.",
+    "relevance": 4
+   },
+   "rationale": "w086-s1: 후보 검토에서 w092-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w086",
+   "source_sense_id": "w086-s1",
+   "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+   "relation": {
+    "target": "w093",
+    "target_sense": "w093-s1",
+    "type": "association",
+    "note": "숨소리는 숨을 쉬고 내쉴 때 나는 소리라, 소리 가운데 몸에서 나는 가까운 한 종류다.",
+    "relevance": 4
+   },
+   "rationale": "w086-s1: 후보 검토에서 w093-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w086",
+   "source_sense_id": "w086-s1",
+   "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+   "relation": {
+    "target": "w090",
+    "target_sense": "w090-s1",
+    "type": "association",
+    "note": "웅성거림은 여러 사람이 낮게 떠들어 알아듣기 어려운 소리라, 소리 가운데 사람들이 만드는 한 모습이다.",
+    "relevance": 3
+   },
+   "rationale": "w086-s1: 후보 검토에서 w090-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w086",
+   "source_sense_id": "w086-s1",
+   "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+   "relation": {
+    "target": "w2403",
+    "target_sense": "w2403-s1",
+    "type": "association",
+    "note": "말소리는 사람이 말할 때 입에서 나오는 소리라, 소리 가운데 말하는 경우에 한정된 한 종류다.",
+    "relevance": 4
+   },
+   "rationale": "w086-s1: 후보 검토에서 w2403-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w087",
+   "source_sense_id": "w087-s1",
+   "source_gloss_sha256": "e9aaf59f27eef1c85bed104b00a0b9d5a89aabb8ef2d8e62e6d597fbb807d975",
+   "relation": {
+    "target": "w11333",
+    "target_sense": "w11333-s1",
+    "type": "near",
+    "note": "음향은 소리의 울림이라고 풀려 있어, 소리가 퍼지거나 되돌아와 길게 느껴지는 울림과 바꿔 쓸 수 있는 말이다.",
+    "relevance": 5
+   },
+   "rationale": "w087-s1: 후보 검토에서 w11333-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w087",
+   "source_sense_id": "w087-s1",
+   "source_gloss_sha256": "e9aaf59f27eef1c85bed104b00a0b9d5a89aabb8ef2d8e62e6d597fbb807d975",
+   "relation": {
+    "target": "w060",
+    "target_sense": "w060-s1",
+    "type": "association",
+    "note": "여운은 끝난 뒤에도 남는 느낌이라, 길게 이어지는 울림이 남기는 뒷맛과 함께 떠오른다.",
+    "relevance": 3
+   },
+   "rationale": "w087-s1: 후보 검토에서 w060-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w087",
+   "source_sense_id": "w087-s1",
+   "source_gloss_sha256": "e9aaf59f27eef1c85bed104b00a0b9d5a89aabb8ef2d8e62e6d597fbb807d975",
+   "relation": {
+    "target": "w2766",
+    "target_sense": "w2766-s1",
+    "type": "action",
+    "note": "퍼지다는 소리가 주변으로 넓게 번져 나가는 동작이라, 울림이 생기는 방식과 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w087-s1: 후보 검토에서 w2766-s1를 action 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w088",
+   "source_sense_id": "w088-s1",
+   "source_gloss_sha256": "bcff9a60302d6b95a8f1e4d27957edb4e7463b38c3666d74d1d54aa6a074bfe1",
+   "relation": {
+    "target": "w4281",
+    "target_sense": "w4281-s1",
+    "type": "near",
+    "note": "반향은 벽이나 바닥에 부딪힌 소리가 되돌아와 겹쳐 들리는 현상이라, 메아리와 같은 현상을 가리키는 바꿔 쓸 수 있는 말이다.",
+    "relevance": 6
+   },
+   "rationale": "w088-s1: 후보 검토에서 w4281-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w088",
+   "source_sense_id": "w088-s1",
+   "source_gloss_sha256": "bcff9a60302d6b95a8f1e4d27957edb4e7463b38c3666d74d1d54aa6a074bfe1",
+   "relation": {
+    "target": "w11245",
+    "target_sense": "w11245-s1",
+    "type": "association",
+    "note": "메아리는 소리가 되돌아오는 현상이고, 메아리치다는 그 소리가 울려 되돌아오는 일을 서술하므로 현상명과 사건을 잇는다.",
+    "relevance": 5
+   },
+   "rationale": "w088-s1은 소리가 벽이나 산에 부딪혀 되울리는 현상이고 w11245-s1은 소리가 울려 되돌아오는 일을 서술하는 동사이므로, 같은 현상과 그 사건을 잇지만 명사와 동사는 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w088",
+   "source_sense_id": "w088-s1",
+   "source_gloss_sha256": "bcff9a60302d6b95a8f1e4d27957edb4e7463b38c3666d74d1d54aa6a074bfe1",
+   "relation": {
+    "target": "w3181",
+    "target_sense": "w3181-s1",
+    "type": "association",
+    "note": "공명은 물체나 공간이 소리에 반응해 함께 울리는 현상이라, 메아리가 생기는 원리 쪽으로 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w088-s1: 후보 검토에서 w3181-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w088",
+   "source_sense_id": "w088-s1",
+   "source_gloss_sha256": "bcff9a60302d6b95a8f1e4d27957edb4e7463b38c3666d74d1d54aa6a074bfe1",
+   "relation": {
+    "target": "w060",
+    "target_sense": "w060-s1",
+    "type": "association",
+    "note": "여운은 소리가 끝난 뒤에도 남는 느낌을 포함해, 되울려 사라져 가는 메아리의 뒷맛과 함께 떠오른다.",
+    "relevance": 3
+   },
+   "rationale": "w088-s1: 후보 검토에서 w060-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w094",
+   "source_sense_id": "w094-s1",
+   "source_gloss_sha256": "43abc2ce34f37d3e2527edfeac27d59209a7ab3c709260a63f9f1f030229ac08",
+   "relation": {
+    "target": "w116",
+    "target_sense": "w116-s1",
+    "type": "near",
+    "note": "맥박은 심장이 뛰면서 혈관에서 반복적으로 느껴지는 박동이라, 심장이 뛰며 반복되는 리듬인 심장박동과 거의 같은 것을 가리킨다.",
+    "relevance": 6
+   },
+   "rationale": "w094-s1: 후보 검토에서 w116-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w094",
+   "source_sense_id": "w094-s1",
+   "source_gloss_sha256": "43abc2ce34f37d3e2527edfeac27d59209a7ab3c709260a63f9f1f030229ac08",
+   "relation": {
+    "target": "w3204",
+    "target_sense": "w3204-s1",
+    "type": "near",
+    "note": "박동은 심장이나 맥이 규칙적으로 뛰는 움직임이라, 심장박동과 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "rationale": "w094-s1: 후보 검토에서 w3204-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w094",
+   "source_sense_id": "w094-s1",
+   "source_gloss_sha256": "43abc2ce34f37d3e2527edfeac27d59209a7ab3c709260a63f9f1f030229ac08",
+   "relation": {
+    "target": "w2414",
+    "target_sense": "w2414-s1",
+    "type": "near",
+    "note": "고동은 심장이 규칙적으로 뛰며 몸 안에 전해지는 박동이라, 심장박동을 몸 안에서 느끼는 쪽으로 말한다.",
+    "relevance": 5
+   },
+   "rationale": "w094-s1: 후보 검토에서 w2414-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w094",
+   "source_sense_id": "w094-s1",
+   "source_gloss_sha256": "43abc2ce34f37d3e2527edfeac27d59209a7ab3c709260a63f9f1f030229ac08",
+   "relation": {
+    "target": "w5690",
+    "target_sense": "w5690-s1",
+    "type": "association",
+    "note": "심장은 피를 온몸으로 보내는 가슴속 기관이라, 심장박동을 일으키는 몸의 기관이다.",
+    "relevance": 4
+   },
+   "rationale": "w094-s1: 후보 검토에서 w5690-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w094",
+   "source_sense_id": "w094-s1",
+   "source_gloss_sha256": "43abc2ce34f37d3e2527edfeac27d59209a7ab3c709260a63f9f1f030229ac08",
+   "relation": {
+    "target": "w2286",
+    "target_sense": "w2286-s1",
+    "type": "association",
+    "note": "리듬은 움직임이나 소리가 일정한 흐름과 반복을 이루는 방식이라, 심장박동이 이루는 반복의 방식과 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w094-s1: 후보 검토에서 w2286-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w10169",
+   "source_sense_id": "w10169-s1",
+   "source_gloss_sha256": "13ebf5db0a9a7b06550534310579b97eafce7e5b7bec01ad9f562b09b4639667",
+   "relation": {
+    "target": "w430",
+    "target_sense": "w430-s1",
+    "type": "near",
+    "note": "쓸쓸하다는 곁에 사람이 없거나 비어 있는 듯해 외롭고 허전하다는 뜻이라, 텅 비어 쓸쓸하고 허전한 휑하다와 같은 느낌을 서술한다.",
+    "relevance": 5
+   },
+   "rationale": "w10169-s1: 후보 검토에서 w430-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w10169",
+   "source_sense_id": "w10169-s1",
+   "source_gloss_sha256": "13ebf5db0a9a7b06550534310579b97eafce7e5b7bec01ad9f562b09b4639667",
+   "relation": {
+    "target": "w029",
+    "target_sense": "w029-s1",
+    "type": "near",
+    "note": "허전하다는 무언가 빠지거나 곁이 비어 마음이 채워지지 않는다는 뜻이라, 휑하다가 가진 허전함과 겹친다.",
+    "relevance": 5
+   },
+   "rationale": "w10169-s1: 후보 검토에서 w029-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w10169",
+   "source_sense_id": "w10169-s1",
+   "source_gloss_sha256": "13ebf5db0a9a7b06550534310579b97eafce7e5b7bec01ad9f562b09b4639667",
+   "relation": {
+    "target": "w920",
+    "target_sense": "w920-s1",
+    "type": "association",
+    "note": "황량하다는 비어 있고 쓸쓸한 풍경 쪽으로 좁아, 휑하다의 허전한 느낌에서 공간 분위기로 이어 찾을 수 있다.",
+    "relevance": 4
+   },
+   "rationale": "w10169-s1은 텅 비어 쓸쓸하고 허전한 느낌이고 w920-s1은 비어 있는 풍경의 쓸쓸한 분위기로 좁으므로, 같은 정서에서 이어 찾지만 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w10169",
+   "source_sense_id": "w10169-s1",
+   "source_gloss_sha256": "13ebf5db0a9a7b06550534310579b97eafce7e5b7bec01ad9f562b09b4639667",
+   "relation": {
+    "target": "r037",
+    "target_sense": "r037-s1",
+    "type": "association",
+    "note": "공허는 안이 비어 허전하고 의미가 빠진 느낌이라, 휑하다의 비어 있음을 마음으로 옮긴 쪽이다.",
+    "relevance": 3
+   },
+   "rationale": "w10169-s1: 후보 검토에서 r037-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w112",
+   "source_sense_id": "w112-s1",
+   "source_gloss_sha256": "01b609c1afe09ca59f2cd268c72d16a43c1b357559c71b55436d2c7ddc1c5e3a",
+   "relation": {
+    "target": "w019",
+    "target_sense": "w019-s1",
+    "type": "mood",
+    "note": "슬픔은 마음이 가라앉고 아픈 감정이라, 눈물이 드러내는 슬픔의 흔적과 분위기가 이어진다.",
+    "relevance": 5
+   },
+   "rationale": "w112-s1: 후보 검토에서 w019-s1를 mood 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w112",
+   "source_sense_id": "w112-s1",
+   "source_gloss_sha256": "01b609c1afe09ca59f2cd268c72d16a43c1b357559c71b55436d2c7ddc1c5e3a",
+   "relation": {
+    "target": "w204",
+    "target_sense": "w204-s1",
+    "type": "action",
+    "note": "울다는 슬프거나 아파서 눈물을 흘리는 동작이라, 눈물이 흐르는 행동으로 이어진다.",
+    "relevance": 5
+   },
+   "rationale": "w112-s1: 후보 검토에서 w204-s1를 action 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w112",
+   "source_sense_id": "w112-s1",
+   "source_gloss_sha256": "01b609c1afe09ca59f2cd268c72d16a43c1b357559c71b55436d2c7ddc1c5e3a",
+   "relation": {
+    "target": "w2537",
+    "target_sense": "w2537-s1",
+    "type": "association",
+    "note": "눈가의 물기는 눈물이 고여 눈 주변에 맺힌 촉촉함이라, 눈물이 흐르기 전후의 모습이다.",
+    "relevance": 4
+   },
+   "rationale": "w112-s1: 후보 검토에서 w2537-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w112",
+   "source_sense_id": "w112-s1",
+   "source_gloss_sha256": "01b609c1afe09ca59f2cd268c72d16a43c1b357559c71b55436d2c7ddc1c5e3a",
+   "relation": {
+    "target": "w2063",
+    "target_sense": "w2063-s1",
+    "type": "action",
+    "note": "눈물을 닦다는 흘러내린 눈물을 훔쳐 얼굴을 가라앉히는 동작이라, 눈물이 난 뒤의 행동이다.",
+    "relevance": 3
+   },
+   "rationale": "w112-s1: 후보 검토에서 w2063-s1를 action 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w112",
+   "source_sense_id": "w112-s1",
+   "source_gloss_sha256": "01b609c1afe09ca59f2cd268c72d16a43c1b357559c71b55436d2c7ddc1c5e3a",
+   "relation": {
+    "target": "w3696",
+    "target_sense": "w3696-s1",
+    "type": "action",
+    "note": "눈물을 훔치다는 손이나 천으로 눈가의 눈물을 닦는 동작이라, 눈물이 흐른 뒤 몸이 하는 행동이다.",
+    "relevance": 3
+   },
+   "rationale": "w112-s1: 후보 검토에서 w3696-s1를 action 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w11429",
+   "source_sense_id": "w11429-s1",
+   "source_gloss_sha256": "7ddb8b8b878fd1d4496a79f1f029eb0d720b7108735f3cd93df753501bdb8d5b",
+   "relation": {
+    "target": "w2125",
+    "target_sense": "w2125-s1",
+    "type": "association",
+    "note": "상실은 소중한 사람이나 대상을 잃어버림이나 그로 인한 마음의 빈자리라, 상실감이 생기는 사건과 느낌을 함께 말해 느낌만 가리키는 상실감과 다르다.",
+    "relevance": 5
+   },
+   "rationale": "w11429-s1: 후보 검토에서 w2125-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w11429",
+   "source_sense_id": "w11429-s1",
+   "source_gloss_sha256": "7ddb8b8b878fd1d4496a79f1f029eb0d720b7108735f3cd93df753501bdb8d5b",
+   "relation": {
+    "target": "w029",
+    "target_sense": "w029-s1",
+    "type": "association",
+    "note": "허전하다는 무언가 빠져 마음이 채워지지 않는다는 서술어라, 상실감이 주는 허전한 느낌을 형용사로 말한다.",
+    "relevance": 5
+   },
+   "rationale": "w11429-s1: 후보 검토에서 w029-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w11429",
+   "source_sense_id": "w11429-s1",
+   "source_gloss_sha256": "7ddb8b8b878fd1d4496a79f1f029eb0d720b7108735f3cd93df753501bdb8d5b",
+   "relation": {
+    "target": "w9610",
+    "target_sense": "w9610-s1",
+    "type": "association",
+    "note": "절망감은 모든 희망을 잃은 듯한 느낌이라, 잃은 뒤에 더 깊어질 수 있는 감정이다.",
+    "relevance": 3
+   },
+   "rationale": "w11429-s1: 후보 검토에서 w9610-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w11429",
+   "source_sense_id": "w11429-s1",
+   "source_gloss_sha256": "7ddb8b8b878fd1d4496a79f1f029eb0d720b7108735f3cd93df753501bdb8d5b",
+   "relation": {
+    "target": "w10555",
+    "target_sense": "w10555-s1",
+    "type": "association",
+    "note": "우울감은 마음이 우울한 느낌이라, 잃은 뒤에 이어지기 쉬운 가라앉은 감정이다.",
+    "relevance": 3
+   },
+   "rationale": "w11429-s1: 후보 검토에서 w10555-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w122",
+   "source_sense_id": "w122-s1",
+   "source_gloss_sha256": "319b34c9835771e5c410e94a64530d69dedc51fd74650425258b61c91c0587d6",
+   "relation": {
+    "target": "w123",
+    "target_sense": "w123-s1",
+    "type": "association",
+    "note": "낮은 해가 떠서 밝은 동안의 시간이라, 아침에 이어지는 다음 시간대로 함께 떠오른다.",
+    "relevance": 4
+   },
+   "rationale": "w122-s1: 후보 검토에서 w123-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w122",
+   "source_sense_id": "w122-s1",
+   "source_gloss_sha256": "319b34c9835771e5c410e94a64530d69dedc51fd74650425258b61c91c0587d6",
+   "relation": {
+    "target": "w137",
+    "target_sense": "w137-s1",
+    "type": "sensory",
+    "note": "햇살은 햇빛이 비추어 오는 밝은 기운이라, 아침에 몸으로 느끼는 빛의 느낌을 보탠다.",
+    "relevance": 4
+   },
+   "rationale": "w122-s1: 후보 검토에서 w137-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w122",
+   "source_sense_id": "w122-s1",
+   "source_gloss_sha256": "319b34c9835771e5c410e94a64530d69dedc51fd74650425258b61c91c0587d6",
+   "relation": {
+    "target": "w328",
+    "target_sense": "w328-s1",
+    "type": "association",
+    "note": "여명은 해가 뜨기 전 어둠 속에 밝아지는 빛이라, 아침이 오기 직전의 시간으로 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w122-s1: 후보 검토에서 w328-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w122",
+   "source_sense_id": "w122-s1",
+   "source_gloss_sha256": "319b34c9835771e5c410e94a64530d69dedc51fd74650425258b61c91c0587d6",
+   "relation": {
+    "target": "w147",
+    "target_sense": "w147-s1",
+    "type": "scene",
+    "note": "창가는 창문 가까이의 자리라, 아침 빛을 맞는 장면의 자리로 떠오른다.",
+    "relevance": 3
+   },
+   "rationale": "w122-s1: 후보 검토에서 w147-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w124",
+   "source_sense_id": "w124-s1",
+   "source_gloss_sha256": "bb243278e3327654816eb6040e2667b739f71011e91193142d71a02f4088bbdf",
+   "relation": {
+    "target": "w10167",
+    "target_sense": "w10167-s1",
+    "type": "association",
+    "note": "저녁때는 저녁 무렵의 시간을 가리켜, 하루의 일이 끝나고 밤으로 넘어가는 때 전체를 말하는 저녁보다 범위가 좁은 이어 찾기용 말이다.",
+    "relevance": 6
+   },
+   "rationale": "w124-s1은 일이 끝나고 밤으로 넘어가는 때 전체이고 w10167-s1은 저녁 무렵의 시간으로 범위가 좁으므로, 같은 시간대에서 이어 찾지만 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w124",
+   "source_sense_id": "w124-s1",
+   "source_gloss_sha256": "bb243278e3327654816eb6040e2667b739f71011e91193142d71a02f4088bbdf",
+   "relation": {
+    "target": "w3353",
+    "target_sense": "w3353-s1",
+    "type": "association",
+    "note": "초저녁은 해가 진 뒤 얼마 지나지 않은 이른 저녁이라, 저녁의 앞부분에 해당하는 시간이다.",
+    "relevance": 4
+   },
+   "rationale": "w124-s1: 후보 검토에서 w3353-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w124",
+   "source_sense_id": "w124-s1",
+   "source_gloss_sha256": "bb243278e3327654816eb6040e2667b739f71011e91193142d71a02f4088bbdf",
+   "relation": {
+    "target": "w3354",
+    "target_sense": "w3354-s1",
+    "type": "association",
+    "note": "늦저녁은 저녁 시간이 깊어 밤에 가까워진 무렵이라, 저녁의 뒷부분에 해당하는 시간이다.",
+    "relevance": 3
+   },
+   "rationale": "w124-s1: 후보 검토에서 w3354-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w124",
+   "source_sense_id": "w124-s1",
+   "source_gloss_sha256": "bb243278e3327654816eb6040e2667b739f71011e91193142d71a02f4088bbdf",
+   "relation": {
+    "target": "w067",
+    "target_sense": "w067-s1",
+    "type": "scene",
+    "note": "어둠은 빛이 거의 없는 상태라, 저녁이 지나며 짙어지는 장면의 분위기다.",
+    "relevance": 3
+   },
+   "rationale": "w124-s1: 후보 검토에서 w067-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w1250",
+   "source_sense_id": "w1250-s1",
+   "source_gloss_sha256": "0312a18b3e7a7062228080bc1bda2f0059bb4918b2911533ed751f192a185851",
+   "relation": {
+    "target": "w134",
+    "target_sense": "w134-s2",
+    "type": "near",
+    "note": "바람은 이루어지기를 바라는 마음이나 소망이라, 이루어지기를 바라는 마음인 소망과 거의 같은 뜻이다.",
+    "relevance": 6
+   },
+   "rationale": "w1250-s1: 후보 검토에서 w134-s2를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w1250",
+   "source_sense_id": "w1250-s1",
+   "source_gloss_sha256": "0312a18b3e7a7062228080bc1bda2f0059bb4918b2911533ed751f192a185851",
+   "relation": {
+    "target": "w281",
+    "target_sense": "w281-s1",
+    "type": "near",
+    "note": "소원은 이루어지기를 간절히 바라는 일이나 마음이라, 소망과 거의 같은 뜻으로 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "rationale": "w1250-s1: 후보 검토에서 w281-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w1250",
+   "source_sense_id": "w1250-s1",
+   "source_gloss_sha256": "0312a18b3e7a7062228080bc1bda2f0059bb4918b2911533ed751f192a185851",
+   "relation": {
+    "target": "w021",
+    "target_sense": "w021-s1",
+    "type": "association",
+    "note": "희망은 바라는 일이 이루어질 가능성을 믿는 마음이라, 소망이 바라는 마음이라면 희망은 가능성을 믿는 쪽에 기운다.",
+    "relevance": 5
+   },
+   "rationale": "w1250-s1: 후보 검토에서 w021-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w1250",
+   "source_sense_id": "w1250-s1",
+   "source_gloss_sha256": "0312a18b3e7a7062228080bc1bda2f0059bb4918b2911533ed751f192a185851",
+   "relation": {
+    "target": "w2107",
+    "target_sense": "w2107-s1",
+    "type": "association",
+    "note": "염원은 간절히 이루어지기를 바라며 오래 품는 소망이라, 소망 가운데 간절하고 오래 품는 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w1250-s1: 후보 검토에서 w2107-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w1250",
+   "source_sense_id": "w1250-s1",
+   "source_gloss_sha256": "0312a18b3e7a7062228080bc1bda2f0059bb4918b2911533ed751f192a185851",
+   "relation": {
+    "target": "w798",
+    "target_sense": "w798-s1",
+    "type": "association",
+    "note": "열망은 무언가를 간절히 바라는 마음이라, 소망이 가진 바람의 간절함만 따로 말한다.",
+    "relevance": 4
+   },
+   "rationale": "w1250-s1: 후보 검토에서 w798-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w1250",
+   "source_sense_id": "w1250-s1",
+   "source_gloss_sha256": "0312a18b3e7a7062228080bc1bda2f0059bb4918b2911533ed751f192a185851",
+   "relation": {
+    "target": "w217",
+    "target_sense": "w217-s1",
+    "type": "association",
+    "note": "바라다는 어떤 일이 이루어지기를 마음속으로 원하는 동작이라, 소망이라는 마음을 동작으로 말한다.",
+    "relevance": 4
+   },
+   "rationale": "w1250-s1: 후보 검토에서 w217-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w134",
+   "source_sense_id": "w134-s1",
+   "source_gloss_sha256": "ca1a5de5211ab854a6362d5a953f5dc3457a11332d9fda38c8023f96899df3ac",
+   "relation": {
+    "target": "w969",
+    "target_sense": "w969-s1",
+    "type": "association",
+    "note": "찬바람은 차갑게 느껴지는 바람이라, 바람의 한 종류다.",
+    "relevance": 4
+   },
+   "rationale": "w134-s1: 후보 검토에서 w969-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w134",
+   "source_sense_id": "w134-s1",
+   "source_gloss_sha256": "ca1a5de5211ab854a6362d5a953f5dc3457a11332d9fda38c8023f96899df3ac",
+   "relation": {
+    "target": "w056",
+    "target_sense": "w056-s1",
+    "type": "sensory",
+    "note": "냉기는 차갑게 느껴지는 기운이라, 바람이 피부에 전하는 차가운 느낌이다.",
+    "relevance": 4
+   },
+   "rationale": "w134-s1: 후보 검토에서 w056-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w134",
+   "source_sense_id": "w134-s1",
+   "source_gloss_sha256": "ca1a5de5211ab854a6362d5a953f5dc3457a11332d9fda38c8023f96899df3ac",
+   "relation": {
+    "target": "w140",
+    "target_sense": "w140-s1",
+    "type": "scene",
+    "note": "파도는 바람과 움직임으로 일어나는 물결이라, 바람이 부는 바다의 장면으로 이어진다.",
+    "relevance": 4
+   },
+   "rationale": "w134-s1: 후보 검토에서 w140-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w134",
+   "source_sense_id": "w134-s1",
+   "source_gloss_sha256": "ca1a5de5211ab854a6362d5a953f5dc3457a11332d9fda38c8023f96899df3ac",
+   "relation": {
+    "target": "w144",
+    "target_sense": "w144-s1",
+    "type": "scene",
+    "note": "들판은 풀이 펼쳐진 넓고 트인 땅이라, 바람이 지나가는 모습이 잘 보이는 장면이다.",
+    "relevance": 4
+   },
+   "rationale": "w134-s1: 후보 검토에서 w144-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w152",
+   "source_sense_id": "w152-s1",
+   "source_gloss_sha256": "3f52738fa2915ac3ae08b72e348cc7c0a1c12204dd0b9de41d4d1b9703997506",
+   "relation": {
+    "target": "w006",
+    "target_sense": "w006-s1",
+    "type": "mood",
+    "note": "쓸쓸함은 곁에 사람이 없어 허전한 느낌이라, 비어 있는 방이 주는 정서와 이어진다.",
+    "relevance": 5
+   },
+   "rationale": "w152-s1: 후보 검토에서 w006-s1를 mood 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w152",
+   "source_sense_id": "w152-s1",
+   "source_gloss_sha256": "3f52738fa2915ac3ae08b72e348cc7c0a1c12204dd0b9de41d4d1b9703997506",
+   "relation": {
+    "target": "w029",
+    "target_sense": "w029-s1",
+    "type": "mood",
+    "note": "허전하다는 곁이 비어 마음이 채워지지 않는 느낌이라, 사람이나 물건이 없는 빈방의 분위기를 말한다.",
+    "relevance": 4
+   },
+   "rationale": "w152-s1: 후보 검토에서 w029-s1를 mood 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w152",
+   "source_sense_id": "w152-s1",
+   "source_gloss_sha256": "3f52738fa2915ac3ae08b72e348cc7c0a1c12204dd0b9de41d4d1b9703997506",
+   "relation": {
+    "target": "w2655",
+    "target_sense": "w2655-s1",
+    "type": "association",
+    "note": "남겨진 방은 사람이 떠난 뒤 물건이나 흔적만 남은 방이라, 비어 있는 방 가운데 떠난 자국이 남은 경우다.",
+    "relevance": 5
+   },
+   "rationale": "w152-s1: 후보 검토에서 w2655-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w152",
+   "source_sense_id": "w152-s1",
+   "source_gloss_sha256": "3f52738fa2915ac3ae08b72e348cc7c0a1c12204dd0b9de41d4d1b9703997506",
+   "relation": {
+    "target": "w8997",
+    "target_sense": "w8997-s1",
+    "type": "association",
+    "note": "빈자리는 사람이나 물건이 빠져 남은 자리라, 비어 있는 방과 같은 비어 있음을 자리로 말한다.",
+    "relevance": 3
+   },
+   "rationale": "w152-s1: 후보 검토에서 w8997-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w172",
+   "source_sense_id": "w172-s1",
+   "source_gloss_sha256": "ff43cc48e5de7a135eb7c96fc5f0274ee01f65b6a8fcdb39325a27a5e75ffc3b",
+   "relation": {
+    "target": "w508",
+    "target_sense": "w508-s1",
+    "type": "association",
+    "note": "창틀은 창문을 끼워 고정하는 테두리라, 창문을 이루는 한 부분이다.",
+    "relevance": 4
+   },
+   "rationale": "w172-s1: 후보 검토에서 w508-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w172",
+   "source_sense_id": "w172-s1",
+   "source_gloss_sha256": "ff43cc48e5de7a135eb7c96fc5f0274ee01f65b6a8fcdb39325a27a5e75ffc3b",
+   "relation": {
+    "target": "w5052",
+    "target_sense": "w5052-s1",
+    "type": "association",
+    "note": "창유리는 창문에 끼우는 얇고 평평한 유리판이라, 창문을 이루는 한 부분이다.",
+    "relevance": 4
+   },
+   "rationale": "w172-s1: 후보 검토에서 w5052-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w172",
+   "source_sense_id": "w172-s1",
+   "source_gloss_sha256": "ff43cc48e5de7a135eb7c96fc5f0274ee01f65b6a8fcdb39325a27a5e75ffc3b",
+   "relation": {
+    "target": "w6755",
+    "target_sense": "w6755-s1",
+    "type": "scene",
+    "note": "창밖은 창문 너머에 보이는 바깥 공간이라, 창문으로 내다보게 되는 장면이다.",
+    "relevance": 4
+   },
+   "rationale": "w172-s1: 후보 검토에서 w6755-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w172",
+   "source_sense_id": "w172-s1",
+   "source_gloss_sha256": "ff43cc48e5de7a135eb7c96fc5f0274ee01f65b6a8fcdb39325a27a5e75ffc3b",
+   "relation": {
+    "target": "w2050",
+    "target_sense": "w2050-s1",
+    "type": "action",
+    "note": "창을 열다는 창문을 열어 빛이나 공기가 들어오게 하는 동작이라, 창문과 함께 하는 대표적인 행동이다.",
+    "relevance": 4
+   },
+   "rationale": "w172-s1: 후보 검토에서 w2050-s1를 action 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w172",
+   "source_sense_id": "w172-s1",
+   "source_gloss_sha256": "ff43cc48e5de7a135eb7c96fc5f0274ee01f65b6a8fcdb39325a27a5e75ffc3b",
+   "relation": {
+    "target": "w2843",
+    "target_sense": "w2843-s1",
+    "type": "action",
+    "note": "창밖을 내다보다는 창문 너머 바깥 풍경을 바라보는 동작이라, 창문의 쓰임을 보여 주는 행동이다.",
+    "relevance": 4
+   },
+   "rationale": "w172-s1: 후보 검토에서 w2843-s1를 action 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w191",
+   "source_sense_id": "w191-s1",
+   "source_gloss_sha256": "d0829191aaa2bb4eae6251d5f635d377693d29c844b468cab9f11edc29315b38",
+   "relation": {
+    "target": "w5749",
+    "target_sense": "w5749-s1",
+    "type": "association",
+    "note": "찾아내다는 찾은 끝에 발견하는 결과까지 말해, 발견하려고 살피는 행위인 찾다에서 결과 쪽 표현으로 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w191-s1은 발견하려고 살피는 행위이고 w5749-s1은 발견에 이르는 결과를 함의하므로, 같은 탐색 상황이지만 시도와 결과가 달라 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w191",
+   "source_sense_id": "w191-s1",
+   "source_gloss_sha256": "d0829191aaa2bb4eae6251d5f635d377693d29c844b468cab9f11edc29315b38",
+   "relation": {
+    "target": "w12586",
+    "target_sense": "w12586-s1",
+    "type": "association",
+    "note": "발견하다는 미처 알지 못한 것을 찾아낸다는 뜻이라, 찾다가 이르는 결과 쪽이다.",
+    "relevance": 5
+   },
+   "rationale": "w191-s1: 후보 검토에서 w12586-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w191",
+   "source_sense_id": "w191-s1",
+   "source_gloss_sha256": "d0829191aaa2bb4eae6251d5f635d377693d29c844b468cab9f11edc29315b38",
+   "relation": {
+    "target": "w6069",
+    "target_sense": "w6069-s1",
+    "type": "association",
+    "note": "되찾다는 잃었거나 빼앗긴 것을 다시 찾아 자기 것으로 한다는 뜻이라, 찾다의 한 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w191-s1: 후보 검토에서 w6069-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w191",
+   "source_sense_id": "w191-s1",
+   "source_gloss_sha256": "d0829191aaa2bb4eae6251d5f635d377693d29c844b468cab9f11edc29315b38",
+   "relation": {
+    "target": "w342",
+    "target_sense": "w342-s1",
+    "type": "association",
+    "note": "더듬다는 손이나 감각으로 더듬어 찾는다는 뜻이라, 찾는 방식 가운데 한 가지다.",
+    "relevance": 4
+   },
+   "rationale": "w191-s1: 후보 검토에서 w342-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w191",
+   "source_sense_id": "w191-s1",
+   "source_gloss_sha256": "d0829191aaa2bb4eae6251d5f635d377693d29c844b468cab9f11edc29315b38",
+   "relation": {
+    "target": "w8628",
+    "target_sense": "w8628-s1",
+    "type": "association",
+    "note": "뒤적이다는 물건이나 종이 사이를 헤치며 찾는다는 뜻이라, 찾는 방식 가운데 한 가지다.",
+    "relevance": 4
+   },
+   "rationale": "w191-s1: 후보 검토에서 w8628-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w192",
+   "source_sense_id": "w192-s1",
+   "source_gloss_sha256": "d24c73e567d0d7f53db5521c4c8455b2160563536fbdc5a0e2c29a71e8a45242",
+   "relation": {
+    "target": "w2834",
+    "target_sense": "w2834-s1",
+    "type": "association",
+    "note": "문을 열다는 문짝을 움직여 출입할 공간을 만드는 동작이라, 열다 가운데 문에 한정된 한 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w192-s1: 후보 검토에서 w2834-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w192",
+   "source_sense_id": "w192-s1",
+   "source_gloss_sha256": "d24c73e567d0d7f53db5521c4c8455b2160563536fbdc5a0e2c29a71e8a45242",
+   "relation": {
+    "target": "w2734",
+    "target_sense": "w2734-s1",
+    "type": "association",
+    "note": "열어젖히다는 문이나 덮개를 힘 있게 활짝 여는 동작이라, 열다 가운데 힘 있게 여는 한 방식이다.",
+    "relevance": 4
+   },
+   "rationale": "w192-s1: 후보 검토에서 w2734-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w192",
+   "source_sense_id": "w192-s1",
+   "source_gloss_sha256": "d24c73e567d0d7f53db5521c4c8455b2160563536fbdc5a0e2c29a71e8a45242",
+   "relation": {
+    "target": "w178",
+    "target_sense": "w178-s1",
+    "type": "association",
+    "note": "열쇠는 잠긴 자물쇠나 문을 여는 데 쓰는 도구라, 열기 위해 쓰는 도구로 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w192-s1: 후보 검토에서 w178-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w192",
+   "source_sense_id": "w192-s1",
+   "source_gloss_sha256": "d24c73e567d0d7f53db5521c4c8455b2160563536fbdc5a0e2c29a71e8a45242",
+   "relation": {
+    "target": "w1277",
+    "target_sense": "w1277-s1",
+    "type": "association",
+    "note": "입을 열다는 말을 시작한다는 관용 표현이라, 열다가 비유로 쓰인 경우와 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w192-s1: 후보 검토에서 w1277-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w194",
+   "source_sense_id": "w194-s1",
+   "source_gloss_sha256": "f2dd8ac024393f66d9ac49ce5f4e1afee96516a6c9f9dbcbd1c7527be87310d7",
+   "relation": {
+    "target": "w3641",
+    "target_sense": "w3641-s1",
+    "type": "near",
+    "note": "붙들다는 움직이거나 떠나지 못하게 손으로 단단히 잡는다는 뜻이라, 손으로 붙들어 움직이지 않게 하는 잡다와 거의 같은 뜻이다.",
+    "relevance": 6
+   },
+   "rationale": "w194-s1: 후보 검토에서 w3641-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w194",
+   "source_sense_id": "w194-s1",
+   "source_gloss_sha256": "f2dd8ac024393f66d9ac49ce5f4e1afee96516a6c9f9dbcbd1c7527be87310d7",
+   "relation": {
+    "target": "w215",
+    "target_sense": "w215-s1",
+    "type": "near",
+    "note": "붙잡다는 손이나 힘으로 대상을 단단히 잡아 놓치지 않는다는 뜻이라, 잡다와 바꿔 쓸 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w194-s1: 후보 검토에서 w215-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w194",
+   "source_sense_id": "w194-s1",
+   "source_gloss_sha256": "f2dd8ac024393f66d9ac49ce5f4e1afee96516a6c9f9dbcbd1c7527be87310d7",
+   "relation": {
+    "target": "w2739",
+    "target_sense": "w2739-s1",
+    "type": "association",
+    "note": "쥐다는 손가락을 오므려 물건을 손안에 잡는다는 뜻이라, 잡다 가운데 손안에 쥐는 한 방식이다.",
+    "relevance": 4
+   },
+   "rationale": "w194-s1: 후보 검토에서 w2739-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w194",
+   "source_sense_id": "w194-s1",
+   "source_gloss_sha256": "f2dd8ac024393f66d9ac49ce5f4e1afee96516a6c9f9dbcbd1c7527be87310d7",
+   "relation": {
+    "target": "w1128",
+    "target_sense": "w1128-s1",
+    "type": "association",
+    "note": "움켜잡다는 손가락을 오므려 세게 잡는다는 뜻이라, 잡다 가운데 세게 쥐는 한 방식이다.",
+    "relevance": 4
+   },
+   "rationale": "w194-s1: 후보 검토에서 w1128-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w194",
+   "source_sense_id": "w194-s1",
+   "source_gloss_sha256": "f2dd8ac024393f66d9ac49ce5f4e1afee96516a6c9f9dbcbd1c7527be87310d7",
+   "relation": {
+    "target": "w1275",
+    "target_sense": "w1275-s1",
+    "type": "association",
+    "note": "손을 잡다는 사람의 손을 맞잡는다는 표현이라, 잡다의 대상이 손으로 정해진 한 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w194-s1: 후보 검토에서 w1275-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w2138",
+   "source_sense_id": "w2138-s1",
+   "source_gloss_sha256": "9caa753ee679dc5e09c5813a26e248065f7d215bdb5b293b03eba335da2bba20",
+   "relation": {
+    "target": "w436",
+    "target_sense": "w436-s1",
+    "type": "association",
+    "note": "아련함은 희미한 기억이나 감정이 오래 남는 느낌을 이름 붙이고, 아련하다는 그 느낌이 떠오르는 상태를 서술한다.",
+    "relevance": 6
+   },
+   "rationale": "w2138-s1은 기억이나 감정이 희미하게 떠올라 오래 남는 느낌을 이름 붙이는 명사이고 w436-s1은 기억이나 감각이 희미하면서 정답게 떠오르는 상태를 서술하는 형용사이므로, 같은 상태의 명사와 서술은 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w2138",
+   "source_sense_id": "w2138-s1",
+   "source_gloss_sha256": "9caa753ee679dc5e09c5813a26e248065f7d215bdb5b293b03eba335da2bba20",
+   "relation": {
+    "target": "w060",
+    "target_sense": "w060-s1",
+    "type": "association",
+    "note": "여운은 끝난 뒤에도 마음에 남는 느낌이라, 아련함이 마음에 오래 남는 쪽과 닮았지만 희미함까지는 말하지 않는다.",
+    "relevance": 5
+   },
+   "rationale": "w2138-s1: 후보 검토에서 w060-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w2138",
+   "source_sense_id": "w2138-s1",
+   "source_gloss_sha256": "9caa753ee679dc5e09c5813a26e248065f7d215bdb5b293b03eba335da2bba20",
+   "relation": {
+    "target": "w041",
+    "target_sense": "w041-s1",
+    "type": "association",
+    "note": "희미하다는 빛이나 윤곽이 약해 분명하지 않다는 뜻이라, 아련함이 지닌 희미함을 눈에 보이는 쪽으로 옮긴 말이다.",
+    "relevance": 4
+   },
+   "rationale": "w2138-s1: 후보 검토에서 w041-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w2138",
+   "source_sense_id": "w2138-s1",
+   "source_gloss_sha256": "9caa753ee679dc5e09c5813a26e248065f7d215bdb5b293b03eba335da2bba20",
+   "relation": {
+    "target": "w3131",
+    "target_sense": "w3131-s1",
+    "type": "association",
+    "note": "마음에 남다는 사건이나 말이 지나간 뒤에도 기억과 감정에 이어진다는 표현이라, 아련함이 생기는 방식이다.",
+    "relevance": 4
+   },
+   "rationale": "w2138-s1: 후보 검토에서 w3131-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w2138",
+   "source_sense_id": "w2138-s1",
+   "source_gloss_sha256": "9caa753ee679dc5e09c5813a26e248065f7d215bdb5b293b03eba335da2bba20",
+   "relation": {
+    "target": "w4766",
+    "target_sense": "w4766-s1",
+    "type": "association",
+    "note": "사무치다는 감정이나 생각이 마음 깊이 닿아 오래 남는다는 뜻이라, 아련함보다 더 깊고 날카롭게 남는 쪽이다.",
+    "relevance": 3
+   },
+   "rationale": "w2138-s1: 후보 검토에서 w4766-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w224",
+   "source_sense_id": "w224-s1",
+   "source_gloss_sha256": "ebe8e686be883d4e908724affd220793c00ca00ff1efecf31ac2429bfc135fac",
+   "relation": {
+    "target": "w5471",
+    "target_sense": "w5471-s1",
+    "type": "association",
+    "note": "확인은 대상이나 사실이 맞는지 살펴 알아보는 행위를 이름 붙이고, 확인하다는 그 행위를 수행하는 동사라 같은 검증 장면에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w224-s1은 사실이나 상태를 살펴 틀림이 없는지 알아보는 동사이고 w5471-s1은 대상이나 사실이 맞는지 살펴 알아보는 일을 명사로 가리키므로, 같은 검증 행위를 잇지만 동사와 명사는 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w224",
+   "source_sense_id": "w224-s1",
+   "source_gloss_sha256": "ebe8e686be883d4e908724affd220793c00ca00ff1efecf31ac2429bfc135fac",
+   "relation": {
+    "target": "w7667",
+    "target_sense": "w7667-s1",
+    "type": "association",
+    "note": "체크는 빠진 것이 없는지 살펴 확인하는 일을 이름 붙이고, 확인하다는 그 일을 수행하므로 같은 점검 장면에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w224-s1은 사실이나 상태를 살펴 틀림이 없는지 알아보는 동사이고 w7667-s1은 빠진 것이 없는지 살펴 확인하는 일을 명사로 가리키므로, 같은 점검 장면에서 이어 찾지만 동사와 명사는 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w224",
+   "source_sense_id": "w224-s1",
+   "source_gloss_sha256": "ebe8e686be883d4e908724affd220793c00ca00ff1efecf31ac2429bfc135fac",
+   "relation": {
+    "target": "w6818",
+    "target_sense": "w6818-s1",
+    "type": "association",
+    "note": "점검은 문제가 없는지 자세히 살펴 확인한다는 뜻이라, 확인하다 가운데 문제 유무를 보는 한 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w224-s1: 후보 검토에서 w6818-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w224",
+   "source_sense_id": "w224-s1",
+   "source_gloss_sha256": "ebe8e686be883d4e908724affd220793c00ca00ff1efecf31ac2429bfc135fac",
+   "relation": {
+    "target": "w8674",
+    "target_sense": "w8674-s1",
+    "type": "association",
+    "note": "검증은 어떤 것이 사실이거나 제대로 이루어졌는지 살펴 확인한다는 뜻이라, 확인하다 가운데 사실 여부를 따지는 한 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w224-s1: 후보 검토에서 w8674-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w224",
+   "source_sense_id": "w224-s1",
+   "source_gloss_sha256": "ebe8e686be883d4e908724affd220793c00ca00ff1efecf31ac2429bfc135fac",
+   "relation": {
+    "target": "w4850",
+    "target_sense": "w4850-s1",
+    "type": "association",
+    "note": "살펴보다는 대상이나 상황을 자세히 보고 확인한다는 뜻이라, 확인하다의 방법 쪽에 기운다.",
+    "relevance": 4
+   },
+   "rationale": "w224-s1: 후보 검토에서 w4850-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w225",
+   "source_sense_id": "w225-s1",
+   "source_gloss_sha256": "86ba429eeb309860a69977623f73d70d92f218154c45cf0cf9c787f15d6dd2c8",
+   "relation": {
+    "target": "w2821",
+    "target_sense": "w2821-s1",
+    "type": "near",
+    "note": "고르다는 여럿 가운데 조건에 맞는 것을 선택한다는 뜻이라, 선택하다와 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "rationale": "w225-s1: 후보 검토에서 w2821-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w225",
+   "source_sense_id": "w225-s1",
+   "source_gloss_sha256": "86ba429eeb309860a69977623f73d70d92f218154c45cf0cf9c787f15d6dd2c8",
+   "relation": {
+    "target": "w6048",
+    "target_sense": "w6048-s1",
+    "type": "near",
+    "note": "택하다는 여러 가능성 가운데 하나를 골라 정한다는 뜻이라, 선택하다와 거의 같은 뜻이다.",
+    "relevance": 6
+   },
+   "rationale": "w225-s1: 후보 검토에서 w6048-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w225",
+   "source_sense_id": "w225-s1",
+   "source_gloss_sha256": "86ba429eeb309860a69977623f73d70d92f218154c45cf0cf9c787f15d6dd2c8",
+   "relation": {
+    "target": "w5498",
+    "target_sense": "w5498-s1",
+    "type": "association",
+    "note": "선택은 여럿 가운데 하나를 골라 정하는 일을 이름 붙이고, 선택하다는 그 행동을 수행하므로 같은 결정 장면에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w225-s1은 여럿 가운데 하나를 골라 정하는 동사이고 w5498-s1은 마음에 드는 하나를 골라 정하는 일을 명사로 가리키므로, 같은 결정 행위를 잇지만 동사와 명사는 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w225",
+   "source_sense_id": "w225-s1",
+   "source_gloss_sha256": "86ba429eeb309860a69977623f73d70d92f218154c45cf0cf9c787f15d6dd2c8",
+   "relation": {
+    "target": "w226",
+    "target_sense": "w226-s1",
+    "type": "association",
+    "note": "결정하다는 생각한 끝에 하나의 뜻이나 행동을 정한다는 뜻이라, 선택하다가 이르는 정함의 결과 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w225-s1: 후보 검토에서 w226-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w225",
+   "source_sense_id": "w225-s1",
+   "source_gloss_sha256": "86ba429eeb309860a69977623f73d70d92f218154c45cf0cf9c787f15d6dd2c8",
+   "relation": {
+    "target": "w7424",
+    "target_sense": "w7424-s1",
+    "type": "association",
+    "note": "선정은 여럿 가운데 조건에 맞는 것을 골라 정한다는 뜻이라, 선택하다 가운데 기준에 따라 뽑는 한 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w225-s1: 후보 검토에서 w7424-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w239",
+   "source_sense_id": "w239-s1",
+   "source_gloss_sha256": "dfea90671bcfbf85ae7f891ef563faa0b707e0bcfcd32d6d19ad12cc4e0c3cd9",
+   "relation": {
+    "target": "w2823",
+    "target_sense": "w2823-s1",
+    "type": "association",
+    "note": "간직하다는 소중한 물건이나 기억을 잃지 않도록 오래 보관한다는 뜻이라, 기억하는 일 가운데 소중히 지니는 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w239-s1: 후보 검토에서 w2823-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w239",
+   "source_sense_id": "w239-s1",
+   "source_gloss_sha256": "dfea90671bcfbf85ae7f891ef563faa0b707e0bcfcd32d6d19ad12cc4e0c3cd9",
+   "relation": {
+    "target": "w2824",
+    "target_sense": "w2824-s1",
+    "type": "association",
+    "note": "떠올리다는 기억이나 생각을 마음속에 다시 나타나게 한다는 뜻이라, 기억해 둔 것을 꺼내는 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w239-s1: 후보 검토에서 w2824-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w239",
+   "source_sense_id": "w239-s1",
+   "source_gloss_sha256": "dfea90671bcfbf85ae7f891ef563faa0b707e0bcfcd32d6d19ad12cc4e0c3cd9",
+   "relation": {
+    "target": "w2039",
+    "target_sense": "w2039-s1",
+    "type": "association",
+    "note": "마음에 새기다는 중요한 말이나 경험을 잊지 않도록 깊이 기억한다는 표현이라, 기억하다 가운데 깊이 새기는 한 방식이다.",
+    "relevance": 4
+   },
+   "rationale": "w239-s1: 후보 검토에서 w2039-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w239",
+   "source_sense_id": "w239-s1",
+   "source_gloss_sha256": "dfea90671bcfbf85ae7f891ef563faa0b707e0bcfcd32d6d19ad12cc4e0c3cd9",
+   "relation": {
+    "target": "w8672",
+    "target_sense": "w8672-s1",
+    "type": "association",
+    "note": "외다는 글이나 말을 기억하여 되풀이해 말한다는 뜻이라, 기억한 것을 말로 되풀이하는 한 방식이다.",
+    "relevance": 3
+   },
+   "rationale": "w239-s1: 후보 검토에서 w8672-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w239",
+   "source_sense_id": "w239-s1",
+   "source_gloss_sha256": "dfea90671bcfbf85ae7f891ef563faa0b707e0bcfcd32d6d19ad12cc4e0c3cd9",
+   "relation": {
+    "target": "w5356",
+    "target_sense": "w5356-s1",
+    "type": "association",
+    "note": "기억은 지난 일을 마음속에 간직하는 정신 작용이라, 기억하다가 가리키는 일을 이름으로 말한다.",
+    "relevance": 3
+   },
+   "rationale": "w239-s1: 후보 검토에서 w5356-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w269",
+   "source_sense_id": "w269-s1",
+   "source_gloss_sha256": "9719e9ab472d47cc9ea757c740ad080e9509a4abfa0f01f2f25b19c5f1118f9d",
+   "relation": {
+    "target": "w143",
+    "target_sense": "w143-s1",
+    "type": "scene",
+    "note": "숲은 나무가 우거져 넓게 이어진 자연 공간이라, 나무가 모여 만드는 장면이다.",
+    "relevance": 4
+   },
+   "rationale": "w269-s1: 후보 검토에서 w143-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w269",
+   "source_sense_id": "w269-s1",
+   "source_gloss_sha256": "9719e9ab472d47cc9ea757c740ad080e9509a4abfa0f01f2f25b19c5f1118f9d",
+   "relation": {
+    "target": "w270",
+    "target_sense": "w270-s1",
+    "type": "association",
+    "note": "잎은 식물의 줄기나 가지에 붙어 자라는 얇고 넓은 부분이라, 나무를 이루는 한 부분이다.",
+    "relevance": 4
+   },
+   "rationale": "w269-s1: 후보 검토에서 w270-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w269",
+   "source_sense_id": "w269-s1",
+   "source_gloss_sha256": "9719e9ab472d47cc9ea757c740ad080e9509a4abfa0f01f2f25b19c5f1118f9d",
+   "relation": {
+    "target": "w4092",
+    "target_sense": "w4092-s1",
+    "type": "association",
+    "note": "나무껍질은 나무줄기 바깥을 감싸고 있는 단단한 껍질이라, 나무를 이루는 한 부분이다.",
+    "relevance": 4
+   },
+   "rationale": "w269-s1: 후보 검토에서 w4092-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w269",
+   "source_sense_id": "w269-s1",
+   "source_gloss_sha256": "9719e9ab472d47cc9ea757c740ad080e9509a4abfa0f01f2f25b19c5f1118f9d",
+   "relation": {
+    "target": "w4095",
+    "target_sense": "w4095-s1",
+    "type": "association",
+    "note": "통나무는 가지와 껍질을 다듬어 길게 자른 나무줄기라, 나무를 베어 쓴 한 모습이다.",
+    "relevance": 4
+   },
+   "rationale": "w269-s1: 후보 검토에서 w4095-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w269",
+   "source_sense_id": "w269-s1",
+   "source_gloss_sha256": "9719e9ab472d47cc9ea757c740ad080e9509a4abfa0f01f2f25b19c5f1118f9d",
+   "relation": {
+    "target": "w2680",
+    "target_sense": "w2680-s1",
+    "type": "scene",
+    "note": "나무 아래는 나무의 줄기와 가지 아래쪽에 놓인 자리라, 나무가 만드는 그늘의 장면이다.",
+    "relevance": 4
+   },
+   "rationale": "w269-s1: 후보 검토에서 w2680-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w269",
+   "source_sense_id": "w269-s1",
+   "source_gloss_sha256": "9719e9ab472d47cc9ea757c740ad080e9509a4abfa0f01f2f25b19c5f1118f9d",
+   "relation": {
+    "target": "w12406",
+    "target_sense": "w12406-s1",
+    "type": "association",
+    "note": "포플러는 키가 크고 곧게 자라는 나무라, 나무의 한 종류다.",
+    "relevance": 3
+   },
+   "rationale": "w269-s1: 후보 검토에서 w12406-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w281",
+   "source_sense_id": "w281-s1",
+   "source_gloss_sha256": "aac168cc0d357791b16dbc4951a9bb5665dd08592c2c73f177a01675afed0940",
+   "relation": {
+    "target": "w1250",
+    "target_sense": "w1250-s1",
+    "type": "near",
+    "note": "소망은 이루어지기를 바라는 마음이라, 소원이 가리키는 바라는 일이나 마음과 거의 같은 뜻으로 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "rationale": "w281-s1: 후보 검토에서 w1250-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w281",
+   "source_sense_id": "w281-s1",
+   "source_gloss_sha256": "aac168cc0d357791b16dbc4951a9bb5665dd08592c2c73f177a01675afed0940",
+   "relation": {
+    "target": "w134",
+    "target_sense": "w134-s2",
+    "type": "near",
+    "note": "바람은 이루어지기를 바라는 마음이나 소망이라, 소원과 바꿔 쓸 수 있는 말이다.",
+    "relevance": 5
+   },
+   "rationale": "w281-s1: 후보 검토에서 w134-s2를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w281",
+   "source_sense_id": "w281-s1",
+   "source_gloss_sha256": "aac168cc0d357791b16dbc4951a9bb5665dd08592c2c73f177a01675afed0940",
+   "relation": {
+    "target": "w2107",
+    "target_sense": "w2107-s1",
+    "type": "association",
+    "note": "염원은 간절히 오래 품는 소망이라, 소원 가운데 더 간절하고 오래 품는 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w281-s1: 후보 검토에서 w2107-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w281",
+   "source_sense_id": "w281-s1",
+   "source_gloss_sha256": "aac168cc0d357791b16dbc4951a9bb5665dd08592c2c73f177a01675afed0940",
+   "relation": {
+    "target": "w798",
+    "target_sense": "w798-s1",
+    "type": "association",
+    "note": "열망은 무언가를 간절히 바라는 마음이라, 소원이 가진 간절함만 따로 말한다.",
+    "relevance": 4
+   },
+   "rationale": "w281-s1: 후보 검토에서 w798-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w281",
+   "source_sense_id": "w281-s1",
+   "source_gloss_sha256": "aac168cc0d357791b16dbc4951a9bb5665dd08592c2c73f177a01675afed0940",
+   "relation": {
+    "target": "w275",
+    "target_sense": "w275-s1",
+    "type": "association",
+    "note": "꿈은 앞으로 이루고 싶어 마음에 그리는 일이라, 소원이 향하는 이룰 대상과 이어진다.",
+    "relevance": 4
+   },
+   "rationale": "w281-s1: 후보 검토에서 w275-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w297",
+   "source_sense_id": "w297-s1",
+   "source_gloss_sha256": "755658928add2d0676e9321a6ea5da6150892f9bf7bb6d037f27c59fa666ddf5",
+   "relation": {
+    "target": "w1271",
+    "target_sense": "w1271-s1",
+    "type": "association",
+    "note": "귀를 세우다는 작은 소리에도 주의를 곤두세워 듣는다는 뜻이라, 일반적인 집중 청취인 귀를 기울이다에서 더 긴장된 듣기로 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "rationale": "w297-s1은 주의를 집중해 듣는 일반 동작이고 w1271-s1은 작은 소리에도 곤두선 듣기로 좁으므로, 같은 듣기에서 이어 찾지만 near 대체어가 아니다."
+  },
+  {
+   "source_record_id": "w297",
+   "source_sense_id": "w297-s1",
+   "source_gloss_sha256": "755658928add2d0676e9321a6ea5da6150892f9bf7bb6d037f27c59fa666ddf5",
+   "relation": {
+    "target": "w201",
+    "target_sense": "w201-s1",
+    "type": "association",
+    "note": "듣다는 소리를 귀로 알아차리는 일반 동작이라, 귀를 기울이다는 그중 주의를 모아 듣는 한 방식이다.",
+    "relevance": 4
+   },
+   "rationale": "w297-s1: 후보 검토에서 w201-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w297",
+   "source_sense_id": "w297-s1",
+   "source_gloss_sha256": "755658928add2d0676e9321a6ea5da6150892f9bf7bb6d037f27c59fa666ddf5",
+   "relation": {
+    "target": "w12634",
+    "target_sense": "w12634-s1",
+    "type": "association",
+    "note": "집중하다는 한곳에 마음을 모으는 일반 동작이라, 귀를 기울이는 마음의 쓰임과 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w297-s1: 후보 검토에서 w12634-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w3289",
+   "source_sense_id": "w3289-s1",
+   "source_gloss_sha256": "5590fd47665950447a030b224c114337d8e239a86365c378fb23cacd23ea922b",
+   "relation": {
+    "target": "w132",
+    "target_sense": "w132-s1",
+    "type": "association",
+    "note": "비는 구름에서 물방울이 떨어지는 기상 현상이라, 빗방울이 모여 이루는 현상 전체다.",
+    "relevance": 5
+   },
+   "rationale": "w3289-s1: 후보 검토에서 w132-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w3289",
+   "source_sense_id": "w3289-s1",
+   "source_gloss_sha256": "5590fd47665950447a030b224c114337d8e239a86365c378fb23cacd23ea922b",
+   "relation": {
+    "target": "w982",
+    "target_sense": "w982-s1",
+    "type": "association",
+    "note": "물방울은 작게 맺힌 한 방울의 물이라, 빗방울보다 넓게 쓰이는 상위 범주다.",
+    "relevance": 5
+   },
+   "rationale": "w3289-s1: 후보 검토에서 w982-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w3289",
+   "source_sense_id": "w3289-s1",
+   "source_gloss_sha256": "5590fd47665950447a030b224c114337d8e239a86365c378fb23cacd23ea922b",
+   "relation": {
+    "target": "w091",
+    "target_sense": "w091-s1",
+    "type": "sensory",
+    "note": "빗소리는 비가 내릴 때 이어지는 물방울의 소리라, 빗방울이 부딪히며 귀에 남기는 소리다.",
+    "relevance": 4
+   },
+   "rationale": "w3289-s1: 후보 검토에서 w091-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w3289",
+   "source_sense_id": "w3289-s1",
+   "source_gloss_sha256": "5590fd47665950447a030b224c114337d8e239a86365c378fb23cacd23ea922b",
+   "relation": {
+    "target": "w3282",
+    "target_sense": "w3282-s1",
+    "type": "association",
+    "note": "이슬비는 빗방울이 작고 약하게 내려 오래 젖게 하는 비라, 빗방울이 가는 쪽의 비다.",
+    "relevance": 3
+   },
+   "rationale": "w3289-s1: 후보 검토에서 w3282-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w3289",
+   "source_sense_id": "w3289-s1",
+   "source_gloss_sha256": "5590fd47665950447a030b224c114337d8e239a86365c378fb23cacd23ea922b",
+   "relation": {
+    "target": "w3284",
+    "target_sense": "w3284-s1",
+    "type": "association",
+    "note": "가랑비는 빗방울이 가늘어도 오래 맞으면 젖는 비라, 빗방울이 가는 쪽의 비다.",
+    "relevance": 3
+   },
+   "rationale": "w3289-s1: 후보 검토에서 w3284-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w334",
+   "source_sense_id": "w334-s1",
+   "source_gloss_sha256": "6ed3bdf5d564873b5fd56b5716df57b686ff4eb1b38a41533697e61ddbf2fc99",
+   "relation": {
+    "target": "w2513",
+    "target_sense": "w2513-s1",
+    "type": "sensory",
+    "note": "눅눅함은 습기가 차 축축하게 느껴지는 성질이라, 장마철 공기의 몸에 닿는 느낌이다.",
+    "relevance": 5
+   },
+   "rationale": "w334-s1: 후보 검토에서 w2513-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w334",
+   "source_sense_id": "w334-s1",
+   "source_gloss_sha256": "6ed3bdf5d564873b5fd56b5716df57b686ff4eb1b38a41533697e61ddbf2fc99",
+   "relation": {
+    "target": "w2434",
+    "target_sense": "w2434-s1",
+    "type": "sensory",
+    "note": "비 냄새는 비가 내리거나 그친 뒤 젖은 땅에서 나는 냄새라, 장마철에 코로 느끼는 느낌이다.",
+    "relevance": 4
+   },
+   "rationale": "w334-s1: 후보 검토에서 w2434-s1를 sensory 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w334",
+   "source_sense_id": "w334-s1",
+   "source_gloss_sha256": "6ed3bdf5d564873b5fd56b5716df57b686ff4eb1b38a41533697e61ddbf2fc99",
+   "relation": {
+    "target": "w260",
+    "target_sense": "w260-s1",
+    "type": "scene",
+    "note": "우산은 비를 막기 위해 펼쳐 드는 도구라, 장마철 길 위의 장면으로 떠오른다.",
+    "relevance": 3
+   },
+   "rationale": "w334-s1: 후보 검토에서 w260-s1를 scene 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w334",
+   "source_sense_id": "w334-s1",
+   "source_gloss_sha256": "6ed3bdf5d564873b5fd56b5716df57b686ff4eb1b38a41533697e61ddbf2fc99",
+   "relation": {
+    "target": "w127",
+    "target_sense": "w127-s1",
+    "type": "association",
+    "note": "계절은 한 해를 나눈 때라, 장마가 속하는 시간의 틀로 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w334-s1: 후보 검토에서 w127-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w726",
+   "source_sense_id": "w726-s1",
+   "source_gloss_sha256": "e76589f65d4f0dea71bc3c9db2ed2cb8a6e676c2c0820c88623d9665eb6f9795",
+   "relation": {
+    "target": "w6157",
+    "target_sense": "w6157-s1",
+    "type": "near",
+    "note": "쓰다듬다는 손으로 표면을 부드럽게 문지른다는 뜻이라, 손으로 부드럽게 쓰다듬는 어루만지다와 거의 같은 동작이다.",
+    "relevance": 7
+   },
+   "rationale": "w726-s1: 후보 검토에서 w6157-s1를 near 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w726",
+   "source_sense_id": "w726-s1",
+   "source_gloss_sha256": "e76589f65d4f0dea71bc3c9db2ed2cb8a6e676c2c0820c88623d9665eb6f9795",
+   "relation": {
+    "target": "w4891",
+    "target_sense": "w4891-s1",
+    "type": "association",
+    "note": "매만지다는 손으로 만져 모양이나 표면을 부드럽게 다듬는다는 뜻이라, 어루만지다와 닮았지만 다듬는 데 목적이 있다.",
+    "relevance": 4
+   },
+   "rationale": "w726-s1: 후보 검토에서 w4891-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w726",
+   "source_sense_id": "w726-s1",
+   "source_gloss_sha256": "e76589f65d4f0dea71bc3c9db2ed2cb8a6e676c2c0820c88623d9665eb6f9795",
+   "relation": {
+    "target": "w7403",
+    "target_sense": "w7403-s1",
+    "type": "association",
+    "note": "만지작거리다는 손으로 물건을 자꾸 가볍게 만진다는 뜻이라, 어루만지다보다 무심하게 반복하는 쪽이다.",
+    "relevance": 4
+   },
+   "rationale": "w726-s1: 후보 검토에서 w7403-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w726",
+   "source_sense_id": "w726-s1",
+   "source_gloss_sha256": "e76589f65d4f0dea71bc3c9db2ed2cb8a6e676c2c0820c88623d9665eb6f9795",
+   "relation": {
+    "target": "w3867",
+    "target_sense": "w3867-s1",
+    "type": "association",
+    "note": "손끝으로 쓸다는 손가락 끝을 표면에 대고 부드럽게 움직인다는 표현이라, 어루만지다의 한 방식이다.",
+    "relevance": 4
+   },
+   "rationale": "w726-s1: 후보 검토에서 w3867-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w726",
+   "source_sense_id": "w726-s1",
+   "source_gloss_sha256": "e76589f65d4f0dea71bc3c9db2ed2cb8a6e676c2c0820c88623d9665eb6f9795",
+   "relation": {
+    "target": "w3893",
+    "target_sense": "w3893-s1",
+    "type": "association",
+    "note": "등을 쓸다는 손바닥으로 등을 길게 부드럽게 문지른다는 표현이라, 어루만지다가 사람의 등에 닿는 경우다.",
+    "relevance": 4
+   },
+   "rationale": "w726-s1: 후보 검토에서 w3893-s1를 association 관계로 판단했다."
+  },
+  {
+   "source_record_id": "w726",
+   "source_sense_id": "w726-s1",
+   "source_gloss_sha256": "e76589f65d4f0dea71bc3c9db2ed2cb8a6e676c2c0820c88623d9665eb6f9795",
+   "relation": {
+    "target": "w1089",
+    "target_sense": "w1089-s2",
+    "type": "association",
+    "note": "다독이다의 둘째 뜻은 상한 마음을 부드럽게 달랜다는 것이라, 어루만지다가 마음을 위로하는 쪽으로 쓰이는 경우와 이어진다.",
+    "relevance": 3
+   },
+   "rationale": "w726-s1: 후보 검토에서 w1089-s2를 association 관계로 판단했다."
+  }
+ ],
+ "target_meaning_sha256": {
+  "rel-2b2e4d8420fe5c5d50f7fb5b": "890129eb3593f5282f7b2445b9204868f53af973a9d304b23108fdd639e0f632",
+  "rel-f8597b88ddae6d3e78da9762": "795afe8d41c67e9c2aff40f9c472f1b888ed3a713ba2f1cdc30347604c756988",
+  "rel-5bb75d8980d1cf5b3d92eecb": "03a643b730e4937e81d01a23780fb07a3b5ed3023e97005b19894ba5ebf2ea5a",
+  "rel-511a15bbea6428fdca6cc5fe": "b437ed94c8c7c6de94a3ca2340e98c6be28e7426651f14cac6d556ccf4a38724",
+  "rel-aaac271405e46c3fb5d0db56": "cda017f36f833e70f707ee49635d72c74a37814618744c301a2a178e3c7e2125",
+  "rel-14c0c997dc78d901d1eb1c1d": "84aabebde3f0067afebf4f4efcd76d8b49748d757b56c6b5c193efcd44bcfb49",
+  "rel-c5f50ec79120e7fdf926f209": "0d608bc3bb0dfe098431da70f83b92e0f48dbb2cc770dcdd340a4a92b69f7cf6",
+  "rel-0619d0a70bea069d1a4bd389": "3acb2fdff639bf945f4bb73b9eb8648d6106ed7ae78dd80aa9719ed28a7c410f",
+  "rel-e4ddee4c23db54bf1c2f3a8b": "703fa8cf85d56ab3976324b166d7e71b43994d2f37ee1c0e964a7f9df46ffabb",
+  "rel-eafa15bdb2afd60bb0d0bd30": "062c3df50dd1228f1fa5bbf3513eca5b4ec5c46e9d464570ee13b9fe3caed02b",
+  "rel-3bf095bc3b45484b27e6ff4c": "74f63d4fb57765cdde2a9c7e9cf2871fc9138af2c64b2f5aaefa013aaceec702",
+  "rel-cc1648e880e54c3c500c06d2": "a1c612368a67795bf0930b88d580b4618e5acde429c5619b03871b0f4a1e9c3a",
+  "rel-b6eb7fa3831561e1b96d368b": "1867e7541cb53c82639d3afdfdcd811065acb27494b0e66b9d87ab241c43c73b",
+  "rel-7bae811d52a0d59e3f078708": "90d4e35a46ba786a024a78a2d0ffcececacaa7037c9131e1681fc7843943e6f4",
+  "rel-9bf90ed8dc7611e13042c829": "9ac4fb0560bb2a65b5a08efcc368a27227be514eea764268ed954234468a9227",
+  "rel-be3b0803118fd48c30855d79": "2ea4788939281cbd501ebac5b985db6762fbce3a2092cad56b8ceceab61f124d",
+  "rel-7e52d5e0ea1e0a8074f5c727": "70740f740012684e5617c69b0bb66a2b2c9f2193f1487bd2a53aa32c72ee0e36",
+  "rel-00d6cf57b01d68025f14d193": "6ad3fddaafb3d44655c588b7a71d66304daadcc8c31eeb53e715feb9134fe10b",
+  "rel-4dc8d9b7da074e0ca76bd4fb": "39172ad3b5f86add2f05a2f2af4786a8cbda2fcb7aa8c34e195403d713867191",
+  "rel-d340dd4c621dff6b6a464377": "99f5d28ef0e74c641f021b403f2f587c22db2cf1f4693db46d6f0cf6c8a24501",
+  "rel-7b2f7c55109a8dbf8721abfa": "a88eefc7285def9d4b8a619644cdadf4c2ac61d66d53d0081bad093afb065ed9",
+  "rel-82c9f3a056cc77950d11306b": "acd0e45b77c3f0539aa3fd496006babc3f678d0c8c8bd80ea2c2cd82e9343ec4",
+  "rel-831fb63427f8898513c2dd1b": "f064c377e368341c9d64eb815ae161c0bb0870c0b260f764768615a592eb4ac9",
+  "rel-15d37bef351735e81f5b4f45": "c2e67a1f9945f398ac710445ca0106d0e106b5d49f7e61bdfa379259ef53d8a0",
+  "rel-a56818ab494ca1bc83cc17d2": "839ebc3d51cbd5f27707c91db741d55c57983bc8173ef1353f889d61d621ecd6",
+  "rel-0e47930cc2406536fd2b2a43": "bb7a57889be63eba8dec3c102f4a082cb9faccf4c64314d5a1db8348eff0f207",
+  "rel-eefd3aff7571e6d66b5662ac": "636b501ef2ceb7168635370b47851dab3e5ac2b19b2921c1a515f79cdabc43b6",
+  "rel-3fe87f8a08301e964cfa66c5": "d2cad5ceaf4d59cc15d1549741e504d6543dd87022cbba9667ac99cafaed443f",
+  "rel-c614a521c7d8eb951f58c044": "ab11852643232e9da7db7b7f7d97fac3ed3bf48db84eaf694be3a58f8fa8ffc2",
+  "rel-4f6ffc75c30b8c0fb5d0694f": "f160c043754a68bc44781af1a551fc2c5e63e9e49c561444f096a8c619640498",
+  "rel-5da67b506cea719607ba7ccc": "e9e1d7af2679ae242c94a4d90b1c773c61ec08086788787acab4e60d3ed71886",
+  "rel-f088af688b77e0e1b1663f25": "0810867064a58db7a0cf97b07f74b99f4a0df74665bb12979511a53bde69079b",
+  "rel-10b2e8325448c1edc8f8b410": "1839d649c654a3c59a7e8cf8b4570d662e222b8ba7e4ad63e1f3c8d045c1dd7d",
+  "rel-1e0f7ea8b8573843ec9f18c2": "13dcca488441e908a6d6dd17e0d148eddd4cfd566f804d70f5b7a01fb48800e5",
+  "rel-72920e924bc5f4a304980701": "102315b714b56194b938b174b73d4fee8cfe9d1205f4f14a9377ccacdb4be6fb",
+  "rel-8aae6d7ff848cf0a79cfbd94": "bb20b05ca6735255327b12bf2545f702f658f9622b793ff991ceeaeef776a6a5",
+  "rel-8f8de0ca8cd8bd1cb5bb416c": "c736a48fd45edf47f5e94253492f71e714477537374f4e77b29ff5f63c6b5673",
+  "rel-f61bf2013f136eddd9f3d8e9": "5a6c5351175b0137619f5df9fc8da1f1a06c656783cb33cef95c44122cc338aa",
+  "rel-1cd2e2839917e42d82274336": "72f193d39e66440dd65728fd1fa6d9d0a2921428a8918a2ef555a90e3b636460",
+  "rel-c611b5e625aff833d1085ffe": "c99d5265bd93464bbef0ac5a455ecbd22265bac0f2e034482aaddd0e8abddea8",
+  "rel-86cac628cdb411279dfbdd7b": "b98e21198a90571ca909a55c976f20236fe7b4c1f9e6ffd2543df3e6071030d2",
+  "rel-fdb9344c6272cff13ed1abb5": "f160c043754a68bc44781af1a551fc2c5e63e9e49c561444f096a8c619640498",
+  "rel-5f5929b5053d2a9ddb13de1a": "b41e86ca632fd161aa11f95035b61c43d29843348ced221d6857e447b4bedaec",
+  "rel-a98499e2c5e49710c4df32cd": "e3b33283ff915f45cfb460aae2e41d2eb33dc2948ba7436fec1d820c9cdcfd8b",
+  "rel-886a00e6ec96ac059c036290": "daba15c2311bcb37ddbac986efa92c54510bf8e3ee80b68fc55b9b934764c749",
+  "rel-7604ea618f1d52261a284e59": "2a88d417ca08f8f21255d25dddb8c04a2f180491813e3e44766eb6fc88182024",
+  "rel-44b3eaaea3f6ebe22daa6a6c": "a7bf7c5a2786467eb7c67d4e59566735f96bae14e38831a891c9424b276ab62b",
+  "rel-9a6d38ff8ce1c582c20cb161": "d5b1001fa8288a7d49dbb3f0ca7abca957ca3f3e429583e04c2d4006e1a0ffe4",
+  "rel-2c60dafe0bf2cffd0cf40f40": "aee7ba7dc9cf442f8578e31c64f48f641c8cb1aa8976c4cf5437e68dccc63542",
+  "rel-0cc76ec0623d52339155b73a": "095fcdd6754dbf414df12e26e8e364c84555c5de00c103cb39ed8cd14435b446",
+  "rel-d3f45598836609c89597dd53": "55cb903a179fca4cdee2f4b9ef994c317fa65c415b8a5caedd868b013f34f73a",
+  "rel-e7f3e5e05275b39fa6b956eb": "cb6ab302520046f87ffe5846f9a40f10fa53df169be230d5ed6972c1a0f7b131",
+  "rel-1f9d91ad06102afa4e98f03b": "7018ab2aa364898b10423eccf53b3ffa928dfb0761f94c81e8f751f62a59b88f",
+  "rel-be9fe1d304b696f70e3b1be9": "ab76e58d3f45582c94d34b0dce8190d93ac8df095c79723316335d15c3679306",
+  "rel-faeca3ee8f6927c9c5a7b209": "70ef98386b6be2ad360867e841d1a485e8d67c9f3638442cef0aea5e18816717",
+  "rel-84c63fb6231c68f139523453": "2277704d3e2c8af7700cb7006250ea52f98e16116f76650f1a62ea82771acc28",
+  "rel-e8ce1b25e99ac831dace96c7": "b4fea2b44f46a332c4cce6c237abbf19a0397d753156b58fd185290c89eead40",
+  "rel-698ada449c361a585e37f3cb": "464ad55a1d9aefe197068576c7da6626dce8eba4d61bf87dde817b38238034c7",
+  "rel-4f80cb62e652d360708dcab9": "253b2c0283c626ae54a1e0953f0d73d10284519c0de13b8eafb8a8ba6cccde0c",
+  "rel-270b7d7b42928866504cc205": "627ec8d561649d7de5b04768360c77c977dc55152f5c06a0a9c1f75d8e9c954b",
+  "rel-f30bf36a2717bd5420914302": "1988801a85ccd96048cd21bbad1555533397e5d53dfc7e54e5e9c66ce1249020",
+  "rel-776fa1b13b6605c1f8b431ad": "9070da53891c6187dd8964a4e61fa0143092660dc19980092802c356e12c5dfc",
+  "rel-53ee8ddabf7c141930e0bea7": "d7a80b980312bc4a9033677de9bb29d8688f745deba3d6ed000ec09e34a61ff0",
+  "rel-c8cb1ef0a467d58839900d98": "f38d343bac6cd9f3b53c09f163f564bac2fe818633f066dba95ed643357719e8",
+  "rel-fc991f8812bdcbb484d880e7": "c9b421309cac010b88aeea120ab3645544fb52bf7f7e37cc192a0ba204b3fef1",
+  "rel-79952316f61a43ae5e9e7480": "0dd64a2e84f31d3b6367609a75537cf01c75200bc92763eed4d472184ec8de36",
+  "rel-a54f37b8545b3e2beb0de32f": "2968004f78527f511da50fc1351b88ea65a56ca59fa50dff1667854fd06c8c9a",
+  "rel-da7b63e2f8b61381d952accc": "d38f7e25d537354843abfeea734b951a9be9ab42171e01aff89a2646a06446bb",
+  "rel-860596360dc958fc07b80d0a": "a6ff1c7bbbe4950a668b9fdb94cf2cebb27e8cb902199aa405d6c9d32aa62a94",
+  "rel-7d0a42be50276ed3a0ecfee4": "f86fdefe53a31fed01dcc0291d3afabfe6d9539682ff6a0010512ae17b5f261c",
+  "rel-5903feb8cc3477c63c33da9d": "ce7cbd088d2689bb80eb618c728d73b1c5991ef13f2d1c13ef34d4308d0f69da",
+  "rel-11f65a984c104961c01dc094": "d505ec6d49fd57a3061928cf1d5b286ed0316de4a15f322b0adddee1d542e64a",
+  "rel-83f22acc7c6e057d4b533af4": "b58c7594856bffc4dd6fa2f3f7b2f81ddeeaf6a998679e58d84f5aec89e5bf32",
+  "rel-1d598d5f3d3803c5cf19be35": "c975cb685f032c56fbacf274354944269b4ec4215c46c4e4753f9f85c2221cd8",
+  "rel-29e3be35b9925877c67fbf68": "4e51464d78f4323fbb045872909bebce7b241523f320fadc3151d11099533f50",
+  "rel-90b42575916cdb34c664c02e": "40247a47ab3a3bc38aae09cd41594e9a27ff2c161d6eae296f208d37b25a1d15",
+  "rel-61c0417bb3433248f425050f": "7cd149540f8b7cb0435da409cfdd74621579b7fc6949361a6db4021f00bcee29",
+  "rel-21ac33416d57385b1a344a7c": "d8700f94c40705375e9fb76aa04a39771b30f554b21dbc4167e487c24f82f7dd",
+  "rel-e719ce4c8ae8e5ed3f0f9099": "b58c7594856bffc4dd6fa2f3f7b2f81ddeeaf6a998679e58d84f5aec89e5bf32",
+  "rel-104d3bda8153238605e66338": "921165976e15d6d26638026b98b0227b257928efce1cf1709c2ccdad985fe904",
+  "rel-d00d1f3b054936ea2fd1f410": "1bd7d531acdfc772d737e5e0a6b2cb79cd416912bc8309010e1bf32853f28b24",
+  "rel-6dbdf321ae205187d8913d42": "4e51464d78f4323fbb045872909bebce7b241523f320fadc3151d11099533f50",
+  "rel-d52e468e8721f074fdc63097": "609084d51db33ac43bd241d98aac584f7243a7d4210bccde0bcbf92a93071d87",
+  "rel-4784e34053d49f3cd0d7c5bc": "d25ef1b0a813775a37f585bfe0990055af5fffc1abc795545c837fe57646818b",
+  "rel-47fedbfe9ccc52eb9d84f986": "71d401661de5d1c5d6cabbc3ec94ae05b8c416a7cb11987f14bdd1e81ec17c62",
+  "rel-754de6fadb49ac3f3ba9241d": "df09e913905efc33d7916c0e3d6ed785f61d3a5655dbcad21d6ac87701dc62ad",
+  "rel-62b49d9a4f56b9a297ea133c": "9b2dc8c034f721237fc3465814450d88f8470e693c40d4df9a05a2f5a7621d45",
+  "rel-996b6b8b35c8bf261fa8cdc5": "f160c043754a68bc44781af1a551fc2c5e63e9e49c561444f096a8c619640498",
+  "rel-704111fcb67360682d8fa9fb": "6ca2485accf41bf94efcb2aaa3af2a68b7652d4d37455d395939dc1f6f1d6dde",
+  "rel-e9c76bc868cf21a0aaae70b9": "83211ece694b90df282d6610aa844ec5ece0042b294c79945081fb6cc2857992",
+  "rel-b4dbc518c7b3b34668d46983": "eb713b1ede3cf660cea105d3a045d2c380ea39a60376311f1bb3f212e68c9715",
+  "rel-e4142231d670d54cdcf6d553": "ca9ad9f17285258003b040b1e90da09dc673adc0316cd0e16fe61f021746f4b6",
+  "rel-f7b8227331684904875ffdec": "f160c043754a68bc44781af1a551fc2c5e63e9e49c561444f096a8c619640498",
+  "rel-9c09207c9004525ef7167a5a": "8d50bae38e7668ae000e86a28df49ed61ea4fc91e35acd3a8917934d75cf5c2f",
+  "rel-5f8d4b346e85e4c42d1c27d8": "5aec719cf42e4b2ebcd5f14c071fdfc82c46562add851c56c31778eedf7e396e",
+  "rel-848d8a35a974597d419037c6": "1f70dd8d9efd4d43342a811518b6140ddb12e8b79765d1e2ec2ae6fbdb7e8740",
+  "rel-d3eb6d7187cda4c281090971": "7ecb7a2a763a5b8cdcb058065202dae0aab2aa71679d0f0eef4c76cda23f49ad",
+  "rel-7f8574e1a7ff3bb17d879bcd": "34f3af8b19ec8e1ec06bd6486caa3165f4bf701dd6190d47e9a2b6882f1fe3c9",
+  "rel-7916bbf0e2c3dd0136426479": "a75a0a4871bbb3953f96837f98d44fb49bacb838524d9fa4a002da52b281f5c7",
+  "rel-45e9077e5ad8a7e40d07e20c": "c736a48fd45edf47f5e94253492f71e714477537374f4e77b29ff5f63c6b5673",
+  "rel-bc434f991bfde7cbf3b024d8": "cbb20e59ff08ec4abf46ab00fe5ed470ab553b9e9a0b3cd2fdfe35d627af4ded",
+  "rel-f8b534db1a7be43aa3b2e8c0": "c6b18d4f55fa57a5315d2ec724e9aeee489297b36ae49237e94c31bac2f6eaf0",
+  "rel-2f9ff42a55f169a2edfec257": "7c50c46e87124e46fff720e6a5e574bf4ea6cc928fcf6d130a416333aa92433f",
+  "rel-9bdd3949501cba1e166798d3": "69596f1225e877a2c5e191afc63f735caa29c44b67594089bc7c283f3d63ec2e",
+  "rel-058c9e953681c11b9e3e3736": "ae205fef2a1cebfb4f015936491af3bab729f5d3619d01476ff837b3f7132f8d",
+  "rel-e78d17c3c9f277785c4d38a9": "683bebcb74869d12fdfa73588867570ddfb51cb51cfb440ea5361cb5802ae331",
+  "rel-ffcdf4703f6576b27c8d18b4": "4c9c8c5e7fa2c60924944a8ede0772baef8402b94c2e04da9d989eca6c300e25",
+  "rel-b6eeca621ba717bc98504560": "c736a48fd45edf47f5e94253492f71e714477537374f4e77b29ff5f63c6b5673",
+  "rel-26b0dd9b2d9d74e5b52cafe0": "1b9fe8714e7f0cf8454d280ce173e5d4567e4e9c71703a536c073a837870ce3a",
+  "rel-56adc316a476fd10810dd77e": "cfc4f179c2f6276a50d04d7d5f5a4d9047cc9dd16d94e0db149f1914332d302f",
+  "rel-8016ad5313bbb19b6eafc163": "c1330367d01559a96515a442af0c0828acd7d5839bb94fdbafde74095c0a1f94",
+  "rel-6d3ec35500fa1eb115ca5e8b": "2968004f78527f511da50fc1351b88ea65a56ca59fa50dff1667854fd06c8c9a",
+  "rel-255ea558b18011cfc5f4ee49": "632dd6d934e2018a7821fd0135dbfee9f0ea03cbdc8be358cf3f57cfce5d92bd",
+  "rel-c94698c4cdb80a2914f0b0dd": "1c8909a8d8eb27dfb47a1c5a198b471e9f38f2ef0e92e92f9f1b3af388ec51ee",
+  "rel-e890d73cf77a5d61e88be8f3": "0450f7d8e0e2f1667648b3546c4012061505d0cfff12889830c5d65aedffb3a2",
+  "rel-9fa57bddd55cf1cec30bdc33": "ac08d1c584929c943966fe2a675e10b5cc64d57ae88a443eb628c1fbf3e92d54",
+  "rel-93571713ae468cd88eea2ac8": "d52683c3c983db743a944b80653e951a0b84ea9a8d36dd4ed0fd1f9a8ebfafe9",
+  "rel-0a101f76acedb294755ab113": "2f5f80d5d855efabf0c1cdc340e8b1063aa7685b92c8952d62b4a05a2e9de2f8",
+  "rel-9ff4d6b67dd3b418ac83619e": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
+  "rel-39b5dbe273608d62a76cc0d6": "5a92f11c00bd813abb32cb11a720a6906ddb34d2b6d106056887579205c3328e",
+  "rel-df3039ef40de6eaa70957027": "9963b794fd2b05e31894c344db668fe5bb371c02101f95a8923e40bfbd3b5bcb",
+  "rel-7b8df5f1d87ac53969e5e710": "b751607e25cdffdc017084e606b79f981c3b771057c04b7f25c1bd021f404da6",
+  "rel-5d5015fd2bb0673a4bb8ee8d": "704c8a2423eca3935120ae2eef7d3c130ec8e2d4874f4145ba6a665f613ac8cf",
+  "rel-dbfd47ff998696bb1d6b11e4": "40247a47ab3a3bc38aae09cd41594e9a27ff2c161d6eae296f208d37b25a1d15",
+  "rel-90e90e4667dbf5eeecd3c803": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
+  "rel-f690d142b0f56f2f6c1c2f5d": "0408b5b527f678f3fdbce0580e0a9c9b471ab8ed9b5c82e22ce1eea8517f8a2e",
+  "rel-27ffd58625f0de82f5e8c9af": "99dff62e7731df4916fe9d154b28207165a61750c19a0b17027e55ca30291788",
+  "rel-dcbc3f9d3178410e62a64bc3": "e890d2cefaad96e5f6059392d1e4340adc274fdb29e6e8834b1bc41b07b4b4bb",
+  "rel-6ba5d63b6b2b750784872003": "c736a48fd45edf47f5e94253492f71e714477537374f4e77b29ff5f63c6b5673",
+  "rel-3cea1ae8ad037adade01fab5": "fae34d825f9877d3f268ef0483449e84e1742f73606825b0b65d83cd45310912",
+  "rel-87308b0f0b157c3b6671c74f": "636b501ef2ceb7168635370b47851dab3e5ac2b19b2921c1a515f79cdabc43b6",
+  "rel-44071da7048992ebb011b068": "94318182c7081ef644cec021358feef3be3b91c0d120c18d48886e528449f964",
+  "rel-1379b71b96c1b776579565a8": "ee4cd78c3bcc2f3b4b00c743aee03c930d7da06de1ed35af3a57594ff901373f",
+  "rel-4c690bf6107aac23f03e4299": "8484db6600bd1d09959792516214281336808959a8618cd16c7fe6fee5af55d5",
+  "rel-f467d5e23fe497309dcb0f11": "bb9187167ab7604046305c2cfe0993e89711f26a1e2c45feddd4bd60b326ea90",
+  "rel-1e1456213821bccfa9b20533": "39f1e6bd76073951f2a39076a1dd7944dd121c118d2f4977202ca4127807d4a0",
+  "rel-0a1b41b99a461815d0b2ef39": "731057de30c172a91388131f41f8cb3828d8c4c1632d5755136e83ffaa18655c",
+  "rel-d682ada38336c651c858f46c": "ddd112647868ae7e0dd23c38343937ede1df250c8aec6f719013853b0871c7ad",
+  "rel-d8cf3ea45c7e3afd878bb544": "bebe0c353f2f059b603d11b142df98823cd413040c8c0fb3ed49b020e0474b4e",
+  "rel-aeb28c433e19b17c47c4d216": "c776d8454e342d7b6169aee836657f0d2aa739e7ed3076c133bd5af0093d39ff",
+  "rel-a046c9dbdc851ec483009a41": "afb0448ba4bb256223c127dcae9f7a05347fd9d40e53e497ad532513365350db",
+  "rel-63e72b599231d10795e5ac7c": "edf57be5fb232593d6e1776b6939c945c4bd91f3e318a41b7542c16f40e5fb6d",
+  "rel-4a7c0c4d355567872ebafe3b": "080db713680d7a9c0d4a3a62edc3afb2701a0113871bbbdb3d4cb520491eaf2c",
+  "rel-7b20d8f4f02874f6980897b3": "fc5492b0208e533be73ed0d4e06df8bdba98a5558101efb91593c8f00f5fceec",
+  "rel-aa2a083c977011b5d2580a62": "3a3eaba4f321bbfd831c13a2e621afe349d6646fa37fa9630d227b591bb9b63b",
+  "rel-be9c4a3a8ee980d23ddd1918": "25324b719bcdd1b59a797a32805e2ba49cba6a22d88de84da4a14352d0bb58f5",
+  "rel-c7b38b8e419e5c6b715708da": "f34264c3854606e05cb7464c7db8053f769143c33a544b48c54a72777f08253f",
+  "rel-90f7269ce9f90fe0c369ae78": "e18e63a47730fba35c5a6ecd38f1cada73025a6e9a447e21ac7e7755e8de6abf",
+  "rel-e396bed766a94dfff0a104d4": "e2a7c38af0152ed933ab319f1d270b2043336907b4354fa6a82dbd61dc4da8b9",
+  "rel-42e9a5e8987f1dd94642206d": "4c977bf8fb1bb3e5451023ed02950f7644043221ec8f8f4a4b0aa33878b77160",
+  "rel-27cd91c57e579fa05267b2ed": "f160c043754a68bc44781af1a551fc2c5e63e9e49c561444f096a8c619640498",
+  "rel-b0b8f11164b2039c2ceda5d0": "23117bab351e7ee2307333fc664b641f73da949ccabaaeaa17c92efc5c3f143f",
+  "rel-262ac9bd03741c3ae27231e3": "71d3a10d287708a0bdb605b441c6ff1f5c191bdbfc2749752c566d6f42d0963b",
+  "rel-d3d70b44451552674ad5c244": "feade9580bc148a843c89539bbc7628c7ce9c38ebf71621bced25c9cfedc46a3",
+  "rel-53674bc3e3789e7bd64b88a8": "cb3c9a79fa590c1612f6c13275f65ff390d537e03df24b87c68aab8a0ad178b1",
+  "rel-00f1c5162d02a81741d33f35": "d2bd2cc25e7c76d047f8d552afc25a14a407e8499cc76c7a5f2f7b73096fb2ed",
+  "rel-00a1f213d0c4114d8f6d72dd": "d5087a1a17d2cc3b79642515e806e624a61e3a7df4df6731266da93b0439faf7",
+  "rel-433c08f096a92e19941b0d42": "c1985f8ec5a38dcab38ca06dafd7f5d9ffe62125227d4d5b63e7f3a8c2a62811",
+  "rel-d84fa310760c6f797345fe06": "3632a595dde2f6ee730e1d013062505800b16cb249eac2e281bb6b9fabe8b9d6",
+  "rel-512366e03f51d5363499e6ae": "b7a47485ab8c6a409d23266b35fe337cefbee7eb4e85eb61e32ba1da42acc5bd",
+  "rel-846c2888db5615b728c19870": "e445e457cfc3a561688134a19a9acb4c55a6de08f6f7c61f6381071012c3f396",
+  "rel-01a93e63860fe12062c35a39": "8c8dee44af0e5d0f67088cf67b0208004a0c284e0ff253a52906b102b5a1d167",
+  "rel-edb7bfa08df2ff26c7162717": "30053296a91ace0682196c97aaa6e0324c7deb1b8a3fbb2a76fce739ae786d23",
+  "rel-e1d752868682a93fa132055a": "538bfe277fcf6f1365daaf89e92b5791a63e07d0f669d6a7992a75f292d29a74",
+  "rel-f01a9c9af18c6125c2bebdd7": "c3f89ae4a70e0b839b874180afa2239a1187c309c794d846407ef1e4fea47ccc",
+  "rel-49687e93aaab70ddd4f8da68": "4fc257d610d923b58cf1e8f7006f0ebd9f04432ccb1a8bc52300088ad6d97940",
+  "rel-32ba75b54eef8658a43d2e92": "779658b5168393ab9ceb7a3942201287753e25dc8f3142c5b8a96561b1734f0c",
+  "rel-465aeeef47a61c5eff7ce7d1": "373232e9e723e5b62825693aea47bc63fcaf1808d962e777ec77b294c6910de8",
+  "rel-ca20b9312edf4dd4d39b7503": "be1093bbfaaae8a11ee7a94f52b4e3ccbad5e7c7e1bf7217c2fd274ae48a2adf",
+  "rel-59654bf2a5f3087013cf11d1": "6846e7bf4e85c61252728fc33637c62d45d8f3b0723ba87336a86b2f755d7b1b",
+  "rel-00becc80b3cef9c2d1cffe48": "55c1c149bfc408dcb2143568991feff3005ae75677e6c15990f68d8a6ebcbcaa",
+  "rel-00299c82b7f7b5898ce56fde": "f39ecd31b06d442c8ee4fdf2c1ff7c217ce0a22ec2862c7fd4d2c71040c982f5",
+  "rel-755b1e73a4541939ee43572b": "c5772df1beed24ba89b79f8af72be42a2a3f75b6e98aacdac864a0e4413591f0",
+  "rel-6619a2cd18c614fe7a91511a": "15175d7183dbaedbd341c884399080564fa3406855045fc04f79c5e6d2311539",
+  "rel-65e0d351f7d058d7c31a62a8": "961d56c0d555b89e87e3e4ca8c270faeb3c361ef96f999bbac896d7086b44186",
+  "rel-bb90912e5e8a4d259699df3a": "124a32727a97cf4dc365dab712ebec978fdb15ba314e3afe2ae91efb987ea88b",
+  "rel-9cf9c11091c31a493eb725bb": "2f5f80d5d855efabf0c1cdc340e8b1063aa7685b92c8952d62b4a05a2e9de2f8",
+  "rel-b1d4668c124d201a255c4103": "9963b794fd2b05e31894c344db668fe5bb371c02101f95a8923e40bfbd3b5bcb",
+  "rel-d07d580d6daf2eba1bc502f6": "b751607e25cdffdc017084e606b79f981c3b771057c04b7f25c1bd021f404da6",
+  "rel-5e0c9fada80ad68cd9d7a682": "4e650abe7fcc8430321469ec2951b0aaf16da2f4921687474a4412b4d1c44826",
+  "rel-01883704ef41ce1e8aaf5a3c": "81a5c40e744daaba6f2561a3c082fa7b0676afbead78c298a30ea20d1ba20c23",
+  "rel-965ecf2a39ab74c6ab342eec": "78eaefee6095f831475e283b7279a3d25709fc4edfea12416685cb396eb042e4",
+  "rel-567f928fb52c126a9eeeb24f": "6f48a0fbdc22cd4e4e58285f9223831bf2be44ebf5622814cbffd5c5de1433f9",
+  "rel-747ad239c4a0bf0608988591": "8e80384280db7c92dba829ba8ec5b8fa771ca4ac16e8e42bf1f186f7fcf7672f",
+  "rel-953fd4fc5f572013a8ba4e8e": "0dfc5fe056263538f5c5c5d0c2be4e1b499ab83d63765b1e3388b3d08e6f660a",
+  "rel-9acbf2ada11ca1a96cc37b69": "9fe74c9f1f24cc9bda901a3e8e9fbbaa05ad0acf13ea949eb5170f162f8f6c0d",
+  "rel-7c61436abdc3015ccd826a26": "1465e62495cfc922f21a7610e026f0e840ec88217600e859deca401fccc256e6",
+  "rel-b356e09f46c82d81608fdcb8": "95a7f64a6085fb16b83a29ecba524c75aa9e2f6ec03fb21a1c367200f9d8c589",
+  "rel-d37b96b7302a1c032280330c": "87e91158e6c40cb69aeab06fe92be064b110457cdbc078d8a19f636287352121",
+  "rel-dfe402cf27ba5e255e3f17b1": "8f795b64427d38d086f98a27831ab4deac305c51d6daa497c148769475f68a05",
+  "rel-d7f1360b8043f468afce1adc": "43e44dd4cb1f79aff99470fd61e43c256cd87e063dede1b6bf76561a947e894e",
+  "rel-f61f06b949e6a5642967f5f7": "3804b6a9af2e1b00340f06a0f091f0c55afa2af33f89284cbef0f2699121d3f5",
+  "rel-a315940f76ddc32a9ca37a9c": "c18b64e8a71c32e1d68ed953555b8643ba46f970305519dc3f5e091355af9420",
+  "rel-27117d89589330bbab9db4b4": "6995f0a7863a699ed2ef74d74b662303cefd3d1ad7170036490330f2f0372244",
+  "rel-a3e39a8cec01b732a961ade3": "688498f851f364ee2f126eea73594ec4da76867683d6355f3ae78ee46caaa17e",
+  "rel-f03fbe5254f1531960b1b470": "5f2f7074db0d7cd535984b8ea8816e80a3e1a8936e2496aebcd278cd7f55566c",
+  "rel-a1170476eb04b8583d855f62": "36c1b99dcbe5bd8d2e42cf778448c9cf62ae153ad1e55be7e262fb2bb99acf4f",
+  "rel-79e8bc238238247c5cef0d3e": "c2fad3eace530679f23a9f46c4ed4b698237f1e19c97a06a88c6fefaacbaa2d8",
+  "rel-70a1b40890c8768ef892cf5f": "ce2d8039a8282e5b7e671cae0f22822819f05e4c1113b5e51fb765c7f50a3c7f",
+  "rel-0a1e60882af6d68dbc5d4916": "8b97dd175e144d6cc9bf01cba15c56c1eff89071af18090ac3229b2a628953c5",
+  "rel-b0eb1d4cf5e12fedebd1832e": "a14d2ab2749b4f433428cd4e3f64ce24aaf0a395410121ac82ebedfc12f29287",
+  "rel-ee1a186e74b338368b7b60bc": "1ad6c5a176de4d492be0f02d6c2f407ba6cc06274dce4ecae356c902e28d1b36",
+  "rel-3ac150e5f12155eebaaa2d8c": "e890d2cefaad96e5f6059392d1e4340adc274fdb29e6e8834b1bc41b07b4b4bb",
+  "rel-010839547c83491615d268d9": "60009d868902392f5066801f0dd0c21d310d17012ad383f0dcb937c44230edc1",
+  "rel-faf8ff93ca58e4ccd3725382": "b7b6a56f9cf64d2c35bd094cb89b3c990ddc2aa480cdf3ee44070459e041ab4b",
+  "rel-f9433755ff96b4c4954f6ab1": "9070da53891c6187dd8964a4e61fa0143092660dc19980092802c356e12c5dfc"
+ }
+}
