@@ -342,12 +342,17 @@ test('a relation-only backfill of a record with correction history passes the sh
     await writeFile(forgedPath, JSON.stringify(forged, null, 2));
     await assert.rejects(() => build(forgedPath).then((result) => validateSemanticAuditCoverage(result.canonical.records, result.artifact, { baseRecords: result.canonical.records })), /does not bind/u);
 
+    // A rewritten correction digest, resealed (authored review digest) so the audit reaches the correction chain.
     const rewritten = JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8'));
     const correction = rewritten.authored_review.review_pass.correction_history.find((item) => item.record_id === source.record_id);
     correction.after_record_sha256 = 'f'.repeat(64);
+    rewritten.authored_review_sha256 = sha256Json(rewritten.authored_review);
     const tamperedPath = path.join(root, 'tampered-authority.json');
     await writeFile(tamperedPath, JSON.stringify(rewritten, null, 2));
-    await assert.rejects(() => build(tamperedPath).then((result) => validateSemanticAuditCoverage(result.canonical.records, result.artifact, { baseRecords: result.canonical.records })));
+    await assert.rejects(
+      () => build(tamperedPath).then((result) => validateSemanticAuditCoverage(result.canonical.records, result.artifact, { baseRecords: result.canonical.records })),
+      /correction_history and source-bound Stage 3 admission history/u,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
