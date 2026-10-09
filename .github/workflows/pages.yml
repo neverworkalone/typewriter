@@ -1,9 +1,10 @@
 name: GitHub Pages
 
 on:
-  push:
-    branches:
-      - master
+  schedule:
+    # 03:17 UTC = 12:17 KST (scheduled starts may be delayed).
+    - cron: '17 3 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -48,7 +49,7 @@ jobs:
           TYPEWRITER_EXPECTED_SOURCE_REVISION: ${{ github.sha }}
 
       - name: Upload validated Pages artifact
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+        if: ${{ github.ref == 'refs/heads/master' }}
         uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: dist-web
@@ -56,7 +57,7 @@ jobs:
 
   deploy:
     name: Deploy Pages artifact
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-24.04
     needs: build
     permissions:
