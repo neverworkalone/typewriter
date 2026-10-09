@@ -264,6 +264,17 @@ are distinct from the PR-review gates in `REVIEW.md`.
   provenance and ambiguity; submit candidate batches as separate PRs, independent
   of downstream stages. Do not finalize senses/glosses, do Stage 2 authoring, or
   change canonical JSONL.
+  - Use **one execution Issue per assigned Stage 1 run**, not one per batch.
+    Reuse an Issue supplied by the owner; otherwise create one when starting
+    the run, and link each batch PR to it.
+  - **Finish the Issue without another owner instruction:** after all planned
+    batch PRs have merged and are confirmed on `master`, post a final result
+    comment (batch/PR list, per-batch and total candidate/observation counts,
+    unresolved/held work, relevant validation/CI outcomes and deviations),
+    then close the Issue as `completed`.
+  - If the run stops early or a PR is blocked/unmerged, record completed work,
+    blockers and remaining batches in the Issue and **leave it open**. Never
+    claim completion merely because a PR was opened or local processing ended.
 - **Stage 2 — Authoring and QA (serial series of batches per agent):** on an
   instruction such as "Stage 2 진행해", loop without further operator input, with
   exactly one active batch/PR at a time: re-read merged `master` (rejected reviews
