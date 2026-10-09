@@ -258,9 +258,18 @@ test('registry selects checks by tier and schedule with fail-closed affected-pat
     }),
     [manual],
   );
-  assert.throws(
-    () => selectChecksForPolicy(checks, { tiers: ['normal'] }),
-    /without a classified changed-path list/u,
+  assert.deepEqual(
+    selectChecksForPolicy(checks, { tiers: ['normal'] }),
+    [always, affected],
+    'missing changed-path evidence must run every affected check',
+  );
+  assert.deepEqual(
+    selectChecksForPolicy(checks, {
+      tiers: ['normal'],
+      changedPaths: ['../unclassifiable'],
+    }),
+    [always, affected],
+    'malformed changed paths must run every affected check',
   );
 });
 

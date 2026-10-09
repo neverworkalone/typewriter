@@ -275,18 +275,15 @@ export function selectChecksForPolicy(checks, {
   if (!Array.isArray(tiers) || tiers.some((tier) => !CI_EXECUTION_TIERS.includes(tier))) {
     throw new TypeError('CI execution policy contains an unknown tier.');
   }
-  if (changedPaths !== undefined && (
-    !Array.isArray(changedPaths)
-    || changedPaths.some((changedPath) => (
-      typeof changedPath !== 'string'
-      || changedPath.length === 0
-      || changedPath.startsWith('/')
-      || changedPath.includes('\\')
-      || changedPath.split('/').some((part) => part === '' || part === '.' || part === '..')
-    ))
-  )) {
-    throw new TypeError('Changed paths must be normalized repository-relative paths.');
-  }
+  const changedPathsAreClassifiable = Array.isArray(changedPaths)
+    && changedPaths.every((changedPath) => (
+      typeof changedPath === 'string'
+      && changedPath.length > 0
+      && !changedPath.startsWith('/')
+      && !changedPath.includes('\\')
+      && !changedPath.split('/').some((part) => part === '' || part === '.' || part === '..')
+    ));
+  const classifiedChangedPaths = changedPathsAreClassifiable ? changedPaths : [];
   for (const check of checks) {
     if (!check.tier || !check.schedule || !check.owner || !check.protectedContract) {
       throw new TypeError(`CI check ${check.label ?? '<unlabeled>'} has incomplete registration metadata.`);
@@ -306,9 +303,6 @@ export function selectChecksForPolicy(checks, {
       throw new TypeError(`Affected check ${check.label} has no dependency paths.`);
     }
   }
-  if (activeAffectedChecks.length > 0 && !Array.isArray(changedPaths)) {
-    throw new TypeError('Cannot schedule affected checks without a classified changed-path list.');
-  }
   const changedPathIsMapped = (changedPath) => activeAffectedChecks.some((check) => (
     check.paths.some((dependencyPath) => (
       changedPath === dependencyPath
@@ -316,14 +310,16 @@ export function selectChecksForPolicy(checks, {
     ))
   ));
   const failClosedAffectedSelection = activeAffectedChecks.length > 0
-    && (changedPaths.length === 0 || changedPaths.some((changedPath) => !changedPathIsMapped(changedPath)));
+    && (!changedPathsAreClassifiable
+      || classifiedChangedPaths.length === 0
+      || classifiedChangedPaths.some((changedPath) => !changedPathIsMapped(changedPath)));
 
   return checks.filter((check) => {
     if (!tiers.includes(check.tier)) return false;
     if (check.schedule === 'always') return true;
     if (check.schedule === 'manual') return includeManual;
     if (failClosedAffectedSelection) return true;
-    return changedPaths.some((changedPath) => (
+    return classifiedChangedPaths.some((changedPath) => (
       check.paths.some((dependencyPath) => (
         changedPath === dependencyPath
         || changedPath.startsWith(`${dependencyPath}/`)
