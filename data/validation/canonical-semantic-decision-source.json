@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "ee306deca3aa48fd844630585c5826823d32d28142d928c9585c70f02260ea32"
+    "canonical_records_sha256": "06620008b5475c54e71796645db2e93225c807687cf4fa86c9acd64b35053587"
   },
-  "authored_review_sha256": "3c89b5e514ca7f7ace3c0d92a1ea1b7addcd553aaf3541e77281d51848dcc883",
+  "authored_review_sha256": "e7693fde65d1c29eaefffcc30bf4220ab0212006e93432da2541d4bdbf17f8a5",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "ee306deca3aa48fd844630585c5826823d32d28142d928c9585c70f02260ea32"
+      "canonical_records_sha256": "06620008b5475c54e71796645db2e93225c807687cf4fa86c9acd64b35053587"
     },
     "records": [
       {
@@ -11216,7 +11216,7 @@
       },
       {
         "record_id": "w306",
-        "record_sha256": "c29e40a77d560080943aaed90369f78c6bd453cd75bc57a705c673e6dd2c6742",
+        "record_sha256": "7779bf07d003e6bfde93383d00a9da7dc684a50279b7404d81e4b9af65dc06c4",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w306:boundary",
           "decision": "retain",
@@ -11235,7 +11235,7 @@
           {
             "sense_id": "w306-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w306 w306-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w306 w306-s1 3aae1f8a03fa [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-f1f4d5e576cadddfb159e205 to w587; rationale digest e082abeb4d7d. w306 w306-s1 3aae1f8a03fa [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-3a98cb27055c93cb6d608bae to w011; rationale digest 2a7dfb63b111."
+            "relation_rationale": "w306 w306-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w306 w306-s1 3aae1f8a03fa [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-3a98cb27055c93cb6d608bae to w011; rationale digest 2a7dfb63b111."
           }
         ]
       },
@@ -199003,7 +199003,7 @@
       },
       {
         "record_id": "w11402",
-        "record_sha256": "67454d82bc4ca9c37584b7afeb2360fe4ff52804fa78e539f410a6f4b6eee9ef",
+        "record_sha256": "e219d53c6a77e8bbb1e77ac623ab774a33ae3effef29ac223c78a8685c3e3c72",
         "boundary_review": {
           "review_id": "issue-223-m9-e-corpus-batch-13-semantic-verification-20261003-r1:canonical:w11402:boundary",
           "decision": "retain",
@@ -199022,7 +199022,7 @@
           {
             "sense_id": "w11402-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w11402 w11402-s1 ffb374aaca2f [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-d6012c9f1a509be595678fde to w217; rationale digest 3beb064e4366. w11402 w11402-s1 ffb374aaca2f [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-eade97047e8f680a0a2cb0b2 to w275; rationale digest 49d40ecfb7e2. w11402 w11402-s1 ffb374aaca2f [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-fa2643061f9ff6e01240825d to w798; rationale digest 824581fd585d. w11402 w11402-s1 ffb374aaca2f [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-9fc36cb7f797712e6c3b875d to w281; rationale digest 41d82051f7fd."
+            "relation_rationale": "w11402 w11402-s1 ffb374aaca2f [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-fd225603eb57c95837b1604c to w217; rationale digest cf24ab5d3f30. w11402 w11402-s1 ffb374aaca2f [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-eade97047e8f680a0a2cb0b2 to w275; rationale digest 49d40ecfb7e2. w11402 w11402-s1 ffb374aaca2f [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-fa2643061f9ff6e01240825d to w798; rationale digest 824581fd585d. w11402 w11402-s1 ffb374aaca2f [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-9fc36cb7f797712e6c3b875d to w281; rationale digest 41d82051f7fd."
           }
         ]
       },
@@ -241568,7 +241568,7 @@
     {
       "batch_id": "R000004",
       "attempt": 1,
-      "semantic_decisions_sha256": "8934b66ff08fd0631732e6f78e6a254400a6dfa499388408449c009785d84e4f",
+      "semantic_decisions_sha256": "27e8d00c78e514cb2d58da622e7a8081eabe8279fae97eff59d9e589d469d0be",
       "entries": [],
       "relation_amendments": [
         {
@@ -248964,16 +248964,16 @@
           "source_record_id": "w11402",
           "source_sense_id": "w11402-s1",
           "source_gloss_sha256": "ffb374aaca2ff0e6e6aa039f23e4951e386d4b98b3811055ac2c794e9722cb36",
-          "authored_relation_id": "rel-d6012c9f1a509be595678fde",
-          "relation_id": "rel-d6012c9f1a509be595678fde",
+          "authored_relation_id": "rel-fd225603eb57c95837b1604c",
+          "relation_id": "rel-fd225603eb57c95837b1604c",
           "relation": {
             "target": "w217",
             "target_sense": "w217-s1",
-            "type": "association",
-            "note": "바라다는 어떤 일이 이루어지기를 마음속으로 원한다는 뜻이라, 간절히 바라며 마음에 그리는 꿈꾸다보다 덜 간절한 쪽으로 이어 찾게 한다.",
+            "type": "near",
+            "note": "바라다는 어떤 일이 이루어지기를 마음속으로 원한다는 뜻이라 꿈꾸다와 가깝다.",
             "relevance": 5
           },
-          "rationale_sha256": "3beb064e43666187c610b957d84b0bab8ddb7946215fea7a10fca5128754c632",
+          "rationale_sha256": "cf24ab5d3f3090d5230e45586d33d74fbbe4f791170620e1659e9c7dd49d9f0e",
           "outcome": "appended"
         },
         {
@@ -258069,23 +258069,6 @@
             "relevance": 4
           },
           "rationale_sha256": "9d261fbb0167f95a25600e6da783fb8246945181e5ebf4f8784f1c9607efed23",
-          "outcome": "appended"
-        },
-        {
-          "source_candidate_id": "R000004",
-          "source_record_id": "w306",
-          "source_sense_id": "w306-s1",
-          "source_gloss_sha256": "3aae1f8a03faa6aa06b7694a05321b58d2b966833d0af7c6f2a94f5f21cf3aeb",
-          "authored_relation_id": "rel-f1f4d5e576cadddfb159e205",
-          "relation_id": "rel-f1f4d5e576cadddfb159e205",
-          "relation": {
-            "target": "w587",
-            "target_sense": "w587-s1",
-            "type": "association",
-            "note": "자책은 자신의 행동을 탓하며 스스로를 책망하는 마음이라, 잘못으로 해를 끼쳤다고 느끼는 감정인 죄책감에서 스스로를 탓하는 내적 행위 쪽으로 이어 찾게 한다.",
-            "relevance": 5
-          },
-          "rationale_sha256": "e082abeb4d7dd34bc16bc1c87dfd611bcd4d84c01b33fe50bcd3a6579d5d04e7",
           "outcome": "appended"
         },
         {
@@ -277575,13 +277558,13 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-d6012c9f1a509be595678fde",
+            "rel-fd225603eb57c95837b1604c",
             "rel-eade97047e8f680a0a2cb0b2",
             "rel-fa2643061f9ff6e01240825d",
             "rel-9fc36cb7f797712e6c3b875d"
           ],
           "before_sha256": "69cdcfec48fe23a04673f0a5c62c0712509aa20c3fafe9d821afba0e7155f32e",
-          "after_sha256": "67454d82bc4ca9c37584b7afeb2360fe4ff52804fa78e539f410a6f4b6eee9ef",
+          "after_sha256": "e219d53c6a77e8bbb1e77ac623ab774a33ae3effef29ac223c78a8685c3e3c72",
           "previous_semantic_review_sha256": "ac1449104fee1b93f37246d1bafe7125b4a4fb9b4684fc355463da16a971eda1",
           "previous_semantic_review": {
             "record_id": "w11402",
@@ -277616,7 +277599,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "7d44a605afd6fefdd06a93173f9dab991f9a20fae8a339a5ca1b83fdc8df4b3d"
+          "semantic_review_sha256": "8365b775141c5517fcc02e521f3aefc70e31a2388c95097bd73cab7b9f195faa"
         },
         {
           "entry_id": "w11475",
@@ -288213,11 +288196,10 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-f1f4d5e576cadddfb159e205",
             "rel-3a98cb27055c93cb6d608bae"
           ],
           "before_sha256": "ad68bce91e44b3fdebe86c748ed60f1878f2a7a4199faabf68f14b9caa0fb818",
-          "after_sha256": "c29e40a77d560080943aaed90369f78c6bd453cd75bc57a705c673e6dd2c6742",
+          "after_sha256": "7779bf07d003e6bfde93383d00a9da7dc684a50279b7404d81e4b9af65dc06c4",
           "previous_semantic_review_sha256": "18497df8887dcba5c29b7ee319519b7bf5a0d209a2c98c61e159424e5d27a08c",
           "previous_semantic_review": {
             "record_id": "w306",
@@ -288277,7 +288259,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "b33f6b5f6cba9b6913f4c728a8ef793a12a230ca98ffb12021f86f35bbf290ed"
+          "semantic_review_sha256": "a6c9710ad8c2f66574e65a992deb81dd65dc9111ac3f164b11d6fa08a5e7a221"
         },
         {
           "entry_id": "w307",
@@ -299233,7 +299215,7 @@
           "semantic_review_sha256": "7f0bb3bed634ce81761033c28f9a275651c50840aaa6426a165861fa74decdee"
         }
       ],
-      "sha256": "8e9f01f6a6c0922b41120d27ff105db83578875e632fe8e5ef239ec834d4278a"
+      "sha256": "3a88ac06f901778825443ccda6afdd3f1213425114a05758b54fa9aa62803596"
     }
   ]
 }

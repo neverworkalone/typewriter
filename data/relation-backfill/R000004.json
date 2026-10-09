@@ -5644,11 +5644,11 @@
    "relation": {
     "target": "w217",
     "target_sense": "w217-s1",
-    "type": "association",
-    "note": "바라다는 어떤 일이 이루어지기를 마음속으로 원한다는 뜻이라, 간절히 바라며 마음에 그리는 꿈꾸다보다 덜 간절한 쪽으로 이어 찾게 한다.",
+    "type": "near",
+    "note": "바라다는 어떤 일이 이루어지기를 마음속으로 원한다는 뜻이라 꿈꾸다와 가깝다.",
     "relevance": 5
    },
-   "rationale": "w11402-s1 w217-s1: 양쪽 bound gloss의 범위와 상을 대조하면 바라다는 간절함이 덜한 일반적인 바람이다. 같은 범위의 근접 대체가 아니라서 near가 아닌 association으로 조정했다."
+   "rationale": "w11402-s1: 후보 검토에서 w217-s1를 near 관계로 판단했다."
   },
   {
    "source_record_id": "w11402",
@@ -12596,19 +12596,6 @@
     "relevance": 4
    },
    "rationale": "w3050-s1: 후보 검토에서 w3351-s1를 association 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w306",
-   "source_sense_id": "w306-s1",
-   "source_gloss_sha256": "3aae1f8a03faa6aa06b7694a05321b58d2b966833d0af7c6f2a94f5f21cf3aeb",
-   "relation": {
-    "target": "w587",
-    "target_sense": "w587-s1",
-    "type": "association",
-    "note": "자책은 자신의 행동을 탓하며 스스로를 책망하는 마음이라, 잘못으로 해를 끼쳤다고 느끼는 감정인 죄책감에서 스스로를 탓하는 내적 행위 쪽으로 이어 찾게 한다.",
-    "relevance": 5
-   },
-   "rationale": "w306-s1 w587-s1: 양쪽 bound gloss의 범위와 상을 대조하면 죄책감은 해를 끼쳤다고 느끼는 감정이고 자책은 스스로를 탓하는 내적 행위라 감정과 행위가 다르며 역방향 note도 둘을 구분한다. 같은 범위의 근접 대체가 아니라서 near가 아닌 association으로 조정했다."
   },
   {
    "source_record_id": "w306",
@@ -21013,7 +21000,7 @@
   "rel-69c120126f5f95447d1a6002": "095fcdd6754dbf414df12e26e8e364c84555c5de00c103cb39ed8cd14435b446",
   "rel-235158c59655126e14c0701c": "a3e540e320c7f712c930e0c326c3a8f19f3b5d210b3d1d03e154f2ddc2a92ca3",
   "rel-7218824491ef1487ffb38eb3": "d64ed6c9430ec48b4c01bef7ed3f911694e5dfcf4fe323522d1ac01d6934a77d",
-  "rel-d6012c9f1a509be595678fde": "704c8a2423eca3935120ae2eef7d3c130ec8e2d4874f4145ba6a665f613ac8cf",
+  "rel-fd225603eb57c95837b1604c": "704c8a2423eca3935120ae2eef7d3c130ec8e2d4874f4145ba6a665f613ac8cf",
   "rel-eade97047e8f680a0a2cb0b2": "4e650abe7fcc8430321469ec2951b0aaf16da2f4921687474a4412b4d1c44826",
   "rel-fa2643061f9ff6e01240825d": "b751607e25cdffdc017084e606b79f981c3b771057c04b7f25c1bd021f404da6",
   "rel-9fc36cb7f797712e6c3b875d": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
@@ -21551,7 +21538,6 @@
   "rel-539eee6bb9ff75ee4ce25658": "f0d8c1ea938ca778c70ec6a1ba732e69cc0ec289aca23c2d5387402de4a6504c",
   "rel-fd83f1c3bf06bf2eef8cc278": "0be0ca02d74905853cfddac46fde1ac87d1819926b8cebf1866116ef90cc8db2",
   "rel-c3ebb4f131ef23f617958fc6": "7f6e6a4038064a1671d079b31c823d2eed31134409d692ed52326e39579749b4",
-  "rel-f1f4d5e576cadddfb159e205": "d5133219cba29ea69b3a0c5d87beef79c9096a5c8fdb0667de8c976b46669d94",
   "rel-3a98cb27055c93cb6d608bae": "7a30765a74dfb580ffc9df9fbf1fafcbad53e89937ec0214254c131618edf375",
   "rel-1f3517fcf635c28e05076303": "6ad3fddaafb3d44655c588b7a71d66304daadcc8c31eeb53e715feb9134fe10b",
   "rel-bb7df9bfcdd4b2cc70db6d13": "60009d868902392f5066801f0dd0c21d310d17012ad383f0dcb937c44230edc1",
