@@ -249,6 +249,15 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "must bind at least one source artifact"):
                 pilot.read_exclusion_manifest(unbound_path)
 
+            empty_source_path = root / "empty-source-path.json"
+            create_exclusion_manifest(
+                empty_source_path,
+                ["바람"],
+                source_artifacts=[{"path": "", "sha256": "a" * 64}],
+            )
+            with self.assertRaisesRegex(RuntimeError, "source bindings must include paths"):
+                pilot.read_exclusion_manifest(empty_source_path)
+
             empty_path = root / "empty.json"
             create_exclusion_manifest(empty_path, [])
             self.assertEqual(pilot.read_exclusion_manifest(empty_path)["lemmas"], [])

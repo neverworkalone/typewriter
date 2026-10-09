@@ -174,6 +174,7 @@ def read_exclusion_manifest(exclusion_path: Path | None) -> dict:
     for artifact in source_artifacts:
         if (not isinstance(artifact, dict)
                 or not isinstance(artifact.get("path"), str)
+                or not artifact.get("path")
                 or not re.fullmatch(r"[0-9a-f]{64}", str(artifact.get("sha256", "")))):
             raise RuntimeError("Reviewed-lemma exclusion source bindings must include paths and SHA-256 digests.")
     expected = hashlib.sha256(json.dumps(
