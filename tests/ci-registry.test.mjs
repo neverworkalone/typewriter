@@ -138,6 +138,18 @@ test('Issue #464 inventory covers every registered check and records its decisio
   assert.equal(CI_CHECK_INVENTORY.baseline.sum_registered_check_duration_ms, 432109);
   assert.equal(CI_CHECK_INVENTORY.baseline.ci_normal_wall_clock_ms, 434408.39);
   assert.equal(CI_CHECK_INVENTORY.baseline.current_revision_sqlite_build_count, 1);
+  assert.equal(CI_CHECK_INVENTORY.baseline.post_migration_ci_normal_wall_clock_ms, 130570.09);
+  assert.equal(CI_CHECK_INVENTORY.baseline.post_migration_run_id, 37889477901);
+  assert.equal(
+    CI_CHECK_INVENTORY.baseline.post_migration_wall_clock_reduction_percent,
+    Math.round((1 - CI_CHECK_INVENTORY.baseline.post_migration_ci_normal_wall_clock_ms
+      / CI_CHECK_INVENTORY.baseline.ci_normal_wall_clock_ms) * 10000) / 100,
+  );
+  assert.ok(
+    CI_CHECK_INVENTORY.baseline.post_migration_wall_clock_reduction_percent
+      >= CI_CHECK_INVENTORY.baseline.target_wall_clock_reduction_percent,
+    'Issue #464 requires at least 50% Normal wall-time reduction',
+  );
   assert.equal(CI_CHECK_INVENTORY.candidate_gate_local_measurement_ms, 2817.28);
   assert.equal(CI_CHECK_INVENTORY.candidate_gate_local_current_revision_sqlite_build_count, 0);
   assert.equal(

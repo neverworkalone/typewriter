@@ -39,15 +39,16 @@ durations sum to **432.109 seconds**; the final Normal runner summary reports
 **434.408 seconds**. Selecting the 87 checks that remain in Normal from those
 same measurements sums to **128.156 seconds**, a **70.34% check-time reduction**.
 The timing includes `Test shared batch workflow`, which is retained for its
-active admission coverage. This is a projection from identical baseline check
-durations, not a measured post-change CI wall time.
+active admission coverage.
 
-The exact PR 2 GitHub `ci:normal` wall time is recorded in the inventory after
-the first exact-HEAD run completes. The acceptance target is at least 50%
-shorter Normal wall time than the baseline run. The candidate-only gate passed
-locally in **2.817 seconds** and reported zero current-revision SQLite builds;
-its two command measurements were 2.453 seconds for factory validation and
-0.116 seconds for freshness validation.
+The first exact-head PR 2 GitHub `ci:normal` run
+[#37889477901](https://github.com/neverworkalone/typewriter/actions/runs/37889477901)
+on `64a3a8cd485c59b6ca2e1dad64a8a99006454b7a` measured **130.570 seconds**,
+which is a **69.94% wall-time reduction** against the baseline runner summary.
+It passed with one parent current-revision SQLite build and zero child builds.
+The candidate-only gate passed locally in **2.817 seconds** and reported zero
+current-revision SQLite builds; its two command measurements were 2.453 seconds
+for factory validation and 0.116 seconds for freshness validation.
 
 Baseline check estimates come from #1091 where present. Existing deep and
 historical checks that #1091 did not run use completed GitHub CI runs
