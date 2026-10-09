@@ -1060,11 +1060,11 @@
    "relation": {
     "target": "w328",
     "target_sense": "w328-s1",
-    "type": "near",
-    "note": "여명은 해가 뜨기 전 어둠 속에 밝아지는 빛이라 새벽빛과 가깝다. 새벽빛은 날이 밝기 시작할 때의 엷은 빛으로 때의 범위가 더 넓어, 여명→새벽빛과 달리 늘 바꿔 쓰지는 못한다. 틀: \"창으로 새벽빛이 / 여명이 스몄다\"는 되지만, \"해가 막 돋은 뒤의 새벽빛 / 해가 막 돋은 뒤의 여명\"는 출발 gloss는 \"날이 밝기 시작할 때\"이고 대상 gloss는 \"해가 뜨기 전 어둠 속에\"라 해가 뜬 뒤에는 바뀌지 않는다.",
+    "type": "association",
+    "note": "여명은 해가 뜨기 전 어둠 속에 밝아지는 빛이라, 날이 밝기 시작할 때 나타나는 엷은 빛인 새벽빛에서 해가 뜨기 전 쪽으로 좁혀 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "r043-s1 w328-s1: 대체가 성립하는 문맥과 깨지는 대조 문맥을 두 bound gloss의 차이로 note에 함께 적어 near로 유지했다."
+   "rationale": "r043-s1 w328-s1: 새벽빛의 때 범위가 대상보다 넓어 broader/narrower 관계라 near가 아닌 association으로 정리했다. 기존 역방향 여명 새벽빛 direct는 바꾸지 않았다."
   },
   {
    "source_record_id": "r043",
@@ -5344,19 +5344,6 @@
     "relevance": 4
    },
    "rationale": "w113-s1: 후보 검토에서 w018-s1를 mood 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w11333",
-   "source_sense_id": "w11333-s1",
-   "source_gloss_sha256": "71cc084dde3cd658925f2cb93067a31bb53addbb06971de5b5076b2ef566e29f",
-   "relation": {
-    "target": "w087",
-    "target_sense": "w087-s1",
-    "type": "near",
-    "note": "울림은 소리가 퍼지거나 되돌아와 길게 느껴지는 현상이라 소리의 울림인 음향과 가깝다. 틀: \"홀의 음향이 / 울림이 좋다\"는 되지만, \"짧게 끊긴 음향 / 짧게 끊긴 울림\"는 대상 gloss는 \"길게 느껴지는 현상\"이라 짧게 끊긴 소리에는 바뀌지 않는다.",
-    "relevance": 5
-   },
-   "rationale": "w11333-s1 w087-s1: 대체가 성립하는 문맥과 깨지는 대조 문맥을 두 bound gloss의 차이로 note에 함께 적어 near로 유지했다."
   },
   {
    "source_record_id": "w11333",
@@ -19519,7 +19506,7 @@
   "rel-cb9274c2e500bac1e31d90b3": "2277704d3e2c8af7700cb7006250ea52f98e16116f76650f1a62ea82771acc28",
   "rel-208c5962c518498b0ebef0a4": "7018ab2aa364898b10423eccf53b3ffa928dfb0761f94c81e8f751f62a59b88f",
   "rel-7fcdf75fc4627cd369435814": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
-  "rel-73657b5020c33a23a100ff4e": "632dd6d934e2018a7821fd0135dbfee9f0ea03cbdc8be358cf3f57cfce5d92bd",
+  "rel-594aaf4cbdaac531e71fa5be": "632dd6d934e2018a7821fd0135dbfee9f0ea03cbdc8be358cf3f57cfce5d92bd",
   "rel-80a4660a9557ec0f8475ede2": "7f6e6a4038064a1671d079b31c823d2eed31134409d692ed52326e39579749b4",
   "rel-d398212585902c23e1601a5a": "0be0ca02d74905853cfddac46fde1ac87d1819926b8cebf1866116ef90cc8db2",
   "rel-1a3ef82abdc1ba1a817847e8": "d1d5bc6230d1fd1b51b39c64a8b9666fe23ce7c26a2d1eab77fc7f3f0d518d07",
@@ -19853,7 +19840,6 @@
   "rel-3a2425ede4012fd7f0d81c94": "2b76cdb686b61baf71475acf2427a6e69c3343abb64a1c89011b23fc15ea9463",
   "rel-669b7e45d66b1a0e21931f2c": "9f9cb2e59b47ae87f05b6913bba449a1b58ee0a702a0e639d2de7afeefa23e5f",
   "rel-1e001025324cbb58f1a60a6e": "a72c2cb58fe65b44fa88610197948b0b575cd115ac23c05c8b1573155211684d",
-  "rel-89ee552c32cf0a1465d8b5d3": "2192a1d2fed025bdd1908e8054cb65365436c4b9b6aa80cd8b4c8d9ac4e8f651",
   "rel-b51a27f000c92761b1fc7820": "f9f40b909e179094fcce26a4c0a42013cb1cdb6643f0d810457e679ecb3093a4",
   "rel-212bfd7789b96459e5fe4d64": "631605d0ebd3c9467fcec93415514d7baa40d832e6e104748c8db50ae0652d51",
   "rel-0d79b032723947ba1cf43088": "095fcdd6754dbf414df12e26e8e364c84555c5de00c103cb39ed8cd14435b446",

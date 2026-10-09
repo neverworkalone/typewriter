@@ -23,8 +23,8 @@ test('a near tuple shows the bound target gloss, the opposite link and the other
 });
 
 test('the opposite link is shown with its type, so a one-sided near is visible', () => {
-  // 음향 ↔ 울림 is a genuine near pair: both directions agree.
-  const [positive] = nearReviewEvidence(index, [near('w087-s1', 'w11333-s1')]);
+  // 정거장 → 역 has an authored opposite near (역 → 정거장), so the opposite link is shown with its type.
+  const [positive] = nearReviewEvidence(index, [near('w2687-s1', 'w157-s1')]);
   assert.equal(positive.reverse?.type, 'near');
   // A pair with no authored opposite link says so instead of guessing one.
   const unrelated = index.senses.find((entry) => entry.sense_id !== 'w087-s1' && !entry.relations.some((relation) => relation.target_sense === 'w087-s1'));
