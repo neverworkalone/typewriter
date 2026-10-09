@@ -90,6 +90,8 @@ const pathRule = {
   candidate: /^data\/candidates\/(C\d{6})\/(manifest\.json|candidates\.jsonl)$/u,
   review: /^data\/reviews\/(C\d{6})\/(manifest\.json|decisions\.jsonl|semantic-decisions\.json|intake-handoff\.json)$/u,
   canonical: /^data\/canonical\/[^/]+\.jsonl$/u,
+  // Relation-only backfill packets (#446) are the committed evidence that a semantic-authority backfill event is bound to.
+  backfillPacket: /^data\/relation-backfill\/R\d{6}\.json$/u,
 };
 
 export async function loadFactorySnapshot({ git, headSha }) {
@@ -97,6 +99,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
   const candidateFiles = new Map();
   const reviewFiles = new Map();
   const canonicalPaths = [];
+  const backfillPacketPaths = [];
   for (const file of files) {
     const candidate = file.match(pathRule.candidate);
     const review = file.match(pathRule.review);
@@ -107,6 +110,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
       if (!reviewFiles.has(review[1])) reviewFiles.set(review[1], new Map());
       reviewFiles.get(review[1]).set(review[2], file);
     } else if (pathRule.canonical.test(file)) canonicalPaths.push(file);
+    else if (pathRule.backfillPacket.test(file)) backfillPacketPaths.push(file);
     else if (file.startsWith('data/candidates/') || file.startsWith('data/reviews/')) {
       throw new Stage2WorkerError('unrecognized factory artifact path on master: ' + file);
     }
@@ -129,6 +133,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
     }
     for (const file of paths.values()) sourceFiles.set(file, git.show(headSha, file));
   }
+  for (const file of backfillPacketPaths.sort()) sourceFiles.set(file, git.show(headSha, file));
   for (const file of canonicalPaths.sort()) {
     const text = git.show(headSha, file);
     sourceFiles.set(file, text);

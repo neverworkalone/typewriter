@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
@@ -590,4 +592,18 @@ test('only a genuine Stage 2 tracking Issue is prior-issue evidence; a bare clai
   prior.issues.push({ number: 9, state: 'open', ...genuine });
   await assert.rejects(runClaim(prior, snapshotGit({ C000001: candidateArtifacts('C000001') })), /owner-directed recovery/u);
   assert.equal(prior.refs.has(claimRef), true);
+});
+
+test('the merged-master snapshot loader accepts the repository\'s own committed factory data, including relation backfill packets', async () => {
+  // A semantic-authority backfill event is bound to its committed packet file (#446); a loader that drops the packet makes
+  // every worker fail on master. The real tracked data is the fixture so any dropped artifact class is caught.
+  const root = new URL('..', import.meta.url).pathname;
+  const tracked = execFileSync('git', ['ls-files', '-z', 'data'], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 }).split('\0').filter(Boolean);
+  assert.ok(tracked.some((file) => /^data\/relation-backfill\/R\d{6}\.json$/u.test(file)), 'the repository holds at least one relation backfill packet');
+  const git = {
+    listFiles: () => tracked.filter((file) => /^data\/(candidates|reviews|canonical|relation-backfill)\//u.test(file) || file === 'data/validation/canonical-semantic-decision-source.json'),
+    show: (_ref, file) => readFileSync(root + file, 'utf8'),
+  };
+  const snapshot = await loadFactorySnapshot({ git, headSha: SHA });
+  assert.equal(snapshot.validated, true);
 });
