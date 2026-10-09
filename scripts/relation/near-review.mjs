@@ -54,8 +54,12 @@ export function renderNearReview(evidence) {
     `${item.source.sense_id} → ${item.target.sense_id}`,
     `  source : ${line(item.source)}`,
     `  target : ${line(item.target)}`,
+    `  note   : ${item.note ?? 'none'}`,
     `  reverse: ${item.reverse ? `${item.reverse.type} — ${item.reverse.note ?? ''}` : 'none'}`,
-    ...item.siblings.map((sibling) => `  sibling: ${sibling.type} → ${sibling.sense_id} ${line(sibling)}`),
+    ...item.siblings.flatMap((sibling) => [
+      `  sibling: ${sibling.type} → ${sibling.sense_id} ${line(sibling)}`,
+      `           note: ${sibling.note ?? 'none'}`,
+    ]),
   ].join('\n')).join('\n\n');
 }
 

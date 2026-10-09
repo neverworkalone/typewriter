@@ -49,4 +49,9 @@ test('a packet is read as tuples and rendered as text without any verdict', () =
   assert.match(text, /w086-s1 → w11333-s1/u);
   assert.match(text, /sibling: association → w087-s1/u);
   assert.doesNotMatch(text, /오류|위반|invalid/u);
+  // The authored reasons are on screen, not only the types: the tuple's own note and every sibling's note.
+  assert.match(text, /note {3}: n$/mu);
+  const resonance = nearReviewEvidence(index, tuples)[0].siblings.find((sibling) => sibling.sense_id === 'w087-s1');
+  assert.ok(resonance.note.length > 0);
+  assert.ok(text.includes(`note: ${resonance.note}`), 'the sibling note is rendered');
 });
