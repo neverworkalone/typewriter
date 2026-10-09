@@ -6,7 +6,7 @@ import process from 'node:process';
 import test from 'node:test';
 
 import { CI_CATEGORIES, registerCheck } from '../scripts/ci/registry.mjs';
-import { runChecks, runCli, runLevel } from '../scripts/ci/run-category.mjs';
+import { materializeHistoricalInputs, runChecks, runCli, runLevel } from '../scripts/ci/run-category.mjs';
 import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 
 test('runner stops at the first failed check regardless of check kind', async () => {
@@ -84,7 +84,7 @@ test('runner applies tier and schedule policy while preserving one execution con
     registerCheck({
       label: 'manual replay',
       command: () => ({ executable: 'synthetic', args: ['manual'] }),
-    }, { owner: 'batch', tier: 'historical', schedule: 'manual' }),
+    }, { owner: 'batch', tier: 'historical', schedule: 'manual', historicalScopes: ['issue-219'] }),
   ];
   const seen = [];
   const context = { phase: 'normal' };
@@ -92,7 +92,11 @@ test('runner applies tier and schedule policy while preserving one execution con
   try {
     process.env.TYPEWRITER_CI_PHASE = 'normal';
     await runChecks(checks, context, {
-      executionPolicy: { tiers: ['normal', 'deep', 'historical'], includeManual: false },
+      executionPolicy: {
+        tiers: ['normal', 'deep', 'historical'],
+        includeManual: false,
+        historicalScopes: ['issue-219'],
+      },
       log: () => {},
       execute: async ({ args }) => {
         seen.push({ name: args[0], phase: context.phase, envPhase: process.env.TYPEWRITER_CI_PHASE });
@@ -180,6 +184,120 @@ test('candidate-only CI validates without creating a canonical session or SQLite
   );
 });
 
+test('ci:historical requires one explicit scope and runs only that bounded manual replay', async () => {
+  const issue219 = registerCheck({
+    label: 'Synthetic Issue #219 historical replay',
+    command: () => ({ executable: 'synthetic', args: ['issue-219-replay'] }),
+  }, { owner: 'batch', tier: 'historical', historicalScopes: ['issue-219'] });
+  const issue220 = registerCheck({
+    label: 'Synthetic Issue #220 historical replay',
+    command: () => ({ executable: 'synthetic', args: ['issue-220-replay'] }),
+  }, { owner: 'deep', tier: 'historical', historicalScopes: ['issue-220'] });
+  const normal = registerCheck({
+    label: 'Synthetic current Normal check',
+    command: () => ({ executable: 'synthetic', args: ['normal'] }),
+  }, { owner: 'batch', tier: 'normal' });
+  const categories = {
+    batch: { label: 'Batch contracts', checks: [issue219, normal] },
+    deep: { label: 'Deep contracts', checks: [issue220] },
+  };
+  const levels = {
+    fast: ['batch'],
+    normal: ['batch', 'deep'],
+    all: ['batch', 'deep'],
+    deep: ['batch', 'deep'],
+    candidates: ['batch', 'deep'],
+    historical: ['batch', 'deep'],
+  };
+  const sessionDirectories = [];
+  const sessions = [];
+  const createSession = async () => {
+    const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-history-scope-'));
+    sessionDirectories.push(temporaryDirectory);
+    const metricsPath = path.join(temporaryDirectory, 'ledger.jsonl');
+    await writeFile(metricsPath, '', 'utf8');
+    const session = {
+      canonicalContext: {
+        contractVersion: 'synthetic-canonical-context-v1',
+        canonicalDirectory: temporaryDirectory,
+        canonicalRevision: 'synthetic-history-revision',
+        fileCount: 0,
+        statistics: {
+          recordCount: 0,
+          senseCount: 0,
+          relationCount: 0,
+          candidateCount: 0,
+          startCount: 0,
+          referenceOnlyCount: 0,
+          expressionCount: 0,
+          searchFormCount: 0,
+        },
+        metrics: { sqlite_build_count: 0 },
+      },
+      completedChecks: new Set(),
+      temporaryDirectory,
+      phase: 'normal',
+      processMetrics: { path: metricsPath },
+      sharedDictionaryPath: undefined,
+      normalizedModel: undefined,
+    };
+    sessions.push(session);
+    return session;
+  };
+  const baseOptions = {
+    categories,
+    levels,
+    executionPolicy: { tiers: ['historical'], includeManual: true },
+    createSession,
+    log: () => {},
+  };
+  let missingScopeSessionCreated = false;
+  await assert.rejects(
+    runCli(['historical'], {
+      ...baseOptions,
+      createSession: async () => { missingScopeSessionCreated = true; throw new Error('unexpected session'); },
+    }),
+    /Usage: pnpm run ci:historical --scope/u,
+  );
+  await assert.rejects(
+    runCli(['historical', '--scope', 'unknown-scope'], baseOptions),
+    /Unknown historical scope/u,
+  );
+  await assert.rejects(
+    runCli(['historical', '--scope', 'issue-219', '--scope', 'issue-220'], baseOptions),
+    /Usage: pnpm run ci:historical --scope/u,
+  );
+  assert.equal(missingScopeSessionCreated, false, 'a missing scope fails before canonical context creation');
+
+  const executed = [];
+  const runOptions = {
+    ...baseOptions,
+    execute: async (command, context) => {
+      executed.push(command.args[0]);
+      assert.equal(context.phase, 'deep');
+      assert.equal(context.sharedDictionaryPath, undefined);
+      assert.equal((await readFile(context.processMetrics.path, 'utf8')).trim(), '');
+    },
+  };
+  await runCli(['historical', '--scope=issue-219'], runOptions);
+  assert.deepEqual(executed, ['issue-219-replay']);
+  assert.equal(sessionDirectories.length, 1);
+  assert.equal(sessions[0].canonicalContext.metrics.sqlite_build_count, 0);
+  await runCli(['historical', '--', '--scope', 'issue-219'], runOptions);
+  assert.deepEqual(executed, ['issue-219-replay', 'issue-219-replay']);
+  assert.equal(sessionDirectories.length, 2);
+
+  const inputDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-history-input-scope-'));
+  try {
+    const waveA2Inputs = await materializeHistoricalInputs(inputDirectory, ['m5-10a']);
+    assert.deepEqual(Object.keys(waveA2Inputs).sort(), ['waveA2Reviewed', 'waveA2SemanticAudit']);
+    const issue219Inputs = await materializeHistoricalInputs(inputDirectory, ['issue-219']);
+    assert.deepEqual(issue219Inputs, {}, 'an Issue #219 replay does not copy unrelated M5 replay inputs');
+  } finally {
+    await rm(inputDirectory, { recursive: true, force: true });
+  }
+});
+
 test('ci:all completes Normal before Deep checks in the same domain and preserves the one-build gate', async () => {
   const state = { normalComplete: false, order: [] };
   const deepCheck = registerCheck({
@@ -193,12 +311,16 @@ test('ci:all completes Normal before Deep checks in the same domain and preserve
   const historicalCheck = registerCheck({
     label: 'synthetic completed-batch replay',
     command: () => ({ executable: 'synthetic', args: ['historical-replay'] }),
-  }, { owner: 'canonical', tier: 'historical' });
+  }, { owner: 'canonical', tier: 'historical', historicalScopes: ['issue-219'] });
   const checks = [deepCheck, normalCheck, historicalCheck];
 
   await assert.rejects(
     runChecks(checks, { phase: 'normal', completedChecks: new Set() }, {
-      executionPolicy: { tiers: ['normal', 'historical', 'deep'], includeManual: false },
+      executionPolicy: {
+        tiers: ['normal', 'historical', 'deep'],
+        includeManual: false,
+        historicalScopes: ['issue-219'],
+      },
       log: () => {},
       execute: async ({ args }) => {
         if (args[0] === 'deep-build' && !state.normalComplete) {
@@ -302,7 +424,7 @@ test('ci:deep searches every domain scope and runs only current-system Deep chec
   const historicalCheck = registerCheck({
     label: 'Historical check in the same scope',
     command: () => ({ executable: 'synthetic', args: ['historical'] }),
-  }, { owner: 'canonical', tier: 'historical' });
+  }, { owner: 'canonical', tier: 'historical', historicalScopes: ['issue-219'] });
   const categories = {
     canonical: {
       label: 'Mixed-tier canonical scope',

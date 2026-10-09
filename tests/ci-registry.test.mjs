@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import CI_CHECK_INVENTORY from '../scripts/ci/check-inventory.json' with { type: 'json' };
 import LEGACY_CHECK_IDENTITIES from '../scripts/ci/legacy-check-identities.json' with { type: 'json' };
 import LEGACY_CHECK_TIERS from '../scripts/ci/legacy-check-tiers.json' with { type: 'json' };
+import LEGACY_CHECK_HISTORICAL_SCOPES from '../scripts/ci/legacy-check-history-scopes.json' with { type: 'json' };
 
 import {
   CI_CATEGORIES,
@@ -17,6 +18,7 @@ import {
   CI_CHECK_SCHEDULES,
   CI_DEEP_CATEGORY_ORDER,
   CI_EXECUTION_TIERS,
+  CI_HISTORICAL_SCOPE_IDS,
   CI_FAST_CATEGORY_ORDER,
   CI_LEVEL_EXECUTION_POLICY,
   CI_LEVEL_CATEGORY_ORDER,
@@ -29,6 +31,7 @@ import {
   registerCheck,
 } from '../scripts/ci/registry.mjs';
 import { selectChecksForPolicy } from '../scripts/ci/run-category.mjs';
+import { classifyDeepGateDiff, classifyDeepGatePaths } from '../scripts/ci/deep-gate.mjs';
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
 test('every root Node test file has exactly one CI category owner', async () => {
@@ -74,8 +77,10 @@ test('CI categories are ordered and every category has a descriptive label', () 
       assert.equal(typeof check.command, 'function');
       assert.equal(check.owner, categoryName);
       assert.ok(CI_EXECUTION_TIERS.includes(check.tier));
-      assert.equal(check.schedule, check.tier === 'historical' ? 'manual' : 'always');
-      assert.equal(check.protectedContract, check.label);
+    assert.equal(check.schedule, check.tier === 'historical' ? 'manual' : 'always');
+    assert.equal(check.protectedContract, check.label);
+    if (check.tier === 'historical') assert.ok(check.historicalScopes.length > 0);
+    else assert.deepEqual(check.historicalScopes, [], `${categoryName}/${check.label} cannot carry Historical scopes`);
     }
   }
 });
@@ -113,10 +118,15 @@ test('Issue #464 inventory covers every registered check and records its decisio
     assert.equal(item.protected_contract, registration.protectedContract);
     assert.equal(item.selected_tier, registration.tier);
     assert.equal(item.schedule, registration.schedule);
+    assert.deepEqual(item.historical_scopes, registration.historicalScopes);
     assert.ok(item.trigger.length > 0);
     assert.ok(item.decision.length > 0);
     assert.ok(item.rationale.length > 0);
     assert.ok(item.consumer.length > 0);
+    if (registration.tier === 'historical') {
+      assert.equal(item.consumer, 'ci:historical --scope <scope-id>');
+      assert.match(item.trigger, /exactly one registered --scope/u);
+    }
     assert.ok(Number.isFinite(item.estimated_duration_ms) && item.estimated_duration_ms >= 0);
     assert.ok(item.duration_estimate_source, `${registration.owner}/${registration.check} needs a timing source`);
     assert.ok(Array.isArray(item.test_files));
@@ -138,8 +148,12 @@ test('Issue #464 inventory covers every registered check and records its decisio
   assert.equal(CI_CHECK_INVENTORY.baseline.sum_registered_check_duration_ms, 432109);
   assert.equal(CI_CHECK_INVENTORY.baseline.ci_normal_wall_clock_ms, 434408.39);
   assert.equal(CI_CHECK_INVENTORY.baseline.current_revision_sqlite_build_count, 1);
-  assert.equal(CI_CHECK_INVENTORY.baseline.post_migration_ci_normal_wall_clock_ms, 105801.08);
-  assert.equal(CI_CHECK_INVENTORY.baseline.post_migration_run_id, 37890241755);
+  assert.equal(CI_CHECK_INVENTORY.baseline.post_migration_ci_normal_wall_clock_ms, 82302.41);
+  assert.equal(CI_CHECK_INVENTORY.baseline.post_migration_run_id, 37892126250);
+  assert.equal(
+    CI_CHECK_INVENTORY.baseline.post_migration_head_sha,
+    'd322694395053e3ca83c20e98252f6f0c3bf3450',
+  );
   assert.equal(
     CI_CHECK_INVENTORY.baseline.post_migration_wall_clock_reduction_percent,
     Math.round((1 - CI_CHECK_INVENTORY.baseline.post_migration_ci_normal_wall_clock_ms
@@ -173,6 +187,12 @@ test('legacy identity and tier migration inventories remain complete and bound',
     createHash('sha256').update(tierText).digest('hex'),
     'fe5a032a77ced812e0abd2d24b517ec95ced02bd3c742a4763253bbbcdb3fa48',
   );
+  const historicalScopePath = path.resolve(TEST_DIRECTORY, '../scripts/ci/legacy-check-history-scopes.json');
+  const historicalScopeText = await readFile(historicalScopePath, 'utf8');
+  assert.equal(
+    createHash('sha256').update(historicalScopeText).digest('hex'),
+    '2df0922b9c86df126eff0ccd95e4505a05d6c194156bd7f5956608f8b2190c31',
+  );
   assert.deepEqual(Object.keys(LEGACY_CHECK_TIERS).sort(), Object.keys(LEGACY_CHECK_IDENTITIES).sort());
   for (const owner of Object.keys(LEGACY_CHECK_IDENTITIES)) {
     assert.deepEqual(
@@ -181,6 +201,19 @@ test('legacy identity and tier migration inventories remain complete and bound',
       `${owner} must have a tier for every known legacy check`,
     );
   }
+  assert.deepEqual(CI_HISTORICAL_SCOPE_IDS, LEGACY_CHECK_HISTORICAL_SCOPES.scopes);
+  const historyScopeKeys = Object.entries(LEGACY_CHECK_HISTORICAL_SCOPES.checks)
+    .flatMap(([owner, checks]) => Object.keys(checks).map((check) => `${owner}\0${check}`))
+    .sort();
+  const usedHistoricalScopes = [...new Set(Object.values(LEGACY_CHECK_HISTORICAL_SCOPES.checks)
+    .flatMap((checks) => Object.values(checks).flat()))]
+    .sort();
+  const registeredHistoricalKeys = collectCheckRegistrations()
+    .filter((registration) => registration.tier === 'historical')
+    .map((registration) => `${registration.owner}\0${registration.check}`)
+    .sort();
+  assert.deepEqual(historyScopeKeys, registeredHistoricalKeys);
+  assert.deepEqual(usedHistoricalScopes, [...CI_HISTORICAL_SCOPE_IDS].sort());
 });
 
 test('new CI checks default to Deep and affected schedules require explicit dependencies', () => {
@@ -194,6 +227,7 @@ test('new CI checks default to Deep and affected schedules require explicit depe
   assert.deepEqual(registered.paths, []);
   assert.equal(registered.protectedContract, check.label);
   assert.equal(registered.registration, 'explicit');
+  assert.deepEqual(registered.historicalScopes, []);
 
   assert.throws(
     () => registerCheck(check, { owner: 'toolchain', schedule: 'affected' }),
@@ -210,6 +244,14 @@ test('new CI checks default to Deep and affected schedules require explicit depe
   assert.throws(
     () => registerCheck(check, { owner: 'toolchain', tier: 'sometimes' }),
     /Unknown CI execution tier/u,
+  );
+  assert.throws(
+    () => registerCheck(check, { owner: 'batch', tier: 'historical' }),
+    /explicit bounded scope/u,
+  );
+  assert.throws(
+    () => registerCheck(check, { owner: 'toolchain', historicalScopes: ['issue-219'] }),
+    /Only Historical CI checks/u,
   );
 
   const futureCategory = registerCategory('future-scope', {
@@ -241,6 +283,17 @@ test('new CI checks default to Deep and affected schedules require explicit depe
   });
   assert.equal(intentionalMigration.checks[0].tier, 'normal');
   assert.equal(intentionalMigration.checks[0].registration, 'explicit');
+
+  const intentionalHistorical = registerCategory('historical-migration-scope', {
+    label: 'Historical migration scope',
+    checks: [{ ...check, tier: 'historical', historicalScopes: ['issue-219'] }],
+  }, {
+    legacyIdentities: { 'historical-migration-scope': [] },
+    legacyTiers: { 'historical-migration-scope': {} },
+    legacyHistoricalScopes: {},
+  });
+  assert.equal(intentionalHistorical.checks[0].tier, 'historical');
+  assert.deepEqual(intentionalHistorical.checks[0].historicalScopes, ['issue-219']);
 });
 
 test('removing or misspelling a known legacy tier cannot demote required checks to Deep', () => {
@@ -424,6 +477,7 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.historical, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.candidates, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.candidate, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
@@ -433,6 +487,8 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.deep.tiers, ['deep']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.all.tiers, ['normal', 'deep']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.candidates.tiers, ['candidate']);
+  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.historical.tiers, ['historical']);
+  assert.equal(CI_LEVEL_EXECUTION_POLICY.historical.includeManual, true);
   const allChecks = CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => CI_CATEGORIES[categoryName].checks);
   const allLevelChecks = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all);
   assert.ok(allLevelChecks.every((check) => ['normal', 'deep'].includes(check.tier)));
@@ -489,6 +545,101 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
       '--fixed-level-evidence=config/ci-level-evidence.json',
     ],
   );
+});
+
+test('ci:historical requires one valid scope and selects only matching manual replays', () => {
+  const allChecks = CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => CI_CATEGORIES[categoryName].checks);
+  const issue219 = selectChecksForPolicy(allChecks, {
+    tiers: ['historical'],
+    includeManual: true,
+    historicalScopes: ['issue-219'],
+  });
+  assert.deepEqual(issue219.map((check) => `${check.owner}/${check.label}`), [
+    'batch/Test Issue #219 portable logical-content digest',
+    'batch/Validate Issue #219 M9 bounded lexical recovery',
+    'deep/Prove independent two-build determinism for Issue #219 checkpoint',
+  ]);
+  assert.deepEqual(
+    selectChecksForPolicy(allChecks, {
+      tiers: ['historical'],
+      includeManual: false,
+      historicalScopes: ['issue-219'],
+    }),
+    [],
+    'Historical checks remain manual unless explicitly included',
+  );
+  assert.throws(
+    () => selectChecksForPolicy(allChecks, { tiers: ['historical'], includeManual: true }),
+    /exactly one explicit --scope/u,
+  );
+  assert.throws(
+    () => selectChecksForPolicy(allChecks, {
+      tiers: ['historical'],
+      includeManual: true,
+      historicalScopes: ['all'],
+    }),
+    /Unknown historical scope/u,
+  );
+  assert.throws(
+    () => selectChecksForPolicy(allChecks, {
+      tiers: ['historical'],
+      includeManual: true,
+      historicalScopes: ['issue-219', 'issue-220'],
+    }),
+    /exactly one explicit --scope/u,
+  );
+});
+
+test('Deep CI Gate runs exact-head ci:all for Deep contracts and fails closed on unknown path evidence', async () => {
+  for (const pathValue of [
+    '.github/workflows/deep.yml',
+    '.github/workflows/deep-gate.yml',
+    'scripts/ci/run-category.mjs',
+    'scripts/factory/admission.mjs',
+    'scripts/relation/backfill-queue.mjs',
+    'tests/m5-12a.test.mjs',
+    'scripts/relation/backfill-apply.test.mjs',
+    'tests/ci-registry.test.mjs',
+    'config/ci-level-evidence.json',
+  ]) {
+    assert.equal(classifyDeepGatePaths([pathValue]).runDeep, true, pathValue);
+  }
+  for (const pathValue of [
+    'docs/review-toolchain.md',
+    'data/canonical/m5-15.jsonl',
+    'data/candidates/C000001/candidates.jsonl',
+    'src/ui/SearchPanel.vue',
+    'tests/normalize-canonical.test.mjs',
+    'tests/issue-219-search.test.mjs',
+    'tests/historical-replay-cli.test.mjs',
+  ]) {
+    assert.equal(classifyDeepGatePaths([pathValue]).runDeep, false, pathValue);
+  }
+  assert.equal(classifyDeepGatePaths(['tests/new-unregistered-check.test.mjs']).runDeep, true);
+  assert.equal(classifyDeepGatePaths(['new/unknown/path.txt']).runDeep, true);
+  assert.equal(classifyDeepGatePaths([]).runDeep, true);
+  assert.equal(classifyDeepGatePaths(['../outside']).runDeep, true);
+  assert.equal(classifyDeepGateDiff(undefined, 'head').runDeep, true);
+  assert.equal(classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('') }).runDeep, true);
+  assert.equal(
+    classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('docs/guide.md\0') }).runDeep,
+    false,
+  );
+  assert.equal(
+    classifyDeepGateDiff('base', 'head', { runGit: () => { throw new Error('git diff failed'); } }).runDeep,
+    true,
+  );
+
+  const workflow = await readFile(
+    path.resolve(TEST_DIRECTORY, '../.github/workflows/deep-gate.yml'),
+    'utf8',
+  );
+  assert.match(workflow, /^name: Deep CI Gate$/mu);
+  assert.match(workflow, /^  pull_request:$/mu);
+  assert.match(workflow, /classifyDeepGatePaths|scripts\/ci\/deep-gate\.mjs/u);
+  assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
+  assert.match(workflow, /pnpm run ci:all/u);
+  assert.match(workflow, /needs\.classify\.result != 'success'/u);
 });
 
 
@@ -625,6 +776,10 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
     path.resolve(TEST_DIRECTORY, '../.github/workflows/deep.yml'),
     'utf8',
   );
+  const deepGateWorkflow = await readFile(
+    path.resolve(TEST_DIRECTORY, '../.github/workflows/deep-gate.yml'),
+    'utf8',
+  );
   const pagesWorkflow = await readFile(
     path.resolve(TEST_DIRECTORY, '../.github/workflows/pages.yml'),
     'utf8',
@@ -653,6 +808,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.equal((workflow.match(/run: pnpm run ci:candidates/gu) ?? []).length, 1);
   assert.doesNotMatch(workflow, /run: pnpm run ci:fast/u);
   assert.equal(packageJson.scripts['ci:candidates'], 'node scripts/ci/run-category.mjs candidates');
+  assert.equal(packageJson.scripts['ci:historical'], 'node scripts/ci/run-category.mjs historical');
   assert.doesNotMatch(workflow, /pnpm run ci:all/u);
 
   assert.match(deepWorkflow, /^name: Deep CI$/mu);
@@ -668,7 +824,14 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(deepWorkflow, /actions\/setup-node@v7/u);
   assert.match(deepWorkflow, /node-version: 24\.x/u);
   assert.match(deepWorkflow, /ref: \$\{\{ github\.sha \}\}/u);
-  assert.doesNotMatch(deepWorkflow, /Deep CI Gate|Resolve deep validation target/u);
+  assert.doesNotMatch(deepWorkflow, /pull_request:/u);
+
+  assert.match(deepGateWorkflow, /^name: Deep CI Gate$/mu);
+  assert.match(deepGateWorkflow, /^  pull_request:$/mu);
+  assert.match(deepGateWorkflow, /scripts\/ci\/deep-gate\.mjs/u);
+  assert.match(deepGateWorkflow, /needs\.classify\.result != 'success'/u);
+  assert.match(deepGateWorkflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
+  assert.match(deepGateWorkflow, /run: pnpm run ci:all/u);
 
   const pagesEvents = pagesWorkflow.split('\non:\n')[1]?.split('\npermissions:\n')[0]?.trim();
   assert.equal(pagesEvents, 'push:\n    branches:\n      - master');
@@ -704,6 +867,8 @@ test('pnpm script commands deliver exactly the intended arguments to the script'
       '--staged=/tmp/a b.jsonl',
       '--semantic-audit=/tmp/c.json',
     ]);
+    assert.deepEqual(run('probe', ['--scope=issue-219']), ['--scope=issue-219']);
+    assert.deepEqual(run('probe', ['--scope=issue-219']), ['--scope=issue-219']);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

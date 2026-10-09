@@ -154,6 +154,7 @@
     "ci:normal": "node scripts/ci/run-category.mjs normal",
     "ci:all": "node scripts/ci/run-category.mjs all",
     "ci:deep": "node scripts/ci/run-category.mjs deep",
+    "ci:historical": "node scripts/ci/run-category.mjs historical",
     "test": "pnpm run ci:normal",
     "test:khaiii:docker": "node --test tests/manual/khaiii-docker.test.mjs",
     "python:bootstrap": "node scripts/python/bootstrap.mjs",

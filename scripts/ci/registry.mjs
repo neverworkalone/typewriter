@@ -3,6 +3,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import LEGACY_CHECK_IDENTITIES from './legacy-check-identities.json' with { type: 'json' };
 import LEGACY_CHECK_TIERS from './legacy-check-tiers.json' with { type: 'json' };
+import LEGACY_CHECK_HISTORICAL_SCOPES from './legacy-check-history-scopes.json' with { type: 'json' };
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -104,6 +105,7 @@ export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
   all: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
   candidates: CI_ALL_CATEGORY_ORDER,
+  historical: CI_ALL_CATEGORY_ORDER,
 });
 
 export const CI_EXECUTION_TIERS = Object.freeze([
@@ -118,6 +120,8 @@ export const CI_CHECK_SCHEDULES = Object.freeze([
   'affected',
   'manual',
 ]);
+
+export const CI_HISTORICAL_SCOPE_IDS = Object.freeze([...LEGACY_CHECK_HISTORICAL_SCOPES.scopes]);
 
 // Execution tier is intentionally separate from scope. These category values
 // describe the current registry while PR 2 moves individual checks out of the
@@ -137,6 +141,7 @@ export const CI_LEVEL_EXECUTION_POLICY = Object.freeze({
   all: Object.freeze({ tiers: Object.freeze(['normal', 'deep']), includeManual: false }),
   deep: Object.freeze({ tiers: Object.freeze(['deep']), includeManual: false }),
   candidates: Object.freeze({ tiers: Object.freeze(['candidate']), includeManual: false }),
+  historical: Object.freeze({ tiers: Object.freeze(['historical']), includeManual: true }),
 });
 
 const RAW_CI_CATEGORIES = Object.freeze({
@@ -463,6 +468,7 @@ export function registerCheck(check, {
   schedule = 'always',
   paths = [],
   protectedContract = check?.label,
+  historicalScopes = check?.historicalScopes ?? [],
 } = {}) {
   if (!check || typeof check !== 'object' || typeof check.command !== 'function') {
     throw new TypeError('A CI check must define a command function.');
@@ -495,6 +501,24 @@ export function registerCheck(check, {
   if (uniquePaths.length !== paths.length) {
     throw new TypeError('CI check paths must not contain duplicates.');
   }
+  if (!Array.isArray(historicalScopes)) {
+    throw new TypeError('CI check historical scopes must be an array.');
+  }
+  const uniqueHistoricalScopes = [...new Set(historicalScopes)];
+  if (uniqueHistoricalScopes.some((scope) => (
+    typeof scope !== 'string' || !CI_HISTORICAL_SCOPE_IDS.includes(scope)
+  ))) {
+    throw new TypeError('CI check historical scopes must name registered historical scopes.');
+  }
+  if (uniqueHistoricalScopes.length !== historicalScopes.length) {
+    throw new TypeError('CI check historical scopes must not contain duplicates.');
+  }
+  if (tier === 'historical' && uniqueHistoricalScopes.length === 0) {
+    throw new TypeError('Historical CI checks must declare an explicit bounded scope.');
+  }
+  if (tier !== 'historical' && uniqueHistoricalScopes.length > 0) {
+    throw new TypeError('Only Historical CI checks may declare historical scopes.');
+  }
   if (schedule === 'affected' && uniquePaths.length === 0) {
     throw new TypeError('Affected CI checks must declare at least one dependency path.');
   }
@@ -511,6 +535,7 @@ export function registerCheck(check, {
     tier,
     schedule,
     paths: Object.freeze(uniquePaths),
+    historicalScopes: Object.freeze(uniqueHistoricalScopes),
     protectedContract: protectedContract.trim(),
     registration: 'explicit',
   });
@@ -519,9 +544,11 @@ export function registerCheck(check, {
 export function registerCategory(owner, category, {
   legacyIdentities = LEGACY_CHECK_IDENTITIES,
   legacyTiers = LEGACY_CHECK_TIERS,
+  legacyHistoricalScopes = LEGACY_CHECK_HISTORICAL_SCOPES.checks,
 } = {}) {
   const knownLegacyLabels = legacyIdentities[owner] ?? [];
   const legacyTierByLabel = legacyTiers[owner] ?? {};
+  const historicalScopeByLabel = legacyHistoricalScopes[owner] ?? {};
   const labels = category.checks.map((check) => check.label);
   const labelSet = new Set(labels);
   if (labelSet.size !== labels.length) {
@@ -534,12 +561,27 @@ export function registerCategory(owner, category, {
   const staleIdentities = knownLegacyLabels.filter((label) => !labelSet.has(label));
   const staleTierEntries = Object.keys(legacyTierByLabel).filter((label) => !labelSet.has(label));
   const unboundTierEntries = Object.keys(legacyTierByLabel).filter((label) => !knownLegacyLabelSet.has(label));
-  if (staleIdentities.length > 0 || staleTierEntries.length > 0 || unboundTierEntries.length > 0) {
+  const staleHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => !labelSet.has(label));
+  const unboundHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => !knownLegacyLabelSet.has(label));
+  const nonHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => (
+    legacyTierByLabel[label] !== 'historical'
+  ));
+  if (
+    staleIdentities.length > 0
+    || staleTierEntries.length > 0
+    || unboundTierEntries.length > 0
+    || staleHistoricalScopeEntries.length > 0
+    || unboundHistoricalScopeEntries.length > 0
+    || nonHistoricalScopeEntries.length > 0
+  ) {
     throw new TypeError(
       `CI scope ${owner} has stale legacy registrations: ${[
         ...staleIdentities,
         ...staleTierEntries,
         ...unboundTierEntries,
+        ...staleHistoricalScopeEntries,
+        ...unboundHistoricalScopeEntries,
+        ...nonHistoricalScopeEntries,
       ].join(', ')}`,
     );
   }
@@ -566,6 +608,7 @@ export function registerCategory(owner, category, {
         schedule: check.schedule ?? (tier === 'historical' ? 'manual' : 'always'),
         paths: check.paths ?? [],
         protectedContract: check.protectedContract ?? check.label,
+        historicalScopes: check.historicalScopes ?? historicalScopeByLabel[check.label] ?? [],
       });
       return Object.freeze({
         ...registered,
@@ -585,6 +628,7 @@ export const CI_CATEGORIES = Object.freeze(Object.fromEntries(
 const staleLegacyOwners = [...new Set([
   ...Object.keys(LEGACY_CHECK_IDENTITIES),
   ...Object.keys(LEGACY_CHECK_TIERS),
+  ...Object.keys(LEGACY_CHECK_HISTORICAL_SCOPES.checks),
 ])].filter((owner) => !Object.hasOwn(RAW_CI_CATEGORIES, owner));
 if (staleLegacyOwners.length > 0) {
   throw new TypeError(`Legacy CI tier map has stale scopes: ${staleLegacyOwners.join(', ')}`);
@@ -597,6 +641,7 @@ export function collectCheckRegistrations() {
       tier: check.tier,
       schedule: check.schedule,
       paths: check.paths,
+      historicalScopes: check.historicalScopes,
       protectedContract: check.protectedContract,
       registration: check.registration,
       check: check.label,
@@ -612,6 +657,7 @@ export function collectTestOwnership() {
         tier: check.tier,
         schedule: check.schedule,
         paths: check.paths,
+        historicalScopes: check.historicalScopes,
         protectedContract: check.protectedContract,
         registration: check.registration,
         check: check.label,
