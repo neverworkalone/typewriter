@@ -1,0 +1,178 @@
+{
+  "scopes": [
+    "issue-204",
+    "issue-211",
+    "issue-219",
+    "issue-220",
+    "issue-222",
+    "issue-223",
+    "m5-10a",
+    "m5-10b",
+    "m5-10c",
+    "m5-10d",
+    "m5-11",
+    "m5-12",
+    "m5-15",
+    "m5-8",
+    "m5-9a",
+    "m5-calibration",
+    "m5-production",
+    "m9-candidate-reviews"
+  ],
+  "checks": {
+    "batch": {
+      "Validate M5-8 process contract": [
+        "m5-8"
+      ],
+      "Validate M5-9A repair authorization": [
+        "m5-9a"
+      ],
+      "Validate M5-10A candidate-generation calibration": [
+        "m5-10a"
+      ],
+      "Validate M5-10A process correction": [
+        "m5-10a"
+      ],
+      "Validate M5-10A repair authorization": [
+        "m5-10a"
+      ],
+      "Run M5-10C recovery contract tests": [
+        "m5-10c"
+      ],
+      "Validate M5-10C recovery and authorization contract": [
+        "m5-10c"
+      ],
+      "Run M5-10D workload contract tests": [
+        "m5-10d"
+      ],
+      "Validate M5-10D recovery and authorization contract": [
+        "m5-10d"
+      ],
+      "Validate committed M5-10D recovery artifact": [
+        "m5-10d"
+      ],
+      "Validate committed M5-10D authorization artifact": [
+        "m5-10d"
+      ],
+      "Test M5-8 process contract": [
+        "m5-8"
+      ],
+      "Test M5-9A repair authorization": [
+        "m5-9a"
+      ],
+      "Test M5-9 expansion": [
+        "m5-9a"
+      ],
+      "Test M5 calibration": [
+        "m5-calibration"
+      ],
+      "Test M5 recalibration": [
+        "m5-calibration"
+      ],
+      "Test M5-10A process correction": [
+        "m5-10a"
+      ],
+      "Test batch measurement": [
+        "m5-calibration"
+      ],
+      "Test lexical production candidates": [
+        "m5-production"
+      ],
+      "Test lexical production state": [
+        "m5-production"
+      ],
+      "Test M5-11 expansion": [
+        "m5-11"
+      ],
+      "Test M5-11 admission": [
+        "m5-11"
+      ],
+      "Test M5-12 historical pre-admission boundary": [
+        "m5-12"
+      ],
+      "Test Issue #204 review evidence regressions": [
+        "issue-204"
+      ],
+      "Validate Issue #204 corpus pilot admission": [
+        "issue-204"
+      ],
+      "Validate Issue #211 bounded lexical recovery": [
+        "issue-211"
+      ],
+      "Test Issue #219 portable logical-content digest": [
+        "issue-219"
+      ],
+      "Validate Issue #219 M9 bounded lexical recovery": [
+        "issue-219"
+      ],
+      "Validate Issue #220 M9 historical recovery checkpoint": [
+        "issue-220"
+      ],
+      "Validate every tracked M9 corpus candidate review": [
+        "m9-candidate-reviews"
+      ],
+      "Test M9 corpus candidate-review disposition regressions": [
+        "m9-candidate-reviews"
+      ],
+      "Test Issue #223 reviewer run-record binding and raw-output derivation": [
+        "issue-223"
+      ],
+      "Test Issue #223 committed-artifact cross-file regressions": [
+        "issue-223"
+      ],
+      "Validate Issue #223 committed M9-E checkpoint artifacts": [
+        "issue-223"
+      ],
+      "Test Issue #223 source-bound paragraph references": [
+        "issue-223"
+      ],
+      "Test Issue #222 checkpoint audit and M9-E handoff": [
+        "issue-222"
+      ],
+      "Validate portable Issue #222 checkpoint regeneration": [
+        "issue-222"
+      ],
+      "Validate M5-15 pre-admission boundary": [
+        "m5-15"
+      ]
+    },
+    "historical": {
+      "Validate M5-10A Wave A2 stage": [
+        "m5-10a"
+      ],
+      "Validate M5-10 Wave B stage": [
+        "m5-10b"
+      ],
+      "Test historical replay CLIs": [
+        "m5-10a",
+        "m5-10b"
+      ],
+      "Test M5-10A Wave A2 replay": [
+        "m5-10a"
+      ],
+      "Test M5-10 Wave A replay": [
+        "m5-10a"
+      ],
+      "Test M5-10 Wave B timing": [
+        "m5-10b"
+      ],
+      "Test M5-10 Wave B replay": [
+        "m5-10b"
+      ]
+    },
+    "deep": {
+      "Prove independent two-build determinism for Issue #219 checkpoint": [
+        "issue-219"
+      ],
+      "Prove independent two-build determinism for Issue #220 checkpoint": [
+        "issue-220"
+      ],
+      "Prove independent two-build determinism for Issue #222 checkpoint report": [
+        "issue-222"
+      ],
+      "Prove independent two-build determinism for Issue #223 checkpoint": [
+        "issue-223"
+      ]
+    }
+  }
+}

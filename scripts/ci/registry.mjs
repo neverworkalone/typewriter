@@ -3,6 +3,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import LEGACY_CHECK_IDENTITIES from './legacy-check-identities.json' with { type: 'json' };
 import LEGACY_CHECK_TIERS from './legacy-check-tiers.json' with { type: 'json' };
+import LEGACY_CHECK_HISTORICAL_SCOPES from './legacy-check-history-scopes.json' with { type: 'json' };
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -104,6 +105,7 @@ export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
   all: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
   candidates: CI_ALL_CATEGORY_ORDER,
+  historical: CI_ALL_CATEGORY_ORDER,
 });
 
 export const CI_EXECUTION_TIERS = Object.freeze([
@@ -118,6 +120,8 @@ export const CI_CHECK_SCHEDULES = Object.freeze([
   'affected',
   'manual',
 ]);
+
+export const CI_HISTORICAL_SCOPE_IDS = Object.freeze([...LEGACY_CHECK_HISTORICAL_SCOPES.scopes]);
 
 // Execution tier is intentionally separate from scope. These category values
 // describe the current registry while PR 2 moves individual checks out of the
@@ -137,6 +141,7 @@ export const CI_LEVEL_EXECUTION_POLICY = Object.freeze({
   all: Object.freeze({ tiers: Object.freeze(['normal', 'deep']), includeManual: false }),
   deep: Object.freeze({ tiers: Object.freeze(['deep']), includeManual: false }),
   candidates: Object.freeze({ tiers: Object.freeze(['candidate']), includeManual: false }),
+  historical: Object.freeze({ tiers: Object.freeze(['historical']), includeManual: true }),
 });
 
 const RAW_CI_CATEGORIES = Object.freeze({
@@ -154,7 +159,14 @@ const RAW_CI_CATEGORIES = Object.freeze({
       testCheck('tests/m6-4-quality-audit.test.mjs', 'Test M6-4 audit snapshot and tamper rejection'),
       testCheck('tests/m6-5-correction-calibration.test.mjs', 'Test M6-5 correction calibration evidence'),
       inProcessCheck('Validate frozen M6-4 quality audit snapshot', 'm6-4-frozen-snapshot'),
-      testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
+      {
+        ...testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
+        deepInputs: [
+          'data/canonical/',
+          'data/inventory/',
+          'data/validation/canonical-semantic-decision-source.json',
+        ],
+      },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
@@ -272,10 +284,19 @@ const RAW_CI_CATEGORIES = Object.freeze({
         'Test Issue #397 canonical relation candidate retrieval',
         ['--test', 'scripts/relation/candidate-retrieval.test.mjs'],
       ),
-      commandCheck(
-        'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
-        ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs'],
-      ),
+      {
+        ...commandCheck(
+          'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
+          ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs'],
+        ),
+        deepInputs: [
+          'data/canonical/',
+          'data/candidates/C000003/',
+          'data/relation-backfill/',
+          'data/reviews/C000003/',
+          'data/validation/canonical-semantic-decision-source.json',
+        ],
+      },
       commandCheck(
         'Test Issue #223 review-only import boundary',
         ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
@@ -387,7 +408,13 @@ const RAW_CI_CATEGORIES = Object.freeze({
   artifacts: {
     label: 'Generated-artifact and clean-checkout enforcement',
     checks: [
-      testCheck('tests/artifact-policy.test.mjs', 'Test artifact policy'),
+      {
+        ...testCheck('tests/artifact-policy.test.mjs', 'Test artifact policy'),
+        deepInputs: [
+          'data/batches/m5-12a-semantic-decisions.json',
+          'data/validation/canonical-semantic-decision-source.json',
+        ],
+      },
       testCheck('tests/pages-artifact.test.mjs', 'Test Pages artifact publication boundary'),
       testCheck('tests/validate-package.test.mjs', 'Test package validation'),
       commandCheck('Enforce generated-artifact policy and clean checkout', [
@@ -420,10 +447,32 @@ const RAW_CI_CATEGORIES = Object.freeze({
   deep: {
     label: 'Manual deep current-revision reproducibility validation',
     checks: [
-      globalCanonicalAuditCheck(),
-      testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
-      inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
-      testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+      {
+        ...globalCanonicalAuditCheck(),
+        deepInputs: [
+          'data/canonical/',
+          'data/inventory/',
+          'data/validation/canonical-semantic-decision-source.json',
+        ],
+      },
+      {
+        ...testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
+        deepInputs: [
+          'data/batches/m5-12a-semantic-decisions.json',
+          'data/batches/m5-12-base-canonical/',
+          'data/batches/m5-12-base-inventory.json',
+          'data/batches/m5-12-base-seed.json',
+          'data/inventory/',
+        ],
+      },
+      {
+        ...inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
+        deepInputs: ['data/canonical/'],
+      },
+      {
+        ...testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+        deepInputs: ['data/batches/m5-10a-wave-a-base-canonical/'],
+      },
       independentBuildProof(pnpmCheck(
         'Prove independent two-build determinism for Issue #219 checkpoint',
         'batch:issue-219:check',
@@ -440,15 +489,18 @@ const RAW_CI_CATEGORIES = Object.freeze({
         'Prove independent two-build determinism for Issue #223 checkpoint',
         'batch:issue-223:check:deep',
       )),
-      pnpmCheck(
-        'Run 100K/500K/1M release-shaped performance and scale benchmark',
-        'benchmark:release',
-        [
-          '--sizes=100000,500000,1000000',
-          '--sqlite-scale=100000,500000,1000000',
-          '--fixed-level-evidence=config/ci-level-evidence.json',
-        ],
-      ),
+      {
+        ...pnpmCheck(
+          'Run 100K/500K/1M release-shaped performance and scale benchmark',
+          'benchmark:release',
+          [
+            '--sizes=100000,500000,1000000',
+            '--sqlite-scale=100000,500000,1000000',
+            '--fixed-level-evidence=config/ci-level-evidence.json',
+          ],
+        ),
+        deepInputs: ['data/canonical/'],
+      },
     ],
   },
 });
@@ -462,7 +514,9 @@ export function registerCheck(check, {
   tier = 'deep',
   schedule = 'always',
   paths = [],
+  deepInputs = check?.deepInputs ?? [],
   protectedContract = check?.label,
+  historicalScopes = check?.historicalScopes ?? [],
 } = {}) {
   if (!check || typeof check !== 'object' || typeof check.command !== 'function') {
     throw new TypeError('A CI check must define a command function.');
@@ -495,6 +549,44 @@ export function registerCheck(check, {
   if (uniquePaths.length !== paths.length) {
     throw new TypeError('CI check paths must not contain duplicates.');
   }
+  if (!Array.isArray(deepInputs)) {
+    throw new TypeError('CI check Deep input paths must be an array.');
+  }
+  const uniqueDeepInputs = [...new Set(deepInputs)];
+  if (uniqueDeepInputs.some((pathValue) => (
+    typeof pathValue !== 'string'
+    || pathValue.length === 0
+    || pathValue.startsWith('/')
+    || pathValue.includes('\\')
+    || (pathValue.endsWith('/') ? pathValue.slice(0, -1) : pathValue)
+      .split('/').some((part) => part === '' || part === '.' || part === '..')
+  ))) {
+    throw new TypeError('CI check Deep inputs must be normalized repository-relative paths or directory prefixes.');
+  }
+  if (uniqueDeepInputs.length !== deepInputs.length) {
+    throw new TypeError('CI check Deep inputs must not contain duplicates.');
+  }
+  if (tier !== 'deep' && uniqueDeepInputs.length > 0) {
+    throw new TypeError('Only Deep CI checks may declare Deep input paths.');
+  }
+  if (!Array.isArray(historicalScopes)) {
+    throw new TypeError('CI check historical scopes must be an array.');
+  }
+  const uniqueHistoricalScopes = [...new Set(historicalScopes)];
+  if (uniqueHistoricalScopes.some((scope) => (
+    typeof scope !== 'string' || !CI_HISTORICAL_SCOPE_IDS.includes(scope)
+  ))) {
+    throw new TypeError('CI check historical scopes must name registered historical scopes.');
+  }
+  if (uniqueHistoricalScopes.length !== historicalScopes.length) {
+    throw new TypeError('CI check historical scopes must not contain duplicates.');
+  }
+  if (tier === 'historical' && uniqueHistoricalScopes.length === 0) {
+    throw new TypeError('Historical CI checks must declare an explicit bounded scope.');
+  }
+  if (tier !== 'historical' && uniqueHistoricalScopes.length > 0) {
+    throw new TypeError('Only Historical CI checks may declare historical scopes.');
+  }
   if (schedule === 'affected' && uniquePaths.length === 0) {
     throw new TypeError('Affected CI checks must declare at least one dependency path.');
   }
@@ -511,6 +603,8 @@ export function registerCheck(check, {
     tier,
     schedule,
     paths: Object.freeze(uniquePaths),
+    deepInputs: Object.freeze(uniqueDeepInputs),
+    historicalScopes: Object.freeze(uniqueHistoricalScopes),
     protectedContract: protectedContract.trim(),
     registration: 'explicit',
   });
@@ -519,9 +613,11 @@ export function registerCheck(check, {
 export function registerCategory(owner, category, {
   legacyIdentities = LEGACY_CHECK_IDENTITIES,
   legacyTiers = LEGACY_CHECK_TIERS,
+  legacyHistoricalScopes = LEGACY_CHECK_HISTORICAL_SCOPES.checks,
 } = {}) {
   const knownLegacyLabels = legacyIdentities[owner] ?? [];
   const legacyTierByLabel = legacyTiers[owner] ?? {};
+  const historicalScopeByLabel = legacyHistoricalScopes[owner] ?? {};
   const labels = category.checks.map((check) => check.label);
   const labelSet = new Set(labels);
   if (labelSet.size !== labels.length) {
@@ -534,12 +630,27 @@ export function registerCategory(owner, category, {
   const staleIdentities = knownLegacyLabels.filter((label) => !labelSet.has(label));
   const staleTierEntries = Object.keys(legacyTierByLabel).filter((label) => !labelSet.has(label));
   const unboundTierEntries = Object.keys(legacyTierByLabel).filter((label) => !knownLegacyLabelSet.has(label));
-  if (staleIdentities.length > 0 || staleTierEntries.length > 0 || unboundTierEntries.length > 0) {
+  const staleHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => !labelSet.has(label));
+  const unboundHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => !knownLegacyLabelSet.has(label));
+  const nonHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => (
+    legacyTierByLabel[label] !== 'historical'
+  ));
+  if (
+    staleIdentities.length > 0
+    || staleTierEntries.length > 0
+    || unboundTierEntries.length > 0
+    || staleHistoricalScopeEntries.length > 0
+    || unboundHistoricalScopeEntries.length > 0
+    || nonHistoricalScopeEntries.length > 0
+  ) {
     throw new TypeError(
       `CI scope ${owner} has stale legacy registrations: ${[
         ...staleIdentities,
         ...staleTierEntries,
         ...unboundTierEntries,
+        ...staleHistoricalScopeEntries,
+        ...unboundHistoricalScopeEntries,
+        ...nonHistoricalScopeEntries,
       ].join(', ')}`,
     );
   }
@@ -565,7 +676,9 @@ export function registerCategory(owner, category, {
         tier,
         schedule: check.schedule ?? (tier === 'historical' ? 'manual' : 'always'),
         paths: check.paths ?? [],
+        deepInputs: check.deepInputs ?? [],
         protectedContract: check.protectedContract ?? check.label,
+        historicalScopes: check.historicalScopes ?? historicalScopeByLabel[check.label] ?? [],
       });
       return Object.freeze({
         ...registered,
@@ -585,6 +698,7 @@ export const CI_CATEGORIES = Object.freeze(Object.fromEntries(
 const staleLegacyOwners = [...new Set([
   ...Object.keys(LEGACY_CHECK_IDENTITIES),
   ...Object.keys(LEGACY_CHECK_TIERS),
+  ...Object.keys(LEGACY_CHECK_HISTORICAL_SCOPES.checks),
 ])].filter((owner) => !Object.hasOwn(RAW_CI_CATEGORIES, owner));
 if (staleLegacyOwners.length > 0) {
   throw new TypeError(`Legacy CI tier map has stale scopes: ${staleLegacyOwners.join(', ')}`);
@@ -597,6 +711,8 @@ export function collectCheckRegistrations() {
       tier: check.tier,
       schedule: check.schedule,
       paths: check.paths,
+      deepInputs: check.deepInputs,
+      historicalScopes: check.historicalScopes,
       protectedContract: check.protectedContract,
       registration: check.registration,
       check: check.label,
@@ -612,6 +728,8 @@ export function collectTestOwnership() {
         tier: check.tier,
         schedule: check.schedule,
         paths: check.paths,
+        deepInputs: check.deepInputs,
+        historicalScopes: check.historicalScopes,
         protectedContract: check.protectedContract,
         registration: check.registration,
         check: check.label,

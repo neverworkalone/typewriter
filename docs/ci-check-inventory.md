@@ -7,6 +7,16 @@ estimate, tier, schedule, trigger, consumer, and keep/move reason.
 that the inventory has exactly one row for every live registration and that its
 owner, contract, tier, and schedule stay in sync with the runner.
 
+Deep data dependencies are recorded as `deep_input_paths` on their owning
+registry rows. The Deep Gate derives these paths from the registry. Non-Deep
+documentation and product files are an exact allowlist in
+[`scripts/ci/deep-gate-known-non-deep-paths.json`](../scripts/ci/deep-gate-known-non-deep-paths.json);
+pure Stage 1 candidate skips are limited to `manifest.json` and `candidates.jsonl`
+at the candidate directory root when no Deep check registers that input. Any
+unlisted path runs Deep. The Deep decision and any resulting `ci:all` run live
+inside the existing `Validate and test Typewriter` PR check; classification
+does not publish a separate status check.
+
 ## Classification
 
 | Tier | Checks | Decision |
@@ -14,7 +24,7 @@ owner, contract, tier, and schedule stay in sync with the runner.
 | Candidate | 2 | Added a no-SQLite gate for pure candidate artifact PRs. |
 | Normal | 87 | Retained active canonical, factory, admission, build, search, product, and artifact contracts. |
 | Deep | 8 | Retained current-system adversarial/reproducibility/scale checks; moved three exhaustive suites here. |
-| Historical | 49 | Preserved completed batch/checkpoint replays for the bounded manual command in PR 3; excludes them from weekly Deep. |
+| Historical | 49 | Preserved completed batch/checkpoint replays for a bounded manual `ci:historical --scope <scope-id>` invocation; excluded from weekly Deep. |
 
 No check is retired. `Test shared batch workflow` stays in Normal because it
 covers the shared reviewed-import admission path and canonical-base preservation.
@@ -30,6 +40,13 @@ they do not measure the current system. Current-revision SQLite
 reproducibility, reproducible dictionary builds, and the release-shaped scale
 benchmark remain in Deep.
 
+Historical scopes are explicit and limited to one per command. Examples:
+`pnpm run ci:historical --scope issue-219` replays the Issue #219 checks, while
+`pnpm run ci:historical --scope m5-10a` replays only that M5-10A scope. The
+registered IDs and per-check scope tags are recorded in
+[`scripts/ci/legacy-check-history-scopes.json`](../scripts/ci/legacy-check-history-scopes.json)
+and checked against the registry.
+
 ## Timing comparison
 
 The pre-migration baseline is successful PR CI run
@@ -42,9 +59,10 @@ The timing includes `Test shared batch workflow`, which is retained for its
 active admission coverage.
 
 The exact-head PR 2 GitHub `ci:normal` run
-[#37890241755](https://github.com/neverworkalone/typewriter/actions/runs/37890241755)
-on `ab1b754bb8899e97cd9289d4457212938d9fe0bb` measured **105.801 seconds**,
-which is a **75.64% wall-time reduction** against the baseline runner summary.
+[#37892126250](https://github.com/neverworkalone/typewriter/actions/runs/37892126250)
+on `d322694395053e3ca83c20e98252f6f0c3bf3450` after rebasing onto current master
+measured **82.302 seconds**, which is an **81.05% wall-time reduction** against
+the baseline runner summary.
 It passed with one parent current-revision SQLite build and zero child builds.
 The candidate-only gate passed locally in **2.817 seconds** and reported zero
 current-revision SQLite builds; its two command measurements were 2.453 seconds

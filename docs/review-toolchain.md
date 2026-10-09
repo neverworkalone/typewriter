@@ -77,10 +77,14 @@ gate.
 When Deep workflow/Deep contracts change, require **successful exact-HEAD
 Deep** evidence; a scheduled run on another SHA, a skipped Deep gate or
 ordinary green Normal cannot substitute. At this document's #469 baseline,
-#464 rollout PR #470 proposes scoped `ci:historical` and an exact-HEAD
-`Deep CI Gate`; do not presume that *unmerged* proposed workflow exists.
-Check the actual workflow and registry on the PR HEAD before selecting the
-required Deep evidence. No new CI gates are invented by this review policy.
+#464 rollout PR #470 adds scoped `ci:historical` and exact-HEAD Deep selection.
+The existing `Validate and test Typewriter` PR check performs the path
+classification; when Deep is required, that same check runs `ci:all`. The
+classifier does not publish a separate PR check. Deep data inputs come from
+Deep check registry metadata. The classifier skips only exact known non-Deep
+files and recognized Stage 1 artifacts without Deep consumers; unknown or
+unclassifiable paths trigger `ci:all`, and a classifier failure also runs
+validation. No new CI gates are invented by this review policy.
 
 ## Canonical and CI architecture changes
 
@@ -107,9 +111,10 @@ product outputs; optional `ci:fast` is a prefix inside the same session.
 `ci:deep` selects Deep checks across scopes. Independent current-revision
 reproducibility and scale/benchmark checks belong in Deep. Completed-issue
 checkpoint replays belong in a separately invoked Historical tier:
-`ci:historical` is introduced by the #464 PR #470 rollout **when merged**,
-not by this documentation change. A passing scheduled/other-HEAD run never
-substitutes for the required exact-HEAD gate.
+`ci:historical` requires exactly one registered `--scope` and runs only checks
+tagged for that scope; it has no all-history default and stays outside weekly
+`ci:all`. A passing scheduled/other-HEAD run never substitutes for the
+required exact-HEAD gate.
 
 The Issue #464 migration inventory is at
 [`docs/ci-check-inventory.md`](ci-check-inventory.md), with one machine-checked

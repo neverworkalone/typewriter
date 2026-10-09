@@ -371,8 +371,17 @@ protections, one current-revision SQLite build, direct-search and product
 output checks. A normal run may expose the fast checkpoint inside the same
 session. `ci:all` runs Normal then current-system Deep checks, and `ci:deep`
 selects Deep checks across every domain scope. Completed-batch replays stay out
-of both levels and the weekly workflow; PR 3 adds bounded `ci:historical` runs
-and the exact-HEAD Deep CI Gate.
+of both levels and the weekly workflow. `ci:historical` requires exactly one
+registered `--scope` and runs only checks tagged for that scope; it has no
+all-history default. The existing `Validate and test Typewriter` PR check
+classifies Deep coverage and runs `ci:all` on the exact PR HEAD when a Deep
+contract, runner, check, or workflow may have changed. The path classifier is
+not a separate PR check.
+Deep check data inputs belong in each check's `deepInputs` registry metadata.
+Only exact files in the known non-Deep path contract and the two root candidate
+artifacts (`manifest.json`, `candidates.jsonl`) may skip Deep when they are not
+registered as Deep inputs; unlisted paths, including new descendants of known
+directories, run Deep. A skipped Deep run is not evidence that Deep ran.
 
 For data changes, validation may include:
 
