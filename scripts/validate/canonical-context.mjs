@@ -364,6 +364,13 @@ function rehydrateContext(value, contextPath) {
   if (value.semantic_audit) context.semanticAudit = value.semantic_audit;
   if (value.semantic_decision_source) {
     context.semanticDecisionSource = value.semantic_decision_source;
+    // The serialized audit loses the in-memory factory ledger; restore it from its decision source.
+    const ledger = value.semantic_decision_source.factory_admissions;
+    if (context.semanticAudit?.review && ledger?.length) {
+      Object.defineProperty(context.semanticAudit.review, Symbol.for('typewriter.semantic-review.factory-admissions'), {
+        value: ledger, enumerable: false, configurable: true,
+      });
+    }
   }
   return context;
 }

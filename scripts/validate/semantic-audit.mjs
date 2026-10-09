@@ -2399,7 +2399,7 @@ export function validateSemanticDecisionSource(
       hashCache,
       factoryAdmissions,
     });
-    return authoredReview;
+    return attachFactoryAdmissions(authoredReview, factoryAdmissions);
   }
 
   const authoredReviewLabel = `${label}.authored_review`;
@@ -2436,7 +2436,25 @@ export function validateSemanticDecisionSource(
     authoredReviewLabel,
     { hashCache },
   );
-  return materializedReview;
+  return attachFactoryAdmissions(materializedReview, factoryAdmissions);
+}
+
+const FACTORY_ADMISSIONS = Symbol.for('typewriter.semantic-review.factory-admissions');
+
+/**
+ * The validated factory admission ledger travels with the review it was validated against (in memory only, never
+ * serialized), so every later validation of the assembled audit checks correction history against the same ledger
+ * without each caller threading it through.
+ */
+export function attachFactoryAdmissions(review, factoryAdmissions) {
+  if (review && factoryAdmissions?.length) {
+    Object.defineProperty(review, FACTORY_ADMISSIONS, { value: factoryAdmissions, enumerable: false, configurable: true });
+  }
+  return review;
+}
+
+export function factoryAdmissionsOf(review) {
+  return review?.[FACTORY_ADMISSIONS] ?? [];
 }
 
 export function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
@@ -2572,7 +2590,7 @@ export function validateSemanticAuditCoverage(
     requireDecisionSource = true,
     requireTopicAnalysis = true,
     hashCache,
-    factoryAdmissions = [],
+    factoryAdmissions,
   } = {},
 ) {
   requireObject(artifact, label);
@@ -2609,7 +2627,7 @@ export function validateSemanticAuditCoverage(
     requireDecisionSource,
     requireTopicAnalysis,
     hashCache,
-    factoryAdmissions,
+    factoryAdmissions: factoryAdmissions ?? factoryAdmissionsOf(review),
   });
   if (coverage.source.canonical_records_sha256 !== review.source.canonical_records_sha256) {
     fail(`${label} coverage and review source digests differ`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
@@ -2787,7 +2805,7 @@ export async function validateCanonicalSemanticAudit(
   auditPath,
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
 ) {
-  const { canonical, artifact, decisionSource } = await buildCanonicalSemanticAudit({
+  const { canonical, artifact } = await buildCanonicalSemanticAudit({
     canonicalDirectory: directory,
     decisionSourcePath,
   });
@@ -2801,7 +2819,6 @@ export async function validateCanonicalSemanticAudit(
   }
   return validateSemanticAuditCoverage(canonical.records, artifact, {
     baseRecords: canonical.records,
-    factoryAdmissions: decisionSource?.factory_admissions ?? [],
   });
 }
 

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import { readImportBytesBeforeFactoryAdmissions } from '../validate/historical-import.mjs';
 import {
   buildTargetInventory,
   readPromotionLedger,
@@ -239,7 +240,7 @@ async function validatePromotionState({
   );
   assertEqual(
     promotion.outputs?.canonical_import?.sha256,
-    sha256(await readFile(CANONICAL_IMPORT_PATH)),
+    sha256(await readImportBytesBeforeFactoryAdmissions(CANONICAL_IMPORT_PATH, { canonicalDirectory: CURRENT_CANONICAL_DIRECTORY })),
     'M5-15 canonical import digest',
   );
   assertEqual(promotion.outputs?.canonical_import?.record_count, M5_15_IMPORT_COUNT, 'M5-15 canonical import count');

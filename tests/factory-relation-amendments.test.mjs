@@ -13,7 +13,7 @@ import { buildStage3SemanticAuthority } from '../scripts/factory/semantic-author
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import {
   buildSemanticAuditFromDecisionSource, canonicalRecordsBeforeFactoryAdmissions, inspectSenseBoundaryPairs,
-  isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, relationAmendmentFollowsDigest, sha256Json,
+  attachFactoryAdmissions, factoryAdmissionsOf, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, relationAmendmentFollowsDigest, sha256Json,
 } from '../scripts/validate/semantic-audit.mjs';
 import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 
@@ -352,4 +352,15 @@ test('a relation-only amendment continues a correction digest recorded before re
   assert.equal(relationAmendmentFollowsDigest(current, events, { ...change, operation: 'append_senses' }, correctionDigest), false);
   const rewritten = { ...current, senses: [{ ...current.senses[0], gloss: '다른 뜻이다.' }, current.senses[1]] };
   assert.equal(relationAmendmentFollowsDigest(rewritten, events, change, correctionDigest), false);
+});
+
+test('the validated factory ledger travels with a review in memory only', () => {
+  const review = { review_pass: {} };
+  const ledger = [{ batch_id: 'R000009', changes: [] }];
+  assert.equal(attachFactoryAdmissions(review, ledger), review);
+  assert.equal(factoryAdmissionsOf(review), ledger);
+  assert.deepEqual(Object.keys(review), ['review_pass'], 'the ledger is not an enumerable field');
+  assert.equal(JSON.stringify(review), '{"review_pass":{}}', 'the ledger is never serialized');
+  assert.deepEqual(factoryAdmissionsOf({ review_pass: {} }), []);
+  assert.deepEqual(factoryAdmissionsOf(attachFactoryAdmissions({}, [])), []);
 });
