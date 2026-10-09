@@ -41,10 +41,10 @@ same measurements sums to **128.156 seconds**, a **70.34% check-time reduction**
 The timing includes `Test shared batch workflow`, which is retained for its
 active admission coverage.
 
-The first exact-head PR 2 GitHub `ci:normal` run
-[#37889477901](https://github.com/neverworkalone/typewriter/actions/runs/37889477901)
-on `64a3a8cd485c59b6ca2e1dad64a8a99006454b7a` measured **130.570 seconds**,
-which is a **69.94% wall-time reduction** against the baseline runner summary.
+The exact-head PR 2 GitHub `ci:normal` run
+[#37890241755](https://github.com/neverworkalone/typewriter/actions/runs/37890241755)
+on `ab1b754bb8899e97cd9289d4457212938d9fe0bb` measured **105.801 seconds**,
+which is a **75.64% wall-time reduction** against the baseline runner summary.
 It passed with one parent current-revision SQLite build and zero child builds.
 The candidate-only gate passed locally in **2.817 seconds** and reported zero
 current-revision SQLite builds; its two command measurements were 2.453 seconds

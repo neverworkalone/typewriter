@@ -10,13 +10,13 @@
     "sum_registered_check_duration_ms": 432109,
     "ci_normal_wall_clock_ms": 434408.39,
     "current_revision_sqlite_build_count": 1,
-    "post_migration_ci_normal_wall_clock_ms": 130570.09,
+    "post_migration_ci_normal_wall_clock_ms": 105801.08,
     "target_wall_clock_reduction_percent": 50,
-    "measurement_note": "Measured from the first exact-head GitHub ci:normal run on the PR 2 implementation commit; the subsequent inventory commit is followed by its own exact-head CI run.",
-    "post_migration_run_id": 37889477901,
-    "post_migration_run_url": "https://github.com/neverworkalone/typewriter/actions/runs/37889477901",
-    "post_migration_head_sha": "64a3a8cd485c59b6ca2e1dad64a8a99006454b7a",
-    "post_migration_wall_clock_reduction_percent": 69.94
+    "measurement_note": "Measured from the exact-head GitHub ci:normal run for the fixed PR 2 candidate dispatcher; the inventory report is revalidated on each subsequent PR head.",
+    "post_migration_run_id": 37890241755,
+    "post_migration_run_url": "https://github.com/neverworkalone/typewriter/actions/runs/37890241755",
+    "post_migration_head_sha": "ab1b754bb8899e97cd9289d4457212938d9fe0bb",
+    "post_migration_wall_clock_reduction_percent": 75.64
   },
   "counts_by_tier": {
     "candidate": 2,
