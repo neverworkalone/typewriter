@@ -23,6 +23,9 @@ import {
   validatePromotionLedgerBindings,
 } from '../inventory/generate-target-inventory.mjs';
 import {
+  readImportBytesBeforeFactoryAdmissions,
+} from '../validate/historical-import.mjs';
+import {
   validateTargetInventory,
 } from '../validate/target-inventory.mjs';
 import {
@@ -2229,6 +2232,7 @@ export async function validateM512AFinal({
   decisionSourcePath = DECISION_SOURCE_PATH,
   admissionPath = ADMISSION_PATH,
   promotionPath = PROMOTION_PATH,
+  canonicalAuthorityPath,
 } = {}) {
   const result = await buildM512A({ currentSeedPath, currentPromotionLedgerPath: promotionLedgerPath, decisionSourcePath });
   const currentCanonical = await readCanonicalRecords(currentCanonicalDirectory);
@@ -2245,9 +2249,14 @@ export async function validateM512AFinal({
     } else {
       await rm(historicalDirectory, { recursive: true, force: true });
       await cp(BASE_CANONICAL_DIRECTORY, historicalDirectory, { recursive: true });
-      await cp(
-        path.join(currentCanonicalDirectory, path.basename(CANONICAL_IMPORT_PATH)),
+      // Later factory admissions and relation backfills amend the live import file; the historical
+      // replay binds the bytes as they were when M5-12A was admitted, not the live file.
+      await writeFile(
         path.join(historicalDirectory, path.basename(CANONICAL_IMPORT_PATH)),
+        await readImportBytesBeforeFactoryAdmissions(
+          path.join(currentCanonicalDirectory, path.basename(CANONICAL_IMPORT_PATH)),
+          { canonicalDirectory: currentCanonicalDirectory, decisionSourcePath: canonicalAuthorityPath },
+        ),
       );
     }
     const historicalCanonicalDirectory = currentIsM512AFinal
