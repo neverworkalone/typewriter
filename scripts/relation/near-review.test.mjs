@@ -67,3 +67,23 @@ test('the gloss delta shows the qualifier one gloss adds, so a wider or narrower
   assert.deepEqual(glossDelta('', undefined), { only_in_source: [], only_in_target: [] });
   assert.match(renderNearReview([wide]), /only in target gloss: .*더러움/u);
 });
+
+test('an association against an authored reverse near is presented too, with both notes', () => {
+  // 불빛 → 등불: the new association explains the tool-versus-phenomenon difference, while 등불 → 불빛 is an authored near
+  // whose own note names the same difference.
+  const items = nearReviewEvidence(index, [
+    { source_sense_id: 'w180-s1', target_sense: 'w346-s1', type: 'association', note: '새 association note' },
+    { source_sense_id: 'w180-s1', target_sense: 'w066-s1', type: 'association', note: '반대 방향이 near가 아닌 association' },
+  ]);
+  const conflict = items.find((item) => item.target.sense_id === 'w346-s1');
+  assert.ok(conflict, 'the association that meets an authored reverse near is listed');
+  assert.equal(conflict.kind, 'association-against-reverse-near');
+  assert.equal(conflict.reverse.type, 'near');
+  assert.ok(conflict.reverse.note.length > 0, 'the reverse note is shown so both stated reasons can be compared');
+  assert.equal(conflict.note, '새 association note');
+  // An association whose opposite link is not a near is not raised, so ordinary association links stay quiet.
+  assert.equal(items.some((item) => item.target.sense_id === 'w066-s1'), false);
+  const text = renderNearReview(items);
+  assert.match(text, /\[association against an authored reverse near\]/u);
+  assert.match(text, /reverse: near — /u);
+});

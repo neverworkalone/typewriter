@@ -50,12 +50,16 @@ export function nearReviewEvidence(index, tuples) {
     for (const tuple of fromInput.get(sourceId) ?? []) merged.set(tuple.target_sense, { target_sense: tuple.target_sense, type: tuple.type, note: tuple.note });
     return merged;
   };
-  return tuples.filter((tuple) => tuple.type === 'near').map((tuple) => {
-    const reverse = links(tuple.target_sense).get(tuple.source_sense_id) ?? null;
+  // Two groups need a reviewer's eye: every near tuple, and every association whose opposite link is an authored near,
+  // because the same two senses then show different types depending on the direction a writer explores them from.
+  const reviewed = tuples.map((tuple) => ({ tuple, reverse: links(tuple.target_sense).get(tuple.source_sense_id) ?? null }))
+    .filter(({ tuple, reverse }) => tuple.type === 'near' || (tuple.type === 'association' && reverse?.type === 'near'));
+  return reviewed.map(({ tuple, reverse }) => {
     const siblings = [...links(tuple.source_sense_id).values()]
       .filter((link) => link.target_sense !== tuple.target_sense)
       .map((link) => ({ type: link.type, note: link.note, ...sense(index, link.target_sense) }));
     return {
+      kind: tuple.type === 'near' ? 'near' : 'association-against-reverse-near',
       source: sense(index, tuple.source_sense_id),
       target: sense(index, tuple.target_sense),
       note: tuple.note ?? null,
@@ -69,7 +73,7 @@ export function nearReviewEvidence(index, tuples) {
 export function renderNearReview(evidence) {
   const line = (item) => `${item.lemma}[${item.pos}] ${item.gloss}`;
   return evidence.map((item) => [
-    `${item.source.sense_id} → ${item.target.sense_id}`,
+    `${item.source.sense_id} → ${item.target.sense_id}${item.kind === 'near' ? '' : '  [association against an authored reverse near]'}`,
     `  source : ${line(item.source)}`,
     `  target : ${line(item.target)}`,
     `  only in source gloss: ${item.gloss_delta.only_in_source.join(' ') || '-'}`,
