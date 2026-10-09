@@ -10,6 +10,8 @@ import {
   CI_CATEGORIES,
   CI_ALL_CATEGORY_ORDER,
   CI_DEEP_CATEGORY_ORDER,
+  CI_EXECUTION_TIERS,
+  CI_LEVEL_EXECUTION_POLICY,
   CI_LEVEL_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
@@ -215,28 +217,115 @@ async function runCommand({ executable, args }, context = {}, check = {}) {
 export async function runChecks(
   checks,
   context,
-  { execute = runCommand, log = console.log } = {},
+  {
+    execute = runCommand,
+    log = console.log,
+    executionPolicy,
+  } = {},
 ) {
-  for (const [index, check] of checks.entries()) {
-    if (
+  const runnableChecks = executionPolicy
+    ? selectChecksForPolicy(checks, executionPolicy)
+    : checks;
+  for (const [index, check] of runnableChecks.entries()) {
+    const previousPhase = context?.phase;
+    const previousProcessPhase = process.env[CI_PHASE_ENV];
+    if (context && executionPolicy && check.tier) {
+      const phase = check.tier === 'normal' || check.tier === 'candidate'
+        ? NORMAL_PHASE
+        : DEEP_PHASE;
+      context.phase = phase;
+      process.env[CI_PHASE_ENV] = phase;
+    }
+    const alreadyRun = Boolean(
       check.oncePerCanonicalSession
       && context?.completedChecks?.has(check.oncePerCanonicalSession)
-    ) {
-      log(`\n--- ${index + 1}/${checks.length}: ${check.label} (already run) ---`);
-      continue;
-    }
-    const command = check.command(context);
-    log(`\n--- ${index + 1}/${checks.length}: ${check.label} ---`);
-    log(`$ ${formatCommand(command)}`);
-    if (check.inProcess) {
-      await runInProcessCheck(check.inProcess, context);
-    } else {
-      await execute(command, context, check);
-    }
-    if (check.oncePerCanonicalSession && context?.completedChecks) {
-      context.completedChecks.add(check.oncePerCanonicalSession);
+    );
+    try {
+      if (alreadyRun) {
+        log(`\n--- ${index + 1}/${runnableChecks.length}: ${check.label} (already run) ---`);
+        continue;
+      }
+      const command = check.command(context);
+      log(`\n--- ${index + 1}/${runnableChecks.length}: ${check.label} ---`);
+      log(`$ ${formatCommand(command)}`);
+      if (check.inProcess) {
+        await runInProcessCheck(check.inProcess, context);
+      } else {
+        await execute(command, context, check);
+      }
+      if (check.oncePerCanonicalSession && context?.completedChecks) {
+        context.completedChecks.add(check.oncePerCanonicalSession);
+      }
+    } finally {
+      if (context && executionPolicy && check.tier) {
+        if (previousPhase === undefined) delete context.phase;
+        else context.phase = previousPhase;
+        if (previousProcessPhase === undefined) delete process.env[CI_PHASE_ENV];
+        else process.env[CI_PHASE_ENV] = previousProcessPhase;
+      }
     }
   }
+}
+
+export function selectChecksForPolicy(checks, {
+  tiers = CI_EXECUTION_TIERS,
+  includeManual = false,
+  changedPaths,
+} = {}) {
+  if (!Array.isArray(tiers) || tiers.some((tier) => !CI_EXECUTION_TIERS.includes(tier))) {
+    throw new TypeError('CI execution policy contains an unknown tier.');
+  }
+  const changedPathsAreClassifiable = Array.isArray(changedPaths)
+    && changedPaths.every((changedPath) => (
+      typeof changedPath === 'string'
+      && changedPath.length > 0
+      && !changedPath.startsWith('/')
+      && !changedPath.includes('\\')
+      && !changedPath.split('/').some((part) => part === '' || part === '.' || part === '..')
+    ));
+  const classifiedChangedPaths = changedPathsAreClassifiable ? changedPaths : [];
+  for (const check of checks) {
+    if (!check.tier || !check.schedule || !check.owner || !check.protectedContract) {
+      throw new TypeError(`CI check ${check.label ?? '<unlabeled>'} has incomplete registration metadata.`);
+    }
+    if (!CI_EXECUTION_TIERS.includes(check.tier)) {
+      throw new TypeError(`CI check ${check.label} has unknown tier ${check.tier}.`);
+    }
+    if (!['always', 'affected', 'manual'].includes(check.schedule)) {
+      throw new TypeError(`CI check ${check.label} has unknown schedule ${check.schedule}.`);
+    }
+  }
+  const activeAffectedChecks = checks.filter((check) => (
+    tiers.includes(check.tier) && check.schedule === 'affected'
+  ));
+  for (const check of activeAffectedChecks) {
+    if (!Array.isArray(check.paths) || check.paths.length === 0) {
+      throw new TypeError(`Affected check ${check.label} has no dependency paths.`);
+    }
+  }
+  const changedPathIsMapped = (changedPath) => activeAffectedChecks.some((check) => (
+    check.paths.some((dependencyPath) => (
+      changedPath === dependencyPath
+      || changedPath.startsWith(`${dependencyPath}/`)
+    ))
+  ));
+  const failClosedAffectedSelection = activeAffectedChecks.length > 0
+    && (!changedPathsAreClassifiable
+      || classifiedChangedPaths.length === 0
+      || classifiedChangedPaths.some((changedPath) => !changedPathIsMapped(changedPath)));
+
+  return checks.filter((check) => {
+    if (!tiers.includes(check.tier)) return false;
+    if (check.schedule === 'always') return true;
+    if (check.schedule === 'manual') return includeManual;
+    if (failClosedAffectedSelection) return true;
+    return classifiedChangedPaths.some((changedPath) => (
+      check.paths.some((dependencyPath) => (
+        changedPath === dependencyPath
+        || changedPath.startsWith(`${dependencyPath}/`)
+      ))
+    ));
+  });
 }
 
 async function createTemporaryDirectory() {
@@ -489,7 +578,13 @@ async function contextForCategory(categoryName, sharedCanonicalSession) {
   };
 }
 
-async function runCategory(categoryName, sharedCanonicalSession, categories = CI_CATEGORIES) {
+async function runCategory(
+  categoryName,
+  sharedCanonicalSession,
+  categories = CI_CATEGORIES,
+  executionPolicy,
+  runnerOptions = {},
+) {
   const category = categories[categoryName];
   const {
     context,
@@ -501,7 +596,7 @@ async function runCategory(categoryName, sharedCanonicalSession, categories = CI
   process.env[CI_PHASE_ENV] = phase;
   try {
     console.log(`\n=== ${category.label} [${categoryName}] ===`);
-    await runChecks(category.checks, context);
+    await runChecks(category.checks, context, { ...runnerOptions, executionPolicy });
     console.log(`\n=== ${categoryName} passed ===`);
   } finally {
     process.env[CI_PHASE_ENV] = NORMAL_PHASE;
@@ -528,36 +623,68 @@ export async function runLevel(requestedCategory, {
   categories = CI_CATEGORIES,
   levels = CI_LEVEL_CATEGORY_ORDER,
   createSession = createCanonicalSession,
+  changedPaths,
+  executionPolicy,
+  execute,
+  log,
 } = {}) {
   const categoryNames = levels[requestedCategory] ?? [requestedCategory];
+  const policy = executionPolicy
+    ?? (categories === CI_CATEGORIES && levels === CI_LEVEL_CATEGORY_ORDER
+      ? CI_LEVEL_EXECUTION_POLICY[requestedCategory]
+      : undefined);
+  const runPolicy = policy ? { ...policy, changedPaths } : undefined;
   const enforceNormalInvariant = enforcesNormalBuildInvariant(requestedCategory);
+  const splitNormalAndDeep = requestedCategory === 'all'
+    && runPolicy?.tiers.includes('normal')
+    && runPolicy.tiers.some((tier) => tier !== 'normal');
+  const tierPasses = splitNormalAndDeep
+    ? [
+      { ...runPolicy, tiers: ['normal'] },
+      { ...runPolicy, tiers: runPolicy.tiers.filter((tier) => tier !== 'normal') },
+    ]
+    : [runPolicy];
   const startedAt = performance.now();
   const session = await createSession();
   try {
-    let fastCheckpointPrinted = requestedCategory === 'fast';
-    for (const [index, categoryName] of categoryNames.entries()) {
-      await runCategory(categoryName, session, categories);
-      const completed = index + 1;
-      if (!fastCheckpointPrinted && isFastPrefix(categoryNames, completed, levels.fast)) {
-        // Fast includes the one shared build; the normal continuation must
-        // reuse it, so the invariant is already exact at this checkpoint.
-        if (enforceNormalInvariant) {
-          assertNormalBuildInvariant(session, 'fast checkpoint');
+    let fastCheckpointPrinted = !['normal', 'all'].includes(requestedCategory);
+    const executedCategoryNames = [];
+    for (const [passIndex, passPolicy] of tierPasses.entries()) {
+      const passCategoryNames = passPolicy
+        ? categoryNames.filter((categoryName) => (
+          selectChecksForPolicy(categories[categoryName].checks, passPolicy).length > 0
+        ))
+        : categoryNames;
+      for (const [index, categoryName] of passCategoryNames.entries()) {
+        await runCategory(categoryName, session, categories, passPolicy, { execute, log });
+        executedCategoryNames.push(categoryName);
+        const completed = index + 1;
+        if (!fastCheckpointPrinted && isFastPrefix(passCategoryNames, completed, levels.fast)) {
+          // Fast includes the one shared build; the normal continuation must
+          // reuse it, so the invariant is already exact at this checkpoint.
+          if (enforceNormalInvariant) {
+            assertNormalBuildInvariant(session, 'fast checkpoint');
+          }
+          printEvidence({
+            contractVersion: 'ci-run-checkpoint-v1',
+            level: 'fast',
+            categoryNames: levels.fast,
+            startedAt,
+            session,
+          });
+          fastCheckpointPrinted = true;
         }
-        printEvidence({
-          contractVersion: 'ci-run-checkpoint-v1',
-          level: 'fast',
-          categoryNames: levels.fast,
-          startedAt,
-          session,
-        });
-        fastCheckpointPrinted = true;
+        const nextIsDeep = CI_DEEP_PHASE_CATEGORIES.has(passCategoryNames[completed])
+          && !CI_DEEP_PHASE_CATEGORIES.has(categoryName);
+        if (!splitNormalAndDeep && enforceNormalInvariant && nextIsDeep) {
+          // Compatibility levels without tier metadata still prove Normal
+          // before their explicitly ordered Deep categories.
+          assertNormalBuildInvariant(session, 'normal phase completion');
+        }
       }
-      const nextIsDeep = CI_DEEP_PHASE_CATEGORIES.has(categoryNames[completed])
-        && !CI_DEEP_PHASE_CATEGORIES.has(categoryName);
-      if (enforceNormalInvariant && nextIsDeep) {
-        // `all` must prove the normal phase on its own before deep phases may
-        // add independent builds.
+      if (splitNormalAndDeep && passIndex === 0 && enforceNormalInvariant) {
+        // All Normal checks finish before any Deep/Historical check is entered,
+        // even when both tiers share one domain scope.
         assertNormalBuildInvariant(session, 'normal phase completion');
       }
     }
@@ -567,7 +694,7 @@ export async function runLevel(requestedCategory, {
     printEvidence({
       contractVersion: 'ci-run-evidence-v1',
       level: requestedCategory,
-      categoryNames,
+      categoryNames: executedCategoryNames,
       startedAt,
       session,
     });
