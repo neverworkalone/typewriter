@@ -415,7 +415,7 @@ test('unsupported symbol and Mark corpus surface forms are omitted before Stage 
     ref: { kind: 'corpus-surface', ref: '문구점' },
   }]);
 
-  for (const surface of ['문구점 을', `문구점${String.fromCharCode(7)}`, '가'.repeat(25)]) {
+  for (const surface of ['문구점 을', `문구점${String.fromCharCode(7)}`, '가'.repeat(25), '문구점\u0301']) {
     const malformedInventory = structuredClone(inventory);
     malformedInventory.candidates[0].observed_surface_forms = [{ surface: '문구점' }];
     malformedInventory.candidates[0].evidence.representative_hits = [{
@@ -431,7 +431,15 @@ test('unsupported symbol and Mark corpus surface forms are omitted before Stage 
       matched_morpheme_span_surface: '문구점',
     }];
     const malformedEvidence = buildTextFreeCandidateEvidence(malformedInventory);
-    assert.throws(() => observationsFromCorpusEvidence(malformedEvidence), /single bounded word form/);
+    const omitted = observationsFromCorpusEvidence(malformedEvidence);
+    assert.equal(omitted.source.omitted_non_token_surface_hits, 1);
+    assert.deepEqual(omitted.observations, [{
+      hint: { input: '문구점', pos: 'noun' },
+      holds: ['no_evidence'],
+      surface: '문구점',
+      ref: { kind: 'corpus-surface', ref: '문구점' },
+    }]);
+    assert.ok(!JSON.stringify(omitted.observations).includes(surface), 'omitted surface content must not reach observations');
   }
 });
 
