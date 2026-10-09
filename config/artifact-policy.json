@@ -1831,9 +1831,10 @@
             "sha256",
             "source_revision"
           ],
-          "$.factory_admissions.*": ["batch_id", "attempt", "semantic_decisions_sha256", "entries", "changes", "sha256"],
+          "$.factory_admissions.*": ["batch_id", "attempt", "semantic_decisions_sha256", "entries", "changes", "relation_amendments", "sha256"],
           "$.factory_admissions.*.entries.*": ["source_candidate_id", "record_id", "sense_ids"],
-          "$.factory_admissions.*.changes.*": ["entry_id", "operation", "path", "source_candidate_ids", "added_sense_ids", "before_sha256", "after_sha256", "previous_semantic_review_sha256", "previous_semantic_review", "previous_record", "semantic_review_sha256"],
+          "$.factory_admissions.*.changes.*": ["entry_id", "operation", "path", "source_candidate_ids", "added_sense_ids", "before_sha256", "after_sha256", "previous_semantic_review_sha256", "previous_semantic_review", "previous_record", "added_relation_ids", "semantic_review_sha256"],
+          "$.factory_admissions.*.relation_amendments.*": ["source_candidate_id", "source_record_id", "source_sense_id", "source_gloss_sha256", "authored_relation_id", "relation_id", "relation", "rationale_sha256", "outcome"],
           "$.factory_admissions.*.changes.*.previous_semantic_review": ["record_id", "record_sha256", "authored_batch_decision", "boundary_review", "sense_reviews"],
           "$.factory_admissions.*.changes.*.previous_semantic_review.authored_batch_decision": ["source_id", "source_sha256", "artifact_sha256", "decision_row_sha256", "candidate_record_id", "candidate_record_sha256", "decision", "selection_rank", "selection_score", "selection_axis", "reviewed_record_sha256"],
           "$.factory_admissions.*.changes.*.previous_semantic_review.boundary_review": ["review_id", "decision", "classification", "evidence", "pairwise", "rationale", "rationale_code"],
@@ -1845,7 +1846,7 @@
           "$.factory_admissions.*.changes.*.previous_semantic_review.sense_reviews.*.review_basis.topic_analyses.*": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
           "$.factory_admissions.*.changes.*.previous_record": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
           "$.factory_admissions.*.changes.*.previous_record.senses.*": ["id", "pos", "gloss", "relations"],
-          "$.factory_admissions.*.changes.*.previous_record.senses.*.relations.*": ["target", "target_sense", "type", "note"]
+          "$.factory_admissions.*.changes.*.previous_record.senses.*.relations.*": ["target", "target_sense", "type", "note", "relevance"]
         },
         "nested_field_types": {
           "$.source": {
@@ -2041,7 +2042,7 @@
           "$.factory_admissions.*.changes.*.previous_semantic_review.sense_reviews.*.review_basis.topic_analyses.*": {"status": "string", "state": "string", "topic": "string", "particle": "string", "predicate": "string", "token_index": "number", "topic_pos": "string", "evidence_basis": "string", "gloss_sha256": "string", "rationale": "string", "decision_source_id": "string"},
           "$.factory_admissions.*.changes.*.previous_record": {"id": "string", "record_type": "string", "role": "string", "candidate_id": "string", "lemma": "string", "search_forms": "array", "senses": "array"},
           "$.factory_admissions.*.changes.*.previous_record.senses.*": {"id": "string", "pos": "string", "gloss": "string", "relations": "array"},
-          "$.factory_admissions.*.changes.*.previous_record.senses.*.relations.*": {"target": "string", "target_sense": "string", "type": "string", "note": "string"}
+          "$.factory_admissions.*.changes.*.previous_record.senses.*.relations.*": {"target": "string", "target_sense": "string", "type": "string", "note": "string", "relevance": "integer"}
         }
       },
       "pre_admission_review": {
