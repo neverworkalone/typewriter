@@ -131,10 +131,12 @@ def create_permission(path: Path, **overrides) -> None:
     path.write_text("\n".join(f"- {key}: {value}" for key, value in values.items()), encoding="utf-8")
 
 
-def create_exclusion_manifest(path: Path, lemmas: list[str]) -> None:
+def create_exclusion_manifest(path: Path, lemmas: list[str], source_artifacts: list[dict] | None = None) -> None:
     payload = {
         "schema_version": "m9-reviewed-lemma-exclusions-v1",
-        "source_artifacts": [],
+        "source_artifacts": source_artifacts if source_artifacts is not None else (
+            [{"path": "fixture/source.json", "sha256": "a" * 64}] if lemmas else []
+        ),
         "lemmas": sorted(set(lemmas)),
     }
     canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -238,6 +240,27 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             create_permission(permission_path, **{"Allowed lexical-reference use": "pending"})
             with self.assertRaisesRegex(RuntimeError, "Allowed lexical-reference use"):
                 pilot.read_permission_record(permission_path)
+
+    def test_nonempty_exclusion_manifest_requires_a_source_binding(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            unbound_path = root / "unbound.json"
+            create_exclusion_manifest(unbound_path, ["바람"], source_artifacts=[])
+            with self.assertRaisesRegex(RuntimeError, "must bind at least one source artifact"):
+                pilot.read_exclusion_manifest(unbound_path)
+
+            empty_source_path = root / "empty-source-path.json"
+            create_exclusion_manifest(
+                empty_source_path,
+                ["바람"],
+                source_artifacts=[{"path": "", "sha256": "a" * 64}],
+            )
+            with self.assertRaisesRegex(RuntimeError, "source bindings must include paths"):
+                pilot.read_exclusion_manifest(empty_source_path)
+
+            empty_path = root / "empty.json"
+            create_exclusion_manifest(empty_path, [])
+            self.assertEqual(pilot.read_exclusion_manifest(empty_path)["lemmas"], [])
 
     def test_exact_lemma_is_covered_while_search_and_generated_collisions_are_held(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
