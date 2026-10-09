@@ -237,12 +237,12 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "덮히다",
+        "lemma": "덮이다",
         "pos": "verb"
       },
       "extractor_holds": [],
       "observation_digest": "6bc8b348e9ffa22fce0270114792539df33961d117c12e6f9ab47a3305f82209",
-      "trace_digest": "5a74c7a4d54fcb82073eeb415cb422d92e311e70cd1dc23329fc89569e6b37b9",
+      "trace_digest": "4e76d350a14f1c4710e905221b35b8ad14225ad27d0c26ae0e1cccef3c44a3d7",
       "verification": {
         "state": "needs_verification"
       }
@@ -281,12 +281,12 @@
         }
       ],
       "extractor_hint": {
-        "lemma": "덮히다",
+        "lemma": "덮이다",
         "pos": "verb"
       },
       "extractor_holds": [],
       "observation_digest": "66580ab9102709c2b724495f112df6d6db23c440812ce9b40c6f8fd39cde07f1",
-      "trace_digest": "f460a5d023b540fc6b0a20256d90c909ae3d7d7199514cd0d93efb5597c09688",
+      "trace_digest": "0a1cb5331ae41f0d567c0002cb5a4693addaba1bf39ffeecf82bacd5dacee9e9",
       "verification": {
         "state": "needs_verification"
       }
@@ -39715,7 +39715,7 @@
   "source_adapter": "corpus-adapter",
   "source_snapshot": "corpus:50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211:c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
   "canonical_snapshot_digest": "0f1ba5a12554918f2e48f49b83a0d588a44da5a152691cca8034b38f0c3864e3",
-  "producer_revision": "be3984b93a619dfbca48d53ee93b2b1c4e49aefa",
+  "producer_revision": "515cb1c539a4575686de0c0719e764be03f0a139",
   "extractor_version": "2",
   "analyzer_version": "kiwipiepy==0.24.0",
   "analyzer_digest": "d39df7c9b0fc175ee2871640a312f38a2de4d356b36df593178c9597924f03cd",
@@ -39749,14 +39749,14 @@
       "queue": 951,
       "excluded": 4
     },
-    "trace_sha256": "fc3dec58db53355176159c93e6288e8204fc12ed7afce02ace7e242ab3042a27"
+    "trace_sha256": "ece3d58cd3e77e559b1e96d194d499ece4a2aedf2b8b687209088e357727142b"
   },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
     "decisions": [],
     "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   },
-  "source_evidence_sha256": "7d646dbd3bd6672cd631ed8b1b33244f9b24ccdf9ea689d82506f72cac3af729",
-  "candidates_sha256": "7257c7cf209e7ef067d9614a2e33debb4b9c6d8bac9ecfd8c69cb243812b0a74",
+  "source_evidence_sha256": "2d278999b71f0219db4f9fbe7670b4bbe99f598103d80ae3021dcffae278a783",
+  "candidates_sha256": "e418c3a5d99c752de6bf4d5e3c2d045a1e07d190a7f143f9f7923aa07d4f9149",
   "status": "created"
 }
