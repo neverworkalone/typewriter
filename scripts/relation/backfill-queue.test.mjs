@@ -312,3 +312,16 @@ test('applying an approved relation does not re-queue its own review (second-ord
   edited.reviewed_candidates[0].meaning_sha256 = 'e'.repeat(64);
   assert.equal(isReviewCurrent(appliedRow, edited, ctx), false, 'a changed approved target still re-queues');
 });
+
+test('a stale approval does not explain (and so never hides) an incoming link', () => {
+  let state = newQueueState(canonical.canonicalRevision);
+  const packet = nextPacket(rows, state, { limit: 1 });
+  const [row] = packet;
+  state = record(state, packet, [outcome(row)]).state;
+  const entry = state.done[row.sense_id];
+  const targetId = entry.approved_relations[0].relation.target_sense;
+  const explained = (done) => currentCandidatesForDone(canonical, rows, { ...state, done }, { index }).explainedIncoming;
+  assert.ok(explained(state.done).get(targetId)?.has(row.sense_id), 'a holding approval explains the link it created');
+  const stale = { ...state.done, [row.sense_id]: { ...entry, gloss_sha256: 'e'.repeat(64) } };
+  assert.equal(explained(stale).get(targetId)?.has(row.sense_id) ?? false, false, 'a stale approval explains nothing');
+});

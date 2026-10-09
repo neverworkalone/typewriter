@@ -148,7 +148,12 @@ export function currentCandidatesForDone(canonical, rows, state, { index = build
   const doneRows = rows.filter((row) => state.done[row.sense_id]);
   // Incoming links the queue itself approved: target sense -> the senses whose approved relation points at it.
   const explainedIncoming = new Map();
+  // Only approvals that still hold count: a stale (gloss or target changed) approval is never applied, so it must not
+  // hide an incoming link that something else created.
+  const rowById = new Map(rows.map((row) => [row.sense_id, row]));
   for (const [sourceId, entry] of Object.entries(state.done)) {
+    const sourceRow = rowById.get(sourceId);
+    if (!sourceRow || !approvalsStillHold(sourceRow, entry, index)) continue;
     for (const { relation } of entry.approved_relations ?? []) {
       if (typeof relation?.target_sense === 'string') explainedIncoming.set(relation.target_sense, (explainedIncoming.get(relation.target_sense) ?? new Set()).add(sourceId));
     }
