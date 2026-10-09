@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "8b6b1a4f21f843c0635587d43a6c7988d7e785ec138505541ce4bccd7b5b3291"
+    "canonical_records_sha256": "f78b5d0ef8691c69419506f0a696076bf854fddcdde74401598ea7eb13e012d4"
   },
-  "authored_review_sha256": "e3e4454daa87099c5c8333097f2cac9dd268c2b027e7d27ef7b169d40922d546",
+  "authored_review_sha256": "da2c3d50332b8c1031743035c5b80eba1ff7a5a4de1fc1df149522c51adedf63",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "8b6b1a4f21f843c0635587d43a6c7988d7e785ec138505541ce4bccd7b5b3291"
+      "canonical_records_sha256": "f78b5d0ef8691c69419506f0a696076bf854fddcdde74401598ea7eb13e012d4"
     },
     "records": [
       {
@@ -63854,7 +63854,7 @@
       },
       {
         "record_id": "w2821",
-        "record_sha256": "05c83b84c1fee3879f04d63a710c1bcb83bfda8949b71dd1423d74aea6f23562",
+        "record_sha256": "3b8568438a80507450313e997714639224d9e72fc8e9d9f872895798bdc51d66",
         "boundary_review": {
           "review_id": "m5-13-agent-semantic-review-20260923-r5:canonical:w2821:boundary",
           "decision": "retain",
@@ -63873,7 +63873,7 @@
           {
             "sense_id": "w2821-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-182c68a174c4ce5e22b45003 to w225; rationale digest 654e96713ca2. w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-7f4d97bc8e6d18162bd3080f to w6048; rationale digest ed8740e00f0c. w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-4171509c09e700c8812a4caf to w4821; rationale digest eca0c94d433c. w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-4eb48201e5a6bb04f20ceef5 to w7424; rationale digest 5ac401811567. w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-6c07e7a9eba205d71866456b to w5498; rationale digest e6f09d49fedb."
+            "relation_rationale": "w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-742e650a076650508eedf771 to w6048; rationale digest b4cf9eba29e1. w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-4171509c09e700c8812a4caf to w4821; rationale digest eca0c94d433c. w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-4eb48201e5a6bb04f20ceef5 to w7424; rationale digest 5ac401811567. w2821 w2821-s1 71f9d53a1b41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-6c07e7a9eba205d71866456b to w5498; rationale digest e6f09d49fedb."
           }
         ]
       },
@@ -64998,7 +64998,7 @@
       },
       {
         "record_id": "w2889",
-        "record_sha256": "3168dfecddf0cbd9da5094d09b7e8b5988517294d59c5cec2d21ce63d7bb6e02",
+        "record_sha256": "3e76961f3c8156cfda4896be81814fe9eafd0f8d1ba23cbcbb5944aff60f2708",
         "boundary_review": {
           "review_id": "m5-13-agent-semantic-review-20260923-r5:canonical:w2889:boundary",
           "decision": "retain",
@@ -65017,7 +65017,7 @@
           {
             "sense_id": "w2889-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w2889 w2889-s1 f7bfd26ec3cf [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-ffd643f92189db91342b2155 to w022; rationale digest ac2437546da8. w2889 w2889-s1 f7bfd26ec3cf [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-6fbf367bbdcd0b6f066ec4de to w633; rationale digest 8a73e8345fa6. w2889 w2889-s1 f7bfd26ec3cf [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-558a2d9e3098051c8713f446 to w217; rationale digest f9683a8364de."
+            "relation_rationale": "w2889 w2889-s1 f7bfd26ec3cf [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-ffd643f92189db91342b2155 to w022; rationale digest ac2437546da8. w2889 w2889-s1 f7bfd26ec3cf [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-6fbf367bbdcd0b6f066ec4de to w633; rationale digest 8a73e8345fa6."
           }
         ]
       },
@@ -103774,7 +103774,7 @@
       },
       {
         "record_id": "w5498",
-        "record_sha256": "871b68a01fecb4043d310a7086863b16b9b97a886146d54c45dc6ddc4c661169",
+        "record_sha256": "9487bb86a9e04fd7dcd01283fd7961ba7cb24b93fbab9a8e41d1dc27ea46898e",
         "boundary_review": {
           "review_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-r3:canonical:w5498:boundary",
           "decision": "retain",
@@ -103793,7 +103793,7 @@
           {
             "sense_id": "w5498-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-9d24ab8c53f4443e2084e5ee to w225; rationale digest 3a2c07eac297. w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-b210ff90b3d9e18f7eb328f9 to w5483; rationale digest 7578a4565c9d. w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-aabc09d7ba21fa99da7f99d4 to w7424; rationale digest 683100327704. w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-37147e4040f6b2a26bb3508e to w2821; rationale digest 9521c0a56491. w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-3a54c6f5ddbc287a92adbc08 to w6048; rationale digest 854e2dee358b."
+            "relation_rationale": "w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-9d24ab8c53f4443e2084e5ee to w225; rationale digest 3a2c07eac297. w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-95fb75b3099b2159dbfb04bd to w5483; rationale digest d8447314d889. w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-d926d365bf6d069de1b7ffa0 to w7424; rationale digest 4c78336d6d16. w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-37147e4040f6b2a26bb3508e to w2821; rationale digest 9521c0a56491. w5498 w5498-s1 95d8c2306a67 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-3a54c6f5ddbc287a92adbc08 to w6048; rationale digest 854e2dee358b."
           }
         ]
       },
@@ -112782,7 +112782,7 @@
       },
       {
         "record_id": "w6048",
-        "record_sha256": "c2a130ce5cbfa1b3c701e57ef1325c33a60390c8d46e5c63e5a9305fee573960",
+        "record_sha256": "2fe7c161c77b65b20a937ed9e58fe9d3f25db94d820b49fd25d26655f708f0fd",
         "boundary_review": {
           "review_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-batch-04-r1:canonical:w6048:boundary",
           "decision": "retain",
@@ -112801,7 +112801,7 @@
           {
             "sense_id": "w6048-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w6048 w6048-s1 c299d331cc41 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-5a7cb1f014ae0391211469fa to w225; rationale digest 0f78c008ae69. w6048 w6048-s1 c299d331cc41 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-76fe2b2f4300da27a8217695 to w2821; rationale digest 309e5f84a199. w6048 w6048-s1 c299d331cc41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-594e6f007cc42ca4db575a41 to w5483; rationale digest 175073b77125. w6048 w6048-s1 c299d331cc41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-12b11fe34cf3c466371a60fa to w5498; rationale digest 1cd5c3a7b8bc."
+            "relation_rationale": "w6048 w6048-s1 c299d331cc41 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-5a7cb1f014ae0391211469fa to w225; rationale digest 0f78c008ae69. w6048 w6048-s1 c299d331cc41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-616aa23d985da163a0aa1024 to w2821; rationale digest e77e56d2ce5b. w6048 w6048-s1 c299d331cc41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-594e6f007cc42ca4db575a41 to w5483; rationale digest 175073b77125. w6048 w6048-s1 c299d331cc41 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-12b11fe34cf3c466371a60fa to w5498; rationale digest 1cd5c3a7b8bc."
           }
         ]
       },
@@ -134858,7 +134858,7 @@
       },
       {
         "record_id": "w7424",
-        "record_sha256": "f60cec9717bf308e3e923d8648a78b01f38254644a0d9c75955fb053a55a0e14",
+        "record_sha256": "7a506d7f2ffcc7cf6febbf19b40db4bf5d548bcfafad89e3188d64393ac2aed4",
         "boundary_review": {
           "review_id": "issue-222-m9-d-corpus-separate-semantic-verification-20260930-batch-07-r1:canonical:w7424:boundary",
           "decision": "retain",
@@ -134877,7 +134877,7 @@
           {
             "sense_id": "w7424-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w7424 w7424-s1 4d5e1e902cff [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-2bd30ef7e0d53c45f2092f63 to w5483; rationale digest a243da7eba6c. w7424 w7424-s1 4d5e1e902cff [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-35ede92d1a46912c7e95e718 to w5498; rationale digest e98eb22f1b29. w7424 w7424-s1 4d5e1e902cff [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-d85ada6c3eca89530e4e58a7 to w4821; rationale digest 6388a0316e39. w7424 w7424-s1 4d5e1e902cff [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-dbfcef281b72d78c13026143 to w2821; rationale digest cffbd2417052."
+            "relation_rationale": "w7424 w7424-s1 4d5e1e902cff [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-e2446cd90b39a1c220e9da19 to w5483; rationale digest 58402f0b1185. w7424 w7424-s1 4d5e1e902cff [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-633721ce92a3843990771eeb to w5498; rationale digest b461d13129b1. w7424 w7424-s1 4d5e1e902cff [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-d85ada6c3eca89530e4e58a7 to w4821; rationale digest 6388a0316e39. w7424 w7424-s1 4d5e1e902cff [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-dbfcef281b72d78c13026143 to w2821; rationale digest cffbd2417052."
           }
         ]
       },
@@ -241568,7 +241568,7 @@
     {
       "batch_id": "R000004",
       "attempt": 1,
-      "semantic_decisions_sha256": "0d2387e06d2e4cfd15992808498d0991b4c6b17d516dad58b388a354579acfbf",
+      "semantic_decisions_sha256": "4dc0483e906a87cf94d8654a329d5eb6731c80ac442b65c9be06eb8dae7c3885",
       "entries": [],
       "relation_amendments": [
         {
@@ -256481,33 +256481,16 @@
           "source_record_id": "w2821",
           "source_sense_id": "w2821-s1",
           "source_gloss_sha256": "71f9d53a1b41a76d7edd8921ab6cbe089f5c8c5f35405b14e0ddb1af170ab3de",
-          "authored_relation_id": "rel-182c68a174c4ce5e22b45003",
-          "relation_id": "rel-182c68a174c4ce5e22b45003",
-          "relation": {
-            "target": "w225",
-            "target_sense": "w225-s1",
-            "type": "near",
-            "note": "선택하다는 여럿 가운데 하나를 골라 정한다는 뜻이라 고르다와 가깝다.",
-            "relevance": 5
-          },
-          "rationale_sha256": "654e96713ca2adfc1d405b640c42b6291ee007d680c325ac11c410e3753d5188",
-          "outcome": "appended"
-        },
-        {
-          "source_candidate_id": "R000004",
-          "source_record_id": "w2821",
-          "source_sense_id": "w2821-s1",
-          "source_gloss_sha256": "71f9d53a1b41a76d7edd8921ab6cbe089f5c8c5f35405b14e0ddb1af170ab3de",
-          "authored_relation_id": "rel-7f4d97bc8e6d18162bd3080f",
-          "relation_id": "rel-7f4d97bc8e6d18162bd3080f",
+          "authored_relation_id": "rel-742e650a076650508eedf771",
+          "relation_id": "rel-742e650a076650508eedf771",
           "relation": {
             "target": "w6048",
             "target_sense": "w6048-s1",
-            "type": "near",
-            "note": "택하다는 여러 가능성 가운데 하나를 골라 정한다는 뜻이라 고르다와 가깝다.",
+            "type": "association",
+            "note": "택하다는 여러 가능성 가운데 하나를 골라 정한다는 뜻이라, 조건에 맞는 것을 선택하는 고르다에서 조건을 따지지 않고 하나를 골라 정하는 쪽으로 이어 찾게 한다.",
             "relevance": 5
           },
-          "rationale_sha256": "ed8740e00f0cafd67917c87d8f315cd74abe4d6ca7f04ed1a51d40ecfcdacc73",
+          "rationale_sha256": "b4cf9eba29e1221825eb7264cff9bdc99402a2297598d6e01050ce1f4df68252",
           "outcome": "appended"
         },
         {
@@ -257152,23 +257135,6 @@
             "relevance": 4
           },
           "rationale_sha256": "8a73e8345fa6f988cdf019f6d1e0e96002d479b732dd1485fbf301bedd8dbdd4",
-          "outcome": "appended"
-        },
-        {
-          "source_candidate_id": "R000004",
-          "source_record_id": "w2889",
-          "source_sense_id": "w2889-s1",
-          "source_gloss_sha256": "f7bfd26ec3cf45377fa9bcee3f7fe8e93fb0f09bb7ed923a4afbdc6ce304348e",
-          "authored_relation_id": "rel-558a2d9e3098051c8713f446",
-          "relation_id": "rel-558a2d9e3098051c8713f446",
-          "relation": {
-            "target": "w217",
-            "target_sense": "w217-s1",
-            "type": "near",
-            "note": "바라다는 어떤 일이 이루어지기를 마음속으로 원한다는 뜻이라 기대하다와 가깝다.",
-            "relevance": 5
-          },
-          "rationale_sha256": "f9683a8364debf8a25e625cdf000bff7d6fbeff728b12a7f4369a1d8db510fa4",
           "outcome": "appended"
         },
         {
@@ -263397,16 +263363,16 @@
           "source_record_id": "w5498",
           "source_sense_id": "w5498-s1",
           "source_gloss_sha256": "95d8c2306a67d8aa6d4de313cf3e646dcdd9cd61c31c59003922cb6337da0140",
-          "authored_relation_id": "rel-b210ff90b3d9e18f7eb328f9",
-          "relation_id": "rel-b210ff90b3d9e18f7eb328f9",
+          "authored_relation_id": "rel-95fb75b3099b2159dbfb04bd",
+          "relation_id": "rel-95fb75b3099b2159dbfb04bd",
           "relation": {
             "target": "w5483",
             "target_sense": "w5483-s1",
-            "type": "near",
-            "note": "결정은 여러 가능성 가운데 하나를 골라 정하는 일이라 선택과 가깝다.",
+            "type": "association",
+            "note": "결정은 여러 가능성 가운데 하나를 골라 정함이라, 마음에 드는 하나를 골라 정하는 선택에서 마음에 드는지를 따지지 않고 하나로 정하는 쪽으로 이어 찾게 한다.",
             "relevance": 5
           },
-          "rationale_sha256": "7578a4565c9dff521ce8d5fb9d698a6d14fe888cfde47f0e8f4e108fe307f955",
+          "rationale_sha256": "d8447314d889a733de6808f57aa8f3c54e123b83aafa79932d04be63162cf7d1",
           "outcome": "appended"
         },
         {
@@ -263414,16 +263380,16 @@
           "source_record_id": "w5498",
           "source_sense_id": "w5498-s1",
           "source_gloss_sha256": "95d8c2306a67d8aa6d4de313cf3e646dcdd9cd61c31c59003922cb6337da0140",
-          "authored_relation_id": "rel-aabc09d7ba21fa99da7f99d4",
-          "relation_id": "rel-aabc09d7ba21fa99da7f99d4",
+          "authored_relation_id": "rel-d926d365bf6d069de1b7ffa0",
+          "relation_id": "rel-d926d365bf6d069de1b7ffa0",
           "relation": {
             "target": "w7424",
             "target_sense": "w7424-s1",
-            "type": "near",
-            "note": "선정은 여럿 가운데 조건에 맞는 것을 골라 정하는 일이라 선택과 가깝다.",
+            "type": "association",
+            "note": "선정은 여럿 가운데 조건에 맞는 것을 골라 정함이라, 마음에 드는 하나를 골라 정하는 선택에서 조건에 맞는 것을 가려내는 쪽으로 이어 찾게 한다.",
             "relevance": 5
           },
-          "rationale_sha256": "683100327704da3e7166bdd8f10b311bc14aa752806c2d35133652877e702f2a",
+          "rationale_sha256": "4c78336d6d16377bc30438f4eb14b51f474d3b2edf7443a73de2f4954bc5667b",
           "outcome": "appended"
         },
         {
@@ -264243,16 +264209,16 @@
           "source_record_id": "w6048",
           "source_sense_id": "w6048-s1",
           "source_gloss_sha256": "c299d331cc41b2d72069b8c0ae12f2cae2ab2e515debf35c8f99a2b06bbbd9ba",
-          "authored_relation_id": "rel-76fe2b2f4300da27a8217695",
-          "relation_id": "rel-76fe2b2f4300da27a8217695",
+          "authored_relation_id": "rel-616aa23d985da163a0aa1024",
+          "relation_id": "rel-616aa23d985da163a0aa1024",
           "relation": {
             "target": "w2821",
             "target_sense": "w2821-s1",
-            "type": "near",
-            "note": "고르다는 여럿 가운데 조건에 맞는 것을 선택한다는 뜻이라 택하다와 가깝다.",
+            "type": "association",
+            "note": "고르다는 여럿 가운데 조건에 맞는 것을 선택한다는 뜻이라, 여러 가능성 가운데 하나를 골라 정하는 택하다에서 조건에 맞는 것을 가려내는 쪽으로 이어 찾게 한다.",
             "relevance": 5
           },
-          "rationale_sha256": "309e5f84a199e03f1c5f0b3b10efc08110ae846552d4a83e0aa2c1e6b4ca7e87",
+          "rationale_sha256": "e77e56d2ce5b060c7da525bf4373b9890248352dad372ec63f30d91af8d32131",
           "outcome": "appended"
         },
         {
@@ -265295,16 +265261,16 @@
           "source_record_id": "w7424",
           "source_sense_id": "w7424-s1",
           "source_gloss_sha256": "4d5e1e902cffd6083fdbfdeafa4d2f0aba6989676600210219709ef63074cd79",
-          "authored_relation_id": "rel-2bd30ef7e0d53c45f2092f63",
-          "relation_id": "rel-2bd30ef7e0d53c45f2092f63",
+          "authored_relation_id": "rel-e2446cd90b39a1c220e9da19",
+          "relation_id": "rel-e2446cd90b39a1c220e9da19",
           "relation": {
             "target": "w5483",
             "target_sense": "w5483-s1",
-            "type": "near",
-            "note": "결정은 여러 가능성 가운데 하나를 골라 정하는 일이라 선정과 가깝다.",
+            "type": "association",
+            "note": "결정은 여러 가능성 가운데 하나를 골라 정함이라, 조건에 맞는 것을 골라 정하는 선정에서 조건을 말하지 않고 하나로 정하는 쪽으로 이어 찾게 한다.",
             "relevance": 5
           },
-          "rationale_sha256": "a243da7eba6c2b1e14283a5d8d8f8c639c18575320b9ec5793447834d8804d6a",
+          "rationale_sha256": "58402f0b1185ae351db2bd527817c2b72019d647d245147446031c27a280c84d",
           "outcome": "appended"
         },
         {
@@ -265312,16 +265278,16 @@
           "source_record_id": "w7424",
           "source_sense_id": "w7424-s1",
           "source_gloss_sha256": "4d5e1e902cffd6083fdbfdeafa4d2f0aba6989676600210219709ef63074cd79",
-          "authored_relation_id": "rel-35ede92d1a46912c7e95e718",
-          "relation_id": "rel-35ede92d1a46912c7e95e718",
+          "authored_relation_id": "rel-633721ce92a3843990771eeb",
+          "relation_id": "rel-633721ce92a3843990771eeb",
           "relation": {
             "target": "w5498",
             "target_sense": "w5498-s1",
-            "type": "near",
-            "note": "선택은 여럿 가운데 마음에 드는 하나를 골라 정하는 일이라 선정과 가깝다.",
+            "type": "association",
+            "note": "선택은 여럿 가운데 마음에 드는 하나를 골라 정함이라, 조건에 맞는 것을 골라 정하는 선정에서 마음에 드는 쪽을 고르는 쪽으로 이어 찾게 한다.",
             "relevance": 5
           },
-          "rationale_sha256": "e98eb22f1b29294c073ea4fed87af67d81cab12290812eb253cac58afe62b37f",
+          "rationale_sha256": "b461d13129b11399dc84b2da9efd7f16d9ad378bfbd6f4561ba7602937ae8d9a",
           "outcome": "appended"
         },
         {
@@ -285999,14 +285965,13 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-182c68a174c4ce5e22b45003",
-            "rel-7f4d97bc8e6d18162bd3080f",
+            "rel-742e650a076650508eedf771",
             "rel-4171509c09e700c8812a4caf",
             "rel-4eb48201e5a6bb04f20ceef5",
             "rel-6c07e7a9eba205d71866456b"
           ],
           "before_sha256": "bfb6a5287472c90d744628f4c0d40538f4360e7691905b43d7da83d165657432",
-          "after_sha256": "05c83b84c1fee3879f04d63a710c1bcb83bfda8949b71dd1423d74aea6f23562",
+          "after_sha256": "3b8568438a80507450313e997714639224d9e72fc8e9d9f872895798bdc51d66",
           "previous_semantic_review_sha256": "3f7513e650a791648b6410e16a1adca891f429685cb0a627a6204a0a46509ee2",
           "previous_semantic_review": {
             "record_id": "w2821",
@@ -286041,7 +286006,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "69c2a2725d4cac645d443151acc56c1e945b9653e808fd117af19cd58d358b90"
+          "semantic_review_sha256": "626b1fa587a3267784fac1137bdd3b9c7600f1ff102f244fd94e7f0f8a17f8b0"
         },
         {
           "entry_id": "w2823",
@@ -286539,11 +286504,10 @@
           ],
           "added_relation_ids": [
             "rel-ffd643f92189db91342b2155",
-            "rel-6fbf367bbdcd0b6f066ec4de",
-            "rel-558a2d9e3098051c8713f446"
+            "rel-6fbf367bbdcd0b6f066ec4de"
           ],
           "before_sha256": "ac5624d7faf9ec43b7470224d22a72c8066836c430f4b7fd97773d4e653830c0",
-          "after_sha256": "3168dfecddf0cbd9da5094d09b7e8b5988517294d59c5cec2d21ce63d7bb6e02",
+          "after_sha256": "3e76961f3c8156cfda4896be81814fe9eafd0f8d1ba23cbcbb5944aff60f2708",
           "previous_semantic_review_sha256": "bd3ca3c46ea38e7058ce0f37dde00c5dd27013fb58ae2a750de9c2cd5eba678f",
           "previous_semantic_review": {
             "record_id": "w2889",
@@ -286578,7 +286542,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "f291ef81c11b0540d6e3ac79f57e3a9b4eed52e93da77f4f9f72647569826dc3"
+          "semantic_review_sha256": "942996033b135bcf4af44447f8b43e1e8f83336313e94f3474f36a538770874b"
         },
         {
           "entry_id": "w290",
@@ -293975,13 +293939,13 @@
           ],
           "added_relation_ids": [
             "rel-9d24ab8c53f4443e2084e5ee",
-            "rel-b210ff90b3d9e18f7eb328f9",
-            "rel-aabc09d7ba21fa99da7f99d4",
+            "rel-95fb75b3099b2159dbfb04bd",
+            "rel-d926d365bf6d069de1b7ffa0",
             "rel-37147e4040f6b2a26bb3508e",
             "rel-3a54c6f5ddbc287a92adbc08"
           ],
           "before_sha256": "3941691785cfd618ddc4161534ed707a058de22dc5c0de5904d40b5fcf272faa",
-          "after_sha256": "871b68a01fecb4043d310a7086863b16b9b97a886146d54c45dc6ddc4c661169",
+          "after_sha256": "9487bb86a9e04fd7dcd01283fd7961ba7cb24b93fbab9a8e41d1dc27ea46898e",
           "previous_semantic_review_sha256": "f2b69a71c97861e0abdcc081e41b2dfefce15e6a3a55ba5bed1cad65a3d87e39",
           "previous_semantic_review": {
             "record_id": "w5498",
@@ -294016,7 +293980,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "8aadde1c12a563993110fa2859c0e3161fa98c347fb274460d8e2ac89cd79d71"
+          "semantic_review_sha256": "fdbaf11c10f9c7befe298d21c75730d8b5ac2d43b8d9708e6d89addc65f13979"
         },
         {
           "entry_id": "w5514",
@@ -294719,12 +294683,12 @@
           ],
           "added_relation_ids": [
             "rel-5a7cb1f014ae0391211469fa",
-            "rel-76fe2b2f4300da27a8217695",
+            "rel-616aa23d985da163a0aa1024",
             "rel-594e6f007cc42ca4db575a41",
             "rel-12b11fe34cf3c466371a60fa"
           ],
           "before_sha256": "288f11fe0c830af88a4a314a49b9c4d330e4832f6148e820ea0d585b97c2fbbc",
-          "after_sha256": "c2a130ce5cbfa1b3c701e57ef1325c33a60390c8d46e5c63e5a9305fee573960",
+          "after_sha256": "2fe7c161c77b65b20a937ed9e58fe9d3f25db94d820b49fd25d26655f708f0fd",
           "previous_semantic_review_sha256": "22b4861cb24bd86c096802ee000962a13815077e0581672818437339faefb492",
           "previous_semantic_review": {
             "record_id": "w6048",
@@ -294759,7 +294723,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "aa3d14fb46f461cc98c17fbb8c1cfb3689671f38e10e3674f80ae06f5be9d207"
+          "semantic_review_sha256": "091c6cbeb3ac1a78d3dc40819eb69a13fbb516b16e800e60e132c6e49b323b7b"
         },
         {
           "entry_id": "w6069",
@@ -295892,13 +295856,13 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-2bd30ef7e0d53c45f2092f63",
-            "rel-35ede92d1a46912c7e95e718",
+            "rel-e2446cd90b39a1c220e9da19",
+            "rel-633721ce92a3843990771eeb",
             "rel-d85ada6c3eca89530e4e58a7",
             "rel-dbfcef281b72d78c13026143"
           ],
           "before_sha256": "ef7433a8679737698bf1335d0ec27c5d8450a5bee9f04c9e4912e797bf576aa3",
-          "after_sha256": "f60cec9717bf308e3e923d8648a78b01f38254644a0d9c75955fb053a55a0e14",
+          "after_sha256": "7a506d7f2ffcc7cf6febbf19b40db4bf5d548bcfafad89e3188d64393ac2aed4",
           "previous_semantic_review_sha256": "0adcc24b1f5fc48dd76f6422a10158d64ccdf534284880a0072cbc2bd7797420",
           "previous_semantic_review": {
             "record_id": "w7424",
@@ -295933,7 +295897,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "5338bbc4c61a76da56a9911c59030500b564f70c8874f16ef2d00d8b904d1a6a"
+          "semantic_review_sha256": "4c1cfc991be311a9ebe8aaf32c8dd98d4721a7ab1489c80c337928789c23c893"
         },
         {
           "entry_id": "w7667",
@@ -298154,7 +298118,7 @@
           "semantic_review_sha256": "7f0bb3bed634ce81761033c28f9a275651c50840aaa6426a165861fa74decdee"
         }
       ],
-      "sha256": "c7eca35a38c5bf034a2eb194d8c24b25ed889ed0b748418b73be1d70e773112d"
+      "sha256": "5ffb7d26d23f346a046489273045da428b61c62344840210b3b160cf20a16afb"
     }
   ]
 }

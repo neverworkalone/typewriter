@@ -11383,26 +11383,13 @@
    "source_sense_id": "w2821-s1",
    "source_gloss_sha256": "71f9d53a1b41a76d7edd8921ab6cbe089f5c8c5f35405b14e0ddb1af170ab3de",
    "relation": {
-    "target": "w225",
-    "target_sense": "w225-s1",
-    "type": "near",
-    "note": "선택하다는 여럿 가운데 하나를 골라 정한다는 뜻이라 고르다와 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w2821-s1: 후보 검토에서 w225-s1를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w2821",
-   "source_sense_id": "w2821-s1",
-   "source_gloss_sha256": "71f9d53a1b41a76d7edd8921ab6cbe089f5c8c5f35405b14e0ddb1af170ab3de",
-   "relation": {
     "target": "w6048",
     "target_sense": "w6048-s1",
-    "type": "near",
-    "note": "택하다는 여러 가능성 가운데 하나를 골라 정한다는 뜻이라 고르다와 가깝다.",
+    "type": "association",
+    "note": "택하다는 여러 가능성 가운데 하나를 골라 정한다는 뜻이라, 조건에 맞는 것을 선택하는 고르다에서 조건을 따지지 않고 하나를 골라 정하는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w2821-s1: 후보 검토에서 w6048-s1를 near 관계로 판단했다."
+   "rationale": "w2821-s1 w6048-s1: 출발 gloss의 조건에 맞는 것이라는 한정이 대상 gloss에 없다. near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w2821",
@@ -11895,19 +11882,6 @@
     "relevance": 4
    },
    "rationale": "w2889-s1: 후보 검토에서 w633-s1를 association 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w2889",
-   "source_sense_id": "w2889-s1",
-   "source_gloss_sha256": "f7bfd26ec3cf45377fa9bcee3f7fe8e93fb0f09bb7ed923a4afbdc6ce304348e",
-   "relation": {
-    "target": "w217",
-    "target_sense": "w217-s1",
-    "type": "near",
-    "note": "바라다는 어떤 일이 이루어지기를 마음속으로 원한다는 뜻이라 기대하다와 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w2889-s1: 후보 검토에서 w217-s1를 near 관계로 판단했다."
   },
   {
    "source_record_id": "w290",
@@ -16669,11 +16643,11 @@
    "relation": {
     "target": "w5483",
     "target_sense": "w5483-s1",
-    "type": "near",
-    "note": "결정은 여러 가능성 가운데 하나를 골라 정하는 일이라 선택과 가깝다.",
+    "type": "association",
+    "note": "결정은 여러 가능성 가운데 하나를 골라 정함이라, 마음에 드는 하나를 골라 정하는 선택에서 마음에 드는지를 따지지 않고 하나로 정하는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w5498-s1: 후보 검토에서 w5483-s1를 near 관계로 판단했다."
+   "rationale": "w5498-s1 w5483-s1: 출발 gloss의 마음에 드는 하나라는 한정이 대상 gloss에 없다. near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w5498",
@@ -16682,11 +16656,11 @@
    "relation": {
     "target": "w7424",
     "target_sense": "w7424-s1",
-    "type": "near",
-    "note": "선정은 여럿 가운데 조건에 맞는 것을 골라 정하는 일이라 선택과 가깝다.",
+    "type": "association",
+    "note": "선정은 여럿 가운데 조건에 맞는 것을 골라 정함이라, 마음에 드는 하나를 골라 정하는 선택에서 조건에 맞는 것을 가려내는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w5498-s1: 후보 검토에서 w7424-s1를 near 관계로 판단했다."
+   "rationale": "w5498-s1 w7424-s1: 출발 gloss는 마음에 드는 하나를, 대상 gloss는 조건에 맞는 것을 고르는 것이라 고르는 기준이 다르다. near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w5498",
@@ -17315,11 +17289,11 @@
    "relation": {
     "target": "w2821",
     "target_sense": "w2821-s1",
-    "type": "near",
-    "note": "고르다는 여럿 가운데 조건에 맞는 것을 선택한다는 뜻이라 택하다와 가깝다.",
+    "type": "association",
+    "note": "고르다는 여럿 가운데 조건에 맞는 것을 선택한다는 뜻이라, 여러 가능성 가운데 하나를 골라 정하는 택하다에서 조건에 맞는 것을 가려내는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w6048-s1: 후보 검토에서 w2821-s1를 near 관계로 판단했다."
+   "rationale": "w6048-s1 w2821-s1: 대상 gloss가 조건에 맞는 것이라는 한정을 더한다. near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w6048",
@@ -18119,11 +18093,11 @@
    "relation": {
     "target": "w5483",
     "target_sense": "w5483-s1",
-    "type": "near",
-    "note": "결정은 여러 가능성 가운데 하나를 골라 정하는 일이라 선정과 가깝다.",
+    "type": "association",
+    "note": "결정은 여러 가능성 가운데 하나를 골라 정함이라, 조건에 맞는 것을 골라 정하는 선정에서 조건을 말하지 않고 하나로 정하는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w7424-s1: 후보 검토에서 w5483-s1를 near 관계로 판단했다."
+   "rationale": "w7424-s1 w5483-s1: 출발 gloss의 조건에 맞는 것이라는 한정이 대상 gloss에 없다. near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w7424",
@@ -18132,11 +18106,11 @@
    "relation": {
     "target": "w5498",
     "target_sense": "w5498-s1",
-    "type": "near",
-    "note": "선택은 여럿 가운데 마음에 드는 하나를 골라 정하는 일이라 선정과 가깝다.",
+    "type": "association",
+    "note": "선택은 여럿 가운데 마음에 드는 하나를 골라 정함이라, 조건에 맞는 것을 골라 정하는 선정에서 마음에 드는 쪽을 고르는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w7424-s1: 후보 검토에서 w5498-s1를 near 관계로 판단했다."
+   "rationale": "w7424-s1 w5498-s1: 출발 gloss는 조건에 맞는 것을, 대상 gloss는 마음에 드는 하나를 고르는 것이라 고르는 기준이 다르다. near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w7424",
@@ -20781,8 +20755,7 @@
   "rel-db82c41ee7e213da8c581835": "5f11a7f1131e87524ce93b261acb059bd05c5f55819bd1c935fdde071f6f986c",
   "rel-511b9005a57f1f39c2cf3b0e": "e48223532796c7183a3b55bd4be93d830b02cd1ceebff5bc358daaa1a06d2ca2",
   "rel-9c8cd2f7dcd009120ab5677a": "f7ab2c58e98a283107ab310812398d90503f1ac80fdc6b68b0b52e6a4246bd87",
-  "rel-182c68a174c4ce5e22b45003": "f7a51a1907dce1ad8af867c7e6c7e448d66f2cfd84286a5ffeaf2f54391258ad",
-  "rel-7f4d97bc8e6d18162bd3080f": "e445e457cfc3a561688134a19a9acb4c55a6de08f6f7c61f6381071012c3f396",
+  "rel-742e650a076650508eedf771": "e445e457cfc3a561688134a19a9acb4c55a6de08f6f7c61f6381071012c3f396",
   "rel-4171509c09e700c8812a4caf": "cc91dabcf4c303d19b48c19ed401ffc993b69e9981a3e1295a68560ca48635bb",
   "rel-4eb48201e5a6bb04f20ceef5": "538bfe277fcf6f1365daaf89e92b5791a63e07d0f669d6a7992a75f292d29a74",
   "rel-6c07e7a9eba205d71866456b": "8c8dee44af0e5d0f67088cf67b0208004a0c284e0ff253a52906b102b5a1d167",
@@ -20821,7 +20794,6 @@
   "rel-d3d0eed132eb877a653a7a11": "1649b3504c12b44992cdb92897c0ef1c0701e3ae9400a2c74769d308072e512b",
   "rel-ffd643f92189db91342b2155": "fabd689203ad038e988666728b54b6c53be1901eb5b7122f4c85ee035b5bf82f",
   "rel-6fbf367bbdcd0b6f066ec4de": "33944ebbd13c041d6657e64c9cc8dadfeed231d386ff0684e88bac99cd5da478",
-  "rel-558a2d9e3098051c8713f446": "704c8a2423eca3935120ae2eef7d3c130ec8e2d4874f4145ba6a665f613ac8cf",
   "rel-14ed379b94cefbf793b636eb": "2b6cce591f93b8d315276faf1ed94a068ea4879c0a38004a7f842518f393dec9",
   "rel-49cd774562ccde583e8df121": "c501e9755d8c3e2cdf22f84a6971a715676e14965c5af77ea10a384a6ab2a93c",
   "rel-9d436566e9e721b2ce0aa0b1": "318c5f75e727d866f29564cd4cc061667f276bab092765fca9d09a3031cb2c33",
@@ -21189,8 +21161,8 @@
   "rel-ac6e9e30b85d3b7b5c3741f1": "2d470dadfc5933e98d637bed8dee971778bbdb75b1f6e0b2848eca395887f9cf",
   "rel-9ede942589fe509a7a2cabba": "3009898bb8de8486c9b19a85375f30e99907854271af7304952003b48dc03642",
   "rel-9d24ab8c53f4443e2084e5ee": "f7a51a1907dce1ad8af867c7e6c7e448d66f2cfd84286a5ffeaf2f54391258ad",
-  "rel-b210ff90b3d9e18f7eb328f9": "38d95dd50f2abcf6a5a522adfb81aa936669d5ecb35149972b25b038135f3e68",
-  "rel-aabc09d7ba21fa99da7f99d4": "538bfe277fcf6f1365daaf89e92b5791a63e07d0f669d6a7992a75f292d29a74",
+  "rel-95fb75b3099b2159dbfb04bd": "38d95dd50f2abcf6a5a522adfb81aa936669d5ecb35149972b25b038135f3e68",
+  "rel-d926d365bf6d069de1b7ffa0": "538bfe277fcf6f1365daaf89e92b5791a63e07d0f669d6a7992a75f292d29a74",
   "rel-37147e4040f6b2a26bb3508e": "b7a47485ab8c6a409d23266b35fe337cefbee7eb4e85eb61e32ba1da42acc5bd",
   "rel-3a54c6f5ddbc287a92adbc08": "e445e457cfc3a561688134a19a9acb4c55a6de08f6f7c61f6381071012c3f396",
   "rel-c2a454c82e7647ffde4a36a4": "4f0883b9f7d571d715b88f39393dcde8f7224773d647386e368ff13a84e01159",
@@ -21239,7 +21211,7 @@
   "rel-8284dc1e8615015c461035d3": "2f76261ed10603d19171dea4abdfca25cb6fa7f048b5dad2ee1db4ed964d16e6",
   "rel-a67b79fe3aca71e4e0ce3706": "3f2e8fdeb11b21d8015936d1e424e1b41127141da11de4a51f9b40e833c1e63d",
   "rel-5a7cb1f014ae0391211469fa": "f7a51a1907dce1ad8af867c7e6c7e448d66f2cfd84286a5ffeaf2f54391258ad",
-  "rel-76fe2b2f4300da27a8217695": "b7a47485ab8c6a409d23266b35fe337cefbee7eb4e85eb61e32ba1da42acc5bd",
+  "rel-616aa23d985da163a0aa1024": "b7a47485ab8c6a409d23266b35fe337cefbee7eb4e85eb61e32ba1da42acc5bd",
   "rel-594e6f007cc42ca4db575a41": "38d95dd50f2abcf6a5a522adfb81aa936669d5ecb35149972b25b038135f3e68",
   "rel-12b11fe34cf3c466371a60fa": "8c8dee44af0e5d0f67088cf67b0208004a0c284e0ff253a52906b102b5a1d167",
   "rel-390e81b28f5e5d911d236ddd": "a2062d190750b2b2b4c885c21ba30450cf6ae965e0da9b6290354f2954de2911",
@@ -21301,8 +21273,8 @@
   "rel-cba0713495f0e5616f2dffe2": "13ddfdaaca1668e1b2ccc249547c90e57026c13133c36b521fb48c99acf19ea3",
   "rel-b703145202c5ea11df7c033f": "f44485c79960de3ba7a9280e6d489f587897e0972b288153a0dac50e64eb456a",
   "rel-9966c5a0752f1ab869f6f883": "d6b7c183bcc0fa03e0dc5bd5d1e62a5db1f57f4d54582f4e953002f5f10fa895",
-  "rel-2bd30ef7e0d53c45f2092f63": "38d95dd50f2abcf6a5a522adfb81aa936669d5ecb35149972b25b038135f3e68",
-  "rel-35ede92d1a46912c7e95e718": "8c8dee44af0e5d0f67088cf67b0208004a0c284e0ff253a52906b102b5a1d167",
+  "rel-e2446cd90b39a1c220e9da19": "38d95dd50f2abcf6a5a522adfb81aa936669d5ecb35149972b25b038135f3e68",
+  "rel-633721ce92a3843990771eeb": "8c8dee44af0e5d0f67088cf67b0208004a0c284e0ff253a52906b102b5a1d167",
   "rel-d85ada6c3eca89530e4e58a7": "cc91dabcf4c303d19b48c19ed401ffc993b69e9981a3e1295a68560ca48635bb",
   "rel-dbfcef281b72d78c13026143": "b7a47485ab8c6a409d23266b35fe337cefbee7eb4e85eb61e32ba1da42acc5bd",
   "rel-617951f558fdd34ccd5b96f4": "cb3c9a79fa590c1612f6c13275f65ff390d537e03df24b87c68aab8a0ad178b1",
