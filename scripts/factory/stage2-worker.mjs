@@ -42,7 +42,7 @@ export function createGitRepository({ root = process.cwd() } = {}) {
       return gitRun(root, ['rev-parse', ref + '^{commit}']);
     },
     listFiles(ref) {
-      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', 'data/candidates', 'data/reviews', 'data/canonical', 'data/validation/canonical-semantic-decision-source.json']);
+      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', 'data/candidates', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json']);
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
     show(ref, file) {
