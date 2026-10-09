@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "1be25b16454d313b4a603bb972c0b7f7ad5079e6950f87821c481cc2a27b1445"
+    "canonical_records_sha256": "a437b33062553d90932557b776df4b8da520b4af686194f537ff7afe104613a3"
   },
-  "authored_review_sha256": "acb1e55f37447b533ed69db186d1733c62d1e39144c97f6ebfd64c7edb803d73",
+  "authored_review_sha256": "3d54b5dd4082cb74c66396d398ebcf1b76c590b07accbc1d066ef03c9f784372",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "1be25b16454d313b4a603bb972c0b7f7ad5079e6950f87821c481cc2a27b1445"
+      "canonical_records_sha256": "a437b33062553d90932557b776df4b8da520b4af686194f537ff7afe104613a3"
     },
     "records": [
       {
@@ -2089,7 +2089,7 @@
       },
       {
         "record_id": "r049",
-        "record_sha256": "461d9a5ce90c2af9bcd44a8516fca0eab4741f2bf58e44fa0e938ce04dd767b7",
+        "record_sha256": "fa0d11891a1014544d4e8c6428b05e67f58abba160d64fd9253b108c562d3e70",
         "boundary_review": {
           "review_id": "canonical-semantic-review:r049:boundary",
           "decision": "retain",
@@ -2108,7 +2108,7 @@
           {
             "sense_id": "r049-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-10b2e8325448c1edc8f8b410 to w3375; rationale digest 12ab7111a932. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-1e0f7ea8b8573843ec9f18c2 to w12148; rationale digest 71745ce553b4. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended sensory relation rel-72920e924bc5f4a304980701 to w044; rationale digest a2a27322f31a. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended sensory relation rel-8aae6d7ff848cf0a79cfbd94 to w045; rationale digest 8c27f494ff38."
+            "relation_rationale": "r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-10b2e8325448c1edc8f8b410 to w3375; rationale digest 12ab7111a932. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-1e0f7ea8b8573843ec9f18c2 to w12148; rationale digest 71745ce553b4. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended sensory relation rel-72920e924bc5f4a304980701 to w044; rationale digest a2a27322f31a. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended sensory relation rel-8aae6d7ff848cf0a79cfbd94 to w045; rationale digest 8c27f494ff38. r049 r049-s1 9f96bc15b08f [R000003]: Stage 3 attempt R000003-a1 appended sensory relation rel-732c1610a21f27dcf2ca82b9 to w927; rationale digest c847e3108719. r049 r049-s1 9f96bc15b08f [R000003]: Stage 3 attempt R000003-a1 appended action relation rel-7c81c9525f093e3b2d6a43f3 to w4877; rationale digest 692b471cc574. r049 r049-s1 9f96bc15b08f [R000003]: Stage 3 attempt R000003-a1 appended action relation rel-4416c621fd17abbff1014d04 to w4878; rationale digest 7dd527341f08. r049 r049-s1 9f96bc15b08f [R000003]: Stage 3 attempt R000003-a1 appended action relation rel-e7585f4f61147ce31dffcf40 to w4887; rationale digest 83dc0fc4ff94."
           }
         ]
       },
@@ -4633,7 +4633,7 @@
       },
       {
         "record_id": "w086",
-        "record_sha256": "99f84483f2247f81220008830d38e9aba2737e8a53d453e95444e9c355701a5f",
+        "record_sha256": "37cad0d6b4a627e1a8330e5f9e974c5257aaceea2dd9884ccc0981938aa9341b",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w086:boundary",
           "decision": "retain",
@@ -4652,7 +4652,7 @@
           {
             "sense_id": "w086-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w086 w086-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-66e0abb243f65f8d2ef3bc16 to w087; rationale digest 68aac0a49dea. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-b29045ba3671dee5ee172cd3 to w120; rationale digest 54a3d283edce. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-21bf054e9afd77ad9db43724 to w095; rationale digest 2bc93d3002a1. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended action relation rel-4b4a540294a765350ec3d625 to w201; rationale digest f7606a745d80. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended action relation rel-6d557034987c39679ae1e470 to w297; rationale digest c1fb81c3e5ba. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended sensory relation rel-0d5f736cc66a0896f9d113ce to w088; rationale digest a908942f158c. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-d52e468e8721f074fdc63097 to w092; rationale digest e79926854c90. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-4784e34053d49f3cd0d7c5bc to w093; rationale digest 0bd74b0dece3. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-47fedbfe9ccc52eb9d84f986 to w090; rationale digest 5c2ab6484ca3. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-754de6fadb49ac3f3ba9241d to w2403; rationale digest 3f93b1e23a3a."
+            "relation_rationale": "w086 w086-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-66e0abb243f65f8d2ef3bc16 to w087; rationale digest 68aac0a49dea. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-b29045ba3671dee5ee172cd3 to w120; rationale digest 54a3d283edce. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-21bf054e9afd77ad9db43724 to w095; rationale digest 2bc93d3002a1. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended action relation rel-4b4a540294a765350ec3d625 to w201; rationale digest f7606a745d80. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended action relation rel-6d557034987c39679ae1e470 to w297; rationale digest c1fb81c3e5ba. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended sensory relation rel-0d5f736cc66a0896f9d113ce to w088; rationale digest a908942f158c. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-d52e468e8721f074fdc63097 to w092; rationale digest e79926854c90. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-4784e34053d49f3cd0d7c5bc to w093; rationale digest 0bd74b0dece3. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-47fedbfe9ccc52eb9d84f986 to w090; rationale digest 5c2ab6484ca3. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-754de6fadb49ac3f3ba9241d to w2403; rationale digest 3f93b1e23a3a. w086 w086-s1 6f4b7778dee0 [R000003]: Stage 3 attempt R000003-a1 appended action relation rel-19f1f64fff772758c9d1c2ad to w2766; rationale digest 0e8ad8d5a62c. w086 w086-s1 6f4b7778dee0 [R000003]: Stage 3 attempt R000003-a1 appended association relation rel-449852a46174417cdd7919d7 to w3181; rationale digest cd56294687c7. w086 w086-s1 6f4b7778dee0 [R000003]: Stage 3 attempt R000003-a1 appended association relation rel-8820242dd364003d9907a97d to w4281; rationale digest 78a2085ebb13."
           }
         ]
       },
@@ -239450,6 +239450,363 @@
         }
       ],
       "sha256": "c36a778a47428507715eb26a1c8e22c060314d91e1e082808d7e1138bcc720dc"
+    },
+    {
+      "batch_id": "R000003",
+      "attempt": 1,
+      "semantic_decisions_sha256": "8a19a35cce3aed0033e034a778b5069e29bf0547db1167bf110bc7ed1e28614f",
+      "entries": [],
+      "relation_amendments": [
+        {
+          "source_candidate_id": "R000003",
+          "source_record_id": "r049",
+          "source_sense_id": "r049-s1",
+          "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+          "authored_relation_id": "rel-732c1610a21f27dcf2ca82b9",
+          "relation_id": "rel-732c1610a21f27dcf2ca82b9",
+          "relation": {
+            "target": "w927",
+            "target_sense": "w927-s1",
+            "type": "sensory",
+            "note": "가슬가슬하다는 표면이 거칠고 마른 촉감을 나타내므로, 물체 바깥면에서 느끼는 질감 이미지다.",
+            "relevance": 6
+          },
+          "rationale_sha256": "c847e3108719dc7266e464ae6af429e8e6edb41b5904fb800d57e930636ee871",
+          "outcome": "appended"
+        },
+        {
+          "source_candidate_id": "R000003",
+          "source_record_id": "r049",
+          "source_sense_id": "r049-s1",
+          "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+          "authored_relation_id": "rel-7c81c9525f093e3b2d6a43f3",
+          "relation_id": "rel-7c81c9525f093e3b2d6a43f3",
+          "relation": {
+            "target": "w4877",
+            "target_sense": "w4877-s1",
+            "type": "action",
+            "note": "비벼대다는 두 표면을 마주 댄 채 여러 번 문지르는 동작이라, 표면의 마찰을 구체적인 행동으로 찾게 한다.",
+            "relevance": 4
+          },
+          "rationale_sha256": "692b471cc574bb5a244f950645d3ee0a3c8736dfbc38a33832fef8a60c2ba1ed",
+          "outcome": "appended"
+        },
+        {
+          "source_candidate_id": "R000003",
+          "source_record_id": "r049",
+          "source_sense_id": "r049-s1",
+          "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+          "authored_relation_id": "rel-4416c621fd17abbff1014d04",
+          "relation_id": "rel-4416c621fd17abbff1014d04",
+          "relation": {
+            "target": "w4878",
+            "target_sense": "w4878-s1",
+            "type": "action",
+            "note": "두드려 보다는 표면을 두드려 소리나 단단함을 살펴보는 동작이라, 표면을 확인하는 구체적인 action이다.",
+            "relevance": 5
+          },
+          "rationale_sha256": "7dd527341f08dd4dc3e7a25fa2cea1bfd2e0233002cdfd47508eb0c2d3268113",
+          "outcome": "appended"
+        },
+        {
+          "source_candidate_id": "R000003",
+          "source_record_id": "r049",
+          "source_sense_id": "r049-s1",
+          "source_gloss_sha256": "9f96bc15b08ff9924a671996a040384aba1c4d6b6a1685b083f4e75d37e3a53b",
+          "authored_relation_id": "rel-e7585f4f61147ce31dffcf40",
+          "relation_id": "rel-e7585f4f61147ce31dffcf40",
+          "relation": {
+            "target": "w4887",
+            "target_sense": "w4887-s1",
+            "type": "action",
+            "note": "갈아내다는 표면을 문지르거나 깎아 거친 부분을 없애는 동작이라, 표면을 다듬는 작업으로 이어진다.",
+            "relevance": 5
+          },
+          "rationale_sha256": "83dc0fc4ff94f2576b885e80e6e1e98fcc725665f1b686521eeb69cf413fa99f",
+          "outcome": "appended"
+        },
+        {
+          "source_candidate_id": "R000003",
+          "source_record_id": "w086",
+          "source_sense_id": "w086-s1",
+          "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+          "authored_relation_id": "rel-19f1f64fff772758c9d1c2ad",
+          "relation_id": "rel-19f1f64fff772758c9d1c2ad",
+          "relation": {
+            "target": "w2766",
+            "target_sense": "w2766-s1",
+            "type": "action",
+            "note": "퍼지다는 소리도 주변으로 넓게 번져 나가는 일을 말하므로, 귀에 들리는 소리의 진행을 서술하는 동작으로 이어진다.",
+            "relevance": 6
+          },
+          "rationale_sha256": "0e8ad8d5a62c6403e58f069f07bc89ff89f4d8c60773e23e66446733aceea396",
+          "outcome": "appended"
+        },
+        {
+          "source_candidate_id": "R000003",
+          "source_record_id": "w086",
+          "source_sense_id": "w086-s1",
+          "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+          "authored_relation_id": "rel-449852a46174417cdd7919d7",
+          "relation_id": "rel-449852a46174417cdd7919d7",
+          "relation": {
+            "target": "w3181",
+            "target_sense": "w3181-s1",
+            "type": "association",
+            "note": "공명은 물체나 공간이 특정 소리에 반응해 함께 울리는 현상이라, 소리가 주변에 남기는 울림으로 이어 찾을 수 있다.",
+            "relevance": 5
+          },
+          "rationale_sha256": "cd56294687c7222272562207c8a7c5e59a04d60aa28eaeb8befbe90dc3d448f8",
+          "outcome": "appended"
+        },
+        {
+          "source_candidate_id": "R000003",
+          "source_record_id": "w086",
+          "source_sense_id": "w086-s1",
+          "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+          "authored_relation_id": "rel-8820242dd364003d9907a97d",
+          "relation_id": "rel-8820242dd364003d9907a97d",
+          "relation": {
+            "target": "w4281",
+            "target_sense": "w4281-s1",
+            "type": "association",
+            "note": "반향은 벽이나 바닥에 부딪힌 소리가 되돌아와 겹쳐 들리는 현상이라, 소리의 되울림을 구체화한다.",
+            "relevance": 5
+          },
+          "rationale_sha256": "78a2085ebb135e773c6e1c4a1f1e0fd01587b72ff9e633bc7d0aef7716b41232",
+          "outcome": "appended"
+        }
+      ],
+      "changes": [
+        {
+          "entry_id": "r049",
+          "operation": "append_relations",
+          "path": "data/canonical/m5-5-recalibration.jsonl",
+          "source_candidate_ids": [
+            "R000003"
+          ],
+          "added_relation_ids": [
+            "rel-732c1610a21f27dcf2ca82b9",
+            "rel-7c81c9525f093e3b2d6a43f3",
+            "rel-4416c621fd17abbff1014d04",
+            "rel-e7585f4f61147ce31dffcf40"
+          ],
+          "before_sha256": "461d9a5ce90c2af9bcd44a8516fca0eab4741f2bf58e44fa0e938ce04dd767b7",
+          "after_sha256": "fa0d11891a1014544d4e8c6428b05e67f58abba160d64fd9253b108c562d3e70",
+          "previous_semantic_review_sha256": "2e90bc375366ab4c5b23e9281c85cd90070f12ad1d21d2484ffab9c91dbe8396",
+          "previous_semantic_review": {
+            "record_id": "r049",
+            "record_sha256": "461d9a5ce90c2af9bcd44a8516fca0eab4741f2bf58e44fa0e938ce04dd767b7",
+            "boundary_review": {
+              "review_id": "canonical-semantic-review:r049:boundary",
+              "decision": "retain",
+              "classification": "atomic",
+              "evidence": [
+                {
+                  "sense_id": "r049-s1",
+                  "evidence_basis": "gloss subject, predicate, and writer-facing usage were reviewed",
+                  "rationale": "r049 r049-s1 was separately reviewed against gloss 9f96bc15b08f and writer-facing usage evidence."
+                }
+              ],
+              "pairwise": [],
+              "rationale": "r049 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "r049-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale": "r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-10b2e8325448c1edc8f8b410 to w3375; rationale digest 12ab7111a932. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-1e0f7ea8b8573843ec9f18c2 to w12148; rationale digest 71745ce553b4. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended sensory relation rel-72920e924bc5f4a304980701 to w044; rationale digest a2a27322f31a. r049 r049-s1 9f96bc15b08f [R000002]: Stage 3 attempt R000002-a1 appended sensory relation rel-8aae6d7ff848cf0a79cfbd94 to w045; rationale digest 8c27f494ff38."
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "r049",
+            "record_type": "entry",
+            "role": "reference-only",
+            "lemma": "표면",
+            "search_forms": [
+              "표면"
+            ],
+            "senses": [
+              {
+                "id": "r049-s1",
+                "pos": "noun",
+                "gloss": "물체나 공간의 바깥쪽 면",
+                "relations": [
+                  {
+                    "target": "w3375",
+                    "target_sense": "w3375-s1",
+                    "type": "association",
+                    "note": "수면은 물의 표면이라, 표면 가운데 물에 한정된 한 경우다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w12148",
+                    "target_sense": "w12148-s1",
+                    "type": "association",
+                    "note": "평면은 평평한 표면이라, 표면 가운데 평평한 경우다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w044",
+                    "target_sense": "w044-s1",
+                    "type": "sensory",
+                    "note": "거칠다는 표면이 매끄럽지 않고 까슬까슬한 느낌이라, 표면이 손에 전하는 질감을 말한다.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w045",
+                    "target_sense": "w045-s1",
+                    "type": "sensory",
+                    "note": "부드럽다는 표면이 매끈하고 닿는 느낌이 거칠지 않다는 뜻이라, 표면이 손에 전하는 질감을 말한다.",
+                    "relevance": 3
+                  }
+                ]
+              }
+            ]
+          },
+          "semantic_review_sha256": "21cb07e8ccdb578db455e37e27705d971c335543d9e442fa3278e8d37d2ce07b"
+        },
+        {
+          "entry_id": "w086",
+          "operation": "append_relations",
+          "path": "data/canonical/pilot.jsonl",
+          "source_candidate_ids": [
+            "R000003"
+          ],
+          "added_relation_ids": [
+            "rel-19f1f64fff772758c9d1c2ad",
+            "rel-449852a46174417cdd7919d7",
+            "rel-8820242dd364003d9907a97d"
+          ],
+          "before_sha256": "99f84483f2247f81220008830d38e9aba2737e8a53d453e95444e9c355701a5f",
+          "after_sha256": "37cad0d6b4a627e1a8330e5f9e974c5257aaceea2dd9884ccc0981938aa9341b",
+          "previous_semantic_review_sha256": "05373c8a88df796b36a7560512f291b20f518753f20bcccb2da7f36baec4ae54",
+          "previous_semantic_review": {
+            "record_id": "w086",
+            "record_sha256": "99f84483f2247f81220008830d38e9aba2737e8a53d453e95444e9c355701a5f",
+            "boundary_review": {
+              "review_id": "canonical-semantic-review:w086:boundary",
+              "decision": "retain",
+              "classification": "atomic",
+              "evidence": [
+                {
+                  "sense_id": "w086-s1",
+                  "evidence_basis": "gloss content and writer domain axes: sound",
+                  "rationale": "w086 w086-s1 was separately reviewed against gloss 6f4b7778dee0 and writer-facing usage evidence."
+                }
+              ],
+              "pairwise": [],
+              "rationale": "w086 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "w086-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale": "w086 w086-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-66e0abb243f65f8d2ef3bc16 to w087; rationale digest 68aac0a49dea. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-b29045ba3671dee5ee172cd3 to w120; rationale digest 54a3d283edce. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended association relation rel-21bf054e9afd77ad9db43724 to w095; rationale digest 2bc93d3002a1. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended action relation rel-4b4a540294a765350ec3d625 to w201; rationale digest f7606a745d80. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended action relation rel-6d557034987c39679ae1e470 to w297; rationale digest c1fb81c3e5ba. w086 w086-s1 6f4b7778dee0 [R000001]: Stage 3 attempt R000001-a1 appended sensory relation rel-0d5f736cc66a0896f9d113ce to w088; rationale digest a908942f158c. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-d52e468e8721f074fdc63097 to w092; rationale digest e79926854c90. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-4784e34053d49f3cd0d7c5bc to w093; rationale digest 0bd74b0dece3. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-47fedbfe9ccc52eb9d84f986 to w090; rationale digest 5c2ab6484ca3. w086 w086-s1 6f4b7778dee0 [R000002]: Stage 3 attempt R000002-a1 appended association relation rel-754de6fadb49ac3f3ba9241d to w2403; rationale digest 3f93b1e23a3a."
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "w086",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w086",
+            "lemma": "소리",
+            "search_forms": [
+              "소리"
+            ],
+            "senses": [
+              {
+                "id": "w086-s1",
+                "pos": "noun",
+                "gloss": "물체의 움직임이나 목소리에서 귀로 느끼는 울림",
+                "relations": [
+                  {
+                    "target": "w091",
+                    "target_sense": "w091-s1",
+                    "type": "sensory",
+                    "note": "빗소리는 소리라는 넓은 감각을 특정한 날씨 장면으로 좁힌다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w087",
+                    "target_sense": "w087-s1",
+                    "type": "association",
+                    "note": "울림은 소리가 퍼지거나 되돌아와 길게 느껴지는 현상이라, 소리의 한 모습이지 소리 일반이 아니다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w120",
+                    "target_sense": "w120-s1",
+                    "type": "association",
+                    "note": "목소리는 사람의 목에서 나오는 말소리와 음색이라, 소리의 한 종류로 좁혀진 말이다.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w095",
+                    "target_sense": "w095-s1",
+                    "type": "association",
+                    "note": "기척은 사람이나 움직임이 있음을 알아차리게 하는 소리나 흔적이라, 소리 일반이 아니라 존재를 알리는 신호에 한정된다.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w201",
+                    "target_sense": "w201-s1",
+                    "type": "action",
+                    "note": "소리를 귀로 알아차리는 동작이다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w297",
+                    "target_sense": "w297-s1",
+                    "type": "action",
+                    "note": "소리에 주의를 모으는 동작이다.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w088",
+                    "target_sense": "w088-s1",
+                    "type": "sensory",
+                    "note": "소리가 되돌아오는 감각을 보여 준다.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w092",
+                    "target_sense": "w092-s1",
+                    "type": "association",
+                    "note": "발소리는 걷는 사람이나 동물이 내는 소리라, 소리 가운데 걸음에서 나는 한 종류다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w093",
+                    "target_sense": "w093-s1",
+                    "type": "association",
+                    "note": "숨소리는 숨을 쉬고 내쉴 때 나는 소리라, 소리 가운데 몸에서 나는 가까운 한 종류다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w090",
+                    "target_sense": "w090-s1",
+                    "type": "association",
+                    "note": "웅성거림은 여러 사람이 낮게 떠들어 알아듣기 어려운 소리라, 소리 가운데 사람들이 만드는 한 모습이다.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w2403",
+                    "target_sense": "w2403-s1",
+                    "type": "association",
+                    "note": "말소리는 사람이 말할 때 입에서 나오는 소리라, 소리 가운데 말하는 경우에 한정된 한 종류다.",
+                    "relevance": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "semantic_review_sha256": "d8f9f56ed6c92ef504e10ced88ad791db32d3bd5b0bd8babb8f18ab890cacbfb"
+        }
+      ],
+      "sha256": "860c51358475fab192d10e27f99303f98b2cb02ce1201107c03e98fa49781d7f"
     }
   ]
 }
