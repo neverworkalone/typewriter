@@ -2,10 +2,12 @@ import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import {
   cp,
+  mkdir,
   mkdtemp,
   readFile,
   rm,
   stat,
+  symlink,
   writeFile,
 } from 'node:fs/promises';
 import os from 'node:os';
@@ -36,6 +38,12 @@ import {
   validateM512ADecisionSource,
 } from '../scripts/batch/m5-12a-decision-source.mjs';
 import { hashCanonicalDirectory } from '../scripts/batch/validate-m5-8-process.mjs';
+import { reviewedRelationId } from '../scripts/batch/authored-semantic-decision-source.mjs';
+import { applyBackfill } from '../scripts/relation/backfill-apply.mjs';
+import { newQueueState } from '../scripts/relation/backfill-queue.mjs';
+import { buildRelationIndex } from '../scripts/relation/candidate-retrieval.mjs';
+import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
+import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import {
   buildM512ASemanticDecisionScaffold,
 } from '../scripts/batch/build-m5-12a-decision-scaffold.mjs';
@@ -797,4 +805,48 @@ test('M5-12A prospective inventory binds its own frozen authority, not later fac
     () => validatePromotionLedgerBindings({ entries, canonicalRecords, decisionSource: liveSource }),
     { code: 'SEMANTIC_AUDIT_FACTORY_ADMISSION' },
   );
+});
+
+test('M5-12A historical replay binds its import before later relation backfills, and still rejects other drift', async () => {
+  const authorityPath = 'data/validation/canonical-semantic-decision-source.json';
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const importRecords = (await readFile('data/canonical/m5-12a-expansion.jsonl', 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  const importIds = new Set(importRecords.map((record) => record.id));
+  const source = index.senses.find((sense) => importIds.has(sense.record_id));
+  assert.ok(source, 'the live canonical has an M5-12A import sense');
+  const related = new Set(source.relations.map((relation) => relation.target_sense));
+  const target = index.senses.find((sense) => sense.record_id !== source.record_id && !related.has(sense.sense_id));
+  const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 4 };
+  const state = newQueueState(canonical.canonicalRevision);
+  state.done[source.sense_id] = {
+    outcome: 'relations-reviewed', gloss_sha256: sha256Json(source.gloss), rationale: 'x', relation_count: 1,
+    approved_relations: [{ relation_id: reviewedRelationId(source.sense_id, relation), relation, rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.` }],
+    reviewed_candidates: [{ id: target.sense_id, meaning_sha256: sha256Json([target.lemma, target.gloss]) }],
+  };
+  const root = await mkdtemp(path.join(os.tmpdir(), 'm5-12a-relation-backfill-'));
+  try {
+    await mkdir(path.join(root, 'data/validation'), { recursive: true });
+    await cp('data/canonical', path.join(root, 'data/canonical'), { recursive: true });
+    await cp(authorityPath, path.join(root, authorityPath));
+    for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.resolve(dir), path.join(root, dir));
+    await cp('data/relation-backfill', path.join(root, 'data/relation-backfill'), { recursive: true }).catch((error) => { if (error?.code !== 'ENOENT') throw error; });
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
+    const importPath = path.join(root, 'data/canonical/m5-12a-expansion.jsonl');
+    assert.notDeepEqual(await readFile(importPath), await readFile('data/canonical/m5-12a-expansion.jsonl'), 'the live M5-12A import now carries the backfilled relation');
+
+    const options = { currentCanonicalDirectory: path.join(root, 'data/canonical'), canonicalAuthorityPath: path.join(root, authorityPath) };
+    await assert.doesNotReject(() => validateM512AFinal(options));
+
+    // Without the bound admission ledger the amendment is unexplained drift, never silently accepted.
+    await assert.rejects(() => validateM512AFinal({ ...options, canonicalAuthorityPath: authorityPath }), { code: 'FINAL_COUNT_MISMATCH' });
+
+    // A non-relation change to the import is still rejected.
+    const records = (await readFile(importPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    records[0].senses[0].gloss = `${records[0].senses[0].gloss} 변조`;
+    await writeFile(importPath, `${records.map((record) => JSON.stringify(record)).join('\n')}\n`);
+    await assert.rejects(() => validateM512AFinal(options), /does not bind|digest|summary/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

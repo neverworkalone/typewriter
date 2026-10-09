@@ -9,10 +9,10 @@ import { loadCanonicalBeforeFactoryAdmissions, sha256Json } from './semantic-aud
  * live file; each line whose record is still exactly the live canonical record is rewound through
  * the bound admission ledger, every other line is kept byte for byte.
  */
-export async function readImportBytesBeforeFactoryAdmissions(filePath, { canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY } = {}) {
+export async function readImportBytesBeforeFactoryAdmissions(filePath, { canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY, decisionSourcePath } = {}) {
   const bytes = await readFile(filePath);
   const live = await readCanonicalRecords(canonicalDirectory);
-  const before = new Map((await loadCanonicalBeforeFactoryAdmissions(live.records)).map((info) => [(info.record ?? info).id, info.record ?? info]));
+  const before = new Map((await loadCanonicalBeforeFactoryAdmissions(live.records, { decisionSourcePath })).map((info) => [(info.record ?? info).id, info.record ?? info]));
   const current = new Map(live.records.map((info) => [(info.record ?? info).id, info.record ?? info]));
   const text = bytes.toString('utf8');
   const lines = text.split('\n');
