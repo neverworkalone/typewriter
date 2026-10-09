@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
-import { glossDelta, nearReviewEvidence, renderNearReview, tuplesFromPacket } from './near-review.mjs';
+import { glossDelta, nearReviewEvidence, noteWordsBeyondTarget, renderNearReview, tuplesFromPacket } from './near-review.mjs';
 
 // The evidence is read from the real canonical, because it only helps if it shows what a reviewer would have needed to see.
 
@@ -86,4 +86,20 @@ test('an association against an authored reverse near is presented too, with bot
   const text = renderNearReview(items);
   assert.match(text, /\[association against an authored reverse near\]/u);
   assert.match(text, /reverse: near — /u);
+});
+
+test('a note that gives the target a meaning only the source gloss has is listed, and a faithful note is not', () => {
+  // 사그라지다 ("차차 약해져 없어지다") to 사그라들다 ("차츰 가라앉아 약해지다"): the target never says it disappears.
+  const sourceGloss = index.bySenseId.get('w10445-s1').gloss;
+  const targetGloss = index.bySenseId.get('w10816-s1').gloss;
+  assert.match(sourceGloss, /없어지다/u);
+  assert.doesNotMatch(targetGloss, /없어/u);
+  const wrong = noteWordsBeyondTarget('사그라들다는 기세나 열기가 차츰 가라앉아 없어진다는 뜻이라 사그라지다와 거의 같다.', sourceGloss, targetGloss, '사그라지다', '사그라들다');
+  assert.deepEqual(wrong.from_source_gloss, ['없어진다']);
+  const faithful = noteWordsBeyondTarget('사그라들다는 기세나 열기, 빛 같은 것이 차츰 가라앉아 약해진다는 뜻이라 사그라지다와 가깝다.', sourceGloss, targetGloss, '사그라지다', '사그라들다');
+  assert.deepEqual(faithful, { from_source_gloss: [], in_neither_gloss: [] });
+  // The same words reach the reader through the rendered listing and the evidence of a real tuple.
+  const [item] = nearReviewEvidence(index, [{ source_sense_id: 'w10445-s1', target_sense: 'w10816-s1', type: 'near', note: '사그라들다는 차츰 가라앉아 없어진다는 뜻이라 거의 같다.' }]);
+  assert.deepEqual(item.note_beyond_target.from_source_gloss, ['없어진다']);
+  assert.match(renderNearReview([item]), /taken from the source gloss only[^\n]*: 없어진다/u);
 });

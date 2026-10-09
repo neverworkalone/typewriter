@@ -4517,11 +4517,11 @@
    "relation": {
     "target": "w10816",
     "target_sense": "w10816-s1",
-    "type": "near",
-    "note": "사그라들다는 기세나 열기가 차츰 가라앉아 없어진다는 뜻이라 사그라지다와 거의 같다.",
+    "type": "association",
+    "note": "사그라들다는 기세나 열기, 빛 같은 것이 차츰 가라앉아 약해진다는 뜻이라, 차차 약해져 없어지는 사그라지다와 달리 없어지는 데까지 이르지 않고 약해지는 과정에 그치는 쪽으로 이어 찾게 한다.",
     "relevance": 6
    },
-   "rationale": "w10445-s1: 후보 검토에서 w10816-s1를 near 관계로 판단했다."
+   "rationale": "w10445-s1 w10816-s1: 대상 gloss는 '차츰 가라앉아 약해지다'로 소멸을 말하지 않는데 이전 note가 '없어진다'를 붙여 두 gloss가 같은 결과를 서술하는 것처럼 적었다. 소멸에 이르는 사그라지다와 약해지는 과정에 그치는 사그라들다는 상이 다르고 대상은 빛까지 포함해 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w10445",
@@ -5454,19 +5454,6 @@
     "relevance": 5
    },
    "rationale": "w11354-s1: 후보 검토에서 w036-s1를 association 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w11402",
-   "source_sense_id": "w11402-s1",
-   "source_gloss_sha256": "ffb374aaca2ff0e6e6aa039f23e4951e386d4b98b3811055ac2c794e9722cb36",
-   "relation": {
-    "target": "w217",
-    "target_sense": "w217-s1",
-    "type": "near",
-    "note": "바라다는 어떤 일이 이루어지기를 마음속으로 원한다는 뜻이라 꿈꾸다와 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w11402-s1: 후보 검토에서 w217-s1를 near 관계로 판단했다."
   },
   {
    "source_record_id": "w11402",
@@ -9547,10 +9534,10 @@
     "target": "r040",
     "target_sense": "r040-s1",
     "type": "near",
-    "note": "탄력은 눌리거나 당겨진 뒤 원래 모양으로 돌아가려는 힘이라 탄성과 거의 같다.",
+    "note": "탄력은 눌리거나 당겨진 뒤 원래 모양으로 돌아가려는 성질이라 탄성과 거의 같다.",
     "relevance": 6
    },
-   "rationale": "w2305-s1: 후보 검토에서 r040-s1를 near 관계로 판단했다."
+   "rationale": "w2305-s1 r040-s1: 이전 note가 대상 gloss의 '성질'을 '힘'으로 바꿔 적었다. 대상 gloss의 표현대로 note를 고쳤고 두 gloss의 범위는 같아 유형은 near로 그대로 둔다."
   },
   {
    "source_record_id": "w231",
@@ -9932,11 +9919,11 @@
    "relation": {
     "target": "w3227",
     "target_sense": "w3227-s1",
-    "type": "near",
-    "note": "거칠거칠함은 표면에 고르지 않은 돌기와 결이 도드라져 느껴지는 촉감이라 까슬함과 가깝다.",
+    "type": "association",
+    "note": "거칠거칠함은 표면에 고르지 않은 돌기와 결이 도드라져 느껴지는 상태라, 피부에 걸리는 촉감인 까슬함에서 표면의 상태 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w2422-s1: 후보 검토에서 w3227-s1를 near 관계로 판단했다."
+   "rationale": "w2422-s1 w3227-s1: 이전 note가 대상을 '촉감'이라 적었으나 대상 gloss는 '느껴지는 상태'이고 촉감은 출발 gloss의 말이다. 피부에 닿는 감각과 표면의 상태는 가리키는 바가 달라 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w2422",
@@ -10400,10 +10387,10 @@
     "target": "w2266",
     "target_sense": "w2266-s1",
     "type": "near",
-    "note": "말랑함은 눌렀을 때 부드럽게 들어가는 느낌이라 말캉함과 가깝다.",
+    "note": "말랑함은 눌렀을 때 부드럽게 들어가고 다시 움직이는 성질이라 말캉함과 가깝다.",
     "relevance": 5
    },
-   "rationale": "w2517-s1: 후보 검토에서 w2266-s1를 near 관계로 판단했다."
+   "rationale": "w2517-s1 w2266-s1: 이전 note가 대상 gloss의 '성질'을 '느낌'으로 바꿔 적었다. 대상 gloss의 표현대로 note를 고쳤고 유형은 near로 그대로 둔다."
   },
   {
    "source_record_id": "w2517",
@@ -15166,10 +15153,10 @@
     "target": "w017",
     "target_sense": "w017-s1",
     "type": "near",
-    "note": "수치는 잘못이나 부족함이 드러났다고 느껴 얼굴이 달아오르는 마음이라 수치심과 가깝다.",
+    "note": "수치는 자신의 잘못이나 부족함이 드러났다고 느껴 얼굴을 들기 어려운 마음이라 수치심과 가깝다.",
     "relevance": 5
    },
-   "rationale": "w432-s1: 후보 검토에서 w017-s1를 near 관계로 판단했다."
+   "rationale": "w432-s1 w017-s1: 이전 note가 대상 gloss의 '얼굴을 들기 어려운'을 '얼굴이 달아오르는'으로 바꿔 적었다. 대상 gloss의 표현대로 note를 고쳤고 유형은 near로 그대로 둔다."
   },
   {
    "source_record_id": "w432",
@@ -20341,7 +20328,7 @@
   "rel-94a22a9123701bd32063d31a": "a2979ae799c1c8a45d055a9db3c9a00e0036670f55a6a3ecb6e4e9a4d8636c07",
   "rel-65de0996b4b6f88b48937e8b": "c6b18d4f55fa57a5315d2ec724e9aeee489297b36ae49237e94c31bac2f6eaf0",
   "rel-facc8d253e33825d4732a399": "f21a1a1e1fcfe97eef7b57ef68419846fb902e09675bb54239509b93eddb95c3",
-  "rel-e6061578d81cc81c0e97d98a": "9474b3199ac3795dc005b8068400ba74a65d01207346b40dd6d99431b5c8a912",
+  "rel-49b302bc35dc225d63b2f1cc": "9474b3199ac3795dc005b8068400ba74a65d01207346b40dd6d99431b5c8a912",
   "rel-cdfcfdca10431f427fc77802": "44173f731780b13c76a28121e118e0434bc0ead5d2b7d084495979eeed6d2009",
   "rel-603fa991e414d6135ca31409": "9999bf4838275d50c82780ac27f995c4e4c91852fb0998aba45611b68b6f80bd",
   "rel-90aac006a5559a1ecc08ad4f": "400deff7f04fd97811bed054bbdd5268d9aaa38c07a27dfbd180109c28c88fda",
@@ -20414,7 +20401,6 @@
   "rel-69c120126f5f95447d1a6002": "095fcdd6754dbf414df12e26e8e364c84555c5de00c103cb39ed8cd14435b446",
   "rel-235158c59655126e14c0701c": "a3e540e320c7f712c930e0c326c3a8f19f3b5d210b3d1d03e154f2ddc2a92ca3",
   "rel-7218824491ef1487ffb38eb3": "d64ed6c9430ec48b4c01bef7ed3f911694e5dfcf4fe323522d1ac01d6934a77d",
-  "rel-fd225603eb57c95837b1604c": "704c8a2423eca3935120ae2eef7d3c130ec8e2d4874f4145ba6a665f613ac8cf",
   "rel-eade97047e8f680a0a2cb0b2": "4e650abe7fcc8430321469ec2951b0aaf16da2f4921687474a4412b4d1c44826",
   "rel-fa2643061f9ff6e01240825d": "b751607e25cdffdc017084e606b79f981c3b771057c04b7f25c1bd021f404da6",
   "rel-9fc36cb7f797712e6c3b875d": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
@@ -20730,7 +20716,7 @@
   "rel-92eddebdfd6c660ec7d08be2": "764e96a33fb71d923a9c2956cb4a8ff4cf0b1408f7d15064ddab5c9b01bc897a",
   "rel-b70fefbca5ab114497315225": "7568c045ab1e74a1a1ca3d1434268a217da1840e6830837339b854067cb209f8",
   "rel-83aa0b63b946849ebc96eb79": "aab566aaf8eabae2b1b92f16ccf527de70fe66e846bd352d6f2807493eaf8bf0",
-  "rel-24bc1af784f165aa07dd51af": "6cc7fdecf7e022f33681157ff2c73ec4bd61cbb90db1c48c75a7053ac00329e9",
+  "rel-88a3bfb878beaa2c206f63df": "6cc7fdecf7e022f33681157ff2c73ec4bd61cbb90db1c48c75a7053ac00329e9",
   "rel-b2986ef340bd1f4a415bdb0a": "1571cd9b4f65e488ba2c17434f3ebc63caf5f557e8cc4048e5d22c07719263ab",
   "rel-c02792158e9c5f0d9822fdc8": "09ecc9f345c571f2629688b848cf4decb4e94895e569655f1ea1f5dc09c8d82d",
   "rel-7c3dd81aa7be9548decf5732": "bc39210e8e1dacde74777bf79eb5264c013d65a432e78d483b98d0e1d3c1cbd3",
@@ -20760,7 +20746,7 @@
   "rel-3f57587e4a43b5d2a102fc3b": "fb189af6e13e741d03b81551bb9d7c26ea6504aaddb72458fd9f12745561a9f4",
   "rel-a62fb263d987eae2ca5a7794": "cfb290cb2bf009e7451d46aba80d5dae637a35dd1b7ad35bdcad69b9b1b9db99",
   "rel-005d469ee8c93b4ee2ff7bad": "e132d86701eb5df0ad7e959862666eacbb578ff6d34cc07bede9009670b638fb",
-  "rel-4f3f2bbd5d59201fc2207a2c": "100832cdd1520f388e9af102c6aa0dda985c7af66df529d00208d5e4ec6f792c",
+  "rel-13e39599af86c37d8a038777": "100832cdd1520f388e9af102c6aa0dda985c7af66df529d00208d5e4ec6f792c",
   "rel-46f8b5424b11ca610280f3ca": "4138a5555215c25921e873a7a3d2835d9b3e85059d2fb4562950cfb3f3cc2131",
   "rel-8668d49a9cf3a407889ebd34": "541e23a916191b06728318b91ad31afee2925d72ba34796adaa22cf08281620f",
   "rel-bc63d62ef22941c9e683c321": "86cf1c0e7ec389de71568ce52abeaaad04eb4566e79d450be3b503adc2c48bed",
@@ -20796,7 +20782,7 @@
   "rel-df586d9c451daa299b10dc6b": "64fa31d29c16406e22db28abc5c83cabae42fb4463c970a32b3da0756b0efb4e",
   "rel-ef44d1bfc196b4cd774fe3e9": "882fa0582ae07c73edabeae71255bd263f7f17be020d3d4994bcc4ab1036005e",
   "rel-6e8e118e8e9b9147ae126594": "6cc7fdecf7e022f33681157ff2c73ec4bd61cbb90db1c48c75a7053ac00329e9",
-  "rel-016847a37b14a7264278ff92": "1ce287aa66e00ca850448fdfe71b3484b52206652d5accf798181a5d8d14d3a7",
+  "rel-c80a5a0ddd4477badd8fef6d": "1ce287aa66e00ca850448fdfe71b3484b52206652d5accf798181a5d8d14d3a7",
   "rel-acdbc8b60d06a88ad6e9ce25": "72545dddf369ee141ebfd8b8405687b966544fcf3ff9993009b522a50cc65b27",
   "rel-9d64fe864692c1679af8745d": "278f9b4215f49799d29781ebc9451211e51e125bb62c70da8846bb385ef3e46c",
   "rel-3e429895665a039bcbaedc4e": "d5c4cd14403353b62dc88c63746ae2f4c15acf3aac7ea2232cae2fd92f37cd03",
@@ -21164,7 +21150,7 @@
   "rel-af9188a51baeaf381bc6e151": "001179e9d531cd08cfefe8f7a358de5cbfb524f2f6b46ef76e4a6502e94dd9db",
   "rel-833f6348d794fb5ee92c3788": "7943260fcf2c42f4110113229c7e51e7769cbd09811165359700bd8c762200a1",
   "rel-555ae732821fd710a5e46512": "1591765500731eb85330ce08d1288c338bd515752faa46e6fd70dcc519a4ae5f",
-  "rel-7895e55c1f5dc8cf41f157bd": "a4e09079f97f00a5208dedfd5133e768034f607382caf7e085ae70a514fa2dca",
+  "rel-9968393b834a2e07cbe72e39": "a4e09079f97f00a5208dedfd5133e768034f607382caf7e085ae70a514fa2dca",
   "rel-354424ca4092c1b6c60cc2d4": "e9a84bb5be0ac78bff0f6414b869574c5684f693448b113977b2091b49a88843",
   "rel-2a1451e34af2cdc03243a829": "009459c83e9e89ba38afa7db9226566e9edfc68bf101e61c63cf5a10f72c1d2e",
   "rel-cbed5b1294fda2caec25370c": "84e9af0998141bc86aeb018b8c4f57016fdfb3e5a26ee9653d509cc56b45b583",

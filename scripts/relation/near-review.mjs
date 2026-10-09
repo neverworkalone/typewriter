@@ -32,6 +32,23 @@ export function glossDelta(sourceGloss, targetGloss) {
   };
 }
 
+// Words an authored note uses that its target gloss does not carry. A note that restates the target in its own words can put a
+// meaning there that the target lacks: a word the note borrows from the SOURCE gloss ("없어진다" for a target glossed "약해지다")
+// or a word found in neither gloss. Both are listed so the reader checks them against the target gloss. Common connective
+// words of the note pattern are ignored, and a word counts as present when a gloss word starts with the same syllable,
+// because conjugation changes the second syllable (원하다, 원한다).
+const NOTE_FILLER = new Set(['거의', '같다', '가깝다', '가까우나', '가깝지만', '이라', '라서', '뜻이라', '뜻으로', '한다는', '하다는', '이어', '찾게', '한다', '쪽으로', '쪽을', '쪽이다', '않다', '않아', '같지', '않는다', '않고', '있다', '뜻과', '첫째', '둘째', '셋째', '뜻은', '표현이라', '같은', '느낌이라', '곳이라', '일이라', '쪽']);
+export function noteWordsBeyondTarget(note, sourceGloss, targetGloss, sourceLemma, targetLemma) {
+  const target = contentWords(`${targetGloss ?? ''} ${targetLemma ?? ''} ${sourceLemma ?? ''}`);
+  const source = contentWords(sourceGloss);
+  const has = (word, words) => words.some((other) => other[0] === word[0]);
+  const beyond = contentWords(note).filter((word) => !NOTE_FILLER.has(word) && !has(word, target));
+  return {
+    from_source_gloss: beyond.filter((word) => has(word, source)),
+    in_neither_gloss: beyond.filter((word) => !has(word, source)),
+  };
+}
+
 /**
  * `tuples` are `{ source_sense_id, target_sense, type, note? }`. Links already in canonical are read from the index;
  * the other tuples of the same input count as siblings too, so a packet can be read before it is applied.
@@ -63,6 +80,7 @@ export function nearReviewEvidence(index, tuples) {
       source: sense(index, tuple.source_sense_id),
       target: sense(index, tuple.target_sense),
       note: tuple.note ?? null,
+      note_beyond_target: noteWordsBeyondTarget(tuple.note, index.bySenseId.get(tuple.source_sense_id)?.gloss, index.bySenseId.get(tuple.target_sense)?.gloss, index.bySenseId.get(tuple.source_sense_id)?.lemma, index.bySenseId.get(tuple.target_sense)?.lemma),
       gloss_delta: glossDelta(index.bySenseId.get(tuple.source_sense_id)?.gloss, index.bySenseId.get(tuple.target_sense)?.gloss),
       reverse: reverse ? { type: reverse.type, note: reverse.note } : null,
       siblings,
@@ -79,6 +97,8 @@ export function renderNearReview(evidence) {
     `  only in source gloss: ${item.gloss_delta.only_in_source.join(' ') || '-'}`,
     `  only in target gloss: ${item.gloss_delta.only_in_target.join(' ') || '-'}`,
     `  note   : ${item.note ?? 'none'}`,
+    `  note words taken from the source gloss only (check them against the target gloss): ${item.note_beyond_target.from_source_gloss.join(' ') || '-'}`,
+    `  note words found in neither gloss: ${item.note_beyond_target.in_neither_gloss.join(' ') || '-'}`,
     `  reverse: ${item.reverse ? `${item.reverse.type} — ${item.reverse.note ?? ''}` : 'none'}`,
     ...item.siblings.flatMap((sibling) => [
       `  sibling: ${sibling.type} → ${sibling.sense_id} ${line(sibling)}`,
