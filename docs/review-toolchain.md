@@ -45,13 +45,26 @@ do not repeatedly parse, scan, build, or transport the entire context.
 Check reported parse/full-scan/index/build counts against actual runner wiring.
 Changed-only validation may give early feedback, not final coverage.
 
-CI levels must remain nested: `ci:fast` (early), `ci:normal` (merge coverage),
-`ci:all` (deep/manual or scheduled, including scale). A PR may expose fast
-then continue normal **within one process/session**, not duplicate fresh
-full-canonical work. Independent two-build reproducibility is deep/manual,
-not a redundant normal gate. If Deep CI or a Deep regression changes, require
-a successful **`Deep CI Gate` on this exact HEAD** (`deep-ci` runs `ci:all`);
-ordinary PRs can use the passing skip gate.
+CI registration separates **scope** (the domain and protected contract) from
+**execution policy** (tier and schedule). Each check records one owner, one
+protected contract, one tier (`candidate`, `normal`, `deep`, or `historical`),
+and one schedule (`always`, `affected`, or `manual`). New checks default to
+Deep. Normal registration requires a concrete same-PR merge invariant.
+`affected` checks must list normalized repository-relative dependency paths;
+missing or unclassifiable changed-path evidence fails closed to the full
+applicable gate. Each test file has exactly one registry owner.
+
+The Issue #464 target is `ci:candidates` for pure Stage 1 artifacts,
+`ci:normal` for current canonical/admission/product protection, `ci:all` for
+Normal plus current-system Deep checks, and explicit `ci:historical` replays
+for completed work. A PR may expose the fast checkpoint and continue Normal
+**within one process/session**, not repeat full-canonical work. Independent
+two-build reproducibility belongs in Deep. Historical replay is excluded from
+weekly Deep CI. During the three-PR rollout, `ci:fast` remains the compatibility
+candidate route and `ci:all` still includes historical checks until PR 3 moves
+them out; check the actual command registry and workflow on the current HEAD.
+If Deep CI or a Deep regression changes, require successful exact-HEAD
+`Deep CI Gate`; a scheduled or skipped run does not satisfy that requirement.
 
 ### One current-revision SQLite build in `ci:normal` (enforced invariant)
 

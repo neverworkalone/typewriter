@@ -10,13 +10,21 @@ import {
   CI_CATEGORIES,
   CI_ALL_CATEGORY_ORDER,
   CI_CATEGORY_ORDER,
+  CI_CHECK_SCHEDULES,
   CI_DEEP_CATEGORY_ORDER,
+  CI_EXECUTION_TIERS,
   CI_FAST_CATEGORY_ORDER,
+  CI_LEVEL_EXECUTION_POLICY,
   CI_LEVEL_CATEGORY_ORDER,
   CI_NORMAL_CATEGORY_ORDER,
+  CI_TIER_CATEGORY_ORDER,
+  collectCheckRegistrations,
   collectTestOwnership,
   pnpmCommand,
+  registerCategory,
+  registerCheck,
 } from '../scripts/ci/registry.mjs';
+import { selectChecksForPolicy } from '../scripts/ci/run-category.mjs';
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
 test('every root Node test file has exactly one CI category owner', async () => {
@@ -29,6 +37,10 @@ test('every root Node test file has exactly one CI category owner', async () => 
 
   for (const item of ownership) {
     ownershipCounts.set(item.file, (ownershipCounts.get(item.file) ?? 0) + 1);
+    assert.ok(item.owner, `${item.file} must have a domain owner`);
+    assert.ok(CI_EXECUTION_TIERS.includes(item.tier), `${item.file} must have a valid execution tier`);
+    assert.ok(CI_CHECK_SCHEDULES.includes(item.schedule), `${item.file} must have a valid schedule`);
+    assert.ok(item.protectedContract, `${item.file} must name the protected contract`);
   }
 
   assert.deepEqual(
@@ -49,14 +61,121 @@ test('CI categories are ordered and every category has a descriptive label', () 
   );
   for (const categoryName of allCategoryNames) {
     const category = CI_CATEGORIES[categoryName];
+    assert.equal(category.owner, categoryName, `${categoryName} must remain an explicit domain scope`);
     assert.equal(typeof category.label, 'string');
     assert.ok(category.label.length > 0);
     assert.ok(category.checks.length > 0);
     for (const check of category.checks) {
       assert.equal(typeof check.label, 'string');
       assert.equal(typeof check.command, 'function');
+      assert.equal(check.owner, categoryName);
+      assert.ok(CI_EXECUTION_TIERS.includes(check.tier));
+      assert.equal(check.schedule, 'always');
+      assert.equal(check.protectedContract, check.label);
     }
   }
+});
+
+test('every registered check declares one owner, tier, schedule, and protected contract', () => {
+  const registrations = collectCheckRegistrations();
+  const expectedCount = Object.values(CI_CATEGORIES)
+    .reduce((count, category) => count + category.checks.length, 0);
+  assert.equal(registrations.length, expectedCount);
+  for (const registration of registrations) {
+    assert.ok(registration.owner);
+    assert.ok(CI_EXECUTION_TIERS.includes(registration.tier));
+    assert.ok(CI_CHECK_SCHEDULES.includes(registration.schedule));
+    assert.ok(registration.protectedContract);
+    assert.ok(['explicit', 'legacy-policy'].includes(registration.registration));
+    if (registration.schedule === 'affected') {
+      assert.ok(registration.paths.length > 0, `${registration.check} needs dependencies`);
+    }
+  }
+});
+
+test('new CI checks default to Deep and affected schedules require explicit dependencies', () => {
+  const check = {
+    label: 'Synthetic future check',
+    command: () => ({ executable: 'synthetic', args: [] }),
+  };
+  const registered = registerCheck(check, { owner: 'toolchain' });
+  assert.equal(registered.tier, 'deep');
+  assert.equal(registered.schedule, 'always');
+  assert.deepEqual(registered.paths, []);
+  assert.equal(registered.protectedContract, check.label);
+  assert.equal(registered.registration, 'explicit');
+
+  assert.throws(
+    () => registerCheck(check, { owner: 'toolchain', schedule: 'affected' }),
+    /at least one dependency path/u,
+  );
+  assert.throws(
+    () => registerCheck(check, {
+      owner: 'toolchain',
+      schedule: 'affected',
+      paths: ['scripts/ci', '../outside'],
+    }),
+    /normalized repository-relative paths/u,
+  );
+  assert.throws(
+    () => registerCheck(check, { owner: 'toolchain', tier: 'sometimes' }),
+    /Unknown CI execution tier/u,
+  );
+
+  const futureCategory = registerCategory('future-scope', {
+    label: 'Future scope',
+    checks: [check],
+  });
+  assert.equal(futureCategory.checks[0].tier, 'deep');
+  assert.equal(futureCategory.checks[0].registration, 'explicit');
+});
+
+test('registry selects checks by tier and schedule with fail-closed affected-path inputs', () => {
+  const check = (label, policy) => registerCheck({
+    label,
+    command: () => ({ executable: 'synthetic', args: [label] }),
+  }, { owner: 'toolchain', ...policy });
+  const always = check('normal always', { tier: 'normal' });
+  const affected = check('normal affected', {
+    tier: 'normal',
+    schedule: 'affected',
+    paths: ['scripts/ci'],
+  });
+  const manual = check('deep manual', { tier: 'deep', schedule: 'manual' });
+  const checks = [always, affected, manual];
+
+  assert.deepEqual(
+    selectChecksForPolicy(checks, {
+      tiers: ['normal'],
+      changedPaths: ['scripts/ci/registry.mjs'],
+    }),
+    [always, affected],
+  );
+  assert.deepEqual(
+    selectChecksForPolicy(checks, {
+      tiers: ['normal'],
+      changedPaths: ['src/search.mjs'],
+    }),
+    [always, affected],
+    'an unclassified changed path must run every affected check in the tier',
+  );
+  assert.deepEqual(
+    selectChecksForPolicy(checks, { tiers: ['normal'], changedPaths: [] }),
+    [always, affected],
+    'an empty or unclassifiable change set must run affected checks',
+  );
+  assert.deepEqual(
+    selectChecksForPolicy(checks, {
+      tiers: ['deep'],
+      includeManual: true,
+      changedPaths: ['scripts/ci/registry.mjs'],
+    }),
+    [manual],
+  );
+  assert.throws(
+    () => selectChecksForPolicy(checks, { tiers: ['normal'] }),
+    /without a classified changed-path list/u,
+  );
 });
 
 test('normal batch CI owns the M9 corpus candidate-review gate and regressions', () => {
@@ -125,7 +244,7 @@ test('M5-15 pre-admission validation owns the current shared in-process session'
   assert.deepEqual(m515Check.testFiles, ['tests/m5-13.test.mjs']);
 });
 
-test('CI levels are nested and deep owns the scale benchmark', () => {
+test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(
     CI_NORMAL_CATEGORY_ORDER.slice(0, CI_FAST_CATEGORY_ORDER.length),
     CI_FAST_CATEGORY_ORDER,
@@ -145,6 +264,13 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.fast, CI_FAST_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_NORMAL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.candidate, []);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.normal, CI_NORMAL_CATEGORY_ORDER);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.deep, ['deep']);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.historical, ['historical']);
+  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.normal.tiers, ['normal']);
+  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.deep.tiers, ['historical', 'deep']);
+  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.all.tiers, ['normal', 'historical', 'deep']);
   assert.equal(
     CI_CATEGORIES.batch.checks.some((check) => check.testFiles?.includes('tests/m5-12a.test.mjs')),
     false,
@@ -255,10 +381,16 @@ test('CI changed-path gate skips docs and uses fast only for pure Stage 1 candid
   await scenario('root-docs', async () => {
     await writeFile(path.join(root, 'README.md'), 'readme\n');
     await writeFile(path.join(root, 'REVIEW.md'), 'review\n');
+  }, 'none');
+  await scenario('repository-guidance', async () => {
     await writeFile(path.join(root, 'AGENTS.md'), 'agents\n');
     await writeFile(path.join(root, 'CLAUDE.md'), 'claude\n');
-  }, 'none');
+  }, 'normal');
   await scenario('docs-with-spaces', () => writeFile(path.join(root, 'docs/has spaces.md'), 'new\n'), 'none');
+  await scenario('nested-docs', async () => {
+    await mkdir(path.join(root, 'docs/reference'), { recursive: true });
+    await writeFile(path.join(root, 'docs/reference/data.json'), '{}\n');
+  }, 'none');
   await scenario('stage1-candidates', () => addCandidate(), 'fast');
   await scenario('stage1-manifest', () => addCandidate('manifest.json'), 'fast');
   await scenario('stage1-complete-batch', async () => {
@@ -294,7 +426,7 @@ test('CI changed-path gate skips docs and uses fast only for pure Stage 1 candid
     await mkdir(path.join(root, '.github/workflows'), { recursive: true });
     await writeFile(path.join(root, '.github/workflows/ci.yml'), 'name: changed\n');
   }, 'normal');
-  await scenario('docs-nonmarkdown', () => writeFile(path.join(root, 'docs/data.json'), '{}\n'), 'normal');
+  await scenario('docs-nonmarkdown', () => writeFile(path.join(root, 'docs/data.json'), '{}\n'), 'none');
   await scenario('other-markdown', () => writeFile(path.join(root, 'UNCLASSIFIED.md'), 'new\n'), 'normal');
   await scenario('source-to-doc-rename', () => rename(path.join(root, 'src/main.mjs'), path.join(root, 'docs/moved.mjs')), 'normal');
   await scenario('no-changed-files', null, 'normal');

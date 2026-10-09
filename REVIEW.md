@@ -69,7 +69,26 @@ When canonical or CI architecture changes, verify: one shared complete-revision 
 - **Stage 2** independently confirms the full changed-file list matches the skip decision and requires successful exact-HEAD `ci:normal` for any non-documentation PR. A skip is not valid evidence for those PRs. **Stage 1 does not inspect this result; Stage 3 checks its validity only.**
 - All existing fast/normal/deep gates, coverage and one-build invariants remain unchanged **when the normal test actually runs**. A documentation-only skip does not claim those tests or the SQLite build occurred.
 
-CI must remain nested: `ci:fast` (early), `ci:normal` (full merge), `ci:all` (deep). A single normal run may include the fast checkpoint without a second full-canonical run; independent two-build reproducibility belongs in deep/manual. If a Deep CI or deep regression changes, require successful **`Deep CI Gate` on this exact HEAD** (`ci:all`); otherwise its passing skip gate is sufficient.
+CI checks have separate domain ownership and execution policy. Every check must
+name its owner, protected contract, one tier (`candidate`, `normal`, `deep`, or
+`historical`), and one schedule (`always`, `affected`, or `manual`). New checks
+default to Deep. Use Normal only for a current-revision, admission, or product
+invariant whose failure must block the same PR. An affected check needs an
+explicit repository-relative dependency map; missing or unclassifiable change
+paths, empty diffs, renames, and unknown paths must route to the full applicable
+gate. Every test file has exactly one owner.
+
+The CI rollout in Issue #464 defines `ci:candidates` for pure Stage 1 artifact
+PRs (schema/digest/manifest checks without a current-canonical SQLite build),
+`ci:normal` for current-revision and product merge protection, `ci:all` for
+Normal plus current-system Deep checks, and `ci:historical` for explicit
+completed-work replays. A single normal run may expose the fast checkpoint
+within the same canonical session; it must not repeat the audit or SQLite
+build. Historical replay is not part of weekly Deep CI. Until the three-PR
+rollout completes, verify the actual command and workflow behavior on the
+current HEAD; the compatibility `ci:all` currently still includes historical
+checks. If Deep CI or a Deep contract changes, require a successful **`Deep CI
+Gate` on this exact HEAD**; a skipped or scheduled workflow does not satisfy it.
 
 **One-build invariant (BLOCKER if broken):** every successful `ci:normal` builds SQLite for the exact current canonical revision **exactly once** across parent, subprocesses and nested validators (`parent_current_revision_sqlite_build_count=1`, `child_current_revision_sqlite_build_count=0`, `current_revision_sqlite_build_count=1`), enforced by `scripts/ci/run-category.mjs` at the fast checkpoint, normal-phase completion and final exit, regardless of changed files. Block any PR that adds a second exact-current-revision build in normal, weakens/bypasses/falsifies the guard or its fail-closed ledger (omitted hook, malformed/missing ledger, trusting a caller-supplied revision label), or adds a batch-specific full-canonical replay instead of reusing the shared context/artifact (`scripts/ci/current-revision-database.mjs`). Fixture/other-revision builds are counted separately; independent two-build proofs are allowed only in the deep phase (`independentCurrentRevisionBuilds`).
 

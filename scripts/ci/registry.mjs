@@ -1,6 +1,7 @@
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import LEGACY_CHECK_TIERS from './legacy-check-tiers.json' with { type: 'json' };
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -102,7 +103,39 @@ export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
   deep: CI_DEEP_CATEGORY_ORDER,
 });
 
-export const CI_CATEGORIES = Object.freeze({
+export const CI_EXECUTION_TIERS = Object.freeze([
+  'candidate',
+  'normal',
+  'deep',
+  'historical',
+]);
+
+export const CI_CHECK_SCHEDULES = Object.freeze([
+  'always',
+  'affected',
+  'manual',
+]);
+
+// Execution tier is intentionally separate from scope. These category values
+// describe the current registry while PR 2 moves individual checks out of the
+// legacy batch category.
+export const CI_TIER_CATEGORY_ORDER = Object.freeze({
+  candidate: Object.freeze([]),
+  normal: CI_NORMAL_CATEGORY_ORDER,
+  deep: Object.freeze(['deep']),
+  historical: Object.freeze(['historical']),
+});
+
+// The `all` and `deep` aliases retain their current behavior until PR 3 moves
+// completed-batch replays behind the explicit historical command.
+export const CI_LEVEL_EXECUTION_POLICY = Object.freeze({
+  fast: Object.freeze({ tiers: Object.freeze(['normal']), includeManual: false }),
+  normal: Object.freeze({ tiers: Object.freeze(['normal']), includeManual: false }),
+  all: Object.freeze({ tiers: Object.freeze(['normal', 'historical', 'deep']), includeManual: false }),
+  deep: Object.freeze({ tiers: Object.freeze(['historical', 'deep']), includeManual: false }),
+});
+
+const RAW_CI_CATEGORIES = Object.freeze({
   canonical: {
     label: 'Core canonical and dataset validation',
     checks: [
@@ -396,11 +429,137 @@ export const CI_CATEGORIES = Object.freeze({
   },
 });
 
+/**
+ * Register one check with the shared execution policy.
+ * New checks default to Deep so they cannot silently increase per-PR work.
+ */
+export function registerCheck(check, {
+  owner,
+  tier = 'deep',
+  schedule = 'always',
+  paths = [],
+  protectedContract = check?.label,
+} = {}) {
+  if (!check || typeof check !== 'object' || typeof check.command !== 'function') {
+    throw new TypeError('A CI check must define a command function.');
+  }
+  if (typeof check.label !== 'string' || check.label.trim().length === 0) {
+    throw new TypeError('A CI check must define a non-empty label.');
+  }
+  if (typeof owner !== 'string' || owner.trim().length === 0) {
+    throw new TypeError('A CI check must define its domain owner.');
+  }
+  if (!CI_EXECUTION_TIERS.includes(tier)) {
+    throw new TypeError(`Unknown CI execution tier: ${tier}`);
+  }
+  if (!CI_CHECK_SCHEDULES.includes(schedule)) {
+    throw new TypeError(`Unknown CI check schedule: ${schedule}`);
+  }
+  if (!Array.isArray(paths)) {
+    throw new TypeError('CI check paths must be an array.');
+  }
+  const uniquePaths = [...new Set(paths)];
+  if (uniquePaths.some((pathValue) => (
+    typeof pathValue !== 'string'
+    || pathValue.length === 0
+    || pathValue.startsWith('/')
+    || pathValue.includes('\\')
+    || pathValue.split('/').some((part) => part === '' || part === '.' || part === '..')
+  ))) {
+    throw new TypeError('CI check paths must be normalized repository-relative paths.');
+  }
+  if (uniquePaths.length !== paths.length) {
+    throw new TypeError('CI check paths must not contain duplicates.');
+  }
+  if (schedule === 'affected' && uniquePaths.length === 0) {
+    throw new TypeError('Affected CI checks must declare at least one dependency path.');
+  }
+  if (schedule !== 'affected' && uniquePaths.length > 0) {
+    throw new TypeError('Only affected CI checks may declare dependency paths.');
+  }
+  if (typeof protectedContract !== 'string' || protectedContract.trim().length === 0) {
+    throw new TypeError('A CI check must name the contract it protects.');
+  }
+
+  return Object.freeze({
+    ...check,
+    owner: owner.trim(),
+    tier,
+    schedule,
+    paths: Object.freeze(uniquePaths),
+    protectedContract: protectedContract.trim(),
+    registration: 'explicit',
+  });
+}
+
+export function registerCategory(owner, category) {
+  const legacyTiers = LEGACY_CHECK_TIERS[owner] ?? {};
+  const labels = category.checks.map((check) => check.label);
+  const labelSet = new Set(labels);
+  if (labelSet.size !== labels.length) {
+    throw new TypeError(`CI scope ${owner} contains duplicate check labels.`);
+  }
+  const staleLabels = Object.keys(legacyTiers).filter((label) => !labelSet.has(label));
+  if (staleLabels.length > 0) {
+    throw new TypeError(`CI scope ${owner} has stale legacy tier entries: ${staleLabels.join(', ')}`);
+  }
+  return Object.freeze({
+    ...category,
+    owner,
+    checks: Object.freeze(category.checks.map((check) => {
+      const legacyTier = legacyTiers[check.label];
+      const registered = registerCheck(check, {
+        owner,
+        tier: legacyTier ?? check.tier ?? 'deep',
+        schedule: check.schedule ?? 'always',
+        paths: check.paths ?? [],
+        protectedContract: check.protectedContract ?? check.label,
+      });
+      return Object.freeze({
+        ...registered,
+        registration: legacyTier ? 'legacy-policy' : 'explicit',
+      });
+    })),
+  });
+}
+
+export const CI_CATEGORIES = Object.freeze(Object.fromEntries(
+  Object.entries(RAW_CI_CATEGORIES).map(([owner, category]) => [
+    owner,
+    registerCategory(owner, category),
+  ]),
+));
+
+const staleLegacyOwners = Object.keys(LEGACY_CHECK_TIERS)
+  .filter((owner) => !Object.hasOwn(RAW_CI_CATEGORIES, owner));
+if (staleLegacyOwners.length > 0) {
+  throw new TypeError(`Legacy CI tier map has stale scopes: ${staleLegacyOwners.join(', ')}`);
+}
+
+export function collectCheckRegistrations() {
+  return CI_ALL_CATEGORY_ORDER.flatMap((owner) => (
+    CI_CATEGORIES[owner].checks.map((check) => ({
+      owner: check.owner,
+      tier: check.tier,
+      schedule: check.schedule,
+      paths: check.paths,
+      protectedContract: check.protectedContract,
+      registration: check.registration,
+      check: check.label,
+    }))
+  ));
+}
+
 export function collectTestOwnership() {
   return CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => (
     CI_CATEGORIES[categoryName].checks.flatMap((check) => (
       (check.testFiles ?? []).map((file) => ({
-        category: categoryName,
+        owner: check.owner,
+        tier: check.tier,
+        schedule: check.schedule,
+        paths: check.paths,
+        protectedContract: check.protectedContract,
+        registration: check.registration,
         check: check.label,
         file,
       }))

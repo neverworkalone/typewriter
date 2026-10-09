@@ -10,6 +10,8 @@ import {
   CI_CATEGORIES,
   CI_ALL_CATEGORY_ORDER,
   CI_DEEP_CATEGORY_ORDER,
+  CI_EXECUTION_TIERS,
+  CI_LEVEL_EXECUTION_POLICY,
   CI_LEVEL_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
@@ -215,28 +217,119 @@ async function runCommand({ executable, args }, context = {}, check = {}) {
 export async function runChecks(
   checks,
   context,
-  { execute = runCommand, log = console.log } = {},
+  {
+    execute = runCommand,
+    log = console.log,
+    executionPolicy,
+  } = {},
 ) {
-  for (const [index, check] of checks.entries()) {
-    if (
+  const runnableChecks = executionPolicy
+    ? selectChecksForPolicy(checks, executionPolicy)
+    : checks;
+  for (const [index, check] of runnableChecks.entries()) {
+    const previousPhase = context?.phase;
+    const previousProcessPhase = process.env[CI_PHASE_ENV];
+    if (context && executionPolicy && check.tier) {
+      const phase = check.tier === 'normal' || check.tier === 'candidate'
+        ? NORMAL_PHASE
+        : DEEP_PHASE;
+      context.phase = phase;
+      process.env[CI_PHASE_ENV] = phase;
+    }
+    const alreadyRun = Boolean(
       check.oncePerCanonicalSession
       && context?.completedChecks?.has(check.oncePerCanonicalSession)
-    ) {
-      log(`\n--- ${index + 1}/${checks.length}: ${check.label} (already run) ---`);
-      continue;
-    }
-    const command = check.command(context);
-    log(`\n--- ${index + 1}/${checks.length}: ${check.label} ---`);
-    log(`$ ${formatCommand(command)}`);
-    if (check.inProcess) {
-      await runInProcessCheck(check.inProcess, context);
-    } else {
-      await execute(command, context, check);
-    }
-    if (check.oncePerCanonicalSession && context?.completedChecks) {
-      context.completedChecks.add(check.oncePerCanonicalSession);
+    );
+    try {
+      if (alreadyRun) {
+        log(`\n--- ${index + 1}/${runnableChecks.length}: ${check.label} (already run) ---`);
+        continue;
+      }
+      const command = check.command(context);
+      log(`\n--- ${index + 1}/${runnableChecks.length}: ${check.label} ---`);
+      log(`$ ${formatCommand(command)}`);
+      if (check.inProcess) {
+        await runInProcessCheck(check.inProcess, context);
+      } else {
+        await execute(command, context, check);
+      }
+      if (check.oncePerCanonicalSession && context?.completedChecks) {
+        context.completedChecks.add(check.oncePerCanonicalSession);
+      }
+    } finally {
+      if (context && executionPolicy && check.tier) {
+        if (previousPhase === undefined) delete context.phase;
+        else context.phase = previousPhase;
+        if (previousProcessPhase === undefined) delete process.env[CI_PHASE_ENV];
+        else process.env[CI_PHASE_ENV] = previousProcessPhase;
+      }
     }
   }
+}
+
+export function selectChecksForPolicy(checks, {
+  tiers = CI_EXECUTION_TIERS,
+  includeManual = false,
+  changedPaths,
+} = {}) {
+  if (!Array.isArray(tiers) || tiers.some((tier) => !CI_EXECUTION_TIERS.includes(tier))) {
+    throw new TypeError('CI execution policy contains an unknown tier.');
+  }
+  if (changedPaths !== undefined && (
+    !Array.isArray(changedPaths)
+    || changedPaths.some((changedPath) => (
+      typeof changedPath !== 'string'
+      || changedPath.length === 0
+      || changedPath.startsWith('/')
+      || changedPath.includes('\\')
+      || changedPath.split('/').some((part) => part === '' || part === '.' || part === '..')
+    ))
+  )) {
+    throw new TypeError('Changed paths must be normalized repository-relative paths.');
+  }
+  for (const check of checks) {
+    if (!check.tier || !check.schedule || !check.owner || !check.protectedContract) {
+      throw new TypeError(`CI check ${check.label ?? '<unlabeled>'} has incomplete registration metadata.`);
+    }
+    if (!CI_EXECUTION_TIERS.includes(check.tier)) {
+      throw new TypeError(`CI check ${check.label} has unknown tier ${check.tier}.`);
+    }
+    if (!['always', 'affected', 'manual'].includes(check.schedule)) {
+      throw new TypeError(`CI check ${check.label} has unknown schedule ${check.schedule}.`);
+    }
+  }
+  const activeAffectedChecks = checks.filter((check) => (
+    tiers.includes(check.tier) && check.schedule === 'affected'
+  ));
+  for (const check of activeAffectedChecks) {
+    if (!Array.isArray(check.paths) || check.paths.length === 0) {
+      throw new TypeError(`Affected check ${check.label} has no dependency paths.`);
+    }
+  }
+  if (activeAffectedChecks.length > 0 && !Array.isArray(changedPaths)) {
+    throw new TypeError('Cannot schedule affected checks without a classified changed-path list.');
+  }
+  const changedPathIsMapped = (changedPath) => activeAffectedChecks.some((check) => (
+    check.paths.some((dependencyPath) => (
+      changedPath === dependencyPath
+      || changedPath.startsWith(`${dependencyPath}/`)
+    ))
+  ));
+  const failClosedAffectedSelection = activeAffectedChecks.length > 0
+    && (changedPaths.length === 0 || changedPaths.some((changedPath) => !changedPathIsMapped(changedPath)));
+
+  return checks.filter((check) => {
+    if (!tiers.includes(check.tier)) return false;
+    if (check.schedule === 'always') return true;
+    if (check.schedule === 'manual') return includeManual;
+    if (failClosedAffectedSelection) return true;
+    return changedPaths.some((changedPath) => (
+      check.paths.some((dependencyPath) => (
+        changedPath === dependencyPath
+        || changedPath.startsWith(`${dependencyPath}/`)
+      ))
+    ));
+  });
 }
 
 async function createTemporaryDirectory() {
@@ -489,7 +582,12 @@ async function contextForCategory(categoryName, sharedCanonicalSession) {
   };
 }
 
-async function runCategory(categoryName, sharedCanonicalSession, categories = CI_CATEGORIES) {
+async function runCategory(
+  categoryName,
+  sharedCanonicalSession,
+  categories = CI_CATEGORIES,
+  executionPolicy,
+) {
   const category = categories[categoryName];
   const {
     context,
@@ -501,7 +599,7 @@ async function runCategory(categoryName, sharedCanonicalSession, categories = CI
   process.env[CI_PHASE_ENV] = phase;
   try {
     console.log(`\n=== ${category.label} [${categoryName}] ===`);
-    await runChecks(category.checks, context);
+    await runChecks(category.checks, context, { executionPolicy });
     console.log(`\n=== ${categoryName} passed ===`);
   } finally {
     process.env[CI_PHASE_ENV] = NORMAL_PHASE;
@@ -528,15 +626,22 @@ export async function runLevel(requestedCategory, {
   categories = CI_CATEGORIES,
   levels = CI_LEVEL_CATEGORY_ORDER,
   createSession = createCanonicalSession,
+  changedPaths,
+  executionPolicy,
 } = {}) {
   const categoryNames = levels[requestedCategory] ?? [requestedCategory];
+  const policy = executionPolicy
+    ?? (categories === CI_CATEGORIES && levels === CI_LEVEL_CATEGORY_ORDER
+      ? CI_LEVEL_EXECUTION_POLICY[requestedCategory]
+      : undefined);
+  const runPolicy = policy ? { ...policy, changedPaths } : undefined;
   const enforceNormalInvariant = enforcesNormalBuildInvariant(requestedCategory);
   const startedAt = performance.now();
   const session = await createSession();
   try {
     let fastCheckpointPrinted = requestedCategory === 'fast';
     for (const [index, categoryName] of categoryNames.entries()) {
-      await runCategory(categoryName, session, categories);
+      await runCategory(categoryName, session, categories, runPolicy);
       const completed = index + 1;
       if (!fastCheckpointPrinted && isFastPrefix(categoryNames, completed, levels.fast)) {
         // Fast includes the one shared build; the normal continuation must

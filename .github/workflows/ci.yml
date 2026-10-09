@@ -38,7 +38,7 @@ jobs:
           while IFS= read -r -d '' file; do
             saw_file=true
             case "$file" in
-              docs/*.md|README.md|REVIEW.md|AGENTS.md|CLAUDE.md) ;;
+              docs/*|README.md|REVIEW.md) ;;
               *) docs_only=false ;;
             esac
             case "$file" in

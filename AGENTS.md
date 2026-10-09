@@ -346,6 +346,29 @@ still apply.
 
 Run the validation appropriate to the changed surface.
 
+### CI registration and execution tiers
+
+CI scope identifies the domain a check protects; execution tier identifies when
+the check runs. Keep these separate in `scripts/ci/registry.mjs`. Register each
+check with one domain owner, one protected contract, one tier (`candidate`,
+`normal`, `deep`, or `historical`), and one schedule (`always`, `affected`, or
+`manual`). New checks default to `deep`; promote a check into `normal` only when
+it protects a current-revision, admission, or product invariant that must block
+the same PR. An `affected` check must list normalized repository-relative
+dependency paths. Missing path evidence, an empty/unclassifiable diff, or an
+unknown or renamed path must fail closed to the full applicable gate. A test
+file has exactly one registry owner.
+
+`ci:normal` remains the required gate for ordinary code/data/mixed PRs and must
+retain the complete current-canonical audit, active factory/admission
+protections, one current-revision SQLite build, direct-search and product
+output checks. A normal run may expose the fast checkpoint inside the same
+session. The target `ci:all` is normal plus current-system deep checks;
+completed-batch replays belong to explicitly scoped `ci:historical` runs and
+must not become a weekly obligation. Issue #464 lands this model in three PRs;
+until its final workflow change merges, preserve the compatibility behavior of
+the commands currently present on `master`.
+
 For data changes, validation may include:
 
 - JSON/JSONL schema checks;

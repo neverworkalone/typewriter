@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CI_CATEGORIES } from '../scripts/ci/registry.mjs';
+import { CI_CATEGORIES, registerCheck } from '../scripts/ci/registry.mjs';
 import { runChecks } from '../scripts/ci/run-category.mjs';
 import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 
@@ -65,6 +65,45 @@ test('runner does not repeat a shared audit within one canonical session', async
   });
 
   assert.deepEqual(executed, ['audit']);
+});
+
+test('runner applies tier and schedule policy while preserving one execution context', async () => {
+  const checks = [
+    registerCheck({
+      label: 'normal invariant',
+      command: () => ({ executable: 'synthetic', args: ['normal'] }),
+    }, { owner: 'canonical', tier: 'normal' }),
+    registerCheck({
+      label: 'deep regression',
+      command: () => ({ executable: 'synthetic', args: ['deep'] }),
+    }, { owner: 'toolchain', tier: 'deep' }),
+    registerCheck({
+      label: 'manual replay',
+      command: () => ({ executable: 'synthetic', args: ['manual'] }),
+    }, { owner: 'batch', tier: 'historical', schedule: 'manual' }),
+  ];
+  const seen = [];
+  const context = { phase: 'normal' };
+  const previousPhase = process.env.TYPEWRITER_CI_PHASE;
+  try {
+    process.env.TYPEWRITER_CI_PHASE = 'normal';
+    await runChecks(checks, context, {
+      executionPolicy: { tiers: ['normal', 'deep', 'historical'], includeManual: false },
+      log: () => {},
+      execute: async ({ args }) => {
+        seen.push({ name: args[0], phase: context.phase, envPhase: process.env.TYPEWRITER_CI_PHASE });
+      },
+    });
+    assert.deepEqual(seen, [
+      { name: 'normal', phase: 'normal', envPhase: 'normal' },
+      { name: 'deep', phase: 'deep', envPhase: 'deep' },
+    ]);
+    assert.equal(context.phase, 'normal', 'the runner restores the caller session phase');
+    assert.equal(process.env.TYPEWRITER_CI_PHASE, 'normal');
+  } finally {
+    if (previousPhase === undefined) delete process.env.TYPEWRITER_CI_PHASE;
+    else process.env.TYPEWRITER_CI_PHASE = previousPhase;
+  }
 });
 
 test('M5-15 consumes the existing canonical session without another canonical parse', async () => {
