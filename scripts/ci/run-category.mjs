@@ -587,6 +587,7 @@ async function runCategory(
   sharedCanonicalSession,
   categories = CI_CATEGORIES,
   executionPolicy,
+  runnerOptions = {},
 ) {
   const category = categories[categoryName];
   const {
@@ -599,7 +600,7 @@ async function runCategory(
   process.env[CI_PHASE_ENV] = phase;
   try {
     console.log(`\n=== ${category.label} [${categoryName}] ===`);
-    await runChecks(category.checks, context, { executionPolicy });
+    await runChecks(category.checks, context, { ...runnerOptions, executionPolicy });
     console.log(`\n=== ${categoryName} passed ===`);
   } finally {
     process.env[CI_PHASE_ENV] = NORMAL_PHASE;
@@ -628,6 +629,8 @@ export async function runLevel(requestedCategory, {
   createSession = createCanonicalSession,
   changedPaths,
   executionPolicy,
+  execute,
+  log,
 } = {}) {
   const categoryNames = levels[requestedCategory] ?? [requestedCategory];
   const policy = executionPolicy
@@ -636,33 +639,57 @@ export async function runLevel(requestedCategory, {
       : undefined);
   const runPolicy = policy ? { ...policy, changedPaths } : undefined;
   const enforceNormalInvariant = enforcesNormalBuildInvariant(requestedCategory);
+  const splitNormalAndDeep = requestedCategory === 'all'
+    && runPolicy?.tiers.includes('normal')
+    && runPolicy.tiers.some((tier) => tier !== 'normal');
+  const tierPasses = splitNormalAndDeep
+    ? [
+      { ...runPolicy, tiers: ['normal'] },
+      { ...runPolicy, tiers: runPolicy.tiers.filter((tier) => tier !== 'normal') },
+    ]
+    : [runPolicy];
   const startedAt = performance.now();
   const session = await createSession();
   try {
     let fastCheckpointPrinted = requestedCategory === 'fast';
-    for (const [index, categoryName] of categoryNames.entries()) {
-      await runCategory(categoryName, session, categories, runPolicy);
-      const completed = index + 1;
-      if (!fastCheckpointPrinted && isFastPrefix(categoryNames, completed, levels.fast)) {
-        // Fast includes the one shared build; the normal continuation must
-        // reuse it, so the invariant is already exact at this checkpoint.
-        if (enforceNormalInvariant) {
-          assertNormalBuildInvariant(session, 'fast checkpoint');
+    const executedCategoryNames = [];
+    for (const [passIndex, passPolicy] of tierPasses.entries()) {
+      const passCategoryNames = splitNormalAndDeep
+        ? categoryNames.filter((categoryName) => categories[categoryName].checks.some(
+          (check) => passPolicy.tiers.includes(check.tier)
+            && (check.schedule !== 'manual' || passPolicy.includeManual),
+        ))
+        : categoryNames;
+      for (const [index, categoryName] of passCategoryNames.entries()) {
+        await runCategory(categoryName, session, categories, passPolicy, { execute, log });
+        executedCategoryNames.push(categoryName);
+        const completed = index + 1;
+        if (!fastCheckpointPrinted && isFastPrefix(passCategoryNames, completed, levels.fast)) {
+          // Fast includes the one shared build; the normal continuation must
+          // reuse it, so the invariant is already exact at this checkpoint.
+          if (enforceNormalInvariant) {
+            assertNormalBuildInvariant(session, 'fast checkpoint');
+          }
+          printEvidence({
+            contractVersion: 'ci-run-checkpoint-v1',
+            level: 'fast',
+            categoryNames: levels.fast,
+            startedAt,
+            session,
+          });
+          fastCheckpointPrinted = true;
         }
-        printEvidence({
-          contractVersion: 'ci-run-checkpoint-v1',
-          level: 'fast',
-          categoryNames: levels.fast,
-          startedAt,
-          session,
-        });
-        fastCheckpointPrinted = true;
+        const nextIsDeep = CI_DEEP_PHASE_CATEGORIES.has(passCategoryNames[completed])
+          && !CI_DEEP_PHASE_CATEGORIES.has(categoryName);
+        if (!splitNormalAndDeep && enforceNormalInvariant && nextIsDeep) {
+          // Compatibility levels without tier metadata still prove Normal
+          // before their explicitly ordered Deep categories.
+          assertNormalBuildInvariant(session, 'normal phase completion');
+        }
       }
-      const nextIsDeep = CI_DEEP_PHASE_CATEGORIES.has(categoryNames[completed])
-        && !CI_DEEP_PHASE_CATEGORIES.has(categoryName);
-      if (enforceNormalInvariant && nextIsDeep) {
-        // `all` must prove the normal phase on its own before deep phases may
-        // add independent builds.
+      if (splitNormalAndDeep && passIndex === 0 && enforceNormalInvariant) {
+        // All Normal checks finish before any Deep/Historical check is entered,
+        // even when both tiers share one domain scope.
         assertNormalBuildInvariant(session, 'normal phase completion');
       }
     }
@@ -672,7 +699,7 @@ export async function runLevel(requestedCategory, {
     printEvidence({
       contractVersion: 'ci-run-evidence-v1',
       level: requestedCategory,
-      categoryNames,
+      categoryNames: executedCategoryNames,
       startedAt,
       session,
     });

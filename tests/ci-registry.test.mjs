@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import LEGACY_CHECK_IDENTITIES from '../scripts/ci/legacy-check-identities.json' with { type: 'json' };
+import LEGACY_CHECK_TIERS from '../scripts/ci/legacy-check-tiers.json' with { type: 'json' };
 
 import {
   CI_CATEGORIES,
@@ -93,6 +96,29 @@ test('every registered check declares one owner, tier, schedule, and protected c
   }
 });
 
+test('legacy identity and tier migration inventories remain complete and bound', async () => {
+  const identityPath = path.resolve(TEST_DIRECTORY, '../scripts/ci/legacy-check-identities.json');
+  const tierPath = path.resolve(TEST_DIRECTORY, '../scripts/ci/legacy-check-tiers.json');
+  const identityText = await readFile(identityPath, 'utf8');
+  const tierText = await readFile(tierPath, 'utf8');
+  assert.equal(
+    createHash('sha256').update(identityText).digest('hex'),
+    '7c15e680af883692189487a24f3122ff955a988f852df51f8419b1fa1404d51e',
+  );
+  assert.equal(
+    createHash('sha256').update(tierText).digest('hex'),
+    '0de6ac997b84e942946138e432456dd99d41a1d8528934a1e108d8e8922d9da5',
+  );
+  assert.deepEqual(Object.keys(LEGACY_CHECK_TIERS).sort(), Object.keys(LEGACY_CHECK_IDENTITIES).sort());
+  for (const owner of Object.keys(LEGACY_CHECK_IDENTITIES)) {
+    assert.deepEqual(
+      [...LEGACY_CHECK_IDENTITIES[owner]].sort(),
+      Object.keys(LEGACY_CHECK_TIERS[owner]).sort(),
+      `${owner} must have a tier for every known legacy check`,
+    );
+  }
+});
+
 test('new CI checks default to Deep and affected schedules require explicit dependencies', () => {
   const check = {
     label: 'Synthetic future check',
@@ -128,6 +154,53 @@ test('new CI checks default to Deep and affected schedules require explicit depe
   });
   assert.equal(futureCategory.checks[0].tier, 'deep');
   assert.equal(futureCategory.checks[0].registration, 'explicit');
+
+  const intentionalMigration = registerCategory('migration-scope', {
+    label: 'Migration scope',
+    checks: [{ ...check, tier: 'normal' }],
+  }, {
+    legacyIdentities: { 'migration-scope': [check.label] },
+    legacyTiers: { 'migration-scope': {} },
+  });
+  assert.equal(intentionalMigration.checks[0].tier, 'normal');
+  assert.equal(intentionalMigration.checks[0].registration, 'explicit');
+});
+
+test('removing or misspelling a known legacy tier cannot demote required checks to Deep', () => {
+  const scenarios = [
+    {
+      owner: 'lexical',
+      label: 'Require factory results to be current with the shared factory contract on master',
+      replacement: undefined,
+    },
+    {
+      owner: 'canonical',
+      label: 'Validate canonical JSONL',
+      replacement: 'Validate canonical JSONL (misspelled)',
+    },
+  ];
+
+  for (const { owner, label, replacement } of scenarios) {
+    const category = CI_CATEGORIES[owner];
+    const legacyTiers = structuredClone(LEGACY_CHECK_TIERS);
+    const tier = legacyTiers[owner][label];
+    assert.ok(tier, `${owner}/${label} must be in the current legacy migration map`);
+    delete legacyTiers[owner][label];
+    if (replacement) legacyTiers[owner][replacement] = tier;
+    const checks = category.checks.map(({ tier: _tier, ...check }) => ({
+      ...check,
+      tier: undefined,
+    }));
+
+    assert.throws(
+      () => registerCategory(owner, { ...category, checks }, {
+        legacyIdentities: LEGACY_CHECK_IDENTITIES,
+        legacyTiers,
+      }),
+      /stale legacy registrations|has no tier mapping or explicit migration tier/u,
+      `${owner}/${label} must fail closed`,
+    );
+  }
 });
 
 test('registry selects checks by tier and schedule with fail-closed affected-path inputs', () => {

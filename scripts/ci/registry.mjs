@@ -1,6 +1,7 @@
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import LEGACY_CHECK_IDENTITIES from './legacy-check-identities.json' with { type: 'json' };
 import LEGACY_CHECK_TIERS from './legacy-check-tiers.json' with { type: 'json' };
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -492,22 +493,49 @@ export function registerCheck(check, {
   });
 }
 
-export function registerCategory(owner, category) {
-  const legacyTiers = LEGACY_CHECK_TIERS[owner] ?? {};
+export function registerCategory(owner, category, {
+  legacyIdentities = LEGACY_CHECK_IDENTITIES,
+  legacyTiers = LEGACY_CHECK_TIERS,
+} = {}) {
+  const knownLegacyLabels = legacyIdentities[owner] ?? [];
+  const legacyTierByLabel = legacyTiers[owner] ?? {};
   const labels = category.checks.map((check) => check.label);
   const labelSet = new Set(labels);
   if (labelSet.size !== labels.length) {
     throw new TypeError(`CI scope ${owner} contains duplicate check labels.`);
   }
-  const staleLabels = Object.keys(legacyTiers).filter((label) => !labelSet.has(label));
-  if (staleLabels.length > 0) {
-    throw new TypeError(`CI scope ${owner} has stale legacy tier entries: ${staleLabels.join(', ')}`);
+  if (!Array.isArray(knownLegacyLabels) || new Set(knownLegacyLabels).size !== knownLegacyLabels.length) {
+    throw new TypeError(`CI scope ${owner} has an invalid legacy identity inventory.`);
+  }
+  const knownLegacyLabelSet = new Set(knownLegacyLabels);
+  const staleIdentities = knownLegacyLabels.filter((label) => !labelSet.has(label));
+  const staleTierEntries = Object.keys(legacyTierByLabel).filter((label) => !labelSet.has(label));
+  const unboundTierEntries = Object.keys(legacyTierByLabel).filter((label) => !knownLegacyLabelSet.has(label));
+  if (staleIdentities.length > 0 || staleTierEntries.length > 0 || unboundTierEntries.length > 0) {
+    throw new TypeError(
+      `CI scope ${owner} has stale legacy registrations: ${[
+        ...staleIdentities,
+        ...staleTierEntries,
+        ...unboundTierEntries,
+      ].join(', ')}`,
+    );
   }
   return Object.freeze({
     ...category,
     owner,
     checks: Object.freeze(category.checks.map((check) => {
-      const legacyTier = legacyTiers[check.label];
+      const isKnownLegacyCheck = knownLegacyLabelSet.has(check.label);
+      const legacyTier = legacyTierByLabel[check.label];
+      if (isKnownLegacyCheck && legacyTier === undefined && check.tier === undefined) {
+        throw new TypeError(
+          `Known legacy CI check ${owner}/${check.label} has no tier mapping or explicit migration tier.`,
+        );
+      }
+      if (legacyTier !== undefined && check.tier !== undefined && check.tier !== legacyTier) {
+        throw new TypeError(
+          `CI check ${owner}/${check.label} must remove its legacy tier mapping before an explicit tier migration.`,
+        );
+      }
       const registered = registerCheck(check, {
         owner,
         tier: legacyTier ?? check.tier ?? 'deep',
@@ -517,7 +545,7 @@ export function registerCategory(owner, category) {
       });
       return Object.freeze({
         ...registered,
-        registration: legacyTier ? 'legacy-policy' : 'explicit',
+        registration: legacyTier !== undefined ? 'legacy-policy' : 'explicit',
       });
     })),
   });
@@ -530,8 +558,10 @@ export const CI_CATEGORIES = Object.freeze(Object.fromEntries(
   ]),
 ));
 
-const staleLegacyOwners = Object.keys(LEGACY_CHECK_TIERS)
-  .filter((owner) => !Object.hasOwn(RAW_CI_CATEGORIES, owner));
+const staleLegacyOwners = [...new Set([
+  ...Object.keys(LEGACY_CHECK_IDENTITIES),
+  ...Object.keys(LEGACY_CHECK_TIERS),
+])].filter((owner) => !Object.hasOwn(RAW_CI_CATEGORIES, owner));
 if (staleLegacyOwners.length > 0) {
   throw new TypeError(`Legacy CI tier map has stale scopes: ${staleLegacyOwners.join(', ')}`);
 }

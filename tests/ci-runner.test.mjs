@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
+import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { CI_CATEGORIES, registerCheck } from '../scripts/ci/registry.mjs';
-import { runChecks } from '../scripts/ci/run-category.mjs';
+import { runChecks, runLevel } from '../scripts/ci/run-category.mjs';
 import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 
 test('runner stops at the first failed check regardless of check kind', async () => {
@@ -103,6 +106,112 @@ test('runner applies tier and schedule policy while preserving one execution con
   } finally {
     if (previousPhase === undefined) delete process.env.TYPEWRITER_CI_PHASE;
     else process.env.TYPEWRITER_CI_PHASE = previousPhase;
+  }
+});
+
+test('ci:all completes Normal before Deep checks in the same domain and preserves the one-build gate', async () => {
+  const state = { normalComplete: false, order: [] };
+  const deepCheck = registerCheck({
+    label: 'synthetic independent Deep build',
+    command: () => ({ executable: 'synthetic', args: ['deep-build'] }),
+  }, { owner: 'canonical', tier: 'deep' });
+  const normalCheck = registerCheck({
+    label: 'synthetic current-revision Normal build',
+    command: () => ({ executable: 'synthetic', args: ['normal-build'] }),
+  }, { owner: 'canonical', tier: 'normal' });
+  const checks = [deepCheck, normalCheck];
+
+  await assert.rejects(
+    runChecks(checks, { phase: 'normal', completedChecks: new Set() }, {
+      executionPolicy: { tiers: ['normal', 'deep'], includeManual: false },
+      log: () => {},
+      execute: async ({ args }) => {
+        if (args[0] === 'deep-build' && !state.normalComplete) {
+          throw new Error('independent Deep build started before Normal completed');
+        }
+      },
+    }),
+    /before Normal completed/u,
+    'the adversarial fixture must reject an early independent build',
+  );
+
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-tier-order-'));
+  try {
+    const ledgerPath = path.join(temporaryDirectory, 'ledger.jsonl');
+    await writeFile(ledgerPath, '', 'utf8');
+    const revision = 'synthetic-current-revision';
+    const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
+    const createSession = async () => ({
+      canonicalContext: {
+        contractVersion: 'synthetic-context-v1',
+        canonicalDirectory,
+        canonicalRevision: revision,
+        fileCount: 1,
+        recordCount: 1,
+        senseCount: 1,
+        relationCount: 0,
+        candidateCount: 1,
+        startCount: 1,
+        referenceOnlyCount: 0,
+        expressionCount: 0,
+        searchFormCount: 1,
+        statistics: {},
+        metrics: { sqlite_build_count: 0 },
+      },
+      completedChecks: new Set(),
+      temporaryDirectory,
+      processMetrics: { path: ledgerPath },
+      phase: 'normal',
+    });
+
+    await runLevel('all', {
+      categories: { canonical: { label: 'Mixed-tier canonical scope', checks } },
+      levels: { fast: ['canonical'], all: ['canonical'] },
+      executionPolicy: { tiers: ['normal', 'deep'], includeManual: false },
+      createSession,
+      log: () => {},
+      execute: async ({ args }, context) => {
+        if (args[0] === 'normal-build') {
+          assert.equal(context.phase, 'normal');
+          await appendFile(ledgerPath, `${JSON.stringify({
+            type: 'sqlite-build',
+            pid: process.pid,
+            count: 1,
+            canonical_revision: revision,
+            canonical_directory: canonicalDirectory,
+            phase: 'normal',
+          })}\n`);
+          context.canonicalContext.metrics.sqlite_build_count += 1;
+          state.normalComplete = true;
+          state.order.push('normal');
+          return;
+        }
+        assert.equal(args[0], 'deep-build');
+        assert.equal(state.normalComplete, true);
+        assert.equal(context.phase, 'deep');
+        const ledger = (await readFile(ledgerPath, 'utf8')).split('\n').filter(Boolean).map(JSON.parse);
+        assert.equal(ledger.filter((event) => event.phase === 'normal').length, 1);
+        const deepPid = process.pid + 1;
+        await appendFile(ledgerPath, `${JSON.stringify({
+          type: 'process',
+          pid: deepPid,
+          peak_rss_kb: 0,
+        })}\n`);
+        await appendFile(ledgerPath, `${JSON.stringify({
+          type: 'sqlite-build',
+          pid: deepPid,
+          count: 1,
+          canonical_revision: revision,
+          canonical_directory: canonicalDirectory,
+          phase: 'deep',
+        })}\n`);
+        state.order.push('deep');
+      },
+    });
+
+    assert.deepEqual(state.order, ['normal', 'deep']);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
   }
 });
 
