@@ -2627,11 +2627,11 @@
    "relation": {
     "target": "w7764",
     "target_sense": "w7764-s1",
-    "type": "near",
-    "note": "신속은 움직임이나 처리 속도가 매우 빠르다는 뜻이라 빠름과 가깝다.",
+    "type": "association",
+    "note": "신속은 움직임이나 처리 속도가 매우 빠름이라, 진행 속도가 빠른 상태를 말하는 빠름에서 처리 속도가 매우 빠른 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w051-s1: 후보 검토에서 w7764-s1를 near 관계로 판단했다."
+   "rationale": "w051-s1 w7764-s1: 대상 gloss는 매우 빠름이라는 정도와 처리 속도라는 대상을 더하고 출발 gloss는 진행 속도가 빠른 상태까지만 말해 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w051",
@@ -8659,19 +8659,6 @@
    "source_sense_id": "w2101-s1",
    "source_gloss_sha256": "cbf126ebbdb3261d883922a150ed97fbc85228ad2220c6abab53166f7a6a4c3b",
    "relation": {
-    "target": "r009",
-    "target_sense": "r009-s1",
-    "type": "near",
-    "note": "평안은 마음이 편하고 주변이 안정된 상태라 편안함과 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w2101-s1: 후보 검토에서 r009-s1를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w2101",
-   "source_sense_id": "w2101-s1",
-   "source_gloss_sha256": "cbf126ebbdb3261d883922a150ed97fbc85228ad2220c6abab53166f7a6a4c3b",
-   "relation": {
     "target": "w5769",
     "target_sense": "w5769-s1",
     "type": "association",
@@ -8782,19 +8769,6 @@
     "relevance": 4
    },
    "rationale": "w2107-s1: 후보 검토에서 w134-s2를 association 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w2122",
-   "source_sense_id": "w2122-s1",
-   "source_gloss_sha256": "d655c6f5c1c8b066c3354256df1c82a9bab3ff0ccaf0a6e97187823eb33a79d1",
-   "relation": {
-    "target": "r037",
-    "target_sense": "r037-s1",
-    "type": "near",
-    "note": "공허는 안이 비어 허전한 느낌이라 허전함과 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w2122-s1: 후보 검토에서 r037-s1를 near 관계로 판단했다."
   },
   {
    "source_record_id": "w2122",
@@ -19256,19 +19230,6 @@
    "source_sense_id": "w950-s1",
    "source_gloss_sha256": "87b83c76719e335bc546f2e3fd4f1575b9b3ae4b11cbf264befaac88fb33938e",
    "relation": {
-    "target": "w071",
-    "target_sense": "w071-s1",
-    "type": "near",
-    "note": "색채는 사물이나 장면이 띠는 색의 느낌과 구성이라 빛깔과 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w950-s1: 후보 검토에서 w071-s1를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w950",
-   "source_sense_id": "w950-s1",
-   "source_gloss_sha256": "87b83c76719e335bc546f2e3fd4f1575b9b3ae4b11cbf264befaac88fb33938e",
-   "relation": {
     "target": "w10756",
     "target_sense": "w10756-s1",
     "type": "near",
@@ -20077,7 +20038,7 @@
   "rel-f0ffacb6f5735bab6a9ba407": "b39ff0510e533d50ae88407c636cf959260dba1e87fbbd1aaab4ad7e647172f1",
   "rel-63bcc172740386a697fa707b": "f63cfeb6a4ebecb0884bdc04f0cd208105f36bb0420361f7e5ce396bacf62d6f",
   "rel-43b1e88abd3c1037b7677710": "c2763e35b4145e17ac88f09a35951c2848dd0c6d0c1edeab7e5a11fcb6260b39",
-  "rel-bbf2ac964c8eaf12f7f84d10": "cf84fe987a0b0ed442ab1fb2fcd8cfd979084bf5553949062d27ecf31b65d246",
+  "rel-c8ff425839120d722e0ea024": "cf84fe987a0b0ed442ab1fb2fcd8cfd979084bf5553949062d27ecf31b65d246",
   "rel-24d74bd4d643697768323329": "b39ff0510e533d50ae88407c636cf959260dba1e87fbbd1aaab4ad7e647172f1",
   "rel-cca76cfbad4c34324185b778": "f3b9af195cc7b8ebb50c3641eb53b31cfee360cf9ef422183a863bafcc936b8e",
   "rel-c780500d374c95ca397c81ee": "28f706281b29f02f94db1711a4a0336e1e768e1e40994f2debd8cd70d63288dc",
@@ -20544,7 +20505,6 @@
   "rel-706e4914f6e11878fad02d75": "240ed9e687df274d15980e93e545b5a502a6a8c1e7e62b2af29e09ae94443b64",
   "rel-1266c2b205d14a214c2dd4a8": "be39c77a90915e1c6af010fa5a17af28bc4a04a35d5bf33ee2d37308b3f8ede2",
   "rel-8699ca1b387e8a76c22ca221": "9783d95a613349e6cbff77cc3bd203794f9ae0d754ca57e017001d2c5f12b979",
-  "rel-8d4d09e41524199c8c73bdbe": "94caf69e3d0df7ca51aca0c627ef49b42da7458fe0daa895bb230b1c9f1a00f5",
   "rel-42d9010af07c21af953838d6": "48da30eb47f89bb6858a6fddcc31ae83d39e8e3dedd7ed91d330cce2d8031d64",
   "rel-34b287c0e21692dc161b19b7": "d59f7ba4ac616022f71c3c6fa215ee8abadcda2c078f3fdc460757e1e63c19da",
   "rel-097884b26ae1bd06d894fab2": "36190143f7255f3efa56cc1713fc677b257d5b77cd00e9117868b28364d52d3b",
@@ -20554,7 +20514,6 @@
   "rel-8701fbc11476292e2f5b5f24": "4a43b3a159efc26f5d6c50a2a72ff7a31ed911c13abb6de7611e0c8b512143e3",
   "rel-7c5153d4ab133adc67b2e989": "2683247ea49fbfe7492a604376bcc9b94892d475179964ace04264017d4df735",
   "rel-03ec0309296f5429829af89a": "2f5f80d5d855efabf0c1cdc340e8b1063aa7685b92c8952d62b4a05a2e9de2f8",
-  "rel-bb4173f5e65bdc93f0720e49": "cbb20e59ff08ec4abf46ab00fe5ed470ab553b9e9a0b3cd2fdfe35d627af4ded",
   "rel-646b080e78f0e2d463d154d4": "636b501ef2ceb7168635370b47851dab3e5ac2b19b2921c1a515f79cdabc43b6",
   "rel-142037387bcd1b74dcf871eb": "acd0e45b77c3f0539aa3fd496006babc3f678d0c8c8bd80ea2c2cd82e9343ec4",
   "rel-2dc731e8b83ec70762a54967": "5a6c5351175b0137619f5df9fc8da1f1a06c656783cb33cef95c44122cc338aa",
@@ -21363,7 +21322,6 @@
   "rel-5c28f9cc8e5b9b70fafc4791": "c549891e2e996203a75cb1f7937349e2b1c79938dd7dd6a8c2e29e67751e860a",
   "rel-2f366d2c19829506e16ad9b1": "f88ea28d59d2af9a9791122c3937dab1383f1f6017d1e4109f3a6c48d697f62b",
   "rel-d6945f50e8b098bc30fb1507": "6d9424927441fa59a9c437ab962baaf7efe38fabf0562b0a6c673dcce08f171b",
-  "rel-8f29efb37578896c4109fb16": "176c722884a679f205341119d88871252c6651e9d4f9749e21ec75e91d41ab92",
   "rel-0f7db927257a42a0f3e8748e": "aab456d2f3ab78a29c2d202ad4c528f845d7538b060bc596f5bbe63a8265796d",
   "rel-02fa9737fbc91d5488bff4af": "1a7fbb31fe96a78fa0bd0970fa103cd45c8ca4b950cd7bba8f8a903387ce2b78",
   "rel-84a9dd2c81e8dfbcafa43a47": "9b917cdfb3a302a1254fb11041f5654faf077892dbd37e2bacdc2f0a5924ca55",
