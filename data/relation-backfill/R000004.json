@@ -124,11 +124,11 @@
    "relation": {
     "target": "w120",
     "target_sense": "w120-s1",
-    "type": "near",
-    "note": "목소리는 사람의 목에서 나오는 말소리와 그 음색이라 음성과 가깝다. 음성은 소리 전반을 가리켜, 목소리→음성과 달리 늘 바꿔 쓰지는 못한다.",
+    "type": "association",
+    "note": "목소리는 사람의 목에서 나오는 말소리와 그 음색이라, 목에서 나오는 소리 전반인 음성에서 말소리와 음색 쪽으로 좁혀 이어 찾게 한다. 같은 source의 말소리, 울음소리와 같은 결이다.",
     "relevance": 6
    },
-   "rationale": "r006-s1 w120-s1: 기존 w120-s1 → r006-s1 direct와 방향이 달라, 대상 gloss의 범위·품사 차이를 note에 밝혀 near로 유지했다."
+   "rationale": "r006-s1 w120-s1: 양쪽 bound gloss와 같은 source의 형제를 대조하면 목소리는 말소리와 음색으로 좁아지며 같은 source의 말소리와 울음소리가 이미 association이다. 이미 있는 역방향 direct는 방향이 달라 그대로 두고 이 방향만 association으로 정리했다."
   },
   {
    "source_record_id": "r006",
@@ -9612,19 +9612,6 @@
    "source_sense_id": "w2260-s1",
    "source_gloss_sha256": "dc5a5ff87e568a79fff539209ded778918d54aa78bc433dcab50f526bca63100",
    "relation": {
-    "target": "r042",
-    "target_sense": "r042-s1",
-    "type": "near",
-    "note": "미온은 온도나 반응이 뜨겁지 않고 미적지근한 상태라 온도의 미적지근함을 가리키는 미지근함과 같은 상태다.",
-    "relevance": 5
-   },
-   "rationale": "w2260-s1: 후보 검토에서 r042-s1를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w2260",
-   "source_sense_id": "w2260-s1",
-   "source_gloss_sha256": "dc5a5ff87e568a79fff539209ded778918d54aa78bc433dcab50f526bca63100",
-   "relation": {
     "target": "w995",
     "target_sense": "w995-s1",
     "type": "association",
@@ -12713,19 +12700,6 @@
     "relevance": 5
    },
    "rationale": "w310-s1 w663-s1: 양쪽 bound gloss를 대조하면 말끔하다는 차림새와 모습을 넘어 더러움 없는 깨끗함까지 넓다. 같은 범위를 덮는다고 확정하기 어려워 더 정직한 넓은 유형인 association으로 정리했다."
-  },
-  {
-   "source_record_id": "w310",
-   "source_sense_id": "w310-s1",
-   "source_gloss_sha256": "261459cf0161c19c6dfd542c52bf641f5a6c5584ea7733c373372625e9d324d7",
-   "relation": {
-    "target": "w446",
-    "target_sense": "w446-s1",
-    "type": "near",
-    "note": "정갈하다는 깨끗하고 가지런해 흐트러진 느낌이 없다는 뜻이라 단정하다와 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w310-s1: 후보 검토에서 w446-s1를 near 관계로 판단했다."
   },
   {
    "source_record_id": "w310",
@@ -17859,19 +17833,6 @@
    "source_sense_id": "w6029-s1",
    "source_gloss_sha256": "8524c4cd71d03c529743eb1f96e252e367a2ec8e42234c7e2cee21c02f843708",
    "relation": {
-    "target": "w023",
-    "target_sense": "w023-s1",
-    "type": "near",
-    "note": "의심은 사실을 그대로 믿지 못하고 확인하려는 마음이라 의문과 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w6029-s1: 후보 검토에서 w023-s1를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w6029",
-   "source_sense_id": "w6029-s1",
-   "source_gloss_sha256": "8524c4cd71d03c529743eb1f96e252e367a2ec8e42234c7e2cee21c02f843708",
-   "relation": {
     "target": "w1267",
     "target_sense": "w1267-s1",
     "type": "association",
@@ -20571,7 +20532,7 @@
   "rel-dff033926f1778afd4485e56": "beedea6bd3fde93e632fc138b99fdcfec1c1c9a0c32353dd5ef168cb494127a4",
   "rel-196d8901ac5e4cc4c5df93c3": "c501e9755d8c3e2cdf22f84a6971a715676e14965c5af77ea10a384a6ab2a93c",
   "rel-ec6a9a3b146e0b36de7f489e": "4b9ec0d2a9d8fb315ac31d07e7c81a81af317bb003390ac63bc1226e4f812153",
-  "rel-65d1b2ffed203cdf1040b950": "c630dce0c860c1d0e7c517f07fa610908d28bd564faf597a6edcf080c832f824",
+  "rel-c7b6a6a94b3525470d15fec9": "c630dce0c860c1d0e7c517f07fa610908d28bd564faf597a6edcf080c832f824",
   "rel-0b549ebd3096ad0476c4043a": "df09e913905efc33d7916c0e3d6ed785f61d3a5655dbcad21d6ac87701dc62ad",
   "rel-7aea145aba52cdb10d5b5543": "98af560e68ed8903cd577f71cf63d7278f7086cf3a8aa37c73e7c5d332b72759",
   "rel-f362e063056a030571e3508c": "6f7eb41c11fe1bf2e5bd4e3b599da858bc3c40fddfcc2bb0884c9fbee7f9be88",
@@ -21307,7 +21268,6 @@
   "rel-f475e92ec9848ca674a3bf40": "8c8dee44af0e5d0f67088cf67b0208004a0c284e0ff253a52906b102b5a1d167",
   "rel-2567f1ad472da902156fea46": "538bfe277fcf6f1365daaf89e92b5791a63e07d0f669d6a7992a75f292d29a74",
   "rel-1bea452738e43467fda1f85f": "78c3a8af878e3314df6cc4d6042ed7a5374f3d99374147ea27ba9e5f8828b1bb",
-  "rel-4e644dc7086b192b77336675": "ee2c93896ec180eb857afd47340f0253a29748ef9235b2c166532f19073e7e5d",
   "rel-153a149d0bb0be8c49b3d355": "ab11852643232e9da7db7b7f7d97fac3ed3bf48db84eaf694be3a58f8fa8ffc2",
   "rel-f6e7ae418988f4876159d1fe": "c2fad3eace530679f23a9f46c4ed4b698237f1e19c97a06a88c6fefaacbaa2d8",
   "rel-091a72fb87bf7e7fd43c1aed": "74b5e41d67b305962778e3e3ae0fdd28f6b827d087c1d907d7d2b510cf76d0a7",
@@ -21547,7 +21507,6 @@
   "rel-9e397f617a6cfc9f52b9ba7e": "9ac4fb0560bb2a65b5a08efcc368a27227be514eea764268ed954234468a9227",
   "rel-fa7342a9b8af6cf7ddcde45c": "c501e9755d8c3e2cdf22f84a6971a715676e14965c5af77ea10a384a6ab2a93c",
   "rel-fd1cd8ee0d91b7d4aa814d11": "83e25e7f4dbc5e5a48d2b2b97d347612bd06338bd701a6f830be8ef1ed973d6b",
-  "rel-9f22d50d3f1eaed8783426e2": "8eb3dfd8544fa9ec7cec920e5e75de435e1e66467098def523cf24b4c55ead28",
   "rel-ba80d0b3aaa90502f8de03ba": "3f316f4ae0e21156290ed2b3e9a95bb2931a93c3e580dac59950d7ae18d0c37c",
   "rel-36c4b16fad0a02181ed4d636": "9efe551eeb70ab6b06969f1056c83ccabc31c654ef9306c3c308c4786aad0a5a",
   "rel-99261955b255b96bad7dd2f7": "930489387d12c93c3744a72f62381a7391c22088cfd6998e97bab4cc014fb91b",
@@ -21944,7 +21903,6 @@
   "rel-497119eb95ff17346cd08886": "0d608bc3bb0dfe098431da70f83b92e0f48dbb2cc770dcdd340a4a92b69f7cf6",
   "rel-862e9db7218d6b19244c97cb": "07265592a6f986ca2ff3393fcb72c663a27af14595e5856ebf6bf2fdc4477b63",
   "rel-04895f4cddf9129b58856994": "ca3a1b779b030084246ef4a403cf99d67d77b311df454858031ff6d93ed1f82f",
-  "rel-f2e444c2ddab00ad56a56f36": "73d72a20d47abbfb2af6b994d063efc46fe4061d9426026d102056b14bf1ccf8",
   "rel-8284dc1e8615015c461035d3": "2f76261ed10603d19171dea4abdfca25cb6fa7f048b5dad2ee1db4ed964d16e6",
   "rel-a67b79fe3aca71e4e0ce3706": "3f2e8fdeb11b21d8015936d1e424e1b41127141da11de4a51f9b40e833c1e63d",
   "rel-5a7cb1f014ae0391211469fa": "f7a51a1907dce1ad8af867c7e6c7e448d66f2cfd84286a5ffeaf2f54391258ad",
