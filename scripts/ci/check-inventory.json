@@ -268,7 +268,12 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "deep_input_paths": [
+        "data/canonical/",
+        "data/inventory/",
+        "data/validation/canonical-semantic-decision-source.json"
+      ]
     },
     {
       "owner": "canonical",
@@ -2053,7 +2058,14 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "deep_input_paths": [
+        "data/canonical/",
+        "data/candidates/C000003/",
+        "data/relation-backfill/",
+        "data/reviews/C000003/",
+        "data/validation/canonical-semantic-decision-source.json"
+      ]
     },
     {
       "owner": "batch",
@@ -2631,7 +2643,11 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "deep_input_paths": [
+        "data/batches/m5-12a-semantic-decisions.json",
+        "data/validation/canonical-semantic-decision-source.json"
+      ]
     },
     {
       "owner": "artifacts",
@@ -2905,7 +2921,12 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
         "method": "estimated from GitHub job log timestamps between adjacent registered checks"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "deep_input_paths": [
+        "data/canonical/",
+        "data/inventory/",
+        "data/validation/canonical-semantic-decision-source.json"
+      ]
     },
     {
       "owner": "deep",
@@ -2926,7 +2947,14 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
         "method": "estimated from GitHub job log timestamps between adjacent registered checks"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "deep_input_paths": [
+        "data/batches/m5-12a-semantic-decisions.json",
+        "data/batches/m5-12-base-canonical/",
+        "data/batches/m5-12-base-inventory.json",
+        "data/batches/m5-12-base-seed.json",
+        "data/inventory/"
+      ]
     },
     {
       "owner": "deep",
@@ -2945,7 +2973,10 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
         "method": "estimated from GitHub job log timestamps between adjacent registered checks"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "deep_input_paths": [
+        "data/canonical/"
+      ]
     },
     {
       "owner": "deep",
@@ -2966,7 +2997,10 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
         "method": "estimated from GitHub job log timestamps between adjacent registered checks"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "deep_input_paths": [
+        "data/batches/m5-10a-wave-a-base-canonical/"
+      ]
     },
     {
       "owner": "deep",
@@ -3069,7 +3103,10 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
         "method": "estimated from GitHub job log timestamps between adjacent registered checks"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "deep_input_paths": [
+        "data/canonical/"
+      ]
     }
   ],
   "candidate_gate_local_check_duration_ms": 2569,

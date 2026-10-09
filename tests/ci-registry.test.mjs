@@ -77,10 +77,12 @@ test('CI categories are ordered and every category has a descriptive label', () 
       assert.equal(typeof check.command, 'function');
       assert.equal(check.owner, categoryName);
       assert.ok(CI_EXECUTION_TIERS.includes(check.tier));
-    assert.equal(check.schedule, check.tier === 'historical' ? 'manual' : 'always');
-    assert.equal(check.protectedContract, check.label);
-    if (check.tier === 'historical') assert.ok(check.historicalScopes.length > 0);
-    else assert.deepEqual(check.historicalScopes, [], `${categoryName}/${check.label} cannot carry Historical scopes`);
+      assert.equal(check.schedule, check.tier === 'historical' ? 'manual' : 'always');
+      assert.equal(check.protectedContract, check.label);
+      assert.ok(Array.isArray(check.deepInputs));
+      if (check.tier === 'historical') assert.ok(check.historicalScopes.length > 0);
+      else assert.deepEqual(check.historicalScopes, [], `${categoryName}/${check.label} cannot carry Historical scopes`);
+      if (check.tier !== 'deep') assert.deepEqual(check.deepInputs, [], `${categoryName}/${check.label} cannot carry Deep input paths`);
     }
   }
 });
@@ -96,6 +98,8 @@ test('every registered check declares one owner, tier, schedule, and protected c
     assert.ok(CI_CHECK_SCHEDULES.includes(registration.schedule));
     assert.ok(registration.protectedContract);
     assert.ok(['explicit', 'legacy-policy'].includes(registration.registration));
+    assert.ok(Array.isArray(registration.deepInputs));
+    if (registration.tier !== 'deep') assert.deepEqual(registration.deepInputs, []);
     if (registration.schedule === 'affected') {
       assert.ok(registration.paths.length > 0, `${registration.check} needs dependencies`);
     }
@@ -119,6 +123,7 @@ test('Issue #464 inventory covers every registered check and records its decisio
     assert.equal(item.selected_tier, registration.tier);
     assert.equal(item.schedule, registration.schedule);
     assert.deepEqual(item.historical_scopes, registration.historicalScopes);
+    assert.deepEqual(item.deep_input_paths ?? [], registration.deepInputs);
     assert.ok(item.trigger.length > 0);
     assert.ok(item.decision.length > 0);
     assert.ok(item.rationale.length > 0);
@@ -228,6 +233,7 @@ test('new CI checks default to Deep and affected schedules require explicit depe
   assert.equal(registered.protectedContract, check.label);
   assert.equal(registered.registration, 'explicit');
   assert.deepEqual(registered.historicalScopes, []);
+  assert.deepEqual(registered.deepInputs, []);
 
   assert.throws(
     () => registerCheck(check, { owner: 'toolchain', schedule: 'affected' }),
@@ -252,6 +258,21 @@ test('new CI checks default to Deep and affected schedules require explicit depe
   assert.throws(
     () => registerCheck(check, { owner: 'toolchain', historicalScopes: ['issue-219'] }),
     /Only Historical CI checks/u,
+  );
+  assert.throws(
+    () => registerCheck(check, {
+      owner: 'canonical',
+      tier: 'normal',
+      deepInputs: ['data/canonical/'],
+    }),
+    /Only Deep CI checks/u,
+  );
+  assert.throws(
+    () => registerCheck(check, {
+      owner: 'canonical',
+      deepInputs: ['data/canonical/', '../outside'],
+    }),
+    /normalized repository-relative paths/u,
   );
 
   const futureCategory = registerCategory('future-scope', {
@@ -614,22 +635,46 @@ test('Deep CI Gate runs exact-head ci:all for Deep contracts and fails closed on
   for (const pathValue of [
     'docs/review-toolchain.md',
     'data/candidates/C000001/candidates.jsonl',
-    'src/ui/SearchPanel.vue',
+    'data/candidates/C000001/manifest.json',
+    'src/components/SearchBar.vue',
+    'web/src/App.vue',
+    'public/favicon.ico',
     'tests/normalize-canonical.test.mjs',
     'tests/issue-219-search.test.mjs',
     'tests/historical-replay-cli.test.mjs',
   ]) {
     assert.equal(classifyDeepGatePaths([pathValue]).runDeep, false, pathValue);
   }
+  for (const pathValue of [
+    'docs/new-deep-gate-contract.md',
+    'src/ui/new-deep-only-invariant.ts',
+    'web/src/new-deep-contract.js',
+    'public/new-deep-contract.json',
+    'data/new-deep-input.json',
+    'data/candidates/C000001/new-file.json',
+    'data/candidates/C000001/nested/candidates.jsonl',
+  ]) {
+    assert.equal(classifyDeepGatePaths([pathValue]).runDeep, true, pathValue);
+  }
   assert.equal(classifyDeepGatePaths(['tests/new-unregistered-check.test.mjs']).runDeep, true);
   assert.equal(classifyDeepGatePaths(['new/unknown/path.txt']).runDeep, true);
+  assert.equal(
+    classifyDeepGatePaths(['docs/review-toolchain.md', 'scripts/ci/run-category.mjs']).runDeep,
+    true,
+  );
   assert.equal(classifyDeepGatePaths([]).runDeep, true);
   assert.equal(classifyDeepGatePaths(['../outside']).runDeep, true);
   assert.equal(classifyDeepGateDiff(undefined, 'head').runDeep, true);
   assert.equal(classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('') }).runDeep, true);
   assert.equal(
-    classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('docs/guide.md\0') }).runDeep,
+    classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('docs/review-toolchain.md\0') }).runDeep,
     false,
+  );
+  assert.equal(
+    classifyDeepGateDiff('base', 'head', {
+      runGit: () => Buffer.from('docs/review-toolchain.md\0docs/new-review-contract.md\0'),
+    }).runDeep,
+    true,
   );
   assert.equal(
     classifyDeepGateDiff('base', 'head', { runGit: () => { throw new Error('git diff failed'); } }).runDeep,

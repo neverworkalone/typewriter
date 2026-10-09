@@ -7,6 +7,14 @@ estimate, tier, schedule, trigger, consumer, and keep/move reason.
 that the inventory has exactly one row for every live registration and that its
 owner, contract, tier, and schedule stay in sync with the runner.
 
+Deep data dependencies are recorded as `deep_input_paths` on their owning
+registry rows. The Deep Gate derives these paths from the registry. Non-Deep
+documentation and product files are an exact allowlist in
+[`scripts/ci/deep-gate-known-non-deep-paths.json`](../scripts/ci/deep-gate-known-non-deep-paths.json);
+pure Stage 1 candidate skips are limited to `manifest.json` and `candidates.jsonl`
+at the candidate directory root when no Deep check registers that input. Any
+unlisted path runs Deep.
+
 ## Classification
 
 | Tier | Checks | Decision |

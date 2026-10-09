@@ -9,6 +9,7 @@ import {
   CI_ALL_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
+import KNOWN_NON_DEEP_PATHS from './deep-gate-known-non-deep-paths.json' with { type: 'json' };
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
@@ -24,13 +25,6 @@ const DEEP_CONTRACT_PATHS = Object.freeze([
   'scripts/batch/m5-12a-',
   'scripts/batch/validate-m5-8-process.mjs',
   'scripts/batch/authored-semantic-decision-source.mjs',
-  // Deep tests consume these live data inputs; unknown data paths also fail closed below.
-  'data/canonical/',
-  'data/candidates/C000003/',
-  'data/inventory/',
-  'data/relation-backfill/',
-  'data/reviews/C000003/',
-  'data/validation/canonical-semantic-decision-source.json',
   'config/ci-level-evidence.json',
   'config/artifact-policy.json',
   'package.json',
@@ -40,12 +34,7 @@ const DEEP_CONTRACT_PATHS = Object.freeze([
   'tests/ci-sqlite-build-guard.test.mjs',
 ]);
 
-const KNOWN_NON_DEEP_PATHS = Object.freeze([
-  'docs/',
-  'data/candidates/',
-  'src/',
-  'web/',
-  'public/',
+const KNOWN_NON_DEEP_ROOT_PATHS = Object.freeze([
   'README.md',
   'REVIEW.md',
   'AGENTS.md',
@@ -57,6 +46,23 @@ const KNOWN_NON_DEEP_PATHS = Object.freeze([
   'pack.py',
   'pack.sh',
 ]);
+
+if (KNOWN_NON_DEEP_PATHS.version !== 1 || !Array.isArray(KNOWN_NON_DEEP_PATHS.paths)) {
+  throw new TypeError('Deep Gate known non-Deep path contract has an unsupported shape.');
+}
+
+const knownNonDeepPaths = [
+  ...KNOWN_NON_DEEP_PATHS.paths,
+  ...KNOWN_NON_DEEP_ROOT_PATHS,
+];
+if (new Set(knownNonDeepPaths).size !== knownNonDeepPaths.length) {
+  throw new TypeError('Deep Gate known non-Deep path contract contains duplicates.');
+}
+if (knownNonDeepPaths.some((knownPath) => !validRepositoryPath(knownPath))) {
+  throw new TypeError('Deep Gate known non-Deep paths must be normalized repository-relative files.');
+}
+const KNOWN_NON_DEEP_PATH_SET = new Set(knownNonDeepPaths);
+const STAGE1_CANDIDATE_ARTIFACT_PATH = /^data\/candidates\/C\d{6}\/(?:manifest\.json|candidates\.jsonl)$/u;
 
 function matchesPath(pathValue, rule) {
   return rule.endsWith('/') || rule.endsWith('-')
@@ -97,6 +103,14 @@ function registeredTestTiers() {
   return tiersByFile;
 }
 
+function registeredDeepInputPaths() {
+  return new Set(CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => (
+    CI_CATEGORIES[categoryName].checks
+      .filter((check) => check.tier === 'deep')
+      .flatMap((check) => check.deepInputs ?? [])
+  )));
+}
+
 function validRepositoryPath(pathValue) {
   return typeof pathValue === 'string'
     && pathValue.length > 0
@@ -107,6 +121,7 @@ function validRepositoryPath(pathValue) {
 
 export function classifyDeepGatePaths(changedPaths, {
   testTiers = registeredTestTiers(),
+  deepInputPaths = registeredDeepInputPaths(),
 } = {}) {
   if (!Array.isArray(changedPaths) || changedPaths.length === 0) {
     return { runDeep: true, reason: 'missing-or-empty-path-evidence' };
@@ -115,9 +130,13 @@ export function classifyDeepGatePaths(changedPaths, {
     return { runDeep: true, reason: 'unclassifiable-path-evidence' };
   }
 
+  const deepInputRules = [...deepInputPaths];
   for (const changedPath of changedPaths) {
     if (DEEP_CONTRACT_PATHS.some((rule) => matchesPath(changedPath, rule))) {
       return { runDeep: true, reason: 'deep-contract-path', path: changedPath };
+    }
+    if (deepInputRules.some((rule) => matchesPath(changedPath, rule))) {
+      return { runDeep: true, reason: 'deep-check-input', path: changedPath };
     }
     if (changedPath.endsWith('.test.mjs')) {
       const tiers = testTiers.get(changedPath);
@@ -126,7 +145,10 @@ export function classifyDeepGatePaths(changedPaths, {
       }
       continue;
     }
-    if (KNOWN_NON_DEEP_PATHS.some((rule) => matchesPath(changedPath, rule))) continue;
+    if (
+      KNOWN_NON_DEEP_PATH_SET.has(changedPath)
+      || STAGE1_CANDIDATE_ARTIFACT_PATH.test(changedPath)
+    ) continue;
     return { runDeep: true, reason: 'unclassified-path', path: changedPath };
   }
   return { runDeep: false, reason: 'no-deep-contract-path' };

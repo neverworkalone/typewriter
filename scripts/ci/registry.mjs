@@ -159,7 +159,14 @@ const RAW_CI_CATEGORIES = Object.freeze({
       testCheck('tests/m6-4-quality-audit.test.mjs', 'Test M6-4 audit snapshot and tamper rejection'),
       testCheck('tests/m6-5-correction-calibration.test.mjs', 'Test M6-5 correction calibration evidence'),
       inProcessCheck('Validate frozen M6-4 quality audit snapshot', 'm6-4-frozen-snapshot'),
-      testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
+      {
+        ...testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
+        deepInputs: [
+          'data/canonical/',
+          'data/inventory/',
+          'data/validation/canonical-semantic-decision-source.json',
+        ],
+      },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
@@ -277,10 +284,19 @@ const RAW_CI_CATEGORIES = Object.freeze({
         'Test Issue #397 canonical relation candidate retrieval',
         ['--test', 'scripts/relation/candidate-retrieval.test.mjs'],
       ),
-      commandCheck(
-        'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
-        ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs'],
-      ),
+      {
+        ...commandCheck(
+          'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
+          ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs'],
+        ),
+        deepInputs: [
+          'data/canonical/',
+          'data/candidates/C000003/',
+          'data/relation-backfill/',
+          'data/reviews/C000003/',
+          'data/validation/canonical-semantic-decision-source.json',
+        ],
+      },
       commandCheck(
         'Test Issue #223 review-only import boundary',
         ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
@@ -392,7 +408,13 @@ const RAW_CI_CATEGORIES = Object.freeze({
   artifacts: {
     label: 'Generated-artifact and clean-checkout enforcement',
     checks: [
-      testCheck('tests/artifact-policy.test.mjs', 'Test artifact policy'),
+      {
+        ...testCheck('tests/artifact-policy.test.mjs', 'Test artifact policy'),
+        deepInputs: [
+          'data/batches/m5-12a-semantic-decisions.json',
+          'data/validation/canonical-semantic-decision-source.json',
+        ],
+      },
       testCheck('tests/pages-artifact.test.mjs', 'Test Pages artifact publication boundary'),
       testCheck('tests/validate-package.test.mjs', 'Test package validation'),
       commandCheck('Enforce generated-artifact policy and clean checkout', [
@@ -425,10 +447,32 @@ const RAW_CI_CATEGORIES = Object.freeze({
   deep: {
     label: 'Manual deep current-revision reproducibility validation',
     checks: [
-      globalCanonicalAuditCheck(),
-      testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
-      inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
-      testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+      {
+        ...globalCanonicalAuditCheck(),
+        deepInputs: [
+          'data/canonical/',
+          'data/inventory/',
+          'data/validation/canonical-semantic-decision-source.json',
+        ],
+      },
+      {
+        ...testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
+        deepInputs: [
+          'data/batches/m5-12a-semantic-decisions.json',
+          'data/batches/m5-12-base-canonical/',
+          'data/batches/m5-12-base-inventory.json',
+          'data/batches/m5-12-base-seed.json',
+          'data/inventory/',
+        ],
+      },
+      {
+        ...inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
+        deepInputs: ['data/canonical/'],
+      },
+      {
+        ...testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+        deepInputs: ['data/batches/m5-10a-wave-a-base-canonical/'],
+      },
       independentBuildProof(pnpmCheck(
         'Prove independent two-build determinism for Issue #219 checkpoint',
         'batch:issue-219:check',
@@ -445,15 +489,18 @@ const RAW_CI_CATEGORIES = Object.freeze({
         'Prove independent two-build determinism for Issue #223 checkpoint',
         'batch:issue-223:check:deep',
       )),
-      pnpmCheck(
-        'Run 100K/500K/1M release-shaped performance and scale benchmark',
-        'benchmark:release',
-        [
-          '--sizes=100000,500000,1000000',
-          '--sqlite-scale=100000,500000,1000000',
-          '--fixed-level-evidence=config/ci-level-evidence.json',
-        ],
-      ),
+      {
+        ...pnpmCheck(
+          'Run 100K/500K/1M release-shaped performance and scale benchmark',
+          'benchmark:release',
+          [
+            '--sizes=100000,500000,1000000',
+            '--sqlite-scale=100000,500000,1000000',
+            '--fixed-level-evidence=config/ci-level-evidence.json',
+          ],
+        ),
+        deepInputs: ['data/canonical/'],
+      },
     ],
   },
 });
@@ -467,6 +514,7 @@ export function registerCheck(check, {
   tier = 'deep',
   schedule = 'always',
   paths = [],
+  deepInputs = check?.deepInputs ?? [],
   protectedContract = check?.label,
   historicalScopes = check?.historicalScopes ?? [],
 } = {}) {
@@ -500,6 +548,26 @@ export function registerCheck(check, {
   }
   if (uniquePaths.length !== paths.length) {
     throw new TypeError('CI check paths must not contain duplicates.');
+  }
+  if (!Array.isArray(deepInputs)) {
+    throw new TypeError('CI check Deep input paths must be an array.');
+  }
+  const uniqueDeepInputs = [...new Set(deepInputs)];
+  if (uniqueDeepInputs.some((pathValue) => (
+    typeof pathValue !== 'string'
+    || pathValue.length === 0
+    || pathValue.startsWith('/')
+    || pathValue.includes('\\')
+    || (pathValue.endsWith('/') ? pathValue.slice(0, -1) : pathValue)
+      .split('/').some((part) => part === '' || part === '.' || part === '..')
+  ))) {
+    throw new TypeError('CI check Deep inputs must be normalized repository-relative paths or directory prefixes.');
+  }
+  if (uniqueDeepInputs.length !== deepInputs.length) {
+    throw new TypeError('CI check Deep inputs must not contain duplicates.');
+  }
+  if (tier !== 'deep' && uniqueDeepInputs.length > 0) {
+    throw new TypeError('Only Deep CI checks may declare Deep input paths.');
   }
   if (!Array.isArray(historicalScopes)) {
     throw new TypeError('CI check historical scopes must be an array.');
@@ -535,6 +603,7 @@ export function registerCheck(check, {
     tier,
     schedule,
     paths: Object.freeze(uniquePaths),
+    deepInputs: Object.freeze(uniqueDeepInputs),
     historicalScopes: Object.freeze(uniqueHistoricalScopes),
     protectedContract: protectedContract.trim(),
     registration: 'explicit',
@@ -607,6 +676,7 @@ export function registerCategory(owner, category, {
         tier,
         schedule: check.schedule ?? (tier === 'historical' ? 'manual' : 'always'),
         paths: check.paths ?? [],
+        deepInputs: check.deepInputs ?? [],
         protectedContract: check.protectedContract ?? check.label,
         historicalScopes: check.historicalScopes ?? historicalScopeByLabel[check.label] ?? [],
       });
@@ -641,6 +711,7 @@ export function collectCheckRegistrations() {
       tier: check.tier,
       schedule: check.schedule,
       paths: check.paths,
+      deepInputs: check.deepInputs,
       historicalScopes: check.historicalScopes,
       protectedContract: check.protectedContract,
       registration: check.registration,
@@ -657,6 +728,7 @@ export function collectTestOwnership() {
         tier: check.tier,
         schedule: check.schedule,
         paths: check.paths,
+        deepInputs: check.deepInputs,
         historicalScopes: check.historicalScopes,
         protectedContract: check.protectedContract,
         registration: check.registration,
