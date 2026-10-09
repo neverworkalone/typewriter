@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
   DEFAULT_CANDIDATE_LIMIT,
+  buildExclusionManifest,
   buildTextFreeCandidateEvidence,
   collectRepresentativeSurfaceHits,
   excludedLemmasForArtifact,
   parseArguments,
+  resolveExclusionSourcePath,
 } from './run-corpus-lemma-pilot.mjs';
 import { observationsFromCorpusEvidence } from '../factory/stage1.mjs';
 import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
@@ -35,6 +41,96 @@ test('cached morphology reuse stays in the shared cache and uses a separate run 
     '--reuse-analysis-from', '../../outside-cache',
   ]), /must be inside/u);
   assert.equal(parseArguments([]).outputDirectory, `${runs}/issue-201-pilot`);
+});
+
+test('shared-cache exclusion inputs preserve source bindings and union prior proposals and candidates', async (t) => {
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'typewriter-cache-exclusions-'));
+  t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
+  const repositoryDirectory = path.join(temporaryRoot, 'repository');
+  const cachePaths = resolveTypewriterCachePaths({
+    env: { TYPEWRITER_CACHE_ROOT: path.join(temporaryRoot, 'cache') },
+    homeDirectory: temporaryRoot,
+  });
+  const options = { repositoryDirectory, cachePaths };
+  const selectionPath = path.join(cachePaths.runs, 'prior', 'candidate-selection.json');
+  const candidateJsonlPath = path.join(repositoryDirectory, 'data/candidates/C000030/candidates.jsonl');
+  const priorManifestPath = path.join(cachePaths.runs, 'prior', 'reviewed-lemma-exclusions.json');
+  const evidencePath = path.join(cachePaths.evidence, 'batch', 'decisions.json');
+  await mkdir(path.dirname(selectionPath), { recursive: true });
+  await mkdir(path.dirname(candidateJsonlPath), { recursive: true });
+  await mkdir(path.dirname(evidencePath), { recursive: true });
+  const selection = {
+    selection: { contract_version: 'm9-corpus-candidate-selection-v1' },
+    candidates: [
+      { proposed_lemma: '강물', proposed_pos: 'noun', coverage_normalized_key: '강물' },
+      { proposed_lemma: '나무', proposed_pos: 'noun', coverage_normalized_key: '나무' },
+      { proposed_lemma: '강물', proposed_pos: 'noun', coverage_normalized_key: '강물' },
+    ],
+  };
+  await writeFile(selectionPath, JSON.stringify(selection));
+  await writeFile(candidateJsonlPath, `${JSON.stringify({ input: '나무' })}\n${JSON.stringify({ input: '바람' })}\n`);
+  const decisions = { candidate_records: [{ lemma: '별빛' }] };
+  await writeFile(evidencePath, JSON.stringify(decisions));
+
+  const priorManifest = await buildExclusionManifest([selectionPath], options);
+  await writeFile(priorManifestPath, JSON.stringify(priorManifest));
+  const args = parseArguments([
+    '--exclude-lemma-source', 'runs/prior/candidate-selection.json',
+    '--exclude-lemma-source', 'data/candidates/C000030/candidates.jsonl',
+    '--exclude-lemma-source', priorManifestPath,
+    '--exclude-lemma-source', 'evidence/batch/decisions.json',
+  ], options);
+  const manifest = await buildExclusionManifest(args.exclusionLemmaSources, options);
+
+  assert.deepEqual(manifest.lemmas, ['강물', '나무', '바람', '별빛']);
+  assert.deepEqual(manifest.source_artifacts.map((source) => source.path), [
+    'data/candidates/C000030/candidates.jsonl',
+    'evidence/batch/decisions.json',
+    'runs/prior/candidate-selection.json',
+    'runs/prior/reviewed-lemma-exclusions.json',
+  ]);
+  const sourcesByPath = Object.fromEntries(manifest.source_artifacts.map((source) => [source.path, source.sha256]));
+  assert.equal(sourcesByPath['data/candidates/C000030/candidates.jsonl'], createHash('sha256').update(await readFile(candidateJsonlPath)).digest('hex'));
+  assert.equal(sourcesByPath['runs/prior/candidate-selection.json'], createHash('sha256').update(await readFile(selectionPath)).digest('hex'));
+  assert.equal(sourcesByPath['evidence/batch/decisions.json'], createHash('sha256').update(await readFile(evidencePath)).digest('hex'));
+  const payload = {
+    lemmas: manifest.lemmas,
+    schema_version: manifest.schema_version,
+    source_artifacts: manifest.source_artifacts,
+  };
+  assert.equal(manifest.exclusion_sha256, createHash('sha256').update(JSON.stringify(payload)).digest('hex'));
+
+  const tamperedManifestPath = path.join(cachePaths.runs, 'prior', 'tampered-exclusions.json');
+  await writeFile(tamperedManifestPath, JSON.stringify({ ...priorManifest, lemmas: [...priorManifest.lemmas, '변조'] }));
+  await assert.rejects(buildExclusionManifest([tamperedManifestPath], options), /digest does not match/u);
+
+  const unboundPayload = { ...priorManifest, source_artifacts: [] };
+  const unboundDigestPayload = {
+    lemmas: unboundPayload.lemmas,
+    schema_version: unboundPayload.schema_version,
+    source_artifacts: unboundPayload.source_artifacts,
+  };
+  unboundPayload.exclusion_sha256 = createHash('sha256').update(JSON.stringify(unboundDigestPayload)).digest('hex');
+  const unboundManifestPath = path.join(cachePaths.runs, 'prior', 'unbound-exclusions.json');
+  await writeFile(unboundManifestPath, JSON.stringify(unboundPayload));
+  await assert.rejects(buildExclusionManifest([unboundManifestPath], options), /must bind at least one source artifact/u);
+
+  const malformedSelectionPath = path.join(cachePaths.runs, 'prior', 'malformed-candidate-selection.json');
+  await writeFile(malformedSelectionPath, JSON.stringify({
+    selection: { contract_version: 'm9-corpus-candidate-selection-v1' },
+    candidates: [{ proposed_lemma: '올바른', proposed_pos: 'noun' }, { lemma: '잘못된' }],
+  }));
+  await assert.rejects(buildExclusionManifest([malformedSelectionPath], options), /trimmed NFC lemmas/u);
+  assert.throws(() => resolveExclusionSourcePath('runs/../outside.json', options), /traversal segments/u);
+
+  const outsidePath = path.join(temporaryRoot, 'outside.json');
+  const cacheEscapePath = path.join(cachePaths.runs, 'escape.json');
+  const repositoryEscapePath = path.join(repositoryDirectory, 'data/candidates/C000030/escape.json');
+  await writeFile(outsidePath, JSON.stringify({ candidate_records: [{ lemma: '밖' }] }));
+  await symlink(outsidePath, cacheEscapePath);
+  await symlink(outsidePath, repositoryEscapePath);
+  assert.throws(() => resolveExclusionSourcePath('runs/escape.json', options), /resolves outside/u);
+  assert.throws(() => resolveExclusionSourcePath('data/candidates/C000030/escape.json', options), /resolves outside/u);
 });
 
 test('text-free candidate evidence keeps morphology and bounded provenance without paragraph text', () => {
