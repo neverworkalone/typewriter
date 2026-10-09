@@ -4,17 +4,17 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "27469aa972dff349a8ea1f118c52613f83836a486ad8075a44a0ec02036a3562",
+    "current_canonical_revision": "3ed6fbf7b565e7f684d70377513bcfed970da8f8f4bbab8f6594b87496e83a4a",
     "source_manifest": [
       {
         "path": "AGENTS.md",
-        "sha256": "44eb3ede6582cdb74382703854c664f5f53ab2e2c92f9a9d28f0d5364f1a8e6e",
-        "byte_count": 21719
+        "sha256": "40c13951350ef43cf2cc0b2080be066185c72788a78e0f03545cdfea623acfe8",
+        "byte_count": 22092
       },
       {
         "path": "config/artifact-policy.json",
-        "sha256": "8548b39877ffa97817514770d0d26e9df40430c8a3b7969adbce57401b316618",
-        "byte_count": 156355
+        "sha256": "cf332a3fab162aedb21c2e81a9132c68b9890389f47ca57294293e9810b03412",
+        "byte_count": 156481
       },
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -718,8 +718,8 @@
       },
       {
         "path": "data/canonical/m5-3-calibration.jsonl",
-        "sha256": "2708bbe5d5393466dd795a456d337f8361191fd959e34e91329c3ff13ffd0cc6",
-        "byte_count": 34998
+        "sha256": "d9e56f6d220839a60b387b05973035e9214b973a47f0d92ce5b44f6203be348b",
+        "byte_count": 36020
       },
       {
         "path": "data/canonical/m5-5-recalibration.jsonl",
@@ -738,8 +738,8 @@
       },
       {
         "path": "data/canonical/pilot.jsonl",
-        "sha256": "9d7a3e0b4a396db34d650ce06856c4c8c173d57a1aa5b65c16d1440d42d1682d",
-        "byte_count": 148704
+        "sha256": "e2372470477e66c1946c30cca8e0e721ffe21617c5c3e1ba6c8366207388d9cc",
+        "byte_count": 195870
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
@@ -753,17 +753,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "e1d6364b7012f348debf5da96cd9291b501b6251a57a055ede146f25e1167b12",
-        "byte_count": 11890104
+        "sha256": "8f029e596816b9a9f0aab956ec6112511037c362a53768c5aabf463a556a8773",
+        "byte_count": 12361920
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "c1794f3a1a3e0406fc8a7088cec9f7f818f96902cb6e01b4abb0119e348dcafc",
+        "sha256": "2f08f7cc8fb94f7271092757748f387448ab6ddd26019bd3ba15b4ed738f92d9",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "bd5abd8b8987825595be97edf2a4ecdf4dec840f74ebb307064c15f875fb099e",
+        "sha256": "4c187717212ebec40717fe9faebd4c447bca6495f2810fc34d5e9272b43080e5",
         "byte_count": 29642
       },
       {
@@ -803,7 +803,7 @@
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "b39100aeb1ce613fb95e0c54bec1e34134827c1dc1d96842afe4698001700b78",
+        "sha256": "f92701112e282b0c02051d13de7e12530fb06968427458c587a61bcecbba5022",
         "byte_count": 8778
       },
       {
@@ -858,8 +858,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "9f04ae1b54ff0d483c3bc893890ff52278672d2f9e2bf62e6e0e76651ee58212",
-        "byte_count": 12685
+        "sha256": "6cfa8d9838f8be5e61a7222e76c2eaa712d58d06b57f208588f0d1fe0f2c3f5f",
+        "byte_count": 12759
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -873,8 +873,8 @@
       },
       {
         "path": "scripts/batch/authored-semantic-decision-source.mjs",
-        "sha256": "1fad89526e3287823a85cbae91b341cb73b9cd0c1ce2c9c35d907db3520fb978",
-        "byte_count": 30522
+        "sha256": "714257a9d0573636c9b7102772adb39ac19497a13d2848b972aac14089aa0156",
+        "byte_count": 34348
       },
       {
         "path": "scripts/batch/lexical-production.mjs",
@@ -923,8 +923,8 @@
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "403a3ac245100ea9b8b1d7fab55e1add214941c552570df5e3cd2312373b9588",
-        "byte_count": 20294
+        "sha256": "597c76c23d315ae329328e67399aa14e3a64d2806f3cf67983e16b25dc426e81",
+        "byte_count": 21084
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
@@ -943,13 +943,13 @@
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.mjs",
-        "sha256": "4ce78c1d6250d8c2a4f5aa67cfe8505bc1137b1756645493fa6fa7c148c0c571",
-        "byte_count": 31992
+        "sha256": "c9965f1467a21f60235fc4af0936f92af1705f04712989b02e4afb4cf1ffaa24",
+        "byte_count": 32921
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.test.mjs",
-        "sha256": "c1ae21b3e78196efdbcee3cb78564c0b5d1a43787cdf612421fae6baeac7b4ba",
-        "byte_count": 9638
+        "sha256": "0c1b9e890c0ca7c52fccdc958355001a4d4075b04114ee2a5b0ba69ec0b93ed2",
+        "byte_count": 14582
       },
       {
         "path": "scripts/reference/test-corpus-lemma-pilot.py",
@@ -968,13 +968,13 @@
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "48420ee22d359e5669709b1393ff1671ddaa13f73babbf7fa529d2c5a219d460",
-        "byte_count": 130463
+        "sha256": "713e7ce286d05d0bbb087be515807453c64c7cce843f252977a60f1b3044a7e3",
+        "byte_count": 135773
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",
-        "sha256": "1005b40b3ff7d1a5e435c00f8039222b3f55eee6fb42815741c1905934449612",
-        "byte_count": 8674
+        "sha256": "60dbb9338957d3e8acd3b763800b778e17eb9938e5e51382cb3e94f505f75544",
+        "byte_count": 8742
       },
       {
         "path": "tests/issue-211-search.test.mjs",
@@ -998,8 +998,8 @@
       },
       {
         "path": "tests/searchable-start-contract.test.mjs",
-        "sha256": "c6b8ee44b120c358bb7c01fddcb968d232d24153185d43da47d8fe7ec1938c1d",
-        "byte_count": 40210
+        "sha256": "3542cffdcb7865d3308b1468b31d335b46c5d21f677d5d8485037756a14b1a68",
+        "byte_count": 40216
       }
     ]
   },

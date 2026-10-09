@@ -90,7 +90,7 @@ const isPresent = (records, item) => records.some((record) => record.id === item
   && record.senses.some((sense) => sense.id === item.source_sense_id && (sense.relations ?? []).some((relation) => reviewedRelationId(sense.id, relation) === reviewedId(item))));
 
 const BACKFILL_EVENT = /^R\d{6}$/u;
-const nextPacketId = (events) => `R${String(events.reduce((max, event) => Math.max(max, Number(/^R(\d{6})$/u.exec(event.batch_id ?? '')?.[1] ?? 0)), 0) + 1).padStart(6, '0')}`;
+export const nextPacketId = (events) => `R${String(events.reduce((max, event) => Math.max(max, Number(/^R(\d{6})$/u.exec(event.batch_id ?? '')?.[1] ?? 0)), 0) + 1).padStart(6, '0')}`;
 
 async function readPackets(root) {
   const dir = path.join(root, BACKFILL_PACKET_DIR);
