@@ -14,8 +14,8 @@
     "searchable_record_count": 7500
   },
   "current": {
-    "canonical_revision": "0f1791581708aad7fb7aafd4d517fba61c259cb1c85d1f61316355e7f05acf67",
-    "canonical_records_sha256": "ad841db363fe2a7c78681a4e8e88999e168ff30ab0d2b3ceec168f7798ea53c2",
+    "canonical_revision": "e904e8a8b5da4ae28c2d1315b645e1b8536b820764aa910d8a4cbb9a09c7c2bb",
+    "canonical_records_sha256": "32324a5bc3456a9f7cf76fcc29aacd92733b3814138dc7c4f747facc8951d65c",
     "canonical_record_count": 12312,
     "records_added_after_issue_222_checkpoint": 4791,
     "directly_searchable_record_count": 12312,
@@ -439,7 +439,7 @@
     "command": "npm run ci:normal",
     "check_name": "Validate and test Typewriter",
     "status_source": "external-exact-head-pr-check",
-    "canonical_sha256": "ad841db363fe2a7c78681a4e8e88999e168ff30ab0d2b3ceec168f7798ea53c2"
+    "canonical_sha256": "32324a5bc3456a9f7cf76fcc29aacd92733b3814138dc7c4f747facc8951d65c"
   },
   "runtime_package_impact": {
     "status": "dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured",

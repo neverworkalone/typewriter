@@ -127,7 +127,7 @@ Direct exact lemma coverage: 12312/12312; non-searchable records: 0. Exact searc
 | authored semantic evidence projection | 1 | scripts/batch/validate-issue-211.mjs | The common producer projects authored topic_analysis and topic_analyses into the shared semantic evidence for the exact reviewed span, including w5399. |
 | surface-form decision coverage | 2 | data/validation/m6-3-surface-form-review.json | Added sense-bound M6-3 decisions for the two admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed. |
 
-Normal CI: `npm run ci:normal` — pending for canonical digest `ad841db363fe2a7c78681a4e8e88999e168ff30ab0d2b3ceec168f7798ea53c2`.
+Normal CI: `npm run ci:normal` — pending for canonical digest `32324a5bc3456a9f7cf76fcc29aacd92733b3814138dc7c4f747facc8951d65c`.
 Extension/Web parity is covered by the normal CI product builds and output-contract validation: pending.
 
 ## Reproduction
