@@ -13,7 +13,7 @@ import { buildStage3SemanticAuthority } from '../scripts/factory/semantic-author
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import {
   buildSemanticAuditFromDecisionSource, canonicalRecordsBeforeFactoryAdmissions, inspectSenseBoundaryPairs,
-  attachFactoryAdmissions, factoryAdmissionsOf, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, relationAmendmentFollowsDigest, sha256Json,
+  attachFactoryAdmissions, factoryAdmissionsOf, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, factoryHistoryReachesCorrection, sha256Json,
 } from '../scripts/validate/semantic-audit.mjs';
 import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 
@@ -336,22 +336,47 @@ test('two admitted decisions proposing one tuple: first appends, second is an id
   assert.match(flipped((list) => { list[0].outcome = 'already_present'; }), /outcome does not match|added_relation_ids differ/u);
 });
 
-test('a relation-only amendment continues a correction digest recorded before relation relevance existed', () => {
-  const baseRelation = { target: 'w00009', target_sense: 'w00009-s1', type: 'association', note: '이어 찾을 수 있다.', relevance: 4 };
-  const addedRelation = { target: 'w00010', target_sense: 'w00010-s1', type: 'near', note: '가깝게 쓸 수 있다.', relevance: 5 };
-  const base = { ...source(), senses: [{ ...source().senses[0], relations: [baseRelation] }, source().senses[1]] };
-  const current = { ...base, senses: [{ ...base.senses[0], relations: [baseRelation, addedRelation] }, base.senses[1]] };
-  const change = { entry_id: base.id, operation: 'append_relations', before_sha256: sha256Json(base), after_sha256: sha256Json(current) };
-  const events = [{ relation_amendments: [{ source_record_id: base.id, source_sense_id: 'w00001-s1', relation: addedRelation, outcome: 'appended' }] }];
-  const correctionDigest = preRelevanceRecordSha256(base);
-  assert.notEqual(correctionDigest, change.before_sha256, 'the correction digest predates relevance, so exact equality cannot link it');
-  assert.equal(relationAmendmentFollowsDigest(current, events, change, correctionDigest), true);
-  // The same amendment must not continue an unrelated correction, a rewritten base, or a non-relation operation.
-  assert.equal(relationAmendmentFollowsDigest(current, events, change, 'b'.repeat(64)), false);
-  assert.equal(relationAmendmentFollowsDigest(current, events, { ...change, before_sha256: 'c'.repeat(64) }, correctionDigest), false);
-  assert.equal(relationAmendmentFollowsDigest(current, events, { ...change, operation: 'append_senses' }, correctionDigest), false);
-  const rewritten = { ...current, senses: [{ ...current.senses[0], gloss: '다른 뜻이다.' }, current.senses[1]] };
-  assert.equal(relationAmendmentFollowsDigest(rewritten, events, change, correctionDigest), false);
+// A corrected record (digest recorded before relation relevance existed) followed by factory amendments in every order.
+function correctedChain(order) {
+  const rel = (target, type, relevance) => ({ target, target_sense: `${target}-s1`, type, note: '회귀 시험용이다.', relevance });
+  const base = { ...source(), senses: [{ ...source().senses[0], relations: [rel('w00009', 'association', 4)] }, source().senses[1]] };
+  const steps = { A: { relation: rel('w00010', 'near', 5) }, B: { sense: { id: 'w00001-s3', pos: 'adjective', gloss: '맑게 갠 하늘빛이다.' } } };
+  let state = base; const events = [];
+  for (const name of order) {
+    const before = state;
+    if (steps[name].sense) {
+      state = { ...state, senses: [...state.senses, steps[name].sense] };
+      events.push({ changes: [{ entry_id: base.id, operation: 'append_senses', added_sense_ids: [steps[name].sense.id], before_sha256: sha256Json(before), after_sha256: sha256Json(state) }] });
+    } else {
+      const added = steps[name].relation;
+      state = { ...state, senses: state.senses.map((sense, i) => (i === 0 ? { ...sense, relations: [...sense.relations, added] } : sense)) };
+      events.push({
+        changes: [{ entry_id: base.id, operation: 'append_relations', added_relation_ids: [`rel-${name}`], before_sha256: sha256Json(before), after_sha256: sha256Json(state) }],
+        relation_amendments: [{ source_record_id: base.id, source_sense_id: 'w00001-s1', relation: added, outcome: 'appended', relation_id: `rel-${name}` }],
+      });
+    }
+  }
+  return { current: state, events, correctionDigest: preRelevanceRecordSha256(base) };
+}
+
+test('a corrected record is reached through relation and sense amendments in any order, and rewritten history is rejected', () => {
+  for (const order of [['A'], ['A', 'B'], ['B', 'A']]) {
+    const { current, events, correctionDigest } = correctedChain(order);
+    assert.equal(factoryHistoryReachesCorrection(current, events, correctionDigest), true, order.join('+'));
+  }
+  const { current, events, correctionDigest } = correctedChain(['A', 'B']);
+  const clone = () => structuredClone(events);
+  assert.equal(factoryHistoryReachesCorrection(current, events, 'b'.repeat(64)), false, 'another correction digest');
+  const badBefore = clone(); badBefore[1].changes[0].before_sha256 = 'c'.repeat(64);
+  assert.equal(factoryHistoryReachesCorrection(current, badBefore, correctionDigest), false, 'forged sense amendment before digest');
+  const badAfter = clone(); badAfter[1].changes[0].after_sha256 = 'c'.repeat(64);
+  assert.equal(factoryHistoryReachesCorrection(current, badAfter, correctionDigest), false, 'forged sense amendment after digest');
+  const badSense = clone(); badSense[1].changes[0].added_sense_ids = ['w00001-s9'];
+  assert.equal(factoryHistoryReachesCorrection(current, badSense, correctionDigest), false, 'undeclared appended sense');
+  const badTuple = clone(); badTuple[0].relation_amendments[0].relation = { ...badTuple[0].relation_amendments[0].relation, type: 'mood' };
+  assert.equal(factoryHistoryReachesCorrection(current, badTuple, correctionDigest), false, 'altered relation tuple');
+  const rewritten = { ...current, senses: [{ ...current.senses[0], gloss: '다른 뜻이다.' }, ...current.senses.slice(1)] };
+  assert.equal(factoryHistoryReachesCorrection(rewritten, events, correctionDigest), false, 'rewritten record');
 });
 
 test('the validated factory ledger travels with a review in memory only', () => {

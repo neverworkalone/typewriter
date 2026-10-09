@@ -261,26 +261,41 @@ function matchesHistoricalRecordDigest(record, digest, hashCache) {
 
 /**
  * A correction digest recorded before exploratory relations gained `relevance` binds the record without that field,
- * while a later relation-only amendment records the full digest of the record it amended. The amendment continues
- * the correction when undoing it (and every later amendment) from the current record yields a base whose full
- * digest is the amendment's before digest and whose pre-relevance projection is the correction's digest.
+ * while later factory amendments record the full digest of the record they amended, so the digests cannot be linked
+ * forward by equality. The current record is instead rewound through every recorded operation on it, newest first
+ * (appended senses removed, appended relation tuples removed, each step required to land on its before digest);
+ * the base it reaches must be the corrected record. Sense and relation amendments may interleave in any order.
  */
-export function relationAmendmentFollowsDigest(record, events, change, expectedDigest) {
-  if (change.operation !== 'append_relations') return false;
-  const added = events.flatMap((event) => (event.relation_amendments ?? [])
-    .filter((item) => item.source_record_id === record.id && item.outcome === 'appended')
-    .map((item) => ({ senseId: item.source_sense_id, relation: JSON.stringify(item.relation) })));
-  const base = {
-    ...record,
-    senses: (record.senses ?? []).map((sense) => {
-      const mine = added.filter((item) => item.senseId === sense.id).map((item) => item.relation);
-      if (!mine.length) return sense;
-      const kept = (sense.relations ?? []).filter((relation) => !mine.includes(JSON.stringify(relation)));
-      const { relations, ...rest } = sense;
-      return kept.length ? { ...rest, relations: kept } : rest;
-    }),
-  };
-  return sha256Json(base) === change.before_sha256 && preRelevanceRecordSha256(base) === expectedDigest;
+export function factoryHistoryReachesCorrection(record, events, correctionDigest) {
+  const pending = events.flatMap((event) => (event.changes ?? [])
+    .filter((change) => change.entry_id === record.id && change.operation !== 'create')
+    .map((change) => ({ change, event })));
+  const matches = (state, digest) => sha256Json(state) === digest || preRelevanceRecordSha256(state) === digest;
+  let state = record;
+  while (pending.length) {
+    const index = pending.findIndex(({ change }) => matches(state, change.after_sha256));
+    if (index < 0) return false;
+    const [{ change, event }] = pending.splice(index, 1);
+    if (change.operation === 'append_senses') {
+      const ids = new Set(change.added_sense_ids ?? []);
+      if ((state.senses ?? []).filter((sense) => ids.has(sense.id)).length !== ids.size) return false;
+      state = { ...state, senses: state.senses.filter((sense) => !ids.has(sense.id)) };
+    } else if (change.operation === 'append_relations') {
+      const added = (event.relation_amendments ?? []).filter((item) => item.source_record_id === record.id
+        && item.outcome === 'appended' && (change.added_relation_ids ?? []).includes(item.relation_id));
+      state = { ...state, senses: (state.senses ?? []).map((sense) => {
+        const mine = added.filter((item) => item.source_sense_id === sense.id).map((item) => JSON.stringify(item.relation));
+        if (!mine.length) return sense;
+        const kept = (sense.relations ?? []).filter((relation) => !mine.includes(JSON.stringify(relation)));
+        const { relations, ...rest } = sense;
+        return kept.length ? { ...rest, relations: kept } : rest;
+      }) };
+    } else {
+      return false;
+    }
+    if (!matches(state, change.before_sha256)) return false;
+  }
+  return matches(state, correctionDigest);
 }
 
 const CANONICAL_AUDIT_CACHE_TOKEN = Symbol('canonical-audit-cache');
@@ -2029,16 +2044,16 @@ function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache, f
     const record = recordsById.get(recordId);
     const lastCorrection = recordHistory.at(-1);
     let expectedCurrentDigest = lastCorrection.after_record_sha256;
-    for (const [eventIndex, event] of factoryAdmissions.entries()) {
+    for (const event of factoryAdmissions) {
       for (const change of event.changes ?? []) {
         if (change.entry_id === recordId && change.operation !== 'create'
-          && (change.before_sha256 === expectedCurrentDigest
-            || relationAmendmentFollowsDigest(record, factoryAdmissions.slice(eventIndex), change, expectedCurrentDigest))) {
+          && change.before_sha256 === expectedCurrentDigest) {
           expectedCurrentDigest = change.after_sha256;
         }
       }
     }
-    if (!matchesHistoricalRecordDigest(record, expectedCurrentDigest, hashCache)) {
+    if (!matchesHistoricalRecordDigest(record, expectedCurrentDigest, hashCache)
+      && !factoryHistoryReachesCorrection(record, factoryAdmissions, lastCorrection.after_record_sha256)) {
       fail(
         `${label}.review_pass.correction_history and source-bound Stage 3 admission history for ${recordId} do not bind the current canonical record`,
         'SEMANTIC_AUDIT_CONTENT_MISMATCH',
