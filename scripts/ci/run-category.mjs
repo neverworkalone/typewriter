@@ -647,13 +647,12 @@ export async function runLevel(requestedCategory, {
   const startedAt = performance.now();
   const session = await createSession();
   try {
-    let fastCheckpointPrinted = requestedCategory === 'fast';
+    let fastCheckpointPrinted = !['normal', 'all'].includes(requestedCategory);
     const executedCategoryNames = [];
     for (const [passIndex, passPolicy] of tierPasses.entries()) {
-      const passCategoryNames = splitNormalAndDeep
-        ? categoryNames.filter((categoryName) => categories[categoryName].checks.some(
-          (check) => passPolicy.tiers.includes(check.tier)
-            && (check.schedule !== 'manual' || passPolicy.includeManual),
+      const passCategoryNames = passPolicy
+        ? categoryNames.filter((categoryName) => (
+          selectChecksForPolicy(categories[categoryName].checks, passPolicy).length > 0
         ))
         : categoryNames;
       for (const [index, categoryName] of passCategoryNames.entries()) {

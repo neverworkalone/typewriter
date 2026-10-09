@@ -86,9 +86,11 @@ completed-work replays. A single normal run may expose the fast checkpoint
 within the same canonical session; it must not repeat the audit or SQLite
 build. Historical replay is not part of weekly Deep CI. Until the three-PR
 rollout completes, verify the actual command and workflow behavior on the
-current HEAD; the compatibility `ci:all` currently still includes historical
-checks. If Deep CI or a Deep contract changes, require a successful **`Deep CI
-Gate` on this exact HEAD**; a skipped or scheduled workflow does not satisfy it.
+current HEAD. The current `ci:all` and scheduled Deep workflow execute Normal
+plus current-system Deep only; `ci:deep` selects Deep checks across every
+domain scope. PR 3 adds bounded `ci:historical` replay and the exact-HEAD
+`Deep CI Gate`. If Deep CI or a Deep contract changes, require a successful
+exact-HEAD Deep run; a skipped or scheduled workflow does not satisfy it.
 
 **One-build invariant (BLOCKER if broken):** every successful `ci:normal` builds SQLite for the exact current canonical revision **exactly once** across parent, subprocesses and nested validators (`parent_current_revision_sqlite_build_count=1`, `child_current_revision_sqlite_build_count=0`, `current_revision_sqlite_build_count=1`), enforced by `scripts/ci/run-category.mjs` at the fast checkpoint, normal-phase completion and final exit, regardless of changed files. Block any PR that adds a second exact-current-revision build in normal, weakens/bypasses/falsifies the guard or its fail-closed ledger (omitted hook, malformed/missing ledger, trusting a caller-supplied revision label), or adds a batch-specific full-canonical replay instead of reusing the shared context/artifact (`scripts/ci/current-revision-database.mjs`). Fixture/other-revision builds are counted separately; independent two-build proofs are allowed only in the deep phase (`independentCurrentRevisionBuilds`).
 

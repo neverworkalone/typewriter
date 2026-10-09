@@ -119,11 +119,15 @@ test('ci:all completes Normal before Deep checks in the same domain and preserve
     label: 'synthetic current-revision Normal build',
     command: () => ({ executable: 'synthetic', args: ['normal-build'] }),
   }, { owner: 'canonical', tier: 'normal' });
-  const checks = [deepCheck, normalCheck];
+  const historicalCheck = registerCheck({
+    label: 'synthetic completed-batch replay',
+    command: () => ({ executable: 'synthetic', args: ['historical-replay'] }),
+  }, { owner: 'canonical', tier: 'historical' });
+  const checks = [deepCheck, normalCheck, historicalCheck];
 
   await assert.rejects(
     runChecks(checks, { phase: 'normal', completedChecks: new Set() }, {
-      executionPolicy: { tiers: ['normal', 'deep'], includeManual: false },
+      executionPolicy: { tiers: ['normal', 'historical', 'deep'], includeManual: false },
       log: () => {},
       execute: async ({ args }) => {
         if (args[0] === 'deep-build' && !state.normalComplete) {
@@ -213,6 +217,72 @@ test('ci:all completes Normal before Deep checks in the same domain and preserve
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
+});
+
+test('ci:deep searches every domain scope and runs only current-system Deep checks', async () => {
+  const deepCheck = registerCheck({
+    label: 'Deep check owned by canonical scope',
+    command: () => ({ executable: 'synthetic', args: ['deep'] }),
+  }, { owner: 'canonical', tier: 'deep' });
+  const normalCheck = registerCheck({
+    label: 'Normal check in the same scope',
+    command: () => ({ executable: 'synthetic', args: ['normal'] }),
+  }, { owner: 'canonical', tier: 'normal' });
+  const historicalCheck = registerCheck({
+    label: 'Historical check in the same scope',
+    command: () => ({ executable: 'synthetic', args: ['historical'] }),
+  }, { owner: 'canonical', tier: 'historical' });
+  const categories = {
+    canonical: {
+      label: 'Mixed-tier canonical scope',
+      checks: [deepCheck, normalCheck, historicalCheck],
+    },
+  };
+  const seen = [];
+
+  await runLevel('deep', {
+    categories,
+    levels: {
+      fast: ['canonical'],
+      normal: ['canonical'],
+      all: ['canonical'],
+      deep: ['canonical'],
+    },
+    executionPolicy: { tiers: ['deep'], includeManual: false },
+    createSession: async () => {
+      const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-deep-only-'));
+      const metricsPath = path.join(temporaryDirectory, 'ledger.jsonl');
+      await writeFile(metricsPath, '', 'utf8');
+      return {
+        canonicalContext: {
+          contractVersion: 'synthetic-context-v1',
+          canonicalDirectory: path.join(temporaryDirectory, 'canonical'),
+          canonicalRevision: 'synthetic-current-revision',
+          fileCount: 1,
+          recordCount: 1,
+          senseCount: 1,
+          relationCount: 0,
+          candidateCount: 1,
+          startCount: 1,
+          referenceOnlyCount: 0,
+          expressionCount: 0,
+          searchFormCount: 1,
+          statistics: {},
+          metrics: { sqlite_build_count: 0 },
+        },
+        completedChecks: new Set(),
+        temporaryDirectory,
+        processMetrics: { path: metricsPath },
+        phase: 'deep',
+      };
+    },
+    execute: async ({ args }, context) => {
+      seen.push(args[0]);
+      assert.equal(context.phase, 'deep');
+    },
+  });
+
+  assert.deepEqual(seen, ['deep']);
 });
 
 test('M5-15 consumes the existing canonical session without another canonical parse', async () => {

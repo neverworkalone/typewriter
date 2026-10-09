@@ -99,9 +99,9 @@ export const CI_ALL_CATEGORY_ORDER = Object.freeze([
 
 export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
   fast: CI_FAST_CATEGORY_ORDER,
-  normal: CI_NORMAL_CATEGORY_ORDER,
+  normal: CI_ALL_CATEGORY_ORDER,
   all: CI_ALL_CATEGORY_ORDER,
-  deep: CI_DEEP_CATEGORY_ORDER,
+  deep: CI_ALL_CATEGORY_ORDER,
 });
 
 export const CI_EXECUTION_TIERS = Object.freeze([
@@ -122,18 +122,18 @@ export const CI_CHECK_SCHEDULES = Object.freeze([
 // legacy batch category.
 export const CI_TIER_CATEGORY_ORDER = Object.freeze({
   candidate: Object.freeze([]),
-  normal: CI_NORMAL_CATEGORY_ORDER,
-  deep: Object.freeze(['deep']),
-  historical: Object.freeze(['historical']),
+  normal: CI_ALL_CATEGORY_ORDER,
+  deep: CI_ALL_CATEGORY_ORDER,
+  historical: CI_ALL_CATEGORY_ORDER,
 });
 
-// The `all` and `deep` aliases retain their current behavior until PR 3 moves
-// completed-batch replays behind the explicit historical command.
+// `all` runs the current Normal and Deep tiers. Historical replay is separate;
+// `deep` selects current-system Deep checks across every domain scope.
 export const CI_LEVEL_EXECUTION_POLICY = Object.freeze({
   fast: Object.freeze({ tiers: Object.freeze(['normal']), includeManual: false }),
   normal: Object.freeze({ tiers: Object.freeze(['normal']), includeManual: false }),
-  all: Object.freeze({ tiers: Object.freeze(['normal', 'historical', 'deep']), includeManual: false }),
-  deep: Object.freeze({ tiers: Object.freeze(['historical', 'deep']), includeManual: false }),
+  all: Object.freeze({ tiers: Object.freeze(['normal', 'deep']), includeManual: false }),
+  deep: Object.freeze({ tiers: Object.freeze(['deep']), includeManual: false }),
 });
 
 const RAW_CI_CATEGORIES = Object.freeze({

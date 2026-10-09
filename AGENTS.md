@@ -365,9 +365,10 @@ protections, one current-revision SQLite build, direct-search and product
 output checks. A normal run may expose the fast checkpoint inside the same
 session. The target `ci:all` is normal plus current-system deep checks;
 completed-batch replays belong to explicitly scoped `ci:historical` runs and
-must not become a weekly obligation. Issue #464 lands this model in three PRs;
-until its final workflow change merges, preserve the compatibility behavior of
-the commands currently present on `master`.
+must not become a weekly obligation. The current `ci:all` excludes historical
+checks, and `ci:deep` selects Deep checks across all domain scopes. Issue #464
+lands the remaining candidate and Historical command/workflow changes in three
+PRs; keep the separated tier behavior as those steps land.
 
 For data changes, validation may include:
 

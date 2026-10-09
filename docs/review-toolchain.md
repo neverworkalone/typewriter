@@ -61,10 +61,11 @@ for completed work. A PR may expose the fast checkpoint and continue Normal
 **within one process/session**, not repeat full-canonical work. Independent
 two-build reproducibility belongs in Deep. Historical replay is excluded from
 weekly Deep CI. During the three-PR rollout, `ci:fast` remains the compatibility
-candidate route and `ci:all` still includes historical checks until PR 3 moves
-them out; check the actual command registry and workflow on the current HEAD.
-If Deep CI or a Deep regression changes, require successful exact-HEAD
-`Deep CI Gate`; a scheduled or skipped run does not satisfy that requirement.
+candidate route; the current `ci:all` excludes Historical, and `ci:deep`
+selects Deep checks across all domain scopes. PR 3 adds bounded `ci:historical`
+replay and the exact-HEAD `Deep CI Gate`. Check the actual command registry and
+workflow on the current HEAD. A scheduled or skipped run does not satisfy the
+exact-HEAD Deep requirement.
 
 ### One current-revision SQLite build in `ci:normal` (enforced invariant)
 

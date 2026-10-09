@@ -357,15 +357,16 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
     (categoryName) => CI_NORMAL_CATEGORY_ORDER.includes(categoryName),
   ));
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.fast, CI_FAST_CATEGORY_ORDER);
-  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_NORMAL_CATEGORY_ORDER);
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.candidate, []);
-  assert.deepEqual(CI_TIER_CATEGORY_ORDER.normal, CI_NORMAL_CATEGORY_ORDER);
-  assert.deepEqual(CI_TIER_CATEGORY_ORDER.deep, ['deep']);
-  assert.deepEqual(CI_TIER_CATEGORY_ORDER.historical, ['historical']);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.historical, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.normal.tiers, ['normal']);
-  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.deep.tiers, ['historical', 'deep']);
-  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.all.tiers, ['normal', 'historical', 'deep']);
+  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.deep.tiers, ['deep']);
+  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.all.tiers, ['normal', 'deep']);
   assert.equal(
     CI_CATEGORIES.batch.checks.some((check) => check.testFiles?.includes('tests/m5-12a.test.mjs')),
     false,
