@@ -19718,6 +19718,19 @@
    "rationale": "w979-s1: 후보 검토에서 w081-s1를 near 관계로 판단했다."
   },
   {
+   "source_record_id": "w979",
+   "source_sense_id": "w979-s1",
+   "source_gloss_sha256": "2a62ad4078c3560312646fa4d379c99ee8959b88776d3d68be8d92cea1bb8eec",
+   "relation": {
+    "target": "w056",
+    "target_sense": "w056-s1",
+    "type": "near",
+    "note": "냉기는 차갑게 느껴지는 기운이라 서늘한기운보다 더 찬 쪽이지만 정도 차이일 뿐이어서 가깝다.",
+    "relevance": 5
+   },
+   "rationale": "w979-s1 w056-s1: 새 association 노트가 말한 구별은 '더 찬 쪽'이라는 정도 차이뿐이고 이 PR은 정도 차이만으로는 near를 유지해 왔다. 이미 authored된 역방향 near와 같은 type으로 맞춰 방향에 따른 모순을 없앴다."
+  },
+  {
    "source_record_id": "w9815",
    "source_sense_id": "w9815-s1",
    "source_gloss_sha256": "9901e80d361d7589f218a17877ea161c5a3add8ed079d4dee667bf490406c2d9",
@@ -21503,6 +21516,7 @@
   "rel-572b04df1aba5dcbc683e2b1": "74b5e41d67b305962778e3e3ae0fdd28f6b827d087c1d907d7d2b510cf76d0a7",
   "rel-8e25a18cb986e3cb4540be13": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
   "rel-a61a26a4836f41134fbf1322": "d8700f94c40705375e9fb76aa04a39771b30f554b21dbc4167e487c24f82f7dd",
+  "rel-e48cfef9d773e1677318bf6a": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
   "rel-9226e54a6284cc09b8286d3d": "7ccc700b4e523980a82e2fd3616e2ed5d7ed0dbc06bbad434b946d5b0442594e",
   "rel-f821ded943f757f80cb9f963": "0d2d4d5f972f63a85b29f120b8515b49bc31c66cf68304a5233a79231a78b8f7",
   "rel-13ff7039772f1c4d1b5e14db": "1198c1363e8fb043f55747118c7e83f3780886f787844d1a6376c892f48cf443",

@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "52649893ee2c5fb1e48e11ae70c514ac014e545803e2072f13ba0a436fda23fc"
+    "canonical_records_sha256": "9cbc1ef73bc1ef21ed1e8711fdd2c661d6f1b75e96bb3b259f0e7e5cf53853b0"
   },
-  "authored_review_sha256": "ee5e255feebface0e40d74744d5ee41125e105c3eb8e07632add258c2be7fd29",
+  "authored_review_sha256": "478dea1f39be52a9ee38f37da77feffdd1dec95943deb1a0e15981826458ae58",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "52649893ee2c5fb1e48e11ae70c514ac014e545803e2072f13ba0a436fda23fc"
+      "canonical_records_sha256": "9cbc1ef73bc1ef21ed1e8711fdd2c661d6f1b75e96bb3b259f0e7e5cf53853b0"
     },
     "records": [
       {
@@ -31377,7 +31377,7 @@
       },
       {
         "record_id": "w979",
-        "record_sha256": "7ba785487112bef097a652645e19be46fc63336a081d52e4eb9ebdad87d05da9",
+        "record_sha256": "c5a7c44c1a7f0d184df93c9def1b467db091b2f2bc497a1745dfe30b72776563",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w979:boundary",
           "decision": "retain",
@@ -31396,7 +31396,7 @@
           {
             "sense_id": "w979-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w979 w979-s1 2a62ad4078c3 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-a61a26a4836f41134fbf1322 to w081; rationale digest a8f4b659ee1f."
+            "relation_rationale": "w979 w979-s1 2a62ad4078c3 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-a61a26a4836f41134fbf1322 to w081; rationale digest a8f4b659ee1f. w979 w979-s1 2a62ad4078c3 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-e48cfef9d773e1677318bf6a to w056; rationale digest 54e0d5e41328."
           }
         ]
       },
@@ -241568,7 +241568,7 @@
     {
       "batch_id": "R000004",
       "attempt": 1,
-      "semantic_decisions_sha256": "b3a9934fa83238f6397f4abbb40a1ba204f32b5a71ddf6235ec030ff97cb0640",
+      "semantic_decisions_sha256": "f8807165c6678caa9c3600ab443fa77f70da3751b4843fad5bdf4dc1ed07e854",
       "entries": [],
       "relation_amendments": [
         {
@@ -267389,6 +267389,23 @@
             "relevance": 5
           },
           "rationale_sha256": "a8f4b659ee1f8843caadadb88ab26621447eb5c3880ed612ca2aaac60d8c8819",
+          "outcome": "appended"
+        },
+        {
+          "source_candidate_id": "R000004",
+          "source_record_id": "w979",
+          "source_sense_id": "w979-s1",
+          "source_gloss_sha256": "2a62ad4078c3560312646fa4d379c99ee8959b88776d3d68be8d92cea1bb8eec",
+          "authored_relation_id": "rel-e48cfef9d773e1677318bf6a",
+          "relation_id": "rel-e48cfef9d773e1677318bf6a",
+          "relation": {
+            "target": "w056",
+            "target_sense": "w056-s1",
+            "type": "near",
+            "note": "냉기는 차갑게 느껴지는 기운이라 서늘한기운보다 더 찬 쪽이지만 정도 차이일 뿐이어서 가깝다.",
+            "relevance": 5
+          },
+          "rationale_sha256": "54e0d5e41328490f87baacf0008a031fbd2eed94223c070c582ed0d96462f6a8",
           "outcome": "appended"
         },
         {
@@ -297882,10 +297899,11 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-a61a26a4836f41134fbf1322"
+            "rel-a61a26a4836f41134fbf1322",
+            "rel-e48cfef9d773e1677318bf6a"
           ],
           "before_sha256": "1374f958bf9d71683140b06e89261770c3c6633c3eb60dbd8539589a50886a81",
-          "after_sha256": "7ba785487112bef097a652645e19be46fc63336a081d52e4eb9ebdad87d05da9",
+          "after_sha256": "c5a7c44c1a7f0d184df93c9def1b467db091b2f2bc497a1745dfe30b72776563",
           "previous_semantic_review_sha256": "8c18841d5db8c5581b34fd08f54fe51e0e2d13e3e85b85b46d07801eaf2f8bd2",
           "previous_semantic_review": {
             "record_id": "w979",
@@ -297930,7 +297948,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "e69f5dd02452bb537b69ce829f018b3721eb7e438f5ba3cdba44c2df18633a7a"
+          "semantic_review_sha256": "da7c9e8daad86399f1c2e813d150200c319e75647056c3f635ddac4366623040"
         },
         {
           "entry_id": "w9815",
@@ -298262,7 +298280,7 @@
           "semantic_review_sha256": "7f0bb3bed634ce81761033c28f9a275651c50840aaa6426a165861fa74decdee"
         }
       ],
-      "sha256": "333f61766a405efc70da05552507a4576bdf2fac3c6e63e77a92a2ce5a1b0d0f"
+      "sha256": "8bd1ca631cdfcb9d993ce8e0f9c43d2146196340f86325180c83a15d0d97fd56"
     }
   ]
 }

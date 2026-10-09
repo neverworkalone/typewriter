@@ -87,7 +87,7 @@ The pinned Issue #210 candidate inventory contains 584 classified rows. After th
 | wrong-pos | 0 |
 | Recovered in the current inventory | 62 |
 
-Current canonical totals: 12,312 records (12,270 starts and 42 reference-only records), 12,620 senses, 2,574 relations, and 12,569 canonical search-form rows. Relation-empty searchable records: 11,650.
+Current canonical totals: 12,312 records (12,270 starts and 42 reference-only records), 12,620 senses, 2,575 relations, and 12,569 canonical search-form rows. Relation-empty searchable records: 11,650.
 
 | Record type | Records |
 | --- | ---: |
@@ -127,7 +127,7 @@ Direct exact lemma coverage: 12312/12312; non-searchable records: 0. Exact searc
 | authored semantic evidence projection | 1 | scripts/batch/validate-issue-211.mjs | The common producer projects authored topic_analysis and topic_analyses into the shared semantic evidence for the exact reviewed span, including w5399. |
 | surface-form decision coverage | 2 | data/validation/m6-3-surface-form-review.json | Added sense-bound M6-3 decisions for the two admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed. |
 
-Normal CI: `npm run ci:normal` — pending for canonical digest `52649893ee2c5fb1e48e11ae70c514ac014e545803e2072f13ba0a436fda23fc`.
+Normal CI: `npm run ci:normal` — pending for canonical digest `9cbc1ef73bc1ef21ed1e8711fdd2c661d6f1b75e96bb3b259f0e7e5cf53853b0`.
 Extension/Web parity is covered by the normal CI product builds and output-contract validation: pending.
 
 ## Reproduction
