@@ -4,12 +4,12 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "2bdb137262f65772db15a3f45da278b579eca0beacb563e727d4bf3f22066a5d",
+    "current_canonical_revision": "257d8be229b607db172406e4b4be891888b9324fabdeb2c632c0a92b9de17775",
     "source_manifest": [
       {
         "path": "AGENTS.md",
-        "sha256": "7d954ee9ef4d20f47c730ad48dfbca3e8a732920e088541a0169c4c7f84e886d",
-        "byte_count": 22873
+        "sha256": "8335fcff780489530dd3214244a3eeccc2e245852ed9ad9a166600aa90ee5ac5",
+        "byte_count": 25242
       },
       {
         "path": "config/artifact-policy.json",
@@ -643,8 +643,8 @@
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-09.jsonl",
-        "sha256": "5de2000f86d429ca77e1023d1eb6fbb970c318cb5b96eeb74d07cc9cdc31813a",
-        "byte_count": 42737
+        "sha256": "37bc9337e809bbe57607c99177e5e8c61fc70b4594cc51110ad0d02c39f4fd9d",
+        "byte_count": 43675
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-10.jsonl",
@@ -663,8 +663,8 @@
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-13.jsonl",
-        "sha256": "b2258d50716fe0b746fd005f112628ee5cb10ca1a27786111bd678bd008fb5c8",
-        "byte_count": 79423
+        "sha256": "6209eb2fe8c2e4faf3287b7612c461f5343112d74df0a197c516893684192110",
+        "byte_count": 80363
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-14.jsonl",
@@ -683,8 +683,8 @@
       },
       {
         "path": "data/canonical/m5-10-wave-b.jsonl",
-        "sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
-        "byte_count": 35450
+        "sha256": "64d70f44cf70f9f224878e394b8f5afa57c4e0e63da48621b8ca351783f5d436",
+        "byte_count": 36903
       },
       {
         "path": "data/canonical/m5-10a-wave-a2.jsonl",
@@ -693,8 +693,8 @@
       },
       {
         "path": "data/canonical/m5-11-expansion.jsonl",
-        "sha256": "f28ac57528683a4c9e45310884383898654e8569d8b43db21723a3c31f61c856",
-        "byte_count": 120852
+        "sha256": "e7c1fe2158786b6198123ca2daa36cb0145d84389a3a776136a4cd6c5fff9918",
+        "byte_count": 122187
       },
       {
         "path": "data/canonical/m5-12a-expansion.jsonl",
@@ -703,13 +703,13 @@
       },
       {
         "path": "data/canonical/m5-13-expansion.jsonl",
-        "sha256": "a0e898c1430c059433e414e9680beabfec10fc7480144df93d711b9f2b6daa9e",
-        "byte_count": 247697
+        "sha256": "26cbedd61520929568586edabc1a256db3a71eedb5e5cc23ca8b97fe1c1a79a7",
+        "byte_count": 248911
       },
       {
         "path": "data/canonical/m5-14-expansion.jsonl",
-        "sha256": "95f780570a71026665a6f4e6b15a1683f4cc29e920649c6fce36bbe19fe5fcd8",
-        "byte_count": 243749
+        "sha256": "23ad3170f9b07a48ace5f2328abb64ba6be0122cbf19a9959b6f5fe295a7ff42",
+        "byte_count": 244758
       },
       {
         "path": "data/canonical/m5-15-expansion.jsonl",
@@ -718,13 +718,13 @@
       },
       {
         "path": "data/canonical/m5-3-calibration.jsonl",
-        "sha256": "d9e56f6d220839a60b387b05973035e9214b973a47f0d92ce5b44f6203be348b",
-        "byte_count": 36020
+        "sha256": "180bab8f03da71b5d7ff3a3e6b82427424e586c602dfb90d236f9c500a138486",
+        "byte_count": 40965
       },
       {
         "path": "data/canonical/m5-5-recalibration.jsonl",
-        "sha256": "7c4136331d9c8de01b50d19c2ebb0ad10082008d73cf0e458c3b1d214f108c4b",
-        "byte_count": 13532
+        "sha256": "9746d6fdb1c32cbdfbf37a7e2047c92daa24ad9c78323e79ef2b7ec51d5b1fe1",
+        "byte_count": 14300
       },
       {
         "path": "data/canonical/m5-7-recalibration.jsonl",
@@ -738,8 +738,8 @@
       },
       {
         "path": "data/canonical/pilot.jsonl",
-        "sha256": "3a54a4648b8a8420363e477620b5f7c4c1b6eb7449deee1ea929c87cd82054d5",
-        "byte_count": 202461
+        "sha256": "b8144d5557fb28a0c10d71e09653ddb5851bba1e2ad30926514e5b91d80f8716",
+        "byte_count": 234926
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
@@ -753,17 +753,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "ffc676a444674369115f358d1d7a54e55fb08f70892a72c494666dfbe06223a3",
-        "byte_count": 12369274
+        "sha256": "1fe8165246def0bb20f124300ad1a06137524bd34063969b8eda71a655306310",
+        "byte_count": 12716504
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "2f08f7cc8fb94f7271092757748f387448ab6ddd26019bd3ba15b4ed738f92d9",
+        "sha256": "dc0fad01f52a5a30a29d6f5338fb412d76c6800e06e7787f1934162ed7bb7442",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "4c187717212ebec40717fe9faebd4c447bca6495f2810fc34d5e9272b43080e5",
+        "sha256": "ee6a64fcf35cf53dac7307dd4a46425be3ee5a1e0e67ad87c1c8330cbfee29a2",
         "byte_count": 29642
       },
       {
@@ -778,8 +778,8 @@
       },
       {
         "path": "docs/editorial-model.md",
-        "sha256": "2d6e52189d346bec905f715d0637b27f5738fa6d3396311de0873df0125beeff",
-        "byte_count": 102824
+        "sha256": "54dbd7d576887d232e5010a0745f35e57f5796fd1e63809f4cd70fd05ff99f8e",
+        "byte_count": 105096
       },
       {
         "path": "docs/external-material-review-customs-terminology.md",
@@ -803,7 +803,7 @@
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "f92701112e282b0c02051d13de7e12530fb06968427458c587a61bcecbba5022",
+        "sha256": "26a6681a4fb78415888e14ca4f9134db707e34fd4f67035c02d5df529a48011a",
         "byte_count": 8778
       },
       {
@@ -858,8 +858,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "6cfa8d9838f8be5e61a7222e76c2eaa712d58d06b57f208588f0d1fe0f2c3f5f",
-        "byte_count": 12759
+        "sha256": "a30bb22d5557c11e84b229b4a9bcf35f0488f6bec4ccdcc05357a2828016ebdc",
+        "byte_count": 12895
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -923,8 +923,8 @@
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "597c76c23d315ae329328e67399aa14e3a64d2806f3cf67983e16b25dc426e81",
-        "byte_count": 21084
+        "sha256": "55205e78a224561c1963bcd7cb3816c20762e414edaddd303b507ca803555950",
+        "byte_count": 33761
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
