@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildDictionary } from '../build/dictionary.mjs';
 import { isSurfaceToken } from '../factory/lemma-contract.mjs';
-import { assertWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
+import { assertWithinDirectory, isWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 import { resolveManagedPython } from '../python/env.mjs';
 import {
   assertCorpusPermission,
@@ -27,7 +27,7 @@ const MAX_OBSERVED_SURFACE_QUERIES = 5;
 export const DEFAULT_CANDIDATE_LIMIT = 200;
 export const MAX_CANDIDATE_LIMIT = 500;
 
-export function parseArguments(argumentsList) {
+export function parseArguments(argumentsList, { repositoryDirectory = REPOSITORY_DIRECTORY, cachePaths = CACHE_PATHS } = {}) {
   const options = {
     python: process.env.TYPEWRITER_PYTHON || null,
     candidateLimit: DEFAULT_CANDIDATE_LIMIT,
@@ -80,9 +80,9 @@ export function parseArguments(argumentsList) {
     if (argument === '--exclude-decision-source' || argument === '--exclude-lemma-source') {
       const value = argumentsList[index + 1];
       if (!value || value.startsWith('--')) {
-        throw new Error(`${argument} requires a tracked decision or candidate artifact path.`);
+        throw new Error(`${argument} requires a repository or shared-cache decision or candidate artifact path.`);
       }
-      options.exclusionLemmaSources.push(path.resolve(REPOSITORY_DIRECTORY, value));
+      options.exclusionLemmaSources.push(resolveExclusionSourcePath(value, { repositoryDirectory, cachePaths }));
       index += 1;
       continue;
     }
@@ -102,12 +102,12 @@ export function parseArguments(argumentsList) {
     throw new Error('Unknown argument: ' + argument);
   }
   options.outputDirectory = options.outputDirectory
-    ? resolveCacheArtifactPath(options.outputDirectory, { paths: CACHE_PATHS, areas: ['runs'], label: '--output-directory' })
-    : path.join(CACHE_PATHS.runs, options.batchId);
-  assertWithinDirectory(CACHE_PATHS.runs, options.outputDirectory, { label: 'Corpus candidate output directory' });
+    ? resolveCacheArtifactPath(options.outputDirectory, { paths: cachePaths, areas: ['runs'], label: '--output-directory' })
+    : path.join(cachePaths.runs, options.batchId);
+  assertWithinDirectory(cachePaths.runs, options.outputDirectory, { label: 'Corpus candidate output directory' });
   if (options.reuseAnalysisFrom) {
     options.reuseAnalysisFrom = resolveCacheArtifactPath(options.reuseAnalysisFrom, {
-      paths: CACHE_PATHS,
+      paths: cachePaths,
       areas: ['runs'],
       label: '--reuse-analysis-from',
     });
@@ -122,6 +122,86 @@ function hashFileContents(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+function expandHomeDirectory(value) {
+  if (value === '~') return os.homedir();
+  if (value.startsWith(`~${path.sep}`) || value.startsWith('~/')) {
+    return path.join(os.homedir(), value.slice(2));
+  }
+  if (value.startsWith('~')) throw new Error('Exclusion source path has an unsupported home-directory prefix.');
+  return value;
+}
+
+export function resolveExclusionSourcePath(value, {
+  repositoryDirectory = REPOSITORY_DIRECTORY,
+  cachePaths = CACHE_PATHS,
+} = {}) {
+  if (typeof value !== 'string' || value.length === 0) throw new Error('Exclusion source path must be non-empty.');
+  if (value.split(/[\\/]+/u).includes('..')) {
+    throw new Error('Exclusion source path must not contain traversal segments.');
+  }
+  const expanded = expandHomeDirectory(value);
+  const normalized = expanded.replaceAll('\\', '/');
+  const cacheRelative = normalized.startsWith('runs/')
+    || normalized.startsWith('evidence/')
+    || normalized.startsWith('data/reference/');
+
+  if (cacheRelative || (path.isAbsolute(expanded) && isWithinDirectory(cachePaths.root, expanded))) {
+    return resolveCacheArtifactPath(expanded, {
+      paths: cachePaths,
+      areas: ['runs', 'evidence'],
+      label: 'Exclusion source',
+    });
+  }
+
+  const sourcePath = path.resolve(repositoryDirectory, expanded);
+  if (!isWithinDirectory(repositoryDirectory, sourcePath) || sourcePath === path.resolve(repositoryDirectory)) {
+    throw new Error('Exclusion source must be inside the repository or the shared runs/evidence cache.');
+  }
+  return assertWithinDirectory(repositoryDirectory, sourcePath, { label: 'Exclusion source' });
+}
+
+function relativeExclusionSourcePath(sourcePath, { repositoryDirectory, cachePaths }) {
+  if (isWithinDirectory(cachePaths.root, sourcePath)) {
+    return path.relative(cachePaths.root, sourcePath).split(path.sep).join('/');
+  }
+  const relativePath = path.relative(repositoryDirectory, sourcePath);
+  if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    throw new Error('Exclusion source must be inside the repository or the shared runs/evidence cache.');
+  }
+  return relativePath.split(path.sep).join('/');
+}
+
+function verifiedExclusionManifestLemmas(artifact, relativePath) {
+  const { schema_version: schema, lemmas, source_artifacts: sources, exclusion_sha256: digest } = artifact;
+  if (schema !== 'm9-reviewed-lemma-exclusions-v1' || !Array.isArray(lemmas) || !Array.isArray(sources)) {
+    throw new Error(`Unsupported or incomplete prior exclusion manifest: ${relativePath}`);
+  }
+  if (lemmas.length === 0 || lemmas.some((lemma) => (
+    typeof lemma !== 'string'
+    || lemma.length === 0
+    || lemma !== lemma.trim()
+    || lemma.normalize('NFC') !== lemma
+  ))) {
+    throw new Error(`Prior exclusion manifest must contain trimmed NFC lemmas: ${relativePath}`);
+  }
+  if (sources.length === 0) {
+    throw new Error(`Prior exclusion manifest with lemmas must bind at least one source artifact: ${relativePath}`);
+  }
+  const sortedLemmas = [...new Set(lemmas)].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+  if (sortedLemmas.length !== lemmas.length || sortedLemmas.some((lemma, index) => lemma !== lemmas[index])) {
+    throw new Error(`Prior exclusion manifest lemmas must be unique and deterministically sorted: ${relativePath}`);
+  }
+  if (sources.some((source) => !source || typeof source.path !== 'string' || !source.path
+    || !/^[0-9a-f]{64}$/u.test(String(source.sha256 ?? '')))) {
+    throw new Error(`Prior exclusion manifest sources must bind paths and SHA-256 digests: ${relativePath}`);
+  }
+  const payload = { lemmas, schema_version: schema, source_artifacts: sources };
+  if (digest !== hashFileContents(JSON.stringify(payload))) {
+    throw new Error(`Prior exclusion manifest digest does not match its contents: ${relativePath}`);
+  }
+  return lemmas;
+}
+
 export function excludedLemmasForArtifact(artifact, relativePath) {
   let sourceLemmas;
   if ((artifact.contract_version === 'issue-204-pilot-review-v1'
@@ -132,6 +212,11 @@ export function excludedLemmasForArtifact(artifact, relativePath) {
     sourceLemmas = artifact.candidate_records.map((row) => row?.lemma);
   } else if (Array.isArray(artifact.targets)) {
     sourceLemmas = artifact.targets.map((row) => row?.lemma);
+  } else if (artifact.selection?.contract_version === 'm9-corpus-candidate-selection-v1'
+    && Array.isArray(artifact.candidates)) {
+    sourceLemmas = artifact.candidates.map((row) => row?.proposed_lemma);
+  } else if (artifact.schema_version === 'm9-reviewed-lemma-exclusions-v1') {
+    sourceLemmas = verifiedExclusionManifestLemmas(artifact, relativePath);
   } else {
     throw new Error(`Unsupported exclusion decision contract: ${relativePath}`);
   }
@@ -146,20 +231,29 @@ export function excludedLemmasForArtifact(artifact, relativePath) {
   return sourceLemmas;
 }
 
-async function buildExclusionManifest(sourcePaths) {
+export async function buildExclusionManifest(sourcePaths, {
+  repositoryDirectory = REPOSITORY_DIRECTORY,
+  cachePaths = CACHE_PATHS,
+} = {}) {
   const sourceArtifacts = [];
   const lemmas = new Set();
   for (const sourcePath of sourcePaths) {
-    const relativePath = path.relative(REPOSITORY_DIRECTORY, sourcePath);
-    if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-      throw new Error('Exclusion decision sources must be repository files.');
-    }
+    const relativePath = relativeExclusionSourcePath(sourcePath, { repositoryDirectory, cachePaths });
     const sourceBytes = await readFile(sourcePath);
     let artifact;
-    try {
-      artifact = JSON.parse(sourceBytes.toString('utf8'));
-    } catch (error) {
-      throw new Error(`Could not parse exclusion source ${relativePath}: ${error.message}`);
+    if (path.basename(relativePath) === 'candidates.jsonl') {
+      try {
+        const rows = sourceBytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
+        artifact = { candidate_records: rows.map((row) => ({ lemma: row?.input })) };
+      } catch (error) {
+        throw new Error(`Could not parse candidate JSONL exclusion source ${relativePath}: ${error.message}`);
+      }
+    } else {
+      try {
+        artifact = JSON.parse(sourceBytes.toString('utf8'));
+      } catch (error) {
+        throw new Error(`Could not parse exclusion source ${relativePath}: ${error.message}`);
+      }
     }
     const sourceLemmas = excludedLemmasForArtifact(artifact, relativePath);
     for (const lemma of sourceLemmas) lemmas.add(lemma);
@@ -612,7 +706,7 @@ async function main() {
       'Usage: node scripts/reference/run-corpus-lemma-pilot.mjs [--python <venv-python>]\n'
         + 'Runs local/manual bounded candidate production using the shared Typewriter Python environment by default. Options: --candidate-limit 1-500 (default 200), '
         + '--batch-id <id>, --output-directory ~/.cache/typewriter/runs/<run-id>, repeated '
-        + '--exclude-lemma-source <tracked-json>, --reuse-analysis-from <prior cache run directory>. '
+        + '--exclude-lemma-source <repository-json-or-jsonl-or-shared-cache-artifact>, --reuse-analysis-from <prior cache run directory>. '
         + 'Requires the shared full-corpus index '
         + 'and kiwipiepy==0.24.0 installed in the selected Python environment.',
     );

@@ -247,6 +247,9 @@ async function evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths 
   if (schema !== 'm9-reviewed-lemma-exclusions-v1' || !Array.isArray(lemmas) || !Array.isArray(sources)) {
     throw new Stage1Error(['reviewed-lemma exclusions have an unsupported or incomplete contract']);
   }
+  if (lemmas.length > 0 && sources.length === 0) {
+    throw new Stage1Error(['reviewed-lemma exclusions with lemmas must bind at least one source artifact']);
+  }
   if (lemmas.some((lemma) => typeof lemma !== 'string' || !lemma || lemma !== lemma.trim() || lemma.normalize('NFC') !== lemma)) {
     throw new Stage1Error(['reviewed-lemma exclusions must contain trimmed NFC lemmas']);
   }

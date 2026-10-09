@@ -9,6 +9,7 @@ import { expectedAnalyzerDigest, sha256Hex, validateCandidateBatch } from '../sc
 import { buildCanonicalIndex, buildSearchFormSupport, classifyLemmaCandidate, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { MAX_OBSERVATIONS_PER_CANDIDATE } from '../scripts/factory/lemma-contract.mjs';
 import { runStage1 } from '../scripts/factory/produce-candidates.mjs';
+import { buildExclusionManifest, parseArguments as parseCorpusArguments } from '../scripts/reference/run-corpus-lemma-pilot.mjs';
 import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
 import { Stage1Error, allocateBatchId, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
@@ -323,6 +324,87 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
   assert.deepEqual(next.rows.map((row) => [row.candidate_id, row.input]), [['C000002-0001', '걸음']]);
   assert.equal(next.summary.skippedProducedLemmas, 1);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
+});
+
+test('Stage 1 consumes real-shape cached selections, rejects malformed rows, and uses source-bound manifests', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-exclusion-binding-'));
+  const cache = await taskCacheFor(root);
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+  const candidate = cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]);
+  const selectionPath = path.join(cache.taskDirectory, 'candidate-selection.json');
+  const selectorInput = {
+    selection: { contract_version: 'm9-corpus-candidate-selection-v1' },
+    candidates: [{ proposed_lemma: '짠하다', proposed_pos: 'adjective', coverage_normalized_key: '짠하다' }],
+  };
+  const sourceOptions = { repositoryDirectory: root, cachePaths: cache.cachePaths };
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
+  const writeBoundEvidence = async (manifest) => {
+    await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify(manifest));
+    await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([candidate], {
+      schema_version: 'm9-corpus-candidate-evidence-v1',
+      selection: {
+        exclusion_sha256: manifest.exclusion_sha256,
+        exclusion_source_artifacts: manifest.source_artifacts,
+        excluded_candidate_lemma_count: manifest.lemmas.length,
+      },
+      orchestration: { exclusion_manifest_sha256: manifest.exclusion_sha256 },
+    })));
+  };
+
+  await writeFile(selectionPath, JSON.stringify({
+    ...selectorInput,
+    candidates: [...selectorInput.candidates, { lemma: '잘못된' }],
+  }));
+  const malformedArgs = parseCorpusArguments([
+    '--exclude-lemma-source', 'runs/T000001/candidate-selection.json',
+  ], sourceOptions);
+  await assert.rejects(buildExclusionManifest(malformedArgs.exclusionLemmaSources, sourceOptions), /trimmed NFC lemmas/u);
+
+  await writeFile(selectionPath, JSON.stringify(selectorInput));
+  const validArgs = parseCorpusArguments([
+    '--exclude-lemma-source', 'runs/T000001/candidate-selection.json',
+  ], sourceOptions);
+  const manifest = await buildExclusionManifest(validArgs.exclusionLemmaSources, sourceOptions);
+  assert.deepEqual(manifest.lemmas, ['짠하다']);
+  assert.deepEqual(manifest.source_artifacts.map(({ path: source }) => source), ['runs/T000001/candidate-selection.json']);
+  await writeBoundEvidence(manifest);
+  await assert.rejects(() => runStage1(args, deps), /no unprocessed lemmas/u);
+});
+
+test('Stage 1 consumer rejects a digest-valid nonempty exclusion manifest without source artifacts', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-unbound-exclusions-'));
+  const cache = await taskCacheFor(root);
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  const payload = {
+    lemmas: ['짠하다'],
+    schema_version: 'm9-reviewed-lemma-exclusions-v1',
+    source_artifacts: [],
+  };
+  const exclusionSha256 = sha256Hex(JSON.stringify(payload));
+  await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify({
+    ...payload,
+    exclusion_sha256: exclusionSha256,
+  }));
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([
+    cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]),
+  ], {
+    schema_version: 'm9-corpus-candidate-evidence-v1',
+    selection: {
+      exclusion_sha256: exclusionSha256,
+      exclusion_source_artifacts: [],
+      excluded_candidate_lemma_count: 1,
+    },
+    orchestration: { exclusion_manifest_sha256: exclusionSha256 },
+  })));
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+  await assert.rejects(() => runStage1([
+    '--evidence', cache.evidenceArgument,
+    '--task-id', 'T000001',
+    '--base-ref', 'none',
+    '--policy', 'provider-resolution-v1',
+  ], deps), /must bind at least one source artifact/u);
 });
 
 test('post-write validation is base-aware like CI: merged reviews are compared to the base, a new batch stays fail-closed', async () => {
