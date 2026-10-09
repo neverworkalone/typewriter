@@ -829,7 +829,7 @@
     ]
   },
   "current": {
-    "canonical_sha256": "e356a00f649589a42ae34a1cf86a2fc77a656e8a9bcd4842ac223b70eea84867",
+    "canonical_sha256": "a957c7e2565e73e4fc23bb046c803ed9d7852a3f9b62339e311bed3c835cc8f7",
     "canonical_record_count": 12312,
     "canonical_start_count": 12270,
     "reference_only_count": 42,
@@ -893,7 +893,7 @@
     "production_admission": "pass",
     "semantic_audit": "pass",
     "deterministic_sqlite": "pass",
-    "logical_database_digest": "81243d0d688a4b9e221c71d692df0f08b5693ad4e0a846bfcde3500f8ea6cfc5"
+    "logical_database_digest": "e31a284b729898a43bd1900ca2e9479c03461f5dfa0d7fc26a652fbcf11bc058"
   },
   "defect_findings": [
     {
@@ -1011,6 +1011,6 @@
   "normal_ci": {
     "command": "npm run ci:normal",
     "result": "pending",
-    "canonical_sha256": "e356a00f649589a42ae34a1cf86a2fc77a656e8a9bcd4842ac223b70eea84867"
+    "canonical_sha256": "a957c7e2565e73e4fc23bb046c803ed9d7852a3f9b62339e311bed3c835cc8f7"
   }
 }
