@@ -53,8 +53,8 @@ data/batches/test-m5-9a-*.json
 *.sln
 *.sw?
 
-# Naverdic
-public/content.js
-
 # transient fixture directories created by tests/m5-11-admission.test.mjs
 .m5-11-semantic-authority-*/
+
+# cache
+__pycache__/
