@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
   benchmarkCanonicalValidation,
   createSyntheticBenchmarkRecord,
+  createSyntheticDecisionSource,
   runBenchmarkCli,
 } from '../scripts/benchmark/canonical-validation.mjs';
 import { findAmbiguousParticleFragments } from '../scripts/validate/lexical-quality.mjs';
+import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
+import { buildCanonicalSemanticAudit, createCanonicalAuditCache, sha256Json } from '../scripts/validate/semantic-audit.mjs';
 
 const templates = [
   {
@@ -757,5 +763,36 @@ test('the synthetic decision source passes the shared semantic audit whichever l
     const report = await benchmarkCanonicalValidation({ sizes: [1000], sqliteScales: [], releasePerformance: false, semanticDecisionSourceTemplate });
     assert.equal(report.results[0].failure_stage, null, `${name}: ${report.results[0].error}`);
     assert.equal(report.results[0].error, null, name);
+  }
+});
+
+test('the shared semantic audit still rejects a generic rationale or one without record, sense and gloss binding in a synthetic source', async () => {
+  // Negative controls for the benchmark-owned rationale templates: the same generation path that passes above must be
+  // rejected as soon as its rationale text stops citing the reviewed record, sense and gloss.
+  const live = JSON.parse(readFileSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url), 'utf8'));
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-benchmark-negative-'));
+  try {
+    const canonicalDirectory = path.join(directory, 'canonical');
+    await (await import('node:fs/promises')).mkdir(canonicalDirectory);
+    const lines = Array.from({ length: 6 }, (_, index) => JSON.stringify(createSyntheticBenchmarkRecord(index, templates, templateIndexById, 6)));
+    await writeFile(path.join(canonicalDirectory, 'synthetic.jsonl'), `${lines.join('\n')}\n`);
+    const context = await loadCanonicalContext({ directory: canonicalDirectory, contextPath: null });
+    const audit = (source) => buildCanonicalSemanticAudit({
+      canonicalDirectory, canonicalContext: context, decisionSource: source,
+      hashCache: createCanonicalAuditCache(context.records), batchDecisionSourcePaths: [],
+    });
+    const fresh = () => createSyntheticDecisionSource(context.records, live, 6, createCanonicalAuditCache(context.records));
+    await audit(fresh());
+    const withTemplate = (code, text) => {
+      const source = fresh();
+      source.authored_review.rationale_templates = source.authored_review.rationale_templates.map((entry) => (entry.code === code ? { ...entry, template: text } : entry));
+      source.authored_review_sha256 = sha256Json(source.authored_review);
+      return source;
+    };
+    await assert.rejects(audit(withTemplate('benchmark-evidence-rationale', 'reviewed against the glosses and found separate')), /SEMANTIC_AUDIT_GENERIC_EVIDENCE|must cite record, sense, and gloss evidence/u);
+    await assert.rejects(audit(withTemplate('benchmark-evidence-rationale', '{{record_id}} {{gloss_sha256_prefix}} without the sense')), /must cite record, sense, and gloss evidence/u);
+    await assert.rejects(audit(withTemplate('benchmark-evidence-rationale', '{{record_id}} {{sense_id}} without any gloss digest')), /must cite record, sense, and gloss evidence/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
