@@ -203,11 +203,11 @@
    "relation": {
     "target": "w016",
     "target_sense": "w016-s1",
-    "type": "near",
-    "note": "앞둔 위험에서 오는 무서움으로 불안과 가깝지만 같지는 않다.",
+    "type": "association",
+    "note": "두려움은 위험을 앞두고 느끼는 무서운 마음이라, 확신이 없어 편하지 않은 불안과 이어지지만 대상이 분명한 공포 쪽에 기운다.",
     "relevance": 3
    },
-   "rationale": "w002/w002-s1: 후보 검토에서 w016-s1는 near 관계로 판단했다."
+   "rationale": "w002-s1: 후보 검토에서 w016-s1는 서로 바꿔 쓸 만큼 가깝지 않고 상하위·부분·범위 차이가 있어 near가 아닌 association으로 판단했다."
   },
   {
    "source_record_id": "w002",
@@ -2470,11 +2470,11 @@
    "relation": {
     "target": "w2417",
     "target_sense": "w2417-s1",
-    "type": "near",
-    "note": "물이나 습기가 표면에 남은 상태로 습기와 가깝다.",
+    "type": "association",
+    "note": "물기는 물이나 습기가 표면에 조금 남은 상태라, 공기나 물체에 포함된 눅눅한 수분인 습기보다 표면에 남은 구체적인 모습에 한정된다.",
     "relevance": 4
    },
-   "rationale": "w077/w077-s1: 후보 검토에서 w2417-s1는 near 관계로 판단했다."
+   "rationale": "w077-s1: 후보 검토에서 w2417-s1는 서로 바꿔 쓸 만큼 가깝지 않고 상하위·부분·범위 차이가 있어 near가 아닌 association으로 판단했다."
   },
   {
    "source_record_id": "w077",
@@ -4079,11 +4079,11 @@
    "relation": {
     "target": "w2819",
     "target_sense": "w2819-s1",
-    "type": "near",
-    "note": "일어난 일이나 생각을 글로 남긴다는 점에서 쓰다와 가깝다.",
+    "type": "association",
+    "note": "기록하다는 글이나 다른 방식으로 남기는 더 넓은 동작이라, 글이나 문장을 만들어 적는 쓰다는 그 한 방식이다.",
     "relevance": 4
    },
-   "rationale": "w237/w237-s1: 후보 검토에서 w2819-s1는 near 관계로 판단했다."
+   "rationale": "w237-s1: 후보 검토에서 w2819-s1는 서로 바꿔 쓸 만큼 가깝지 않고 상하위·부분·범위 차이가 있어 near가 아닌 association으로 판단했다."
   },
   {
    "source_record_id": "w237",
@@ -4271,7 +4271,7 @@
   "rel-9c0461dfb9d7865155e4ef1a": "57ecd01fe154681292747b726f5cff9f9213f127b58f7d69a05de56a6d9e3570",
   "rel-bf6b9a897fc36b8fe34c7c86": "f38d343bac6cd9f3b53c09f163f564bac2fe818633f066dba95ed643357719e8",
   "rel-e88b0567222b5540b16f89f4": "ea73c21e5a99d93ceb43d6fe8a74f65e7561a77688cf4aecbd1282a06bec6079",
-  "rel-20ef1336f32aff8e15905462": "249a7f79dec52599e885d965542e2fe889cc19cc399f084ecfb4bb05e4d88e6f",
+  "rel-f60999315ccda6c0f22e62fd": "249a7f79dec52599e885d965542e2fe889cc19cc399f084ecfb4bb05e4d88e6f",
   "rel-95538fbb148641df7943b558": "d867351f5d17b1a8cf2e244b7b41d0d894cd190a5fc1d1725e5d65cd58fbcbc3",
   "rel-bce2d4020243db731655a615": "b39392d45f333f4f9d36178ed6c6e81aaba21308cb70fad508f87bf48c822243",
   "rel-7a7c1a7e16cb0a964f333b22": "e9480475ea051fc48c28b14331ae94ca637dbb80f02b14648ebaa1cca1dc973c",
@@ -4446,7 +4446,7 @@
   "rel-3188bb2619c4c82c4304ebc9": "76cf424d44c48c61c5ee9525e701d3e6a354c07f1d4e954f957e8eab239bca1d",
   "rel-874f71f49b33c942402a0877": "95a7f64a6085fb16b83a29ecba524c75aa9e2f6ec03fb21a1c367200f9d8c589",
   "rel-9e92957a3608e8bf17d88917": "6cb630204ca8d38e87f50060767773374d0c4efcbe92db2f8b1749587b5a36d9",
-  "rel-b66ba3cea4fc84cef86003a5": "3d19ab6d4a82d534aa9b202eca483bae8f2ed8db10e17a7eed3eddce5e3c2dd0",
+  "rel-d3bb71769dd64a2065fee910": "3d19ab6d4a82d534aa9b202eca483bae8f2ed8db10e17a7eed3eddce5e3c2dd0",
   "rel-59c78444b68d007108a50520": "f5efbb4e710f6ebbb4af3e0369712261df31f84b79e3ae476a2b6bf36b26ea85",
   "rel-4a03685b081851c4d3f317a4": "94a8a7373aa2d198b29bd59cc57cb24d1ad1112c2303d441f34122438ced83e0",
   "rel-8dfdf825f23f13f500cbda20": "e132d86701eb5df0ad7e959862666eacbb578ff6d34cc07bede9009670b638fb",
@@ -4570,7 +4570,7 @@
   "rel-9f443b557fe894378d138e31": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
   "rel-07a3a8cc50f725471010eabf": "9963b794fd2b05e31894c344db668fe5bb371c02101f95a8923e40bfbd3b5bcb",
   "rel-a34d50e57962ad3aead1c05f": "5a92f11c00bd813abb32cb11a720a6906ddb34d2b6d106056887579205c3328e",
-  "rel-ea5780f9e8300fa3060c0774": "ce6dc823310e0bb84b1f8c75389988714c2135bd0d53a8d971016e581dcf1fb8",
+  "rel-554a597648c82520a291c279": "ce6dc823310e0bb84b1f8c75389988714c2135bd0d53a8d971016e581dcf1fb8",
   "rel-349a4b713dee0a85f60147dd": "fc9a656fcba4b2ccb4a8d74a943c512f3fc230492c9cf69914beba4ca4de9ef2",
   "rel-b96e71922592dbc81667cf3e": "b84001352677ba1e6725eafa2735f79a6e98b9aef48fcaa5da32ae52de83e62e",
   "rel-d9dcae3146df2daa7133bdcf": "7673b3e16e8478643a508f02a31da8199c87edc32e776e3228853b2bc5aad42f",
