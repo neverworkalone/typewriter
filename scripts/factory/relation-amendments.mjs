@@ -18,6 +18,21 @@ const isSha256 = (value) => typeof value === 'string' && SHA256.test(value);
 
 export const AMENDMENT_FIELD = 'relation_amendments';
 
+/** Shared tuple contract of an authored relation: supported type, target, note and the precision/relevance split. */
+export function relationTupleErrors(relation, at) {
+  const errors = [];
+  const isPrecision = PRECISION_RELATION_TYPES.has(relation.type);
+  if (!isPrecision && !EXPLORATORY_RELATION_TYPES.has(relation.type)) errors.push(`${at}.type is not a supported relation type`);
+  if (!isText(relation.target)) errors.push(`${at}.target is required`);
+  if (!isText(relation.note)) errors.push(`${at}.note is required`);
+  if (relation.target_sense !== undefined && !isText(relation.target_sense)) errors.push(`${at}.target_sense must be text`);
+  if (isPrecision && relation.relevance !== undefined) errors.push(`${at} ${relation.type} keeps its precision contract and must not carry relevance`);
+  if (EXPLORATORY_RELATION_TYPES.has(relation.type) && !(Number.isInteger(relation.relevance) && relation.relevance >= 1 && relation.relevance <= 9)) {
+    errors.push(`${at} ${relation.type} requires relevance 1-9`);
+  }
+  return errors;
+}
+
 export function relationAmendmentErrors(row, at) {
   const list = row?.[AMENDMENT_FIELD];
   if (list === undefined) return [];
@@ -43,15 +58,7 @@ export function relationAmendmentErrors(row, at) {
       errors.push(`${here}.relation must be a relation tuple (${RELATION_KEYS.join(', ')})`);
       return;
     }
-    const isPrecision = PRECISION_RELATION_TYPES.has(relation.type);
-    if (!isPrecision && !EXPLORATORY_RELATION_TYPES.has(relation.type)) errors.push(`${here}.relation.type is not a supported relation type`);
-    if (!isText(relation.target)) errors.push(`${here}.relation.target is required`);
-    if (!isText(relation.note)) errors.push(`${here}.relation.note is required`);
-    if (relation.target_sense !== undefined && !isText(relation.target_sense)) errors.push(`${here}.relation.target_sense must be text`);
-    if (isPrecision && relation.relevance !== undefined) errors.push(`${here}.relation ${relation.type} keeps its precision contract and must not carry relevance`);
-    if (EXPLORATORY_RELATION_TYPES.has(relation.type) && !(Number.isInteger(relation.relevance) && relation.relevance >= 1 && relation.relevance <= 9)) {
-      errors.push(`${here}.relation ${relation.type} requires relevance 1-9`);
-    }
+    errors.push(...relationTupleErrors(relation, `${here}.relation`));
     if (recordOk && (relation.target === item.source_record_id || relation.target_sense === item.source_sense_id)) errors.push(`${here}.relation must not target its own source`);
     if (!senseOk) return;
     const key = reviewedRelationId(item.source_sense_id, relation);

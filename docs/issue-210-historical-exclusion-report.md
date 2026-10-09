@@ -144,8 +144,8 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `AGENTS.md` | `8335fcff780489530dd3214244a3eeccc2e245852ed9ad9a166600aa90ee5ac5` |
-| `config/artifact-policy.json` | `2c8f3311ccec959869500601b5daa4c378693ec9f3358fe010f62f1aaf2ec83c` |
+| `AGENTS.md` | `09e3d0d213d85881951eca6e964f0385ead45cb1706ebc559943e5977806bcfc` |
+| `config/artifact-policy.json` | `080add3d5be1276d7f9e52a46969aebe506d14a598bdb32a5f2e2943fc2e0a9b` |
 | `data/batches/issue-204-pilot-decisions.json` | `f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b` |
 | `data/batches/issue-204-semantic-decisions.json` | `66d96ed2b0c104dab185625ebd5f09ef06b21092c9b84e1f3d1ad0d8b76fd60e` |
 | `data/batches/issue-211-lexical-unit-source.json` | `683ac43752125bdc23de25cf5c3f5c64c406055706609d719bee8f847eb22185` |
@@ -280,7 +280,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/issue-223-m9-e-corpus-batch-15.jsonl` | `6dd866a5cf7ea45815b3c27a8443546bcf20ac02822247840c82fe26f88dbe44` |
 | `data/canonical/m5-10-wave-a.jsonl` | `fc84476e276f9701e6f9094884725fc7ddbd38984cf39400ac01ae8f68bbe30e` |
 | `data/canonical/m5-10-wave-b.jsonl` | `64d70f44cf70f9f224878e394b8f5afa57c4e0e63da48621b8ca351783f5d436` |
-| `data/canonical/m5-10a-wave-a2.jsonl` | `7b8bf14249044e9d62d30484b3f24158606bce60fdf60a29b9978d6877db39e9` |
+| `data/canonical/m5-10a-wave-a2.jsonl` | `5a6a68b09a9abcc2a67a88787b17a2192b10f46e6000b3acb623bde75d783f27` |
 | `data/canonical/m5-11-expansion.jsonl` | `e7c1fe2158786b6198123ca2daa36cb0145d84389a3a776136a4cd6c5fff9918` |
 | `data/canonical/m5-12a-expansion.jsonl` | `3f4362a8fb109a6d2d44bf9cc42f63d64cb58c5ddae0084dcab5ac5fe347be45` |
 | `data/canonical/m5-13-expansion.jsonl` | `26cbedd61520929568586edabc1a256db3a71eedb5e5cc23ca8b97fe1c1a79a7` |
@@ -293,17 +293,17 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/pilot.jsonl` | `a37679db9a0fb5977b895bd0ef408bf5b7a8c7fd1ad510e8cd87d09de51973eb` |
 | `data/inventory/m5-target-promotions.jsonl` | `07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `ea172bf9373f5f232afe398d036a5adc29c0a7dbdb95d025e98ed5d2f6552858` |
-| `data/validation/issue-219-m9-lexical-batch-report.json` | `dc0fad01f52a5a30a29d6f5338fb412d76c6800e06e7787f1934162ed7bb7442` |
-| `data/validation/issue-220-m9-b-checkpoint-report.json` | `ee6a64fcf35cf53dac7307dd4a46425be3ee5a1e0e67ad87c1c8330cbfee29a2` |
+| `data/validation/canonical-semantic-decision-source.json` | `4fb31d1ec4a07270b3b2d18546a53ca0977d09396862e557ee63ffe20bdb3c6e` |
+| `data/validation/issue-219-m9-lexical-batch-report.json` | `a7a77b917e776c49a8b6df9c708bf882cc4d55c737604ac60771eb0ae4a186f9` |
+| `data/validation/issue-220-m9-b-checkpoint-report.json` | `2f158e146580c9fef3c90b934f277ff8b9acd8b66c3af9b2e036476386a94345` |
 | `data/validation/m6-2-inflection-exceptions.json` | `0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7` |
 | `data/validation/m6-3-surface-form-review.json` | `eb59acc81975489f44272477f507c178319b47c197505e1a75356ad837ffa0de` |
-| `docs/editorial-model.md` | `54dbd7d576887d232e5010a0745f35e57f5796fd1e63809f4cd70fd05ff99f8e` |
+| `docs/editorial-model.md` | `94b936d0ce1cce168bcfab4dbfce7a536ed0f5955bb09294dc2d9b909ba3d479` |
 | `docs/external-material-review-customs-terminology.md` | `ce7395c649ba9d4eecf2ed3362be2f9859116a398aee85534005e1ea624bce2a` |
 | `docs/issue-208-searchable-start-retrospective.md` | `3e5dfd512389b4a505010686c10c32e0cdfdbb328290e1f4f0bc92a8f6aa6621` |
 | `docs/issue-211-bounded-lexical-recovery.md` | `e0a264b879f612b32fd20ebbb3c0a475d324ded5f461d4d0406f27bcb820a294` |
 | `docs/issue-219-m9-a-recovery.md` | `8b58ba80f5d35ae7bd516bdc21090c803aa460f30816efe4e031540bb8669bcc` |
-| `docs/issue-220-m9-b-checkpoint.md` | `26a6681a4fb78415888e14ca4f9134db707e34fd4f67035c02d5df529a48011a` |
+| `docs/issue-220-m9-b-checkpoint.md` | `dc35f5e0794334781bd6c105e94627ba71b12c2634aadc0e7184e1673dc8d972` |
 | `docs/m3-handoff.md` | `215dedb02808c108ba06c9d20258d9fde5c03b3c5a35da556320a8c652ab3b04` |
 | `docs/m4-handoff.md` | `4492845b7a362c70b4ddb7a4c7582f2d37b3e6d2c9a9afa394edb414ed714c49` |
 | `docs/m5-16-final-audit-report.md` | `a60a58a20551d72c0388b8fd99fe5d92b3fd19c3a76cd3701c7d7e8fc82739f8` |
@@ -314,7 +314,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `docs/m9-bounded-lexical-batches.md` | `06f1fd2ee398cba59f62a2b347e212d9e921cbdfa14e5cf9931bb22e4a78e70d` |
 | `docs/m9-corpus-production.md` | `d4936cec78436d815602bd26a4a1cd01bbb88a852909ff0e6d963c1cdf8ca30c` |
 | `docs/pilot-scope.md` | `9d1d23b63c828838e5b326ee69e080f57a68ffae6e0e31dfe05e99d0865e6881` |
-| `package.json` | `a30bb22d5557c11e84b229b4a9bcf35f0488f6bec4ccdcc05357a2828016ebdc` |
+| `package.json` | `4a40d9b81df95639cc5fd06e7e3d8abc56305011c24be212bef85433431c841a` |
 | `schema/issue-220-m9-b-checkpoint-report.schema.json` | `ca40281d0863a36e36b6a2d5f3d7886efc0cc136ffddff8117a4a306d27e1710` |
 | `schema/m9-lexical-batch-report.schema.json` | `e2137ba54f1610f11412c8e6ce6da2cafc3f9b8b7a8b51dedb03c93b1db76dcb` |
 | `scripts/batch/authored-semantic-decision-source.mjs` | `714257a9d0573636c9b7102772adb39ac19497a13d2848b972aac14089aa0156` |
@@ -336,7 +336,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `scripts/reference/test-corpus-lemma-pilot.py` | `a69179272ff4ef54c753163bb212effb5ab78339c8e11dfbd96e372ae34c65f2` |
 | `scripts/reference/validate-corpus-candidate-review.mjs` | `7f5cfe1d9b413873d7290eccc1b1ca339627aea51a3ab6fd89cd1033d2ff1f84` |
 | `scripts/validate/corpus-candidate-review.mjs` | `184b1fa634e20c635715d98c3a581770f97b1cbdfe2a27111936e259b15ac6fb` |
-| `scripts/validate/semantic-audit.mjs` | `713e7ce286d05d0bbb087be515807453c64c7cce843f252977a60f1b3044a7e3` |
+| `scripts/validate/semantic-audit.mjs` | `c1c8ac7e42b45787c7687a35c7254b077ddaa1df085aa5c0ee91c91376f12be8` |
 | `scripts/validate/semantic-decision-row.mjs` | `60dbb9338957d3e8acd3b763800b778e17eb9938e5e51382cb3e94f505f75544` |
 | `tests/issue-211-search.test.mjs` | `249819c69e8f46120e5be74378eb9e97e3ccbdc079ac33d89c18e7f3d9d63d54` |
 | `tests/issue-219-content-digest.test.mjs` | `a6d5daecfb4985724cb5e14a74269f1cad0ca44697199f30a689ce4a532beeda` |

@@ -1,0 +1,26 @@
+{
+ "packet_id": "R000004",
+ "relation_corrections": [
+  {
+   "source_record_id": "w587",
+   "source_sense_id": "w587-s1",
+   "source_gloss_sha256": "e61ca24bc5bb2ade47677b423cedc58d460f4863b4bf1406424382c1ec796524",
+   "previous_relation": {
+    "target": "w306",
+    "target_sense": "w306-s1",
+    "type": "near",
+    "note": "자책은 스스로를 책망하는 내적 행위에 가깝고 죄책감은 잘못으로 남에게 해를 끼쳤다고 느끼는 감정이어서 가까우나 중심이 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w306",
+    "target_sense": "w306-s1",
+    "type": "association",
+    "note": "자책은 스스로를 책망하는 내적 행위이고 죄책감은 해를 끼쳤다고 느끼는 감정이라 바꿔 쓸 수는 없지만, 자책의 바탕에 흔히 깔린 마음이어서 연이어 떠올릴 수 있다.",
+    "relevance": 3
+   },
+   "position": 0,
+   "rationale": "w587-s1은 자신의 행동을 탓하며 스스로를 책망하는 마음이고 w306-s1은 자신의 잘못으로 누군가에게 해를 끼쳤다고 느끼는 마음이다. 이전 note가 이미 책망하는 행위와 해를 끼쳤다는 감정이라는 중심의 차이를 인정하므로 near가 아니라 association이 맞다. AI 자체 점검이며 독립 검토가 아니다."
+  }
+ ]
+}
