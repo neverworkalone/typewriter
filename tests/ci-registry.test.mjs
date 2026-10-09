@@ -182,9 +182,9 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
 });
 
 
-// Execute the actual inline CI classifier against tiny synthetic Git histories. A docs-only
-// shortcut must not mask a code deletion disguised as a source-to-doc rename.
-test('CI changed-path gate skips only documentation-only PRs', async (t) => {
+// Execute the actual inline CI classifier against tiny synthetic Git histories.
+// Stage 1's shortcut must not mask code, canonical data, mixed files or renames.
+test('CI changed-path gate skips docs and uses fast only for pure Stage 1 candidates', async (t) => {
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   const block = workflow.split('      - name: Classify changed files\n')[1]
     ?.split('      - name: Set up pnpm\n')[0];
@@ -193,10 +193,12 @@ test('CI changed-path gate skips only documentation-only PRs', async (t) => {
     ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
   assert.equal(
-    (workflow.match(/if: steps\.changes\.outputs\.run_normal == 'true'/gu) ?? []).length,
-    4,
-    'pnpm and Node setup, dependencies and the full normal run must all use the same classifier result',
+    (workflow.match(/if: steps\.changes\.outputs\.run_level != 'none'/gu) ?? []).length,
+    3,
+    'pnpm setup, Node setup and install must run for both fast and normal PRs',
   );
+  assert.match(workflow, /if: steps\.changes\.outputs\.run_level == 'fast'\n\s+run: pnpm run ci:fast/u);
+  assert.match(workflow, /if: steps\.changes\.outputs\.run_level == 'normal'\n\s+run: pnpm run ci:normal/u);
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -211,7 +213,7 @@ test('CI changed-path gate skips only documentation-only PRs', async (t) => {
   const base = git(['rev-parse', 'HEAD']);
 
   let count = 0;
-  const scenario = async (name, edit, expectedNormal) => {
+  const scenario = async (name, edit, expectedLevel) => {
     git(['checkout', '-q', '-B', `fixture-${++count}`, base]);
     if (edit) {
       await edit();
@@ -235,35 +237,67 @@ test('CI changed-path gate skips only documentation-only PRs', async (t) => {
         GITHUB_STEP_SUMMARY: summary,
       },
     });
-    assert.equal(await readFile(output, 'utf8'), `run_normal=${expectedNormal}\n`, name);
-    assert.match(
-      await readFile(summary, 'utf8'),
-      expectedNormal ? /Full ci:normal required/u : /Documentation-only PR: ci:normal intentionally skipped/u,
-      name,
-    );
+    assert.equal(await readFile(output, 'utf8'), `run_level=${expectedLevel}\n`, name);
+    const expectedSummary = {
+      none: /Documentation-only PR: CI checks intentionally skipped/u,
+      fast: /Stage 1 candidate-only PR: running ci:fast/u,
+      normal: /Full ci:normal required/u,
+    };
+    assert.match(await readFile(summary, 'utf8'), expectedSummary[expectedLevel], name);
   };
 
-  await scenario('docs-only', () => writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n'), false);
+  const candidateDir = path.join(root, 'data/candidates/C000031');
+  const addCandidate = async (file = 'candidates.jsonl') => {
+    await mkdir(candidateDir, { recursive: true });
+    await writeFile(path.join(candidateDir, file), '{}\n');
+  };
+  await scenario('docs-only', () => writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n'), 'none');
   await scenario('root-docs', async () => {
     await writeFile(path.join(root, 'README.md'), 'readme\n');
     await writeFile(path.join(root, 'REVIEW.md'), 'review\n');
-  }, false);
-  await scenario('docs-with-spaces', () => writeFile(path.join(root, 'docs/has spaces.md'), 'new\n'), false);
+    await writeFile(path.join(root, 'AGENTS.md'), 'agents\n');
+    await writeFile(path.join(root, 'CLAUDE.md'), 'claude\n');
+  }, 'none');
+  await scenario('docs-with-spaces', () => writeFile(path.join(root, 'docs/has spaces.md'), 'new\n'), 'none');
+  await scenario('stage1-candidates', () => addCandidate(), 'fast');
+  await scenario('stage1-manifest', () => addCandidate('manifest.json'), 'fast');
+  await scenario('stage1-complete-batch', async () => {
+    await addCandidate();
+    await addCandidate('manifest.json');
+  }, 'fast');
+  await scenario('stage1-mixed-docs', async () => {
+    await addCandidate();
+    await writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n');
+  }, 'normal');
+  await scenario('stage1-mixed-code', async () => {
+    await addCandidate();
+    await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 2;\n');
+  }, 'normal');
+  await scenario('stage1-extra-file', () => addCandidate('extra.json'), 'normal');
+  await scenario('stage1-nonbatch-path', async () => {
+    await mkdir(path.join(root, 'data/candidates/other'), { recursive: true });
+    await writeFile(path.join(root, 'data/candidates/other/candidates.jsonl'), '{}\n');
+  }, 'normal');
   await scenario('mixed-docs-code', async () => {
     await writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n');
     await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 2;\n');
-  }, true);
-  await scenario('data', async () => {
-    await mkdir(path.join(root, 'data'), { recursive: true });
-    await writeFile(path.join(root, 'data/records.jsonl'), '{}\n');
-  }, true);
+  }, 'normal');
+  await scenario('canonical-data', async () => {
+    await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+    await writeFile(path.join(root, 'data/canonical/records.jsonl'), '{}\n');
+  }, 'normal');
+  await scenario('stage2-reviews', async () => {
+    await mkdir(path.join(root, 'data/reviews/C000031'), { recursive: true });
+    await writeFile(path.join(root, 'data/reviews/C000031/decisions.jsonl'), '{}\n');
+  }, 'normal');
   await scenario('workflow', async () => {
     await mkdir(path.join(root, '.github/workflows'), { recursive: true });
     await writeFile(path.join(root, '.github/workflows/ci.yml'), 'name: changed\n');
-  }, true);
-  await scenario('other-markdown', () => writeFile(path.join(root, 'UNCLASSIFIED.md'), 'new\n'), true);
-  await scenario('source-to-doc-rename', () => rename(path.join(root, 'src/main.mjs'), path.join(root, 'docs/moved.mjs')), true);
-  await scenario('no-changed-files', null, true);
+  }, 'normal');
+  await scenario('docs-nonmarkdown', () => writeFile(path.join(root, 'docs/data.json'), '{}\n'), 'normal');
+  await scenario('other-markdown', () => writeFile(path.join(root, 'UNCLASSIFIED.md'), 'new\n'), 'normal');
+  await scenario('source-to-doc-rename', () => rename(path.join(root, 'src/main.mjs'), path.join(root, 'docs/moved.mjs')), 'normal');
+  await scenario('no-changed-files', null, 'normal');
 });
 
 test('CI and Pages workflows keep their trigger responsibilities separate', async () => {
@@ -295,7 +329,8 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /node-version: 24\.x/u);
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
-  assert.doesNotMatch(workflow, /pnpm run ci:fast/u);
+  assert.match(workflow, /name: Fast validation \(Stage 1 candidates only\)/u);
+  assert.equal((workflow.match(/run: pnpm run ci:fast/gu) ?? []).length, 1);
   assert.doesNotMatch(workflow, /pnpm run ci:all/u);
 
   assert.match(deepWorkflow, /^name: Deep CI$/mu);
