@@ -70,6 +70,19 @@ schema. The factory is a work-organization layer around the existing contracts.
   reports the actual count (or source exhaustion); there is no filler, no
   unverified lemma guess and no artificial split. One issue/task, serial batch PRs.
   Stage 1 never waits for Stage 2 or 3.
+- **Stage 1 execution Issue lifecycle:** Use exactly one execution Issue for the
+  owner-assigned run. Reuse an Issue the owner supplied, or create one at the
+  beginning of the run if none exists; link each serial candidate-batch PR.
+  After **every planned PR is merged and its result confirmed on `master`**,
+  the Stage 1 agent must, without being prompted again:
+  1. Comment on that Issue with a final report: batch and PR links, per-batch
+     and total candidate lemmas and observations, unresolved/held observations,
+     relevant CI results, and any deviations or remaining source limitations.
+  2. Close the same Issue as `completed`.
+  If the run stops before that point (including blocked or unmerged PRs),
+  comment with work completed, the blocker and remaining batches, then **keep
+  the Issue open**. Never treat a submitted PR as a merged PR. This is the
+  agent's normal end-of-run procedure, not an optional owner-requested task.
 - **Primary candidate identity is one normalized citation-form lemma**
   (`C<batch>-<NNNN>` is independent of the lemma's spelling but is allocated once per
   lemma). Under it are nested, individually referenceable: the lemma's **POS
