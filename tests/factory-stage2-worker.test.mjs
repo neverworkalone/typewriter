@@ -532,6 +532,7 @@ test('interactive primary-context hand-offs return a result PR and same-branch f
     assert.ok(authorEvent.instructions.some((line) => line.includes('relation:candidates') && line.includes('no-relations')));
     assert.ok(authorEvent.instructions.some((line) => line.includes('hypernym/hyponym') && line.includes('never near')), 'near is reserved for close meanings, not is-a links');
     assert.ok(authorEvent.instructions.some((line) => line.includes('actual bound target sense gloss') && line.includes('reverse link')), 'near is judged on the actual target sense and already-authored reverse links are checked');
+    assert.ok(authorEvent.instructions.some((line) => line.includes('same-source-sense consistency pass') && line.includes('소아 to 아이') && line.includes('선서 to 서약') && line.includes('기쁨 to 웃다')), 'sibling targets of one source are compared and direction-specific types are preserved');
     input.write(JSON.stringify({ action: 'created', pr_number: 501 }) + '\n');
     const pullRequest = await createdPromise;
     assert.equal(pullRequest.number, 501);
