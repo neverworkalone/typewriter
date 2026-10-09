@@ -137,11 +137,11 @@
    "relation": {
     "target": "w2403",
     "target_sense": "w2403-s1",
-    "type": "near",
-    "note": "말소리는 사람이 말을 할 때 입에서 나오는 소리라 음성과 가깝다.",
+    "type": "association",
+    "note": "말소리는 사람이 말을 할 때 입에서 나오는 소리라, 목에서 나오는 소리 전반인 음성에서 말하는 소리 한 갈래로 좁혀 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "r006-s1: 후보 검토에서 w2403-s1를 near 관계로 판단했다."
+   "rationale": "r006-s1 w2403-s1: 같은 source의 형제 관계와 실제 대상 gloss를 대조하면 말소리는 말을 할 때 나는 소리 한 갈래이며 같은 source의 울음소리와 같은 이유다. 그래서 near가 아닌 association으로 조정했다."
   },
   {
    "source_record_id": "r006",
@@ -2349,11 +2349,11 @@
    "relation": {
     "target": "w927",
     "target_sense": "w927-s1",
-    "type": "near",
-    "note": "가슬가슬하다는 표면이 거칠고 마른 느낌이라 거칠다의 촉감과 겹친다.",
+    "type": "association",
+    "note": "가슬가슬하다는 표면이 거칠고 마른 느낌이 있다는 뜻이라, 거칠다에서 마른 질감 쪽으로 좁혀 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w044-s1: 후보 검토에서 w927-s1를 near 관계로 판단했다."
+   "rationale": "w044-s1 w927-s1: 같은 source의 형제 관계와 실제 대상 gloss를 대조하면 가슬가슬하다는 거칠고 마른 질감으로 좁아지며 뜻풀이가 같은 깔깔하다가 이미 association이다. 그래서 near가 아닌 association으로 조정했다."
   },
   {
    "source_record_id": "w044",
@@ -3367,11 +3367,11 @@
    "relation": {
     "target": "w11333",
     "target_sense": "w11333-s1",
-    "type": "near",
-    "note": "음향은 소리의 울림이라고 풀려 귀로 느끼는 울림인 소리와 겹쳐 쓸 수 있다.",
+    "type": "association",
+    "note": "음향은 소리의 울림을 가리켜, 소리 일반이 아니라 그 한 모습인 울림 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w086-s1: 후보 검토에서 w11333-s1를 near 관계로 판단했다."
+   "rationale": "w086-s1 w11333-s1: 같은 source의 형제 관계와 실제 대상 gloss를 대조하면 음향은 소리의 울림이라 같은 source의 울림과 같은 범위이므로 소리 일반과 겹쳐 쓰는 near가 아니다. 그래서 near가 아닌 association으로 조정했다."
   },
   {
    "source_record_id": "w086",
@@ -5583,11 +5583,11 @@
    "relation": {
     "target": "w086",
     "target_sense": "w086-s1",
-    "type": "near",
-    "note": "소리는 귀로 느끼는 울림이라 음향과 겹쳐 쓸 수 있다.",
+    "type": "association",
+    "note": "소리는 귀로 느끼는 울림 일반이라, 소리의 울림인 음향보다 넓은 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w11333-s1: 후보 검토에서 w086-s1를 near 관계로 판단했다."
+   "rationale": "w11333-s1 w086-s1: 같은 source의 형제 관계와 실제 대상 gloss를 대조하면 소리는 귀로 느끼는 울림 일반이라 소리의 울림인 음향보다 넓은 상위 말이다. 그래서 near가 아닌 association으로 조정했다."
   },
   {
    "source_record_id": "w11333",
@@ -9017,11 +9017,11 @@
    "relation": {
     "target": "w281",
     "target_sense": "w281-s1",
-    "type": "near",
-    "note": "소원은 이루어지기를 간절히 바라는 마음이라, 간절히 품는 염원과 가깝게 쓰인다.",
+    "type": "association",
+    "note": "소원은 이루어지기를 간절히 바라는 일이나 마음 전반이라, 오래 품는 소망인 염원보다 넓은 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w2107-s1: 후보 검토에서 w281-s1를 near 관계로 판단했다."
+   "rationale": "w2107-s1 w281-s1: 같은 source의 형제 관계와 실제 대상 gloss를 대조하면 소원은 이루어지기를 바라는 일이나 마음 전반이라 같은 source의 소망·열망·갈망과 같게 오래 품는 염원보다 넓다. 그래서 near가 아닌 association으로 조정했다."
   },
   {
    "source_record_id": "w2107",
@@ -20593,7 +20593,7 @@
   "rel-196d8901ac5e4cc4c5df93c3": "c501e9755d8c3e2cdf22f84a6971a715676e14965c5af77ea10a384a6ab2a93c",
   "rel-ec6a9a3b146e0b36de7f489e": "4b9ec0d2a9d8fb315ac31d07e7c81a81af317bb003390ac63bc1226e4f812153",
   "rel-65d1b2ffed203cdf1040b950": "c630dce0c860c1d0e7c517f07fa610908d28bd564faf597a6edcf080c832f824",
-  "rel-9a7d0169b21d6cce752ab75f": "df09e913905efc33d7916c0e3d6ed785f61d3a5655dbcad21d6ac87701dc62ad",
+  "rel-0b549ebd3096ad0476c4043a": "df09e913905efc33d7916c0e3d6ed785f61d3a5655dbcad21d6ac87701dc62ad",
   "rel-7aea145aba52cdb10d5b5543": "98af560e68ed8903cd577f71cf63d7278f7086cf3a8aa37c73e7c5d332b72759",
   "rel-f362e063056a030571e3508c": "6f7eb41c11fe1bf2e5bd4e3b599da858bc3c40fddfcc2bb0884c9fbee7f9be88",
   "rel-c8bdeabd81fb2be16133771e": "e3b33283ff915f45cfb460aae2e41d2eb33dc2948ba7436fec1d820c9cdcfd8b",
@@ -20765,7 +20765,7 @@
   "rel-170c81d9ddf1bf846c089abf": "d7ceedde3256c8fa0cbfd26c002ed301e0cadc857ab66ed0c9a359b193beac93",
   "rel-12160dca6ce82dd245d93e87": "72545dddf369ee141ebfd8b8405687b966544fcf3ff9993009b522a50cc65b27",
   "rel-0a397ad400da121c6cbb1691": "21d972196de4a95f8a72141806f9ae15598e2a5a3e1fe0cff06fa7c5c344a2e9",
-  "rel-93d59572274be2fe12746de9": "06a9a8805d917516657fdede36a6e048e23a144b2491d62322162e4f12ec73be",
+  "rel-acafc4019862f0b6bfa2f229": "06a9a8805d917516657fdede36a6e048e23a144b2491d62322162e4f12ec73be",
   "rel-9fb0e82eaae7c7ab3fe5629c": "280e245478eeaa7d78f3685936e6dd69cee2a6dc6440d2058006fa837ce72d66",
   "rel-a352c698aa52fa621c4be44f": "5ceedce1e5f89ea63880f7daf5ab8e5f06a82bd7f6681ffc8e3a689013bda8ec",
   "rel-9d69f1be1bfc78efceead78a": "241c9b6af0423ecfd4529b2c37ca7814afd95b32f2e7ddee834609e9e5e36abb",
@@ -20845,7 +20845,7 @@
   "rel-f3e1871e6b4dde54bc8bb377": "7f2fac5f8355f56b6fa9d181d09142b485e4f7f6ecc83cae26eafe7f71619735",
   "rel-739c826e57f5de27330e91a9": "95a7f64a6085fb16b83a29ecba524c75aa9e2f6ec03fb21a1c367200f9d8c589",
   "rel-dcd73cd3f1b015d5b07db54e": "e132d86701eb5df0ad7e959862666eacbb578ff6d34cc07bede9009670b638fb",
-  "rel-e9375aceb7889de3040d7890": "9b2dc8c034f721237fc3465814450d88f8470e693c40d4df9a05a2f5a7621d45",
+  "rel-6ce3c5937be8d43e2a477b2e": "9b2dc8c034f721237fc3465814450d88f8470e693c40d4df9a05a2f5a7621d45",
   "rel-13978530c64ece4545efab7f": "6c88fc044bd6b0cf6b0605405559d4b21b9da0944983cadc7d8d35f43cc65b1e",
   "rel-9c5ec53a9f04792a4a34d5b7": "2949fbdb9618687c7ba8be0e9c35d7cbd738c40f9b7f9ea2d0cb56ed8b4b6d34",
   "rel-d4ab89d972acda8c0e235b4f": "0a32b02e1ca015722a6b2b69ea4929c2e52e0aec0afb3c5da3f89880712e250b",
@@ -21016,7 +21016,7 @@
   "rel-669b7e45d66b1a0e21931f2c": "9f9cb2e59b47ae87f05b6913bba449a1b58ee0a702a0e639d2de7afeefa23e5f",
   "rel-1e001025324cbb58f1a60a6e": "a72c2cb58fe65b44fa88610197948b0b575cd115ac23c05c8b1573155211684d",
   "rel-a005deb69126c189e973fb1f": "2192a1d2fed025bdd1908e8054cb65365436c4b9b6aa80cd8b4c8d9ac4e8f651",
-  "rel-c5a7745378947fb14fa20118": "f9f40b909e179094fcce26a4c0a42013cb1cdb6643f0d810457e679ecb3093a4",
+  "rel-b51a27f000c92761b1fc7820": "f9f40b909e179094fcce26a4c0a42013cb1cdb6643f0d810457e679ecb3093a4",
   "rel-212bfd7789b96459e5fe4d64": "631605d0ebd3c9467fcec93415514d7baa40d832e6e104748c8db50ae0652d51",
   "rel-69c120126f5f95447d1a6002": "095fcdd6754dbf414df12e26e8e364c84555c5de00c103cb39ed8cd14435b446",
   "rel-235158c59655126e14c0701c": "a3e540e320c7f712c930e0c326c3a8f19f3b5d210b3d1d03e154f2ddc2a92ca3",
@@ -21281,7 +21281,7 @@
   "rel-42d9010af07c21af953838d6": "48da30eb47f89bb6858a6fddcc31ae83d39e8e3dedd7ed91d330cce2d8031d64",
   "rel-34b287c0e21692dc161b19b7": "d59f7ba4ac616022f71c3c6fa215ee8abadcda2c078f3fdc460757e1e63c19da",
   "rel-097884b26ae1bd06d894fab2": "36190143f7255f3efa56cc1713fc677b257d5b77cd00e9117868b28364d52d3b",
-  "rel-a56e4cb433a6e45f7b836e1b": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
+  "rel-c099675afb4537b6e6c2f51b": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
   "rel-0ef1a7cfd5d13e8988726310": "124a32727a97cf4dc365dab712ebec978fdb15ba314e3afe2ae91efb987ea88b",
   "rel-55df7322dc1925ecb226990c": "b751607e25cdffdc017084e606b79f981c3b771057c04b7f25c1bd021f404da6",
   "rel-8701fbc11476292e2f5b5f24": "4a43b3a159efc26f5d6c50a2a72ff7a31ed911c13abb6de7611e0c8b512143e3",

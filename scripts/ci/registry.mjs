@@ -287,7 +287,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       {
         ...commandCheck(
           'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
-          ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs'],
+          ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs', 'scripts/relation/near-review.test.mjs'],
         ),
         deepInputs: [
           'data/canonical/',

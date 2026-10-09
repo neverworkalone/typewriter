@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "b997007fb6a49450cc7eeb823d3ca9d1313ceb6413370011e566f6aceb869dbe",
+    "current_canonical_revision": "2d5df068ea0ad70088990265c0571efcf0316f2375b6fefc6eb1232143f369fc",
     "source_manifest": [
       {
         "path": "AGENTS.md",
@@ -658,8 +658,8 @@
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-12.jsonl",
-        "sha256": "f484f7f7a45374db256049ece4678616011daf82194353642a19ee6194c3d2f0",
-        "byte_count": 65493
+        "sha256": "76b66759ed634959bc045983fe92c2adabaaba06a8953f4c40bcfa1a6eac7e78",
+        "byte_count": 65547
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-13.jsonl",
@@ -703,8 +703,8 @@
       },
       {
         "path": "data/canonical/m5-13-expansion.jsonl",
-        "sha256": "d286496f7bb169bd40ce62035cacd681503b8d0d5b7e9d193210290e6f2b7c8b",
-        "byte_count": 290917
+        "sha256": "b249a10a848866a254c1f1037349a6054742d73251fa8d75afd6f1a6b842697f",
+        "byte_count": 290969
       },
       {
         "path": "data/canonical/m5-14-expansion.jsonl",
@@ -738,8 +738,8 @@
       },
       {
         "path": "data/canonical/pilot.jsonl",
-        "sha256": "40b555b3a42d8795fb4a612b4ce59ae8ac1ae728a37392ebbb62e4c5cf8507a2",
-        "byte_count": 335804
+        "sha256": "0d146f0b877141d07a3983a27e31ebba2fe1e61e6b7e460310a9581a0cef3f80",
+        "byte_count": 335990
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
@@ -753,17 +753,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "bb7be6e97b024897f32e914a274a82e3b78effe232ebd46c9d4bcb0d55160d74",
-        "byte_count": 15743038
+        "sha256": "70bae18b816017516fd738f06a00dadea91425993651c9655df3d047101c5762",
+        "byte_count": 15743365
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "086a34fc044b543a0f25cbc19e2cfd48320fe75a631618009d1dd3309d4fcfda",
+        "sha256": "7b85542ae536f87395875ea748a34d06636bc98477bf4f9aae22acbd4bc94383",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "2705038f905bf8722dcefc0775833ecb00f7cac689447b723ea5b5b26dcc08f9",
+        "sha256": "40e977b26341a7b57db05964ae47917da8e7d6c10cacf18ac8996c1f2e24d769",
         "byte_count": 29643
       },
       {
@@ -778,8 +778,8 @@
       },
       {
         "path": "docs/editorial-model.md",
-        "sha256": "6397a65349cbc23591f5f124e231b2cabfb31d3199eb8e15e9a9e596ef35be7f",
-        "byte_count": 107365
+        "sha256": "e9483d041405b8e37eaf98eb9e599b7d4175d0c46607804e8198db6f1bcdc7f6",
+        "byte_count": 107977
       },
       {
         "path": "docs/external-material-review-customs-terminology.md",
@@ -803,7 +803,7 @@
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "ff8776f4868dce3b144cb865592acd4b569bae7467693b59c53cfa1b70f4e632",
+        "sha256": "1279d5eff6eea32822f63199a9c93e3fcbbae1321ceb4f01b0e764f5fbec52fd",
         "byte_count": 8780
       },
       {
@@ -858,8 +858,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "a30bb22d5557c11e84b229b4a9bcf35f0488f6bec4ccdcc05357a2828016ebdc",
-        "byte_count": 12895
+        "sha256": "da61c6721df17e7cbce9fa926b27b6193afb628d1d45660a9e71456c3992f496",
+        "byte_count": 12964
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -923,8 +923,8 @@
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "55205e78a224561c1963bcd7cb3816c20762e414edaddd303b507ca803555950",
-        "byte_count": 33761
+        "sha256": "8453f3b3c0c3d9d8e24f36a1fdf02384368e466b76ec371c47fae3d119fd2453",
+        "byte_count": 33802
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
