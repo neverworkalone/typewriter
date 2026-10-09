@@ -3005,6 +3005,6 @@ export async function restoreImportRecordsBeforeFactoryAdmissions(importRecords,
   });
 }
 
-export async function loadCanonicalBeforeFactoryAdmissions(recordInfos) {
-  return canonicalRecordsBeforeFactoryAdmissions(recordInfos, await readSemanticDecisionSourceArtifact());
+export async function loadCanonicalBeforeFactoryAdmissions(recordInfos, { decisionSourcePath } = {}) {
+  return canonicalRecordsBeforeFactoryAdmissions(recordInfos, await readSemanticDecisionSourceArtifact(decisionSourcePath));
 }
