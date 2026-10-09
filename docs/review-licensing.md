@@ -19,5 +19,18 @@ Check:
 External sources may support reference, verification, or drafting only within
 their applicable terms.
 
+## R&D visibility is not distribution permission
+
+The owner's Issue #239 decision permits the existing public **R&D** workflow;
+it is **not** third-party rights clearance and does not by itself authorize
+corpus-informed **product distribution**, redistribution of raw corpus/API
+material, or an unlicensed derivative artifact. Verify those permissions
+separately before distributing, and keep source-bound evidence traceable.
+
+Do not repeatedly block a previously settled public-R&D visibility decision
+without **new, concrete exposure evidence**. Do block an actual new rights,
+provenance, raw-material or distribution violation. A producer's statement
+of compliance or successful CI cannot override licensing constraints.
+
 Use CI for mechanically enforceable source-policy rules, but do not treat CI
 as proof that a newly introduced source or license is legally suitable.
