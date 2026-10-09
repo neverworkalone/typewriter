@@ -544,7 +544,7 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 7,
           "relation_ids": [
-            "rel-cbd788b685d1d2caa4d1f4dc",
+            "rel-3d341e6f674517018e151fc8",
             "rel-c6804af5adc539285daed922",
             "rel-1e2c9579759cad84ca2960f3",
             "rel-c09d8ba77ab50d0b966fe611",
@@ -552,7 +552,7 @@
             "rel-9adc4d92e5fe8da2fe612c1e",
             "rel-f609a3136539ddb81c56bcf4"
           ],
-          "relation_rationale": "C000014-0012 C000014-0012-s1: 관계 후보 검색 결과를 검토해 7개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 기울어지다(같은 어간으로 한쪽으로 비스듬한 모양을 가리킴), 경사(기울어진 상태를 명사로 가리키는 파생어).",
+          "relation_rationale": "C000014-0012 C000014-0012-s1: 관계 후보 검색 결과를 검토해 7개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 경사(기울어진 상태를 명사로 가리키는 파생어).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0012.o01"
@@ -572,7 +572,7 @@
             "sense_id": "C000014-0012-s1",
             "sense_sha256": "25d4bdb79c41f64af6479c90d474614e22157b17e8ae5cb9527fa1cf5345c6e0",
             "gloss_sha256": "40d4554bf33d3c6b0d8dd77eb338dfaf379532fa1ef6e9c8f1038f49c82d8b20",
-            "evidence_sha256": "e6aa2c47838a781350a1f41272401b14546e6662b479034f3826467711909b6c"
+            "evidence_sha256": "cb3e25caa436dfbb1a9d5c6e63006a32d0e201a7310a3ae58c37dfe936696984"
           }
         ]
       }
@@ -1536,11 +1536,11 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 3,
           "relation_ids": [
-            "rel-4a450486c1e18bf88fa12978",
+            "rel-b035e2130ac3877192f3e7be",
             "rel-f05d4d210510c14cbd5eb926",
             "rel-d31feec90595a033976d2d3a"
           ],
-          "relation_rationale": "C000014-0027 C000014-0027-s2: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. ",
+          "relation_rationale": "C000014-0027 C000014-0027-s2: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. ",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0027.o02",
@@ -1584,7 +1584,7 @@
             "sense_id": "C000014-0027-s2",
             "sense_sha256": "ff9f0367c04e50ac9c7e465eb372b3f5ecfc3a6e69ad5ca081ee33f848a53dee",
             "gloss_sha256": "a14d40e756fc32b236eb22676d5c6d51885d15d79950260aee3fc848ea224b29",
-            "evidence_sha256": "69c469d40431d32f79d5d82711f12f2735301e73835c924d65614c3f10121520"
+            "evidence_sha256": "f2c344555eae91d74701bc03a0482c893b87535a3e2bc55a277496e2d4aa68f5"
           }
         ]
       }
@@ -1756,7 +1756,7 @@
             "rel-6e8b5fa08cea285fc1373174",
             "rel-3a856ab55598daeca1152a7a"
           ],
-          "relation_rationale": "C000014-0031 C000014-0031-s1: 관계 후보 검색 결과를 검토해 6개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 깜박이다(눈과 불빛에 모두 쓰이는 같은 뜻의 동사), B:깜빡거리다(눈과 불빛에 모두 쓰이는 같은 뜻의 표기 변형), 깜박임(같은 움직임을 명사로 가리키는 파생어).",
+          "relation_rationale": "C000014-0031 C000014-0031-s1: 관계 후보 검색 결과를 검토해 6개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 깜박이다(눈과 불빛 양쪽에 쓰이는 같은 뜻의 동사이며, 반복 여부는 정의에 명시되지 않아 근거로 삼지 않고 한쪽 뜻만 겹치는 깜빡이다와 구별함), 깜빡거리다(눈과 불빛에 모두 쓰이는 같은 뜻의 표기 변형), 깜박임(깜박임은 같은 눈꺼풀·빛의 움직임을 명사로 가리켜 같은 사건이며, 되풀이 여부는 정의에 없어 근거로 삼지 않음).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0031.o01",
@@ -1778,7 +1778,7 @@
             "sense_id": "C000014-0031-s1",
             "sense_sha256": "e9d1de77d348bec5339e4d11f69cad8cab130d9da0299a96b6d223e1208ef8d6",
             "gloss_sha256": "a2545bd414b3bfae63f5a92c086f30d21fadb18b33c30446596d9209b20d79f1",
-            "evidence_sha256": "8169c116c186f5e2d36068bf8775bf10961d0845f857de58a13ef48cef16ff2f"
+            "evidence_sha256": "eed54e274d4f92e152ea6e038522900fd2d8d757c23cf50ade6bf16446b4d71a"
           }
         ]
       }
@@ -1808,7 +1808,7 @@
             "rel-dfcb52f438a49c3ad92ce913",
             "rel-ecf70f2740bd503c2ad857fd"
           ],
-          "relation_rationale": "C000014-0032 C000014-0032-s1: 관계 후보 검색 결과를 검토해 6개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: B:깜박거리다(같은 뜻의 표기 변형), 깜박이다(눈과 불빛에 모두 쓰이는 같은 뜻의 동사), 깜박임(같은 움직임을 명사로 가리키는 파생어).",
+          "relation_rationale": "C000014-0032 C000014-0032-s1: 관계 후보 검색 결과를 검토해 6개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 깜박거리다(같은 뜻의 표기 변형), 깜박이다(눈과 불빛 양쪽에 쓰이는 같은 뜻의 동사이며, 반복 여부는 정의에 명시되지 않아 근거로 삼지 않고 한쪽 뜻만 겹치는 깜빡이다와 구별함), 깜박임(깜박임은 같은 눈꺼풀·빛의 움직임을 명사로 가리켜 같은 사건이며, 되풀이 여부는 정의에 없어 근거로 삼지 않음).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0032.o01",
@@ -1829,7 +1829,7 @@
             "sense_id": "C000014-0032-s1",
             "sense_sha256": "17dc3d9830a2826212d1f023e4b0e14f2933ef198495fc6ad60090f7ae661a12",
             "gloss_sha256": "b71ddf7c05db66f20c347ae8d311253767f9ff241750077a654183460d3ea5c3",
-            "evidence_sha256": "6f985a1cea34d3b4142efe368e8e58f395b59455c4c30d9a0bfe697d292ba425"
+            "evidence_sha256": "20b40cae76116478e6be12566df5dd3a507b5f53893b85917cc0aefec7df941e"
           }
         ]
       }
@@ -4254,11 +4254,11 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 3,
           "relation_ids": [
-            "rel-4c2c78fc8c1403e014052382",
+            "rel-7b68725cd78bbbc2d8436f49",
             "rel-ee58b65c16ec44ec4870f0b8",
             "rel-2bffe391b681cedc34d093d9"
           ],
-          "relation_rationale": "C000014-0075 C000014-0075-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 끝맺다(일을 끝낸다는 뜻의 동사형).",
+          "relation_rationale": "C000014-0075 C000014-0075-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. ",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0075.o01",
@@ -4279,7 +4279,7 @@
             "sense_id": "C000014-0075-s1",
             "sense_sha256": "282b1394bcd727d808e44085c7d4044a8849fde6519c8f0d579694d1a5f0e2cb",
             "gloss_sha256": "ead7ca28c8a89293604138f9f20e1ea712320071ac5966a862fb93b6881cf29a",
-            "evidence_sha256": "e502d1749b5fa931f26bb7987d4d8d7d138f5720e382179ec47856595d4a1061"
+            "evidence_sha256": "699b4fa38c7be09081efd0a23b8b17824358ec13732bbcdfc98353ecf9429f66"
           }
         ]
       }
@@ -4544,7 +4544,7 @@
           "relation_ids": [
             "rel-4452c64df531511b787fde04"
           ],
-          "relation_rationale": "C000014-0079 C000014-0079-s1: 관계 후보 검색 결과를 검토해 1개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 파묻히다(깊이 덮여 보이지 않게 되는 같은 뜻의 동사).",
+          "relation_rationale": "C000014-0079 C000014-0079-s1: 관계 후보 검색 결과를 검토해 1개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 파묻히다(매몰은 파묻힌 결과 상태이고 파묻히다도 덮여 보이지 않게 된 같은 결과 상태).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0079.o01"
@@ -4564,7 +4564,7 @@
             "sense_id": "C000014-0079-s1",
             "sense_sha256": "89280660cd38697e422b07d15f7525d8c92e6aa906b961422f4c202914aa7257",
             "gloss_sha256": "5009930dc9724b567c16f2dc4309bd79328a02b278b694ba5e40e8d04b00b346",
-            "evidence_sha256": "c2f3f809f6571b4473af663eb564c40f483b209aba8bbee56ef57cadcdbd4c97"
+            "evidence_sha256": "9f2431a23c47ef1bf43b66edc3508987f4facd5eb06922ef1f3a580b580e741d"
           }
         ]
       }
@@ -5786,7 +5786,7 @@
             "rel-7317f3d4dfd8e2e15d3dd518",
             "rel-5507dcdbde47da665926346f"
           ],
-          "relation_rationale": "C000014-0104 C000014-0104-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 보살피다(세심히 돌본다는 같은 뜻의 동사형), 돌보다(필요한 것을 챙겨 살핀다는 같은 뜻의 동사형).",
+          "relation_rationale": "C000014-0104 C000014-0104-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 보살피다(보살핌의 정성껏 돌봄이 그대로 동사로 바뀐 같은 사건), 돌보다(보살핌과 같은 돌봄 사건을 동사로 가리키며 챙기고 살피는 범위가 같음).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0104.o01"
@@ -5806,7 +5806,7 @@
             "sense_id": "C000014-0104-s1",
             "sense_sha256": "d5c68b9c217c8a881e9b1dfe8dcc09b10512adaadd3c9e37b5936b18dcb05290",
             "gloss_sha256": "0a711d88e0fb1487eafe2b12da2753cff49ae765671a9e28b1177f5314515976",
-            "evidence_sha256": "17c880a2391120e5993ef4d3f6450a8b8ce25790a3f81eee209648a668129ee6"
+            "evidence_sha256": "d4793896c1490998b834628162427512391f8640ca4475404543cb22ea4ba3f3"
           }
         ]
       }
@@ -5836,7 +5836,7 @@
             "rel-0c5f2dd44d0b402f23a0e5ea",
             "rel-0c65b0068f489a449737d93e"
           ],
-          "relation_rationale": "C000014-0105 C000014-0105-s1: 관계 후보 검색 결과를 검토해 6개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 도움(일을 이루도록 보태는 힘이라는 같은 뜻), 기여(도움이 되는 몫을 보탠다는 같은 뜻), 일조(도움이 되는 한몫이라는 같은 뜻).",
+          "relation_rationale": "C000014-0105 C000014-0105-s1: 관계 후보 검색 결과를 검토해 6개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 도움(일을 이루도록 보태는 힘이라는 같은 뜻), 기여(기여의 정의가 도움이 되는 몫을 '보탬'이라 하여 같은 사건을 행위로 가리킴), 일조(일조는 도움이 되는 한몫을 하는 일로 보탬이 가리키는 기여분과 같은 사건).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0105.o01"
@@ -5856,7 +5856,7 @@
             "sense_id": "C000014-0105-s1",
             "sense_sha256": "b2edb43e7494340a1561d35cdf38b7d678f4b4a32397c65d1722a1fbb166e96f",
             "gloss_sha256": "e9cf11586772b6d9ffd8dfec16474a03fcca28d863e1f0ccb53b46569eefb8aa",
-            "evidence_sha256": "d539865ecf786fa4ac594bd6cf7c114e4abce6b18b16150da19454de22df9b11"
+            "evidence_sha256": "5167bb5617ef00da39fa9ce418ecc4715d3dd3dc950fa28ec30db1ee7652339d"
           }
         ]
       }
@@ -6212,7 +6212,7 @@
             "rel-c49447c0af01ac8308c7a10c",
             "rel-10a16fe624bafdb79389c87f"
           ],
-          "relation_rationale": "C000014-0114 C000014-0114-s1: 관계 후보 검색 결과를 검토해 4개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 견주다(둘 이상을 맞대어 본다는 같은 뜻), 비교(같고 다른 점을 견주어 본다는 같은 뜻의 명사형).",
+          "relation_rationale": "C000014-0114 C000014-0114-s1: 관계 후보 검색 결과를 검토해 4개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 견주다(둘 이상을 맞대어 본다는 같은 뜻), 비교(비교는 둘 이상을 견주어 보는 같은 사건을 명사로 가리키며 견주는 방식만 일반화됨).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0114.o01"
@@ -6232,7 +6232,7 @@
             "sense_id": "C000014-0114-s1",
             "sense_sha256": "d195de4c8512475d5fe67cc6c5f55876d8e6093f085d53a2e8d6e5417bb9d66c",
             "gloss_sha256": "bf3407834c01d3440a972b1c4e1fd8ad94b796ecb3070a037511c8a6ba669763",
-            "evidence_sha256": "28cf68cbe52d9f53bb76f900148dbd75274d4b341c06ec189078f3ada19a321c"
+            "evidence_sha256": "a25f71da1f9061ae691764c71b4400d23059c9944ce496902d95d2638d06d6a0"
           }
         ]
       }
@@ -7866,11 +7866,11 @@
           "relation_count": 4,
           "relation_ids": [
             "rel-de562c94e1d529290a74143d",
-            "rel-dd8fa6ccc3f3acd3382acb6f",
+            "rel-d6cc134d8e3a9f14dd93ea15",
             "rel-9c82af604134c8ac4a03b4f7",
             "rel-ea679f9092a580f11cc6dea5"
           ],
-          "relation_rationale": "C000014-0147 C000014-0147-s1: 관계 후보 검색 결과를 검토해 4개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 발걸음(발을 내딛는 움직임이라는 같은 뜻).",
+          "relation_rationale": "C000014-0147 C000014-0147-s1: 관계 후보 검색 결과를 검토해 4개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 3개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. ",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0147.o01"
@@ -7890,7 +7890,7 @@
             "sense_id": "C000014-0147-s1",
             "sense_sha256": "3c8f9e032038e0a9c0546a73a0d937a8fa9fa4e049836e36c090a95e34968459",
             "gloss_sha256": "06a6b21d8089df217b32f1ecff703c8a13158e598349a6e8d96a2f3a77138e5c",
-            "evidence_sha256": "a748ddc0cbd3afdc7d4b7f8d2111fcfb1541b7020e267eacf87c1a7a70161c10"
+            "evidence_sha256": "831bdd8ea75fcec7d251f94c115ca2a30a4da89872df9f4305a908503b755dc5"
           }
         ]
       }
@@ -8335,7 +8335,7 @@
             "rel-affe3055b67e783f484a63bd",
             "rel-97d90dcb74230581704bd8ba"
           ],
-          "relation_rationale": "C000014-0156 C000014-0156-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 눈멀다(시력을 잃는다는 같은 뜻의 동사형).",
+          "relation_rationale": "C000014-0156 C000014-0156-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 눈멀다(실명은 시력을 잃는 사건이고 눈멀다는 시력을 잃어 보지 못하게 되는 같은 사건).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0156.o01"
@@ -8355,7 +8355,7 @@
             "sense_id": "C000014-0156-s1",
             "sense_sha256": "fddc7b9bce87a09b54ab830ff2b0274f9001bad8e2ba04eb994c48b419e2084c",
             "gloss_sha256": "1cf99710a714710467e76061924c93b6e626dbeab5f21581fa44fe742d631cd4",
-            "evidence_sha256": "849c560b4e935144a5e9bdb58f10bbeb4083a739bbaef13bea21c09355ec60d3"
+            "evidence_sha256": "ff979e72013d9ba0add15093ca3fb298aa1b9bc81797d2e130c5fbcb684875bd"
           }
         ]
       }
@@ -9319,7 +9319,7 @@
             "rel-53dafdb60499a06317577494",
             "rel-9151b50a491ee69db6738159"
           ],
-          "relation_rationale": "C000014-0176 C000014-0176-s1: 관계 후보 검색 결과를 검토해 6개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 방랑(정처 없이 떠돈다는 같은 뜻), 떠돌다(정처 없이 떠도는 같은 뜻의 동사형), 떠돌아다니다(정처 없이 옮겨 다닌다는 같은 뜻의 동사형).",
+          "relation_rationale": "C000014-0176 C000014-0176-s1: 관계 후보 검색 결과를 검토해 6개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 방랑(정처 없이 떠돈다는 같은 뜻), 떠돌다(유랑의 정처 없이 떠도는 일이 동사로 바뀐 같은 사건), 떠돌아다니다(유랑의 정처 없이 옮겨 다니는 일이 동사로 바뀐 같은 사건).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0176.o01"
@@ -9339,7 +9339,7 @@
             "sense_id": "C000014-0176-s1",
             "sense_sha256": "841add021437232100dabc95a1fdc7a81888ed4bb79fd9a129bab44a2646712d",
             "gloss_sha256": "d04c164657fba407dd117310685dd7f55f20726abf5c0544014ec61a497eacb3",
-            "evidence_sha256": "a3360527c311f5f40d2693469cf5160018ab3e5582233c8ad462acf4eaa963ad"
+            "evidence_sha256": "068960408f5b929b38d9e0cba8e16a9c3598a5ae89a0caffa0c72ec79c4b121e"
           }
         ]
       }
@@ -9511,10 +9511,10 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 2,
           "relation_ids": [
-            "rel-23768363d0ffce20ef47ed7d",
+            "rel-7bc1b68d3a8ced295803cb75",
             "rel-14191ed492fe2079d308696e"
           ],
-          "relation_rationale": "C000014-0181 C000014-0181-s1: 관계 후보 검색 결과를 검토해 2개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 소소하다(작고 대수롭지 않다는 같은 뜻).",
+          "relation_rationale": "C000014-0181 C000014-0181-s1: 관계 후보 검색 결과를 검토해 2개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. ",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0181.o01",
@@ -9535,7 +9535,7 @@
             "sense_id": "C000014-0181-s1",
             "sense_sha256": "8f798f77719c5b23fa681a9adf2d6b4b29392f5768d3836fa7c70ab382a43ee6",
             "gloss_sha256": "7dcc662ce0114caf762543b2da799ed58ad5aa97f623ef8886f938d9f60feb3e",
-            "evidence_sha256": "c5ff64670ccbda52b703d88304d7a7119d092e440589203631cc9e961b3cbf71"
+            "evidence_sha256": "aa0245d38d6bd0983e9daa59f8ca096e045fdf6bbead7caf3eef15e979f018cc"
           }
         ]
       }
@@ -10124,7 +10124,7 @@
             "rel-158d42bf9b930ad721c53060",
             "rel-17db7ce1bcbefebbbce8e5b5"
           ],
-          "relation_rationale": "C000014-0192 C000014-0192-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 떠넘기다(책임을 남에게 넘긴다는 같은 뜻의 동사형).",
+          "relation_rationale": "C000014-0192 C000014-0192-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 떠넘기다(전가는 책임을 남에게 넘겨씌우는 일이고 떠넘기다는 책임을 남에게 넘기는 같은 사건).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0192.o01"
@@ -10144,7 +10144,7 @@
             "sense_id": "C000014-0192-s1",
             "sense_sha256": "8399e8976f8f0b0bd0138bb80c6eb3764f8e873b1cdddf3d8ce1dba4a04ce117",
             "gloss_sha256": "9127c56d8093cda1bd86674c8c2ca9187501274e296cce2c70249495deae3ebb",
-            "evidence_sha256": "5c3275991450a5bad9dfbc1f50f6f1d472004a38c3bc95c3fd0245586117af6d"
+            "evidence_sha256": "1c7eab55f076ca8415fba60d72cfc8f9a832375ca56ba2ff5ba0193a6881994f"
           }
         ]
       }
@@ -10878,10 +10878,10 @@
             "rel-cdcd0f72e2fb1b8a1d915450",
             "rel-d1d331647422d38abd395470",
             "rel-ce89e864136369fafcee479b",
-            "rel-e2a9cb520f1fc3e13c9bb752",
+            "rel-5072589e4d7a7d0e77a19ecb",
             "rel-c8215df66b6d59e5bc322398"
           ],
-          "relation_rationale": "C000014-0207 C000014-0207-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 3개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 깎아내리다(남을 낮추어 헐뜯는다는 같은 뜻).",
+          "relation_rationale": "C000014-0207 C000014-0207-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 4개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. ",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0207.o01"
@@ -10901,7 +10901,7 @@
             "sense_id": "C000014-0207-s1",
             "sense_sha256": "44147e1baccbe314ed683d1d98aff3213189122abf2db6f53aed0fef2704960a",
             "gloss_sha256": "94d9456469c156a8f9ec87d2b9a3144209b7688f04452823c9c9e585866d7e29",
-            "evidence_sha256": "0037532c31166a5455514e03713e104f5de2804f7d23a7a6461f1bbefa467cc8"
+            "evidence_sha256": "d3b1e35af8dafb862b4d49af72f56b6725832c196d535cad17b1d38bdf1e16f6"
           }
         ]
       }
@@ -13991,10 +13991,10 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 2,
           "relation_ids": [
-            "rel-258e26a33c52c0d7038ef616",
+            "rel-42cf4521ae0a1f64b759ca9c",
             "rel-776ab5da5e3f4d25d602b85e"
           ],
-          "relation_rationale": "C000014-0262 C000014-0262-s1: 관계 후보 검색 결과를 검토해 2개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 합동(힘을 합쳐 함께 한다는 같은 뜻).",
+          "relation_rationale": "C000014-0262 C000014-0262-s1: 관계 후보 검색 결과를 검토해 2개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. ",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0262.o01",
@@ -14015,7 +14015,7 @@
             "sense_id": "C000014-0262-s1",
             "sense_sha256": "79a070891f4049ec37d0395d6490fc514ccc23bac843f91de816f22c482b272e",
             "gloss_sha256": "179b5a812a00af1f6db3e961bc9c281cb709b8351ee97429778fa403ced8760e",
-            "evidence_sha256": "893e3aa9b02e70cf500e58a0dc99b97f1b5d524e4d5b6d4a1b48a5214152bf43"
+            "evidence_sha256": "78d88467018a6ceed9be64e251321039a5436d22bd7a1d9016ed6d7b0ba76b5f"
           }
         ]
       }
@@ -14139,7 +14139,7 @@
             "rel-a56093b8d8a1157dfda5aa9d",
             "rel-e8f3b62e071eb3eed0df9f56"
           ],
-          "relation_rationale": "C000014-0265 C000014-0265-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 흐느끼다(흐느끼며 운다는 같은 뜻의 동사형), 오열(목이 메어 흐느끼며 운다는 같은 뜻).",
+          "relation_rationale": "C000014-0265 C000014-0265-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 흐느끼다(흐느낌은 흐느끼며 우는 일이고 흐느끼다는 그 우는 동작으로 같은 사건), 오열(목이 메어 흐느끼며 운다는 같은 뜻).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0265.o01"
@@ -14159,7 +14159,7 @@
             "sense_id": "C000014-0265-s1",
             "sense_sha256": "f42891d18f6a07de9d6ef685c680d6f7db8b3ec619ee3440e36731cf21c1b54d",
             "gloss_sha256": "18aac9836a56558e708cd4f16d7b4558bbd8d312cde8294ccacfdf319e006d14",
-            "evidence_sha256": "51adb1e7d3838dd8115cdbc82c658bff60a4bc3c2e1d4f7f9b443d8b91c59bdd"
+            "evidence_sha256": "69f613c2d34f5ece10145943dcdf5d80cc8950379d3674c681ea8f301b2c8abd"
           }
         ]
       }
