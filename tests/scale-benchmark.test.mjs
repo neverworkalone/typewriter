@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
   benchmarkCanonicalValidation,
-  pickCodedTemplateRecord,
   createSyntheticBenchmarkRecord,
   runBenchmarkCli,
 } from '../scripts/benchmark/canonical-validation.mjs';
@@ -724,12 +724,38 @@ test('synthetic benchmark decision source passes the shared semantic audit again
   assert.equal(report.results[0].error, null);
 });
 
-test('the synthetic decision source borrows rationale codes from a coded record even when an inline-text record sorts first', () => {
-  // Records changed by a Stage 3 admission or a relation backfill carry inline review text; only untouched records
-  // reference shared rationale templates by code.
-  const inline = { record_id: 'a1', boundary_review: { evidence: [{ sense_id: 'a1-s1', evidence_basis: 'text', rationale: 'text' }], rationale: 'text' } };
-  const coded = { record_id: 'b1', boundary_review: { evidence: [{ sense_id: 'b1-s1', evidence_basis_code: 'reason-1', rationale_code: 'reason-2' }], rationale_code: 'reason-3' } };
-  assert.equal(pickCodedTemplateRecord([inline, coded]), coded);
-  assert.equal(pickCodedTemplateRecord([coded, inline]), coded);
-  assert.equal(pickCodedTemplateRecord([inline]), inline);
+test('the synthetic decision source passes the shared semantic audit whichever live authority records carry shared rationale codes', async () => {
+  // Records changed by a Stage 3 admission or a relation backfill store inline review text; untouched records reference
+  // shared rationale templates by code. The benchmark owns its rationale templates, so the audit passes for any mix.
+  const live = JSON.parse(readFileSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url), 'utf8'));
+  const inlineRecord = (record) => ({
+    record_id: record.record_id,
+    record_sha256: record.record_sha256,
+    boundary_review: {
+      ...record.boundary_review,
+      evidence: (record.boundary_review?.evidence ?? []).map(({ sense_id: senseId }) => ({ sense_id: senseId, evidence_basis: 'inline text', rationale: 'inline text' })),
+      pairwise: (record.boundary_review?.pairwise ?? []).map((pair) => ({
+        left_sense_id: pair.left_sense_id, right_sense_id: pair.right_sense_id, relationship: pair.relationship, decision: pair.decision,
+        evidence_basis: 'inline text', distinguishing_feature: 'inline text', rationale: 'inline text',
+      })),
+      rationale: 'inline text',
+    },
+    sense_reviews: (record.sense_reviews ?? []).map(({ sense_id: senseId, relation_decision: decision }) => ({ sense_id: senseId, relation_decision: decision })),
+  });
+  const variant = (convert) => {
+    const copy = structuredClone(live);
+    copy.authored_review.records = copy.authored_review.records.map((record, index) => (convert(index) ? inlineRecord(record) : record));
+    return copy;
+  };
+  const scenarios = {
+    'first record inline, later records coded': variant((index) => index === 0),
+    'every record inline, no reusable codes anywhere': variant(() => true),
+    'every record coded': variant(() => false),
+    'mixed inline and coded records': variant((index) => index % 2 === 0),
+  };
+  for (const [name, semanticDecisionSourceTemplate] of Object.entries(scenarios)) {
+    const report = await benchmarkCanonicalValidation({ sizes: [1000], sqliteScales: [], releasePerformance: false, semanticDecisionSourceTemplate });
+    assert.equal(report.results[0].failure_stage, null, `${name}: ${report.results[0].error}`);
+    assert.equal(report.results[0].error, null, name);
+  }
 });
