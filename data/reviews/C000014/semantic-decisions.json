@@ -3375,13 +3375,13 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 5,
           "relation_ids": [
-            "rel-23b7a1e1ae2881a4a6adb75a",
+            "rel-36440d5408c1fdf2f74d8753",
             "rel-3d9de99279f06a7dfb39d81d",
             "rel-62fa0bebbfbdd9dd2b52875b",
             "rel-5832837108b40684cabcaea9",
             "rel-e633741fa5bc47fe8f0e8a4d"
           ],
-          "relation_rationale": "C000014-0062 C000014-0062-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 클럽(같은 층위에서 바꿔 쓸 수 있는 유의어).",
+          "relation_rationale": "C000014-0062 C000014-0062-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. ",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0062.o01"
@@ -3401,7 +3401,7 @@
             "sense_id": "C000014-0062-s1",
             "sense_sha256": "8908d7ea41142a3e02e7fcc0e67d9f56f283264d90f41638f68061819644a803",
             "gloss_sha256": "704c8e5fca32b001e8e5db9cc9e74182be741aa6739546de984328f93e4643e7",
-            "evidence_sha256": "ee1aed6e2fb064843b2614b9596842c26f6d54941299aa5bbf6860ae61aac260"
+            "evidence_sha256": "bf7579ce2ad9a2f71c7035b8021b5169c6e0e13db1ebf83d01b25e5020e9bf34"
           }
         ]
       }
@@ -9410,11 +9410,11 @@
           "relation_count": 4,
           "relation_ids": [
             "rel-b5ef6ad69247a96158836132",
-            "rel-884e50bd3031b23c1f02454b",
+            "rel-ae6359787cd1e8be932ab576",
             "rel-bd93dd4b29e4c74dd9e596e5",
             "rel-831e43cc272c6e65cacdb178"
           ],
-          "relation_rationale": "C000014-0179 C000014-0179-s1: 관계 후보 검색 결과를 검토해 4개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 직감(같은 층위에서 바꿔 쓸 수 있는 유의어), 직관(같은 층위에서 바꿔 쓸 수 있는 유의어).",
+          "relation_rationale": "C000014-0179 C000014-0179-s1: 관계 후보 검색 결과를 검토해 4개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 1개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 직감(같은 층위에서 바꿔 쓸 수 있는 유의어).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0179.o01",
@@ -9435,7 +9435,7 @@
             "sense_id": "C000014-0179-s1",
             "sense_sha256": "1699ee70334f8fa54782ec4ccd61baa54d4ed244db48863c934e92482336bb7e",
             "gloss_sha256": "9208ac5fc9aff3e24f420c002437dbbd589029e3a1eff0992e5725d3dbbddfb7",
-            "evidence_sha256": "7ed3cef36f965c2fa9158f471f512d91425c1a2019790bb140e57cccd07cf9d3"
+            "evidence_sha256": "bc214f5f764eb23c70acb2a41965d2c98b5777d4aea52daba1eb6129ecba3811"
           }
         ]
       }
@@ -11830,14 +11830,14 @@
           "relation_ids": [
             "rel-af0ad3ca3324ff59fa6f3757",
             "rel-6dd7a60d77e5fbb2584b45b1",
-            "rel-5b93392e9efc1cbefe643993",
+            "rel-943d006985977205d8b8a1c3",
             "rel-3dd060b3cffead0ae9d90841",
             "rel-232a9c8e6849474540ea9603",
             "rel-dca14df6f94da90c2a5350e7",
             "rel-f8892795e4ad35857c0445f7",
             "rel-81ed6f05f61af465c829a951"
           ],
-          "relation_rationale": "C000014-0225 C000014-0225-s1: 관계 후보 검색 결과를 검토해 8개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다.  남긴 near 3개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 촉감(같은 층위에서 바꿔 쓸 수 있는 유의어), 감촉(같은 층위에서 바꿔 쓸 수 있는 유의어), 피부감각(같은 층위에서 바꿔 쓸 수 있는 유의어).",
+          "relation_rationale": "C000014-0225 C000014-0225-s1: 관계 후보 검색 결과를 검토해 8개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다.  남긴 near 2개는 실제 대상 sense의 gloss와 품사를 맞대어 확인했고 같은 source의 association 연결과 범위·한정이 겹치지 않음도 대조했다: 촉감(같은 층위에서 바꿔 쓸 수 있는 유의어), 감촉(같은 층위에서 바꿔 쓸 수 있는 유의어).",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0225.o02"
@@ -11900,7 +11900,7 @@
             "sense_id": "C000014-0225-s1",
             "sense_sha256": "c5e911be657d09eec3c4d4b36941d43ba9a97e36b02bd2bf4920fdc89868eb51",
             "gloss_sha256": "2bef07e1e8ecdfb6e00eadebe12f6ab83cbd14394cc8d99a954c587053b8eb71",
-            "evidence_sha256": "a5a41214b3abc481fcea59fb066641f192770c6854acfc6db6a3886653bcd89d"
+            "evidence_sha256": "65018986f2f2306e561d3b0e8793e5c577cfc25e5cf179b69716f84563f5d89b"
           },
           {
             "sense_id": "C000014-0225-s2",
