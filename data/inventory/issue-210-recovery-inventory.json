@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "6897af51c14b2b0ffe614f77f38ee33ea71ba44bf446378d70bed679d670275b",
+    "current_canonical_revision": "21376da463574002a112177b426592c9eec24ee9822de12bdd8b33397644b302",
     "source_manifest": [
       {
         "path": "AGENTS.md",
@@ -583,8 +583,8 @@
       },
       {
         "path": "data/canonical/issue-222-m9-d-corpus-batch-06.jsonl",
-        "sha256": "43f81960009b4570718ca0b8df8d1f0df684036ccc65c0d992d9fdb2d9e24487",
-        "byte_count": 105858
+        "sha256": "66805a00b433534ad28f71f65c7b094806b028079348897431361cdebd035f3b",
+        "byte_count": 105939
       },
       {
         "path": "data/canonical/issue-222-m9-d-corpus-batch-07.jsonl",
@@ -618,8 +618,8 @@
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-04.jsonl",
-        "sha256": "dae87089661b2861ee3753a7b78ab6df7e6827d2a84bd5b2ce816907657d6661",
-        "byte_count": 99575
+        "sha256": "e9c20e9214b4ae0df80168cff3c1cf1e25806c8859f7d13e22c44042c7a89e4e",
+        "byte_count": 99655
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-05.jsonl",
@@ -633,13 +633,13 @@
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-07.jsonl",
-        "sha256": "0c5bc55d0558d82e2e97e3ddea01837f09bcdafde7446322bdc93a5bc0b243b1",
-        "byte_count": 79774
+        "sha256": "f93cc2964844be808d84f58ede515bf88e5bf3b65e3ff50ed20866f7021bdec0",
+        "byte_count": 79848
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-08.jsonl",
-        "sha256": "0e964a8d6a9ee2948251ad20ac77658ed910561120b3c820a46d1d9a1c5e8805",
-        "byte_count": 83858
+        "sha256": "20d1c1aee862723a56e5f70b4902966670b35ff5d5613006e144e953b0b15173",
+        "byte_count": 83936
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-09.jsonl",
@@ -658,8 +658,8 @@
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-12.jsonl",
-        "sha256": "76b66759ed634959bc045983fe92c2adabaaba06a8953f4c40bcfa1a6eac7e78",
-        "byte_count": 65547
+        "sha256": "d8043321585425f5740b4550b590ebb1aa468e0a6fcd5bf643fffd92f1aeb27f",
+        "byte_count": 65610
       },
       {
         "path": "data/canonical/issue-223-m9-e-corpus-batch-13.jsonl",
@@ -683,8 +683,8 @@
       },
       {
         "path": "data/canonical/m5-10-wave-b.jsonl",
-        "sha256": "f89661cda269f1fac13831d25bc841e5ea52c2ef0bd79e01d30afba527f9aea7",
-        "byte_count": 41900
+        "sha256": "a2a110393b2a315ea6b18f2058bd7331b4f092e40c224357ae84355904df70f7",
+        "byte_count": 41945
       },
       {
         "path": "data/canonical/m5-10a-wave-a2.jsonl",
@@ -693,8 +693,8 @@
       },
       {
         "path": "data/canonical/m5-11-expansion.jsonl",
-        "sha256": "b5a5de29d0f20e185ffc5d3200418695ce53ce143ed1807a47d7d4100a58715c",
-        "byte_count": 147413
+        "sha256": "eee4bfed9dd853a672333d5c41ac5a2946e5af9bb462985a722210474bd50ba9",
+        "byte_count": 147506
       },
       {
         "path": "data/canonical/m5-12a-expansion.jsonl",
@@ -703,8 +703,8 @@
       },
       {
         "path": "data/canonical/m5-13-expansion.jsonl",
-        "sha256": "6bfadca240c175bfa9391f0d570ff3bc28d1ac0a37c7bc7a470dedb5607c9272",
-        "byte_count": 289650
+        "sha256": "38c3398b258821edafc6ab85171d748c09811c17b27b5c789e383ce874a1e829",
+        "byte_count": 289506
       },
       {
         "path": "data/canonical/m5-14-expansion.jsonl",
@@ -718,8 +718,8 @@
       },
       {
         "path": "data/canonical/m5-3-calibration.jsonl",
-        "sha256": "5c70f18bb89ab30a00775948f103362832f19895456d6b094aca4993fa7307d4",
-        "byte_count": 67144
+        "sha256": "69cfc465705f3eff6e34582bc3a0bf0b942d30a4496bfb4498d50eec6b61d5c5",
+        "byte_count": 67174
       },
       {
         "path": "data/canonical/m5-5-recalibration.jsonl",
@@ -738,8 +738,8 @@
       },
       {
         "path": "data/canonical/pilot.jsonl",
-        "sha256": "d0675518b45d81f11b3919ffb6ad3efd7f0b32811af1be699950f0059aa3130b",
-        "byte_count": 333475
+        "sha256": "bb056ec53a288ac8cea3feae5b759083ef8bfecf12ea11f48659b0a7b18c2ea2",
+        "byte_count": 333634
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
@@ -753,17 +753,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "7f583d3db104094d66fe45561616b12a147b73c428abc8becbb241283cfec7c8",
-        "byte_count": 15686354
+        "sha256": "2a20184556f0cfe76142a08da94d78a85e15d24dd50ce10d1c7aab6d0a9d897f",
+        "byte_count": 15683692
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "e94017cb304e955ae30308f46fe0f1a4dd7ec7a077526ea23b58566b84eee75e",
+        "sha256": "54671bdc50b39cf9b5845970076283f7b19544fbdb9f1a8c858f030232c81d19",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "b80bc58d739bffac66d42865765d13fc63bc6eeb063a855179ba56ae52135b30",
+        "sha256": "0176fc3d0e9d87d2187628a48dd9fe32e679e01003fdef6484dc24fceada5aa5",
         "byte_count": 29643
       },
       {
@@ -803,7 +803,7 @@
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "c9479e406d72e8adcda3171d4233c995028b497d72f570c3cf82dc63cd566054",
+        "sha256": "405f4ad637948804e6e5886e0e688e296c9c1bc12211d1021e51f64ea19e9993",
         "byte_count": 8780
       },
       {

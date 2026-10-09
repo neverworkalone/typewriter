@@ -4050,11 +4050,10 @@
    "relation": {
     "target": "w7026",
     "target_sense": "w7026-s1",
-    "type": "near",
-    "note": "거처는 사람이 머물러 생활하는 곳이라 처소와 가깝다.",
-    "relevance": 5
+    "type": "direct",
+    "note": "그의 처소를 찾았다 / 그의 거처를 찾았다. 사람이 머물러 지내는 곳을 말하는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w10012-s1: 후보 검토에서 w7026-s1를 near 관계로 판단했다."
+   "rationale": "w10012-s1 w7026-s1: 두 gloss가 사람이 머물러 지내는(생활하는) 곳을 같게 말한다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w10012",
@@ -5423,11 +5422,10 @@
    "relation": {
     "target": "w8772",
     "target_sense": "w8772-s1",
-    "type": "near",
-    "note": "멋쩍다는 어색하고 쑥스러운 기분이 든다는 뜻이라 겸연쩍다와 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "겸연쩍은 표정으로 웃었다 / 멋쩍은 표정으로 웃었다. 쑥스럽고 어색한 기분을 말하는 같은 서술 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w11354-s1: 후보 검토에서 w8772-s1를 near 관계로 판단했다."
+   "rationale": "w11354-s1 w8772-s1: 두 gloss가 쑥스럽고 어색함을 같은 순서만 달리해 적는다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w11354",
@@ -9501,19 +9499,6 @@
    "rationale": "w2286-s1: 후보 검토에서 w094-s1를 association 관계로 판단했다."
   },
   {
-   "source_record_id": "w2305",
-   "source_sense_id": "w2305-s1",
-   "source_gloss_sha256": "e6286c4b9326094c6ac93824f6a8474025e988037308aecae83b85540b444fcf",
-   "relation": {
-    "target": "r040",
-    "target_sense": "r040-s1",
-    "type": "near",
-    "note": "탄력은 눌리거나 당겨진 뒤 원래 모양으로 돌아가려는 성질이라 탄성과 거의 같다.",
-    "relevance": 6
-   },
-   "rationale": "w2305-s1 r040-s1: 이전 note가 대상 gloss의 '성질'을 '힘'으로 바꿔 적었다. 대상 gloss의 표현대로 note를 고쳤고 두 gloss의 범위는 같아 유형은 near로 그대로 둔다."
-  },
-  {
    "source_record_id": "w231",
    "source_sense_id": "w231-s1",
    "source_gloss_sha256": "a31cd0e171945919b40ec99b1727c6f4a5694a5c20d3cc0d8addca19026595b7",
@@ -10166,11 +10151,10 @@
    "relation": {
     "target": "w3221",
     "target_sense": "w3221-s1",
-    "type": "near",
-    "note": "피부감각은 피부가 온도와 압력, 접촉을 알아차리는 감각이라 피부의 감각과 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "추위에 피부의 감각이 무뎌졌다 / 추위에 피부감각이 무뎌졌다. 피부로 온도와 압력을 알아차리는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w2486-s1: 후보 검토에서 w3221-s1를 near 관계로 판단했다."
+   "rationale": "w2486-s1 w3221-s1: 두 gloss가 피부로 압력·온도·촉감을 알아차리는 감각을 같게 말한다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w2486",
@@ -10736,11 +10720,10 @@
    "relation": {
     "target": "w8077",
     "target_sense": "w8077-s1",
-    "type": "near",
-    "note": "잎사귀는 식물의 줄기나 가지에 달려 자라는 납작한 부분이라 잎과 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "나무에서 잎이 떨어졌다 / 나무에서 잎사귀가 떨어졌다. 식물의 줄기나 가지에 달린 납작한 부분을 말하는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w270-s1: 후보 검토에서 w8077-s1를 near 관계로 판단했다."
+   "rationale": "w270-s1 w8077-s1: 두 gloss가 줄기나 가지에 달린 얇고 넓은(납작한) 부분을 같게 말한다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w270",
@@ -11009,11 +10992,10 @@
    "relation": {
     "target": "w6008",
     "target_sense": "w6008-s1",
-    "type": "near",
-    "note": "까닭은 어떤 일이 생기거나 그렇게 된 이유라 이유와 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "그가 떠난 이유를 물었다 / 그가 떠난 까닭을 물었다. 어떤 일이 생긴 원인을 말하는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w274-s1: 후보 검토에서 w6008-s1를 near 관계로 판단했다."
+   "rationale": "w274-s1 w6008-s1: 두 gloss가 서로를 같은 개념으로 정의한다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w274",
@@ -12639,11 +12621,10 @@
    "relation": {
     "target": "w682",
     "target_sense": "w682-s1",
-    "type": "near",
-    "note": "향기롭다는 좋은 냄새가 은은하고 기분 좋게 난다는 뜻이라, 향긋하다와 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "꽃이 향긋하다 / 꽃이 향기롭다. 좋은 냄새가 은은하고 기분 좋게 나는 같은 서술 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w319-s1: 후보 검토에서 w682-s1를 near 관계로 판단했다."
+   "rationale": "w319-s1 w682-s1: 두 gloss가 은은하고 기분 좋은 냄새를 같게 말한다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w319",
@@ -17729,11 +17710,10 @@
    "relation": {
     "target": "w319",
     "target_sense": "w319-s1",
-    "type": "near",
-    "note": "향긋하다는 냄새가 은은하고 기분 좋다는 뜻이라 향기롭다와 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "꽃이 향기롭다 / 꽃이 향긋하다. 좋은 냄새가 은은하고 기분 좋게 나는 같은 서술 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w682-s1: 후보 검토에서 w319-s1를 near 관계로 판단했다."
+   "rationale": "w682-s1 w319-s1: 두 gloss가 은은하고 기분 좋은 냄새를 같게 말한다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w682",
@@ -17924,11 +17904,10 @@
    "relation": {
     "target": "w10012",
     "target_sense": "w10012-s1",
-    "type": "near",
-    "note": "처소는 사람이 머물러 지내는 곳이라 거처와 가깝다.",
-    "relevance": 5
+    "type": "direct",
+    "note": "그의 거처를 찾았다 / 그의 처소를 찾았다. 사람이 머물러 지내는 곳을 말하는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w7026-s1: 후보 검토에서 w10012-s1를 near 관계로 판단했다."
+   "rationale": "w7026-s1 w10012-s1: 두 gloss가 사람이 머물러 지내는(생활하는) 곳을 같게 말한다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w7026",
@@ -18702,11 +18681,10 @@
    "relation": {
     "target": "w11354",
     "target_sense": "w11354-s1",
-    "type": "near",
-    "note": "겸연쩍다는 쑥스럽고 어색하다는 뜻이라 멋쩍다와 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "멋쩍은 표정으로 웃었다 / 겸연쩍은 표정으로 웃었다. 쑥스럽고 어색한 기분을 말하는 같은 서술 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w8772-s1: 후보 검토에서 w11354-s1를 near 관계로 판단했다."
+   "rationale": "w8772-s1 w11354-s1: 두 gloss가 쑥스럽고 어색함을 같은 순서만 달리해 적는다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w8772",
@@ -19206,11 +19184,10 @@
    "relation": {
     "target": "w9815",
     "target_sense": "w9815-s1",
-    "type": "near",
-    "note": "붉은색은 붉은 빛깔이라 붉은빛과 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "벽을 붉은빛으로 칠했다 / 벽을 붉은색으로 칠했다. 붉게 보이는 빛깔을 말하는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w948-s1: 후보 검토에서 w9815-s1를 near 관계로 판단했다."
+   "rationale": "w948-s1 w9815-s1: 두 gloss가 모두 붉은 빛깔이다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w948",
@@ -19581,11 +19558,10 @@
    "relation": {
     "target": "w948",
     "target_sense": "w948-s1",
-    "type": "near",
-    "note": "붉은빛은 붉은색으로 보이는 빛깔이라 붉은색과 거의 같다.",
-    "relevance": 6
+    "type": "direct",
+    "note": "벽을 붉은색으로 칠했다 / 벽을 붉은빛으로 칠했다. 붉게 보이는 빛깔을 말하는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
    },
-   "rationale": "w9815-s1: 후보 검토에서 w948-s1를 near 관계로 판단했다."
+   "rationale": "w9815-s1 w948-s1: 두 gloss가 모두 붉은 빛깔이다. 기존 역방향 관계가 없고 두 gloss가 같은 범위를 덮으며 위 문장 틀에서 서로 직접 바꿔 넣을 수 있어 near가 아닌 direct로 정리했다."
   },
   {
    "source_record_id": "w9815",
@@ -20149,7 +20125,7 @@
   "rel-c600d069d4690008a061a1d2": "4e091439571c4449d9cda2d2e6827e5d4d33cd6fd0b7b3389a317c797767d751",
   "rel-fd6a768b4d931b0905a271e8": "29e451870ebf0946d6571522bbd2b307c4e44986d5cda797a3e29b8629f83557",
   "rel-f05d575bc986d8e1d7dd60af": "baa0831f7040fcbba7aa95c80528e9981a2e10a161b07e70750d706022c68b78",
-  "rel-e9080628f44681ad60ab57da": "4b7335ae44637d3386a94adb31645de7f1dfcf7bf9a279569eaf82e9faadf3fb",
+  "rel-1c76ecaa4b19d9f9bd096d63": "4b7335ae44637d3386a94adb31645de7f1dfcf7bf9a279569eaf82e9faadf3fb",
   "rel-083f45aec8b24080abf77add": "e7cd10b59329961f67fb66a7a0e37a93ecac4b6af48e2d1270db3c0e1f72466e",
   "rel-d7c1fd17be333cbad85bd439": "e8be692a9fa46006b6417825337e2d0ef29e1ea5304b96e0184ecec3048167b7",
   "rel-8d9e9f1b8f70038573041525": "ac5ccedce6a13c17f962866079d26bd8524cc72b27ecde572a36d6633ee83ddb",
@@ -20255,7 +20231,7 @@
   "rel-a005deb69126c189e973fb1f": "2192a1d2fed025bdd1908e8054cb65365436c4b9b6aa80cd8b4c8d9ac4e8f651",
   "rel-b51a27f000c92761b1fc7820": "f9f40b909e179094fcce26a4c0a42013cb1cdb6643f0d810457e679ecb3093a4",
   "rel-212bfd7789b96459e5fe4d64": "631605d0ebd3c9467fcec93415514d7baa40d832e6e104748c8db50ae0652d51",
-  "rel-69c120126f5f95447d1a6002": "095fcdd6754dbf414df12e26e8e364c84555c5de00c103cb39ed8cd14435b446",
+  "rel-0d79b032723947ba1cf43088": "095fcdd6754dbf414df12e26e8e364c84555c5de00c103cb39ed8cd14435b446",
   "rel-235158c59655126e14c0701c": "a3e540e320c7f712c930e0c326c3a8f19f3b5d210b3d1d03e154f2ddc2a92ca3",
   "rel-7218824491ef1487ffb38eb3": "d64ed6c9430ec48b4c01bef7ed3f911694e5dfcf4fe323522d1ac01d6934a77d",
   "rel-eade97047e8f680a0a2cb0b2": "4e650abe7fcc8430321469ec2951b0aaf16da2f4921687474a4412b4d1c44826",
@@ -20571,7 +20547,6 @@
   "rel-92eddebdfd6c660ec7d08be2": "764e96a33fb71d923a9c2956cb4a8ff4cf0b1408f7d15064ddab5c9b01bc897a",
   "rel-b70fefbca5ab114497315225": "7568c045ab1e74a1a1ca3d1434268a217da1840e6830837339b854067cb209f8",
   "rel-83aa0b63b946849ebc96eb79": "aab566aaf8eabae2b1b92f16ccf527de70fe66e846bd352d6f2807493eaf8bf0",
-  "rel-88a3bfb878beaa2c206f63df": "6cc7fdecf7e022f33681157ff2c73ec4bd61cbb90db1c48c75a7053ac00329e9",
   "rel-b2986ef340bd1f4a415bdb0a": "1571cd9b4f65e488ba2c17434f3ebc63caf5f557e8cc4048e5d22c07719263ab",
   "rel-c02792158e9c5f0d9822fdc8": "09ecc9f345c571f2629688b848cf4decb4e94895e569655f1ea1f5dc09c8d82d",
   "rel-7c3dd81aa7be9548decf5732": "bc39210e8e1dacde74777bf79eb5264c013d65a432e78d483b98d0e1d3c1cbd3",
@@ -20622,7 +20597,7 @@
   "rel-2b0915e7111326f7fa4cfb74": "23cf8f456fa50ee13178feef853d35f8206661d2ea9fa5e936ebc03ac95f736b",
   "rel-18ab1e085827c5e51334a6f1": "638876f316430eddda862a966e0fac00506899df713bb727829321cb9a2c3746",
   "rel-49f00986880a7fa256b48664": "65e5bb727bd9c58f1fe79a56a462833470fcbec7cb397b248d42b0053cc01afa",
-  "rel-55713a109c11c58608c95db4": "6496cbee754f13def823a80d12ec4d6ed349f3461681e5974d0aced77034095a",
+  "rel-eda318d0157b7a7decd71c60": "6496cbee754f13def823a80d12ec4d6ed349f3461681e5974d0aced77034095a",
   "rel-45b068819bdcc3d46a98ca0e": "541e23a916191b06728318b91ad31afee2925d72ba34796adaa22cf08281620f",
   "rel-6de8de3d8fae6926fa9817e8": "b06598d6eecbb13bdb680e976dd382ff4f61bf61daada8ffa9951cb77643c0cf",
   "rel-57703003d1cf2e9a49f905cf": "d0f12efc4dd1b0831f9e01681e2a47da8ea898cfbf4dc3cd46f0fa9bbbf7c6d9",
@@ -20666,7 +20641,7 @@
   "rel-90530171c2d433f89083bd05": "784a0a15c2148347ab69c5e06835dbc5b0f1d12c794d8c12826577f2e9994017",
   "rel-80ac430b1e11783d270d439a": "21ab9a435e58c1c94164e581b9b770acafd47224f06fafe423c03937495d4dda",
   "rel-c47e86bd9211659c432477ee": "3fbb14981214bf635d827da12f88659fff52925378aebd1a68bbc96fafce42f3",
-  "rel-810a8e67e9af57c0d990d9c0": "861cb252b1cc130afe0d246b5a8ea22a02c20c5f5589dbc73562dbb105d80534",
+  "rel-939901b1dcd9fa0bbffa8948": "861cb252b1cc130afe0d246b5a8ea22a02c20c5f5589dbc73562dbb105d80534",
   "rel-5d65bc4680e412879c75eae4": "6c2f79749d754b73bd2c366af7cf605fd214a80b60074a03c739be6746d36dd0",
   "rel-20a64b615af7dbc8d1b087ac": "8cd97d455dd07bbc00df862a5953547cf2674df2458ff5f159543001f82f3cc4",
   "rel-f4dbce98c7c201df0bae8259": "bcd214bed241ac80b01749012b18c46e55a7226132ab833af744f2465a839fc6",
@@ -20687,7 +20662,7 @@
   "rel-aea10cb92b097c79922f9057": "2edd869a9b0a5d21be87b48960fbdd5a50f20fdc76d7b50321d3c4931b4ccc53",
   "rel-f2044127ff307cd58ebbde0d": "e18e63a47730fba35c5a6ecd38f1cada73025a6e9a447e21ac7e7755e8de6abf",
   "rel-a8e656e2d1616a8834590c8b": "2cfef9399eb1d774bc4d6548b576bca4ee3c2052569d7512e46192fbe3033fce",
-  "rel-98155d01cd3704e72b8554ed": "63c5425454c90f61cbc74aff3a9a5ff330203418a434a04733f4cb9395d39e91",
+  "rel-159e74e04c5b3d9f71a84762": "63c5425454c90f61cbc74aff3a9a5ff330203418a434a04733f4cb9395d39e91",
   "rel-67a0bfab238d36372410ff1c": "63ddeac9276d72b19597f20093d529ee41655182c93427a0441362661699b41e",
   "rel-5adc4bfa7042f0554da13b5d": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
   "rel-8d35bfcaaffaa9561e96b527": "124a32727a97cf4dc365dab712ebec978fdb15ba314e3afe2ae91efb987ea88b",
@@ -20813,7 +20788,7 @@
   "rel-ae4bb790a35350cdc36c3292": "b3c7244cc0e68373c68aed86693871bfeb9d0ea6c3fb4172275cd092a55b13dc",
   "rel-10c498692e186a36440b41c9": "cd62fbc41f96b0c7f6bc15cd7ae8226bfac4c01a8c316e5e0eeb3b14a5e7f071",
   "rel-1719f9f00bb02fe01d07e168": "505857ac7ac17a0701d67150bf6aeec31dd19f40b9c8a00a5b02485b37ddad55",
-  "rel-30ae88e93aadb5918246a5bd": "2164b4a5711e0f05a84c11ce29a02be010915c45852ea368915ce2e765344778",
+  "rel-cca72053227201dd68bbc2d5": "2164b4a5711e0f05a84c11ce29a02be010915c45852ea368915ce2e765344778",
   "rel-4d8021fbb4fab2a3331cd880": "114f490f1b5f1762708ea428e4127f090380fc806baf2cdc1b904e6d7315550b",
   "rel-b827a21f3805615bd95e3c71": "84aabebde3f0067afebf4f4efcd76d8b49748d757b56c6b5c193efcd44bcfb49",
   "rel-1647c7c5ffed4819287020fc": "56caa8e4f39b4d878892ca4d53f1405927a22ae5534e6390b0d4cf824a95f740",
@@ -21206,7 +21181,7 @@
   "rel-1e85bf30b6134a0bc0c684e8": "d2bd2cc25e7c76d047f8d552afc25a14a407e8499cc76c7a5f2f7b73096fb2ed",
   "rel-d72a1e035339ab6167d52088": "c1985f8ec5a38dcab38ca06dafd7f5d9ffe62125227d4d5b63e7f3a8c2a62811",
   "rel-97a0efa5aa5142ddd169eade": "bc08acfbb20b7fcda8135d362cdfcc276b6e8d5ab3bf6a07a901ed550bb5117f",
-  "rel-3fe6404dcaae570fedbde953": "cda017f36f833e70f707ee49635d72c74a37814618744c301a2a178e3c7e2125",
+  "rel-6068b5ab386f5c66d0ff0e81": "cda017f36f833e70f707ee49635d72c74a37814618744c301a2a178e3c7e2125",
   "rel-5e8fe98c9ca977eb409446c8": "56caa8e4f39b4d878892ca4d53f1405927a22ae5534e6390b0d4cf824a95f740",
   "rel-781ff64590cefe7c88995037": "c9b421309cac010b88aeea120ab3645544fb52bf7f7e37cc192a0ba204b3fef1",
   "rel-bfd82ee87e82de54e13b93ce": "62d7a52702ec4dc4e082475a360db36171249bf48dcb6bda1a328bd779e43d97",
@@ -21221,7 +21196,7 @@
   "rel-89a39eb9a189114f21dc7431": "7f6e6a4038064a1671d079b31c823d2eed31134409d692ed52326e39579749b4",
   "rel-eaa6aef98fa0c4b7859381cd": "503df53618c8e1cc51483c5a4e3bc61fc2a6dfcaae70ec378ec43351dde064ec",
   "rel-e381b522e6e412cb5f006eb5": "48c576b3ea3377523ddac8d160d6d21ea4b8803fb108f9294fbb826b4e127850",
-  "rel-081aa4a1fe96335743dd3959": "806b9f24111c03c1c02cb1dd982c3d41243c4a15296b5c8c5d25dea560b66991",
+  "rel-a1c95f3ad4b9cf98c1aa422a": "806b9f24111c03c1c02cb1dd982c3d41243c4a15296b5c8c5d25dea560b66991",
   "rel-cd2d6c3be85591d939d456b2": "e7cd10b59329961f67fb66a7a0e37a93ecac4b6af48e2d1270db3c0e1f72466e",
   "rel-b2c03b732c2e885f1772e7f2": "25bff5a458c6bcd77f8476ea68dde5afd64abe2ea2d03e5bacd4317b15ae88e1",
   "rel-d7d6f908c576c45799a25a08": "82de3aafeba05c596ee6c94e259fb1d61d4dd11576dcd0c17af5f95f44343a9b",
@@ -21281,7 +21256,7 @@
   "rel-61d60dc1bfc003e400c601f8": "d5087a1a17d2cc3b79642515e806e624a61e3a7df4df6731266da93b0439faf7",
   "rel-091ca20b8ecd0a8506b4d632": "a2d26ece97711dbdbb7014e9bbbdabfd757c2d156c8227fddf6f97a0a072c384",
   "rel-5f9a4feb6020f12a38be5f9e": "d2bd2cc25e7c76d047f8d552afc25a14a407e8499cc76c7a5f2f7b73096fb2ed",
-  "rel-7448697c1e49e0247947a766": "aee7ba7dc9cf442f8578e31c64f48f641c8cb1aa8976c4cf5437e68dccc63542",
+  "rel-5e7b9e667dfcc4a0fe73b7a8": "aee7ba7dc9cf442f8578e31c64f48f641c8cb1aa8976c4cf5437e68dccc63542",
   "rel-6ca10d099329327dfce58259": "d64ed6c9430ec48b4c01bef7ed3f911694e5dfcf4fe323522d1ac01d6934a77d",
   "rel-991c62b37df32db04c64b998": "bb6739c085324abfa061f717b07c2d079184f4a17c6cb38414ddb66333c452ba",
   "rel-84b65578f9b6649d959d9726": "21c3c9c1bfc07b500ed172d2672592f1b120e099f20228367c6f36e403cfccf4",
@@ -21320,7 +21295,7 @@
   "rel-c43b5323c307f6db981cd2cc": "e45affd7f7ed58c01800bbf3470e4e036cac813f004e97cbecf1ad100f6162a8",
   "rel-ba78d4cb4074d03920e4a947": "ce7cbd088d2689bb80eb618c728d73b1c5991ef13f2d1c13ef34d4308d0f69da",
   "rel-5c28f9cc8e5b9b70fafc4791": "c549891e2e996203a75cb1f7937349e2b1c79938dd7dd6a8c2e29e67751e860a",
-  "rel-2f366d2c19829506e16ad9b1": "f88ea28d59d2af9a9791122c3937dab1383f1f6017d1e4109f3a6c48d697f62b",
+  "rel-4bcd75c8a9450656d4504454": "f88ea28d59d2af9a9791122c3937dab1383f1f6017d1e4109f3a6c48d697f62b",
   "rel-d6945f50e8b098bc30fb1507": "6d9424927441fa59a9c437ab962baaf7efe38fabf0562b0a6c673dcce08f171b",
   "rel-0f7db927257a42a0f3e8748e": "aab456d2f3ab78a29c2d202ad4c528f845d7538b060bc596f5bbe63a8265796d",
   "rel-02fa9737fbc91d5488bff4af": "1a7fbb31fe96a78fa0bd0970fa103cd45c8ca4b950cd7bba8f8a903387ce2b78",
@@ -21349,7 +21324,7 @@
   "rel-8e25a18cb986e3cb4540be13": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
   "rel-a61a26a4836f41134fbf1322": "d8700f94c40705375e9fb76aa04a39771b30f554b21dbc4167e487c24f82f7dd",
   "rel-e48cfef9d773e1677318bf6a": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
-  "rel-9226e54a6284cc09b8286d3d": "7ccc700b4e523980a82e2fd3616e2ed5d7ed0dbc06bbad434b946d5b0442594e",
+  "rel-d3f9d5d693fb0ef579fbef13": "7ccc700b4e523980a82e2fd3616e2ed5d7ed0dbc06bbad434b946d5b0442594e",
   "rel-f821ded943f757f80cb9f963": "0d2d4d5f972f63a85b29f120b8515b49bc31c66cf68304a5233a79231a78b8f7",
   "rel-13ff7039772f1c4d1b5e14db": "1198c1363e8fb043f55747118c7e83f3780886f787844d1a6376c892f48cf443",
   "rel-43e4044da2f6f589197aa44b": "d3291ff0c3aa0f3a1baf59f5b38ccf00cdc2e789c79f95b23ffe172f51ae5642",
