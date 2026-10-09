@@ -47,7 +47,7 @@ The checkpoint validates 2416 records added since the baseline under exact searc
 
 ## Checkpoint audit
 
-Current canonical inventory: 12312 records, 12312 directly searchable, 0 non-searchable, 12620 senses, and 2562 relations. Relation-empty searchable records: 11651.
+Current canonical inventory: 12312 records, 12312 directly searchable, 0 non-searchable, 12620 senses, and 2557 relations. Relation-empty searchable records: 11651.
 
 | Record type | Records |
 | --- | ---: |
@@ -110,7 +110,7 @@ Across reviewed batches, hold reasons were search-collision: 9; unresolved-ident
 
 Correction rate: **NOT_MEASURED_NO_HUMAN_REVIEW**. Writer review burden: **NOT_MEASURED_NO_WRITER_REVIEW**. Systemic defect classes: 0; shared system fixes recorded: 0.
 
-Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `ff6a265d50f1319dfceee04b4aa376effbcc5e22d84a5afe9d0017d403687fbc`.
+Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `ad841db363fe2a7c78681a4e8e88999e168ff30ab0d2b3ceec168f7798ea53c2`.
 Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 12,312 records (+7,207; 141.18%). Runtime contract changed: false; package bytes measured: false. Issue #222 and later checkpointed work add canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
 
 ## Continuation
