@@ -208,49 +208,32 @@ const BENCHMARK_PAIRWISE_TEMPLATES = [
   },
 ];
 
-function createSyntheticDecisionSource(recordInfos, template, scale, hashCache) {
+// The boundary, evidence and no-relation rationale text is benchmark-owned too, so the synthetic source never depends on
+// which live authority records carry shared rationale codes (records changed by a Stage 3 admission or a relation
+// backfill store inline text instead). Every text cites record, sense and gloss evidence as the shared audit requires.
+const BENCHMARK_BOUNDARY_TEMPLATES = [
+  { code: 'benchmark-boundary-evidence', template: 'synthetic benchmark gloss evidence {{gloss_sha256_prefix}} for {{sense_id}}' },
+  { code: 'benchmark-evidence-rationale', template: '{{record_id}} {{sense_id}} {{gloss_sha256_prefix}} synthetic benchmark sense review' },
+  { code: 'benchmark-boundary-rationale', template: '{{record_id}} {{sense_id}} {{gloss_sha256_prefix}} synthetic benchmark boundary review' },
+  { code: 'benchmark-no-relation-rationale', template: '{{record_id}} {{sense_id}} {{gloss_sha256_prefix}} synthetic benchmark no-relation review' },
+];
+
+export function createSyntheticDecisionSource(recordInfos, template, scale, hashCache) {
   const records = recordInfos.map(recordOf);
   const canonicalDigest = hashCache?.canonicalDigest ?? canonicalRecordsSha256(recordInfos);
   const sourceId = `synthetic-canonical-benchmark-${scale}`;
   const templateReview = template.authored_review;
   const templatePass = templateReview.review_pass;
-  const templateRecord = templateReview.records.find((record) => record.boundary_review);
   const templatePairwiseRecord = templateReview.records.find(
     (record) => record.boundary_review?.pairwise?.length > 0,
   );
   const templatePairwise = templatePairwiseRecord?.boundary_review?.pairwise?.[0];
-  const templateEvidence = templateRecord?.boundary_review?.evidence?.find(Boolean);
-  const templateSense = templateRecord?.sense_reviews?.find(Boolean);
-  const findCode = (value, fieldName) => {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        const found = findCode(item, fieldName);
-        if (found) return found;
-      }
-      return undefined;
-    }
-    if (!value || typeof value !== 'object') return undefined;
-    if (typeof value[fieldName] === 'string') return value[fieldName];
-    for (const child of Object.values(value)) {
-      const found = findCode(child, fieldName);
-      if (found) return found;
-    }
-    return undefined;
-  };
   const rationaleCodes = {
-    boundaryEvidence: templateEvidence?.evidence_basis_code
-      ?? findCode(templateReview.records, 'evidence_basis_code'),
-    evidenceRationale: templateEvidence?.rationale_code
-      ?? findCode(templateReview.records, 'rationale_code'),
-    boundaryRationale: templateRecord?.boundary_review?.rationale_code
-      ?? findCode(templateReview.records, 'rationale_code'),
-    relationRationale: templateSense?.relation_rationale_code
-      ?? findCode(templateReview.records, 'relation_rationale_code'),
-    noRelationRationale: templateSense?.no_relation_rationale_code
-      ?? findCode(templateReview.records, 'no_relation_rationale_code'),
-    // The pairwise text must cite the reviewed sense pair and gloss evidence. A borrowed
-    // template code is not guaranteed to (the first pairwise record may carry inline text),
-    // so the benchmark registers its own token-bearing pairwise templates.
+    boundaryEvidence: BENCHMARK_BOUNDARY_TEMPLATES[0].code,
+    evidenceRationale: BENCHMARK_BOUNDARY_TEMPLATES[1].code,
+    boundaryRationale: BENCHMARK_BOUNDARY_TEMPLATES[2].code,
+    noRelationRationale: BENCHMARK_BOUNDARY_TEMPLATES[3].code,
+    // The pairwise text must cite the reviewed sense pair and gloss evidence.
     pairwiseEvidence: BENCHMARK_PAIRWISE_TEMPLATES[0].code,
     pairwiseDistinguishingFeature: BENCHMARK_PAIRWISE_TEMPLATES[1].code,
     pairwiseRationale: BENCHMARK_PAIRWISE_TEMPLATES[2].code,
@@ -330,7 +313,7 @@ function createSyntheticDecisionSource(recordInfos, template, scale, hashCache) 
     })),
     changes: [],
     rationale_templates: [
-      ...structuredClone(templateReview.rationale_templates ?? []),
+      ...BENCHMARK_BOUNDARY_TEMPLATES.map((entry) => ({ ...entry })),
       ...BENCHMARK_PAIRWISE_TEMPLATES.map((entry) => ({ ...entry })),
     ],
   };
@@ -1700,6 +1683,7 @@ export async function benchmarkCanonicalValidation({
   fixedLevelCosts,
   fixedLevelEvidence,
   releasePerformance = process.argv.includes('--release-performance'),
+  semanticDecisionSourceTemplate: suppliedSemanticDecisionSourceTemplate,
 } = {}) {
   const selectedSqliteScales = sqliteScales === undefined
     ? (sqliteScale === undefined ? parseOptionalScales() : new Set([sqliteScale]))
@@ -1722,9 +1706,8 @@ export async function benchmarkCanonicalValidation({
         }
         : undefined),
   );
-  const semanticDecisionSourceTemplate = JSON.parse(
-    await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'),
-  );
+  const semanticDecisionSourceTemplate = suppliedSemanticDecisionSourceTemplate
+    ?? JSON.parse(await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'));
   const canonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data', 'canonical');
   const inputPreparationStart = now();
   const canonicalTemplateContext = await loadCanonicalContext({
