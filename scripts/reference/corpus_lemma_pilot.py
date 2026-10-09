@@ -162,6 +162,8 @@ def read_exclusion_manifest(exclusion_path: Path | None) -> dict:
     source_artifacts = payload.get("source_artifacts")
     if not isinstance(lemmas, list) or not isinstance(source_artifacts, list):
         raise RuntimeError("Reviewed-lemma exclusion manifest is incomplete.")
+    if lemmas and not source_artifacts:
+        raise RuntimeError("Reviewed-lemma exclusions with lemmas must bind at least one source artifact.")
     normalized = []
     for lemma in lemmas:
         if not isinstance(lemma, str) or not lemma or lemma != lemma.strip() or lemma != unicodedata.normalize("NFC", lemma):

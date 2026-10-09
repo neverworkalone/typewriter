@@ -184,6 +184,9 @@ function verifiedExclusionManifestLemmas(artifact, relativePath) {
   ))) {
     throw new Error(`Prior exclusion manifest must contain trimmed NFC lemmas: ${relativePath}`);
   }
+  if (sources.length === 0) {
+    throw new Error(`Prior exclusion manifest with lemmas must bind at least one source artifact: ${relativePath}`);
+  }
   const sortedLemmas = [...new Set(lemmas)].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
   if (sortedLemmas.length !== lemmas.length || sortedLemmas.some((lemma, index) => lemma !== lemmas[index])) {
     throw new Error(`Prior exclusion manifest lemmas must be unique and deterministically sorted: ${relativePath}`);

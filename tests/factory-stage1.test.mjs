@@ -325,6 +325,51 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
   assert.deepEqual(await validateFactoryRepository({ root }), []);
 });
 
+test('Stage 1 rejects nonempty exclusion manifests without sources and accepts source-bound manifests', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-exclusion-binding-'));
+  const cache = await taskCacheFor(root);
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+  const candidate = cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]);
+  const sourceArtifactPath = path.join(cache.taskDirectory, 'prior-source.json');
+  const sourceArtifact = { candidate_records: [{ lemma: '짠하다' }] };
+  const sourceBytes = JSON.stringify(sourceArtifact);
+  await writeFile(sourceArtifactPath, sourceBytes);
+  const sources = [{
+    path: 'runs/T000001/prior-source.json',
+    sha256: sha256Hex(sourceBytes),
+  }];
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
+  const writeBoundEvidence = async (sourceArtifacts) => {
+    const payload = {
+      lemmas: ['짠하다'],
+      schema_version: 'm9-reviewed-lemma-exclusions-v1',
+      source_artifacts: sourceArtifacts,
+    };
+    const exclusionSha256 = sha256Hex(JSON.stringify(payload));
+    await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify({
+      ...payload,
+      exclusion_sha256: exclusionSha256,
+    }));
+    await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([candidate], {
+      schema_version: 'm9-corpus-candidate-evidence-v1',
+      selection: {
+        exclusion_sha256: exclusionSha256,
+        exclusion_source_artifacts: sourceArtifacts,
+        excluded_candidate_lemma_count: 1,
+      },
+      orchestration: { exclusion_manifest_sha256: exclusionSha256 },
+    })));
+  };
+
+  await writeBoundEvidence([]);
+  await assert.rejects(() => runStage1(args, deps), /must bind at least one source artifact/u);
+
+  await writeBoundEvidence(sources);
+  await assert.rejects(() => runStage1(args, deps), /no unprocessed lemmas/u);
+});
+
 test('post-write validation is base-aware like CI: merged reviews are compared to the base, a new batch stays fail-closed', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
   const cache = await taskCacheFor(root);

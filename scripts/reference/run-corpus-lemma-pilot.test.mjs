@@ -99,6 +99,17 @@ test('shared-cache exclusion inputs preserve source bindings and union prior pro
   const tamperedManifestPath = path.join(cachePaths.runs, 'prior', 'tampered-exclusions.json');
   await writeFile(tamperedManifestPath, JSON.stringify({ ...priorManifest, lemmas: [...priorManifest.lemmas, '변조'] }));
   await assert.rejects(buildExclusionManifest([tamperedManifestPath], options), /digest does not match/u);
+
+  const unboundPayload = { ...priorManifest, source_artifacts: [] };
+  const unboundDigestPayload = {
+    lemmas: unboundPayload.lemmas,
+    schema_version: unboundPayload.schema_version,
+    source_artifacts: unboundPayload.source_artifacts,
+  };
+  unboundPayload.exclusion_sha256 = createHash('sha256').update(JSON.stringify(unboundDigestPayload)).digest('hex');
+  const unboundManifestPath = path.join(cachePaths.runs, 'prior', 'unbound-exclusions.json');
+  await writeFile(unboundManifestPath, JSON.stringify(unboundPayload));
+  await assert.rejects(buildExclusionManifest([unboundManifestPath], options), /must bind at least one source artifact/u);
   assert.throws(() => resolveExclusionSourcePath('runs/../outside.json', options), /traversal segments/u);
 
   const outsidePath = path.join(temporaryRoot, 'outside.json');
