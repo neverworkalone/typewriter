@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import process from 'node:process';
 import test from 'node:test';
 
 import { CI_CATEGORIES, registerCheck } from '../scripts/ci/registry.mjs';
-import { runChecks, runLevel } from '../scripts/ci/run-category.mjs';
+import { runChecks, runCli, runLevel } from '../scripts/ci/run-category.mjs';
 import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 
 test('runner stops at the first failed check regardless of check kind', async () => {
@@ -107,6 +108,61 @@ test('runner applies tier and schedule policy while preserving one execution con
     if (previousPhase === undefined) delete process.env.TYPEWRITER_CI_PHASE;
     else process.env.TYPEWRITER_CI_PHASE = previousPhase;
   }
+});
+
+test('candidate-only CI validates without creating a canonical session or SQLite build', async () => {
+  const productionCandidateCommands = [];
+  await runCli(['candidates'], {
+    log: () => {},
+    execute: async (command, context) => {
+      productionCandidateCommands.push(command.args);
+      assert.equal(context.canonicalContext.canonicalRevision, 'candidate-only-no-canonical-build');
+      assert.equal(context.sharedDictionaryPath, undefined);
+    },
+  });
+  assert.deepEqual(productionCandidateCommands, [
+    ['scripts/factory/validate.mjs'],
+    ['scripts/factory/freshness.mjs'],
+  ]);
+
+  const candidateCheck = registerCheck({
+    label: 'Synthetic Stage 1 candidate validator',
+    command: () => ({ executable: 'synthetic', args: ['candidate-validation'] }),
+  }, { owner: 'factory', tier: 'candidate' });
+  const options = {
+    categories: { factory: { label: 'Candidate artifacts', checks: [candidateCheck] } },
+    levels: { candidates: ['factory'] },
+    executionPolicy: { tiers: ['candidate'], includeManual: false },
+    createSession: () => { throw new Error('candidate-only CI must not load the canonical session'); },
+    log: () => {},
+  };
+  const seen = [];
+  await runCli(['candidates'], {
+    ...options,
+    execute: async ({ args }, context) => {
+      seen.push(args[0]);
+      assert.equal(context.canonicalContext.canonicalRevision, 'candidate-only-no-canonical-build');
+      assert.equal(context.sharedDictionaryPath, undefined);
+    },
+  });
+  assert.deepEqual(seen, ['candidate-validation']);
+
+  await assert.rejects(
+    runCli(['candidates'], {
+      ...options,
+      execute: async (_command, context) => {
+        await appendFile(context.processMetrics.path, `${JSON.stringify({
+          type: 'sqlite-build',
+          pid: process.pid,
+          count: 1,
+          canonical_revision: context.canonicalContext.canonicalRevision,
+          canonical_directory: '/synthetic/canonical',
+          phase: 'normal',
+        })}\n`);
+      },
+    }),
+    /ci:candidates must not build SQLite/u,
+  );
 });
 
 test('ci:all completes Normal before Deep checks in the same domain and preserves the one-build gate', async () => {

@@ -1,0 +1,2828 @@
+{
+  "issue": 464,
+  "baseline": {
+    "run_id": 37877241218,
+    "run_url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+    "head_sha": "8432af5ac6b76c07dbb69f050e7158df99958070",
+    "recorded_at": "2026-10-09",
+    "observed_workflow": "PR #460 ci:normal on the pre-migration registry",
+    "registered_check_count": 128,
+    "sum_registered_check_duration_ms": 432109,
+    "ci_normal_wall_clock_ms": 434408.39,
+    "current_revision_sqlite_build_count": 1,
+    "post_migration_ci_normal_wall_clock_ms": null,
+    "target_wall_clock_reduction_percent": 50,
+    "measurement_note": "Post-migration workflow wall time is filled after the exact PR 2 HEAD completes GitHub CI. Check-duration estimate sums all remaining Normal checks and is not substituted for the wall-clock target."
+  },
+  "counts_by_tier": {
+    "candidate": 2,
+    "normal": 87,
+    "deep": 8,
+    "historical": 49
+  },
+  "normal_check_duration_estimate_ms": 128156,
+  "candidate_gate_local_measurement_ms": 2817.28,
+  "retired_checks": [],
+  "checks": [
+    {
+      "owner": "canonical",
+      "check": "Validate manifest version",
+      "protected_contract": "Validate manifest version",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Validate manifest version.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 41,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Validate canonical JSONL",
+      "protected_contract": "Validate canonical JSONL",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Validate canonical JSONL.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 0,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Run single-pass global canonical audit",
+      "protected_contract": "Run single-pass global canonical audit",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Run single-pass global canonical audit.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 890,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Validate M6-3 surface-form projection coverage",
+      "protected_contract": "Validate M6-3 surface-form projection coverage",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Validate M6-3 surface-form projection coverage.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 0,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test canonical JSONL validator",
+      "protected_contract": "Test canonical JSONL validator",
+      "test_files": [
+        "tests/validate-canonical-jsonl.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test canonical JSONL validator.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 256,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test shared canonical context",
+      "protected_contract": "Test shared canonical context",
+      "test_files": [
+        "tests/canonical-context.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test shared canonical context.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 542,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test dataset validator",
+      "protected_contract": "Test dataset validator",
+      "test_files": [
+        "tests/validate-dataset-integrity.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test dataset validator.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 233,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test M6-1 baseline metrics, gates, and report contracts",
+      "protected_contract": "Test M6-1 baseline metrics, gates, and report contracts",
+      "test_files": [
+        "tests/m6-1-quality-baseline.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test M6-1 baseline metrics, gates, and report contracts.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 194,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test M6-4 audit snapshot and tamper rejection",
+      "protected_contract": "Test M6-4 audit snapshot and tamper rejection",
+      "test_files": [
+        "tests/m6-4-quality-audit.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test M6-4 audit snapshot and tamper rejection.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 150,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test M6-5 correction calibration evidence",
+      "protected_contract": "Test M6-5 correction calibration evidence",
+      "test_files": [
+        "tests/m6-5-correction-calibration.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test M6-5 correction calibration evidence.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 168,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Validate frozen M6-4 quality audit snapshot",
+      "protected_contract": "Validate frozen M6-4 quality audit snapshot",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Validate frozen M6-4 quality audit snapshot.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test target inventory",
+      "protected_contract": "Test target inventory",
+      "test_files": [
+        "tests/target-inventory.test.mjs"
+      ],
+      "selected_tier": "deep",
+      "schedule": "always",
+      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
+      "decision": "moved-to-deep",
+      "rationale": "Moved to Deep because this is the exhaustive tamper and mutation regression suite; Normal still runs the real validateTargetInventory function inside the complete global canonical audit.",
+      "consumer": "ci:deep and ci:all",
+      "estimated_duration_ms": 25470,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Validate lexical rule inventory",
+      "protected_contract": "Validate lexical rule inventory",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Validate lexical rule inventory.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 370,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test lexical rule inventory",
+      "protected_contract": "Test lexical rule inventory",
+      "test_files": [
+        "tests/lexical-rule-inventory.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test lexical rule inventory.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 119,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test CI category runner fail-fast behavior",
+      "protected_contract": "Test CI category runner fail-fast behavior",
+      "test_files": [
+        "tests/ci-runner.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test CI category runner fail-fast behavior.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 1747,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test CI check ownership registry",
+      "protected_contract": "Test CI check ownership registry",
+      "test_files": [
+        "tests/ci-registry.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test CI check ownership registry.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 1092,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "canonical",
+      "check": "Test one current-revision SQLite build guard (real runner fault injection)",
+      "protected_contract": "Test one current-revision SQLite build guard (real runner fault injection)",
+      "test_files": [
+        "tests/ci-sqlite-build-guard.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces a current canonical revision, schema, integrity, or ownership contract on every ordinary PR. Protected contract: Test one current-revision SQLite build guard (real runner fault injection).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 10683,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Run single-pass global canonical audit",
+      "protected_contract": "Run single-pass global canonical audit",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Run single-pass global canonical audit.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 0,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test shared lexical quality",
+      "protected_contract": "Test shared lexical quality",
+      "test_files": [
+        "tests/lexical-quality.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test shared lexical quality.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 3235,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test relation admission",
+      "protected_contract": "Test relation admission",
+      "test_files": [
+        "tests/relation-admission.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test relation admission.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 341,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test semantic audit decision source",
+      "protected_contract": "Test semantic audit decision source",
+      "test_files": [
+        "tests/semantic-audit-decision-source.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test semantic audit decision source.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2846,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test shared admission context equivalence, tamper rejection, and immutable digest reuse",
+      "protected_contract": "Test shared admission context equivalence, tamper rejection, and immutable digest reuse",
+      "test_files": [
+        "tests/shared-admission-context.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test shared admission context equivalence, tamper rejection, and immutable digest reuse.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 245,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test semantic corrections",
+      "protected_contract": "Test semantic corrections",
+      "test_files": [
+        "tests/semantic-corrections.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test semantic corrections.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2902,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test semantic decision-source locality",
+      "protected_contract": "Test semantic decision-source locality",
+      "test_files": [
+        "tests/semantic-decision-source-locality.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test semantic decision-source locality.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 449,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test shared lexical selection",
+      "protected_contract": "Test shared lexical selection",
+      "test_files": [
+        "tests/lexical-selection.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test shared lexical selection.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 119,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test source-agnostic intake pipeline",
+      "protected_contract": "Test source-agnostic intake pipeline",
+      "test_files": [
+        "tests/intake-pipeline.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test source-agnostic intake pipeline.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 130,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test corpus intake to SQLite direct-search path",
+      "protected_contract": "Test corpus intake to SQLite direct-search path",
+      "test_files": [
+        "tests/intake-end-to-end.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test corpus intake to SQLite direct-search path.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 220,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test corpus-free synthetic intake to SQLite direct-search path",
+      "protected_contract": "Test corpus-free synthetic intake to SQLite direct-search path",
+      "test_files": [
+        "tests/intake-end-to-end-synthetic.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test corpus-free synthetic intake to SQLite direct-search path.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 223,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test production intake hand-off binding at the batch builder boundary",
+      "protected_contract": "Test production intake hand-off binding at the batch builder boundary",
+      "test_files": [
+        "tests/intake-production-handoff.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test production intake hand-off binding at the batch builder boundary.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 178,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test production hand-off to canonical, SQLite and direct search (both adapters)",
+      "protected_contract": "Test production hand-off to canonical, SQLite and direct search (both adapters)",
+      "test_files": [
+        "tests/intake-production-e2e.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test production hand-off to canonical, SQLite and direct search (both adapters).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 286,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test declared canonical-writer entrypoints and the mandatory intake hand-off policy",
+      "protected_contract": "Test declared canonical-writer entrypoints and the mandatory intake hand-off policy",
+      "test_files": [
+        "tests/production-entrypoints.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test declared canonical-writer entrypoints and the mandatory intake hand-off policy.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 241,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test shared Kiwi batch service",
+      "protected_contract": "Test shared Kiwi batch service",
+      "test_files": [
+        "tests/intake-kiwi-service.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test shared Kiwi batch service.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 199,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test shared Typewriter Python venv contract, launcher and staleness checks (synthetic interpreter)",
+      "protected_contract": "Test shared Typewriter Python venv contract, launcher and staleness checks (synthetic interpreter)",
+      "test_files": [
+        "tests/python-env.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test shared Typewriter Python venv contract, launcher and staleness checks (synthetic interpreter).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 194,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Validate factory candidate/review batch contracts",
+      "protected_contract": "Validate factory candidate/review batch contracts",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Validate factory candidate/review batch contracts.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2876,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Require factory results to be current with the shared factory contract on master",
+      "protected_contract": "Require factory results to be current with the shared factory contract on master",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Require factory results to be current with the shared factory contract on master.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 68,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test factory contract freshness gate and contract-repair transition",
+      "protected_contract": "Test factory contract freshness gate and contract-repair transition",
+      "test_files": [
+        "tests/factory-freshness.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test factory contract freshness gate and contract-repair transition.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 533,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test factory contracts, state machines, identity adapter, and typed handoff",
+      "protected_contract": "Test factory contracts, state machines, identity adapter, and typed handoff",
+      "test_files": [
+        "tests/factory-contracts.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test factory contracts, state machines, identity adapter, and typed handoff.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 1506,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test factory Stage 1 lemma-centered candidate batch producer",
+      "protected_contract": "Test factory Stage 1 lemma-centered candidate batch producer",
+      "test_files": [
+        "tests/factory-stage1.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test factory Stage 1 lemma-centered candidate batch producer.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 447,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test Python corpus extractor and cached selection (factory opt-in keeps canonical lemmas and every POS; default M9 behavior; stale cache rejected)",
+      "protected_contract": "Test Python corpus extractor and cached selection (factory opt-in keeps canonical lemmas and every POS; default M9 behavior; stale cache rejected)",
+      "test_files": [
+        "tests/corpus-lemma-pilot-python.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test Python corpus extractor and cached selection (factory opt-in keeps canonical lemmas and every POS; default M9 behavior; stale cache rejected).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 1129,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test lemma-centered candidate contract, usage-group decisions, and v1/v2 compatibility",
+      "protected_contract": "Test lemma-centered candidate contract, usage-group decisions, and v1/v2 compatibility",
+      "test_files": [
+        "tests/factory-lemma.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test lemma-centered candidate contract, usage-group decisions, and v1/v2 compatibility.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2722,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test factory Stage 1 analyzer provider boundary and fallback",
+      "protected_contract": "Test factory Stage 1 analyzer provider boundary and fallback",
+      "test_files": [
+        "tests/factory-analyzer-providers.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test factory Stage 1 analyzer provider boundary and fallback.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 200,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test pinned Khaiii provider contract, lazy fallback and native smoke (synthetic; native skipped without the release; no Docker)",
+      "protected_contract": "Test pinned Khaiii provider contract, lazy fallback and native smoke (synthetic; native skipped without the release; no Docker)",
+      "test_files": [
+        "tests/factory-khaiii-provider.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test pinned Khaiii provider contract, lazy fallback and native smoke (synthetic; native skipped without the release; no Docker).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 269,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test pinned MeCab-ko provider contract, three-way fallback and real runtime smoke (synthetic; real runtime skipped without the pinned venv)",
+      "protected_contract": "Test pinned MeCab-ko provider contract, three-way fallback and real runtime smoke (synthetic; real runtime skipped without the pinned venv)",
+      "test_files": [
+        "tests/factory-mecab-provider.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test pinned MeCab-ko provider contract, three-way fallback and real runtime smoke (synthetic; real runtime skipped without the pinned venv).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 562,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test Ensemble Resolver v2: three-provider adjudication, contextual fallback decisions, verification queue, tamper rejection and same-cohort metrics (synthetic)",
+      "protected_contract": "Test Ensemble Resolver v2: three-provider adjudication, contextual fallback decisions, verification queue, tamper rejection and same-cohort metrics (synthetic)",
+      "test_files": [
+        "tests/factory-ensemble.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test Ensemble Resolver v2: three-provider adjudication, contextual fallback decisions, verification queue, tamper rejection and same-cohort metrics (synthetic).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 493,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test real three-native-provider ensemble smoke (skipped with the reason where Kiwi, Khaiii native or MeCab-ko is absent; no mock substitute)",
+      "protected_contract": "Test real three-native-provider ensemble smoke (skipped with the reason where Kiwi, Khaiii native or MeCab-ko is absent; no mock substitute)",
+      "test_files": [
+        "tests/factory-ensemble-native-smoke.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test real three-native-provider ensemble smoke (skipped with the reason where Kiwi, Khaiii native or MeCab-ko is absent; no mock substitute).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 124,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test Stage 2 atomic claims, merge-gated session loop, and cleanup",
+      "protected_contract": "Test Stage 2 atomic claims, merge-gated session loop, and cleanup",
+      "test_files": [
+        "tests/factory-stage2-worker.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test Stage 2 atomic claims, merge-gated session loop, and cleanup.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 238,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test Stage 3 serial admission, rejection, recovery, and ID/reference allocation",
+      "protected_contract": "Test Stage 3 serial admission, rejection, recovery, and ID/reference allocation",
+      "test_files": [
+        "tests/factory-stage3-worker.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test Stage 3 serial admission, rejection, recovery, and ID/reference allocation.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 38529,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "lexical",
+      "check": "Test Stage 3 reverse relation amendments: remapping, staleness, idempotence, semantic authority and audit",
+      "protected_contract": "Test Stage 3 reverse relation amendments: remapping, staleness, idempotence, semantic authority and audit",
+      "test_files": [
+        "tests/factory-relation-amendments.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces the active shared lexical, factory, admission, provenance, or production hand-off contract on every ordinary PR. Protected contract: Test Stage 3 reverse relation amendments: remapping, staleness, idempotence, semantic authority and audit.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 7383,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Run single-pass global canonical audit",
+      "protected_contract": "Run single-pass global canonical audit",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Run single-pass global canonical audit.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 0,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Normalize canonical data",
+      "protected_contract": "Normalize canonical data",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Normalize canonical data.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 237,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Test canonical normalization",
+      "protected_contract": "Test canonical normalization",
+      "test_files": [
+        "tests/normalize-canonical.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Test canonical normalization.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 305,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Build shared SQLite dictionary artifact",
+      "protected_contract": "Build shared SQLite dictionary artifact",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Build shared SQLite dictionary artifact.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 315,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Validate shared SQLite dictionary artifact",
+      "protected_contract": "Validate shared SQLite dictionary artifact",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Validate shared SQLite dictionary artifact.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 80,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Run integrated M2 audit",
+      "protected_contract": "Run integrated M2 audit",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Run integrated M2 audit.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 423,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Verify shared surface-form projection reuse",
+      "protected_contract": "Verify shared surface-form projection reuse",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Verify shared surface-form projection reuse.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 1,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Test SQLite dictionary build",
+      "protected_contract": "Test SQLite dictionary build",
+      "test_files": [
+        "tests/build-dictionary.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Test SQLite dictionary build.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 804,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Test exploratory relation relevance",
+      "protected_contract": "Test exploratory relation relevance",
+      "test_files": [
+        "tests/relation-relevance.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Test exploratory relation relevance.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 211,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Test Issue #400 Top-100 window through the production append path",
+      "protected_contract": "Test Issue #400 Top-100 window through the production append path",
+      "test_files": [
+        "tests/relation-enrichment-top100.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Test Issue #400 Top-100 window through the production append path.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 149,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "toolchain",
+      "check": "Test integrated M2 audit",
+      "protected_contract": "Test integrated M2 audit",
+      "test_files": [
+        "tests/m2-pipeline.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it enforces current canonical normalization, one-build SQLite construction, or integration validation on every ordinary PR. Protected contract: Test integrated M2 audit.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 584,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate M5-8 process contract",
+      "protected_contract": "Validate M5-8 process contract",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate M5-8 process contract. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1023,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate M5-9A repair authorization",
+      "protected_contract": "Validate M5-9A repair authorization",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate M5-9A repair authorization. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 849,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate M5-10A candidate-generation calibration",
+      "protected_contract": "Validate M5-10A candidate-generation calibration",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate M5-10A candidate-generation calibration. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1218,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate M5-10A process correction",
+      "protected_contract": "Validate M5-10A process correction",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate M5-10A process correction. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1387,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate M5-10A repair authorization",
+      "protected_contract": "Validate M5-10A repair authorization",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate M5-10A repair authorization. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1386,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Run M5-10C recovery contract tests",
+      "protected_contract": "Run M5-10C recovery contract tests",
+      "test_files": [
+        "tests/m5-10c-recovery.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Run M5-10C recovery contract tests. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 990,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate M5-10C recovery and authorization contract",
+      "protected_contract": "Validate M5-10C recovery and authorization contract",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate M5-10C recovery and authorization contract. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1055,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Run M5-10D workload contract tests",
+      "protected_contract": "Run M5-10D workload contract tests",
+      "test_files": [
+        "tests/m5-10d-workload.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Run M5-10D workload contract tests. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 27470,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate M5-10D recovery and authorization contract",
+      "protected_contract": "Validate M5-10D recovery and authorization contract",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate M5-10D recovery and authorization contract. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 4865,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate committed M5-10D recovery artifact",
+      "protected_contract": "Validate committed M5-10D recovery artifact",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate committed M5-10D recovery artifact. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1044,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate committed M5-10D authorization artifact",
+      "protected_contract": "Validate committed M5-10D authorization artifact",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate committed M5-10D authorization artifact. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1054,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test shared batch workflow",
+      "protected_contract": "Test shared batch workflow",
+      "test_files": [
+        "tests/batch-workflow.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in Normal because the shared generic admission and reviewed-import path must preserve the canonical base and reject incomplete or unbound imports on the same PR. The measured 6.2-second suite still leaves the Normal reduction above the 50% target.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 6247,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5-8 process contract",
+      "protected_contract": "Test M5-8 process contract",
+      "test_files": [
+        "tests/m5-8-process.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5-8 process contract. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1993,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5-9A repair authorization",
+      "protected_contract": "Test M5-9A repair authorization",
+      "test_files": [
+        "tests/m5-9a-repair.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5-9A repair authorization. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1060,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5-9 expansion",
+      "protected_contract": "Test M5-9 expansion",
+      "test_files": [
+        "tests/m5-9-expansion.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5-9 expansion. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 789,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5 calibration",
+      "protected_contract": "Test M5 calibration",
+      "test_files": [
+        "tests/m5-calibration.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5 calibration. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 312,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5 recalibration",
+      "protected_contract": "Test M5 recalibration",
+      "test_files": [
+        "tests/m5-recalibration.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5 recalibration. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 679,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5-10A process correction",
+      "protected_contract": "Test M5-10A process correction",
+      "test_files": [
+        "tests/m5-10a-process.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5-10A process correction. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 4508,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test batch measurement",
+      "protected_contract": "Test batch measurement",
+      "test_files": [
+        "tests/batch-measurement.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test batch measurement. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1132,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test lexical production candidates",
+      "protected_contract": "Test lexical production candidates",
+      "test_files": [
+        "tests/lexical-production-candidates.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test lexical production candidates. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 147,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test lexical production state",
+      "protected_contract": "Test lexical production state",
+      "test_files": [
+        "tests/lexical-production-state.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test lexical production state. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 143,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5-11 expansion",
+      "protected_contract": "Test M5-11 expansion",
+      "test_files": [
+        "tests/m5-11.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5-11 expansion. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 769,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5-11 admission",
+      "protected_contract": "Test M5-11 admission",
+      "test_files": [
+        "tests/m5-11-admission.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5-11 admission. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 5958,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M5-12 historical pre-admission boundary",
+      "protected_contract": "Test M5-12 historical pre-admission boundary",
+      "test_files": [
+        "tests/m5-12.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M5-12 historical pre-admission boundary. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 534,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #204 review evidence regressions",
+      "protected_contract": "Test Issue #204 review evidence regressions",
+      "test_files": [
+        "tests/issue-204-review-regressions.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test Issue #204 review evidence regressions. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 130,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate Issue #204 corpus pilot admission",
+      "protected_contract": "Validate Issue #204 corpus pilot admission",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate Issue #204 corpus pilot admission. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 8092,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate Issue #211 bounded lexical recovery",
+      "protected_contract": "Validate Issue #211 bounded lexical recovery",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate Issue #211 bounded lexical recovery. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 9261,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #219 portable logical-content digest",
+      "protected_contract": "Test Issue #219 portable logical-content digest",
+      "test_files": [
+        "tests/issue-219-content-digest.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test Issue #219 portable logical-content digest. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 228,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate Issue #219 M9 bounded lexical recovery",
+      "protected_contract": "Validate Issue #219 M9 bounded lexical recovery",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate Issue #219 M9 bounded lexical recovery. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 9687,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate Issue #220 M9 historical recovery checkpoint",
+      "protected_contract": "Validate Issue #220 M9 historical recovery checkpoint",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate Issue #220 M9 historical recovery checkpoint. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 15680,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test shared Typewriter cache paths and explicit local-reference migration",
+      "protected_contract": "Test shared Typewriter cache paths and explicit local-reference migration",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test shared Typewriter cache paths and explicit local-reference migration.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 561,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate every tracked M9 corpus candidate review",
+      "protected_contract": "Validate every tracked M9 corpus candidate review",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate every tracked M9 corpus candidate review. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1102,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M9 corpus candidate-review disposition regressions",
+      "protected_contract": "Test M9 corpus candidate-review disposition regressions",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test M9 corpus candidate-review disposition regressions. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 128,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issues #332 and #334 literature TXT pilot and full index",
+      "protected_contract": "Test Issues #332 and #334 literature TXT pilot and full index",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test Issues #332 and #334 literature TXT pilot and full index.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 1133,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #391 Stage 2 literature evidence retriever",
+      "protected_contract": "Test Issue #391 Stage 2 literature evidence retriever",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test Issue #391 Stage 2 literature evidence retriever.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 885,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #392 bounded literature rescue of evidence-insufficiency deferrals",
+      "protected_contract": "Test Issue #392 bounded literature rescue of evidence-insufficiency deferrals",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test Issue #392 bounded literature rescue of evidence-insufficiency deferrals.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 274,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #397 canonical relation candidate retrieval",
+      "protected_contract": "Test Issue #397 canonical relation candidate retrieval",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test Issue #397 canonical relation candidate retrieval.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2078,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply",
+      "protected_contract": "Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply",
+      "test_files": [],
+      "selected_tier": "deep",
+      "schedule": "always",
+      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
+      "decision": "moved-to-deep",
+      "rationale": "Moved to Deep because this exercises the full relation backfill queue, resume, review, and apply scenarios; Normal retains relation admission and complete current-canonical integrity checks.",
+      "consumer": "ci:deep and ci:all",
+      "estimated_duration_ms": 38328,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #223 review-only import boundary",
+      "protected_contract": "Test Issue #223 review-only import boundary",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test Issue #223 review-only import boundary.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 370,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #223 reviewer run-record binding and raw-output derivation",
+      "protected_contract": "Test Issue #223 reviewer run-record binding and raw-output derivation",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test Issue #223 reviewer run-record binding and raw-output derivation. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 160,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #223 committed-artifact cross-file regressions",
+      "protected_contract": "Test Issue #223 committed-artifact cross-file regressions",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test Issue #223 committed-artifact cross-file regressions. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1173,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test B16+ review-only, canonical-import review, intake artifact verification and a real builder run (no complete-canonical validator rerun)",
+      "protected_contract": "Test B16+ review-only, canonical-import review, intake artifact verification and a real builder run (no complete-canonical validator rerun)",
+      "test_files": [
+        "tests/intake-batch-boundary.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test B16+ review-only, canonical-import review, intake artifact verification and a real builder run (no complete-canonical validator rerun).",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2387,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate Issue #223 committed M9-E checkpoint artifacts",
+      "protected_contract": "Validate Issue #223 committed M9-E checkpoint artifacts",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate Issue #223 committed M9-E checkpoint artifacts. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 64272,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #223 source-bound paragraph references",
+      "protected_contract": "Test Issue #223 source-bound paragraph references",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test Issue #223 source-bound paragraph references. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 168,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test Issue #222 checkpoint audit and M9-E handoff",
+      "protected_contract": "Test Issue #222 checkpoint audit and M9-E handoff",
+      "test_files": [
+        "tests/issue-222-report.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Test Issue #222 checkpoint audit and M9-E handoff. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 291,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate portable Issue #222 checkpoint regeneration",
+      "protected_contract": "Validate portable Issue #222 checkpoint regeneration",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate portable Issue #222 checkpoint regeneration. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 41531,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M9 production checkpoint progress",
+      "protected_contract": "Test M9 production checkpoint progress",
+      "test_files": [
+        "tests/m9-production-progress.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test M9 production checkpoint progress.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 148,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test M10 per-batch stage timing ledger",
+      "protected_contract": "Test M10 per-batch stage timing ledger",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test M10 per-batch stage timing ledger.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 330,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Test agent self-check semantic review contract and legacy review workflow",
+      "protected_contract": "Test agent self-check semantic review contract and legacy review workflow",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects a current shared production, review, evidence, or admission boundary on every ordinary PR. Protected contract: Test agent self-check semantic review contract and legacy review workflow.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 194,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "batch",
+      "check": "Validate M5-15 pre-admission boundary",
+      "protected_contract": "Validate M5-15 pre-admission boundary",
+      "test_files": [
+        "tests/m5-13.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it validates a completed legacy batch, authorization, recovery, or checkpoint contract: Validate M5-15 pre-admission boundary. Current canonical and active factory/admission protections remain in Normal; the preserved check is available for explicit replay.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 933,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test packaged dictionary runtime guards",
+      "protected_contract": "Test packaged dictionary runtime guards",
+      "test_files": [
+        "tests/dictionary-validation.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test packaged dictionary runtime guards.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 121,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test shared search query contract",
+      "protected_contract": "Test shared search query contract",
+      "test_files": [
+        "tests/search-query.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test shared search query contract.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 109,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test shared native and WASM SQLite query adapter",
+      "protected_contract": "Test shared native and WASM SQLite query adapter",
+      "test_files": [
+        "tests/runtime-query-adapter.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test shared native and WASM SQLite query adapter.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 322,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test role-independent searchable lexical eligibility",
+      "protected_contract": "Test role-independent searchable lexical eligibility",
+      "test_files": [
+        "tests/searchable-start-contract.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test role-independent searchable lexical eligibility.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 572,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test deterministic product-shaped scale fixture",
+      "protected_contract": "Test deterministic product-shaped scale fixture",
+      "test_files": [
+        "tests/scale-benchmark.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test deterministic product-shaped scale fixture.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 637,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test M6-3 surface-form projection and search",
+      "protected_contract": "Test M6-3 surface-form projection and search",
+      "test_files": [
+        "tests/surface-form-projection.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test M6-3 surface-form projection and search.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 730,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test search regressions",
+      "protected_contract": "Test search regressions",
+      "test_files": [
+        "tests/search-regressions.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test search regressions.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 150,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test Issue #204 exact and generated search",
+      "protected_contract": "Test Issue #204 exact and generated search",
+      "test_files": [
+        "tests/issue-204-search.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test Issue #204 exact and generated search.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 325,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test Issue #211 exact search and workflow",
+      "protected_contract": "Test Issue #211 exact search and workflow",
+      "test_files": [
+        "tests/issue-211-search.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test Issue #211 exact search and workflow.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 553,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test Issue #219 exact search and workflow",
+      "protected_contract": "Test Issue #219 exact search and workflow",
+      "test_files": [
+        "tests/issue-219-search.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test Issue #219 exact search and workflow.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 325,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Test M6-2 inflection search contract",
+      "protected_contract": "Test M6-2 inflection search contract",
+      "test_files": [
+        "tests/m6-2-inflection-contract.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Test M6-2 inflection search contract.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 329,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Run product unit tests",
+      "protected_contract": "Run product unit tests",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Run product unit tests.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2834,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Build product extension",
+      "protected_contract": "Build product extension",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Build product extension.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 1102,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Build Typewriter Web",
+      "protected_contract": "Build Typewriter Web",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Build Typewriter Web.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 976,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "product",
+      "check": "Validate built product output contracts",
+      "protected_contract": "Validate built product output contracts",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current direct search, runtime, extension, web build, or product output on every ordinary PR. Protected contract: Validate built product output contracts.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 377,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "artifacts",
+      "check": "Test artifact policy",
+      "protected_contract": "Test artifact policy",
+      "test_files": [
+        "tests/artifact-policy.test.mjs"
+      ],
+      "selected_tier": "deep",
+      "schedule": "always",
+      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
+      "decision": "moved-to-deep",
+      "rationale": "Moved to Deep because this is the exhaustive generated-artifact allow/deny matrix; Normal still runs artifact-policy --clean against the current checkout and keeps package output checks.",
+      "consumer": "ci:deep and ci:all",
+      "estimated_duration_ms": 26954,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "artifacts",
+      "check": "Test Pages artifact publication boundary",
+      "protected_contract": "Test Pages artifact publication boundary",
+      "test_files": [
+        "tests/pages-artifact.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current package or generated-artifact cleanliness on every ordinary PR. Protected contract: Test Pages artifact publication boundary.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 530,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "artifacts",
+      "check": "Test package validation",
+      "protected_contract": "Test package validation",
+      "test_files": [
+        "tests/validate-package.test.mjs"
+      ],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current package or generated-artifact cleanliness on every ordinary PR. Protected contract: Test package validation.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 2428,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "artifacts",
+      "check": "Enforce generated-artifact policy and clean checkout",
+      "protected_contract": "Enforce generated-artifact policy and clean checkout",
+      "test_files": [],
+      "selected_tier": "normal",
+      "schedule": "always",
+      "trigger": "Required on every ordinary non-documentation PR through ci:normal.",
+      "decision": "retained-normal",
+      "rationale": "Retained in required Normal because it protects current package or generated-artifact cleanliness on every ordinary PR. Protected contract: Enforce generated-artifact policy and clean checkout.",
+      "consumer": "ci:normal",
+      "estimated_duration_ms": 12646,
+      "duration_estimate_source": {
+        "run_id": 37877241218,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
+        "method": "measured check duration in PR #460 normal workflow"
+      }
+    },
+    {
+      "owner": "factory",
+      "check": "Validate candidate manifests, digests, identities, and factory contracts",
+      "protected_contract": "Validate candidate manifests, digests, identities, and factory contracts",
+      "test_files": [],
+      "selected_tier": "candidate",
+      "schedule": "always",
+      "trigger": "Pure candidate-artifact PR only; mixed, unknown, renamed, and empty diffs route to ci:normal.",
+      "decision": "added-candidate-gate",
+      "rationale": "Added to ci:candidates to validate candidate manifests, digests, identities, schemas, and factory contracts without building canonical SQLite.",
+      "consumer": "ci:candidates",
+      "estimated_duration_ms": 2453,
+      "duration_estimate_source": {
+        "run_id": null,
+        "description": "Local command measurement (Node 24.19.0); GitHub runner remeasures the gate"
+      }
+    },
+    {
+      "owner": "factory",
+      "check": "Require candidate artifacts to match the shared factory contract on master",
+      "protected_contract": "Require candidate artifacts to match the shared factory contract on master",
+      "test_files": [],
+      "selected_tier": "candidate",
+      "schedule": "always",
+      "trigger": "Pure candidate-artifact PR only; mixed, unknown, renamed, and empty diffs route to ci:normal.",
+      "decision": "added-candidate-gate",
+      "rationale": "Added to ci:candidates to fail closed when candidate artifacts are stale against the shared factory contract; it does not build canonical SQLite.",
+      "consumer": "ci:candidates",
+      "estimated_duration_ms": 116,
+      "duration_estimate_source": {
+        "run_id": null,
+        "description": "Local command measurement (Node 24.19.0); GitHub runner remeasures the gate"
+      }
+    },
+    {
+      "owner": "historical",
+      "check": "Validate M5-10A Wave A2 stage",
+      "protected_contract": "Validate M5-10A Wave A2 stage",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "retained-historical",
+      "rationale": "Retained in Historical as a targeted replay of completed work: Validate M5-10A Wave A2 stage. The check stays available for manual evidence review and is excluded from weekly ci:all.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1512,
+      "duration_estimate_source": {
+        "run_id": 37635308613,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37635308613",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "historical",
+      "check": "Validate M5-10 Wave B stage",
+      "protected_contract": "Validate M5-10 Wave B stage",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "retained-historical",
+      "rationale": "Retained in Historical as a targeted replay of completed work: Validate M5-10 Wave B stage. The check stays available for manual evidence review and is excluded from weekly ci:all.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 2250,
+      "duration_estimate_source": {
+        "run_id": 37635308613,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37635308613",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "historical",
+      "check": "Test historical replay CLIs",
+      "protected_contract": "Test historical replay CLIs",
+      "test_files": [
+        "tests/historical-replay-cli.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "retained-historical",
+      "rationale": "Retained in Historical as a targeted replay of completed work: Test historical replay CLIs. The check stays available for manual evidence review and is excluded from weekly ci:all.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 2271,
+      "duration_estimate_source": {
+        "run_id": 37635308613,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37635308613",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "historical",
+      "check": "Test M5-10A Wave A2 replay",
+      "protected_contract": "Test M5-10A Wave A2 replay",
+      "test_files": [
+        "tests/m5-10a-wave-a2.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "retained-historical",
+      "rationale": "Retained in Historical as a targeted replay of completed work: Test M5-10A Wave A2 replay. The check stays available for manual evidence review and is excluded from weekly ci:all.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 2473,
+      "duration_estimate_source": {
+        "run_id": 37635308613,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37635308613",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "historical",
+      "check": "Test M5-10 Wave A replay",
+      "protected_contract": "Test M5-10 Wave A replay",
+      "test_files": [
+        "tests/m5-10-wave-a.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "retained-historical",
+      "rationale": "Retained in Historical as a targeted replay of completed work: Test M5-10 Wave A replay. The check stays available for manual evidence review and is excluded from weekly ci:all.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 1181,
+      "duration_estimate_source": {
+        "run_id": 37635308613,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37635308613",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "historical",
+      "check": "Test M5-10 Wave B timing",
+      "protected_contract": "Test M5-10 Wave B timing",
+      "test_files": [
+        "tests/m5-10-wave-b-timing.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "retained-historical",
+      "rationale": "Retained in Historical as a targeted replay of completed work: Test M5-10 Wave B timing. The check stays available for manual evidence review and is excluded from weekly ci:all.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 5513,
+      "duration_estimate_source": {
+        "run_id": 37635308613,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37635308613",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "historical",
+      "check": "Test M5-10 Wave B replay",
+      "protected_contract": "Test M5-10 Wave B replay",
+      "test_files": [
+        "tests/m5-10-wave-b.test.mjs"
+      ],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "retained-historical",
+      "rationale": "Retained in Historical as a targeted replay of completed work: Test M5-10 Wave B replay. The check stays available for manual evidence review and is excluded from weekly ci:all.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 6521,
+      "duration_estimate_source": {
+        "run_id": 37635308613,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37635308613",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Run single-pass global canonical audit",
+      "protected_contract": "Run single-pass global canonical audit",
+      "test_files": [],
+      "selected_tier": "deep",
+      "schedule": "always",
+      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
+      "decision": "retained-deep",
+      "rationale": "Retained in Deep as an exhaustive current-system regression that complements the live Normal contract without repeating historical batch replay.",
+      "consumer": "ci:deep and ci:all",
+      "estimated_duration_ms": 0,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Test M5-12A admission and promotion contract",
+      "protected_contract": "Test M5-12A admission and promotion contract",
+      "test_files": [
+        "tests/m5-12a.test.mjs"
+      ],
+      "selected_tier": "deep",
+      "schedule": "always",
+      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
+      "decision": "retained-deep",
+      "rationale": "Retained in Deep as an adversarial admission and promotion regression; current Stage 3 worker and global canonical admission protections remain in Normal.",
+      "consumer": "ci:deep and ci:all",
+      "estimated_duration_ms": 65145,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Run current-revision SQLite reproducibility audit",
+      "protected_contract": "Run current-revision SQLite reproducibility audit",
+      "test_files": [],
+      "selected_tier": "deep",
+      "schedule": "always",
+      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
+      "decision": "retained-deep",
+      "rationale": "Retained in Deep because it independently rebuilds the current canonical revision to prove reproducibility beyond the one required Normal build.",
+      "consumer": "ci:deep and ci:all",
+      "estimated_duration_ms": 954,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Test reproducible dictionary builds",
+      "protected_contract": "Test reproducible dictionary builds",
+      "test_files": [
+        "tests/reproducibility.test.mjs"
+      ],
+      "selected_tier": "deep",
+      "schedule": "always",
+      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
+      "decision": "retained-deep",
+      "rationale": "Retained in Deep because it exercises independent build reproducibility while Normal retains one current-revision build and direct-search checks.",
+      "consumer": "ci:deep and ci:all",
+      "estimated_duration_ms": 345,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Prove independent two-build determinism for Issue #219 checkpoint",
+      "protected_contract": "Prove independent two-build determinism for Issue #219 checkpoint",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it rebuilds a completed Issue checkpoint as independent replay evidence; preserve it for explicit replay and exclude it from weekly current-system Deep CI.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 9796,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Prove independent two-build determinism for Issue #220 checkpoint",
+      "protected_contract": "Prove independent two-build determinism for Issue #220 checkpoint",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it rebuilds a completed Issue checkpoint as independent replay evidence; preserve it for explicit replay and exclude it from weekly current-system Deep CI.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 13052,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Prove independent two-build determinism for Issue #222 checkpoint report",
+      "protected_contract": "Prove independent two-build determinism for Issue #222 checkpoint report",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it rebuilds a completed Issue checkpoint as independent replay evidence; preserve it for explicit replay and exclude it from weekly current-system Deep CI.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 29196,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Prove independent two-build determinism for Issue #223 checkpoint",
+      "protected_contract": "Prove independent two-build determinism for Issue #223 checkpoint",
+      "test_files": [],
+      "selected_tier": "historical",
+      "schedule": "manual",
+      "trigger": "Explicit manual/affected-history replay; bounded ci:historical invocation is delivered in PR 3.",
+      "decision": "moved-to-historical",
+      "rationale": "Moved to Historical because it rebuilds a completed Issue checkpoint as independent replay evidence; preserve it for explicit replay and exclude it from weekly current-system Deep CI.",
+      "consumer": "ci:historical (bounded command delivered in PR 3)",
+      "estimated_duration_ms": 41629,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    },
+    {
+      "owner": "deep",
+      "check": "Run 100K/500K/1M release-shaped performance and scale benchmark",
+      "protected_contract": "Run 100K/500K/1M release-shaped performance and scale benchmark",
+      "test_files": [],
+      "selected_tier": "deep",
+      "schedule": "always",
+      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
+      "decision": "retained-deep",
+      "rationale": "Retained in Deep because release-shaped scale benchmarking measures current-system capacity and is too expensive for every ordinary PR.",
+      "consumer": "ci:deep and ci:all",
+      "estimated_duration_ms": 293042,
+      "duration_estimate_source": {
+        "run_id": 37884785791,
+        "url": "https://github.com/neverworkalone/typewriter/actions/runs/37884785791",
+        "method": "estimated from GitHub job log timestamps between adjacent registered checks"
+      }
+    }
+  ],
+  "candidate_gate_local_check_duration_ms": 2569,
+  "candidate_gate_local_current_revision_sqlite_build_count": 0
+}

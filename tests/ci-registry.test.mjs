@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import CI_CHECK_INVENTORY from '../scripts/ci/check-inventory.json' with { type: 'json' };
 import LEGACY_CHECK_IDENTITIES from '../scripts/ci/legacy-check-identities.json' with { type: 'json' };
 import LEGACY_CHECK_TIERS from '../scripts/ci/legacy-check-tiers.json' with { type: 'json' };
 
@@ -73,7 +74,7 @@ test('CI categories are ordered and every category has a descriptive label', () 
       assert.equal(typeof check.command, 'function');
       assert.equal(check.owner, categoryName);
       assert.ok(CI_EXECUTION_TIERS.includes(check.tier));
-      assert.equal(check.schedule, 'always');
+      assert.equal(check.schedule, check.tier === 'historical' ? 'manual' : 'always');
       assert.equal(check.protectedContract, check.label);
     }
   }
@@ -96,6 +97,57 @@ test('every registered check declares one owner, tier, schedule, and protected c
   }
 });
 
+test('Issue #464 inventory covers every registered check and records its decision and timing', () => {
+  const registrations = collectCheckRegistrations();
+  const inventoryKeys = CI_CHECK_INVENTORY.checks.map((item) => `${item.owner}\0${item.check}`);
+  const inventoryByKey = new Map(CI_CHECK_INVENTORY.checks.map((item) => [`${item.owner}\0${item.check}`, item]));
+  assert.equal(inventoryByKey.size, CI_CHECK_INVENTORY.checks.length, 'inventory check identities must be unique');
+  assert.deepEqual(
+    [...inventoryKeys].sort(),
+    registrations.map((item) => `${item.owner}\0${item.check}`).sort(),
+    'every registry check must have exactly one inventory row',
+  );
+
+  for (const registration of registrations) {
+    const item = inventoryByKey.get(`${registration.owner}\0${registration.check}`);
+    assert.equal(item.protected_contract, registration.protectedContract);
+    assert.equal(item.selected_tier, registration.tier);
+    assert.equal(item.schedule, registration.schedule);
+    assert.ok(item.trigger.length > 0);
+    assert.ok(item.decision.length > 0);
+    assert.ok(item.rationale.length > 0);
+    assert.ok(item.consumer.length > 0);
+    assert.ok(Number.isFinite(item.estimated_duration_ms) && item.estimated_duration_ms >= 0);
+    assert.ok(item.duration_estimate_source, `${registration.owner}/${registration.check} needs a timing source`);
+    assert.ok(Array.isArray(item.test_files));
+  }
+
+  const countsByTier = Object.fromEntries(CI_EXECUTION_TIERS.map((tier) => [
+    tier,
+    registrations.filter((item) => item.tier === tier).length,
+  ]));
+  assert.deepEqual(CI_CHECK_INVENTORY.counts_by_tier, countsByTier);
+  assert.deepEqual(CI_CHECK_INVENTORY.retired_checks, [], 'PR 2 does not retire any registered check');
+  assert.equal(
+    CI_CHECK_INVENTORY.normal_check_duration_estimate_ms,
+    CI_CHECK_INVENTORY.checks
+      .filter((item) => item.selected_tier === 'normal')
+      .reduce((total, item) => total + item.estimated_duration_ms, 0),
+  );
+  assert.equal(CI_CHECK_INVENTORY.baseline.registered_check_count, 128);
+  assert.equal(CI_CHECK_INVENTORY.baseline.sum_registered_check_duration_ms, 432109);
+  assert.equal(CI_CHECK_INVENTORY.baseline.ci_normal_wall_clock_ms, 434408.39);
+  assert.equal(CI_CHECK_INVENTORY.baseline.current_revision_sqlite_build_count, 1);
+  assert.equal(CI_CHECK_INVENTORY.candidate_gate_local_measurement_ms, 2817.28);
+  assert.equal(CI_CHECK_INVENTORY.candidate_gate_local_current_revision_sqlite_build_count, 0);
+  assert.equal(
+    CI_CHECK_INVENTORY.candidate_gate_local_check_duration_ms,
+    CI_CHECK_INVENTORY.checks
+      .filter((item) => item.selected_tier === 'candidate')
+      .reduce((total, item) => total + item.estimated_duration_ms, 0),
+  );
+});
+
 test('legacy identity and tier migration inventories remain complete and bound', async () => {
   const identityPath = path.resolve(TEST_DIRECTORY, '../scripts/ci/legacy-check-identities.json');
   const tierPath = path.resolve(TEST_DIRECTORY, '../scripts/ci/legacy-check-tiers.json');
@@ -107,7 +159,7 @@ test('legacy identity and tier migration inventories remain complete and bound',
   );
   assert.equal(
     createHash('sha256').update(tierText).digest('hex'),
-    '0de6ac997b84e942946138e432456dd99d41a1d8528934a1e108d8e8922d9da5',
+    'fe5a032a77ced812e0abd2d24b517ec95ced02bd3c742a4763253bbbcdb3fa48',
   );
   assert.deepEqual(Object.keys(LEGACY_CHECK_TIERS).sort(), Object.keys(LEGACY_CHECK_IDENTITIES).sort());
   for (const owner of Object.keys(LEGACY_CHECK_IDENTITIES)) {
@@ -360,13 +412,28 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
-  assert.deepEqual(CI_TIER_CATEGORY_ORDER.candidate, []);
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.candidates, ['factory']);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.candidate, ['factory']);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.historical, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.normal.tiers, ['normal']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.deep.tiers, ['deep']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.all.tiers, ['normal', 'deep']);
+  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.candidates.tiers, ['candidate']);
+  const allChecks = CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => CI_CATEGORIES[categoryName].checks);
+  const allLevelChecks = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all);
+  assert.ok(allLevelChecks.every((check) => ['normal', 'deep'].includes(check.tier)));
+  const historicalCheckpointProofs = CI_CATEGORIES.deep.checks.filter(
+    (check) => check.label.startsWith('Prove independent two-build determinism for Issue #'),
+  );
+  assert.equal(historicalCheckpointProofs.length, 4);
+  assert.ok(historicalCheckpointProofs.every((check) => check.tier === 'historical'));
+  assert.ok(historicalCheckpointProofs.every((check) => !allLevelChecks.includes(check)));
+  assert.equal(
+    CI_CATEGORIES.batch.checks.find((check) => check.label === 'Test shared batch workflow').tier,
+    'normal',
+  );
   assert.equal(
     CI_CATEGORIES.batch.checks.some((check) => check.testFiles?.includes('tests/m5-12a.test.mjs')),
     false,
@@ -380,6 +447,15 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
     false,
   );
   assert.equal(CI_NORMAL_CATEGORY_ORDER.includes('product'), true);
+  assert.equal(CI_CATEGORIES.factory.checks.length, 2);
+  assert.ok(CI_CATEGORIES.factory.checks.every((check) => check.tier === 'candidate'));
+  assert.deepEqual(
+    CI_CATEGORIES.factory.checks.map((check) => check.command({}).args),
+    [
+      ['scripts/factory/validate.mjs'],
+      ['scripts/factory/freshness.mjs'],
+    ],
+  );
   assert.equal(
     CI_CATEGORIES.product.checks.some(
       (check) => check.testFiles?.includes('tests/scale-benchmark.test.mjs'),
@@ -405,8 +481,8 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
 
 
 // Execute the actual inline CI classifier against tiny synthetic Git histories.
-// Stage 1's shortcut must not mask code, canonical data, mixed files or renames.
-test('CI changed-path gate skips docs and uses fast only for pure Stage 1 candidates', async (t) => {
+// Candidate-only routing must not mask code, canonical data, mixed files or renames.
+test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate gate', async (t) => {
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   const block = workflow.split('      - name: Classify changed files\n')[1]
     ?.split('      - name: Set up pnpm\n')[0];
@@ -417,9 +493,9 @@ test('CI changed-path gate skips docs and uses fast only for pure Stage 1 candid
   assert.equal(
     (workflow.match(/if: steps\.changes\.outputs\.run_level != 'none'/gu) ?? []).length,
     3,
-    'pnpm setup, Node setup and install must run for both fast and normal PRs',
+    'pnpm setup, Node setup and install must run for candidate and normal PRs',
   );
-  assert.match(workflow, /if: steps\.changes\.outputs\.run_level == 'fast'\n\s+run: pnpm run ci:fast/u);
+  assert.match(workflow, /if: steps\.changes\.outputs\.run_level == 'candidates'\n\s+run: pnpm run ci:candidates/u);
   assert.match(workflow, /if: steps\.changes\.outputs\.run_level == 'normal'\n\s+run: pnpm run ci:normal/u);
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
@@ -462,7 +538,7 @@ test('CI changed-path gate skips docs and uses fast only for pure Stage 1 candid
     assert.equal(await readFile(output, 'utf8'), `run_level=${expectedLevel}\n`, name);
     const expectedSummary = {
       none: /Documentation-only PR: CI checks intentionally skipped/u,
-      fast: /Stage 1 candidate-only PR: running ci:fast/u,
+      candidates: /Stage 1 candidate-only PR: running ci:candidates/u,
       normal: /Full ci:normal required/u,
     };
     assert.match(await readFile(summary, 'utf8'), expectedSummary[expectedLevel], name);
@@ -487,12 +563,12 @@ test('CI changed-path gate skips docs and uses fast only for pure Stage 1 candid
     await mkdir(path.join(root, 'docs/reference'), { recursive: true });
     await writeFile(path.join(root, 'docs/reference/data.json'), '{}\n');
   }, 'none');
-  await scenario('stage1-candidates', () => addCandidate(), 'fast');
-  await scenario('stage1-manifest', () => addCandidate('manifest.json'), 'fast');
+  await scenario('stage1-candidates', () => addCandidate(), 'candidates');
+  await scenario('stage1-manifest', () => addCandidate('manifest.json'), 'candidates');
   await scenario('stage1-complete-batch', async () => {
     await addCandidate();
     await addCandidate('manifest.json');
-  }, 'fast');
+  }, 'candidates');
   await scenario('stage1-mixed-docs', async () => {
     await addCandidate();
     await writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n');
@@ -545,6 +621,10 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
     path.resolve(TEST_DIRECTORY, '../README.md'),
     'utf8',
   );
+  const packageJson = JSON.parse(await readFile(
+    path.resolve(TEST_DIRECTORY, '../package.json'),
+    'utf8',
+  ));
 
   assert.match(workflow, /pull_request:/u);
   assert.doesNotMatch(workflow, /^\s+push:/mu, 'normal CI runs on PRs, not on master pushes');
@@ -557,8 +637,10 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /node-version: 24\.x/u);
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
-  assert.match(workflow, /name: Fast validation \(Stage 1 candidates only\)/u);
-  assert.equal((workflow.match(/run: pnpm run ci:fast/gu) ?? []).length, 1);
+  assert.match(workflow, /name: Candidate validation \(Stage 1 artifacts only\)/u);
+  assert.equal((workflow.match(/run: pnpm run ci:candidates/gu) ?? []).length, 1);
+  assert.doesNotMatch(workflow, /run: pnpm run ci:fast/u);
+  assert.equal(packageJson.scripts['ci:candidates'], 'node scripts/ci/run-category.mjs candidates');
   assert.doesNotMatch(workflow, /pnpm run ci:all/u);
 
   assert.match(deepWorkflow, /^name: Deep CI$/mu);

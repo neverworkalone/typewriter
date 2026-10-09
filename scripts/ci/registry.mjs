@@ -77,6 +77,7 @@ export const CI_CATEGORY_ORDER = Object.freeze([
   'batch',
   'product',
   'artifacts',
+  'factory',
 ]);
 
 export const CI_FAST_CATEGORY_ORDER = Object.freeze([
@@ -102,6 +103,7 @@ export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
   normal: CI_ALL_CATEGORY_ORDER,
   all: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
+  candidates: Object.freeze(['factory']),
 });
 
 export const CI_EXECUTION_TIERS = Object.freeze([
@@ -121,7 +123,7 @@ export const CI_CHECK_SCHEDULES = Object.freeze([
 // describe the current registry while PR 2 moves individual checks out of the
 // legacy batch category.
 export const CI_TIER_CATEGORY_ORDER = Object.freeze({
-  candidate: Object.freeze([]),
+  candidate: Object.freeze(['factory']),
   normal: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
   historical: CI_ALL_CATEGORY_ORDER,
@@ -134,6 +136,7 @@ export const CI_LEVEL_EXECUTION_POLICY = Object.freeze({
   normal: Object.freeze({ tiers: Object.freeze(['normal']), includeManual: false }),
   all: Object.freeze({ tiers: Object.freeze(['normal', 'deep']), includeManual: false }),
   deep: Object.freeze({ tiers: Object.freeze(['deep']), includeManual: false }),
+  candidates: Object.freeze({ tiers: Object.freeze(['candidate']), includeManual: false }),
 });
 
 const RAW_CI_CATEGORIES = Object.freeze({
@@ -394,6 +397,26 @@ const RAW_CI_CATEGORIES = Object.freeze({
     ],
   },
 
+  factory: {
+    label: 'Stage 1 candidate artifact validation',
+    checks: [
+      {
+        ...commandCheck(
+          'Validate candidate manifests, digests, identities, and factory contracts',
+          ['scripts/factory/validate.mjs'],
+        ),
+        tier: 'candidate',
+      },
+      {
+        ...commandCheck(
+          'Require candidate artifacts to match the shared factory contract on master',
+          ['scripts/factory/freshness.mjs'],
+        ),
+        tier: 'candidate',
+      },
+    ],
+  },
+
   deep: {
     label: 'Manual deep current-revision reproducibility validation',
     checks: [
@@ -536,10 +559,11 @@ export function registerCategory(owner, category, {
           `CI check ${owner}/${check.label} must remove its legacy tier mapping before an explicit tier migration.`,
         );
       }
+      const tier = legacyTier ?? check.tier ?? 'deep';
       const registered = registerCheck(check, {
         owner,
-        tier: legacyTier ?? check.tier ?? 'deep',
-        schedule: check.schedule ?? 'always',
+        tier,
+        schedule: check.schedule ?? (tier === 'historical' ? 'manual' : 'always'),
         paths: check.paths ?? [],
         protectedContract: check.protectedContract ?? check.label,
       });

@@ -328,6 +328,86 @@ export function selectChecksForPolicy(checks, {
   });
 }
 
+export async function runCandidateLevel({
+  categories = CI_CATEGORIES,
+  levels = CI_LEVEL_CATEGORY_ORDER,
+  executionPolicy = CI_LEVEL_EXECUTION_POLICY.candidates,
+  changedPaths,
+  execute = runCommand,
+  log = console.log,
+} = {}) {
+  const categoryNames = levels.candidates ?? [];
+  const checks = categoryNames.flatMap((categoryName) => categories[categoryName]?.checks ?? []);
+  if (checks.length === 0) {
+    throw new Error('Candidate-only CI has no registered candidate checks.');
+  }
+
+  const temporaryDirectory = await createTemporaryDirectory();
+  const metricsPath = path.join(temporaryDirectory, 'child-process-metrics.jsonl');
+  await writeFile(metricsPath, '', 'utf8');
+  const session = {
+    canonicalContext: {
+      canonicalRevision: 'candidate-only-no-canonical-build',
+      metrics: { sqlite_build_count: 0 },
+    },
+    completedChecks: new Set(),
+    temporaryDirectory,
+    phase: NORMAL_PHASE,
+    processMetrics: { path: metricsPath },
+    sharedDictionaryPath: undefined,
+    normalizedModel: undefined,
+  };
+  const previousMetricsPath = process.env.TYPEWRITER_PROCESS_METRICS_PATH;
+  const previousPhase = process.env[CI_PHASE_ENV];
+  const previousSharedDictionaryPath = process.env.TYPEWRITER_SHARED_DICTIONARY_PATH;
+  const previousSearchDatabasePath = process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
+  const startedAt = performance.now();
+  process.env.TYPEWRITER_PROCESS_METRICS_PATH = metricsPath;
+  process.env[CI_PHASE_ENV] = NORMAL_PHASE;
+  delete process.env.TYPEWRITER_SHARED_DICTIONARY_PATH;
+  delete process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
+  try {
+    for (const categoryName of categoryNames) {
+      const category = categories[categoryName];
+      const runnable = selectChecksForPolicy(category.checks, {
+        ...executionPolicy,
+        changedPaths,
+      });
+      if (runnable.length === 0) continue;
+      log(`\n=== ${category.label} [${categoryName}] ===`);
+      await runChecks(runnable, session, {
+        execute,
+        log,
+        executionPolicy: { ...executionPolicy, changedPaths },
+      });
+    }
+    const sqliteBuildCount = readBuildLedger(metricsPath)
+      .filter((event) => event.type === 'sqlite-build')
+      .reduce((total, event) => total + event.count, 0);
+    if (sqliteBuildCount !== 0) {
+      throw new Error(`ci:candidates must not build SQLite; observed ${sqliteBuildCount} build(s).`);
+    }
+    log('\n=== candidate evidence ===');
+    log(JSON.stringify({
+      level: 'candidates',
+      category_order: categoryNames,
+      check_count: checks.length,
+      wall_clock_ms: Math.round((performance.now() - startedAt) * 100) / 100,
+      current_revision_sqlite_build_count: sqliteBuildCount,
+    }, null, 2));
+  } finally {
+    if (previousMetricsPath === undefined) delete process.env.TYPEWRITER_PROCESS_METRICS_PATH;
+    else process.env.TYPEWRITER_PROCESS_METRICS_PATH = previousMetricsPath;
+    if (previousPhase === undefined) delete process.env[CI_PHASE_ENV];
+    else process.env[CI_PHASE_ENV] = previousPhase;
+    if (previousSharedDictionaryPath === undefined) delete process.env.TYPEWRITER_SHARED_DICTIONARY_PATH;
+    else process.env.TYPEWRITER_SHARED_DICTIONARY_PATH = previousSharedDictionaryPath;
+    if (previousSearchDatabasePath === undefined) delete process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
+    else process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE = previousSearchDatabasePath;
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
 async function createTemporaryDirectory() {
   const requestedRoot = process.env.RUNNER_TEMP;
   const root = requestedRoot ? path.resolve(requestedRoot) : tmpdir();
@@ -633,6 +713,17 @@ export async function runLevel(requestedCategory, {
     ?? (categories === CI_CATEGORIES && levels === CI_LEVEL_CATEGORY_ORDER
       ? CI_LEVEL_EXECUTION_POLICY[requestedCategory]
       : undefined);
+  if (requestedCategory === 'candidates') {
+    await runCandidateLevel({
+      categories,
+      levels,
+      executionPolicy: policy,
+      changedPaths,
+      execute,
+      log,
+    });
+    return;
+  }
   const runPolicy = policy ? { ...policy, changedPaths } : undefined;
   const enforceNormalInvariant = enforcesNormalBuildInvariant(requestedCategory);
   const splitNormalAndDeep = requestedCategory === 'all'
