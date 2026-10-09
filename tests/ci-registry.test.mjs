@@ -155,6 +155,19 @@ test('new CI checks default to Deep and affected schedules require explicit depe
   assert.equal(futureCategory.checks[0].tier, 'deep');
   assert.equal(futureCategory.checks[0].registration, 'explicit');
 
+  const extendedCanonical = registerCategory('canonical', {
+    ...CI_CATEGORIES.canonical,
+    checks: [
+      ...CI_CATEGORIES.canonical.checks,
+      {
+        label: 'New canonical Deep regression',
+        command: () => ({ executable: 'synthetic', args: [] }),
+      },
+    ],
+  });
+  assert.equal(extendedCanonical.checks.at(-1).tier, 'deep');
+  assert.equal(extendedCanonical.checks.at(-1).registration, 'explicit');
+
   const intentionalMigration = registerCategory('migration-scope', {
     label: 'Migration scope',
     checks: [{ ...check, tier: 'normal' }],
