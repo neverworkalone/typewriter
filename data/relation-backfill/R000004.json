@@ -4310,19 +4310,6 @@
    "source_sense_id": "w10040-s1",
    "source_gloss_sha256": "a23029fa93b314db054d2cf01f96561024c43a7602648ce0a068fa38e15734d3",
    "relation": {
-    "target": "w2687",
-    "target_sense": "w2687-s1",
-    "type": "near",
-    "note": "정거장은 기차나 전차가 멈추어 승객을 태우고 내리는 곳이라 기차역과 가깝다. 틀: \"기차역에서 / 정거장에서 내렸다\"는 되지만, \"전차 정거장에서 내렸다 / 전차 기차역에서 내렸다\"처럼 대상 gloss가 \"기차나 전차가\"로 출발 gloss의 \"기차가\"보다 넓어 정거장을 기차역으로 되돌리면 전차가 서는 곳에는 바뀌지 않는다.",
-    "relevance": 5
-   },
-   "rationale": "w10040-s1 w2687-s1: 대상 gloss가 전차까지 포함해 한쪽에만 있는 범위가 있어 같은 범위의 direct가 아니라 near로 정리하고, 바뀌지 않는 대조 문맥을 note에 적었다. 반대 방향 정거장 기차역도 near라서 두 방향의 유형이 같다."
-  },
-  {
-   "source_record_id": "w10040",
-   "source_sense_id": "w10040-s1",
-   "source_gloss_sha256": "a23029fa93b314db054d2cf01f96561024c43a7602648ce0a068fa38e15734d3",
-   "relation": {
     "target": "w2588",
     "target_sense": "w2588-s1",
     "type": "association",
@@ -10583,19 +10570,6 @@
     "relevance": 5
    },
    "rationale": "w2687-s1 w157-s1: 대체가 성립하는 문맥과 깨지는 대조 문맥을 두 bound gloss의 차이로 note에 함께 적어 near로 유지했다."
-  },
-  {
-   "source_record_id": "w2687",
-   "source_sense_id": "w2687-s1",
-   "source_gloss_sha256": "4e5f1cfc27b970feba7fe69dd99c2072c104ff6c26bfb8f83c05996d31fc0909",
-   "relation": {
-    "target": "w10040",
-    "target_sense": "w10040-s1",
-    "type": "near",
-    "note": "기차역은 기차가 서서 승객이 타고 내리는 곳이라 정거장과 가깝다. 틀: \"정거장에서 / 기차역에서 내렸다\"는 되지만, \"전차 정거장에서 내렸다 / 전차 기차역에서 내렸다\"는 출발 gloss는 \"기차나 전차가\"이고 대상 gloss는 \"기차가\"만 말해 전차에는 바뀌지 않는다.",
-    "relevance": 5
-   },
-   "rationale": "w2687-s1 w10040-s1: 대체가 성립하는 문맥과 깨지는 대조 문맥을 두 bound gloss의 차이로 note에 함께 적어 near로 유지했다."
   },
   {
    "source_record_id": "w2687",
@@ -19990,7 +19964,6 @@
   "rel-950cd0e70a82f87aca60f6ea": "aeeaf862856c1e2da2a4a48fdb9cbb784c5ca30051d4e43225ed795d5a1484a1",
   "rel-e9eed3a32d5f90bb1a7e0e65": "b890bfb385f0ef11f6412e259e45d182f02dba50f4e1e69e3ce6ec7b4412fba4",
   "rel-92042baa5fa522e3eba5032e": "ae10b1bdca00d9f0e48141d3631ba91768dd8ce79626bed4ef2aab1fe49181fb",
-  "rel-3ce2d072946b7b609244fe14": "023b8935d96c5fc0f0b0f869bbc652c96adcab152873ba75af7272f30ca1a3d5",
   "rel-aee7a40778b38ebedabeddd0": "21ab9a435e58c1c94164e581b9b770acafd47224f06fafe423c03937495d4dda",
   "rel-3130b1bd8d2f7b1934594737": "db803e5b2875e3ee816ab43c327bc18b25e86474715dbcd35862506e8e8effba",
   "rel-1cc3da421d5b21e885877702": "7351da91b080b8c71f0c8b7062a91fce4945487485262a09d690ba73fc1ff1be",
@@ -20477,7 +20450,6 @@
   "rel-579939b91716c99a34cc049a": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
   "rel-4110ccd51c1a26fcd5423bcb": "c6df63dbf0391de703bcdea3e221858911bf329b9251916f11b6127e27249dac",
   "rel-03dc0f771e72b52c63725147": "ae10b1bdca00d9f0e48141d3631ba91768dd8ce79626bed4ef2aab1fe49181fb",
-  "rel-078a5def04d201233b594760": "a3721462b5433e5e94afb45933e5147bdff0d9ea721094978bfe0f9ce4ff44b6",
   "rel-90530171c2d433f89083bd05": "784a0a15c2148347ab69c5e06835dbc5b0f1d12c794d8c12826577f2e9994017",
   "rel-80ac430b1e11783d270d439a": "21ab9a435e58c1c94164e581b9b770acafd47224f06fafe423c03937495d4dda",
   "rel-c47e86bd9211659c432477ee": "3fbb14981214bf635d827da12f88659fff52925378aebd1a68bbc96fafce42f3",
