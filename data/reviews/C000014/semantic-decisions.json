@@ -5782,11 +5782,11 @@
           "relation_ids": [
             "rel-468b6cbb98b50703152e932e",
             "rel-1b6c80f3fc9cf01d624a7f8a",
-            "rel-472c0a890c4dbe6a26ccae80",
+            "rel-218fb6b59052286e52abfe93",
             "rel-7317f3d4dfd8e2e15d3dd518",
             "rel-5507dcdbde47da665926346f"
           ],
-          "relation_rationale": "C000014-0104 C000014-0104-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. 남긴 near 3개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
+          "relation_rationale": "C000014-0104 C000014-0104-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. 남긴 near 2개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0104.o01"
@@ -5806,7 +5806,7 @@
             "sense_id": "C000014-0104-s1",
             "sense_sha256": "d5c68b9c217c8a881e9b1dfe8dcc09b10512adaadd3c9e37b5936b18dcb05290",
             "gloss_sha256": "0a711d88e0fb1487eafe2b12da2753cff49ae765671a9e28b1177f5314515976",
-            "evidence_sha256": "738af280fda79705a718f27ccc4d71ae9f69858cffb2e177856054a197d9ae6c"
+            "evidence_sha256": "35daced757cb86a9b96f02ea6c4579ee964dbe80c97a213b16a4ae7a25148727"
           }
         ]
       }
@@ -7913,11 +7913,11 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 3,
           "relation_ids": [
-            "rel-1e29210c2ca5f86190e8ecea",
+            "rel-28cd8dafc4e3c494eaa5f7dc",
             "rel-53e415d782d7cdf9b592833f",
             "rel-413f1e49db672f79ff009819"
           ],
-          "relation_rationale": "C000014-0148 C000014-0148-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. 남긴 near 1개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
+          "relation_rationale": "C000014-0148 C000014-0148-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. 남긴 near 0개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0148.o02"
@@ -7981,7 +7981,7 @@
             "sense_id": "C000014-0148-s1",
             "sense_sha256": "e2d6140adba1190e3416e2db79858428e4728a6a8cb51a31ddba39fdd3b5b40a",
             "gloss_sha256": "9e1944468ea45e013d70143c8c6ea4f2dc26f8223e82a73fe2da8025872c2fc6",
-            "evidence_sha256": "c06e5329fbfa98a50bbb6757a08d11a1272b747d26e34e49efdeef98a115b2f0"
+            "evidence_sha256": "c9b43117e9863b7bd505839312f368dd269069025e37b73b0ec00be5f333fa99"
           },
           {
             "sense_id": "C000014-0148-s2",
@@ -8236,11 +8236,11 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 3,
           "relation_ids": [
-            "rel-441118319149514b2a363c4f",
+            "rel-6b70c6df0bb7851ad1160bd5",
             "rel-844083f4a96231fa564452d5",
             "rel-83c9d9c7e392574660e938a5"
           ],
-          "relation_rationale": "C000014-0154 C000014-0154-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. 남긴 near 2개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
+          "relation_rationale": "C000014-0154 C000014-0154-s1: 관계 후보 검색 결과를 검토해 3개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. 남긴 near 1개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0154.o01"
@@ -8260,7 +8260,7 @@
             "sense_id": "C000014-0154-s1",
             "sense_sha256": "c26c8cf1ee9f906af3760c81f0989177505988d019b79108435aa0b40a49dec0",
             "gloss_sha256": "7dc862bbc83381c7042806caf4b39534e411217ca4d6f157da5d5810d3916d23",
-            "evidence_sha256": "2448de88b802c4ae27f21600ffade3fbf3c521e42fe9b56e87499542ac7631df"
+            "evidence_sha256": "cdeaea0eb34925d4bb5637048d9ff4457b35217103942120c21f5596cab484d8"
           }
         ]
       }
@@ -8752,13 +8752,13 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 5,
           "relation_ids": [
-            "rel-e2a829fc984c565c30d69566",
+            "rel-637d2944ff5d95550859ee50",
             "rel-730e8a81440fb5b123c755a0",
             "rel-f7c0806cd26cae5b62e1f670",
             "rel-091a10e52408a2de86075ca2",
             "rel-cc01af725b2f713e75889f8a"
           ],
-          "relation_rationale": "C000014-0164 C000014-0164-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. 남긴 near 2개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
+          "relation_rationale": "C000014-0164 C000014-0164-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. 남긴 near 1개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0164.o01"
@@ -8778,7 +8778,7 @@
             "sense_id": "C000014-0164-s1",
             "sense_sha256": "0afd02829f6a1db6bc435bc19267afc4249236090e01a9f04326a43e3f90c5b6",
             "gloss_sha256": "1597785fae0f17b27dd1481b82b3edb4e4b3cafc6a83c4cfb4442fc7055c061a",
-            "evidence_sha256": "b294e1fe589ee342e84cb0f42ce0b486e354b2643a7e700d34cb905a3f064d3b"
+            "evidence_sha256": "1f7e201d6716fc747b95a27fd42f0a03c9ac052560dc33b2ecd087e915a96059"
           }
         ]
       }
@@ -10875,13 +10875,13 @@
           "relation_decision": "relations-reviewed",
           "relation_count": 5,
           "relation_ids": [
-            "rel-f527d7d1110f44e99777309d",
+            "rel-cdcd0f72e2fb1b8a1d915450",
             "rel-dffd357b1799182a49fa89f1",
             "rel-ce89e864136369fafcee479b",
             "rel-e2a9cb520f1fc3e13c9bb752",
             "rel-c8215df66b6d59e5bc322398"
           ],
-          "relation_rationale": "C000014-0207 C000014-0207-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 1개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. 남긴 near 3개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
+          "relation_rationale": "C000014-0207 C000014-0207-s1: 관계 후보 검색 결과를 검토해 5개의 관계만 골랐고, 각 관계의 유형과 relevance와 설명은 이 뜻의 gloss에 맞춰 판단했다. near 재검토에서 대상 sense의 gloss와 대조해 2개를 상위·하위, 부분, 범위가 다른 말이라 near가 아닌 association으로 옮기고 관계별 설명에 실제 연결과 near가 아닌 이유를 적었다. 남긴 near 2개는 서로 바꿔 써도 뜻이 거의 같은 대상이다.",
           "scope_declaration": {
             "admitted_observation_ids": [
               "C000014-0207.o01"
@@ -10901,7 +10901,7 @@
             "sense_id": "C000014-0207-s1",
             "sense_sha256": "44147e1baccbe314ed683d1d98aff3213189122abf2db6f53aed0fef2704960a",
             "gloss_sha256": "94d9456469c156a8f9ec87d2b9a3144209b7688f04452823c9c9e585866d7e29",
-            "evidence_sha256": "b88e2ae8999cd11e0cef3238f274397a257a35dc74975d6c6ddb74a290a257ff"
+            "evidence_sha256": "9856058a4e49324a42ef663d7edaf793127d129f2c67a78b2367b01e09b08cf1"
           }
         ]
       }
