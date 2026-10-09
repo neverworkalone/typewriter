@@ -24,6 +24,13 @@ const DEEP_CONTRACT_PATHS = Object.freeze([
   'scripts/batch/m5-12a-',
   'scripts/batch/validate-m5-8-process.mjs',
   'scripts/batch/authored-semantic-decision-source.mjs',
+  // Deep tests consume these live data inputs; unknown data paths also fail closed below.
+  'data/canonical/',
+  'data/candidates/C000003/',
+  'data/inventory/',
+  'data/relation-backfill/',
+  'data/reviews/C000003/',
+  'data/validation/canonical-semantic-decision-source.json',
   'config/ci-level-evidence.json',
   'config/artifact-policy.json',
   'package.json',
@@ -35,7 +42,7 @@ const DEEP_CONTRACT_PATHS = Object.freeze([
 
 const KNOWN_NON_DEEP_PATHS = Object.freeze([
   'docs/',
-  'data/',
+  'data/candidates/',
   'src/',
   'web/',
   'public/',

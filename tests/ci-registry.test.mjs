@@ -599,6 +599,13 @@ test('Deep CI Gate runs exact-head ci:all for Deep contracts and fails closed on
     'scripts/relation/backfill-queue.mjs',
     'tests/m5-12a.test.mjs',
     'scripts/relation/backfill-apply.test.mjs',
+    'data/canonical/m5-15.jsonl',
+    'data/candidates/C000003/candidates.jsonl',
+    'data/inventory/m5-target-promotions.jsonl',
+    'data/relation-backfill/R000001.json',
+    'data/reviews/C000003/manifest.json',
+    'data/validation/canonical-semantic-decision-source.json',
+    'data/batches/m5-12a-semantic-decisions.json',
     'tests/ci-registry.test.mjs',
     'config/ci-level-evidence.json',
   ]) {
@@ -606,7 +613,6 @@ test('Deep CI Gate runs exact-head ci:all for Deep contracts and fails closed on
   }
   for (const pathValue of [
     'docs/review-toolchain.md',
-    'data/canonical/m5-15.jsonl',
     'data/candidates/C000001/candidates.jsonl',
     'src/ui/SearchPanel.vue',
     'tests/normalize-canonical.test.mjs',
