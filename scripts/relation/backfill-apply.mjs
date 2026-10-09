@@ -11,6 +11,7 @@ import { refreshStage3ReportCheckpoints } from '../factory/stage3-worker.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { backfillPacketErrors } from '../factory/validate.mjs';
 import { approvalsStillHold } from './backfill-queue.mjs';
+import { buildRelationIndex } from './candidate-retrieval.mjs';
 
 // Relation-only canonical backfill (#446 B): the bridge from approved queue outcomes to a canonical PR. It reuses the
 // Stage 3 relation amendment planner and semantic-authority writer; no lexical admission is involved. Progress is the
@@ -240,7 +241,10 @@ export function correctionItemsFor(records, proposals) {
  * an appended backfill. An interrupted packet is finished first; proposals already in effect are a no-op.
  */
 export async function applyRelationCorrections({ root, proposals, refreshReports = true }) {
-  const probe = await applyBackfill({ root, state: { done: {} }, index: { bySenseId: new Map() }, refreshReports: false });
+  // An interrupted appended-relation packet is finished first, and resuming it re-checks its approved target meaning,
+  // so the index is the current canonical (the same state a normal backfill apply would resume against).
+  const current = await readCanonicalFiles(root);
+  const probe = await applyBackfill({ root, state: { done: {} }, index: buildRelationIndex({ records: current.records }), refreshReports: false });
   let { records, recordPathById, source } = { ...(await readCanonicalFiles(root)), source: await readAuthority(root) };
   const items = correctionItemsFor(records, proposals);
   const found = relationCorrectionErrors({ [CORRECTION_FIELD]: items.length ? items : undefined }, 'proposals');

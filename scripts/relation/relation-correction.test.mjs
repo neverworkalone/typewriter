@@ -11,7 +11,11 @@ import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
 import { planRelationCorrections, writePlannedRecords } from '../factory/admission.mjs';
 import { relationCorrectionErrors, revertRelationCorrections } from '../factory/relation-corrections.mjs';
-import { applyRelationCorrections, correctionItemsFor, nextPacketId } from './backfill-apply.mjs';
+import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
+import { planRelationBackfill } from '../factory/admission.mjs';
+import { applyRelationCorrections, approvedAmendments, correctionItemsFor, nextPacketId, packetTextFor } from './backfill-apply.mjs';
+import { newQueueState } from './backfill-queue.mjs';
+import { buildRelationIndex } from './candidate-retrieval.mjs';
 
 // #501 through the real production path: real canonical records, the real semantic authority and the real ledger and
 // audit validators, applied in a scratch copy of the data files (the repository is never written). Nothing here is
@@ -242,4 +246,62 @@ test('the correction contract rejects malformed packets and rewinds only applied
   assert.equal(revertRelationCorrections(record, [{ ...applied, outcome: 'already_applied' }]), record);
   assert.deepEqual(revertRelationCorrections(record, [applied]), record, 'an unapplied correction is skipped');
   assert.equal(sha256Json(revertRelationCorrections(changed, [applied])), sha256Json(record));
+});
+
+// An appended-relation packet left interrupted by an earlier backfill apply is finished before a correction, resuming it
+// against the current canonical target meaning (the intent packet is real: planned and rendered by the production code).
+test('a correction first finishes an interrupted appended-relation packet while its target meaning holds, and stays fail-closed when it changed', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const source = index.senses.find((sense) => sense.relations.some((relation) => relation.relevance !== undefined));
+  const related = new Set(source.relations.map((relation) => relation.target_sense));
+  const target = index.senses.find((sense) => sense.record_id !== source.record_id && !related.has(sense.sense_id));
+  const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
+  const state = newQueueState(canonical.canonicalRevision);
+  state.done[source.sense_id] = {
+    outcome: 'relations-reviewed', gloss_sha256: sha256Json(source.gloss), rationale: 'x', relation_count: 1,
+    approved_relations: [{ relation_id: reviewedRelationId(source.sense_id, relation), relation, rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.` }],
+    reviewed_candidates: [{ id: target.sense_id, meaning_sha256: sha256Json([target.lemma, target.gloss]) }],
+  };
+  const pickedBefore = pick(canonical.records.map((info) => info.record ?? info));
+  for (const targetChanged of [false, true]) {
+    const root = await scratchRoot();
+    try {
+      const records = await readRecords(root);
+      const id = nextPacketId((await readAuthority(root)).factory_admissions);
+      const { amendments } = approvedAmendments(state, index);
+      await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
+      await writeFile(path.join(root, `data/relation-backfill/${id}.json`), packetTextFor(id, amendments, state));
+      assert.ok(planRelationBackfill({ packetId: id, amendments, canonicalRecords: records, recordPathById: await recordPaths(root) }).relationAmendments.length);
+      if (targetChanged) {
+        // The target's meaning changed after approval: the file keeps its bytes but the gloss in canonical differs.
+        const dir = path.join(root, 'data/canonical');
+        for (const name of await readdir(dir)) {
+          const text = await readFile(path.join(dir, name), 'utf8');
+          const next = text.split('\n').map((line) => {
+            if (!line) return line;
+            const record = JSON.parse(line);
+            if (record.id !== target.record_id) return line;
+            return JSON.stringify({ ...record, senses: record.senses.map((sense) => (sense.id === target.sense_id ? { ...sense, gloss: `${sense.gloss} (뜻이 바뀜)` } : sense)) });
+          }).join('\n');
+          if (next !== text) await writeFile(path.join(dir, name), next);
+        }
+      }
+      const proposal = retype(pickedBefore);
+      const events = (await readAuthority(root)).factory_admissions.length;
+      if (targetChanged) {
+        await assert.rejects(applyRelationCorrections({ root, proposals: [proposal], refreshReports: false }), /changed meaning since approval/u);
+        assert.equal((await readAuthority(root)).factory_admissions.length, events, 'nothing is recorded');
+      } else {
+        const result = await applyRelationCorrections({ root, proposals: [proposal], refreshReports: false });
+        assert.equal(result.status, 'applied');
+        assert.equal(result.packets.length, 2, 'the interrupted packet is finished, then the correction is written');
+        assert.equal(result.packets[0], id);
+        assert.equal((await readAuthority(root)).factory_admissions.length, events + 2);
+        assert.equal(senseOf(await readRecords(root), source.sense_id).relations.filter((item) => item.target_sense === target.sense_id).length, 1);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
 });
