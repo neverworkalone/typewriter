@@ -371,9 +371,10 @@ protections, one current-revision SQLite build, direct-search and product
 output checks. A normal run may expose the fast checkpoint inside the same
 session. `ci:all` runs Normal then current-system Deep checks, and `ci:deep`
 selects Deep checks across every domain scope. Completed-batch replays stay out
-of both levels and the weekly workflow. `ci:historical` requires exactly one
-registered `--scope` and runs only checks tagged for that scope; it has no
-all-history default. The existing `Validate and test Typewriter` PR check
+of both levels and the weekly **Deep** workflow. The separate **Historical**
+workflow runs weekly and via `workflow_dispatch`, selecting registered scopes
+individually. `ci:historical` still requires exactly one registered `--scope`
+and runs only checks tagged for that scope; it has no all-history CLI default. The existing `Validate and test Typewriter` PR check
 classifies Deep coverage and runs `ci:all` on the exact PR HEAD when a Deep
 contract, runner, check, or workflow may have changed. The path classifier is
 not a separate PR check.
