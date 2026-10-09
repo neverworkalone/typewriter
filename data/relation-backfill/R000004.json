@@ -832,11 +832,11 @@
    "relation": {
     "target": "w011",
     "target_sense": "w011-s1",
-    "type": "near",
-    "note": "후회는 지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음이라 뉘우침과 가깝다. 뉘우침은 잘못을 깨닫고 마음에 새기는 쪽이라, 후회→뉘우침과 달리 늘 바꿔 쓰지는 못한다.",
+    "type": "association",
+    "note": "후회는 지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음이라, 잘못을 깨닫고 마음에 새기는 일인 뉘우침에서 아쉬워하는 마음 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "r032-s1 w011-s1: 기존 w011-s1 → r032-s1 direct와 방향이 달라, 대상 gloss의 범위·품사 차이를 note에 밝혀 near로 유지했다."
+   "rationale": "r032-s1 w011-s1: 출발 gloss는 잘못을 깨닫고 마음에 새기는 일, 대상 gloss는 잘못했다고 느끼며 아쉬워하는 마음이라 일과 마음의 차이가 있어 near가 아닌 association으로 정리했다. 기존 역방향 direct는 바꾸지 않았다."
   },
   {
    "source_record_id": "r032",
@@ -972,11 +972,11 @@
    "relation": {
     "target": "w314",
     "target_sense": "w314-s1",
-    "type": "near",
-    "note": "다급하다는 일이 급하여 마음이나 행동에 여유가 없다는 뜻이라 긴박하다와 가깝다. 긴박하다는 상황의 압박을 가리켜, 다급하다→긴박하다와 달리 마음과 행동 쪽은 다르다.",
+    "type": "association",
+    "note": "다급하다는 일이 급하여 마음이나 행동에 여유가 없다는 뜻이라, 시간이 촉박하고 상황의 압박이 큰 긴박하다에서 사람의 마음과 행동 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "r039-s1 w314-s1: 기존 w314-s1 → r039-s1 direct와 방향이 달라, 대상 gloss의 범위·품사 차이를 note에 밝혀 near로 유지했다."
+   "rationale": "r039-s1 w314-s1: 출발 gloss는 상황의 압박, 대상 gloss는 사람의 마음과 행동의 여유라 가리키는 바가 달라 near가 아닌 association으로 정리했다. 기존 역방향 direct는 바꾸지 않았다."
   },
   {
    "source_record_id": "r039",
@@ -14348,19 +14348,6 @@
    "source_sense_id": "w370-s1",
    "source_gloss_sha256": "db11fddffb97a1a0e0177871653eac9c6721261d5f6fc67d04024539e17103ed",
    "relation": {
-    "target": "w672",
-    "target_sense": "w672-s1",
-    "type": "near",
-    "note": "침착하다는 당황하지 않고 차분하게 행동한다는 뜻이라 차분하다와 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w370-s1: 후보 검토에서 w672-s1를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w370",
-   "source_sense_id": "w370-s1",
-   "source_gloss_sha256": "db11fddffb97a1a0e0177871653eac9c6721261d5f6fc67d04024539e17103ed",
-   "relation": {
     "target": "w907",
     "target_sense": "w907-s1",
     "type": "association",
@@ -15435,19 +15422,6 @@
    "source_sense_id": "w454-s1",
    "source_gloss_sha256": "0894e9efa40eacf5d643c59cf7162f77e1c14721ffa2ab42074b2a4a2bb0cf9f",
    "relation": {
-    "target": "w448",
-    "target_sense": "w448-s1",
-    "type": "near",
-    "note": "섣부르다는 충분히 살피지 않고 서둘러 판단한다는 뜻이라 성급하다와 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w454-s1: 후보 검토에서 w448-s1를 near 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w454",
-   "source_sense_id": "w454-s1",
-   "source_gloss_sha256": "0894e9efa40eacf5d643c59cf7162f77e1c14721ffa2ab42074b2a4a2bb0cf9f",
-   "relation": {
     "target": "w370",
     "target_sense": "w370-s1",
     "type": "antonym",
@@ -15800,11 +15774,11 @@
    "relation": {
     "target": "w884",
     "target_sense": "w884-s1",
-    "type": "near",
-    "note": "산뜻하다는 기분이 가볍고 상쾌하다는 뜻이라 상쾌하다와 가깝다.",
+    "type": "association",
+    "note": "산뜻하다는 기분이 가볍고 상쾌하다는 뜻이라, 공기나 몸의 답답한 기운이 걷혀 몸이 가볍고 시원한 상쾌하다에서 기분이 가벼운 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w472-s1: 후보 검토에서 w884-s1를 near 관계로 판단했다."
+   "rationale": "w472-s1 w884-s1: 출발 gloss는 공기와 몸의 상태, 대상 gloss는 기분이라 같은 범위를 덮지 않아 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w472",
@@ -17670,19 +17644,6 @@
     "relevance": 4
    },
    "rationale": "w6707-s1: 후보 검토에서 w2428-s1를 association 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w672",
-   "source_sense_id": "w672-s1",
-   "source_gloss_sha256": "20c8aaa6d79aadebf5252f7dc6caab11ab3517aa49552b2945d7e3f1307c0d14",
-   "relation": {
-    "target": "w370",
-    "target_sense": "w370-s1",
-    "type": "near",
-    "note": "차분하다는 마음이나 움직임이 가라앉아 안정되어 있다는 뜻이라 침착하다와 가깝다.",
-    "relevance": 5
-   },
-   "rationale": "w672-s1: 후보 검토에서 w370-s1를 near 관계로 판단했다."
   },
   {
    "source_record_id": "w672",
@@ -20002,7 +19963,7 @@
   "rel-0b648f2a3d6bf57988675215": "920b7ca70d2ddc7f022eb275e0db2e3428d79f1bec77a1335058a73b6ba5fa1a",
   "rel-3a7c0433a06a616c6e34be8e": "2d7c32ed54feab65810c4b3b2b102cce11a6bd3254cb765e3c0d45879fdfa79b",
   "rel-1b8a2ae2cea33f92438146bc": "6db76518cc5f1e9f9ce826fec6f23ed3647e1b11ddafc93ef0e233c009a49037",
-  "rel-65574f7967d4d499dae655c0": "7a30765a74dfb580ffc9df9fbf1fafcbad53e89937ec0214254c131618edf375",
+  "rel-c0a8b5763334c51b1f5aab52": "7a30765a74dfb580ffc9df9fbf1fafcbad53e89937ec0214254c131618edf375",
   "rel-543b18ddbbb360455b344d10": "593aa99cacf10c66c0784dd2931b54ca7e46faf92aa5d2cb57a22c6e31f1e9ca",
   "rel-8a794b2ea947ebc11387a7ed": "e028f2ebcbb3409486daf4247b23a7d0b5e92c4568a726ecfb4d38999744309d",
   "rel-facf28de10078060da449348": "f067e45768259649f5a46a1fd8a370a5b16f4d8809bfad47546a50da72d6f3aa",
@@ -20013,7 +19974,7 @@
   "rel-13e5465bd038ccfb74afc670": "f8ca7d32fa525e128d5b7379f05b83436ca4384adad79ef1ce5e8ab9cc0036b8",
   "rel-dca157e5d6a6a7219dad611b": "6843a20a66ee5b28a4615891f71f7cc6bd679122bf278ef4dd747be627353e86",
   "rel-09dd21ee95ebc1536022abbc": "2d79e64f25050ba3ae31395d3acd8db3e21e11acc81acfaf7eb7add5c3ad8531",
-  "rel-ced66acb42a06017148ac122": "ed93457365fc64e5f7ad0abba715d28e340b729559633827d54b8952b87fa882",
+  "rel-4648c1dcb2efb22fdb20ef31": "ed93457365fc64e5f7ad0abba715d28e340b729559633827d54b8952b87fa882",
   "rel-556eeca48672573010baa85a": "7a7c928e96c377719958ee4db733cb02b715a87337cba8806d6ed46b80d8717b",
   "rel-97473422d618c3eef9d0d37c": "3a5b5e03c4c9a0ff583d2a88ffe21834ce330a8ea59d56b4141f2fe3cf99fde3",
   "rel-a06d74466c2a6f557e238f3e": "240ed9e687df274d15980e93e545b5a502a6a8c1e7e62b2af29e09ae94443b64",
@@ -21049,7 +21010,6 @@
   "rel-eedfcb6a10850e9d96c0cac3": "ae205fef2a1cebfb4f015936491af3bab729f5d3619d01476ff837b3f7132f8d",
   "rel-df158c917ac51bd41c555016": "a5783e77406318fd49bc93cbb9d53e30bbf51b080059befba6cfce311f01b023",
   "rel-33c003fa7cfce27caeb4d948": "5fb3714c6448fca149dd31c5b325cbaab332365480116646f2ab430a961ad32a",
-  "rel-efe49d95b6e4945b9f41b26c": "b0c2f2407499a86dd0536ad76fc0ed30a525f05d754cb8b2ceaf9553aab89b46",
   "rel-699b452fef869e0347b7e074": "e6d1108864428e55efd9feb8ccb5a7bf72fd01dbd36720d413006881a50e598e",
   "rel-8d5d35e7d2f39a281d056490": "071f3dda70d180426a337e8b963a3396d94dc4a001bca8a7bfa98a37fbb14a97",
   "rel-29542f09ac2a454652d33d4e": "e88306de0c44d105febcaa1eed2a22a8d9233a780cda95406d7cf23268dd0d3d",
@@ -21133,7 +21093,6 @@
   "rel-6fbc3d5e6b831ab2dd52a562": "b41e86ca632fd161aa11f95035b61c43d29843348ced221d6857e447b4bedaec",
   "rel-8220ef46787f182645120b11": "5f064ddcd8354e581e7cf9700c9e1504d2885d26e9e25110a026fbbb6d50b315",
   "rel-304e2facc0f551d3ab2469d9": "cb16df463a3a278767cf49acf4c9025a98b6f7905489c80990923e9c3b9e6189",
-  "rel-f18f5c01fa6bca68b672b1c2": "3f117a7e3f985173800e2db3de6fef232d7f9ce257e78c74e9deb3f8581cf6af",
   "rel-0770ddf3aaf6379ed4b313d6": "355d57f46113cedd33d9103512029bbcbb3ac4e02405c9192faf532eaaeb5037",
   "rel-a2595d588d519a007c8fc734": "ea73c21e5a99d93ceb43d6fe8a74f65e7561a77688cf4aecbd1282a06bec6079",
   "rel-cf736c03f8f871ce03c88ea0": "7f50f282717f25925af808ccf095697cbed76449f80da355ee70cee12e9b2821",
@@ -21161,7 +21120,7 @@
   "rel-da615a97f61300a879cbab6f": "6cc7fdecf7e022f33681157ff2c73ec4bd61cbb90db1c48c75a7053ac00329e9",
   "rel-3146be0aff20c4eff2ac2607": "4c41bcc1fc3f862fcd45fe9b71ee02a90d1bb85cb754737c190aeb25dd3ec873",
   "rel-217b44761f89c9c89d7997dc": "3be93b55e3375b8cb03d7d6550284c1668ea1e7e62dcc684271243a7ec627f9b",
-  "rel-7c17121a71fcea3cfbc88e41": "52dca00a87edcc59b3e9b7c5c8a8c4e811bd96a125128732cd3334884097ab92",
+  "rel-1e4bacfd9035a30b9ab67cd8": "52dca00a87edcc59b3e9b7c5c8a8c4e811bd96a125128732cd3334884097ab92",
   "rel-110776a9f4d425042273bf99": "8f2d9c64d1ea1cdfc03ac64c3018d55858d89407726a7c0757982bf976a07033",
   "rel-4cfc8e976b2c8fc866dd6d3d": "b5807061fd14f85ca0d27580201c469c35067e1237e6d93bb4f63e35e46af29c",
   "rel-cc7352619dd681375c125e96": "f2bd3fca78f016e1a14ecaa46d258cd309c31524ec8e29d7db78fed66a9649d4",
@@ -21306,7 +21265,6 @@
   "rel-dc65704323ed0def61c94f76": "e56ea68762578f37585ac4b183407c285329ca0dd347863d91332aff23346680",
   "rel-a747ac318df7b3358f58b7d6": "464ad55a1d9aefe197068576c7da6626dce8eba4d61bf87dde817b38238034c7",
   "rel-bc00ddc09917d13380cb442b": "99a87f7a2ae572100299c403c0f698ff5ff9854defff3a794bcfcae153f49aa7",
-  "rel-247cc5f5bdd47de417da91d4": "355d57f46113cedd33d9103512029bbcbb3ac4e02405c9192faf532eaaeb5037",
   "rel-110ee6722b7add20e95f1f02": "300fb05eb90069b8a1b37696e3da2053ec2b4d502237edc9649ab21a0eb414c1",
   "rel-a4eaf9529da88d8ccf3bd922": "4da6d41603256c433191710e6180160a21947c05d7c0abafd005630fa8e67ddf",
   "rel-cdea92849ce13708b2f69fe1": "9b2bae69e0a9acaf9080f95d373bd1ee43eb27d2ceee64b670c49b29b5160924",
