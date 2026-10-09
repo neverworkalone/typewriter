@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "a957c7e2565e73e4fc23bb046c803ed9d7852a3f9b62339e311bed3c835cc8f7"
+    "canonical_records_sha256": "e135a0b3a2cb3b3d8643825a2186b39d7542a7a69e7a96162754ae32a7f49cb0"
   },
-  "authored_review_sha256": "212943b406a899bc78e487e1ac4423b2ea324bef90be6dc79773a3bdaf218816",
+  "authored_review_sha256": "c1fcef488c65c50c8e21bd957cd6bcb2229a0a69c19c021910b8765b08d6a367",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "a957c7e2565e73e4fc23bb046c803ed9d7852a3f9b62339e311bed3c835cc8f7"
+      "canonical_records_sha256": "e135a0b3a2cb3b3d8643825a2186b39d7542a7a69e7a96162754ae32a7f49cb0"
     },
     "records": [
       {
@@ -31377,7 +31377,7 @@
       },
       {
         "record_id": "w979",
-        "record_sha256": "4c25aa7e8eea242486363e1de2dc67043cc29457161d040f28f4deced8d89460",
+        "record_sha256": "1374f958bf9d71683140b06e89261770c3c6633c3eb60dbd8539589a50886a81",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w979:boundary",
           "decision": "retain",
@@ -31385,18 +31385,19 @@
           "evidence": [
             {
               "sense_id": "w979-s1",
-              "evidence_basis": "gloss subject, predicate, and writer-facing usage were reviewed",
-              "rationale": "w979 w979-s1 was separately reviewed against gloss 2a62ad4078c3 and writer-facing usage evidence."
+              "evidence_basis_code": "reason-f698c5fd585cdcc5",
+              "rationale_code": "reason-60e22e03a63a9d7b"
             }
           ],
           "pairwise": [],
-          "rationale": "w979 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
+          "rationale_code": "reason-f40834b546915e0f"
         },
         "sense_reviews": [
           {
             "sense_id": "w979-s1",
-            "relation_decision": "relations-reviewed",
-            "relation_rationale": "w979 w979-s1 2a62ad4078c3 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-e7f08f1a904c4f01446d23a9 to w056; rationale digest 94c912b464f8."
+            "relation_decision": "no-relations",
+            "relation_rationale_code": "reason-f4f9ba852759d7a7",
+            "no_relation_rationale_code": "reason-ea33155f6c298384"
           }
         ]
       },
@@ -69485,7 +69486,7 @@
       },
       {
         "record_id": "w3204",
-        "record_sha256": "c4e32ea7ed50ccb85df5e7bc645428f562f7244f748b6f6bead13b7dad050cc7",
+        "record_sha256": "3ae132054fd7f48a2f55da9f759cc4c4868b4cae020831e501de44c6e3fa9609",
         "boundary_review": {
           "review_id": "m5-14-agent-semantic-review-20260923-r1:canonical:w3204:boundary",
           "decision": "retain",
@@ -69504,7 +69505,7 @@
           {
             "sense_id": "w3204-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w3204 w3204-s1 b4a3486c0a1b [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-f945316704fc0a769e61fad6 to w2414; rationale digest dad0127b9c46. w3204 w3204-s1 b4a3486c0a1b [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-7dcbcab446e676f3fc4d8c04 to w094; rationale digest dc8dde46835d. w3204 w3204-s1 b4a3486c0a1b [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-8ad1d7b6426dc1aaa790b8d2 to w116; rationale digest 8f6b61c03934. w3204 w3204-s1 b4a3486c0a1b [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-14312eaeaee41912a4550714 to w2762; rationale digest 0aeff1545480."
+            "relation_rationale": "w3204 w3204-s1 b4a3486c0a1b [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-f945316704fc0a769e61fad6 to w2414; rationale digest dad0127b9c46. w3204 w3204-s1 b4a3486c0a1b [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-8ad1d7b6426dc1aaa790b8d2 to w116; rationale digest 8f6b61c03934. w3204 w3204-s1 b4a3486c0a1b [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-14312eaeaee41912a4550714 to w2762; rationale digest 0aeff1545480."
           }
         ]
       },
@@ -220354,7 +220355,7 @@
       },
       {
         "record_id": "w12634",
-        "record_sha256": "9e669765e5f4ae42f7a6aa2ab038c5e19d258df8fd5304cd84016962127d0bf5",
+        "record_sha256": "647f74e97d46e5a491d9b096539984b6c478d6c523ef65c2f6cd78c29ca27890",
         "boundary_review": {
           "review_id": "factory-stage3:C000003-a1:w12634:boundary",
           "decision": "retain",
@@ -220373,7 +220374,7 @@
           {
             "sense_id": "w12634-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w12634 w12634-s1 cb3d3c2e8dac [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-343f0d317ca884f9e12709ff to w1272; rationale digest f68aa8948951. w12634 w12634-s1 cb3d3c2e8dac [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-69af7983976d272842f557c0 to w8927; rationale digest a2d5418acf04. w12634 w12634-s1 cb3d3c2e8dac [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-823f71c2086c8df81da3f3db to w2818; rationale digest f0b4a4951b53. w12634 w12634-s1 cb3d3c2e8dac [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-413041ffec23ac275e615f13 to w297; rationale digest 4c135152bab3."
+            "relation_rationale": "w12634 w12634-s1 cb3d3c2e8dac [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-be5f76a9540a7a73478b9434 to w1272; rationale digest edaa8fdf9da6. w12634 w12634-s1 cb3d3c2e8dac [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-69af7983976d272842f557c0 to w8927; rationale digest a2d5418acf04. w12634 w12634-s1 cb3d3c2e8dac [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-823f71c2086c8df81da3f3db to w2818; rationale digest f0b4a4951b53. w12634 w12634-s1 cb3d3c2e8dac [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-413041ffec23ac275e615f13 to w297; rationale digest 4c135152bab3."
           }
         ]
       },
@@ -241550,7 +241551,7 @@
     {
       "batch_id": "R000004",
       "attempt": 1,
-      "semantic_decisions_sha256": "f58069c2ab3d791279f3ad0708a2da9b66aedbf728a93e1806d2beecef1286f5",
+      "semantic_decisions_sha256": "375a0865c53ca81516fd26490cae334a9b6cb32002831d480c19c729159dfa6c",
       "entries": [],
       "relation_amendments": [
         {
@@ -250194,16 +250195,16 @@
           "source_record_id": "w12634",
           "source_sense_id": "w12634-s1",
           "source_gloss_sha256": "cb3d3c2e8dac86f4cf14c24bc247620a1428104351d0acefc8c2042aa63223a2",
-          "authored_relation_id": "rel-343f0d317ca884f9e12709ff",
-          "relation_id": "rel-343f0d317ca884f9e12709ff",
+          "authored_relation_id": "rel-be5f76a9540a7a73478b9434",
+          "relation_id": "rel-be5f76a9540a7a73478b9434",
           "relation": {
             "target": "w1272",
             "target_sense": "w1272-s1",
-            "type": "near",
-            "note": "마음을 모으다의 첫째 뜻은 흩어진 생각을 한곳에 집중한다는 표현이라 집중하다와 가깝다. 틀: \"시험에 집중했다 / 마음을 모았다\"는 되지만, \"힘을 한곳에 집중했다 / 힘을 한곳에 마음을 모았다\"는 출발 gloss는 \"마음이나 힘\"이고 대상 gloss는 \"흩어진 생각\"이라 힘을 모으는 문맥에서는 바뀌지 않는다.",
+            "type": "association",
+            "note": "마음을 모으다의 첫째 뜻은 흩어진 생각을 한곳에 집중한다는 표현이라, 한곳에 마음이나 힘을 모으는 집중하다에서 흩어진 생각을 모으는 쪽으로 이어 찾게 한다.",
             "relevance": 5
           },
-          "rationale_sha256": "f68aa8948951374b462542b9eb5c7ef3b018b2e61bae24a42c3957329c42ea5c",
+          "rationale_sha256": "edaa8fdf9da6caaf9338df39c3740931f866ba87b3fb8e255d93e861d81e2c87",
           "outcome": "appended"
         },
         {
@@ -258078,23 +258079,6 @@
             "relevance": 6
           },
           "rationale_sha256": "dad0127b9c469515170f4f981f55739ab04d93e7da7df2ec415673ead6b0d08c",
-          "outcome": "appended"
-        },
-        {
-          "source_candidate_id": "R000004",
-          "source_record_id": "w3204",
-          "source_sense_id": "w3204-s1",
-          "source_gloss_sha256": "b4a3486c0a1b2a8dc10cd04843497c3b31f13bb4a293e18ab852fa2b072d27c5",
-          "authored_relation_id": "rel-7dcbcab446e676f3fc4d8c04",
-          "relation_id": "rel-7dcbcab446e676f3fc4d8c04",
-          "relation": {
-            "target": "w094",
-            "target_sense": "w094-s1",
-            "type": "near",
-            "note": "심장박동은 심장이 뛰며 반복되는 몸의 리듬이라 박동과 가깝다. 틀: \"박동이 / 심장박동이 빨라졌다\"는 되지만, \"맥의 박동 / 맥의 심장박동\"는 대상 gloss는 \"심장이 뛰며\"라 맥에는 바뀌지 않는다.",
-            "relevance": 5
-          },
-          "rationale_sha256": "dc8dde46835d56a6a8727948b26f109bc1dc75dcff3cfef75ab779a7d37c5bc1",
           "outcome": "appended"
         },
         {
@@ -266693,23 +266677,6 @@
             "note": "냉기는 차갑게 느껴지는 기운이라 훈기와 반대다."
           },
           "rationale_sha256": "0ef90d88f5e58a5bb0dfba219eaec26853a37888ecc11f3059ba909eae6bd70c",
-          "outcome": "appended"
-        },
-        {
-          "source_candidate_id": "R000004",
-          "source_record_id": "w979",
-          "source_sense_id": "w979-s1",
-          "source_gloss_sha256": "2a62ad4078c3560312646fa4d379c99ee8959b88776d3d68be8d92cea1bb8eec",
-          "authored_relation_id": "rel-e7f08f1a904c4f01446d23a9",
-          "relation_id": "rel-e7f08f1a904c4f01446d23a9",
-          "relation": {
-            "target": "w056",
-            "target_sense": "w056-s1",
-            "type": "near",
-            "note": "냉기는 차갑게 느껴지는 기운이라 서늘한기운보다 더 찬 쪽이지만 정도 차이일 뿐이어서 가깝다. 틀: \"서늘한기운이 / 냉기가 돌았다\"는 되지만, \"약간 서늘한 서늘한기운 / 약간 서늘한 냉기\"는 대상 gloss는 \"차갑게 느껴지는\"이라 약간 서늘한 정도에는 바뀌지 않는다.",
-            "relevance": 5
-          },
-          "rationale_sha256": "94c912b464f8d1841a6def8fe373d41bde6be803f90c29d99024af9c34a71a84",
           "outcome": "appended"
         },
         {
@@ -277758,13 +277725,13 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-343f0d317ca884f9e12709ff",
+            "rel-be5f76a9540a7a73478b9434",
             "rel-69af7983976d272842f557c0",
             "rel-823f71c2086c8df81da3f3db",
             "rel-413041ffec23ac275e615f13"
           ],
           "before_sha256": "0eefa9cae7450f2288781dcbda2f3208405c5a3ad324c0c221ff59a7d95b1f85",
-          "after_sha256": "9e669765e5f4ae42f7a6aa2ab038c5e19d258df8fd5304cd84016962127d0bf5",
+          "after_sha256": "647f74e97d46e5a491d9b096539984b6c478d6c523ef65c2f6cd78c29ca27890",
           "previous_semantic_review_sha256": "0f00eda7ad1f14d839d0ca72cccf1133fe0d23368167267c6cf42df07bf70ca9",
           "previous_semantic_review": {
             "record_id": "w12634",
@@ -277811,7 +277778,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "989793a6b23a2e491870960d55e837dd10783394ccad0cfd503cd199c6d96b4f"
+          "semantic_review_sha256": "675ee171b02bfcab0f556fcad5748d247672818264702338187a6ad67313f417"
         },
         {
           "entry_id": "w127",
@@ -287444,12 +287411,11 @@
           ],
           "added_relation_ids": [
             "rel-f945316704fc0a769e61fad6",
-            "rel-7dcbcab446e676f3fc4d8c04",
             "rel-8ad1d7b6426dc1aaa790b8d2",
             "rel-14312eaeaee41912a4550714"
           ],
           "before_sha256": "67c83cb5fce22bf1bd417866123907f2c73c8e008a3b1ea26d50b9ed45b5e833",
-          "after_sha256": "c4e32ea7ed50ccb85df5e7bc645428f562f7244f748b6f6bead13b7dad050cc7",
+          "after_sha256": "3ae132054fd7f48a2f55da9f759cc4c4868b4cae020831e501de44c6e3fa9609",
           "previous_semantic_review_sha256": "2e9394bbab4f7cb6e571248c4697069ed233c2721fcfc81e6d28e3283bea1003",
           "previous_semantic_review": {
             "record_id": "w3204",
@@ -287484,7 +287450,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "1766942114e97c70571091a63e80c8608772d5bfa627276b02a22052db9b95b4"
+          "semantic_review_sha256": "2c6c1de09fca5a56d1fe7e89ad1bfd7d6cdf022af240aba021a6d5b7065176ad"
         },
         {
           "entry_id": "w3207",
@@ -297064,64 +297030,6 @@
           "semantic_review_sha256": "cb1c3ef689aa69816b85172e0ad431fec71cfe038bdce7d23e9d9eb85d99fd0f"
         },
         {
-          "entry_id": "w979",
-          "operation": "append_relations",
-          "path": "data/canonical/m5-11-expansion.jsonl",
-          "source_candidate_ids": [
-            "R000004"
-          ],
-          "added_relation_ids": [
-            "rel-e7f08f1a904c4f01446d23a9"
-          ],
-          "before_sha256": "1374f958bf9d71683140b06e89261770c3c6633c3eb60dbd8539589a50886a81",
-          "after_sha256": "4c25aa7e8eea242486363e1de2dc67043cc29457161d040f28f4deced8d89460",
-          "previous_semantic_review_sha256": "8c18841d5db8c5581b34fd08f54fe51e0e2d13e3e85b85b46d07801eaf2f8bd2",
-          "previous_semantic_review": {
-            "record_id": "w979",
-            "record_sha256": "1374f958bf9d71683140b06e89261770c3c6633c3eb60dbd8539589a50886a81",
-            "boundary_review": {
-              "review_id": "canonical-semantic-review:w979:boundary",
-              "decision": "retain",
-              "classification": "atomic",
-              "evidence": [
-                {
-                  "sense_id": "w979-s1",
-                  "evidence_basis_code": "reason-f698c5fd585cdcc5",
-                  "rationale_code": "reason-60e22e03a63a9d7b"
-                }
-              ],
-              "pairwise": [],
-              "rationale_code": "reason-f40834b546915e0f"
-            },
-            "sense_reviews": [
-              {
-                "sense_id": "w979-s1",
-                "relation_decision": "no-relations",
-                "relation_rationale_code": "reason-f4f9ba852759d7a7",
-                "no_relation_rationale_code": "reason-ea33155f6c298384"
-              }
-            ]
-          },
-          "previous_record": {
-            "id": "w979",
-            "record_type": "entry",
-            "role": "start",
-            "candidate_id": "w979",
-            "lemma": "서늘한기운",
-            "search_forms": [
-              "서늘한기운"
-            ],
-            "senses": [
-              {
-                "id": "w979-s1",
-                "pos": "noun",
-                "gloss": "차갑고 가라앉은 듯한 기운"
-              }
-            ]
-          },
-          "semantic_review_sha256": "e47bafbb98b6561ade9a87e037a08f3caec589d19e7601b0fba8036dee208b89"
-        },
-        {
           "entry_id": "w9815",
           "operation": "append_relations",
           "path": "data/canonical/issue-223-m9-e-corpus-batch-07.jsonl",
@@ -297451,7 +297359,7 @@
           "semantic_review_sha256": "25781db3ad1faf41c9ca731ddcf0bcf09ff68918f12cf4f247b67f05c074a17a"
         }
       ],
-      "sha256": "1c5ed403c3829b1d260a4c5cc2ab8d08622b28f32eed8bf2dfb803c20c06b862"
+      "sha256": "6b2d49c76f8adc2099b5517adbb4602d88f29a4ca028f57a8d502c4e34a03d3e"
     }
   ]
 }

@@ -6596,11 +6596,11 @@
    "relation": {
     "target": "w1272",
     "target_sense": "w1272-s1",
-    "type": "near",
-    "note": "마음을 모으다의 첫째 뜻은 흩어진 생각을 한곳에 집중한다는 표현이라 집중하다와 가깝다. 틀: \"시험에 집중했다 / 마음을 모았다\"는 되지만, \"힘을 한곳에 집중했다 / 힘을 한곳에 마음을 모았다\"는 출발 gloss는 \"마음이나 힘\"이고 대상 gloss는 \"흩어진 생각\"이라 힘을 모으는 문맥에서는 바뀌지 않는다.",
+    "type": "association",
+    "note": "마음을 모으다의 첫째 뜻은 흩어진 생각을 한곳에 집중한다는 표현이라, 한곳에 마음이나 힘을 모으는 집중하다에서 흩어진 생각을 모으는 쪽으로 이어 찾게 한다.",
     "relevance": 5
    },
-   "rationale": "w12634-s1 w1272-s1: 대체가 성립하는 문맥과 깨지는 대조 문맥을 두 bound gloss의 차이로 note에 함께 적어 near로 유지했다."
+   "rationale": "w12634-s1 w1272-s1: 출발 gloss의 마음이나 힘 가운데 힘이 대상 gloss의 흩어진 생각에는 없어 대상이 더 좁은 관계라 near가 아닌 association으로 정리했다."
   },
   {
    "source_record_id": "w12634",
@@ -12611,19 +12611,6 @@
     "relevance": 6
    },
    "rationale": "w3204-s1 w2414-s1: 한쪽 gloss가 다른 쪽을 포함하는 더 넓거나 좁은 관계라 같은 범위만 허용하는 near도, 한쪽에만 있는 한정이 없는 direct도 아니어서 association으로 정리했다. 대칭 때문에 기존 역방향을 바꾸지는 않았다."
-  },
-  {
-   "source_record_id": "w3204",
-   "source_sense_id": "w3204-s1",
-   "source_gloss_sha256": "b4a3486c0a1b2a8dc10cd04843497c3b31f13bb4a293e18ab852fa2b072d27c5",
-   "relation": {
-    "target": "w094",
-    "target_sense": "w094-s1",
-    "type": "near",
-    "note": "심장박동은 심장이 뛰며 반복되는 몸의 리듬이라 박동과 가깝다. 틀: \"박동이 / 심장박동이 빨라졌다\"는 되지만, \"맥의 박동 / 맥의 심장박동\"는 대상 gloss는 \"심장이 뛰며\"라 맥에는 바뀌지 않는다.",
-    "relevance": 5
-   },
-   "rationale": "w3204-s1 w094-s1: 대체가 성립하는 문맥과 깨지는 대조 문맥을 두 bound gloss의 차이로 note에 함께 적어 near로 유지했다."
   },
   {
    "source_record_id": "w3204",
@@ -19192,19 +19179,6 @@
    "rationale": "w975-s1: 후보 검토에서 w056-s1를 antonym 관계로 판단했다."
   },
   {
-   "source_record_id": "w979",
-   "source_sense_id": "w979-s1",
-   "source_gloss_sha256": "2a62ad4078c3560312646fa4d379c99ee8959b88776d3d68be8d92cea1bb8eec",
-   "relation": {
-    "target": "w056",
-    "target_sense": "w056-s1",
-    "type": "near",
-    "note": "냉기는 차갑게 느껴지는 기운이라 서늘한기운보다 더 찬 쪽이지만 정도 차이일 뿐이어서 가깝다. 틀: \"서늘한기운이 / 냉기가 돌았다\"는 되지만, \"약간 서늘한 서늘한기운 / 약간 서늘한 냉기\"는 대상 gloss는 \"차갑게 느껴지는\"이라 약간 서늘한 정도에는 바뀌지 않는다.",
-    "relevance": 5
-   },
-   "rationale": "w979-s1 w056-s1: 대체가 성립하는 문맥과 깨지는 대조 문맥을 두 bound gloss의 차이로 note에 함께 적어 near로 유지했다."
-  },
-  {
    "source_record_id": "w9815",
    "source_sense_id": "w9815-s1",
    "source_gloss_sha256": "9901e80d361d7589f218a17877ea161c5a3add8ed079d4dee667bf490406c2d9",
@@ -19975,7 +19949,7 @@
   "rel-bc490d69db987bab70bb8d40": "4d297a9300c0e7d0d51aff586f1dbda85fc329ffd9ecf263b8462a1847e849c9",
   "rel-179f25adc416bea5f871bfac": "243ce0c799aaa82dee86fa9efe5619ef3dbe673ab14d333684afdba5d35d4ee3",
   "rel-5b11875ef95c03a1e7f2c8f4": "6977b6af4894ad5ad26a9c0c4e6fcf9ac6739b933bfe43c4323df50cbe8e4c07",
-  "rel-343f0d317ca884f9e12709ff": "ac6fd0828d51b7756a0c308d61e34b3890de01615b8efc8f64f7d377ecc8d721",
+  "rel-be5f76a9540a7a73478b9434": "ac6fd0828d51b7756a0c308d61e34b3890de01615b8efc8f64f7d377ecc8d721",
   "rel-69af7983976d272842f557c0": "bba629cdf70f347a0d6dd3fd2ffbecc5701796f64987180f89c63114b99fcbcb",
   "rel-823f71c2086c8df81da3f3db": "783bf9f3d96f65935d9d9ad844b087f6754f71672bb239401f87311a228b3e7c",
   "rel-413041ffec23ac275e615f13": "feb9b17ea9bf44e7349d34d373bbbf179c538fa0dc2c10a8220aa3ffd0bf9b27",
@@ -20442,7 +20416,6 @@
   "rel-784ffef4f83b034219d8a377": "b13c72898eb935518a831797983b6a691dce93467434f679d0187ecfe25175fa",
   "rel-b67788723fe48ab59010b985": "f160c043754a68bc44781af1a551fc2c5e63e9e49c561444f096a8c619640498",
   "rel-f945316704fc0a769e61fad6": "1f70dd8d9efd4d43342a811518b6140ddb12e8b79765d1e2ec2ae6fbdb7e8740",
-  "rel-7dcbcab446e676f3fc4d8c04": "aab566aaf8eabae2b1b92f16ccf527de70fe66e846bd352d6f2807493eaf8bf0",
   "rel-8ad1d7b6426dc1aaa790b8d2": "8d50bae38e7668ae000e86a28df49ed61ea4fc91e35acd3a8917934d75cf5c2f",
   "rel-14312eaeaee41912a4550714": "1842dc64fe5d642827c817d111841307d2750698f1c46f15c077fa0894efe81f",
   "rel-e5255b0b045580c6fd98457b": "429ceb53884f77ae52d67b4297d4b9ba3bd368bcfb6c68820d85b1ada9a96251",
@@ -20951,7 +20924,6 @@
   "rel-e04dedd33a00a2482ca3877a": "ab76e58d3f45582c94d34b0dce8190d93ac8df095c79723316335d15c3679306",
   "rel-572b04df1aba5dcbc683e2b1": "74b5e41d67b305962778e3e3ae0fdd28f6b827d087c1d907d7d2b510cf76d0a7",
   "rel-8e25a18cb986e3cb4540be13": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
-  "rel-e7f08f1a904c4f01446d23a9": "aa39a4d017c7a1698a13148959961eaca269fa41732d4f1c2a3eb0b5d47bb24c",
   "rel-d3f9d5d693fb0ef579fbef13": "7ccc700b4e523980a82e2fd3616e2ed5d7ed0dbc06bbad434b946d5b0442594e",
   "rel-f821ded943f757f80cb9f963": "0d2d4d5f972f63a85b29f120b8515b49bc31c66cf68304a5233a79231a78b8f7",
   "rel-13ff7039772f1c4d1b5e14db": "1198c1363e8fb043f55747118c7e83f3780886f787844d1a6376c892f48cf443",
