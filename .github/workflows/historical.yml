@@ -1,0 +1,87 @@
+name: Historical CI
+
+on:
+  schedule:
+    # Monday 22:00 UTC (Tuesday 07:00 KST); separate from Sunday Deep CI.
+    - cron: '0 22 * * 1'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Registered historical scope, or all'
+        required: true
+        default: all
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  select_scopes:
+    name: Select historical scopes
+    runs-on: ubuntu-24.04
+    outputs:
+      scopes: ${{ steps.resolve.outputs.scopes }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Resolve requested scopes from registry
+        id: resolve
+        shell: bash
+        env:
+          REQUESTED_SCOPE: ${{ inputs.scope || 'all' }}
+        run: |
+          set -euo pipefail
+          registry=scripts/ci/legacy-check-history-scopes.json
+          if [[ "$REQUESTED_SCOPE" == all ]]; then
+            scopes="$(jq -c '.scopes' "$registry")"
+          else
+            if ! jq -e --arg scope "$REQUESTED_SCOPE" '.scopes | index($scope) != null' "$registry" >/dev/null; then
+              echo "Unknown historical scope: $REQUESTED_SCOPE" >&2
+              exit 1
+            fi
+            scopes="$(jq -cn --arg scope "$REQUESTED_SCOPE" '[$scope]')"
+          fi
+          if [[ "$(jq 'length' <<< "$scopes")" -eq 0 ]]; then
+            echo "No registered historical scopes." >&2
+            exit 1
+          fi
+          echo "scopes=$scopes" >> "$GITHUB_OUTPUT"
+          echo "Historical scopes: $scopes" >> "$GITHUB_STEP_SUMMARY"
+
+  historical:
+    name: Historical replay (${{ matrix.scope }})
+    needs: select_scopes
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        scope: ${{ fromJSON(needs.select_scopes.outputs.scopes) }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: pnpm
+
+      - name: Install pinned dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run scoped historical replay
+        env:
+          HISTORICAL_SCOPE: ${{ matrix.scope }}
+        run: pnpm run ci:historical --scope "$HISTORICAL_SCOPE"
