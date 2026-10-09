@@ -23,7 +23,11 @@ Validator changes must include evidence that known-invalid input fails and
 valid input passes.
 
 Otherwise, a passing deterministic check is sufficient evidence for the
-property it covers.
+property it covers. CI success proves **only its tested properties**: Stage 2
+must not assert that unrun native, corpus, visual or other manual checks passed.
+Read passing CI logs when the workflow, validator, fixture or expected behavior
+changed, or when source code contradicts a claimed result. A status badge
+alone cannot establish the adequacy of newly changed validation.
 
 For lexical validators and regression tests:
 
@@ -35,6 +39,48 @@ For lexical validators and regression tests:
 - allow batch-specific checks only for genuinely batch-specific constraints;
 - reject fixtures that merely memorize affected canonical records when a small
   synthetic fixture can prove the general rule.
+
+## PR workflow / exact-HEAD CI classification
+
+`.github/workflows/ci.yml` runs on `pull_request`, not post-merge `master`
+pushes. Stage 2 checks the **complete changed-path list and actual
+successful exact-HEAD workflow result**, including the summary of any skip;
+Stage 3 verifies that gate, while Stage 1 never checks or waits for CI.
+
+1. **Documentation-only:** every changed path must be beneath `docs/**`
+   (including non-Markdown files) or exactly `README.md` or `REVIEW.md`.
+   The `Validate and test Typewriter` workflow must still finish
+   successfully and explicitly report that `ci:normal` was **skipped**.
+   A skip must not be reported as tests/SQLite having run.
+2. **Pure Stage 1 candidate artifacts:** the complete diff must contain
+   **only** `data/candidates/C######/manifest.json` and/or
+   `data/candidates/C######/candidates.jsonl` (six digits in the batch ID).
+   Require a successful exact-HEAD `ci:candidates` check. It tests candidate
+   schema/manifest/digests/identity and applicable factory contracts **without
+   building the current-canonical SQLite database**. Do not require
+   `ci:normal` for this authorized narrow gate.
+3. **Everything else:** code, schema, canonical, Stage 2 results, source
+   policy, non-allowlisted paths or mixtures of any above classes require a
+   successful exact-HEAD `ci:normal` result.
+4. **Fail-closed classification:** an empty diff, unclassifiable/unknown
+   path, or changed file outside the narrow allowlist must take Normal.
+   Compare rename **source and destination** paths; a moved source cannot
+   become documentation-only. Do not allow an incidental documentation file
+   to turn a candidate+docs or code+docs PR into a skip/fast gate.
+
+`ci:fast` is the fast checkpoint **inside the same `ci:normal` context**,
+not the candidate-only CI. One Normal invocation continues from that
+checkpoint, without repeating global audit or SQLite generation. Historical
+replay and Deep are separately owned; neither replaces an applicable Normal
+gate.
+
+When Deep workflow/Deep contracts change, require **successful exact-HEAD
+Deep** evidence; a scheduled run on another SHA, a skipped Deep gate or
+ordinary green Normal cannot substitute. At this document's #469 baseline,
+#464 rollout PR #470 proposes scoped `ci:historical` and an exact-HEAD
+`Deep CI Gate`; do not presume that *unmerged* proposed workflow exists.
+Check the actual workflow and registry on the PR HEAD before selecting the
+required Deep evidence. No new CI gates are invented by this review policy.
 
 ## Canonical and CI architecture changes
 
@@ -54,18 +100,16 @@ Deep. Normal registration requires a concrete same-PR merge invariant.
 missing or unclassifiable changed-path evidence fails closed to the full
 applicable gate. Each test file has exactly one registry owner.
 
-Pure Stage 1 artifact PRs use `ci:candidates`, which validates the factory
-candidate contracts without creating the current-canonical SQLite database.
-Ordinary code/data/mixed PRs require `ci:normal` for current canonical,
-admission, and product protection. A PR may expose the fast checkpoint and
-continue Normal **within one process/session**, not repeat full-canonical work.
-`ci:all` runs Normal then current-system Deep, and `ci:deep` selects Deep checks
-across all domain scopes. Current-revision independent builds and scale checks
-belong in Deep; completed Issue checkpoint replays belong in Historical.
-Historical replay is excluded from weekly Deep CI; PR 3 adds bounded
-`ci:historical` and the exact-HEAD `Deep CI Gate`. Check the actual command
-registry and workflow on the current HEAD. A scheduled or skipped run does not
-satisfy the exact-HEAD Deep requirement.
+The **scope/domain** is distinct from the **tier**. Normal protects the
+current canonical revision, required admission/factory freshness and current
+product outputs; optional `ci:fast` is a prefix inside the same session.
+`ci:all` selects Normal plus current-system Deep (not a historical replay);
+`ci:deep` selects Deep checks across scopes. Independent current-revision
+reproducibility and scale/benchmark checks belong in Deep. Completed-issue
+checkpoint replays belong in a separately invoked Historical tier:
+`ci:historical` is introduced by the #464 PR #470 rollout **when merged**,
+not by this documentation change. A passing scheduled/other-HEAD run never
+substitutes for the required exact-HEAD gate.
 
 The Issue #464 migration inventory is at
 [`docs/ci-check-inventory.md`](ci-check-inventory.md), with one machine-checked
@@ -73,6 +117,17 @@ row per registered CI check in
 [`scripts/ci/check-inventory.json`](../scripts/ci/check-inventory.json). It records the
 owner, protected contract, measured duration, tier, trigger, migration reason,
 and consumer. No check is retired in PR 2.
+
+
+### Systemic test coverage — do not merely patch the failing fixture
+
+When a defect is found in a shared validator/producer/builder/consumer, require
+a minimal representative failing case, correction at the common boundary,
+**old-fails/new-passes** regression and proof the same check applies to every
+relevant existing record and future addition. A test that recognizes only one
+batch's IDs/words is not adequate. Conversely, do not replace source-bound
+editorial judgments with mechanical synonym or subjective relation validators;
+see `docs/review-data.md`.
 
 ### One current-revision SQLite build in `ci:normal` (enforced invariant)
 
