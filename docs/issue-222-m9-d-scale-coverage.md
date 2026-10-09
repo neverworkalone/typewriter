@@ -110,7 +110,7 @@ Across reviewed batches, hold reasons were search-collision: 9; unresolved-ident
 
 Correction rate: **NOT_MEASURED_NO_HUMAN_REVIEW**. Writer review burden: **NOT_MEASURED_NO_WRITER_REVIEW**. Systemic defect classes: 0; shared system fixes recorded: 0.
 
-Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `c96742c59e5e99a0faa3873971fca1579bc17af5e7097e83ad2eae9a43de3c4c`.
+Normal CI status: read the exact-head GitHub PR check **Validate and test Typewriter** (`npm run ci:normal`); this report stores no pass/fail result and never reuses an earlier report's status. Canonical digest: `253a6dea852f21abb73f1fe65059244e9ad12d70da873684b45a164bd8418d25`.
 Runtime/package impact: **dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured**. The packaged dictionary grew from 5,105 to 12,312 records (+7,207; 141.18%). Runtime contract changed: false; package bytes measured: false. Issue #222 and later checkpointed work add canonical data without changing dictionary schema, search algorithm, or runtime/package code. Normal CI builds the current Extension and Web outputs and validates their product-output contracts; the dictionary record-count growth is measured here, while the package-byte delta was not measured separately. Targeted validation: normal-ci-product-build-and-output-contract.
 
 ## Continuation
