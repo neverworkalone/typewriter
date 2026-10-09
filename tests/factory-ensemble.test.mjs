@@ -202,6 +202,35 @@ test('2/3: ensemble keeps competing Kiwi readings; a three-way vote never become
   assert.equal(JSON.stringify(result.manifest).includes('verified_correct'), false);
 });
 
+test('v2 producer holds a unanimous lemma that mismatches its source hint and passes a matching hint', async () => {
+  const result = await produce([
+    cand('덮이다', 'verb', [h('d-mismatch', '덮혀')]),
+    cand('덮이다', 'verb', [h('d-match', '덮여')]),
+  ], triple({
+    k: { 덮혀: [p('덮히다', 'verb')], 덮여: [p('덮이다', 'verb')] },
+    h: { 덮혀: [p('덮히다', 'verb')], 덮여: [p('덮이다', 'verb')] },
+    m: { 덮혀: [p('덮히다', 'verb')], 덮여: [p('덮이다', 'verb')] },
+  }));
+
+  const mismatch = result.rows.find((row) => row.input === '덮히다').observations[0];
+  assert.deepEqual(mismatch.holds, ['lemma_mismatch']);
+  assert.ok(mismatch.ensemble.reasons.includes('extractor_hint_mismatch'));
+  const mismatchDecision = result.ensemble.decisions.find((decision) => decision.assigned?.lemma === '덮히다');
+  assert.deepEqual(mismatchDecision.holds, ['lemma_mismatch']);
+  assert.equal(mismatchDecision.trace.extractor_hint.lemma, '덮이다');
+  assert.ok(mismatchDecision.trace.reasons.includes('extractor_hint_mismatch'));
+  assert.deepEqual(mismatchDecision.trace.observation_holds, ['lemma_mismatch']);
+
+  const matching = result.rows.find((row) => row.input === '덮이다').observations[0];
+  assert.deepEqual(matching.holds, []);
+  assert.deepEqual(matching.ensemble.reasons, ['three_way_agreement']);
+  const matchingDecision = result.ensemble.decisions.find((decision) => decision.assigned?.lemma === '덮이다'
+    && decision.trace.extractor_hint.lemma === '덮이다');
+  assert.deepEqual(matchingDecision.holds, []);
+  assert.deepEqual(matchingDecision.trace.observation_holds, []);
+  assert.deepEqual(validateCandidateBatch({ manifest: result.manifest, candidatesText: result.candidatesText }), []);
+});
+
 test('5/13: one lemma, separate source-bound observations; an ambiguous inflection never contaminates or vanishes because of a clear sibling', async () => {
   const k = { 가는: [p('가다', 'verb', '가')], 가서: [p('가다', 'verb', '가')], 갈: [p('갈', 'noun')] };
   const hh = { 가는: [p('가다', 'verb', '가')], 가서: [p('가다', 'verb', '가')], 갈: [p('갈다', 'verb', '갈')] };
