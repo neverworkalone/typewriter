@@ -8,7 +8,7 @@ import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } fro
 import { planSurfaceFormDispositions, writeSurfaceFormDispositions } from './surface-form-dispositions.mjs';
 import { stage3SurfaceFormJudgments } from './surface-form-judgments.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
-import { loadFactorySnapshot } from './stage2-worker.mjs';
+import { FACTORY_SNAPSHOT_PATHSPEC, loadFactorySnapshot } from './stage2-worker.mjs';
 import { validateReviewArtifacts } from './artifacts.mjs';
 import { validateFactoryRepository, loadBaseManifests } from './validate.mjs';
 
@@ -48,7 +48,7 @@ export function createStage3GitRepository({ root = process.cwd() } = {}) {
     resolveRef(ref) { return gitRun(root, ['rev-parse', ref + '^{commit}']); },
     branchBaseSha() { return gitRun(root, ['merge-base', 'HEAD', 'origin/master']); },
     listFiles(ref) {
-      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', 'data/candidates', 'data/reviews', 'data/canonical', 'data/validation/canonical-semantic-decision-source.json']);
+      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', ...FACTORY_SNAPSHOT_PATHSPEC]);
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
     show(ref, file) {

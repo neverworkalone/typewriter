@@ -32,6 +32,9 @@ function gitRun(root, args, { allowFailure = false } = {}) {
   }
 }
 
+// Every tracked path class the merged-master snapshot loader reads; the Stage 2 and Stage 3 Git adapters must list the same set.
+export const FACTORY_SNAPSHOT_PATHSPEC = ['data/candidates', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json'];
+
 export function createGitRepository({ root = process.cwd() } = {}) {
   return {
     root,
@@ -42,7 +45,7 @@ export function createGitRepository({ root = process.cwd() } = {}) {
       return gitRun(root, ['rev-parse', ref + '^{commit}']);
     },
     listFiles(ref) {
-      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', 'data/candidates', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json']);
+      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', ...FACTORY_SNAPSHOT_PATHSPEC]);
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
     show(ref, file) {
