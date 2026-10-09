@@ -49,8 +49,9 @@ pushes. **Stage 3 exclusively owns the CI gate**: check the complete changed-pat
 list and actual successful **exact-HEAD** workflow result, including the summary
 of any authorized skip. **Stages 1 and 2 never inspect, retrieve or wait for CI
 status, workflow runs or logs**; their `+1`/`+2` do not assert CI success.
-Pending CI means Stage 3 waits and rechecks without requesting another `+2`;
-failed, missing, stale or incorrectly skipped CI blocks merge.
+Pending CI blocks merge until Stage 3 rechecks the gate with updated evidence;
+Stage 2 must not be rerun solely because CI was pending. Failed, missing,
+stale or incorrectly skipped CI also blocks merge.
 
 1. **Documentation-only:** every changed path must be beneath `docs/**`
    (including non-Markdown files) or exactly `README.md` or `REVIEW.md`.
