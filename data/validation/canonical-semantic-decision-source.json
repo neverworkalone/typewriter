@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "1bb7bcfc9358541d438a742bb1b3ca11b51eaba2dae3dea93bcdfcb70fe9659f"
+    "canonical_records_sha256": "ee306deca3aa48fd844630585c5826823d32d28142d928c9585c70f02260ea32"
   },
-  "authored_review_sha256": "d66543f4f8f074960ec248ce63ead1b6b21f0145fd9673e71f6a2f7893933674",
+  "authored_review_sha256": "3c89b5e514ca7f7ace3c0d92a1ea1b7addcd553aaf3541e77281d51848dcc883",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "1bb7bcfc9358541d438a742bb1b3ca11b51eaba2dae3dea93bcdfcb70fe9659f"
+      "canonical_records_sha256": "ee306deca3aa48fd844630585c5826823d32d28142d928c9585c70f02260ea32"
     },
     "records": [
       {
@@ -4848,7 +4848,7 @@
       },
       {
         "record_id": "w096",
-        "record_sha256": "6d9cee8dd422df9afa1c7008b731aba12d55ab50172d025211a1b12656979409",
+        "record_sha256": "a15430512067a54a0385777f5ac2de3c6fcf890b394dc37013f95cbd28823674",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w096:boundary",
           "decision": "retain",
@@ -4867,7 +4867,7 @@
           {
             "sense_id": "w096-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w096 w096-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w096 w096-s1 e2345e3baafa [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-5a7dd44a1168c03284f05191 to w097; rationale digest ff1deecaaec7. w096 w096-s1 e2345e3baafa [R000004]: Stage 3 attempt R000004-a1 appended action relation rel-063ef9ddbeacd81ebbedd3f0 to w8836; rationale digest 06babbe06645. w096 w096-s1 e2345e3baafa [R000004]: Stage 3 attempt R000004-a1 appended action relation rel-df4dfe21d8433f04fcb789bc to w627; rationale digest e05b59563264. w096 w096-s1 e2345e3baafa [R000004]: Stage 3 attempt R000004-a1 appended action relation rel-fb4b2b4ef90ca66bd418d2c4 to w759; rationale digest 49da387023fa."
+            "relation_rationale": "w096 w096-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w096 w096-s1 e2345e3baafa [R000004]: Stage 3 attempt R000004-a1 appended direct relation rel-60708c35691ef3117fa82690 to w097; rationale digest f2c3a1a02a07. w096 w096-s1 e2345e3baafa [R000004]: Stage 3 attempt R000004-a1 appended action relation rel-063ef9ddbeacd81ebbedd3f0 to w8836; rationale digest 06babbe06645. w096 w096-s1 e2345e3baafa [R000004]: Stage 3 attempt R000004-a1 appended action relation rel-df4dfe21d8433f04fcb789bc to w627; rationale digest e05b59563264. w096 w096-s1 e2345e3baafa [R000004]: Stage 3 attempt R000004-a1 appended action relation rel-fb4b2b4ef90ca66bd418d2c4 to w759; rationale digest 49da387023fa."
           }
         ]
       },
@@ -5787,7 +5787,7 @@
       },
       {
         "record_id": "w129",
-        "record_sha256": "6f220ca34a003d899877451e9af7011cb2732bb83b4870ef9f483b4933b66bd8",
+        "record_sha256": "59e287af858e885bc18ba9cce3a37c74475e71f59a6253014ac52ab2bf3c4ad6",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w129:boundary",
           "decision": "retain",
@@ -5806,7 +5806,7 @@
           {
             "sense_id": "w129-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w129 w129-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w129 w129-s1 d64c2decc72e [R000004]: Stage 3 attempt R000004-a1 appended antonym relation rel-9d02e35611425c4001a5ff65 to w131; rationale digest dcf4ee5d4a08. w129 w129-s1 d64c2decc72e [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-40ed0d9fe968fe1d28483186 to w11311; rationale digest 21e09c1871fb. w129 w129-s1 d64c2decc72e [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-e3a9067a33fcb8a4c9392530 to w082; rationale digest bc687c798e1f."
+            "relation_rationale": "w129 w129-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w129 w129-s1 d64c2decc72e [R000004]: Stage 3 attempt R000004-a1 appended antonym relation rel-9d02e35611425c4001a5ff65 to w131; rationale digest dcf4ee5d4a08. w129 w129-s1 d64c2decc72e [R000004]: Stage 3 attempt R000004-a1 appended direct relation rel-472ad4b4e14f9665cfbd8409 to w11311; rationale digest 6c80cd2016aa. w129 w129-s1 d64c2decc72e [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-e3a9067a33fcb8a4c9392530 to w082; rationale digest bc687c798e1f."
           }
         ]
       },
@@ -6248,7 +6248,7 @@
       },
       {
         "record_id": "w145",
-        "record_sha256": "da6ca271a7a9cc34f5349e2501573640162333a9866450a83a7328c1f716fc44",
+        "record_sha256": "4cdd6a528c206152ce98c6b0dff45b186febe44f272ed4d25c9d097633da1c32",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w145:boundary",
           "decision": "retain",
@@ -6267,7 +6267,7 @@
           {
             "sense_id": "w145-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w145 w145-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w145 w145-s1 b9612f356af6 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-80aa89ffaf90c7203ac8ede8 to w375; rationale digest cae50c3dce8e. w145 w145-s1 b9612f356af6 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-d5ad7185d4dfb68380da84c5 to w333; rationale digest 2d605c6d4741. w145 w145-s1 b9612f356af6 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-eb8894a4880d6ee7182bd18d to w484; rationale digest d48bd41270a9. w145 w145-s1 b9612f356af6 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-ceae00b846815761822a4b47 to w1048; rationale digest 74cb1785f507."
+            "relation_rationale": "w145 w145-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w145 w145-s1 b9612f356af6 [R000004]: Stage 3 attempt R000004-a1 appended direct relation rel-9887a867b7f3854df3eb150e to w375; rationale digest 41a1a57c6ac3. w145 w145-s1 b9612f356af6 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-d5ad7185d4dfb68380da84c5 to w333; rationale digest 2d605c6d4741. w145 w145-s1 b9612f356af6 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-eb8894a4880d6ee7182bd18d to w484; rationale digest d48bd41270a9. w145 w145-s1 b9612f356af6 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-ceae00b846815761822a4b47 to w1048; rationale digest 74cb1785f507."
           }
         ]
       },
@@ -82743,7 +82743,7 @@
       },
       {
         "record_id": "w4092",
-        "record_sha256": "8e940d5717298e8ec4722b7082f42f8226a5116bab325e8f6024b07410b6e019",
+        "record_sha256": "0a272f1a130de0c2d7e053b4496d8f9bc752193ab3f65bc8f4489aae442cf718",
         "boundary_review": {
           "review_id": "m5-14-agent-semantic-review-20260923-r1:canonical:w4092:boundary",
           "decision": "retain",
@@ -82762,7 +82762,7 @@
           {
             "sense_id": "w4092-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w4092 w4092-s1 130c7f239d27 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-094ba5ebd3dcb47fd0af0183 to w3514; rationale digest 1184953c2456. w4092 w4092-s1 130c7f239d27 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-54940b22979640a89129f227 to w4093; rationale digest ba9096c1736d. w4092 w4092-s1 130c7f239d27 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-e353f275f0d515f534db6f70 to w4094; rationale digest b0aa6f16da82."
+            "relation_rationale": "w4092 w4092-s1 130c7f239d27 [R000004]: Stage 3 attempt R000004-a1 appended direct relation rel-bd188c9f63e32d7f75f76dfb to w3514; rationale digest 2c87779d274c. w4092 w4092-s1 130c7f239d27 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-54940b22979640a89129f227 to w4093; rationale digest ba9096c1736d. w4092 w4092-s1 130c7f239d27 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-e353f275f0d515f534db6f70 to w4094; rationale digest b0aa6f16da82."
           }
         ]
       },
@@ -173260,7 +173260,7 @@
       },
       {
         "record_id": "w9815",
-        "record_sha256": "7fb3b8bd4ee52fc189899ac5c58c0734f2591e094103aef3e08fd2143761925a",
+        "record_sha256": "f2e85dda882559b0f86ab4a20ce524970c3bf2a1023b43550749b35b46118c33",
         "boundary_review": {
           "review_id": "issue-223-m9-e-corpus-batch-07-semantic-verification-20261001-r1:canonical:w9815:boundary",
           "decision": "retain",
@@ -173279,7 +173279,7 @@
           {
             "sense_id": "w9815-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w9815 w9815-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-9226e54a6284cc09b8286d3d to w948; rationale digest 82ba20bbae37. w9815 w9815-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-5d454e7dd999194a42f0cde9 to w10476; rationale digest ce4a5ecd5ee2. w9815 w9815-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-13ff7039772f1c4d1b5e14db to w11548; rationale digest 05447ac1f5f2. w9815 w9815-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-43e4044da2f6f589197aa44b to w954; rationale digest 90e89c5e70d8."
+            "relation_rationale": "w9815 w9815-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-9226e54a6284cc09b8286d3d to w948; rationale digest 82ba20bbae37. w9815 w9815-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended direct relation rel-f821ded943f757f80cb9f963 to w10476; rationale digest d95e2e36b59d. w9815 w9815-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-13ff7039772f1c4d1b5e14db to w11548; rationale digest 05447ac1f5f2. w9815 w9815-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-43e4044da2f6f589197aa44b to w954; rationale digest 90e89c5e70d8."
           }
         ]
       },
@@ -176479,7 +176479,7 @@
       },
       {
         "record_id": "w10010",
-        "record_sha256": "d00c886b98f673cb498b2090693e1c48a8fe391d4f7eb87922c63b9250c62ebb",
+        "record_sha256": "2f6fc1f14116b763e9e11fcfbf1d8a97b1a2cb93c61e76856a51357114fbbc18",
         "boundary_review": {
           "review_id": "issue-223-m9-e-corpus-batch-08-semantic-verification-20261001-r1:canonical:w10010:boundary",
           "decision": "retain",
@@ -176498,7 +176498,7 @@
           {
             "sense_id": "w10010-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w10010 w10010-s1 617a3edb27e5 [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-ecdc733b8719aaa2e37bdfad to w9799; rationale digest 9e94490eeb5a. w10010 w10010-s1 617a3edb27e5 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-059185f17ff664f5cfcba8b1 to w086; rationale digest 3daebf32b894."
+            "relation_rationale": "w10010 w10010-s1 617a3edb27e5 [R000004]: Stage 3 attempt R000004-a1 appended direct relation rel-04184d7f41defdc96b9f14cf to w9799; rationale digest 06afb31693a2. w10010 w10010-s1 617a3edb27e5 [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-059185f17ff664f5cfcba8b1 to w086; rationale digest 3daebf32b894."
           }
         ]
       },
@@ -184070,7 +184070,7 @@
       },
       {
         "record_id": "w10476",
-        "record_sha256": "397e9ad00e8a7c3aa8e81efdf828aac184b9e29bc5ade11e7678aa28f89145f5",
+        "record_sha256": "1465af8de7a0ceae2c4000e8e47188cb43f2078c83e002703a0cfe9240940804",
         "boundary_review": {
           "review_id": "issue-223-m9-e-corpus-batch-10-semantic-verification-20261002-r1:canonical:w10476:boundary",
           "decision": "retain",
@@ -184089,7 +184089,7 @@
           {
             "sense_id": "w10476-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w10476 w10476-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-accf7dc60916285b11ddd7b3 to w9815; rationale digest d47ff46c0c24. w10476 w10476-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-9a40cf1aecc8ee894e146010 to w9577; rationale digest 206ae293e6b5. w10476 w10476-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-c4f5765dd5a46f1f88d01969 to w948; rationale digest 845189a103be. w10476 w10476-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-047c74e83a92514d41c49789 to w072; rationale digest 86ee11d28f5e."
+            "relation_rationale": "w10476 w10476-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended direct relation rel-24114fe4626aec98e64875ab to w9815; rationale digest 0e40e5636174. w10476 w10476-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-9a40cf1aecc8ee894e146010 to w9577; rationale digest 206ae293e6b5. w10476 w10476-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-c4f5765dd5a46f1f88d01969 to w948; rationale digest 845189a103be. w10476 w10476-s1 9901e80d361d [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-047c74e83a92514d41c49789 to w072; rationale digest 86ee11d28f5e."
           }
         ]
       },
@@ -187153,7 +187153,7 @@
       },
       {
         "record_id": "w10667",
-        "record_sha256": "2b7f054cbf25043d5aed504c38d7bd346c1500dd8fb98a245f0f4b35effe86f8",
+        "record_sha256": "9929a12085cc1ec3c8370b0238c7c2475e6ef2df868ae6720ca9b7703a96878b",
         "boundary_review": {
           "review_id": "issue-223-m9-e-corpus-batch-10-semantic-verification-20261002-r1:canonical:w10667:boundary",
           "decision": "retain",
@@ -187172,7 +187172,7 @@
           {
             "sense_id": "w10667-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w10667 w10667-s1 88cf5e99f91e [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-676f35f73cb7e0a17107a6bf to w10956; rationale digest 1aced370e394. w10667 w10667-s1 88cf5e99f91e [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-3c91ab056e011fc4c93910a2 to w142; rationale digest eacba2eb9064."
+            "relation_rationale": "w10667 w10667-s1 88cf5e99f91e [R000004]: Stage 3 attempt R000004-a1 appended direct relation rel-b3c623141e68bd28bb9e248c to w10956; rationale digest 8e8212f5576b. w10667 w10667-s1 88cf5e99f91e [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-3c91ab056e011fc4c93910a2 to w142; rationale digest eacba2eb9064."
           }
         ]
       },
@@ -241568,7 +241568,7 @@
     {
       "batch_id": "R000004",
       "attempt": 1,
-      "semantic_decisions_sha256": "99bc2b24f2ee4bebb757f326fa935960e6c0a42299e9af73f39eb9781abb7c22",
+      "semantic_decisions_sha256": "8934b66ff08fd0631732e6f78e6a254400a6dfa499388408449c009785d84e4f",
       "entries": [],
       "relation_amendments": [
         {
@@ -246185,16 +246185,15 @@
           "source_record_id": "w096",
           "source_sense_id": "w096-s1",
           "source_gloss_sha256": "e2345e3baafa81e39d2dd5d3e5e4a231208022d485bdadccc56468d629a4b40a",
-          "authored_relation_id": "rel-5a7dd44a1168c03284f05191",
-          "relation_id": "rel-5a7dd44a1168c03284f05191",
+          "authored_relation_id": "rel-60708c35691ef3117fa82690",
+          "relation_id": "rel-60708c35691ef3117fa82690",
           "relation": {
             "target": "w097",
             "target_sense": "w097-s2",
-            "type": "near",
-            "note": "눈길은 사람이나 대상을 바라보는 시선이라 시선과 거의 같은 뜻이다.",
-            "relevance": 6
+            "type": "direct",
+            "note": "그의 시선이 창밖을 향했다 / 그의 눈길이 창밖을 향했다. 바라보는 눈길을 가리키는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
           },
-          "rationale_sha256": "ff1deecaaec7c0952c0c2f2f45bfabf946f01fb5c18b178f42ab1c4c01eb8dc5",
+          "rationale_sha256": "f2c3a1a02a0752e0d7cb9db86e334c8f8bd810e7d94847234c6fffe124f3f2de",
           "outcome": "appended"
         },
         {
@@ -246999,16 +246998,15 @@
           "source_record_id": "w10010",
           "source_sense_id": "w10010-s1",
           "source_gloss_sha256": "617a3edb27e5116c8ce25c2ffbab356c38809ae631dbfaf5f1a1c492565df523",
-          "authored_relation_id": "rel-ecdc733b8719aaa2e37bdfad",
-          "relation_id": "rel-ecdc733b8719aaa2e37bdfad",
+          "authored_relation_id": "rel-04184d7f41defdc96b9f14cf",
+          "relation_id": "rel-04184d7f41defdc96b9f14cf",
           "relation": {
             "target": "w9799",
             "target_sense": "w9799-s1",
-            "type": "near",
-            "note": "총소리는 총을 쏠 때 나는 소리라 총성과 같은 뜻이다.",
-            "relevance": 6
+            "type": "direct",
+            "note": "멀리서 총성이 울렸다 / 멀리서 총소리가 울렸다. 총을 쏠 때 나는 소리를 말하는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
           },
-          "rationale_sha256": "9e94490eeb5ae71a61d6b834612680db68e8ac67763ee2958de98f344bd6fa6a",
+          "rationale_sha256": "06afb31693a2521c6f4f4fad60b1830f9a223f7b39adef89e2b5e7aa778d94c1",
           "outcome": "appended"
         },
         {
@@ -247780,16 +247778,15 @@
           "source_record_id": "w10476",
           "source_sense_id": "w10476-s1",
           "source_gloss_sha256": "9901e80d361d7589f218a17877ea161c5a3add8ed079d4dee667bf490406c2d9",
-          "authored_relation_id": "rel-accf7dc60916285b11ddd7b3",
-          "relation_id": "rel-accf7dc60916285b11ddd7b3",
+          "authored_relation_id": "rel-24114fe4626aec98e64875ab",
+          "relation_id": "rel-24114fe4626aec98e64875ab",
           "relation": {
             "target": "w9815",
             "target_sense": "w9815-s1",
-            "type": "near",
-            "note": "붉은색은 붉은 빛깔이라 레드와 같은 뜻이다.",
-            "relevance": 6
+            "type": "direct",
+            "note": "레드 드레스를 입었다 / 붉은색 드레스를 입었다. 붉은 빛깔을 가리키는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
           },
-          "rationale_sha256": "d47ff46c0c24b5db7d816ddb40ada41a19b053ebd087a208a66d337573ca1afe",
+          "rationale_sha256": "0e40e5636174c0c9fe5eba16812166872c17a42a37573de98f115f035d718014",
           "outcome": "appended"
         },
         {
@@ -248137,16 +248134,15 @@
           "source_record_id": "w10667",
           "source_sense_id": "w10667-s1",
           "source_gloss_sha256": "88cf5e99f91e68e6ec6f9b4702a1759a3eb70119f642ca66d79c99a5081d0cc1",
-          "authored_relation_id": "rel-676f35f73cb7e0a17107a6bf",
-          "relation_id": "rel-676f35f73cb7e0a17107a6bf",
+          "authored_relation_id": "rel-b3c623141e68bd28bb9e248c",
+          "relation_id": "rel-b3c623141e68bd28bb9e248c",
           "relation": {
             "target": "w10956",
             "target_sense": "w10956-s1",
-            "type": "near",
-            "note": "해양은 넓고 큰 바다라 대양과 같은 뜻이다.",
-            "relevance": 6
+            "type": "direct",
+            "note": "드넓은 대양이 펼쳐졌다 / 드넓은 해양이 펼쳐졌다. 넓고 큰 바다를 가리키는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
           },
-          "rationale_sha256": "1aced370e3940938d7a5177e03cbe751f1884ed5ef6b78be2bcf0861bedef3ed",
+          "rationale_sha256": "8e8212f5576b6a1477dbff059b4a2e3d94ece8b2ec67ffa8f0f9460292910dd9",
           "outcome": "appended"
         },
         {
@@ -250833,16 +250829,15 @@
           "source_record_id": "w129",
           "source_sense_id": "w129-s1",
           "source_gloss_sha256": "d64c2decc72e16f65bc85a1ee8b9f99f30e20e7d0fda4926e676c7e0bb98680a",
-          "authored_relation_id": "rel-40ed0d9fe968fe1d28483186",
-          "relation_id": "rel-40ed0d9fe968fe1d28483186",
+          "authored_relation_id": "rel-472ad4b4e14f9665cfbd8409",
+          "relation_id": "rel-472ad4b4e14f9665cfbd8409",
           "relation": {
             "target": "w11311",
             "target_sense": "w11311-s1",
-            "type": "near",
-            "note": "여름철은 여름의 계절이라 여름과 같은 뜻이다.",
-            "relevance": 6
+            "type": "direct",
+            "note": "여름에 자주 비가 온다 / 여름철에 자주 비가 온다. 계절을 가리키는 같은 때 자리에서 직접 바꿔 넣을 수 있다."
           },
-          "rationale_sha256": "21e09c1871fb7bafdce9220fd3614d5c236e5f2f6b572f66725384f63f57d2eb",
+          "rationale_sha256": "6c80cd2016aad3a648a3942e29d8fb16f675f7290452ea786c2ddef900f169b4",
           "outcome": "appended"
         },
         {
@@ -251426,16 +251421,15 @@
           "source_record_id": "w145",
           "source_sense_id": "w145-s1",
           "source_gloss_sha256": "b9612f356af62e09f80a4f83c33569247f37663caa362daa1b9a2dc37dc24702",
-          "authored_relation_id": "rel-80aa89ffaf90c7203ac8ede8",
-          "relation_id": "rel-80aa89ffaf90c7203ac8ede8",
+          "authored_relation_id": "rel-9887a867b7f3854df3eb150e",
+          "relation_id": "rel-9887a867b7f3854df3eb150e",
           "relation": {
             "target": "w375",
             "target_sense": "w375-s1",
-            "type": "near",
-            "note": "골목길은 큰길에서 갈라져 집들 사이로 이어지는 좁은 길이라 골목과 거의 같다.",
-            "relevance": 6
+            "type": "direct",
+            "note": "골목을 걸었다 / 골목길을 걸었다. 큰길에서 갈라진 좁은 길을 가리키는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
           },
-          "rationale_sha256": "cae50c3dce8e99310462f1838175de274a77dcc25e4ab281ee07ae501f75bd94",
+          "rationale_sha256": "41a1a57c6ac3b14b9555e120144f19c625ed3e811ec7dcf43f48a445e78dbd5e",
           "outcome": "appended"
         },
         {
@@ -261641,16 +261635,15 @@
           "source_record_id": "w4092",
           "source_sense_id": "w4092-s1",
           "source_gloss_sha256": "130c7f239d272c48d4143465274a12ce6da5652c88b54e645082a24aa47b8f6a",
-          "authored_relation_id": "rel-094ba5ebd3dcb47fd0af0183",
-          "relation_id": "rel-094ba5ebd3dcb47fd0af0183",
+          "authored_relation_id": "rel-bd188c9f63e32d7f75f76dfb",
+          "relation_id": "rel-bd188c9f63e32d7f75f76dfb",
           "relation": {
             "target": "w3514",
             "target_sense": "w3514-s1",
-            "type": "near",
-            "note": "수피는 나무 줄기 바깥을 감싸고 있는 껍질이라 나무껍질과 같은 뜻이다.",
-            "relevance": 6
+            "type": "direct",
+            "note": "나무껍질을 벗겼다 / 수피를 벗겼다. 나무줄기 바깥을 감싸는 껍질을 가리키는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
           },
-          "rationale_sha256": "1184953c2456ef2dd90cc4aacd243f6d2ac5dd1eadb4a89fc32ddbcd64112016",
+          "rationale_sha256": "2c87779d274cb16b7ee9402a9ede56a4aa2bd6306407a3b54f3e7e7cb2053541",
           "outcome": "appended"
         },
         {
@@ -268202,16 +268195,15 @@
           "source_record_id": "w9815",
           "source_sense_id": "w9815-s1",
           "source_gloss_sha256": "9901e80d361d7589f218a17877ea161c5a3add8ed079d4dee667bf490406c2d9",
-          "authored_relation_id": "rel-5d454e7dd999194a42f0cde9",
-          "relation_id": "rel-5d454e7dd999194a42f0cde9",
+          "authored_relation_id": "rel-f821ded943f757f80cb9f963",
+          "relation_id": "rel-f821ded943f757f80cb9f963",
           "relation": {
             "target": "w10476",
             "target_sense": "w10476-s1",
-            "type": "near",
-            "note": "레드는 붉은 빛깔이라 붉은색과 같은 뜻이다.",
-            "relevance": 6
+            "type": "direct",
+            "note": "붉은색 드레스를 입었다 / 레드 드레스를 입었다. 붉은 빛깔을 가리키는 같은 명사 자리에서 직접 바꿔 넣을 수 있다."
           },
-          "rationale_sha256": "ce4a5ecd5ee29ebecba206c5e9b61e57b5a9caed72919c3e54acc040e73a779e",
+          "rationale_sha256": "d95e2e36b59d741cc67d18d9d67ddced7969cc11deb9b217ea70bc40f6f27042",
           "outcome": "appended"
         },
         {
@@ -274720,13 +274712,13 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-5a7dd44a1168c03284f05191",
+            "rel-60708c35691ef3117fa82690",
             "rel-063ef9ddbeacd81ebbedd3f0",
             "rel-df4dfe21d8433f04fcb789bc",
             "rel-fb4b2b4ef90ca66bd418d2c4"
           ],
           "before_sha256": "dc11595b9dfc478a920c646df80d0bebefaa86fb4cd9f50ba4e845480cde40b9",
-          "after_sha256": "6d9cee8dd422df9afa1c7008b731aba12d55ab50172d025211a1b12656979409",
+          "after_sha256": "a15430512067a54a0385777f5ac2de3c6fcf890b394dc37013f95cbd28823674",
           "previous_semantic_review_sha256": "52f76c0fdebfdce9a75f2a6190ea63caf60a5c758699f7db9635b6da691dcc36",
           "previous_semantic_review": {
             "record_id": "w096",
@@ -274779,7 +274771,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "01abcc5c7fa02238bcad697d5482872b675a08308070708c7592b2be046e6ff5"
+          "semantic_review_sha256": "a9d3ca96eff3f32252e6b9e4aa6c5d5cd49247a22f826a5fd5469031865dbc0a"
         },
         {
           "entry_id": "w097",
@@ -275712,11 +275704,11 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-ecdc733b8719aaa2e37bdfad",
+            "rel-04184d7f41defdc96b9f14cf",
             "rel-059185f17ff664f5cfcba8b1"
           ],
           "before_sha256": "af6d0c1515a9ffc3fb23450b68dd428aeeb9773dbc087d6bc7bda71442441bf0",
-          "after_sha256": "d00c886b98f673cb498b2090693e1c48a8fe391d4f7eb87922c63b9250c62ebb",
+          "after_sha256": "2f6fc1f14116b763e9e11fcfbf1d8a97b1a2cb93c61e76856a51357114fbbc18",
           "previous_semantic_review_sha256": "e8375077fff3a40ab61693dd36be312085f9d381f3685851e2336531b2afea37",
           "previous_semantic_review": {
             "record_id": "w10010",
@@ -275751,7 +275743,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "c76bd7d725bc618a4246020e80b6dc220ea396b804bb2880bb1a0510f2557f7e"
+          "semantic_review_sha256": "84f98616e9fad661507f6930726f97e222bea40c3d0e3c4c6833ec4d36adfd24"
         },
         {
           "entry_id": "w10011",
@@ -276481,13 +276473,13 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-accf7dc60916285b11ddd7b3",
+            "rel-24114fe4626aec98e64875ab",
             "rel-9a40cf1aecc8ee894e146010",
             "rel-c4f5765dd5a46f1f88d01969",
             "rel-047c74e83a92514d41c49789"
           ],
           "before_sha256": "f8a3fbe4884d7cacaa736fa982de9351cac008fc90a70511e5322327734b028d",
-          "after_sha256": "397e9ad00e8a7c3aa8e81efdf828aac184b9e29bc5ade11e7678aa28f89145f5",
+          "after_sha256": "1465af8de7a0ceae2c4000e8e47188cb43f2078c83e002703a0cfe9240940804",
           "previous_semantic_review_sha256": "52d649556c0331d8f664ec817579d7e26b129ea11c713824329ee7867d957e29",
           "previous_semantic_review": {
             "record_id": "w10476",
@@ -276522,7 +276514,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "d8ccaba4131fb2df68030d5b8ad3c50a616f2e5f61b835c72a5873f2f8f0eebf"
+          "semantic_review_sha256": "8e96f0894650a0f480ec21b3ea7944af9e367abc83a2cd21dfcf73b80a538b1e"
         },
         {
           "entry_id": "w1052",
@@ -276757,11 +276749,11 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-676f35f73cb7e0a17107a6bf",
+            "rel-b3c623141e68bd28bb9e248c",
             "rel-3c91ab056e011fc4c93910a2"
           ],
           "before_sha256": "d4d6b1d408a38bb0aad288e0e3ddd492be75693eb5385186a17f937d05e5f5fa",
-          "after_sha256": "2b7f054cbf25043d5aed504c38d7bd346c1500dd8fb98a245f0f4b35effe86f8",
+          "after_sha256": "9929a12085cc1ec3c8370b0238c7c2475e6ef2df868ae6720ca9b7703a96878b",
           "previous_semantic_review_sha256": "27dc192c6311e7863427b5c5625bb96661fb6679eb067f161332b7d79db3a3a3",
           "previous_semantic_review": {
             "record_id": "w10667",
@@ -276796,7 +276788,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "c79e4d5d0bcbdc408b71bd8959326b803d97f4fd52f7c7867c369993c02d7865"
+          "semantic_review_sha256": "2c714dd504fb07325d88ee6d0811002b555eea7062d39439ecbba50b7445eb56"
         },
         {
           "entry_id": "w10702",
@@ -279808,11 +279800,11 @@
           ],
           "added_relation_ids": [
             "rel-9d02e35611425c4001a5ff65",
-            "rel-40ed0d9fe968fe1d28483186",
+            "rel-472ad4b4e14f9665cfbd8409",
             "rel-e3a9067a33fcb8a4c9392530"
           ],
           "before_sha256": "f55b09b525465a941ac34481e732c26bed9116dd65d85415548d2473e28d9e12",
-          "after_sha256": "6f220ca34a003d899877451e9af7011cb2732bb83b4870ef9f483b4933b66bd8",
+          "after_sha256": "59e287af858e885bc18ba9cce3a37c74475e71f59a6253014ac52ab2bf3c4ad6",
           "previous_semantic_review_sha256": "a11ebd1153046e08e88f99d05d3907321ba734e879168bbcf84bf427fda0e2da",
           "previous_semantic_review": {
             "record_id": "w129",
@@ -279872,7 +279864,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "371719440730e012189c995fbb9211c0cfbb6661ed400f83374fd82497d191e3"
+          "semantic_review_sha256": "08753195bc3e5298d66c43b1a369618879fa3f2455c1d3fe126eb2303f6ec600"
         },
         {
           "entry_id": "w131",
@@ -280623,13 +280615,13 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-80aa89ffaf90c7203ac8ede8",
+            "rel-9887a867b7f3854df3eb150e",
             "rel-d5ad7185d4dfb68380da84c5",
             "rel-eb8894a4880d6ee7182bd18d",
             "rel-ceae00b846815761822a4b47"
           ],
           "before_sha256": "e5c8dc72892ee184973d02ab9c5b0e7c636b57afca3efc0fa8b69fb03a3e1955",
-          "after_sha256": "da6ca271a7a9cc34f5349e2501573640162333a9866450a83a7328c1f716fc44",
+          "after_sha256": "4cdd6a528c206152ce98c6b0dff45b186febe44f272ed4d25c9d097633da1c32",
           "previous_semantic_review_sha256": "0a1ccfc26a9bef0d2fbbe4241166889e040384d85113b68a098e0b4c0ad23ee8",
           "previous_semantic_review": {
             "record_id": "w145",
@@ -280682,7 +280674,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "c05b95563b407835c0a3d0b5d8441d0ba90c9e9f168711222c81b69870651dd7"
+          "semantic_review_sha256": "481021491ab742a319972a196adfef24a29c134af7ec649032c44481213251ab"
         },
         {
           "entry_id": "w150",
@@ -292553,12 +292545,12 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-094ba5ebd3dcb47fd0af0183",
+            "rel-bd188c9f63e32d7f75f76dfb",
             "rel-54940b22979640a89129f227",
             "rel-e353f275f0d515f534db6f70"
           ],
           "before_sha256": "3c4a141fd59746c98229430cc92abab8af9d3337354efef07fa94bb186f73206",
-          "after_sha256": "8e940d5717298e8ec4722b7082f42f8226a5116bab325e8f6024b07410b6e019",
+          "after_sha256": "0a272f1a130de0c2d7e053b4496d8f9bc752193ab3f65bc8f4489aae442cf718",
           "previous_semantic_review_sha256": "82eb1afbea4059c21e287f41004b03f890b1ee915c6cbe880a4f5f62a8879c4c",
           "previous_semantic_review": {
             "record_id": "w4092",
@@ -292593,7 +292585,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "0f9364c85b7732dfa823e847b77dd2a9a319d006bd9c34adb591d4390cce358d"
+          "semantic_review_sha256": "1f9248741e4a0cd2edf8a4d9089b387917db473c0e34a7341ce9940ae600e8e3"
         },
         {
           "entry_id": "w4095",
@@ -298920,12 +298912,12 @@
           ],
           "added_relation_ids": [
             "rel-9226e54a6284cc09b8286d3d",
-            "rel-5d454e7dd999194a42f0cde9",
+            "rel-f821ded943f757f80cb9f963",
             "rel-13ff7039772f1c4d1b5e14db",
             "rel-43e4044da2f6f589197aa44b"
           ],
           "before_sha256": "02d442455d8768d1a2e39aa2c0ed736149245bc900e674c51d3f382322947c26",
-          "after_sha256": "7fb3b8bd4ee52fc189899ac5c58c0734f2591e094103aef3e08fd2143761925a",
+          "after_sha256": "f2e85dda882559b0f86ab4a20ce524970c3bf2a1023b43550749b35b46118c33",
           "previous_semantic_review_sha256": "e813ccddfb801cc6030c60f48504c706427b5af7cb138ab14430a2bb43997d5f",
           "previous_semantic_review": {
             "record_id": "w9815",
@@ -298960,7 +298952,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "032948aed49575b6f059f804899bcb62eabb6894e0292b539be30f4db6a33f4a"
+          "semantic_review_sha256": "3f72a53b977945266179ada10eb7156f1feca20cce981e23d6a1bcb226381c7d"
         },
         {
           "entry_id": "w982",
@@ -299241,7 +299233,7 @@
           "semantic_review_sha256": "7f0bb3bed634ce81761033c28f9a275651c50840aaa6426a165861fa74decdee"
         }
       ],
-      "sha256": "75eb4b3fe26a28f751e6b1bb8b5b2dc09d10f0e0e41fa7af42191cef2adb8509"
+      "sha256": "8e9f01f6a6c0922b41120d27ff105db83578875e632fe8e5ef239ec834d4278a"
     }
   ]
 }
