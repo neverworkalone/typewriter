@@ -16,6 +16,7 @@ import {
   buildSemanticAuditFromDecisionSource,
   compactSemanticDecisionSource,
   compactSemanticReviewArtifact,
+  loadCanonicalBeforeFactoryAdmissions,
   materializeSemanticReviewArtifact,
   SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
@@ -417,7 +418,9 @@ test('the shared canonical audit resolves M5-15 batch authority and rejects miss
   ));
 
   const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  const recordInfo = canonical.records.find(({ record }) => record.id === 'w4281');
+  // The batch authority binds the record as M5-15 admitted it; later relation backfills append to the live record.
+  const recordInfo = (await loadCanonicalBeforeFactoryAdmissions(canonical.records))
+    .find((info) => (info.record ?? info).id === 'w4281');
   assert.ok(recordInfo, 'M5-15 canonical regression record is present');
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
   const m515Source = batchDecisionSources.find(

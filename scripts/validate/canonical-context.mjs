@@ -1,4 +1,5 @@
 import { appendFileSync } from 'node:fs';
+import { restoreFactoryAdmissions } from './semantic-audit.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -364,6 +365,10 @@ function rehydrateContext(value, contextPath) {
   if (value.semantic_audit) context.semanticAudit = value.semantic_audit;
   if (value.semantic_decision_source) {
     context.semanticDecisionSource = value.semantic_decision_source;
+    // The serialized audit loses the in-memory factory ledger; restore it only after it validates.
+    if (context.semanticAudit) {
+      restoreFactoryAdmissions(context.semanticAudit, context.semanticDecisionSource, context.records, 'serialized canonical context');
+    }
   }
   return context;
 }

@@ -1,4 +1,5 @@
 import { withoutRelevance } from '../validate/relevance-projection.mjs';
+import { readImportBytesBeforeFactoryAdmissions } from '../validate/historical-import.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -372,7 +373,7 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     const { reviewOnly } = classifyCandidateReview(candidateReview);
     const [semanticBytes, importBytes] = reviewOnly
       ? [null, null]
-      : await Promise.all([readFile(semanticPath), readFile(importPath)]);
+      : await Promise.all([readFile(semanticPath), readImportBytesBeforeFactoryAdmissions(importPath)]);
     const semanticSource = semanticBytes ? JSON.parse(semanticBytes.toString('utf8')) : null;
     const candidateLabel = `Issue #223 ${candidateReview.batch_id}`;
     assert.equal(candidateReview.schema_version, '1');

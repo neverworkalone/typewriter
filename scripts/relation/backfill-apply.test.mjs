@@ -5,8 +5,9 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { canonicalRecordsBeforeFactoryAdmissions, restorePreFactoryDecisionSource, sha256Json, validateFactoryAdmissionLedger } from '../validate/semantic-audit.mjs';
-import { loadCanonicalContext } from '../validate/canonical-context.mjs';
+import { buildCanonicalSemanticAudit, canonicalRecordsBeforeFactoryAdmissions, restorePreFactoryDecisionSource, readSemanticAuditArtifact, sha256Json, validateFactoryAdmissionLedger, validateSemanticAuditCoverage } from '../validate/semantic-audit.mjs';
+import { validateDatasetDirectory, validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { loadCanonicalContext, readCanonicalContext, writeCanonicalContext } from '../validate/canonical-context.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
 import { planRelationBackfill, writePlannedRecords } from '../factory/admission.mjs';
@@ -291,6 +292,83 @@ test('resuming an interrupted packet re-checks the approved target meaning: a ch
     assert.deepEqual(await readRecords(root), recordsBefore);
     assert.equal(await authorityEvents(root), eventsBefore);
     assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied', 'positive control: unchanged meaning resumes');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+// A record with pre-relevance correction history, amended by a relation-only backfill, through the shared consumers
+// (complete-canonical coverage and dataset validation): the ledger travels with the audit, and a rewritten correction
+// digest still breaks the chain.
+test('a relation-only backfill of a record with correction history passes the shared audit consumers and still rejects a rewritten correction', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const authority = JSON.parse(await readFile(path.join(REPO, AUTHORITY), 'utf8'));
+  const corrected = new Set(authority.authored_review.review_pass.correction_history.map((item) => item.record_id));
+  const source = index.senses.find((sense) => corrected.has(sense.record_id));
+  assert.ok(source, 'the live canonical has a record with correction history');
+  const related = new Set(source.relations.map((relation) => relation.target_sense));
+  const target = index.senses.find((sense) => sense.record_id !== source.record_id && !related.has(sense.sense_id));
+  const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 4 };
+  const state = newQueueState(canonical.canonicalRevision);
+  state.done[source.sense_id] = approvedEntry(index, source.sense_id, relation, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
+  const root = await scratchRoot();
+  try {
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
+    const build = async (decisionSourcePath) => buildCanonicalSemanticAudit({
+      canonicalDirectory: path.join(root, 'data/canonical'), decisionSourcePath,
+    });
+    const built = await build(path.join(root, AUTHORITY));
+    assert.doesNotThrow(() => validateSemanticAuditCoverage(built.canonical.records, built.artifact, { baseRecords: built.canonical.records }));
+    assert.doesNotThrow(() => validateDatasetRecords(built.canonical.records, { semanticAudit: built.artifact, requireSemanticAudit: true }));
+
+    // The same behavior holds for a context serialized to disk and read back (the in-memory ledger is restored).
+    const context = await loadCanonicalContext({ directory: path.join(root, 'data/canonical') });
+    context.semanticAudit = built.artifact;
+    context.semanticDecisionSource = built.decisionSource;
+    const contextPath = path.join(root, 'context.json');
+    await writeCanonicalContext(context, contextPath);
+    const reread = await readCanonicalContext(contextPath);
+    assert.doesNotThrow(() => validateSemanticAuditCoverage(reread.records, reread.semanticAudit, { baseRecords: reread.records }));
+    assert.doesNotThrow(() => validateDatasetRecords(reread.records, { semanticAudit: reread.semanticAudit, requireSemanticAudit: true, context: reread }));
+
+    // A separately saved audit JSON has no in-memory ledger: bare coverage rejects it, the dataset consumer restores the validated ledger.
+    const auditPath = path.join(root, 'saved-audit.json');
+    await writeFile(auditPath, JSON.stringify(built.artifact));
+    const saved = await readSemanticAuditArtifact(auditPath);
+    assert.throws(() => validateSemanticAuditCoverage(built.canonical.records, saved, { baseRecords: built.canonical.records }), /correction_history and source-bound Stage 3 admission history/u);
+    await assert.doesNotReject(() => validateDatasetDirectory(path.join(root, 'data/canonical'), {
+      semanticAuditPath: auditPath, decisionSourcePath: path.join(root, AUTHORITY), requireSemanticAudit: true,
+    }));
+
+    // A serialized context whose stored ledger event digest was altered is rejected on rehydration, not trusted.
+    const brokenContext = JSON.parse(await readFile(contextPath, 'utf8'));
+    brokenContext.semantic_decision_source.factory_admissions.at(-1).sha256 = 'd'.repeat(64);
+    const brokenContextPath = path.join(root, 'broken-context.json');
+    await writeFile(brokenContextPath, JSON.stringify(brokenContext));
+    await assert.rejects(() => readCanonicalContext(brokenContextPath), /sha256|bind|digest/u);
+
+    // A tampered before digest on the amendment, resealed so the ledger itself must reject it.
+    const forged = JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8'));
+    const event = forged.factory_admissions.at(-1);
+    event.changes.find((change) => change.entry_id === source.record_id).before_sha256 = 'e'.repeat(64);
+    delete event.sha256;
+    event.sha256 = sha256Json(event);
+    const forgedPath = path.join(root, 'forged-authority.json');
+    await writeFile(forgedPath, JSON.stringify(forged, null, 2));
+    await assert.rejects(() => build(forgedPath).then((result) => validateSemanticAuditCoverage(result.canonical.records, result.artifact, { baseRecords: result.canonical.records })), /does not bind/u);
+
+    // A rewritten correction digest, resealed (authored review digest) so the audit reaches the correction chain.
+    const rewritten = JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8'));
+    const correction = rewritten.authored_review.review_pass.correction_history.find((item) => item.record_id === source.record_id);
+    correction.after_record_sha256 = 'f'.repeat(64);
+    rewritten.authored_review_sha256 = sha256Json(rewritten.authored_review);
+    const tamperedPath = path.join(root, 'tampered-authority.json');
+    await writeFile(tamperedPath, JSON.stringify(rewritten, null, 2));
+    await assert.rejects(
+      () => build(tamperedPath).then((result) => validateSemanticAuditCoverage(result.canonical.records, result.artifact, { baseRecords: result.canonical.records })),
+      /correction_history and source-bound Stage 3 admission history/u,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

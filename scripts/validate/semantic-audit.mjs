@@ -259,6 +259,45 @@ function matchesHistoricalRecordDigest(record, digest, hashCache) {
     || preRelevanceRecordSha256(record) === digest;
 }
 
+/**
+ * A correction digest recorded before exploratory relations gained `relevance` binds the record without that field,
+ * while later factory amendments record the full digest of the record they amended, so the digests cannot be linked
+ * forward by equality. The current record is instead rewound through every recorded operation on it, newest first
+ * (appended senses removed, appended relation tuples removed, each step required to land on its before digest);
+ * the base it reaches must be the corrected record. Sense and relation amendments may interleave in any order.
+ */
+export function factoryHistoryReachesCorrection(record, events, correctionDigest) {
+  const pending = events.flatMap((event) => (event.changes ?? [])
+    .filter((change) => change.entry_id === record.id && change.operation !== 'create')
+    .map((change) => ({ change, event })));
+  const matches = (state, digest) => sha256Json(state) === digest || preRelevanceRecordSha256(state) === digest;
+  let state = record;
+  while (pending.length) {
+    const index = pending.findIndex(({ change }) => matches(state, change.after_sha256));
+    if (index < 0) return false;
+    const [{ change, event }] = pending.splice(index, 1);
+    if (change.operation === 'append_senses') {
+      const ids = new Set(change.added_sense_ids ?? []);
+      if ((state.senses ?? []).filter((sense) => ids.has(sense.id)).length !== ids.size) return false;
+      state = { ...state, senses: state.senses.filter((sense) => !ids.has(sense.id)) };
+    } else if (change.operation === 'append_relations') {
+      const added = (event.relation_amendments ?? []).filter((item) => item.source_record_id === record.id
+        && item.outcome === 'appended' && (change.added_relation_ids ?? []).includes(item.relation_id));
+      state = { ...state, senses: (state.senses ?? []).map((sense) => {
+        const mine = added.filter((item) => item.source_sense_id === sense.id).map((item) => JSON.stringify(item.relation));
+        if (!mine.length) return sense;
+        const kept = (sense.relations ?? []).filter((relation) => !mine.includes(JSON.stringify(relation)));
+        const { relations, ...rest } = sense;
+        return kept.length ? { ...rest, relations: kept } : rest;
+      }) };
+    } else {
+      return false;
+    }
+    if (!matches(state, change.before_sha256)) return false;
+  }
+  return matches(state, correctionDigest);
+}
+
 const CANONICAL_AUDIT_CACHE_TOKEN = Symbol('canonical-audit-cache');
 
 export function createCanonicalAuditCache(recordInfos) {
@@ -2013,7 +2052,8 @@ function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache, f
         }
       }
     }
-    if (!matchesHistoricalRecordDigest(record, expectedCurrentDigest, hashCache)) {
+    if (!matchesHistoricalRecordDigest(record, expectedCurrentDigest, hashCache)
+      && !factoryHistoryReachesCorrection(record, factoryAdmissions, lastCorrection.after_record_sha256)) {
       fail(
         `${label}.review_pass.correction_history and source-bound Stage 3 admission history for ${recordId} do not bind the current canonical record`,
         'SEMANTIC_AUDIT_CONTENT_MISMATCH',
@@ -2374,7 +2414,7 @@ export function validateSemanticDecisionSource(
       hashCache,
       factoryAdmissions,
     });
-    return authoredReview;
+    return attachFactoryAdmissions(authoredReview, factoryAdmissions);
   }
 
   const authoredReviewLabel = `${label}.authored_review`;
@@ -2411,7 +2451,39 @@ export function validateSemanticDecisionSource(
     authoredReviewLabel,
     { hashCache },
   );
-  return materializedReview;
+  return attachFactoryAdmissions(materializedReview, factoryAdmissions);
+}
+
+const FACTORY_ADMISSIONS = Symbol.for('typewriter.semantic-review.factory-admissions');
+
+/**
+ * The validated factory admission ledger travels with the review it was validated against (in memory only, never
+ * serialized), so every later validation of the assembled audit checks correction history against the same ledger
+ * without each caller threading it through.
+ */
+export function attachFactoryAdmissions(review, factoryAdmissions) {
+  if (review && factoryAdmissions?.length) {
+    Object.defineProperty(review, FACTORY_ADMISSIONS, { value: factoryAdmissions, enumerable: false, configurable: true });
+  }
+  return review;
+}
+
+/**
+ * A serialized audit (or a context holding one) has lost its in-memory ledger. Only the ledger that validates
+ * against the current canonical records, taken from the decision source the audit is bound to, may be attached;
+ * a ledger with a broken event digest or chain is rejected here rather than trusted by the correction check.
+ */
+export function restoreFactoryAdmissions(artifact, decisionSource, recordInfos, label = 'restored semantic audit') {
+  if (!decisionSource?.factory_admissions?.length || !artifact?.review) return artifact;
+  if (artifact.decision_source?.source_id !== decisionSource.source_id) {
+    fail(`${label} is not bound to the supplied decision source`, 'SEMANTIC_AUDIT_PROVENANCE');
+  }
+  attachFactoryAdmissions(artifact.review, validateFactoryAdmissionLedger(decisionSource, recordInfos, label));
+  return artifact;
+}
+
+export function factoryAdmissionsOf(review) {
+  return review?.[FACTORY_ADMISSIONS] ?? [];
 }
 
 export function validateFactoryAdmissionLedger(decisionSource, recordInfos, label) {
@@ -2547,6 +2619,7 @@ export function validateSemanticAuditCoverage(
     requireDecisionSource = true,
     requireTopicAnalysis = true,
     hashCache,
+    factoryAdmissions,
   } = {},
 ) {
   requireObject(artifact, label);
@@ -2583,6 +2656,7 @@ export function validateSemanticAuditCoverage(
     requireDecisionSource,
     requireTopicAnalysis,
     hashCache,
+    factoryAdmissions: factoryAdmissions ?? factoryAdmissionsOf(review),
   });
   if (coverage.source.canonical_records_sha256 !== review.source.canonical_records_sha256) {
     fail(`${label} coverage and review source digests differ`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');

@@ -303,10 +303,11 @@ test('Issue #223 bound review input rejects a gloss changed after the reviewers 
 
 test('Issue #223 legacy unbound exception is pinned to the exact historical B01–B04 artifacts', async () => {
   const { readFile } = await import('node:fs/promises');
+  const { readImportBytesBeforeFactoryAdmissions } = await import('../validate/historical-import.mjs');
   const load = async (n) => ({
     candidate_review: await readFile(`data/batches/issue-223-m9-e-corpus-batch-0${n}-candidate-review.json`),
     semantic_decisions: await readFile(`data/batches/issue-223-m9-e-corpus-batch-0${n}-semantic-decisions.json`),
-    canonical_import: await readFile(`data/canonical/issue-223-m9-e-corpus-batch-0${n}.jsonl`),
+    canonical_import: await readImportBytesBeforeFactoryAdmissions(`data/canonical/issue-223-m9-e-corpus-batch-0${n}.jsonl`),
   });
   const base = { semanticSource: { source_basis: {} }, inputBytes: null, admittedRows: [], candidateRows: [], candidateAuthor: 'a', registry: new Set() };
   for (const n of [1, 2, 3, 4]) {
