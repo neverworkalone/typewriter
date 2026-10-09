@@ -14,9 +14,10 @@ import { buildStage3SemanticAuthority } from '../scripts/factory/semantic-author
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import {
   buildSemanticAuditFromDecisionSource, canonicalRecordsBeforeFactoryAdmissions, inspectSenseBoundaryPairs,
-  attachFactoryAdmissions, factoryAdmissionsOf, validateSemanticAuditCoverage, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, factoryHistoryReachesCorrection, sha256Json,
+  attachFactoryAdmissions, factoryAdmissionsOf, restoreFactoryAdmissions, validateSemanticAuditCoverage, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, factoryHistoryReachesCorrection, sha256Json,
 } from '../scripts/validate/semantic-audit.mjs';
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
+import { createCanonicalContext, readCanonicalContext, writeCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
 
 const digest = 'a'.repeat(64);
@@ -468,11 +469,47 @@ test('a corrected record amended by relations and senses in either order passes 
     const ops = last.source.factory_admissions.slice(-2).map((event) => event.changes.find((change) => change.entry_id === target.id)?.operation);
     assert.deepEqual(ops, order.map((kind) => (kind === 'relation' ? 'append_relations' : 'append_senses')));
 
-    // Rewritten history: the corrected record's correction digest, and the sense operation's declared digests.
-    const forged = structuredClone(last.source);
-    forged.authored_review.review_pass.correction_history.find((item) => item.record_id === target.id).after_record_sha256 = 'f'.repeat(64);
-    forged.authored_review_sha256 = sha256Json(forged.authored_review);
-    assert.throws(() => judge(last.after, forged), /correction_history|admission history|bind/u);
+    // Persistence: a saved audit JSON needs its validated ledger back; a serialized context restores it on rehydration.
+    const built = buildSemanticAuditFromDecisionSource(last.after, last.source, { baseRecords: last.after, batchDecisionSources, artifactId: 'test-mixed-history' });
+    const infos = last.after.map((record) => ({ record }));
+    const saved = JSON.parse(JSON.stringify(built));
+    assert.throws(() => validateSemanticAuditCoverage(infos, saved, { baseRecords: infos }), /correction_history and source-bound Stage 3 admission history/u);
+    restoreFactoryAdmissions(saved, last.source, infos, 'saved mixed-history audit');
+    assert.doesNotThrow(() => validateSemanticAuditCoverage(infos, saved, { baseRecords: infos }));
+    assert.doesNotThrow(() => validateDatasetRecords(infos, { semanticAudit: saved, requireSemanticAudit: true }));
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'mixed-context-'));
+    try {
+      const context = createCanonicalContext({ records: infos, fileCount: 1 });
+      context.semanticAudit = built; context.semanticDecisionSource = last.source;
+      const contextPath = path.join(dir, 'context.json');
+      await writeCanonicalContext(context, contextPath);
+      const reread = await readCanonicalContext(contextPath);
+      assert.doesNotThrow(() => validateSemanticAuditCoverage(reread.records, reread.semanticAudit, { baseRecords: reread.records }));
+      assert.doesNotThrow(() => validateDatasetRecords(reread.records, { semanticAudit: reread.semanticAudit, requireSemanticAudit: true }));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+
+    // Rewritten history, resealed so each consumer reaches the provenance check: the correction digest, the sense operation's
+    // declared digests and sense ids, and the amended relation tuple.
+    const reseal = (mutate) => {
+      const forged = structuredClone(last.source);
+      mutate(forged);
+      for (const event of forged.factory_admissions) { delete event.sha256; event.sha256 = sha256Json(event); }
+      forged.authored_review_sha256 = sha256Json(forged.authored_review);
+      return forged;
+    };
+    const eventOf = (forged, operation) => forged.factory_admissions.find((event) => event.changes.some((change) => change.entry_id === target.id && change.operation === operation));
+    const forgeries = {
+      'correction digest': (forged) => { forged.authored_review.review_pass.correction_history.find((item) => item.record_id === target.id).after_record_sha256 = 'f'.repeat(64); },
+      'sense before digest': (forged) => { eventOf(forged, 'append_senses').changes.find((change) => change.entry_id === target.id).before_sha256 = 'e'.repeat(64); },
+      'sense after digest': (forged) => { eventOf(forged, 'append_senses').changes.find((change) => change.entry_id === target.id).after_sha256 = 'e'.repeat(64); },
+      'added sense id': (forged) => { eventOf(forged, 'append_senses').changes.find((change) => change.entry_id === target.id).added_sense_ids = [`${target.id}-s9`]; },
+      'relation tuple': (forged) => { const item = eventOf(forged, 'append_relations').relation_amendments.find((entry) => entry.source_record_id === target.id); item.relation = { ...item.relation, type: 'mood' }; },
+    };
+    for (const [name, mutate] of Object.entries(forgeries)) {
+      assert.throws(() => judge(last.after, reseal(mutate)), (error) => /correction_history|admission|bind|digest|sha256/u.test(error.message), `${order.join('+')} ${name}`);
+    }
   }
 });
 
