@@ -136,6 +136,29 @@ test('a review stays current only while the full reviewed candidate evidence hol
   assert.ok(nextPacket(rows, state, { limit: 10, currentCandidates: ctx(edit(0, { pos: 'verb' })) }).some((r) => r.sense_id === row.sense_id), 'next re-offers it');
 });
 
+test('an incoming link created by an approved relation of this queue never re-queues the review it points at', () => {
+  let state = newQueueState(canonical.canonicalRevision);
+  const packet = nextPacket(rows, state, { limit: 1 });
+  const [row] = packet;
+  state = record(state, packet, [outcome(row)]).state;
+  const entry = state.done[row.sense_id];
+  const original = entry.reviewed_candidates.map((c) => ({ ...c, signals: c.signals.filter((signal) => signal !== 'incoming_relation') }));
+  entry.reviewed_candidates = original;
+  const idx = buildRelationIndex(canonical);
+  const explainedBy = (...ids) => new Map([[row.sense_id, new Set(ids)]]);
+  const check = (current, explained) => isReviewCurrent(row, entry, new ReviewContext([[row.sense_id, current]], idx, explained));
+  const boosted = { ...original[1], signals: ['incoming_relation', ...original[1].signals] };
+  const rest = original.slice(2);
+  assert.equal(check([original[0], boosted, ...rest], explainedBy()), false, 'an unexplained new incoming link is still new evidence');
+  assert.equal(check([original[0], boosted, ...rest], explainedBy(boosted.id)), true, 'the link is the approved relation of that sense');
+  assert.equal(check([boosted, original[0], ...rest], explainedBy(boosted.id)), true, 'and it may move that candidate up the ranking');
+  const linkOnly = { id: 'w9-s1', record_id: 'w9', pos: 'noun', signals: ['incoming_relation'], literature: [] };
+  assert.equal(check([...original, linkOnly], explainedBy('w9-s1')), true, 'a candidate offered only through the approved link');
+  assert.equal(check([...original, linkOnly], explainedBy()), false);
+  assert.equal(check([...original, { ...linkOnly, signals: ['incoming_relation', 'gloss_overlap'] }], explainedBy('w9-s1')), false, 'real evidence on a new candidate still re-queues');
+  assert.equal(check([original[1], original[0], ...rest], explainedBy(boosted.id)), false, 'a rank swap with no changed signals still re-queues');
+});
+
 test('approved relations are verified against canonical and the reviewed pool, then preserved verbatim', () => {
   const state = newQueueState(canonical.canonicalRevision);
   const packet = nextPacket(rows, state, { limit: 1 });
