@@ -530,6 +530,7 @@ test('interactive primary-context hand-offs return a result PR and same-branch f
     const authorEvent = await readEvent(0);
     assert.equal(authorEvent.event, 'AUTHOR_STAGE2_RESULT');
     assert.ok(authorEvent.instructions.some((line) => line.includes('relation:candidates') && line.includes('no-relations')));
+    assert.ok(authorEvent.instructions.some((line) => line.includes('hypernym/hyponym') && line.includes('never near')), 'near is reserved for close meanings, not is-a links');
     input.write(JSON.stringify({ action: 'created', pr_number: 501 }) + '\n');
     const pullRequest = await createdPromise;
     assert.equal(pullRequest.number, 501);
