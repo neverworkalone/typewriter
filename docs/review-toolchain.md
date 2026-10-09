@@ -118,9 +118,12 @@ product outputs; optional `ci:fast` is a prefix inside the same session.
 reproducibility and scale/benchmark checks belong in Deep. Completed-issue
 checkpoint replays belong in a separately invoked Historical tier:
 `ci:historical` requires exactly one registered `--scope` and runs only checks
-tagged for that scope; it has no all-history default and stays outside weekly
-`ci:all`. A passing scheduled/other-HEAD run never substitutes for the
-required exact-HEAD gate.
+tagged for that scope; it has no all-history CLI default and stays outside weekly
+Deep `ci:all`. The separate `.github/workflows/historical.yml` provides
+`workflow_dispatch` for one scope or `all`, plus a weekly schedule that enumerates
+all registered scopes as independent runs. This scheduled historical replay is
+not a PR merge gate; a passing scheduled/other-HEAD run never substitutes for
+the required exact-HEAD PR gate.
 
 The Issue #464 migration inventory is at
 [`docs/ci-check-inventory.md`](ci-check-inventory.md), with one machine-checked
