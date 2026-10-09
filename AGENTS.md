@@ -359,16 +359,20 @@ dependency paths. Missing path evidence, an empty/unclassifiable diff, or an
 unknown or renamed path must fail closed to the full applicable gate. A test
 file has exactly one registry owner.
 
+The pull-request workflow routes only pure Stage 1 candidate artifacts to
+`ci:candidates`; mixed, unexpected, and unclassifiable changes run Normal.
+Candidate validation uses the factory contracts without creating a canonical
+session or SQLite database. `ci:fast` is an optional checkpoint inside Normal,
+not the candidate-only gate.
+
 `ci:normal` remains the required gate for ordinary code/data/mixed PRs and must
 retain the complete current-canonical audit, active factory/admission
 protections, one current-revision SQLite build, direct-search and product
 output checks. A normal run may expose the fast checkpoint inside the same
-session. The target `ci:all` is normal plus current-system deep checks;
-completed-batch replays belong to explicitly scoped `ci:historical` runs and
-must not become a weekly obligation. The current `ci:all` excludes historical
-checks, and `ci:deep` selects Deep checks across all domain scopes. Issue #464
-lands the remaining candidate and Historical command/workflow changes in three
-PRs; keep the separated tier behavior as those steps land.
+session. `ci:all` runs Normal then current-system Deep checks, and `ci:deep`
+selects Deep checks across every domain scope. Completed-batch replays stay out
+of both levels and the weekly workflow; PR 3 adds bounded `ci:historical` runs
+and the exact-HEAD Deep CI Gate.
 
 For data changes, validation may include:
 

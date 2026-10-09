@@ -150,6 +150,7 @@
     "verify:m2": "node scripts/verify/m2-pipeline.mjs",
     "ci:category": "node scripts/ci/run-category.mjs",
     "ci:fast": "node scripts/ci/run-category.mjs fast",
+    "ci:candidates": "node scripts/ci/run-category.mjs candidates",
     "ci:normal": "node scripts/ci/run-category.mjs normal",
     "ci:all": "node scripts/ci/run-category.mjs all",
     "ci:deep": "node scripts/ci/run-category.mjs deep",

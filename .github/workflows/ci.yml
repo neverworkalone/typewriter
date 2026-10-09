@@ -47,14 +47,14 @@ jobs:
             esac
           done < "$paths_file"
 
-          # Only pure Stage 1 candidate artifacts get the fast gate.
+          # Only pure Stage 1 candidate artifacts get the candidate-only gate.
           # Mixed changes, empty diffs, and all other PRs keep the normal gate.
           if [[ "$saw_file" != true ]]; then
             run_level=normal
           elif [[ "$docs_only" == true ]]; then
             run_level=none
           elif [[ "$stage1_only" == true ]]; then
-            run_level=fast
+            run_level=candidates
           else
             run_level=normal
           fi
@@ -62,7 +62,7 @@ jobs:
           echo "run_level=$run_level" >> "$GITHUB_OUTPUT"
           case "$run_level" in
             none) echo "Documentation-only PR: CI checks intentionally skipped." >> "$GITHUB_STEP_SUMMARY" ;;
-            fast) echo "Stage 1 candidate-only PR: running ci:fast." >> "$GITHUB_STEP_SUMMARY" ;;
+            candidates) echo "Stage 1 candidate-only PR: running ci:candidates." >> "$GITHUB_STEP_SUMMARY" ;;
             normal) echo "Full ci:normal required for this PR." >> "$GITHUB_STEP_SUMMARY" ;;
           esac
 
@@ -81,9 +81,9 @@ jobs:
         if: steps.changes.outputs.run_level != 'none'
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Fast validation (Stage 1 candidates only)
-        if: steps.changes.outputs.run_level == 'fast'
-        run: pnpm run ci:fast
+      - name: Candidate validation (Stage 1 artifacts only)
+        if: steps.changes.outputs.run_level == 'candidates'
+        run: pnpm run ci:candidates
 
       - name: Normal validation (fast checkpoint + continuation)
         if: steps.changes.outputs.run_level == 'normal'

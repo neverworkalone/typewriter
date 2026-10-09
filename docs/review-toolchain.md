@@ -54,18 +54,25 @@ Deep. Normal registration requires a concrete same-PR merge invariant.
 missing or unclassifiable changed-path evidence fails closed to the full
 applicable gate. Each test file has exactly one registry owner.
 
-The Issue #464 target is `ci:candidates` for pure Stage 1 artifacts,
-`ci:normal` for current canonical/admission/product protection, `ci:all` for
-Normal plus current-system Deep checks, and explicit `ci:historical` replays
-for completed work. A PR may expose the fast checkpoint and continue Normal
-**within one process/session**, not repeat full-canonical work. Independent
-two-build reproducibility belongs in Deep. Historical replay is excluded from
-weekly Deep CI. During the three-PR rollout, `ci:fast` remains the compatibility
-candidate route; the current `ci:all` excludes Historical, and `ci:deep`
-selects Deep checks across all domain scopes. PR 3 adds bounded `ci:historical`
-replay and the exact-HEAD `Deep CI Gate`. Check the actual command registry and
-workflow on the current HEAD. A scheduled or skipped run does not satisfy the
-exact-HEAD Deep requirement.
+Pure Stage 1 artifact PRs use `ci:candidates`, which validates the factory
+candidate contracts without creating the current-canonical SQLite database.
+Ordinary code/data/mixed PRs require `ci:normal` for current canonical,
+admission, and product protection. A PR may expose the fast checkpoint and
+continue Normal **within one process/session**, not repeat full-canonical work.
+`ci:all` runs Normal then current-system Deep, and `ci:deep` selects Deep checks
+across all domain scopes. Current-revision independent builds and scale checks
+belong in Deep; completed Issue checkpoint replays belong in Historical.
+Historical replay is excluded from weekly Deep CI; PR 3 adds bounded
+`ci:historical` and the exact-HEAD `Deep CI Gate`. Check the actual command
+registry and workflow on the current HEAD. A scheduled or skipped run does not
+satisfy the exact-HEAD Deep requirement.
+
+The Issue #464 migration inventory is at
+[`docs/ci-check-inventory.md`](ci-check-inventory.md), with one machine-checked
+row per registered CI check in
+[`scripts/ci/check-inventory.json`](../scripts/ci/check-inventory.json). It records the
+owner, protected contract, measured duration, tier, trigger, migration reason,
+and consumer. No check is retired in PR 2.
 
 ### One current-revision SQLite build in `ci:normal` (enforced invariant)
 
@@ -91,8 +98,9 @@ command that registered no child process (omitted metrics hook), is a failure,
 never "zero builds". Validators and tests reuse the shared artifact through
 `scripts/ci/current-revision-database.mjs`, which binds it to the revision the
 validator read itself and never falls back to another build. Independent two-build
-reproducibility runs only in the deep phase (checks marked
-`independentCurrentRevisionBuilds`, which receive no shared artifact) or manually.
+current-revision reproducibility runs in Deep (checks marked
+`independentCurrentRevisionBuilds`, which receive no shared artifact).
+Completed-issue checkpoint replays use the separately selected Historical tier.
 
 `tests/ci-sqlite-build-guard.test.mjs` (registered in the `canonical` category)
 proves pass/fail behavior through the real runner on a fixture session: one
