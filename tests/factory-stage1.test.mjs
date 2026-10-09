@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { expectedAnalyzerDigest, validateCandidateBatch } from '../scripts/factory/contract.mjs';
+import { expectedAnalyzerDigest, sha256Hex, validateCandidateBatch } from '../scripts/factory/contract.mjs';
 import { buildCanonicalIndex, buildSearchFormSupport, classifyLemmaCandidate, runFactoryIntake } from '../scripts/factory/identity-adapter.mjs';
 import { MAX_OBSERVATIONS_PER_CANDIDATE } from '../scripts/factory/lemma-contract.mjs';
 import { runStage1 } from '../scripts/factory/produce-candidates.mjs';
@@ -371,6 +371,40 @@ test('Stage 1 consumes real-shape cached selections, rejects malformed rows, and
   assert.deepEqual(manifest.source_artifacts.map(({ path: source }) => source), ['runs/T000001/candidate-selection.json']);
   await writeBoundEvidence(manifest);
   await assert.rejects(() => runStage1(args, deps), /no unprocessed lemmas/u);
+});
+
+test('Stage 1 consumer rejects a digest-valid nonempty exclusion manifest without source artifacts', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-unbound-exclusions-'));
+  const cache = await taskCacheFor(root);
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  const payload = {
+    lemmas: ['짠하다'],
+    schema_version: 'm9-reviewed-lemma-exclusions-v1',
+    source_artifacts: [],
+  };
+  const exclusionSha256 = sha256Hex(JSON.stringify(payload));
+  await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify({
+    ...payload,
+    exclusion_sha256: exclusionSha256,
+  }));
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([
+    cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')]),
+  ], {
+    schema_version: 'm9-corpus-candidate-evidence-v1',
+    selection: {
+      exclusion_sha256: exclusionSha256,
+      exclusion_source_artifacts: [],
+      excluded_candidate_lemma_count: 1,
+    },
+    orchestration: { exclusion_manifest_sha256: exclusionSha256 },
+  })));
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+  await assert.rejects(() => runStage1([
+    '--evidence', cache.evidenceArgument,
+    '--task-id', 'T000001',
+    '--base-ref', 'none',
+    '--policy', 'provider-resolution-v1',
+  ], deps), /must bind at least one source artifact/u);
 });
 
 test('post-write validation is base-aware like CI: merged reviews are compared to the base, a new batch stays fail-closed', async () => {
