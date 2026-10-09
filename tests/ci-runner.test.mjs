@@ -126,15 +126,23 @@ test('candidate-only CI validates without creating a canonical session or SQLite
   ]);
 
   const candidateCheck = registerCheck({
-    label: 'Synthetic Stage 1 candidate validator',
-    command: () => ({ executable: 'synthetic', args: ['candidate-validation'] }),
+    label: 'Synthetic factory candidate validator',
+    command: () => ({ executable: 'synthetic', args: ['factory-candidate-validation'] }),
   }, { owner: 'factory', tier: 'candidate' });
+  const crossScopeCandidateCheck = registerCheck({
+    label: 'Synthetic lexical candidate semantic validator',
+    command: () => ({ executable: 'synthetic', args: ['lexical-candidate-validation'] }),
+  }, { owner: 'lexical', tier: 'candidate' });
+  const evidence = [];
   const options = {
-    categories: { factory: { label: 'Candidate artifacts', checks: [candidateCheck] } },
-    levels: { candidates: ['factory'] },
+    categories: {
+      factory: { label: 'Candidate artifacts', checks: [candidateCheck] },
+      lexical: { label: 'Lexical candidate contracts', checks: [crossScopeCandidateCheck] },
+    },
+    levels: { candidates: ['factory', 'lexical'] },
     executionPolicy: { tiers: ['candidate'], includeManual: false },
     createSession: () => { throw new Error('candidate-only CI must not load the canonical session'); },
-    log: () => {},
+    log: (value) => evidence.push(value),
   };
   const seen = [];
   await runCli(['candidates'], {
@@ -145,7 +153,14 @@ test('candidate-only CI validates without creating a canonical session or SQLite
       assert.equal(context.sharedDictionaryPath, undefined);
     },
   });
-  assert.deepEqual(seen, ['candidate-validation']);
+  assert.deepEqual(seen, ['factory-candidate-validation', 'lexical-candidate-validation']);
+  const candidateEvidence = evidence
+    .map((value) => { try { return JSON.parse(value); } catch { return null; } })
+    .find((value) => value?.level === 'candidates');
+  assert.deepEqual(candidateEvidence.category_order, ['factory', 'lexical']);
+  assert.equal(candidateEvidence.check_count, 2);
+  assert.equal(candidateEvidence.registered_candidate_check_count, 2);
+  assert.equal(candidateEvidence.current_revision_sqlite_build_count, 0);
 
   await assert.rejects(
     runCli(['candidates'], {

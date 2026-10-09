@@ -424,8 +424,8 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
-  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.candidates, ['factory']);
-  assert.deepEqual(CI_TIER_CATEGORY_ORDER.candidate, ['factory']);
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.candidates, CI_ALL_CATEGORY_ORDER);
+  assert.deepEqual(CI_TIER_CATEGORY_ORDER.candidate, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.historical, CI_ALL_CATEGORY_ORDER);

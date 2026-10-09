@@ -103,7 +103,7 @@ export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
   normal: CI_ALL_CATEGORY_ORDER,
   all: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
-  candidates: Object.freeze(['factory']),
+  candidates: CI_ALL_CATEGORY_ORDER,
 });
 
 export const CI_EXECUTION_TIERS = Object.freeze([
@@ -123,7 +123,7 @@ export const CI_CHECK_SCHEDULES = Object.freeze([
 // describe the current registry while PR 2 moves individual checks out of the
 // legacy batch category.
 export const CI_TIER_CATEGORY_ORDER = Object.freeze({
-  candidate: Object.freeze(['factory']),
+  candidate: CI_ALL_CATEGORY_ORDER,
   normal: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
   historical: CI_ALL_CATEGORY_ORDER,

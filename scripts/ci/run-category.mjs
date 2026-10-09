@@ -338,8 +338,24 @@ export async function runCandidateLevel({
 } = {}) {
   const categoryNames = levels.candidates ?? [];
   const checks = categoryNames.flatMap((categoryName) => categories[categoryName]?.checks ?? []);
-  if (checks.length === 0) {
-    throw new Error('Candidate-only CI has no registered candidate checks.');
+  const selectedByCategory = categoryNames.map((categoryName) => {
+    const category = categories[categoryName];
+    if (!category) return [categoryName, []];
+    return [categoryName, selectChecksForPolicy(category.checks, {
+      ...executionPolicy,
+      changedPaths,
+    })];
+  }).filter(([, runnable]) => runnable.length > 0);
+  const registeredCandidateCheckCount = checks.filter((check) => (
+    executionPolicy.tiers.includes(check.tier)
+  )).length;
+  if (registeredCandidateCheckCount === 0) {
+    throw new Error('Candidate-only CI has no registered candidate-tier checks.');
+  }
+  const selectedCandidateCheckCount = selectedByCategory
+    .reduce((total, [, runnable]) => total + runnable.length, 0);
+  if (selectedCandidateCheckCount === 0) {
+    throw new Error('Candidate-only CI selected no checks for this change set.');
   }
 
   const temporaryDirectory = await createTemporaryDirectory();
@@ -362,18 +378,17 @@ export async function runCandidateLevel({
   const previousSharedDictionaryPath = process.env.TYPEWRITER_SHARED_DICTIONARY_PATH;
   const previousSearchDatabasePath = process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
   const startedAt = performance.now();
+  let executedCheckCount = 0;
+  const executedCategoryOrder = [];
   process.env.TYPEWRITER_PROCESS_METRICS_PATH = metricsPath;
   process.env[CI_PHASE_ENV] = NORMAL_PHASE;
   delete process.env.TYPEWRITER_SHARED_DICTIONARY_PATH;
   delete process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
   try {
-    for (const categoryName of categoryNames) {
+    for (const [categoryName, runnable] of selectedByCategory) {
       const category = categories[categoryName];
-      const runnable = selectChecksForPolicy(category.checks, {
-        ...executionPolicy,
-        changedPaths,
-      });
-      if (runnable.length === 0) continue;
+      executedCategoryOrder.push(categoryName);
+      executedCheckCount += runnable.length;
       log(`\n=== ${category.label} [${categoryName}] ===`);
       await runChecks(runnable, session, {
         execute,
@@ -390,8 +405,9 @@ export async function runCandidateLevel({
     log('\n=== candidate evidence ===');
     log(JSON.stringify({
       level: 'candidates',
-      category_order: categoryNames,
-      check_count: checks.length,
+      category_order: executedCategoryOrder,
+      check_count: executedCheckCount,
+      registered_candidate_check_count: registeredCandidateCheckCount,
       wall_clock_ms: Math.round((performance.now() - startedAt) * 100) / 100,
       current_revision_sqlite_build_count: sqliteBuildCount,
     }, null, 2));
