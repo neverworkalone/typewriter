@@ -4312,10 +4312,11 @@
    "relation": {
     "target": "w2687",
     "target_sense": "w2687-s1",
-    "type": "direct",
-    "note": "기차역에서 / 정거장에서 내렸다. 같은 문장 틀에서 직접 바꿔 넣을 수 있고 대상 gloss가 기차나 전차가 서는 곳을 더 넓게 말한다."
+    "type": "near",
+    "note": "정거장은 기차나 전차가 멈추어 승객을 태우고 내리는 곳이라 기차역과 가깝다. 틀: \"기차역에서 / 정거장에서 내렸다\"는 되지만, \"전차 정거장에서 내렸다 / 전차 기차역에서 내렸다\"처럼 대상 gloss가 \"기차나 전차가\"로 출발 gloss의 \"기차가\"보다 넓어 정거장을 기차역으로 되돌리면 전차가 서는 곳에는 바뀌지 않는다.",
+    "relevance": 5
    },
-   "rationale": "w10040-s1 w2687-s1: 대상 gloss가 기차나 전차가 서는 곳을 더 넓게 말한다. 대체가 깨지는 대조 문맥을 두 bound gloss에서 찾을 수 없고 기존 역방향 관계가 없어 near가 아닌 direct로 정리했다."
+   "rationale": "w10040-s1 w2687-s1: 대상 gloss가 전차까지 포함해 한쪽에만 있는 범위가 있어 같은 범위의 direct가 아니라 near로 정리하고, 바뀌지 않는 대조 문맥을 note에 적었다. 반대 방향 정거장 기차역도 near라서 두 방향의 유형이 같다."
   },
   {
    "source_record_id": "w10040",
@@ -7939,11 +7940,10 @@
    "relation": {
     "target": "w1148",
     "target_sense": "w1148-s1",
-    "type": "near",
-    "note": "마주치다는 서로 만난다는 뜻이라 만나다와 가깝다. 틀: \"복도에서 친구를 만났다 / 친구와 마주쳤다\"는 되지만, \"복도에서 친구를 만났다 / 친구를 마주쳤다\"는 두 낱말의 조사 틀이 \"을/를\"과 \"와\"로 달라 그대로 바꿔 넣지 못하고, 출발 gloss에만 \"사람이나 대상을 마주하여\"가 있다.",
-    "relevance": 5
+    "type": "direct",
+    "note": "복도에서 친구를 만났다 / 친구를 마주쳤다. 같은 문장 틀에서 직접 바꿔 넣을 수 있고 두 gloss가 서로 마주하여 만나는 같은 일을 말한다."
    },
-   "rationale": "w188-s1 w1148-s1: 대체가 성립하는 문맥과 깨지는 대조 문맥을 두 bound gloss의 차이로 note에 함께 적어 near로 유지했다."
+   "rationale": "w188-s1 w1148-s1: 두 gloss가 서로 마주하여 만나는 같은 일을 말하고 대체가 깨지는 대조 문맥을 gloss에서 찾을 수 없으며 기존 역방향 관계가 없어 near가 아닌 direct로 정리했다. 조사 틀이 다르다는 이전 주장은 국립국어원 한국어기초사전의 마주치다 문형(1이 2를 마주치다)과 맞지 않아 철회했다."
   },
   {
    "source_record_id": "w188",
@@ -19990,7 +19990,7 @@
   "rel-950cd0e70a82f87aca60f6ea": "aeeaf862856c1e2da2a4a48fdb9cbb784c5ca30051d4e43225ed795d5a1484a1",
   "rel-e9eed3a32d5f90bb1a7e0e65": "b890bfb385f0ef11f6412e259e45d182f02dba50f4e1e69e3ce6ec7b4412fba4",
   "rel-92042baa5fa522e3eba5032e": "ae10b1bdca00d9f0e48141d3631ba91768dd8ce79626bed4ef2aab1fe49181fb",
-  "rel-4fa2b78c9e007813f65c2870": "023b8935d96c5fc0f0b0f869bbc652c96adcab152873ba75af7272f30ca1a3d5",
+  "rel-3ce2d072946b7b609244fe14": "023b8935d96c5fc0f0b0f869bbc652c96adcab152873ba75af7272f30ca1a3d5",
   "rel-aee7a40778b38ebedabeddd0": "21ab9a435e58c1c94164e581b9b770acafd47224f06fafe423c03937495d4dda",
   "rel-3130b1bd8d2f7b1934594737": "db803e5b2875e3ee816ab43c327bc18b25e86474715dbcd35862506e8e8effba",
   "rel-1cc3da421d5b21e885877702": "7351da91b080b8c71f0c8b7062a91fce4945487485262a09d690ba73fc1ff1be",
@@ -20271,7 +20271,7 @@
   "rel-d6d474fc583cdf68430f471c": "f4201d781988a29eecdc257c60c64f157cbd5d4d4150f9d53fd9770d04f0b2a0",
   "rel-79c2008205dd1b0d990a9016": "6a398bd2cd38bc79bfcd524bfc8efdac351c8300f5b06a3acc143d687af042f1",
   "rel-940f0a519b96ae3670b7a5fe": "cfa30fa72d8b610966227fd1a1679952aa629bbb06c1a6d7179421fecc11156f",
-  "rel-3e2a7cdb77ff85efb7c8b660": "bcaa09d4981ef6ea10c9adde62ec64cd53e42b197e97458f2efaccced4fd6bd5",
+  "rel-25bc91a202a65b33dc65eab1": "bcaa09d4981ef6ea10c9adde62ec64cd53e42b197e97458f2efaccced4fd6bd5",
   "rel-3ace914d8169f6d24c469067": "ecbd40af75c77e9865d671ece8e2565aadd596f3bf631f548a7dfa02c7458723",
   "rel-f52b8e9c4f4417e89e216d77": "d0a361f3ab8432ecca132fb32a5b7aea796bbf0bca3bf5a0d655cda6771802fa",
   "rel-0069a81bef819832594715c9": "b2eff014465eb214b3a16f859680f5b55b07f3733a55a370ae877a1cd14dc393",
