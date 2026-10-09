@@ -214,7 +214,7 @@ export function excludedLemmasForArtifact(artifact, relativePath) {
     sourceLemmas = artifact.targets.map((row) => row?.lemma);
   } else if (artifact.selection?.contract_version === 'm9-corpus-candidate-selection-v1'
     && Array.isArray(artifact.candidates)) {
-    sourceLemmas = artifact.candidates.map((row) => row?.lemma);
+    sourceLemmas = artifact.candidates.map((row) => row?.proposed_lemma);
   } else if (artifact.schema_version === 'm9-reviewed-lemma-exclusions-v1') {
     sourceLemmas = verifiedExclusionManifestLemmas(artifact, relativePath);
   } else {

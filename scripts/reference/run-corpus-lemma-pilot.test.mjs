@@ -61,7 +61,11 @@ test('shared-cache exclusion inputs preserve source bindings and union prior pro
   await mkdir(path.dirname(evidencePath), { recursive: true });
   const selection = {
     selection: { contract_version: 'm9-corpus-candidate-selection-v1' },
-    candidates: [{ lemma: '강물' }, { lemma: '나무' }, { lemma: '강물' }],
+    candidates: [
+      { proposed_lemma: '강물', proposed_pos: 'noun', coverage_normalized_key: '강물' },
+      { proposed_lemma: '나무', proposed_pos: 'noun', coverage_normalized_key: '나무' },
+      { proposed_lemma: '강물', proposed_pos: 'noun', coverage_normalized_key: '강물' },
+    ],
   };
   await writeFile(selectionPath, JSON.stringify(selection));
   await writeFile(candidateJsonlPath, `${JSON.stringify({ input: '나무' })}\n${JSON.stringify({ input: '바람' })}\n`);
@@ -110,6 +114,13 @@ test('shared-cache exclusion inputs preserve source bindings and union prior pro
   const unboundManifestPath = path.join(cachePaths.runs, 'prior', 'unbound-exclusions.json');
   await writeFile(unboundManifestPath, JSON.stringify(unboundPayload));
   await assert.rejects(buildExclusionManifest([unboundManifestPath], options), /must bind at least one source artifact/u);
+
+  const malformedSelectionPath = path.join(cachePaths.runs, 'prior', 'malformed-candidate-selection.json');
+  await writeFile(malformedSelectionPath, JSON.stringify({
+    selection: { contract_version: 'm9-corpus-candidate-selection-v1' },
+    candidates: [{ proposed_lemma: '올바른', proposed_pos: 'noun' }, { lemma: '잘못된' }],
+  }));
+  await assert.rejects(buildExclusionManifest([malformedSelectionPath], options), /trimmed NFC lemmas/u);
   assert.throws(() => resolveExclusionSourcePath('runs/../outside.json', options), /traversal segments/u);
 
   const outsidePath = path.join(temporaryRoot, 'outside.json');
