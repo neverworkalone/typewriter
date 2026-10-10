@@ -658,7 +658,7 @@ test('Normal coverage additions bind actual always-on tests without weakening ex
   ] };
   assert.throws(() => validateNormalCoverage(wildcard), /Unsafe or duplicate/);
 
-  const pathBytes = Buffer.from([manifestPath, producer].join('\\0') + '\\0');
+  const pathBytes = Buffer.from([manifestPath, producer].join('\0') + '\0');
   const runGit = (args) => {
     if (args[0] === 'diff') return pathBytes;
     if (args[0] === 'show' && args[1] === 'base:' + manifestPath) return Buffer.from(JSON.stringify(base));
