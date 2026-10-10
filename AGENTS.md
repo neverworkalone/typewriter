@@ -362,7 +362,18 @@ check with one domain owner, one protected contract, one tier (`candidate`,
 it protects a current-revision, admission, or product invariant that must block
 the same PR. An `affected` check must list normalized repository-relative
 dependency paths. Missing path evidence, an empty/unclassifiable diff, or an
-unknown or renamed path must fail closed to the full applicable gate. A test
+unknown or renamed path must fail closed to the full applicable gate.
+Before relying on that fallback for a newly encountered source path, identify
+its protected contract and register the actual regression coverage. An existing
+always-on Normal test may be bound to the exact path in
+`scripts/ci/deep-gate-coverage.json` without running unrelated Deep checks;
+that registry is append-only and independently checked against the PR base.
+If existing Deep contracts are affected, connect all affected Deep dependency
+paths; if a required check is missing, add a reusable old-fails/new-passes
+Normal or Deep regression, not an exemption or batch-specific fixture.
+Never remove/replace an earlier binding to lower the gate. Unresolved coverage
+still fails closed, and classifier/runner/check-registry implementation changes
+retain their conservative full-Deep gate until independently proven safe. A test
 file has exactly one registry owner.
 
 The pull-request workflow routes only pure Stage 1 candidate artifacts to
@@ -391,9 +402,10 @@ contract. A data file appearing in `deepInputs` does not alone select the
 check. Routine canonical and reviewed relation changes must pass schema/shape
 classification and the existing Normal source-bound validators. Docs-only
 changes retain the exact-head Normal skip, and pure root candidate artifacts
-retain `ci:candidates`. CI runner/registry/workflow/classifier edits, unknown
+retain `ci:candidates`. CI runner/registry/workflow/classifier edits, unresolved unknown
 paths, missing/empty diff evidence and malformed data fail closed to full
-Deep. A skipped Deep check must be listed with its reason; it never counts as
+Deep. Verified append-only `deep-gate-coverage.json` additions are not
+classified as runner or registry implementation changes. A skipped Deep check must be listed with its reason; it never counts as
 completed Deep evidence.
 
 For data changes, validation may include:
