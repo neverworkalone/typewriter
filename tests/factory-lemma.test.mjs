@@ -695,8 +695,11 @@ test('tracked v2 artifacts can never carry corpus phrases: surfaces and referenc
   await writeFile(path.join(directory, 'candidates.jsonl'), bad.candidatesText);
   assert.ok((await validateFactoryRepository({ root, canonicalEntries: [] })).some((e) => e.includes('surface must be a single bounded word form')));
 
-  // The producer fails closed on phrase-like evidence instead of writing it.
-  await assert.rejects(() => batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1', 'p1', '가는 길에 만난 사람')])])), /single bounded word form/);
+  // A non-token matched surface is omitted; the candidate remains explicitly held without leaking it.
+  const omitted = await batchOf(evidenceDoc([cand('걸음', 'noun', [hit('d1', 'p1', '걸음 을 걷다')])]));
+  assert.equal(omitted.summary.omittedNonTokenSurfaceHits, 1);
+  assert.deepEqual(omitted.rows[0].observations.map((observation) => [observation.evidence.kind, observation.holds]), [['corpus-surface', ['no_evidence']]]);
+  assert.deepEqual(validateCandidateBatch({ manifest: omitted.manifest, candidatesText: omitted.candidatesText }), []);
   await assert.rejects(() => batchOf(evidenceDoc([cand('가다', 'verb', [hit('d1 문장 전체', 'p1', '가는')])])), /opaque token/);
 });
 
