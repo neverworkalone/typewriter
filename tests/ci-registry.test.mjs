@@ -31,7 +31,13 @@ import {
   registerCheck,
 } from '../scripts/ci/registry.mjs';
 import { selectChecksForPolicy } from '../scripts/ci/run-category.mjs';
-import { classifyDeepGateDiff, classifyDeepGatePaths } from '../scripts/ci/deep-gate.mjs';
+import {
+  classifyDeepGateDiff,
+  classifyDeepGatePaths,
+  validateNormalCoverage,
+  validateAdditiveNormalCoverage,
+} from '../scripts/ci/deep-gate.mjs';
+import NORMAL_COVERAGE from '../scripts/ci/deep-gate-coverage.json' with { type: 'json' };
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
 test('every root Node test file has exactly one CI category owner', async () => {
@@ -615,6 +621,62 @@ test('ci:historical requires one valid scope and selects only matching manual re
     }),
     /exactly one explicit --scope/u,
   );
+});
+
+test('Normal coverage additions bind actual always-on tests without weakening existing Deep coverage', () => {
+  const producer = 'scripts/factory/produce-candidates.mjs';
+  const manifestPath = 'scripts/ci/deep-gate-coverage.json';
+  const base = { version: 1, bindings: [] };
+  const current = NORMAL_COVERAGE;
+  const registered = validateNormalCoverage();
+  assert.equal(registered.get(producer)?.normal_tests[0], 'tests/factory-ensemble.test.mjs');
+
+  const direct = classifyDeepGatePaths([producer]);
+  assert.equal(direct.deepMode, 'none');
+  assert.deepEqual(direct.selectedDeepChecks, []);
+  assert.equal(classifyDeepGatePaths(['scripts/factory/unregistered-future-producer.mjs']).deepMode, 'full');
+  assert.equal(classifyDeepGatePaths([manifestPath]).deepMode, 'full');
+  assert.equal(classifyDeepGatePaths(['scripts/validate/canonical-jsonl.mjs']).deepMode, 'selective');
+
+  assert.equal(validateAdditiveNormalCoverage(base, current).size, 1);
+  assert.throws(() => validateAdditiveNormalCoverage(current, base), /removes or alters/);
+  assert.throws(() => validateAdditiveNormalCoverage(current, {
+    ...current,
+    bindings: [{ ...current.bindings[0], protected_contract: 'weakened contract' }],
+  }), /removes or alters/);
+
+  const missingTest = { version: 1, bindings: [
+    { path: 'scripts/factory/future.mjs', normal_tests: ['tests/missing-future.test.mjs'], protected_contract: 'not actually tested' },
+  ] };
+  assert.throws(() => validateNormalCoverage(missingTest), /not always-on/);
+  const deepOverlap = { version: 1, bindings: [
+    { path: 'scripts/validate/canonical-jsonl.mjs', normal_tests: ['tests/factory-ensemble.test.mjs'], protected_contract: 'unsafe deep override' },
+  ] };
+  assert.throws(() => validateNormalCoverage(deepOverlap), /Unsafe or duplicate/);
+  const wildcard = { version: 1, bindings: [
+    { path: 'scripts/factory/', normal_tests: ['tests/factory-ensemble.test.mjs'], protected_contract: 'unsafe broad allowlist' },
+  ] };
+  assert.throws(() => validateNormalCoverage(wildcard), /Unsafe or duplicate/);
+
+  const pathBytes = Buffer.from([manifestPath, producer].join('\\0') + '\\0');
+  const runGit = (args) => {
+    if (args[0] === 'diff') return pathBytes;
+    if (args[0] === 'show' && args[1] === 'base:' + manifestPath) return Buffer.from(JSON.stringify(base));
+    if (args[0] === 'show' && args[1] === 'head:' + manifestPath) return Buffer.from(JSON.stringify(current));
+    throw new Error('unexpected git invocation: ' + args.join(' '));
+  };
+  const updated = classifyDeepGateDiff('base', 'head', { runGit });
+  assert.equal(updated.deepMode, 'none', 'add-only registry plus source file uses always-on Normal regression');
+
+  const invalid = classifyDeepGateDiff('base', 'head', { runGit: (args) => (
+    args[0] === 'show' && args[1] === 'head:' + manifestPath
+      ? Buffer.from(JSON.stringify({ ...current, bindings: [] }))
+      : args[0] === 'show' && args[1] === 'base:' + manifestPath
+        ? Buffer.from(JSON.stringify(current))
+        : runGit(args)
+  ) });
+  assert.equal(invalid.deepMode, 'full', 'removed binding cannot silently skip independent Deep');
+  assert.equal(invalid.reason, 'normal-coverage-registration-unverified');
 });
 
 test('Deep gate separates validated data from affected contracts and fails closed', async () => {
