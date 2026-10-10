@@ -117,7 +117,10 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     candidates.set(batch, { manifest, candidatesText });
   }
   for (const [batch, { manifest }] of candidates) {
-    if (manifest.contract !== COMPACT_CONTRACT || manifest.production?.contract !== 'lexical-factory-refill-v1') continue;
+    // Stage 2/3 read a deliberately archive-free, already-merged master
+    // metadata snapshot; its PR admission checked the archive at exact HEAD.
+    if (mergedMaster || manifest.contract !== COMPACT_CONTRACT
+      || manifest.production?.contract !== 'lexical-factory-refill-v1') continue;
     // Existing committed batches are immutable. Compare the new/changed
     // production batches only, not every historical compact archive.
     const earlier = base?.candidate?.[batch];
