@@ -156,7 +156,11 @@ unique contiguous IDs, the bound source snapshot and an exact match to
 `archive.unresolved_sha256` of the original unresolved observations.
 Dropping or substituting an individually valid row is therefore a Normal
 failure, not a reason to run unrelated Deep checks. Already-merged
-unchanged batch archives are not reconstructed on every new PR. No additional historical full scan is introduced solely by the
+unchanged batch archives are not reconstructed on every new PR. The Stage 2/3
+`mergedMaster` metadata-only snapshot deliberately excludes permanent trash;
+that consumer must **not** rerun the PR-time occurrence proof without archive
+bytes. Only the real PR/worktree Normal factory gate owns this completeness
+check, while Stage 2/3 still validate committed candidate/review metadata. No additional historical full scan is introduced solely by the
 classifier. Other trash paths, malformed chunks, unrelated changed paths and
 unverified evidence remain fail-closed; mixed trash+candidate PRs are **not**
 eligible for the narrow candidate-only gate. This pattern applies to all
