@@ -21,6 +21,7 @@ import { nonliteralCoverageAdvisories, validateLemmaDecision } from './lemma-dec
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
+import { COMPACT_CONTRACT, TRASH_DIRECTORY, validateTrashChunk } from './permanent-trash.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DEFAULT_BASE_REF = 'origin/master';
@@ -85,6 +86,12 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   report.staleContractReviews = [];
   report.advisories = [];
   const errors = [];
+  let archiveBase = base;
+  if (!archiveBase) {
+    try { if (git(['rev-parse', '--show-toplevel'], root) === root) archiveBase = { commit: git(['rev-parse', 'HEAD'], root) }; } catch { /* synthetic roots have no baseline */ }
+  }
+  report.archiveValidation = { checked_chunks: 0, unchanged_chunks_skipped: 0 };
+  errors.push(...await validateChangedArchive(root, archiveBase, report.archiveValidation));
   const candidateBatches = await subdirectories(path.join(root, 'data/candidates'));
   const reviewBatches = await subdirectories(path.join(root, 'data/reviews'));
   const currentCanonicalSnapshot = reviewBatches.length ? await canonicalSnapshotDigest(root) : null;
@@ -96,14 +103,16 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   }
   for (const batch of candidateBatches) {
     const files = await candidateDirectoryFiles(path.join(root, 'data/candidates', batch));
-    if (JSON.stringify(files) !== JSON.stringify(CANDIDATE_FILES)) errors.push(`${batch}: candidate directory must hold exactly ${CANDIDATE_FILES.join(' and ')}, found ${files.join(', ') || 'nothing'}`);
     const directory = path.join(root, 'data/candidates', batch);
     const manifestText = await readOptional(path.join(directory, 'manifest.json'));
     if (manifestText === undefined) { errors.push(`${batch}: candidates manifest.json missing`); continue; }
     const manifest = JSON.parse(manifestText);
+    const expectedFiles = manifest.contract === COMPACT_CONTRACT ? [...CANDIDATE_FILES, 'stage1-decisions.json'] : CANDIDATE_FILES;
+    if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) errors.push(`${batch}: candidate directory must hold exactly ${expectedFiles.join(' and ')}, found ${files.join(', ') || 'nothing'}`);
+    const stage1DecisionsText = manifest.contract === COMPACT_CONTRACT ? await readOptional(path.join(directory, 'stage1-decisions.json')) : undefined;
     if (manifest.batch_id !== batch) errors.push(`${batch}: batch_id ${manifest.batch_id} does not match its directory`);
     const candidatesText = await readOptional(path.join(directory, 'candidates.jsonl'));
-    errors.push(...validateCandidateBatch({ manifest, candidatesText }).map((error) => `${batch}: ${error}`));
+    errors.push(...validateCandidateBatch({ manifest, candidatesText, stage1DecisionsText }).map((error) => `${batch}: ${error}`));
     candidates.set(batch, { manifest, candidatesText });
   }
   const seenIds = new Set();
@@ -465,10 +474,68 @@ function validateAgainstBase({ base, candidates, reviews, semanticTexts }) {
     const same = JSON.stringify(candidateBefore) === JSON.stringify(manifest)
       && JSON.stringify(reviewBefore) === JSON.stringify(review);
     if (same) continue;
-    const found = review === null
+    const compactionOnly = candidateBefore?.contract === 'lexical-factory-candidate-manifest-v2'
+      && manifest.contract === COMPACT_CONTRACT && JSON.stringify(reviewBefore) === JSON.stringify(review);
+    const found = review === null || compactionOnly
       ? validateCandidateTransition(candidateBefore, manifest)
       : validateLinkedTransition({ candidateBefore, candidateAfter: manifest, reviewBefore, reviewAfter: review, evidence: { semanticBefore: base.semantic?.[batch], semanticAfter: semanticTexts.get(batch) } });
     errors.push(...found.map((error) => `${batch}: ${error}`));
+  }
+  return errors;
+}
+
+async function validateChangedArchive(root, base, report) {
+  let names;
+  try { names = await readdir(path.join(root, TRASH_DIRECTORY)); }
+  catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+  const errors = [];
+  let oldNames = [];
+  let changed = null;
+  if (base?.commit) {
+    oldNames = git(['ls-tree', '-r', '--name-only', base.commit, `${TRASH_DIRECTORY}/`], root).split('\n').filter(Boolean).map((file) => path.basename(file));
+    changed = new Set(git(['diff', '--name-only', base.commit, '--', TRASH_DIRECTORY], root).split('\n').filter(Boolean).map((file) => path.basename(file)));
+    for (const file of oldNames) if (!names.includes(file)) errors.push(`permanent trash file was deleted: ${file}`);
+  }
+  const changedIds = new Map();
+  const unchangedNames = [];
+  for (const name of names) {
+    if (!/^T\d{6}\.jsonl$/.test(name)) { errors.push(`unexpected trash file ${name}`); continue; }
+    if (changed && oldNames.includes(name) && !changed.has(name)) { report.unchanged_chunks_skipped += 1; unchangedNames.push(name); continue; }
+    report.checked_chunks += 1;
+    const text = await readFile(path.join(root, TRASH_DIRECTORY, name), 'utf8');
+    const chunkErrors = validateTrashChunk(text);
+    errors.push(...chunkErrors.map((error) => `${name}: ${error}`));
+    if (chunkErrors.length) continue;
+    for (const row of text.trimEnd().split('\n').filter(Boolean).map(JSON.parse)) {
+      const previous = changedIds.get(row.observation_id);
+      if (previous) errors.push(`${name}: duplicate archive identity ${row.observation_id} also in ${previous}`);
+      else changedIds.set(row.observation_id, name);
+    }
+    // A changed chunk may add occurrences/variants but never remove existing
+    // observations or history. This reads only the changed baseline chunk.
+    if (base?.commit && oldNames.includes(name)) {
+      const old = git(['show', `${base.commit}:${TRASH_DIRECTORY}/${name}`], root).split('\n').filter(Boolean).map(JSON.parse);
+      const current = new Map(text.trimEnd().split('\n').filter(Boolean).map(JSON.parse).map((row) => [row.observation_id, row]));
+      for (const row of old) {
+        const next = current.get(row.observation_id);
+        if (!next || JSON.stringify(next.identity) !== JSON.stringify(row.identity)) { errors.push(`${name}: permanent observation removed or altered`); continue; }
+        for (const variant of row.variants) {
+          const following = next.variants.find((item) => item.analysis_sha256 === variant.analysis_sha256);
+          if (!following || JSON.stringify(following.observation) !== JSON.stringify(variant.observation)
+            || variant.occurrences.some((occurrence) => !following.occurrences.some((item) => JSON.stringify(item) === JSON.stringify(occurrence)))) errors.push(`${name}: permanent analysis history removed or altered`);
+        }
+      }
+    }
+  }
+  // Only when IDs change, scan existing row IDs. Do not validate past
+  // analyses, occurrences or relationships, and do not create another index.
+  if (changedIds.size) for (const name of unchangedNames) {
+    const text = await readFile(path.join(root, TRASH_DIRECTORY, name), 'utf8');
+    for (const line of text.split('\n')) {
+      if (!line.trim()) continue;
+      const id = JSON.parse(line).observation_id;
+      if (changedIds.has(id)) errors.push(`${changedIds.get(id)}: duplicate archive identity ${id} also in ${name}`);
+    }
   }
   return errors;
 }

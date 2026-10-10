@@ -90,7 +90,7 @@ function parseCanonicalEntries(text, label) {
 }
 
 const pathRule = {
-  candidate: /^data\/candidates\/(C\d{6})\/(manifest\.json|candidates\.jsonl)$/u,
+  candidate: /^data\/candidates\/(C\d{6})\/(manifest\.json|candidates\.jsonl|stage1-decisions\.json)$/u,
   review: /^data\/reviews\/(C\d{6})\/(manifest\.json|decisions\.jsonl|semantic-decisions\.json|intake-handoff\.json)$/u,
   canonical: /^data\/canonical\/[^/]+\.jsonl$/u,
   // Relation-only backfill packets (#446) are the committed evidence that a semantic-authority backfill event is bound to.
@@ -124,7 +124,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
   const semanticAuthorityPath = 'data/validation/canonical-semantic-decision-source.json';
   if (files.includes(semanticAuthorityPath)) sourceFiles.set(semanticAuthorityPath, git.show(headSha, semanticAuthorityPath));
   for (const [batchId, paths] of candidateFiles) {
-    if (paths.size !== 2 || !paths.has('manifest.json') || !paths.has('candidates.jsonl')) {
+    if (![2, 3].includes(paths.size) || !paths.has('manifest.json') || !paths.has('candidates.jsonl')) {
       throw new Stage2WorkerError(batchId + ' has an incomplete candidate artifact set');
     }
     for (const file of paths.values()) sourceFiles.set(file, git.show(headSha, file));
@@ -151,6 +151,8 @@ export async function loadFactorySnapshot({ git, headSha }) {
       await mkdir(path.dirname(target), { recursive: true });
       await writeFile(target, content, 'utf8');
     }
+    // Candidate decisions remain part of the existing batch snapshot; permanent
+    // trash and its historical observation relationships stay outside it.
     const errors = await validateFactoryRepository({ root, canonicalEntries, mergedMaster: true, report });
     if (errors.length) throw new Stage2WorkerError('merged master factory data failed validation:\n' + errors.join('\n'));
   } finally {

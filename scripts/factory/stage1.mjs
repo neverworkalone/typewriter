@@ -531,7 +531,7 @@ export function selectLemmas({ lemmas, maxCandidates = DEFAULT_MAX_CANDIDATES, p
 // (always the first evidence entry). Used to skip already-produced usages and to reject repeats.
 export const usageKeyOfRow = (row) => `${row.input}\u0000${row.pos}\u0000${row.evidence?.[0]?.kind}\u0000${row.evidence?.[0]?.ref}`;
 
-export const serializeCandidates = (rows) => `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`;
+export const serializeCandidates = (rows) => rows.length ? `${rows.map((row) => JSON.stringify(row)).join('\n')}\n` : '';
 
 // Digest of the whole canonical revision Stage 1 compared against (file names + byte digests).
 export async function canonicalSnapshotDigest(root) {
@@ -781,6 +781,7 @@ export async function produceCandidateBatch({
   // `provider-resolution-v1` (conditional fallback, default order [kiwi]) stays the explicit compatibility/A-B baseline of
   // the library; the production CLI selects the all-three ensemble by default (docs/lexical-factory-ensemble-v2.md).
   policy = RESOLUTION_POLICY, contextProposals = null, contextReplay = null, contextSource = null, contextAgent = null,
+  refill = false, finalizeEmpty = false,
 }) {
   if (!isBatchId(batchId)) throw new Stage1Error(['batchId must match C000000']);
   if (!/^T\d{6}$/u.test(String(taskId))) throw new Stage1Error(['taskId must match T000000']);
@@ -799,10 +800,17 @@ export async function produceCandidateBatch({
     ? await buildEnsembleGroups({ observations, providers: ordered, contextProposals, contextReplay, contextSource, snapshot: source.source_snapshot, contextAgent })
     : await buildLemmaGroups({ observations, providers: ordered });
   const { attemptLog } = grouped;
-  if (grouped.unresolved.length > MAX_UNRESOLVED_OBSERVATIONS) {
+  if (refill && (grouped.unresolved.some((item) => item.holds.includes('analysis_error') || item.holds.includes('analysis_stale')))) {
+    throw new Stage1Error(['analyzer execution/stale-result error is not a lexical failure or source exhaustion']);
+  }
+  if (!refill && grouped.unresolved.length > MAX_UNRESOLVED_OBSERVATIONS) {
     throw new Stage1Error([`${grouped.unresolved.length} observations have no reliable lemma/POS, above the bound ${MAX_UNRESOLVED_OBSERVATIONS}; split the evidence run`]);
   }
-  const { selected, deferred, skippedProduced } = selectLemmas({ lemmas: grouped.lemmas, maxCandidates, producedLemmas });
+  const empty = ![...grouped.lemmas.keys()].some((lemma) => !producedLemmas.has(lemma));
+  if (refill && empty && !finalizeEmpty) return { incomplete: true, rows: [], grouped };
+  const { selected, deferred, skippedProduced } = refill && finalizeEmpty && empty
+    ? { selected: [], deferred: [], skippedProduced: grouped.lemmas.size }
+    : selectLemmas({ lemmas: grouped.lemmas, maxCandidates, producedLemmas });
   const rows = selected.map((lemma, index) => buildLemmaRow({ lemma, observations: grouped.lemmas.get(lemma), candidateId: candidateIdFor(batchId, index + 1), ensemble }));
   const excludedObservations = ensemble ? excludedObservationsForBatch({ grouped, selected, deferred, producedLemmas }) : [];
   const contextRecords = ensemble ? contextDecisionsForBatch(grouped, rows, excludedObservations) : [];
@@ -835,7 +843,7 @@ export async function produceCandidateBatch({
     candidates_sha256: sha256Hex(candidatesText),
     status: 'created',
   };
-  const errors = validateCandidateBatch({ manifest, candidatesText });
+  const errors = validateCandidateBatch({ manifest, candidatesText, ...(refill ? { maxUnresolved: Infinity, allowEmpty: finalizeEmpty && empty } : {}) });
   if (errors.length) throw new Stage1Error(errors);
   return {
     manifest,

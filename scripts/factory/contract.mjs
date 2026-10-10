@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { HOLD_REASONS, POS_VALUES, digest } from '../intake/candidate-contract.mjs';
 import { PINNED_RUN, analyzerDigest } from '../intake/pipeline.mjs';
 import { LEMMA_CANDIDATE_MANIFEST_CONTRACT, validateLemmaCandidateBatch } from './lemma-contract.mjs';
+import { COMPACT_CONTRACT } from './permanent-trash.mjs';
 import { RESOLUTION_POLICY, createKiwiProvider, providerDescriptor } from './analyzer-providers.mjs';
 import { ENSEMBLE_POLICY, ENSEMBLE_PROVIDER_ORDER } from './ensemble-resolver.mjs';
 import { KHAIII_RUNTIMES, createKhaiiiProvider } from './khaiii-provider.mjs';
@@ -113,7 +114,8 @@ export function manifestContentDigest(manifest) {
 
 export function parseJsonl(text, label, errors) {
   const rows = [];
-  if (typeof text !== 'string' || text.length === 0 || !text.endsWith('\n')) {
+  if (text === '') return rows; // zero rows; enclosing contracts enforce their count/state
+  if (typeof text !== 'string' || !text.endsWith('\n')) {
     errors.push(`${label}: must be non-empty newline-terminated JSONL`);
     return rows;
   }
@@ -153,11 +155,11 @@ export function validateCandidateRecord(record, { batchId, ordinal }) {
   return errors;
 }
 
-export function validateCandidateBatch({ manifest, candidatesText }) {
+export function validateCandidateBatch({ manifest, candidatesText, maxUnresolved, allowEmpty, stage1DecisionsText }) {
   const errors = [];
   if (!isPlainObject(manifest)) return ['candidate manifest must be an object'];
   // v2 (lemma-centered, issue #275) batches; the per-usage v1 contract below stays valid for merged history.
-  if (manifest.contract === LEMMA_CANDIDATE_MANIFEST_CONTRACT) return validateLemmaCandidateBatch({ manifest, candidatesText });
+  if ([LEMMA_CANDIDATE_MANIFEST_CONTRACT, COMPACT_CONTRACT].includes(manifest.contract)) return validateLemmaCandidateBatch({ manifest, candidatesText, maxUnresolved, allowEmpty, stage1DecisionsText });
   const required = ['contract', 'task_id', 'batch_id', 'candidate_count', 'source_adapter', 'source_snapshot',
     'canonical_snapshot_digest', 'extractor_version', 'analyzer_version', 'analyzer_digest', 'proposal_contract',
     'source_evidence_sha256', 'candidates_sha256', 'status'];

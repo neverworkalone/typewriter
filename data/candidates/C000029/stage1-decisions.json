@@ -1,0 +1,161 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000029",
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "반딧불",
+      "pos": "noun",
+      "surface": "반딧불이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000250.1#WARW2500000250.1.552"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "3ad40376e7f9ee7e72f38b8bdd4b877fad2117165cfdc934c3c727f185d1246c"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "dadbb0b88b358fc8709518f87f891901c65068aae89ce9157f8c7b25729e7ddc",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "033f7f939ab5550a2e72b48e08c31fb846103e0ffe4592820b2e629be296d5eb",
+        "alternatives": [
+          {
+            "lemma": "반딧불이",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "순식간",
+      "pos": "noun",
+      "surface": "순식간에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.1536"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "8dfa206ba35cdb2a97ffbb25596dcd1fdc0a6689eed024213077b81a892c2147"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "25905da9393e11f0c1e8bb701e974caea852b52bb5dd3ecc03fe12d25e3f03d2",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "45c0eac1163fa7b95a246619555a95a312170bd690fd6ba8738ecfa789d8cbbc",
+        "alternatives": [
+          {
+            "lemma": "순식",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "애",
+      "pos": "noun",
+      "surface": "애로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005040.1#WARW2500005040.1.2460"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f8c5354d7a28850df64c2c0f01916c02c254bf2d9e9b7a51ae7591a20f3a98c3"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "9b63f76105403abc059b37ed20b6641ba23d71f5ad67bd13524961d6f41b245e",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "e4dd9b9286dd11278ee6e3df5a25ddfe33ba07f8981f0c089ca4a221c7ae283c",
+        "alternatives": [
+          {
+            "lemma": "애로",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "약",
+      "pos": "noun",
+      "surface": "약은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000250.1#WARW2500000250.1.83"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "4af299c7d93666e01a9671ab9f9e7b9bbd614aff1dbec82090c1159c7b844245"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "aa7ae53b37843af4a7f563e02c33e396b029582f30b3fd0d65345eb1df16c5f6",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "36c3afb1c69644aa4007bc1f248a74a54164c17fb9210fecc0251225170c5906",
+        "alternatives": [
+          {
+            "lemma": "약다",
+            "pos": "adjective",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+  }
+}

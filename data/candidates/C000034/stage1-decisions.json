@@ -1,0 +1,196 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000034",
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "부럽다",
+      "pos": "adjective",
+      "surface": "부러움은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500012310.1#WARW2500012310.1.309"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "d4579fc16d53ccfaee440b853199602151e7e97e055f37f3a1a3109d1cce159f"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "04b1db2a0621b70e5a6877fc324c3f5f840da84823195450b7b0c3be7adbc85b",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "56fcf449a220238a56dcfb0287fe5b3e00e24b7f55892d8079f5c8757fe22739",
+        "alternatives": [
+          {
+            "lemma": "부러움",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "부럽다",
+      "pos": "adjective",
+      "surface": "부러움을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001370.1#WARW2500001370.1.404"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f1ff1feb6d2ad5845684a6b949b495513b91e06f9a911498d79c7f3f449554eb"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "6aa97225c1cbdf80d279867149fd14ed2d853107dd5fe2ee24eb26e7326e9a61",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "1d76b084805d7791f7da5d3c268a71e461d9fc111be707963a58554be4e1a86d",
+        "alternatives": [
+          {
+            "lemma": "부러움",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "선홍색",
+      "pos": "noun",
+      "surface": "선홍색으로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005410.1#WARW2500005410.1.2714"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "51a191606af20fdab17201b5a072b6cf3405ea87097a2a6ecabc05f09e677d6f"
+      },
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "observation_digest": "127a66ba3439b31018877c58b8b07ad30c9ea164c4561d25fb6332264d7a22cc",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "1cbaf349499cdea6454c17892bf9cb14e14ed0136eca117252ff13ee3f3bfcec",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "숨기다",
+      "pos": "verb",
+      "surface": "숨길",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.1820"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c5d87f62d46295dc91da5cf951111bfa1818161be575a5c25089574c55de55ca"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "coverage_collision",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "c1625183e5ee9679590ac08a988c833ca0fd6a3534e9ca94fbb1f1fba03830b7",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "6725c6ba1c94b55cb224bd4a957d51dcea08469eb99eeead5756340a50383918",
+        "alternatives": [
+          {
+            "lemma": "숨길",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "숨다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "충성",
+      "pos": "noun",
+      "surface": "충성도",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001370.1#WARW2500001370.1.311"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "3ea589de518af5c7916e28378e44a093ec966d325cbd1ac4fc693db07c85d18e"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "72ce238d5457a7000714bb94f905fc345696b81ee201f690af5523fdd8698e33",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "0a999ad2cfe04af476ffb05a8e365e6b1c9c374385182f538199dbfc62b12bbc",
+        "alternatives": [
+          {
+            "lemma": "충성도",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+  }
+}

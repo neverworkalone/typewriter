@@ -1,4 +1,5 @@
 import { CONTRACT_REPAIR_KINDS, MUTABLE_MANIFEST_FIELDS } from './contract.mjs';
+import { COMPACT_CONTRACT, compactManifest, unresolvedReferences } from './permanent-trash.mjs';
 
 // Durable state exists only in merged manifests (design §7). Each function compares
 // the manifests on the base (merged `master`) with those in a candidate merge result and
@@ -17,13 +18,23 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const CANDIDATE_TRANSITIONS = Object.freeze({
   created: ['created', 'complete'],
   complete: ['complete'],
+  exhausted: ['exhausted'],
 });
 
 export function validateCandidateTransition(before, after) {
   if (before === null || before === undefined) {
-    return after?.status === 'created' ? [] : [`new candidate manifest must start as created, got ${after?.status}`];
+    const errors = after?.status === 'created' || after?.contract === COMPACT_CONTRACT && after?.status === 'exhausted'
+      ? [] : [`new candidate manifest must start as created (or a compact exhausted result), got ${after?.status}`];
+    if (after?.contract === COMPACT_CONTRACT && !after.production) errors.push('new compact candidate manifest requires final-target production evidence');
+    return errors;
   }
   const errors = [];
+  // The sole authorized data-layout migration is mechanically derived from the
+  // merged manifest. Candidate/source metadata and status cannot change with it.
+  if (before.contract === 'lexical-factory-candidate-manifest-v2' && after.contract === COMPACT_CONTRACT) {
+    return same(compactManifest(before, unresolvedReferences(before)).manifest, after)
+      ? [] : ['candidate compaction must preserve every metadata field and bind the exact original history'];
+  }
   if (before.contract !== after.contract) errors.push(`candidate contract migration ${before.contract} → ${after.contract} is not authorized; merged batches keep their contract`);
   if (!(CANDIDATE_TRANSITIONS[before.status] ?? []).includes(after.status)) {
     errors.push(`illegal candidate transition ${before.status} → ${after.status}`);

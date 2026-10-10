@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
@@ -7,12 +8,13 @@ import test from 'node:test';
 
 import { providerDescriptor } from '../scripts/factory/analyzer-providers.mjs';
 import { expectedAnalyzerDigest, sha256Hex, validateCandidateBatch } from '../scripts/factory/contract.mjs';
-import { alignedInContext, alignedOffset, contextSourceDigest, decisionSha256, verifyDecisionsAgainstSource } from '../scripts/factory/context-fallback.mjs';
+import { alignedInContext, alignedOffset, contextSourceDigest, decisionSha256, contextDecisionsSha256, verifyDecisionsAgainstSource } from '../scripts/factory/context-fallback.mjs';
 import {
   ENSEMBLE_POLICY,
   classifyObservation,
   ENSEMBLE_PROVIDER_ORDER,
   ensembleTraceSha256,
+  reviewSummary,
   verifyEnsembleTraces,
 } from '../scripts/factory/ensemble-resolver.mjs';
 import { CONTEXT_PARAGRAPH_LOOKUP_SQL, createCorpusContextSource } from '../scripts/factory/corpus-context-source.mjs';
@@ -20,9 +22,15 @@ import { createMecabProvider, pinnedMetadata as mecabMetadata } from '../scripts
 import { POLICY_ALIASES, parseArguments, runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { Stage1Error, compareResolutionPolicies, observationsFromCorpusEvidence, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
-import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
+import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import { HEX, hit, item, khaiii, kiwi, stub } from './support/khaiii-fixtures.mjs';
+import { mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkText, validateTrashChunk, failedProposalLemmas, loadTrash } from '../scripts/factory/permanent-trash.mjs';
+import { refillCandidateBatch } from '../scripts/factory/refill.mjs';
+import { publishArtifacts, recoverArtifacts } from '../scripts/factory/artifact-transaction.mjs';
+import { planHistoryMigration } from '../scripts/factory/migrate-candidate-history.mjs';
+import { eligibleBatches } from '../scripts/factory/stage2-worker.mjs';
+import { buildExclusionManifest } from '../scripts/reference/run-corpus-lemma-pilot.mjs';
 
 // Synthetic providers (labeled synthetic: no native runtime runs here; the real-runtime smoke lives in
 // tests/factory-ensemble-native-smoke.test.mjs and is skipped with a reason when a runtime is absent).
@@ -543,7 +551,7 @@ test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without wo
   });
   const logs = [];
   const deps = { root, cachePaths: cache.cachePaths, providers: triple(FALLBACK), permission: async () => {}, log: (line) => logs.push(JSON.parse(line)), contextSource };
-  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'];
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '1'];
   const dry = await runStage1([...args, '--dry-run', '--ensemble-trace', 'trace.jsonl', '--context-review-pack', 'pack.json'], deps);
   assert.equal(logs[0].effectivePolicy, ENSEMBLE_POLICY);
   assert.deepEqual(logs[0].providerOrder, ['kiwi', 'khaiii', 'mecab']);
@@ -569,8 +577,11 @@ test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without wo
   const fresh = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-replay-'));
   const freshCache = await cacheForTask(fresh);
   await writeFile(path.join(freshCache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  await writeFile(path.join(freshCache.taskDirectory, 'bad-replay.json'), JSON.stringify({ contract: 'lexical-factory-candidate-manifest-v3', batch_id: '../../outside' }));
+  await assert.rejects(() => runStage1([...args, '--dry-run', '--context-replay', 'runs/T000001/bad-replay.json'],
+    { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK) }), /invalid compact context replay reference/);
   await mkdir(path.join(fresh, 'data/validation'), { recursive: true });
-  await copyFile(path.join(root, 'data/candidates/C000001/manifest.json'), path.join(fresh, 'data/validation/context-replay.json'));
+  await writeFile(path.join(fresh, 'data/validation/context-replay.json'), produced.stage1DecisionsText);
   const replayed = await runStage1([...args, '--dry-run', '--context-replay', 'data/validation/context-replay.json'],
     { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK), contextSource: undefined });
   assert.equal(replayed.candidatesText, produced.candidatesText);
@@ -616,8 +627,16 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
       짠한: [p('짠하다', 'adjective', '짠하')],
     };
     const deps = { root, cachePaths: cache.cachePaths, providers: triple({ k, h: hh, m: hh }), permission: async () => {}, log: () => {} };
-    const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'];
-    const result = await runStage1(args, deps);
+    const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '1'];
+    const compactResult = await runStage1(args, deps);
+    const archive = await loadTrash(root);
+    const history = { batch_id: compactResult.manifest.batch_id,
+      unresolved: [...archive.values()].flatMap((rows) => rows.flatMap((row) => row.variants.flatMap((variant) =>
+        variant.occurrences.filter((item) => item.batch_id === compactResult.manifest.batch_id).map((item) => ({
+          observation_id: row.observation_id, analysis_sha256: variant.analysis_sha256, queue_id: item.queue_id,
+        }))))).sort((a, b) => a.queue_id.localeCompare(b.queue_id)),
+      ...JSON.parse(compactResult.stage1DecisionsText) };
+    const result = { ...compactResult, manifest: restoreManifest(compactResult.manifest, history, trashIndex(archive)) };
     assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
     assert.equal(result.summary.skippedProducedLemmas, 1);
     assert.equal(result.manifest.excluded_observations.length, 3);
@@ -1078,4 +1097,320 @@ test('review fix: the corpus context source verifies the real index metadata aga
   await runStage1(args, { ...deps, contextDatabasePath: syntheticIndex(dir) });
   assert.equal(JSON.parse(await readFile(path.join(cache.taskDirectory, 'pack.json'), 'utf8'))[0].aligned, true);
   await assert.rejects(() => runStage1(args, { ...deps, providers: triple(FALLBACK), contextDatabasePath: syntheticIndex(dir, { rows: '2'.repeat(64) }) }), /does not match the evidence source snapshot/);
+});
+
+test('permanent trash merges observation histories, preserves partial candidates and bounds chunks', async () => {
+  const table = { 가는: GADA.가는 };
+  const result = await produce([
+    cand('가다', 'verb', [h('d1', '가는'), h('d1', '갈', 'p2')]),
+  ], triple({ k: table, h: table, m: table }));
+  assert.deepEqual(result.rows.map((row) => row.input), ['가다']);
+  assert.equal(result.manifest.unresolved_observations.length, 1);
+  const second = structuredClone(result.manifest);
+  second.batch_id = 'C000003';
+  second.unresolved_observations[0].verification = { state: 'truth_unknown', decision_id: 'D0001' };
+  const { chunks, references } = mergeUnresolved(new Map(), [result.manifest, second]);
+  assert.equal(trashIndex(chunks).size, 1);
+  const record = [...chunks.values()][0][0];
+  assert.equal(record.variants.length, 2);
+  assert.equal(record.variants.flatMap((variant) => variant.occurrences).length, 2);
+  assert.deepEqual([...failedProposalLemmas(chunks)], ['가다']);
+  const compact = compactManifest(result.manifest, references.get(result.manifest.batch_id));
+  assert.equal(compact.manifest.unresolved_observations, undefined);
+  assert.equal(compact.manifest.excluded_observations, undefined);
+  assert.equal(compact.manifest.context_fallback.decisions, undefined);
+  assert.equal(JSON.parse(compact.stage1DecisionsText).unresolved, undefined);
+  assert.deepEqual(restoreManifest(compact.manifest, compact.history, trashIndex(chunks)), result.manifest);
+  assert.deepEqual(validateCandidateBatch({ manifest: compact.manifest, candidatesText: result.candidatesText, stage1DecisionsText: compact.stage1DecisionsText }), []);
+  assert.deepEqual(validateTrashChunk(chunkText([record])), []);
+  const repeated = mergeUnresolved(chunks, [result.manifest]);
+  assert.equal(trashIndex(repeated.chunks).size, 1);
+  assert.equal(record.variants.flatMap((variant) => variant.occurrences).length, 2);
+  const anotherSnapshot = { ...result.manifest, source_snapshot: `corpus:${'c'.repeat(64)}:${'d'.repeat(64)}` };
+  assert.equal(trashIndex(mergeUnresolved(chunks, [anotherSnapshot]).chunks).size, 2);
+  const many = structuredClone(result.manifest);
+  many.unresolved_observations = Array.from({ length: 501 }, (_, i) => ({ ...many.unresolved_observations[0], queue_id: `U${String(i + 1).padStart(4, '0')}`, evidence: { kind: 'corpus-paragraph', ref: `d1#p${i}` } }));
+  const split = mergeUnresolved(new Map(), [many]);
+  assert.deepEqual([...split.chunks.values()].map((rows) => rows.length), [500, 1]);
+  assert.deepEqual(validateTrashChunk(chunkText(split.chunks.get('T000001.jsonl'))), []);
+  assert.match(validateTrashChunk(chunkText([record, record])).join(), /duplicate/);
+});
+
+test('production CLI refills valid lemmas, skips trash proposals before analysis and publishes compact artifacts', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cache = await cacheForTask(root);
+  const table = { 가는: GADA.가는, 걸음: [p('걸음', 'noun')] };
+  const providers = triple({ k: table, h: table, m: table });
+  const initial = evidenceDoc([cand('가다', 'verb', [h('d1', '가는'), h('d1', '갈', 'p2')])]);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(initial));
+  let pages = 0;
+  const produced = await runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '2'], {
+    root, cachePaths: cache.cachePaths, providers, permission: async () => {}, log: () => {},
+    selectPage: async ({ exclusions }) => {
+      pages += 1;
+      assert.ok(exclusions.has('가다'));
+      return { ...evidenceDoc([cand('걸음', 'noun', [h('d2', '걸음')])]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } };
+    },
+  });
+  assert.equal(pages, 1);
+  assert.equal(produced.rows.length, 2);
+  assert.equal(produced.manifest.contract, 'lexical-factory-candidate-manifest-v3');
+  assert.equal(produced.manifest.production.target, 2);
+  assert.equal(produced.manifest.archive.unresolved_count, 1);
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
+  const decisionsPath = path.join(root, produced.manifest.stage1_decisions.path);
+  const decisionsText = await readFile(decisionsPath, 'utf8');
+  assert.equal(produced.manifest.excluded_observations, undefined);
+  assert.equal(produced.manifest.context_fallback.decisions, undefined);
+  assert.equal(JSON.parse(decisionsText).unresolved, undefined);
+  await rm(decisionsPath);
+  assert.match((await validateFactoryRepository({ root })).join(), /missing or altered stage1-decisions/);
+  await writeFile(decisionsPath, decisionsText + ' ');
+  assert.match((await validateFactoryRepository({ root })).join(), /missing or altered stage1-decisions/);
+  await writeFile(decisionsPath, decisionsText);
+  const trash = await loadTrash(root);
+  assert.deepEqual([...failedProposalLemmas(trash)], ['가다']);
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd: root, stdio: 'pipe' });
+  git('init', '-q'); git('add', 'data'); git('commit', '-q', '-m', 'Factory baseline');
+  const report = {};
+  assert.deepEqual(await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root), report }), []);
+  assert.deepEqual(report.archiveValidation, { checked_chunks: 0, unchanged_chunks_skipped: 1 }, 'normal validation does not read unchanged archive payloads');
+  const trashPath = path.join(root, 'data/candidate-trash/T000001.jsonl');
+  const originalTrash = await readFile(trashPath, 'utf8');
+  await writeFile(trashPath, 'malformed\n');
+  assert.match((await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) })).join(), /JSONL|Unexpected token/);
+  await writeFile(trashPath, originalTrash);
+  // Valid JSON may spell a key with a Unicode escape. Decode IDs rather than
+  // scanning the serialized spelling of the key in unchanged baseline chunks.
+  const encodedTrash = originalTrash.replaceAll('"observation_id"', '"observ\\u0061tion_id"');
+  assert.notEqual(encodedTrash, originalTrash);
+  assert.deepEqual(validateTrashChunk(encodedTrash), []);
+  await writeFile(trashPath, encodedTrash);
+  git('add', 'data/candidate-trash/T000001.jsonl');
+  git('commit', '-q', '-m', 'Escaped JSON key baseline');
+  assert.deepEqual(await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) }), []);
+  // The common validator rejects cross-chunk duplicates against an unchanged
+  // baseline, while a distinct observation passes the same production path.
+  const extraPath = path.join(root, 'data/candidate-trash/T000002.jsonl');
+  await writeFile(extraPath, originalTrash);
+  assert.match((await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) })).join(), /duplicate archive identity/);
+  const originalRow = [...trash.values()][0][0];
+  const observation = structuredClone(originalRow.variants[0].observation);
+  observation.evidence.ref += '-distinct';
+  const different = mergeUnresolved(new Map(), [{ batch_id: 'C000002', source_snapshot: produced.manifest.source_snapshot, unresolved_observations: [observation] }]);
+  await writeFile(extraPath, chunkText([...different.chunks.values()][0]));
+  assert.deepEqual(await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) }), []);
+  // Two changed chunks must also be compared with each other.
+  const thirdPath = path.join(root, 'data/candidate-trash/T000003.jsonl');
+  await writeFile(thirdPath, await readFile(extraPath, 'utf8'));
+  assert.match((await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) })).join(), /duplicate archive identity/);
+  await rm(extraPath); await rm(thirdPath);
+  // An earlier failed proposal is excluded before a provider is called, even
+  // when a new input file accidentally supplies it again.
+  const secondCache = await cacheForTask(root, 'T000002');
+  await writeFile(path.join(secondCache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(initial));
+  const rejectingProviders = providers.map((provider) => ({ ...provider, analyze: async () => { throw new Error('must not analyze excluded proposal'); } }));
+  await assert.rejects(() => runStage1(['--evidence', secondCache.evidenceArgument, '--task-id', 'T000002', '--base-ref', 'none'], {
+    root, cachePaths: secondCache.cachePaths, providers: rejectingProviders, permission: async () => {}, log: () => {},
+    selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }),
+  }), /source exhausted/);
+});
+
+test('refill resumes identical inputs, fails closed on runtime errors and records true exhaustion', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-resume-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const table = { 가는: GADA.가는, 걸음: [p('걸음', 'noun')] };
+  const providers = triple({ k: table, h: table, m: table });
+  const initialEvidence = evidenceDoc([cand('가다', 'verb', [h('d1', '가는')])]);
+  const args = { batchId: 'C000001', taskId: 'T000001', maxCandidates: 2, canonicalEntries: [], canonicalDigest: HEX, policy: ENSEMBLE_POLICY, providers };
+  const common = { initialEvidence, arguments: args, exclusions: new Set(), checkpointPath: path.join(root, 'checkpoint.json') };
+  await assert.rejects(() => refillCandidateBatch({ ...common, selectPage: async () => { throw new Error('interrupted selector'); } }), /interrupted selector/);
+  const before = providers.map((provider) => provider.calls.length);
+  const resumed = await refillCandidateBatch({ ...common, selectPage: async () => ({ ...evidenceDoc([cand('걸음', 'noun', [h('d2', '걸음')])]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) });
+  assert.equal(resumed.rows.length, 2);
+  providers.forEach((provider, index) => assert.equal(provider.calls.length, before[index] + 1, 'checkpoint avoids reanalysis of first page'));
+  const short = await refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'short.json'), selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) });
+  assert.equal(short.rows.length, 1);
+  assert.equal(short.production.exhausted, true);
+  await assert.rejects(() => refillCandidateBatch({ ...common, arguments: { ...args, maxCandidates: 3 }, selectPage: async () => {} }), /binding differs/);
+  await assert.rejects(() => refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'empty-not-exhausted.json'), selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 1 } } }) }), /not proof/);
+  const broken = providers.map((provider) => ({ ...provider, analyze: async () => { throw new Error('runtime unavailable'); } }));
+  await assert.rejects(() => refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'broken.json'), arguments: { ...args, providers: broken }, selectPage: async () => {} }), /failed closed/);
+});
+
+test('candidate and trash publication rolls back validation failures and recovers interrupted journal', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-publish-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const files = new Map([['data/candidates/C000001/candidates.jsonl', 'new\n'], ['data/candidate-trash/T000001.jsonl', 'history\n']]);
+  const journalDirectory = path.join(root, 'data/local/transaction');
+  await assert.rejects(() => publishArtifacts({ root, files, journalDirectory, validate: async () => ['contract failed'] }), /contract failed/);
+  await assert.rejects(() => readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl')), { code: 'ENOENT' });
+  await assert.rejects(() => readFile(path.join(root, 'data/candidate-trash/T000001.jsonl')), { code: 'ENOENT' });
+  // A persisted journal is the recovery boundary, including an already-written
+  // first file left by an interrupted process.
+  await mkdir(path.join(root, 'data/candidates/C000001'), { recursive: true });
+  await writeFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'new\n');
+  const recovered = await recoverArtifacts({ root, journalDirectory, validate: async () => [] });
+  assert.deepEqual(recovered, files);
+  assert.equal(await readFile(path.join(root, 'data/candidate-trash/T000001.jsonl'), 'utf8'), 'history\n');
+});
+
+test('one-time history migration proves every original manifest and candidate binding before writing', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-migration-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const table = { 가는: GADA.가는, 걸음: [p('걸음', 'noun')] };
+  const first = await produce([cand('가다', 'verb', [h('d1', '가는')]), cand('없다', 'adjective', [h('d2', '없는')])], triple({ k: table, h: table, m: table }), { batchId: 'C000001' });
+  const second = await produce([cand('걸음', 'noun', [h('d3', '걸음')]), cand('없다', 'adjective', [h('d2', '없는')])], triple({ k: table, h: table, m: table }), { batchId: 'C000002' });
+  for (const result of [first, second]) {
+    const directory = path.join(root, 'data/candidates', result.manifest.batch_id);
+    await mkdir(directory, { recursive: true });
+    await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(result.manifest, null, 2) + '\n');
+    await writeFile(path.join(directory, 'candidates.jsonl'), result.candidatesText);
+  }
+  const plan = await planHistoryMigration(root);
+  assert.equal(plan.report.totals.unresolved_before, 2);
+  assert.equal(plan.report.totals.unique_observations, 1);
+  assert.equal(plan.report.totals.occurrences_preserved, 2);
+  assert.ok(plan.report.batches.every((mapping) => mapping.before_manifest_sha256 !== mapping.after_manifest_sha256));
+  assert.equal(plan.files.has('data/candidates/C000001/candidates.jsonl'), false);
+  await assert.rejects(() => readFile(path.join(root, 'data/candidate-trash/T000001.jsonl')), { code: 'ENOENT' }, 'planning writes no archive');
+  await publishArtifacts({ root, files: plan.files, journalDirectory: path.join(root, 'data/local/migration'), validate: () => validateFactoryRepository({ root }) });
+  assert.equal(await readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'utf8'), first.candidatesText);
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
+  await assert.rejects(() => planHistoryMigration(root), /already applied/);
+});
+
+test('the 500 final-lemma target refills a short page and preserves overflow as normal deferred observations', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-500-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  // Structural fixture labels only, never admitted or used as lexical judgments.
+  const labels = Array.from({ length: 501 }, (_, index) => `가${String.fromCodePoint(0xac00 + index)}`);
+  const table = Object.fromEntries(labels.map((label) => [label, [p(label, 'noun', label)]]));
+  const evidenceFor = (names) => evidenceDoc(names.map((label) => cand(label, 'noun', [h(label, label)])));
+  const result = await refillCandidateBatch({
+    initialEvidence: evidenceFor(labels.slice(0, 499)), exclusions: new Set(), checkpointPath: path.join(root, 'checkpoint.json'),
+    arguments: { batchId: 'C000001', taskId: 'T000001', maxCandidates: 500, canonicalEntries: [], canonicalDigest: HEX, policy: ENSEMBLE_POLICY, providers: triple({ k: table, h: table, m: table }) },
+    selectPage: async () => ({ ...evidenceFor(labels.slice(499)), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }),
+  });
+  assert.equal(result.rows.length, 500);
+  assert.equal(result.production.pages, 2);
+  assert.equal(result.manifest.selection.deferred_lemma_count, 1);
+  assert.equal(result.manifest.excluded_observations[0].disposition, 'deferred_lemma');
+  assert.equal(result.manifest.unresolved_observations.length, 0);
+});
+
+test('zero-yield true exhaustion persists unresolved observations in a terminal Stage 1 result', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-zero-exhaustion-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cache = await cacheForTask(root);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('없다', 'adjective', [h('d1', '없는')])])));
+  const result = await runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'], {
+    root, cachePaths: cache.cachePaths, providers: triple({}), permission: async () => {}, log: () => {},
+    selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }),
+  });
+  assert.equal(result.manifest.status, 'exhausted');
+  assert.equal(result.manifest.candidate_count, 0);
+  assert.equal(result.manifest.archive.unresolved_count, 1);
+  assert.equal(trashIndex(await loadTrash(root)).size, 1);
+  const exclusions = await buildExclusionManifest([path.join(root, 'data/candidates/C000001/candidates.jsonl')], { repositoryDirectory: root, cachePaths: cache.cachePaths });
+  assert.deepEqual(exclusions.lemmas, []);
+  assert.equal(exclusions.source_artifacts.length, 2, 'an exhausted zero-row source stays bound and adds no guessed lemma');
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
+  assert.deepEqual(eligibleBatches({ validated: true, candidates: [{ batchId: result.manifest.batch_id, manifest: result.manifest, rows: [] }], reviews: [] }), []);
+  const invalid = structuredClone(result.manifest);
+  invalid.production.exhausted = false;
+  assert.match(validateCandidateBatch({ manifest: invalid, candidatesText: result.candidatesText }).join(), /exhaustion/);
+});
+
+
+test('compact batches retain source-bound candidate and excluded context bindings in the common validators', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-compact-bindings-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const providers = triple(Object.fromEntries(Object.entries(FALLBACK).map(([id, table]) => [id, { ...table, 걸음: [p('걸음', 'noun')] }])));
+  const evidence = [cand('가다', 'verb', [h('d1', '가는'), h('d3', '갈'), h('d4', '갈')]),
+    cand('걸음', 'noun', [h('d6', '걸음')]), cand('없다', 'adjective', [h('d5', '없는')])];
+  const first = await produce(evidence, providers);
+  const contextProposals = queueOf(first).filter((entry) => entry.surface === '갈').map((entry) =>
+    proposal(entry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' }));
+  const options = { contextProposals, contextAgent: 'codex', contextSource: source({ ...SOURCE, 'd4#p1': { status: 'ok', text: '지금 갈 방향을 정했다.' } }) };
+  const retained = await produce(evidence, providers, options);
+  assert.equal(retained.manifest.unresolved_observations.length, 1, 'the fixture requires current binding checks even with historical queue payloads removed');
+  const makeBatch = (result) => {
+    const merged = mergeUnresolved(new Map(), [result.manifest]);
+    const compact = compactManifest(result.manifest, merged.references.get(result.manifest.batch_id));
+    return { manifest: compact.manifest, candidatesText: result.candidatesText, stage1DecisionsText: compact.stage1DecisionsText, chunks: merged.chunks };
+  };
+  const restampRows = (batch, mutate) => {
+    const rows = batch.candidatesText.trim().split('\n').map(JSON.parse);
+    mutate(rows);
+    for (const row of rows) row.review = reviewSummary(row.observations);
+    batch.candidatesText = rows.map(JSON.stringify).join('\n') + '\n';
+    batch.manifest.candidates_sha256 = sha256Hex(batch.candidatesText);
+  };
+  const restampDecisions = (batch, mutate) => {
+    const details = JSON.parse(batch.stage1DecisionsText);
+    mutate(details);
+    details.context_fallback.decisions_sha256 = contextDecisionsSha256(details.context_fallback.decisions);
+    batch.manifest.context_fallback.decisions_sha256 = details.context_fallback.decisions_sha256;
+    batch.manifest.context_fallback.decision_count = details.context_fallback.decisions.length;
+    batch.manifest.archive.context_decision_count = details.context_fallback.decisions.length;
+    batch.stage1DecisionsText = JSON.stringify(details) + '\n';
+    batch.manifest.stage1_decisions.sha256 = sha256Hex(batch.stage1DecisionsText);
+  };
+  const checkBoth = async (batch, expected = null) => {
+    const directory = path.join(root, 'data/candidates', batch.manifest.batch_id);
+    await mkdir(directory, { recursive: true });
+    await mkdir(path.join(root, 'data/candidate-trash'), { recursive: true });
+    await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(batch.manifest));
+    await writeFile(path.join(directory, 'candidates.jsonl'), batch.candidatesText);
+    await writeFile(path.join(directory, 'stage1-decisions.json'), batch.stage1DecisionsText);
+    for (const [name, rows] of batch.chunks) await writeFile(path.join(root, 'data/candidate-trash', name), chunkText(rows));
+    const direct = validateCandidateBatch(batch);
+    const repository = await validateFactoryRepository({ root });
+    if (expected) { assert.match(direct.join(), expected); assert.match(repository.join(), expected); }
+    else { assert.deepEqual(direct, []); assert.deepEqual(repository, []); }
+  };
+  const good = makeBatch(retained);
+  await checkBoth(good);
+  const swapped = structuredClone(good);
+  restampRows(swapped, (rows) => {
+    const observations = rows.flatMap((row) => row.observations).filter((entry) => entry.ensemble.resolution === 'context');
+    assert.equal(observations.length, 2);
+    [observations[0].ensemble.context_decision, observations[1].ensemble.context_decision] = [observations[1].ensemble.context_decision, observations[0].ensemble.context_decision];
+  });
+  assert.match(validateCandidateBatch({ manifest: { ...retained.manifest, candidates_sha256: swapped.manifest.candidates_sha256 }, candidatesText: swapped.candidatesText }).join(), /does not match its context decision/);
+  await checkBoth(swapped, /does not match its context decision/);
+  const unused = structuredClone(good);
+  restampDecisions(unused, (details) => {
+    const entry = structuredClone(details.context_fallback.decisions[0]);
+    entry.decision_id = 'D0003'; entry.observation_digest = 'f'.repeat(64); entry.evidence.ref += '-unused';
+    entry.decision_sha256 = decisionSha256(entry);
+    details.context_fallback.decisions.push(entry);
+  });
+  await checkBoth(unused, /resolves no retained observation/);
+  const excludedResult = await produce(evidence, providers, { ...options, producedLemmas: new Set(['가다']) });
+  const excludedGood = makeBatch(excludedResult);
+  await checkBoth(excludedGood);
+  for (const [field, value] of [['lemma', '걷다'], ['pos', 'noun'], ['surface', '갈까'], ['evidence', { kind: 'corpus-paragraph', ref: 'foreign#p1' }]]) {
+    const bad = structuredClone(excludedGood);
+    restampDecisions(bad, (details) => {
+      details.excluded_observations.find((entry) => entry.ensemble.resolution === 'context')[field] = value;
+      details.excluded_observations.sort((a, b) => `${a.disposition}\0${a.lemma}\0${a.observation_digest}`.localeCompare(`${b.disposition}\0${b.lemma}\0${b.observation_digest}`));
+    });
+    await checkBoth(bad, /does not match its context decision/);
+  }
+  const wrongTrace = structuredClone(excludedGood);
+  restampDecisions(wrongTrace, (details) => { details.excluded_observations.find((entry) => entry.ensemble.resolution === 'context').ensemble.trace_digest = 'f'.repeat(64); });
+  await checkBoth(wrongTrace, /does not match its context decision/);
+  const wrongCategories = structuredClone(good);
+  wrongCategories.manifest.ensemble.counts.categories.concordant -= 1;
+  wrongCategories.manifest.ensemble.counts.categories.unsupported_or_unknown += 1;
+  await checkBoth(wrongCategories, /counts.categories/);
+  const noQueue = makeBatch(await produce(evidence.filter((entry) => entry.proposed_lemma !== '없다'), providers, options));
+  await checkBoth(noQueue);
+  const wrongAggregate = structuredClone(noQueue);
+  wrongAggregate.manifest.ensemble.trace_sha256 = 'f'.repeat(64);
+  await checkBoth(wrongAggregate, /ensemble.trace_sha256 does not bind/);
+  await checkBoth(good);
 });

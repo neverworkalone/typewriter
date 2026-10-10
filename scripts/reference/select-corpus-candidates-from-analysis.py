@@ -347,6 +347,7 @@ def select_from_cached_analysis(
             },
             "extractor": current_extractor,
             "selection": {
+                "exhaustion": producer.selection_exhaustion(staging, candidate_rows, include_canonical_lemmas),
                 "contract_version": "m9-corpus-candidate-selection-v1",
                 "candidate_limit": candidate_limit,
                 "selected_candidate_count": len(candidate_rows),

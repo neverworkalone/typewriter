@@ -604,6 +604,11 @@ test('the production Git adapter and snapshot loader accept the committed relati
   assert.ok(packets.length >= 1, 'the production adapter lists the committed relation backfill packets');
   const snapshot = await loadFactorySnapshot({ git, headSha: 'HEAD' });
   assert.equal(snapshot.validated, true);
+  const metadataOnly = { ...git, show: (ref, file) => {
+    assert.equal(file.startsWith('data/candidate-trash/'), false, 'trash is outside Stage 2/3 snapshots');
+    return git.show(ref, file);
+  } };
+  assert.equal((await loadFactorySnapshot({ git: metadataOnly, headSha: 'HEAD' })).validated, true);
 
   const withoutPacket = { ...git, listFiles: (ref) => git.listFiles(ref).filter((file) => file !== packets[0]) };
   await assert.rejects(loadFactorySnapshot({ git: withoutPacket, headSha: 'HEAD' }), /has no committed packet file/u);

@@ -59,7 +59,7 @@ if (knownNonDeepPaths.some((knownPath) => !validRepositoryPath(knownPath))) {
   throw new TypeError('Deep Gate known non-Deep paths must be normalized repository-relative files.');
 }
 const KNOWN_NON_DEEP_PATH_SET = new Set(knownNonDeepPaths);
-const STAGE1_CANDIDATE_ARTIFACT_PATH = /^data\/candidates\/C\d{6}\/(?:manifest\.json|candidates\.jsonl)$/u;
+const STAGE1_CANDIDATE_ARTIFACT_PATH = /^data\/candidates\/C\d{6}\/(?:manifest\.json|candidates\.jsonl|stage1-decisions\.json)$/u;
 const REVIEW_ARTIFACT_PATH = /^data\/reviews\/C\d{6}\/(?:manifest\.json|decisions\.jsonl|semantic-decisions\.json|intake-handoff\.json)$/u;
 const RELATION_BACKFILL_PATH = /^data\/relation-backfill\/(R\d{6})\.json$/u;
 

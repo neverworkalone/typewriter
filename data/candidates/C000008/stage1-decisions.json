@@ -1,0 +1,3787 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000008",
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [
+      {
+        "decision_id": "D0001",
+        "observation_digest": "042da05d99630d5f04340258e8d4496bf6f4e0355e750fd8c2d8f5d43674e1e2",
+        "trace_digest": "a816ee3f8db7855b94d536c499325f4e92ffe236cf253838678ae752cc58b4e0",
+        "surface": "감상",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001160.1#WARW2500001160.1.1181"
+        },
+        "considered": [
+          {
+            "lemma": "감",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "감상",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감상",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2a87215941288019c8004ee86ce9a550ed0606dc245c2e52b506315447e3a9bf",
+        "decision_sha256": "10944368f661dd453f81a6ebc5d6df6d5e931bf7c8629524c238ed5bec953636"
+      },
+      {
+        "decision_id": "D0002",
+        "observation_digest": "06632a8cd8b0e618176379272f9a680861b6d48b48329766b5c964fed18bd5d0",
+        "trace_digest": "1e18c19887ec027d528fc496a59299ceafaa92a624ac124abda11cc23ed54fdc",
+        "surface": "귀족",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.355"
+        },
+        "considered": [
+          {
+            "lemma": "귀",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "귀족",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "귀족",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "0409631ab6783bfc21e80fc990b5b745a02fc76068a8d9fee6d201a187e5bd6b",
+        "decision_sha256": "96c5ef0ca8d154136fcbfc898334b9bb602b9fb03cc3c8e0de2e43ec0dd3398e"
+      },
+      {
+        "decision_id": "D0003",
+        "observation_digest": "06cd536e9eda3dd894e5060c2e14fedfdc16ae16ca998cf570d1ee9ac224faa5",
+        "trace_digest": "a113f3848d1c7c32575a9377b0511ce54660cfce3ef00d48eccd637976aca0b0",
+        "surface": "가격",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001090.1#WARW2500001090.1.1318"
+        },
+        "considered": [
+          {
+            "lemma": "가",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "가격",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "가격",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2a2eb899f1a31bf8a7c860bcd9673b40069660abfa020c33052ef969bce488aa",
+        "decision_sha256": "b389683dafadc69f69e5b13a458736a8697f2dd5b4da68333bef934d64f84047"
+      },
+      {
+        "decision_id": "D0004",
+        "observation_digest": "083addd62dd1545cf8909737c2df208eaeae556e31cc1a6909c13fe958b226b3",
+        "trace_digest": "9e1cf31893793cb97d224a14f1400595112f9a11a8b72d52482efb4eb7bf1403",
+        "surface": "강의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.6149"
+        },
+        "considered": [
+          {
+            "lemma": "강",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "강의",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "264a94009e5071797945001ac186e901462bdd618fa3565e798b96735f35be8e",
+        "decision_sha256": "b94139daf7f0c2c57f2aa4a3a54f340e727d07d121c6a30964cf3befd185dc9e"
+      },
+      {
+        "decision_id": "D0005",
+        "observation_digest": "0a75045e14dd2acc3279040416a6290b8c2842da9fd1dd62e37c1cd824015377",
+        "trace_digest": "d74cddc172ae8259f113860c0e7c100ce12aba8e62a2ec467da508220be3cf5e",
+        "surface": "공유",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.247"
+        },
+        "considered": [
+          {
+            "lemma": "공유",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "유",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "공유",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "571c4f105f69f3e11e9b857b6aa0dee9b050830b44ebf101be47522c3ba4761b",
+        "decision_sha256": "7ef3dbc3c4abdbeb6d140e82ca6e5b8ef8a154d73053d06010584fc01deae113"
+      },
+      {
+        "decision_id": "D0006",
+        "observation_digest": "0f3e9bab7a6e4623aeb38aa7d6df1c9e271ea5ca3c765932c8a8e8633622cc3a",
+        "trace_digest": "c93b339d4ee8b4432ff93d2e9bd42549f5d9ac82fe367efa23a62cbec4d4b2bf",
+        "surface": "구절이",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.325"
+        },
+        "considered": [
+          {
+            "lemma": "구절",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "절",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "구절",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "920818759843cf8506b564e966889dd926b351794e56adbc278cb44136c2aaf2",
+        "decision_sha256": "f72cdab21ac5bd11cac45c6650d5391eac94ad80a861ac312079a69d42acd1e1"
+      },
+      {
+        "decision_id": "D0007",
+        "observation_digest": "0f5f580b08c7a52b466805cf42bb8b4387e97936287b0355411671239216d46b",
+        "trace_digest": "a4601c2a6a74cdb5f956b72c2422f0c19713d274b96302ec91567797caf5f793",
+        "surface": "구절",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.28"
+        },
+        "considered": [
+          {
+            "lemma": "구절",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "절",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "구절",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "6e5c56725d81c44c7c5097279348d52bf8cd9ad335a7726a73531a4cbd7ac70e",
+        "decision_sha256": "474efe414af0f7f9b9f80645708a20c2b57a1e9886a615a2da09ccf372a68366"
+      },
+      {
+        "decision_id": "D0008",
+        "observation_digest": "13eaeec0ee5966ba739e900c2fd239b4889cfc6e9d8dff51957e090bafd8423c",
+        "trace_digest": "38e4bc61ff92d2789591373c3a7714ed6075cf6eb83f23385742a59d7604c7b0",
+        "surface": "개발한",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1372"
+        },
+        "considered": [
+          {
+            "lemma": "개발",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "개발하다",
+            "pos": "adjective",
+            "supporters": [
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "개발하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "개발하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "4a0b022c991f93d80d80fe0189ccb321597dcca2602ba0b97e9a8bb191e62d74",
+        "decision_sha256": "386458a54d4125bda0b5ffaea65c7e82e7105c24ab221af47fc39bfa7d63bbfa"
+      },
+      {
+        "decision_id": "D0009",
+        "observation_digest": "14edcab7d8c6407b75b831211698e6ecf8cc7f1221a132c6465d54247b102a40",
+        "trace_digest": "b7e8ba077893ef58ec167d722fa1cd951ea8a3fc79bb114178eff4bb067d01ad",
+        "surface": "가까이로",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500003100.1#WARW2500003100.1.1766"
+        },
+        "considered": [
+          {
+            "lemma": "가까이",
+            "pos": "adverb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "가까이",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "truth_unknown",
+        "reason_code": "conflicting_readings",
+        "decision_sha256": "cf374c3e46a8fd5974c8b088dbd0619068839892d000db6067cf8673c6746e39"
+      },
+      {
+        "decision_id": "D0010",
+        "observation_digest": "16487c10ec94f5b61320bc3d68a9931f379b2e342a287ca11deb87c4006084c3",
+        "trace_digest": "f6b9c6e9b96bf421c68f7065bea857fcf6ca61ea99959fcfbe48f4ab53c8785b",
+        "surface": "감독",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.165"
+        },
+        "considered": [
+          {
+            "lemma": "감",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "감독",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감독",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "e9b906745261985737d235c2c24471b660b255de7b7e246e90bc4ddd006e5036",
+        "decision_sha256": "7ca41d21d81243cc5a4ab2969a3513a92a3a86a7309e7d8821a511f85c7bd0bb"
+      },
+      {
+        "decision_id": "D0011",
+        "observation_digest": "1ca19656401bbc2b50cdf7fc0e76652ca180c2f466f16b4fab1615deb13277bc",
+        "trace_digest": "a3be1c10b7c36f7d67dac51728ef379cf4d8c88ee41a3b6fd3acf843f466ab70",
+        "surface": "강요한",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001090.1#WARW2500001090.1.1105"
+        },
+        "considered": [
+          {
+            "lemma": "강요",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "강요하다",
+            "pos": "adjective",
+            "supporters": [
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "강요하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강요하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "e609616ead1985a1ce534bd39dece127486f79f5bafc39a3d280bec34cb5204a",
+        "decision_sha256": "cedb4cf9a9d454c62c561488e3fc9db75dbe0e9f566c2d881d6c520f75b374bd"
+      },
+      {
+        "decision_id": "D0012",
+        "observation_digest": "1da995b79d45ffa3dfc189d161b0f39d1f0a4fd982f1f1c9b8bc0f5e00a02102",
+        "trace_digest": "7d11aca3efc31e9490c6dfdf5787d011d0a9250be608bce9c15f0d95c3b96c81",
+        "surface": "구역에",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1620"
+        },
+        "considered": [
+          {
+            "lemma": "구역",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "역",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "구역",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "87be1eef4859c360ad7a777c61de01c46d98d4d300f3447af430f0d9749b4b12",
+        "decision_sha256": "0a01f51ad1a5dc7e636713c2e0133c2a9bfc521ef857e5fb07d1d9ac899a0f73"
+      },
+      {
+        "decision_id": "D0013",
+        "observation_digest": "1e3e309de67ba5bdc9fd10fca3472a190c747d462e58d6336c6048a6a5824450",
+        "trace_digest": "206d282f70a13b25f31231eec3b5b706582ab20a5e9396bce306a70f8ca3f723",
+        "surface": "구두",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.229"
+        },
+        "considered": [
+          {
+            "lemma": "구두",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "두",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "구두",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "a9e9606bbda5bdf60ae46e73905f5e93c500b11c7d02d37b3dcb89af1a45bcac",
+        "decision_sha256": "48df2e269731e7a5c3f05c57ca0ea07388d842851fc2189a4851ddf8a3217805"
+      },
+      {
+        "decision_id": "D0014",
+        "observation_digest": "1f5fbf069aa22f1e92d79c72da5ae14318fda89d450fa6f58c2c777d99b9bf7f",
+        "trace_digest": "c7dc16e0b59dd37efb54af3a20f678e64a4947f1c29df1d5f44e65680207e8e4",
+        "surface": "간호사",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.2840"
+        },
+        "considered": [
+          {
+            "lemma": "간호",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "간호사",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "간호사",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "1d3951f456deb72b35c7776f7841fcec5cabb840a09ce48123d9b878adba1e2f",
+        "decision_sha256": "3fdeed5d3400829d1320a1d2deaaa86f08651c4bf675d4bec7cffc88d591ed34"
+      },
+      {
+        "decision_id": "D0015",
+        "observation_digest": "2168b61ff7fcde2654c255544850c3e30dd5a28d9046f52fa91a11e38a40e5e6",
+        "trace_digest": "5ead514b49c6f7d2f39545b5ac2f812e58d5c3b1e1ee5602fb016fccbaf6236b",
+        "surface": "가장자리에",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1997"
+        },
+        "considered": [
+          {
+            "lemma": "가장자리",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "가장자리",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2a03f60d28a2e159b4aff06266be5fe0c2738988b559b18fdedd36d1b465fe0c",
+        "decision_sha256": "fb6e492316a13f72f6c51538101d7f59c95bb5ba12607dcd8802dcea0e6cd4f0"
+      },
+      {
+        "decision_id": "D0016",
+        "observation_digest": "22776d171bb48c4a45fde9b574b07afc4b311193c8aeab4b3431d67ae8d7829d",
+        "trace_digest": "e678a0ccfa6b1edad5779c2575a067a8090ddd90991482f74a487cfd90a8dfaa",
+        "surface": "간직한",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.195"
+        },
+        "considered": [
+          {
+            "lemma": "간직",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "간직하다",
+            "pos": "adjective",
+            "supporters": [
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "간직하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "간직하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "a5a960787308956f9ed0f9f9cf11bc1340940d8fe817dca7d7792a7d26ac9456",
+        "decision_sha256": "9fe7737b0a8d4567842afdadd17fddcd0fc7233d641952008085f2c1de87f532"
+      },
+      {
+        "decision_id": "D0017",
+        "observation_digest": "2324274a9df9575681ae14c462cc63cff414c233d707d0808e9465db9166df2b",
+        "trace_digest": "a4bde837ae222c6954e9f8a406137a5e036b98995aa2915712ac56857f1ee675",
+        "surface": "결혼식",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.3667"
+        },
+        "considered": [
+          {
+            "lemma": "결혼",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "결혼식",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "결혼식",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "3654e861cb4dd7910ade45b90ec9dd23acbd67c58aa1cf4f1b8ac04dfd1f0dd5",
+        "decision_sha256": "f3b42c009b4477f632b0e71cc137a389964b3c6ed3115f4b769ffaa2716618a8"
+      },
+      {
+        "decision_id": "D0018",
+        "observation_digest": "238219dc36f4ce05305de01b5ce151b49889e5c4217289c44f44b17f398a62e4",
+        "trace_digest": "60dc792b974b39795e4aa4baaac64450c67d1123446f84e51c73785d1417e06c",
+        "surface": "굵은",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.29"
+        },
+        "considered": [
+          {
+            "lemma": "굵다",
+            "pos": "adjective",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "굵은",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "굵다",
+        "pos": "adjective",
+        "reason_code": "context_supports_reading",
+        "source_digest": "8d95acd7adb4d648b9f3579a59473eb64540c08f9cb9bfffd3efa06a2e42bed0",
+        "decision_sha256": "f55d45f121634b4951695af1322bfa979119920d49f89063a367ead33b690623"
+      },
+      {
+        "decision_id": "D0019",
+        "observation_digest": "2387c2b6b65895eba934a4bc7790c1051d57ea5f42cf1bee14ba4f57db1e3e2d",
+        "trace_digest": "de795384de130126b0ddb1a154ec3c10e02ecb996fb2b0b248bc26fa8e4fe90d",
+        "surface": "강제로",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.2003"
+        },
+        "considered": [
+          {
+            "lemma": "강",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "강제",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강제",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "96e94c98dc744ad8a2b7d503aaeb3fcc85ea24a8f6897aeafeb5d1e6e824d9b7",
+        "decision_sha256": "709fd4b9bd1220d524839fe00ddbdd8b6c3f1d809d464658d858d4789b1ecd1a"
+      },
+      {
+        "decision_id": "D0020",
+        "observation_digest": "2a8ec14dcba23ba8e09ff5f4c650998c4c888ba51eebf208cc278b6e4d8db15e",
+        "trace_digest": "f5871e5c050c8b3ebf331a87fa9687f43d0d95183e11a6ae320cd4142060ad6d",
+        "surface": "군인의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.5126"
+        },
+        "considered": [
+          {
+            "lemma": "군",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "군인",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "군인",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "d0712a926a54797ba5cc7058428edb574a329314bd9d143d3b04b9b45bd92faa",
+        "decision_sha256": "fbc88229d027c8a767dc4adbe33348b409c93a32789e056029171d94298e8e3a"
+      },
+      {
+        "decision_id": "D0021",
+        "observation_digest": "2f4651a1af915e38ec2069b2890c21469b8aaf30551b7eec92756ce94b30a1e8",
+        "trace_digest": "1567cb26e28b357916159bb812eedc849ca842acc62a5c39be12a182f982fd4e",
+        "surface": "균형이",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.155"
+        },
+        "considered": [
+          {
+            "lemma": "균형",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "균형이",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "균형",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "7f088fb5dbae954ff6312983ede717051586068255c444fce7a27e296844d725",
+        "decision_sha256": "944d9d2ef9c9d88ba379903aacdfea59dbe8c943915709a7e93bacdb329bb03b"
+      },
+      {
+        "decision_id": "D0022",
+        "observation_digest": "2f8af4906f6cdfbad114f04c96a096880f37ef2f28185dbd14283968620bf1d5",
+        "trace_digest": "50605de145dc6b33424c7a7d999b2d0ce96c3b022f86449c9b0536e0d9fc8cf4",
+        "surface": "공유할",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.241"
+        },
+        "considered": [
+          {
+            "lemma": "공유",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "공유하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "공유하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "ee36fba9122929893cdea6d5223b7c229fbe361af854c931c088a775d25c5b51",
+        "decision_sha256": "f461d14185f5ed106e75ca3d3a099370f926a8978053cc2271998d389ad10b2f"
+      },
+      {
+        "decision_id": "D0023",
+        "observation_digest": "317c6dd83b099de2356124d91ba8314015c02d7314640620805497b06a18f6ec",
+        "trace_digest": "daf18fa20f7f472ab61cb02e4e995d0f264bacf25f31c32b160ff61c78265eee",
+        "surface": "갈색의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.1126"
+        },
+        "considered": [
+          {
+            "lemma": "갈색",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "갈색의",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "갈색",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "17d63f25a68b529054ef9e75e741d658680cc596808955c75e7b716aeee4e044",
+        "decision_sha256": "63fcffc08ec5f8b3fe0902bb9a8669564abcfb9a1ad9809ac818e023c5b2710b"
+      },
+      {
+        "decision_id": "D0024",
+        "observation_digest": "319002428608bb51f6b9f499eff847e6638399e58558ad3d05f9e2f56d243140",
+        "trace_digest": "311359a1f4455c2dd2ba96f29d96e4e87bfff756db726f280c4a1ad8a504fc60",
+        "surface": "귀족의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001360.1#WARW2500001360.1.142"
+        },
+        "considered": [
+          {
+            "lemma": "귀족",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "귀족의",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "귀족",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "e168505177ee996f6d43007130372162bd7c5fe784c06de74190b8f70836f0b3",
+        "decision_sha256": "eb0c950a7b8409be7186107a1ff615f95338bca57d063763d941fcab4ba658f3"
+      },
+      {
+        "decision_id": "D0025",
+        "observation_digest": "3248cd12865cfaff34a09b7006ee4ca3b8877a26d277bdfa22b28808dbaaaa64",
+        "trace_digest": "65bbaf652138ea937e43247148d8c22ca6289836d7224e607082f9cf47fcdd5d",
+        "surface": "경쟁이",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.228"
+        },
+        "considered": [
+          {
+            "lemma": "경",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "경쟁",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "경쟁이",
+            "pos": "noun",
+            "supporters": [
+              "khaiii"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경쟁",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "486fcf1edb0556b0f336700325f0db99da64ac90f6b791412fa153d2b12c72cd",
+        "decision_sha256": "8d051f5fd16fef808269273b59114ebeda1f5423ab86a5c97d45569d24605f58"
+      },
+      {
+        "decision_id": "D0026",
+        "observation_digest": "338ce37a2f98488fdb3d40c96859c566bcde7dfa952ab968fa4c39c4b251d160",
+        "trace_digest": "83bd36e176819495dd8a7f15e92cd913fd5df1528a22b1953894633ff24d6a49",
+        "surface": "경고",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001450.1#WARW2500001450.1.1110"
+        },
+        "considered": [
+          {
+            "lemma": "경",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "경고",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경고",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "6c4fca75677ecf769b97b390b74fd7a5cd2ade4db638d8f2d57521d74786fd0d",
+        "decision_sha256": "0ed0b97ce7f5f5197380794e782a89a869cc8f0b962a099235d08acd22af9860"
+      },
+      {
+        "decision_id": "D0027",
+        "observation_digest": "33ea3fac55c8554f8036698fcf65516db692462130cd98c616994e4247798666",
+        "trace_digest": "2cba33cb231604d7a6fa80d36050e2449bde4385a3a8c2ec013166f4b3bcfc92",
+        "surface": "가까이에",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.3232"
+        },
+        "considered": [
+          {
+            "lemma": "가까이",
+            "pos": "adverb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "가까이",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "truth_unknown",
+        "reason_code": "conflicting_readings",
+        "decision_sha256": "2adcf5fbe325a65704c1ca81ce6c126e8c3a8fd422d2e5a7aebb6e493c2dac05"
+      },
+      {
+        "decision_id": "D0028",
+        "observation_digest": "3d228bcc8853768f433b92f443756abe06767e821f6670e928d6701f66fe0104",
+        "trace_digest": "d35eef1b36c4601c359d4c31674f313420ee66246a2324de7510734a46bf238a",
+        "surface": "건드릴",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.4238"
+        },
+        "considered": [
+          {
+            "lemma": "건드리다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "건드릴",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "건드리다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "be31945b683c2f3fa0de19e8b176b813612bce73192d71ade77d92d442e95b5c",
+        "decision_sha256": "7cdadbd12384d64de81b231f3994d6e1e6b88efae82a55c7c33146244aae88a2"
+      },
+      {
+        "decision_id": "D0029",
+        "observation_digest": "3d7bae01d245358d780d843cc91fad02fa20e792b78df307c4255185f8d410c8",
+        "trace_digest": "b347857ad9058040cbb3b721d902c4c5092e4e828876bfc3ce18978602086fae",
+        "surface": "고독",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.990"
+        },
+        "considered": [
+          {
+            "lemma": "고독",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "독",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "고독",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "04930aa01d0e7c94eee0c536af415574eff30a771d470571f46e0ba039549c3d",
+        "decision_sha256": "c51500516820a10d3550b3f2bf13c9a2f5f6469cea6eb1e619c9f3b14d416a73"
+      },
+      {
+        "decision_id": "D0030",
+        "observation_digest": "3d81d403a3b94dab5b5f84996eb5f548c19ccf5b5b5a7e444215a99f5812aa82",
+        "trace_digest": "d61c7a63854865625947d86d39fd266a8c78dd9a2f0ec266647d93dd4f8f3fd1",
+        "surface": "가늘게",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.2490"
+        },
+        "considered": [
+          {
+            "lemma": "가늘게",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "가늘다",
+            "pos": "adjective",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "가늘다",
+        "pos": "adjective",
+        "reason_code": "context_supports_reading",
+        "source_digest": "89cd585469c6ed74d437a7880bf535502e3a134ca7973b37a6a099c5f0ba999f",
+        "decision_sha256": "5919c05bbe9edb1d81aec5f70701a3253e1551852a273a38e62ac9da4640bc3d"
+      },
+      {
+        "decision_id": "D0031",
+        "observation_digest": "42d48ba05a3f34b14b7c9c28c6fd2ab5829413f420f420f94966bbeb0a8c5165",
+        "trace_digest": "3c78c57cd10d0ad961fce6ee83c3a39693dffc61aca8004cd8fa604c3c1688e2",
+        "surface": "경기를",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.110"
+        },
+        "considered": [
+          {
+            "lemma": "경",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "경기",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경기",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "50aac660b11ca0efea358cf6e4de7c2199a20adce1065eb66830d01359172ccb",
+        "decision_sha256": "6ed324e43cb39b9aa0edc3b4ff5232e9262adbf4a18956a6ae01febe4d3b4423"
+      },
+      {
+        "decision_id": "D0032",
+        "observation_digest": "4479febfbab7e0d02dc8eeced24a387e7eaf5bc1d0d4b37c7a22aee1c2508ca4",
+        "trace_digest": "fdfc7b72bb5800b9d527e0ecd37b5a73c53019a699e9272ade99a698f8496e6b",
+        "surface": "겸손의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005050.1#WARW2500005050.1.388"
+        },
+        "considered": [
+          {
+            "lemma": "겸손",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "겸손",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "6194c02c914df27954708964dcbbd9128400dd8aafdc40fd535c2afc823a7be4",
+        "decision_sha256": "26eb7fa6a5ac511cd7c162c2fc2735a69cd22d834054a3393ebc79c2363aee1d"
+      },
+      {
+        "decision_id": "D0033",
+        "observation_digest": "47405d207736e8250d0028a43f89d693e696de6421120fa9924b968eaafda933",
+        "trace_digest": "c93c55c0d401e36118b1dcdfc9c0c64206ec03cd5adb1c5c5a6a84bceb891e05",
+        "surface": "고함을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.555"
+        },
+        "considered": [
+          {
+            "lemma": "고하다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "고함",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "함",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "고함",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "4d87ffaaf44c6d4544c7fd1be910a5d6b73d8c0ff2e53bae21424cef49acfce8",
+        "decision_sha256": "2ffd77c2c4e3823e8d2596c23b07d44cd24d93d560d5115ce30497e8bafc8abd"
+      },
+      {
+        "decision_id": "D0034",
+        "observation_digest": "4fd1e1d432bc1f9b3ced7da7a1a99c9b0aae4248c84221745209792224d8e92f",
+        "trace_digest": "de531d8f26cf830cd0a3c6aa997aabe037a2bb061635afcffd17a618bd4df2aa",
+        "surface": "구절을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.363"
+        },
+        "considered": [
+          {
+            "lemma": "구절",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "절",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "구절",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "262479d5a19c9e2c9f3a5b566d642e2efa6af83a94b40b86dd461059a1aa381b",
+        "decision_sha256": "744dd906078a71cc9907b5ace9389d4b49d91517f469500d7cbfc1a7bb0a6a0d"
+      },
+      {
+        "decision_id": "D0035",
+        "observation_digest": "5273637162c103f7664f7ee4b83b98a3dc18280698a68d91ace709eba9b1ca66",
+        "trace_digest": "2b2ef99167f4e0a786d3c8e76f38b976763db52f9507efb6eb9b8440e3b62c32",
+        "surface": "계약",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000151.1#WARW2500000151.1.295"
+        },
+        "considered": [
+          {
+            "lemma": "계",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "계약",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "계약",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "34bb9a9774ab25700c482b10086d20e5382fc3f6159134ff0bfc2d07a321174c",
+        "decision_sha256": "f85e87fda3b7c4b3fb29eb9ed42c0f5dd9a65d4eeaa1e6b232d01b716d54f6ba"
+      },
+      {
+        "decision_id": "D0036",
+        "observation_digest": "54b89b7146c4c7110efabcc11e050171d20f6706b9d239c2e1144da71c47f5e4",
+        "trace_digest": "4f71e82b7ac08adbdb1efacd67dbe8ce7638621dab7b0574d4a8f21219117830",
+        "surface": "감수성이",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.702"
+        },
+        "considered": [
+          {
+            "lemma": "감수",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "감수성",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감수성",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "980a7ba8115fdf3010da4cd2d1fe3808dcacc229ba5c4dc9c5c868e731c0a786",
+        "decision_sha256": "3556dc601438327b7b38e318705b3b939348d06dbfd8303182ba75803d0a3098"
+      },
+      {
+        "decision_id": "D0037",
+        "observation_digest": "57d32a9f5a220dad0664559de195625a6c042ee4c7d2e8bbb1b89f8465024661",
+        "trace_digest": "7acd907370daa085d9478987b846ed1de7c0af4e5302b34f7bc943be880ec19b",
+        "surface": "균형",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.617"
+        },
+        "considered": [
+          {
+            "lemma": "균",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "균형",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "균형",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "585bedaa525ba5e4372bcc8eb2ef89821443c77e0b4aa7b9a913dbc7186cded6",
+        "decision_sha256": "9f67d1e760509e3595ae21d02f3bf15011b3d286f44f2809f771f5e0ccc0faba"
+      },
+      {
+        "decision_id": "D0038",
+        "observation_digest": "5b54fc8c2541cc4adba5147e7da56b4c06e4ff028063c83f079a1d2922a28a49",
+        "trace_digest": "de2aee29560ebb54c4f43da926b8e1b48608cbbba013c4d603c290d76f22f8aa",
+        "surface": "곤란을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500003590.1#WARW2500003590.1.530"
+        },
+        "considered": [
+          {
+            "lemma": "곤란",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "란",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "곤란",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "1eba535a7f23307e4a731daf036f206733f113effcf1637ed23c9018480f24b8",
+        "decision_sha256": "e51c60fada3c94b8fe302b92a004c6ce1d1d0b8076e0abf21bb584db950ffdda"
+      },
+      {
+        "decision_id": "D0039",
+        "observation_digest": "642059b1056c4e5ac1b8d73ecf15853a88d55593a34090f013697f18d410d77d",
+        "trace_digest": "0bb240be15251a63c0b4754393f9130d02679da6053e7552ba48ac3230d5caa5",
+        "surface": "강물",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000151.1#WARW2500000151.1.525"
+        },
+        "considered": [
+          {
+            "lemma": "강물",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "물",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강물",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "df2065073c6505cc1ef765bd86393fc0cebba4636e3f687d84ffa5e7526c01b8",
+        "decision_sha256": "31cfec941f286c2072a595166fd1ec54c2fb44fa78694ccf85968d41784502f3"
+      },
+      {
+        "decision_id": "D0040",
+        "observation_digest": "6ed676c1cf549a32a5e198a40c6ddadad45c8115dad16552f3c281bb849888d3",
+        "trace_digest": "517b6fca73ba8c1f705595f47a2112ed75cadbb1c75269b18b9e78b9b11a346d",
+        "surface": "경멸",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.127"
+        },
+        "considered": [
+          {
+            "lemma": "경",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "경멸",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경멸",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "1aa24972385639219137f53ab880fe73f1e764df4dd0ea6d87595fd4dafeff2e",
+        "decision_sha256": "eaaff49318bc15b2fd1d8d19e8ddf54d954687dd9d6ba21e6c1387a5af1d7ab6"
+      },
+      {
+        "decision_id": "D0041",
+        "observation_digest": "71d32fa73a29aad13fdd3ebbdcae315df1f8ee38c7f62c1ede8ee901b67825f9",
+        "trace_digest": "24d5a7167ddfdb58472de5ad02e3e56464c958fe218e4ecb61121c2ac9ea42be",
+        "surface": "갈색",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.237"
+        },
+        "considered": [
+          {
+            "lemma": "갈색",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "색",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "갈색",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "10c709ab9bb7c541cddcb6b43a3fb8c6d214771d691b640e74f09fdd5ea666a5",
+        "decision_sha256": "32a0b18072a36d9f7533d3ca5d1660eac2ffe767ce659e0f3d17c368dec827af"
+      },
+      {
+        "decision_id": "D0042",
+        "observation_digest": "7205e901e0b6270d47fd898bc503bc4d04ac3655c87fc679cd8e6175f366ab2f",
+        "trace_digest": "97319b08463ff6bf339ef0e38baac81198f5d860fe4893ae65309e4c71d6d010",
+        "surface": "근거",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.392"
+        },
+        "considered": [
+          {
+            "lemma": "근",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "근거",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "근거",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "1226b2b2d66e628cd8652734381ae3efb024be2f26bf748ea450c52c8815060b",
+        "decision_sha256": "9eb68587f6ac2867c96c4f6d80910d31564f28694fc69ee69a233074b03b1a02"
+      },
+      {
+        "decision_id": "D0043",
+        "observation_digest": "726faa794d53932943d96f5255e4bf710455886c0d1962f41646e5b4634cf1d9",
+        "trace_digest": "7eef1636237b9b3c0184bc201bf3e11af87bf323af8972d02a89910d2e641c30",
+        "surface": "가장자리",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.5213"
+        },
+        "considered": [
+          {
+            "lemma": "가장자리",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "가장자리",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "c7b4c12fef0aa0148c5e91c0d3ea55f84cc87832adeaab3eee9a18550625d906",
+        "decision_sha256": "ad9faccd471a8f23e33019cc35f7b7c75a7636122cbed3bc111acdbb3a8cc2ce"
+      },
+      {
+        "decision_id": "D0044",
+        "observation_digest": "73b7baf03624814705c925bfe1f6281ede277c91d2ca62a80c9236e84f1192b5",
+        "trace_digest": "a754008827e01f85f37270864611d266fad55550f553ef3c550f3074d35a1ff4",
+        "surface": "국민의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000151.1#WARW2500000151.1.230"
+        },
+        "considered": [
+          {
+            "lemma": "국민",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "국민의",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "국민",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "11c1b9134efce27d4970a7f11468eba8d2549cf440e7cc8713ff59f23da6b0cd",
+        "decision_sha256": "aace48b6e130769396538089ace7958744f2eff0af759ef5c322bc8e1adde678"
+      },
+      {
+        "decision_id": "D0045",
+        "observation_digest": "764c499743ee3d14db50a74616aeb66c3497ea50690337f9583eed0125d80364",
+        "trace_digest": "eb6c643bc5d6bdb1eacb5adcf9ec154ed0bf778cb6f354ca1c59281091ff11f5",
+        "surface": "강요하는",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.51"
+        },
+        "considered": [
+          {
+            "lemma": "강요",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "강요하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강요하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "d5d63e8246c97885e9c82397fc8d5c2b8dbd27fd9af6fad789a7f85e66e675eb",
+        "decision_sha256": "d7ea9d02fc5c4fde1de344c89b9d34e27c971c54d670ef3f2d01b416b20767ee"
+      },
+      {
+        "decision_id": "D0046",
+        "observation_digest": "7a1738118e1543368552656de4304487c3638b769c1aa2a49fd391269dd0db45",
+        "trace_digest": "17bd1dee4d294ac3adfb77c49d1dec7094b814cfa47dd68252904c0a65003b25",
+        "surface": "겸손한",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002870.1#WARW2500002870.1.1053"
+        },
+        "considered": [
+          {
+            "lemma": "겸손",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "겸손하다",
+            "pos": "adjective",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "겸손하다",
+        "pos": "adjective",
+        "reason_code": "context_supports_reading",
+        "source_digest": "c0ba4de7de78d7c6fc1b5779b399191ff59c7226a1bc692adac5945824726a10",
+        "decision_sha256": "e2a3164ee2e2fd0798307b67945c99aa134352796efca5956a937f11b76a0f32"
+      },
+      {
+        "decision_id": "D0047",
+        "observation_digest": "819c3825d5e027d679928e7bc0cd935bb008f3c629f38e4abd20dd74b2acac81",
+        "trace_digest": "9448b1e35042c88d9223bd7c2dafb348ac8bb529205496e9704900fbe0d1efb6",
+        "surface": "구역",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.235"
+        },
+        "considered": [
+          {
+            "lemma": "구역",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "역",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "구역",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "b99a4d5a8bc643027370294ea974f3e1fed1cdbcef671e19c1450bc2e2cf068b",
+        "decision_sha256": "a3d0b13c82686b62038a105538d763ffd0dc11fb14ad536b92b9bfb9321e65ae"
+      },
+      {
+        "decision_id": "D0048",
+        "observation_digest": "87472b3f9e7dfe3e2112cb1a72c33aac3953b2e2ed5c7c17ba9718a8651b8465",
+        "trace_digest": "25327023b5d1f8630ae945972bb1d9e5b7ae949c3b5e53310fd4350662c1d934",
+        "surface": "가늘고",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001160.1#WARW2500001160.1.183"
+        },
+        "considered": [
+          {
+            "lemma": "가늘고",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "가늘다",
+            "pos": "adjective",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "가늘다",
+        "pos": "adjective",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2314d4115e3dcc9d8b98b1ac008c30646cace613e7031619301bd9e21412a88e",
+        "decision_sha256": "c48ed9dbe54fbf04a2be7ebc264313a69c076dac1d21ec77f302fcf34fb3483d"
+      },
+      {
+        "decision_id": "D0049",
+        "observation_digest": "87eaafa1334fc9fc838476c996efbd1af9243e58168fc62431c918735208bec6",
+        "trace_digest": "afa889674948f70833d9319d665b1c73b1e3f807cf6ba1fe60f020eeebd75d24",
+        "surface": "감수성",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.427"
+        },
+        "considered": [
+          {
+            "lemma": "감수",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "감수성",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감수성",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "0f53f11435edf4a3e6ed23aea02e76b75e628e5b1fd0821d72edc615e82cf6bd",
+        "decision_sha256": "8058999f08728a12d6c27d6b4c5216fcd1bd6e94a1bffa51decf60e72e2929fc"
+      },
+      {
+        "decision_id": "D0050",
+        "observation_digest": "888279e77fc9fa6a600ae7f7cd971620bc5cf301ab4a09a4a72ac629a697d8fe",
+        "trace_digest": "6fe4bcbf38830d00cafc72dace55b62baf60c6b25ebbd5f26524164dfe37b241",
+        "surface": "계절",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001090.1#WARW2500001090.1.825"
+        },
+        "considered": [
+          {
+            "lemma": "계절",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "절",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "계절",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "87adf7fb2f2a47ab76aeea715160fbc898bbac4730da5102cfb5e9d440b452d6",
+        "decision_sha256": "5abfed0be58c75c0307c4e45949b4fdbb05cff134f16c048b78a9504703b7ec2"
+      },
+      {
+        "decision_id": "D0051",
+        "observation_digest": "889b737d4ec8d8c27bea56f15e06bac1c4d73dccb687d6ec80732738a123968c",
+        "trace_digest": "b6ebbb3869b01e5122ee574c49cee42f6393f99b5cec1644ce9cb9deca0292fa",
+        "surface": "공유하고",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000151.1#WARW2500000151.1.392"
+        },
+        "considered": [
+          {
+            "lemma": "공유",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "공유하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "공유하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "6c8deae6cd5a15d105e4ec55fb965289414027f6872d3f67856b8460e35a2c03",
+        "decision_sha256": "f02a5039932a969a427eb74f2e1f7bedd0c22ea35925d4c88fd521973aa3779c"
+      },
+      {
+        "decision_id": "D0052",
+        "observation_digest": "8988c02657abcbaf3651ce225ca72cd00574fd808e55d1b7d219b2c9754a0acd",
+        "trace_digest": "a87a14041eb6316772c910332434c43d745ecd6b53686ba08c20dd721d539fbe",
+        "surface": "굵게",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.1192"
+        },
+        "considered": [
+          {
+            "lemma": "굵게",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "굵다",
+            "pos": "adjective",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "굵다",
+        "pos": "adjective",
+        "reason_code": "context_supports_reading",
+        "source_digest": "672cab3d6faf63b09ca57998161b3a1908c5bb40a302040fa55ce57354723750",
+        "decision_sha256": "96207d310ef71bb52f009af254e6ef1c601b566d9dca581ee3d5d6908fb97db4"
+      },
+      {
+        "decision_id": "D0053",
+        "observation_digest": "8cad95136bdd24b60e3b26058e0d2d482041428716a749fafc3903af034bfa40",
+        "trace_digest": "e6b75af8530bc6d32cef25b5b5bde85f89aa4e803ecf09c9abe51108397f5a0c",
+        "surface": "강요할",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000151.1#WARW2500000151.1.451"
+        },
+        "considered": [
+          {
+            "lemma": "강요",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "강요하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강요하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "96459eae552ff2546ec3dc03f9d45db63daaa06e952f84b89c5235399ade0d6b",
+        "decision_sha256": "0bd164c174309339c923f31291952e1ba383bc5c47d66ceb778c5707d5d92c89"
+      },
+      {
+        "decision_id": "D0054",
+        "observation_digest": "954962eeeac30531c198eedb4bbe98c6bd1d7b38cb00016ecc56df2271e047a8",
+        "trace_digest": "d739dbdb6692f33f65912dbf797322a7f26d2f7f0c8d2487c8d3c2130ab4130c",
+        "surface": "가까이서",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001160.1#WARW2500001160.1.292"
+        },
+        "considered": [
+          {
+            "lemma": "가까이",
+            "pos": "adverb",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "가까이",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "가까이",
+        "pos": "adverb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "a2e0d9b2a3d90da8295df8060913db0e17dcff4f84ae2578869ba3fb860aa9ad",
+        "decision_sha256": "685c8a766b7a2128f029f2ce9c26ee39f773e0a83c9901f9980a9e48ed539ee5"
+      },
+      {
+        "decision_id": "D0055",
+        "observation_digest": "9608396d08e5e9c5bb0f9896636aeccf6b730fe166e9a7a7f26f96cdad767fe2",
+        "trace_digest": "9bb37a666c7288808747be0c476475f71020af2778c196218f83bdab60d42be0",
+        "surface": "공개",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.82"
+        },
+        "considered": [
+          {
+            "lemma": "공",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "공개",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "공개",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "7caeb3d183ddb96be4d866cd662b76ea669bc06e513b4f2f4841842bd4b87948",
+        "decision_sha256": "ef4fdb798c259ef2a341b097160e225666226eac7f245e5b0ad0f03b26f00633"
+      },
+      {
+        "decision_id": "D0056",
+        "observation_digest": "98111b53e84fca0a48db8254a390be13b92e531cbbf6f37e28f8adddac110103",
+        "trace_digest": "879e1cc950d376c069c9eab00e7a0dbc7e1ed00a8b01c2de1f3e76b0d6e77876",
+        "surface": "강물을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.3144"
+        },
+        "considered": [
+          {
+            "lemma": "강물",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "물",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강물",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "83de9d8725b0dfa40339067d404da40622d02fe06dc4be8aec224020cab44dbe",
+        "decision_sha256": "9d18cce158236dbfa1f78248d967e8457d928a84315ebde26934ce536f25105f"
+      },
+      {
+        "decision_id": "D0057",
+        "observation_digest": "9a1789d51cbea229ec804bcb1d6fac2bbf6846ab9c8b8027819038f4d38300fc",
+        "trace_digest": "2fb9c0e06fc35ff97d124d3c3022203dd76229a0630a57ebc87c6b6b0b41ffac",
+        "surface": "군사",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001360.1#WARW2500001360.1.104"
+        },
+        "considered": [
+          {
+            "lemma": "군",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "군사",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "군사",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "3216c38120a51a1ef8039d77a1f49e072e48404e95a40a764cad7e4edd132269",
+        "decision_sha256": "b5efcf826fd5426e007615e6c5217ffdca81548dfcef386b6b02ad03e5ca3d2b"
+      },
+      {
+        "decision_id": "D0058",
+        "observation_digest": "9c8301032745f1ff0844a71c842e9a1da9be19709999a41db6e46180907abf57",
+        "trace_digest": "982283aebb0618632c91fc053d44f28e9dff66970561c5032439c4479c8a1d5f",
+        "surface": "공장",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.809"
+        },
+        "considered": [
+          {
+            "lemma": "공장",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "장",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "공장",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "c5e1f72e9a765867fab42bfd3f13b49ff43731083ec4adc4b4ed6468d32240ed",
+        "decision_sha256": "825ea8922f8b194fc142826e9f1f1e68ac7bd5c90dbb20abe560792d39029ae1"
+      },
+      {
+        "decision_id": "D0059",
+        "observation_digest": "9cedca12fb3fe6bf6eef5e8d2effefded214f7260e328440ed5c610e327404a8",
+        "trace_digest": "4c23d565645b0af1996c2e3e7c82fde13f3a2f05f94f9851376ad50331080469",
+        "surface": "경고의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500002690.1#WARW2500002690.1.327"
+        },
+        "considered": [
+          {
+            "lemma": "경고",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경고",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "4e98c00cf6138df5f11ad1cd88401cfd8be00b0013bc5c3cbaf1c537f4622939",
+        "decision_sha256": "dc3824d37417a38e9fd43bb62c2b1d8398ce5baae0b747079d61849fa5a75dab"
+      },
+      {
+        "decision_id": "D0060",
+        "observation_digest": "9f221cf0bb513cdadf4e2e7569cb74a13539fbf9ea73795feba8ed55aa5f2796",
+        "trace_digest": "c3559d141217da8c782e0e782a4fee49e75d20f8ea709de7122f7f1a9da31272",
+        "surface": "감수할",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.4308"
+        },
+        "considered": [
+          {
+            "lemma": "감수",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "감수하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감수하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "b5751380941806d91865490a60bd75e01624d9b325a3a163c0c53868092e904b",
+        "decision_sha256": "b6b623460b8d19ce1f7e9dcab66fe2a60dad6003d7e983d0ba636f85268250f4"
+      },
+      {
+        "decision_id": "D0061",
+        "observation_digest": "a153ed3065a087614bbe4a3bfd8af80c21b23ea9bcff707855d3f32a52b55c11",
+        "trace_digest": "f393e0b51b8babdbb94f3e45324d200a971a8781a516bbe0a5129958f23061d7",
+        "surface": "곤란한",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1715"
+        },
+        "considered": [
+          {
+            "lemma": "곤란",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "곤란하다",
+            "pos": "adjective",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "곤란하다",
+        "pos": "adjective",
+        "reason_code": "context_supports_reading",
+        "source_digest": "32f23a232633b29b0b616a89f40aeabd33782150fa8e53f4dbdbe34b3f7b2006",
+        "decision_sha256": "0e2709555eaa0a875dbc9892c0dec2680516fcb8c731aa837bfc46ba676a6e87"
+      },
+      {
+        "decision_id": "D0062",
+        "observation_digest": "a2aad9783fb67fe10c2a5bb584575b95f500061bb7b99eac74ca082a8086a454",
+        "trace_digest": "a2c28401bdff86f25dbe95b540da00f79fd14f7963f3ac2af8dce55071c88b3d",
+        "surface": "경기가",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.245"
+        },
+        "considered": [
+          {
+            "lemma": "경기",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경기",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "d60c7bfa9b8536f51916413c4e2e4d1d1f96ee1719d9ed2160aff9c86c7cf1ff",
+        "decision_sha256": "47677177a9d939203ced239ad9c24078158bee85e40a18738cd4a185bd41039e"
+      },
+      {
+        "decision_id": "D0063",
+        "observation_digest": "a82cd4d83d3035cb8fea7641de17f17f5726cf0b8cc14a102e9a519647967e9a",
+        "trace_digest": "2ce32832d05d68e5fb76ead4f9eabc19d74e1591478eb1a009de03d1fd320f00",
+        "surface": "개발",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1504"
+        },
+        "considered": [
+          {
+            "lemma": "개발",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "발",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "개발",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "8d270107a05b0a8b3c67f1a67112078723de0c66d273f1fcb14c2328ddb9c691",
+        "decision_sha256": "12cc509069989245180e09fd120a093c4eb81c63a557d12c81c4fa4650867b93"
+      },
+      {
+        "decision_id": "D0064",
+        "observation_digest": "b3f234392873a1285a8ca0f6e0327dff5d85b8150bf5cdf3afc6c56e92e706cc",
+        "trace_digest": "ac8456dd38f52d4608570c0fc082dc0ec16592ed969836a52a77d6b8a33fef32",
+        "surface": "가장자리를",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.511"
+        },
+        "considered": [
+          {
+            "lemma": "가장자리",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "가장자리",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "53570e812d525a9700945a9742a7a1a502866e14615938c4003deec77a7986d3",
+        "decision_sha256": "610051668322106dd2229b47e7aeca02d7fb999a0369f3cb47edb70de0a71aca"
+      },
+      {
+        "decision_id": "D0065",
+        "observation_digest": "b551d5525b8901fff0049221e098dfc886cd328d90df776cb6ee1ec5e7718dd5",
+        "trace_digest": "5149bd246119eb763d22d2ccf1c4c0367820f32c5560f4caf98b958ff05b8a61",
+        "surface": "감시",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.3301"
+        },
+        "considered": [
+          {
+            "lemma": "감",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "감시",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감시",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "f22fa3a262494a4815b1200953de9ee4cd848eb5f66e3930a79a305b31f28f75",
+        "decision_sha256": "b5de173d7745361d269b90d6202652c49269577050aba98ba371c1f55be5bbc7"
+      },
+      {
+        "decision_id": "D0066",
+        "observation_digest": "b558026dbd2949e0735634ace46ea9b5d23211ab599a81a8e3712127c2422677",
+        "trace_digest": "01f3126da425e123a99e184ea466b8d838b56c98df4e2f8f18a13555bbd3d6d9",
+        "surface": "감독의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.212"
+        },
+        "considered": [
+          {
+            "lemma": "감독",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감독",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "128df35ffbc7812872142698a0262fb002807fa4030d2566cf623e659b9023f7",
+        "decision_sha256": "f20e6b8f18c85a3f26ba701e77eb4ea2f98005f534988249cfeda8ae27d5055d"
+      },
+      {
+        "decision_id": "D0067",
+        "observation_digest": "b77ea6a65d845475492f84a8a59c4299930a8f584d712aafff7618ff1e4cea42",
+        "trace_digest": "dc4f9abd426fbd49bcc3da82cc2e38ae8e5a3d329972f54ff97dd9cecac53635",
+        "surface": "경멸의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500003670.1#WARW2500003670.1.491"
+        },
+        "considered": [
+          {
+            "lemma": "경",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "경멸",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경멸",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "ec3c385d3ec2d5a0ba687ea54bbfb85899177e351755e7216dc5a3bb06259566",
+        "decision_sha256": "bac635b6f790271a5d973953fa0513f80bf3c506795f88f5ccaebb65bf913bef"
+      },
+      {
+        "decision_id": "D0068",
+        "observation_digest": "c5873afdcb791b69cc69377ab00f046d1ce6b7f8f74b62fe0aeafa349db3583f",
+        "trace_digest": "c708a959ed55bdb4e6e625e0aa2e1c6b9bad98cd0d77abee684372d109824e39",
+        "surface": "공개된",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.79"
+        },
+        "considered": [
+          {
+            "lemma": "공개",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "공개되다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "공개되다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "b9e44de4bf3ac3dabea55ec01f6bc5c2ef1daa90c444c36f0ec90b2e9edd71aa",
+        "decision_sha256": "9f0d3c7707ffa85f82ed47139bbefa752d4ca486049299be6f9fac8ca8fe4c5c"
+      },
+      {
+        "decision_id": "D0069",
+        "observation_digest": "c65b9575c25cb2bec7d8043296580848a8121fbf24036ef528348c9477f7627f",
+        "trace_digest": "d3abb3f312cae0ed0e8f4be3f5da74f2cceb1f8144e806f52028a0464f80d541",
+        "surface": "건드리지",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.3075"
+        },
+        "considered": [
+          {
+            "lemma": "건드리다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "건드리지",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "건드리다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "c456c08e5bebed3af63356203a8b264dbb901133d3461404b546804287a08731",
+        "decision_sha256": "d85df35338a219b3a45d2dc033b79056591b56cb7bd65c710380bc3154423924"
+      },
+      {
+        "decision_id": "D0070",
+        "observation_digest": "c8cac1b48f2612bb56dcc16771aa02b012b3dd2b9de7b9d6ce898287557bff6f",
+        "trace_digest": "220d994fed51aa760d6fb5510784bf9dbed627a9007bb78277f75bc0628b4adb",
+        "surface": "굽히지",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.2060"
+        },
+        "considered": [
+          {
+            "lemma": "굽히다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "굽히지",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "굽히다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "bdbc3241d49d6f1c8ee490c47fb7cee046cb057c03277fafb6bd7e28b1f17e36",
+        "decision_sha256": "0fd762c3d8da68a91b17fdaf7df2a8e7bf33fcfefd6e951266d7d128c71ec93e"
+      },
+      {
+        "decision_id": "D0071",
+        "observation_digest": "cdf9a6dc802e837b990726966c1ff43e3885194dd69f4316e4c36e5668f4b6c7",
+        "trace_digest": "8a9186c27f2b7a6748d4daa26050ec0ad5626e5c47b8888a0cbca2ffd9d747db",
+        "surface": "고대하고",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500003190.1#WARW2500003190.1.594"
+        },
+        "considered": [
+          {
+            "lemma": "고대하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "고대하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "dfbf030499ae03831f0cb86103426ed1f2e709a0d3c2006c618f5b97a8b7f5ad",
+        "decision_sha256": "bd54c7c0f8bfc27f5030cbd4c75a09e57d0db45b612ae2150b094cac46e072d5"
+      },
+      {
+        "decision_id": "D0072",
+        "observation_digest": "d2fe0ced5f3f1306d2901a421e5b5dea27b3c4bfcadf31b32597f20d0debd350",
+        "trace_digest": "52d0700714da9ba1d5d2f31ed717fe9afa2624ecaff4f7c0d0538abc47f5880d",
+        "surface": "감상을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001450.1#WARW2500001450.1.504"
+        },
+        "considered": [
+          {
+            "lemma": "감",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "감상",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감상",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "cc682e8b2a3916076f96d562e848883b4b6fb770692cea51f51111d1b16b3e09",
+        "decision_sha256": "79d139ae9661c6ba880cd147da2dfc454849338128d8c7a17d5442ae256f0edf"
+      },
+      {
+        "decision_id": "D0073",
+        "observation_digest": "d7e4be51b7c94b24d880ad948cb1c19adfb7cac0ce634c430eb59a747aeaae9d",
+        "trace_digest": "d5dc65fe7faa565b2524d4b20a10793b06f5ef9fbab44fb21c579b23f01ce2e0",
+        "surface": "겸손을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.22"
+        },
+        "considered": [
+          {
+            "lemma": "겸손",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "손",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "겸손",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "9ef0f90ee574dfd3b78b1da1bd234bea66c85c54ed2c354b7b778bc6578165dc",
+        "decision_sha256": "e1cce9921bdbea9f2b3d31fe302e97224996734bbc528416f34f1c403e3b7db1"
+      },
+      {
+        "decision_id": "D0074",
+        "observation_digest": "d82691e7af23dc3f544a7ca41ee886557ca5da8c3a019bf7611e2755c55b8834",
+        "trace_digest": "ea7dd20ed29e7f9b8e88e29a04b5384378e083207e35045b38deb85f0a27d646",
+        "surface": "곤란할",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005040.1#WARW2500005040.1.172"
+        },
+        "considered": [
+          {
+            "lemma": "곤란",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "곤란하다",
+            "pos": "adjective",
+            "supporters": [
+              "khaiii"
+            ]
+          },
+          {
+            "lemma": "곤란하다",
+            "pos": "verb",
+            "supporters": [
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "곤란하다",
+        "pos": "adjective",
+        "reason_code": "context_supports_reading",
+        "source_digest": "bfb8f4fe447b1a0ab2bd0a822cbfcfc705a955a291de47e0ddad414e92fa9978",
+        "decision_sha256": "2d1a10d1ca7848e7e481a4d5317a34d500e13b3a2d59b44074c218dc92349af9"
+      },
+      {
+        "decision_id": "D0075",
+        "observation_digest": "df34260238b148996714cfe36d91f3f880a7592d2c5ebf7d72b4f7b2ea1aa58f",
+        "trace_digest": "17b0f64ab483d63b821f045847ca5f201fbdf0769944167a34fd810346705d07",
+        "surface": "군인",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001160.1#WARW2500001160.1.2252"
+        },
+        "considered": [
+          {
+            "lemma": "군",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "군인",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "군인",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "429dcc3b7d61e9496879cfcaa2453b82c9bbb6ba5c98cf5c731cd959bab32893",
+        "decision_sha256": "d2adbe0211ee8a25e24f323d2609b83e057a993d274f2787161c9526e8ec465a"
+      },
+      {
+        "decision_id": "D0076",
+        "observation_digest": "e362dc6b70f3473f10d264d5a103bb86e92f192cf66f4da12d951ee761e417f0",
+        "trace_digest": "530d0d42b7902d849f7dc4c2869a8fc889af7b846aeb2ac4bb7361afebde12b8",
+        "surface": "고독을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.202"
+        },
+        "considered": [
+          {
+            "lemma": "고독",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "독",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "고독",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "83c010dd2ecb3c4e779d271f5b507eec97ab88fcc766328776276a1e143dcd36",
+        "decision_sha256": "f203e63d509b923a66dde911e9218972a207cdf84ff239bf2cca8e3bf2db3e67"
+      },
+      {
+        "decision_id": "D0077",
+        "observation_digest": "e59fa4ddcda3e2285f24eb090767a921b3aa1de76bec3e2229390e6bf18a0694",
+        "trace_digest": "63de9fd1487ed2ce578771ab7876a78c78be809213f217f3d834795ddc8ef045",
+        "surface": "구역을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.1294"
+        },
+        "considered": [
+          {
+            "lemma": "구역",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "역",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "구역",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "7e45b04a79c363d1bd4b9e3809e355d6c1f7272ab5d4dd56ea7855941853fd69",
+        "decision_sha256": "d930f238a8ce5c366be05577815818949829b0c45bb9f3a25f3358b317ed6b35"
+      },
+      {
+        "decision_id": "D0078",
+        "observation_digest": "e5a2304690a34f5ab1640862bacd816e380791036dde064d07a78e74c6a9a7ae",
+        "trace_digest": "36196400dbb734a22953a10c887ace8a1d470e42e816521bb3d5b65e4018aab6",
+        "surface": "간직해",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005400.1#WARW2500005400.1.1261"
+        },
+        "considered": [
+          {
+            "lemma": "간직",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "간직하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "간직하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "d7bc91ff1749aafedaa84eadd3cc7e685adbeb494228d2282aa6d77e027f561e",
+        "decision_sha256": "6f6f01322be1739d92a9e6451e23b3730ef0fbbc5231e3101daf05ae0e2391c2"
+      },
+      {
+        "decision_id": "D0079",
+        "observation_digest": "e5dfd1e7cacf09d8de27e80001c78bc98ecc446a56adf5395bc28e0727abf4d2",
+        "trace_digest": "77823f22e3f5afc9ea856f2f4b3450ec1a6a83aae41fb66b622e51f721230641",
+        "surface": "고함이",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001560.1#WARW2500001560.1.429"
+        },
+        "considered": [
+          {
+            "lemma": "고하다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "고함",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "고함이",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "고함",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "3e15074f0477eef150cfc26f83e6d5948e1cdcc6408e0ee8ef061ee4fef73416",
+        "decision_sha256": "8f7509ecd5a73e5a7d5b07b7ff1c9a0d927086718187f7410ab9261ea0943ba6"
+      },
+      {
+        "decision_id": "D0080",
+        "observation_digest": "ec5530eaf219264ca6ada794b341798132a020b7eb4bbe6b6fc4b3befc3c8912",
+        "trace_digest": "341c6fd0c163e1f1e3bf73b9ac343cea609a37ee7c0272002f5da90f7988dc35",
+        "surface": "고대의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.355"
+        },
+        "considered": [
+          {
+            "lemma": "고대",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "고대",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "148e85828bd956dcafe7ec95e79c9bb10e2d163f890a1d5933e46ca88fe77375",
+        "decision_sha256": "8c38dee8df8baf30c65827fa5cf000f3005c89922caecd27abadb07de158c694"
+      },
+      {
+        "decision_id": "D0081",
+        "observation_digest": "ee899727469c4557029d9b617e46f807e1f6273bc26186bd318270036eb9c08c",
+        "trace_digest": "37cbc395b64c0596ef9b067d4503c01a1816f20d684d0c547327ed79f677254d",
+        "surface": "경기",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.90"
+        },
+        "considered": [
+          {
+            "lemma": "경기",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경기",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "c38743568c42efe243bf4727d38c149ec2113d0311a4174b80b9dac495f48e6c",
+        "decision_sha256": "e30acccb0351d227c6ff4d30a5ae9fe9d52a743b8043e91143e1202614ad1750"
+      },
+      {
+        "decision_id": "D0082",
+        "observation_digest": "ef9e1541fdb283800ea372fa7c5b337753049a70b4d7ba9d26b022e482304345",
+        "trace_digest": "87bda41ff482d7a59307d798be499789878d7e7ad62d244112168cbb33284160",
+        "surface": "강제할",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500005120.1#WARW2500005120.1.2216"
+        },
+        "considered": [
+          {
+            "lemma": "강제",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "강제하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강제하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "197d4ccc9c9e0b411f30cfde1ba859c85108db1a205c8edbc4863cdecb1223bf",
+        "decision_sha256": "db0488b4febfd1720ed1f59566964992cefa14992639bd0d626b4d325e498f78"
+      },
+      {
+        "decision_id": "D0083",
+        "observation_digest": "f185bfeee3b5d116e44a166dfbc08f3b9394d3e9dbf5e9f4a3cdcd77624d2a1d",
+        "trace_digest": "cc97261fc8f2229e869890e661a43d5bd08c5b8a6e512ca45742e228a74b3579",
+        "surface": "경멸을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1022"
+        },
+        "considered": [
+          {
+            "lemma": "경",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "경멸",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경멸",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2dee23528c0478b04c707b34bc32c750a11bac493e61cc2d480bc2dc387eb431",
+        "decision_sha256": "bdc62e20aff2471e541d885af720888076a72d6be37dee092f48a9b74b5397d8"
+      },
+      {
+        "decision_id": "D0084",
+        "observation_digest": "f2f864b058663fad59bc87ec88e9fbe5eab2093f852cf428955d8ac5e855f518",
+        "trace_digest": "a2e9922574c1393ec354aa2aba69f2c0fdecf4242466c40311c991c0615a987e",
+        "surface": "공장의",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001360.1#WARW2500001360.1.279"
+        },
+        "considered": [
+          {
+            "lemma": "공장",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "공장의",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "공장",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "75b0a56513dc4e9832ab41e81f1440ebbb34a12179bf2a087a0695b5af62c0bb",
+        "decision_sha256": "d60d135bd39740c3c819d9eb6bf97cb1b717edff46a8f3504ef30c1dd4005afa"
+      },
+      {
+        "decision_id": "D0085",
+        "observation_digest": "f3607aee73265ea8daf832354191bcc38337462d7da5526b9985a91d1cebcf39",
+        "trace_digest": "a8d6a22751ca7f1a8f69fceba032299f4ea2243f85bce46b6cc4d48e7ea8532e",
+        "surface": "강제",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1311"
+        },
+        "considered": [
+          {
+            "lemma": "강",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "강제",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "강제",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "dee574a3d77b72ca401df97321f38319b62cd6cb02f860a181128e73d1b112c5",
+        "decision_sha256": "13ffb56947c42efc09f750a4bc9c4553feafe8f24d133e0acdbad6c899f48938"
+      },
+      {
+        "decision_id": "D0086",
+        "observation_digest": "f3fa051a6dcb48a683d0132d5cce51900513265b68132803f677b08800cc4c34",
+        "trace_digest": "c85a252789b9d93e94bc425fdb4829af0f64e6e81bdb9a2a31a1afe1267da26c",
+        "surface": "고독한",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000880.1#WARW2500000880.1.207"
+        },
+        "considered": [
+          {
+            "lemma": "고독",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "고독하다",
+            "pos": "adjective",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "고독한",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "고독하다",
+        "pos": "adjective",
+        "reason_code": "context_supports_reading",
+        "source_digest": "eb352bbc044eaaf2cda8d059c85a7ff82022f3c56d4cc399ea98c60f3a900a2b",
+        "decision_sha256": "9ef09fde48a5ba6b4cab9d0d2a384d04de76298e62495bb80e52bf2983469147"
+      },
+      {
+        "decision_id": "D0087",
+        "observation_digest": "f4087a3e691028cb07f2e3e83203de823c0767f3878071af800053d5936495ed",
+        "trace_digest": "b601a7abdd01cb93f84cf41bb142b478c413b8ebac1dd0b1f5fabb13f79d20cf",
+        "surface": "고함",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.4047"
+        },
+        "considered": [
+          {
+            "lemma": "고하다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "고함",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "고함",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2e841b65cfb4ff487eb973ca4f0e99ec84dc626e468d04cfd69aa86c5de88472",
+        "decision_sha256": "c917c3466424cce311992e76b3fe2e4acf941271c2aa47cba81518b4c9dff300"
+      },
+      {
+        "decision_id": "D0088",
+        "observation_digest": "f556e8128ec90031171bd0e052cdd6445b6bf2f2eece4d7f4ea0246e0e238271",
+        "trace_digest": "70ba1de887d0a43387b04f52f4937890f9ff0c6d138dda2f2727a5c5373b72a0",
+        "surface": "간직할",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001090.1#WARW2500001090.1.1010"
+        },
+        "considered": [
+          {
+            "lemma": "간직",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "간직하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "간직하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "6a498a331e506ea13fae9abf7be48e57be58dbab70e163df0852a5211c0a1e73",
+        "decision_sha256": "463f721ce496453b0b8954d0f6cd3dd43920ac2966d013340ea92af8eefd9139"
+      },
+      {
+        "decision_id": "D0089",
+        "observation_digest": "f7c9a502bfd66854b8ff37aff5a6eef642d0f94dcc66380fbc55df1e794fe5f1",
+        "trace_digest": "11349eb7ab162b4c81cbb622fd88c20078dedd3d3439a339b07a482fd99be8e7",
+        "surface": "감상할",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001360.1#WARW2500001360.1.195"
+        },
+        "considered": [
+          {
+            "lemma": "감상",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "감상하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "감상하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "64b0ba1efe105ab23db71e211452b0f56b822d1145e1ab35f2e098e6a44fda2d",
+        "decision_sha256": "b17c92dc12472a18910985b06368159304bfde013d1a184c7419dbb91ccb5e17"
+      },
+      {
+        "decision_id": "D0090",
+        "observation_digest": "f7ed552ec9dac945fdde912ea059175f9843b448680477caf07c5549c872a2b3",
+        "trace_digest": "c037bfb1c537bec8a8c8d45ff0c1fa2a5b0e1393efdd1bf82d262f91b9d53aea",
+        "surface": "과일을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001090.1#WARW2500001090.1.502"
+        },
+        "considered": [
+          {
+            "lemma": "과",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "과일",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "과일",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "b448fcafb2f83c26a4d32ebdf8fb132cae348253ad115b0e2c6089d4137b1a6c",
+        "decision_sha256": "6e091197fc0de5e7da071b497d057453d494f8cd4800816a6e6d814c667db39e"
+      },
+      {
+        "decision_id": "D0091",
+        "observation_digest": "f8522e2c6f8df8f5af7fa2dbdf5a1e36f7815a0a100bcd8c3550511477fe94ed",
+        "trace_digest": "1a291fbad5fa32113f7c450e5a40ec5bd58e4b99aa8c4ab390d650bd7253b105",
+        "surface": "공개할",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001370.1#WARW2500001370.1.594"
+        },
+        "considered": [
+          {
+            "lemma": "공개",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "공개하다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "공개하다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "a3c19c8e30b6921772002149910323bb507708a29f5f5146f1f5a4d1a65a4764",
+        "decision_sha256": "d4d525758d4e4484ab2e1cd1000cb207d890ffcf8255bab362414ac5f6518338"
+      },
+      {
+        "decision_id": "D0092",
+        "observation_digest": "fb2b2de43d3f34eb2945b9c314a97d7a0ecd41109f8f9f2b16ce7aebd61ecfd8",
+        "trace_digest": "8d83dd9030c6c68944eed22b235556e8a6379dc4dbc8307ef934014bcc166926",
+        "surface": "과일",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500001390.1#WARW2500001390.1.17"
+        },
+        "considered": [
+          {
+            "lemma": "과",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "과일",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "과일",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2cf8c9e0812e3b2f3fb857f2d8d65cce10e91366993a773e7686c0e1ce950958",
+        "decision_sha256": "15f8bfb8376d44aa0541a8982687604fb05ea44c11077703b07ae6779880bd29"
+      },
+      {
+        "decision_id": "D0093",
+        "observation_digest": "fc0cdcf2b6677d9f0b1d1972c09b293c9f82091037d6162bc253ae35e1a475ec",
+        "trace_digest": "fa34f61a14b433eb3e50e30f3f96c29321e6b598fb70f79f44e2163327f5973b",
+        "surface": "경쟁",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.6030"
+        },
+        "considered": [
+          {
+            "lemma": "경쟁",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "쟁",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "codex"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "경쟁",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2291ae815395d27a027c290746c01dc800661196569e3dc207958de7dfb2f54a",
+        "decision_sha256": "3568cffe2a70c8f29a9429e2159c1686a6d06689feffa70011a825ba8545fc25"
+      }
+    ],
+    "decisions_sha256": "3bb93f8716f083e8b4cb7abcf63d6c66ac2845772b21e520183f094266a31435"
+  }
+}

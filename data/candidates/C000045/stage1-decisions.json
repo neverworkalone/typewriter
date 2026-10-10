@@ -1,0 +1,153 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000045",
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "덜",
+      "pos": "adverb",
+      "surface": "덜한",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.545"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "605fa8e5dd523716a17147eb7bf1cf45c3f9e06b4ffa465ee87810a52458de0a"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "6f2b05d183df68f3c0832327168dcd1b27a2491959bd55ad3f90b0741bf8cad4",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "384911de47752cddfe638a98419dee4b3c66e1d4bd02e25eb468696165c67b72",
+        "alternatives": [
+          {
+            "lemma": "덜하다",
+            "pos": "adjective",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "보다",
+      "pos": "verb",
+      "surface": "보지",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.19"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "8281a3bf56cc54d875da29d2f09dfd57ec8285f62432b8e110f0963ab8b8c0af"
+      },
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "observation_digest": "359a2aaffb14dc6e714d57fa50ecf836269240b88c5a35c5fc6d611d75b137c1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "c2940a055ff31bb3d0fdab2ba95e22e4a92d1947239383aa2649c952c480a0c6",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "보다",
+      "pos": "verb",
+      "surface": "보지는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000250.1#WARW2500000250.1.625"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "2da82d00a92ff467b38f8a18c8f08ad6fb9ae046fe6eb32a544c5b7e9e300896"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "3ebb240b470c5248320b1bd8bf430f13d2a9a14d8b2d80966dad0adc8bcf3260",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "1be6d34449ba87024c4ec189cc00bd5fce9cba93a6682dbd39628287b149b787",
+        "alternatives": [
+          {
+            "lemma": "보지",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "파",
+      "pos": "noun",
+      "surface": "과격파는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005790.1#WARW2500005790.1.890"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5316a1fc97ae483dbb0fd5e67874e38869d1c0139c78daa3e2ac516d5d83609a"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "90ce06b5e8ee3bcda9b760c3d9e9f4e63af890b8e3204b212c2cc7ef8ec17906",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "e7ef100240e4952cada4266ca37531fa39b74c2f4fb15d7e14dad9c69493cf42",
+        "alternatives": [
+          {
+            "lemma": "과격파",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+  }
+}

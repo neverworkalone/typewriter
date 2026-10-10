@@ -1,0 +1,87 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000025",
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "보다",
+      "pos": "verb",
+      "surface": "보기를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000880.1#WARW2500000880.1.192"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5f625ca3bbd8a04f348004aafacf2c856efe1bda5ba246432b26c88359eedeb5"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "b8b4b5a4e5d5e91a1dd7bc6c2f534fccce4c7cb178eecf7a5b087f273240fd9b",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "adc45dd4f5f29af2153cf2ad0c1c356dc1683ac6a4e5264226e8a0466f46a7b5",
+        "alternatives": [
+          {
+            "lemma": "보기",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "서다",
+      "pos": "verb",
+      "surface": "서면",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.467"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "25780bf50c079871feb1636ea61a89d0d10a0c6863176a00da543311481bb93b"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "2a29f84c74def7bad8cf1fd3aa6ec272c8eeeb9c9bd9ab6cd24c50347022dc81",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "7e3fe92acbda4fbf3f409116f8426ef802257d4d5f6059dfb443e7c8d4250a5d",
+        "alternatives": [
+          {
+            "lemma": "서면",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+  }
+}
