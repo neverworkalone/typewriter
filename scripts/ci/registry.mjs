@@ -103,6 +103,7 @@ export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
   fast: CI_FAST_CATEGORY_ORDER,
   normal: CI_ALL_CATEGORY_ORDER,
   all: CI_ALL_CATEGORY_ORDER,
+  pr: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
   candidates: CI_ALL_CATEGORY_ORDER,
   historical: CI_ALL_CATEGORY_ORDER,
@@ -139,6 +140,7 @@ export const CI_LEVEL_EXECUTION_POLICY = Object.freeze({
   fast: Object.freeze({ tiers: Object.freeze(['normal']), includeManual: false }),
   normal: Object.freeze({ tiers: Object.freeze(['normal']), includeManual: false }),
   all: Object.freeze({ tiers: Object.freeze(['normal', 'deep']), includeManual: false }),
+  pr: Object.freeze({ tiers: Object.freeze(['normal', 'deep']), includeManual: false }),
   deep: Object.freeze({ tiers: Object.freeze(['deep']), includeManual: false }),
   candidates: Object.freeze({ tiers: Object.freeze(['candidate']), includeManual: false }),
   historical: Object.freeze({ tiers: Object.freeze(['historical']), includeManual: true }),
@@ -161,6 +163,12 @@ const RAW_CI_CATEGORIES = Object.freeze({
       inProcessCheck('Validate frozen M6-4 quality audit snapshot', 'm6-4-frozen-snapshot'),
       {
         ...testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
+        schedule: 'affected',
+        paths: [
+          'scripts/validate/target-inventory.mjs',
+          'scripts/inventory/generate-target-inventory.mjs',
+          'tests/target-inventory.test.mjs',
+        ],
         deepInputs: [
           'data/canonical/',
           'data/inventory/',
@@ -289,6 +297,20 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
           ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs', 'scripts/relation/relation-correction.test.mjs'],
         ),
+        schedule: 'affected',
+        paths: [
+          'scripts/relation',
+          'scripts/factory/relation-amendments.mjs',
+          'scripts/factory/relation-corrections.mjs',
+          'scripts/factory/semantic-authority.mjs',
+          'scripts/factory/validate.mjs',
+          'scripts/validate/semantic-audit.mjs',
+          'scripts/relation/pilot.test.mjs',
+          'scripts/relation/backfill-queue.test.mjs',
+          'scripts/relation/backfill-queue-cli.test.mjs',
+          'scripts/relation/backfill-apply.test.mjs',
+          'scripts/relation/relation-correction.test.mjs',
+        ],
         deepInputs: [
           'data/canonical/',
           'data/candidates/C000003/',
@@ -411,6 +433,12 @@ const RAW_CI_CATEGORIES = Object.freeze({
     checks: [
       {
         ...testCheck('tests/artifact-policy.test.mjs', 'Test artifact policy'),
+        schedule: 'affected',
+        paths: [
+          'scripts/validate/artifact-policy.mjs',
+          'config/artifact-policy.json',
+          'tests/artifact-policy.test.mjs',
+        ],
         deepInputs: [
           'data/batches/m5-12a-semantic-decisions.json',
           'data/validation/canonical-semantic-decision-source.json',
@@ -450,6 +478,18 @@ const RAW_CI_CATEGORIES = Object.freeze({
     checks: [
       {
         ...globalCanonicalAuditCheck(),
+        schedule: 'affected',
+        paths: [
+          'scripts/ci/global-canonical-audit.mjs',
+          'scripts/validate/canonical-context.mjs',
+          'scripts/validate/canonical-jsonl.mjs',
+          'scripts/validate/dataset-integrity.mjs',
+          'scripts/validate/lexical-quality.mjs',
+          'scripts/validate/semantic-audit.mjs',
+          'scripts/validate/surface-form-projection.mjs',
+          'scripts/validate/target-inventory.mjs',
+          'schema/canonical-record.schema.json',
+        ],
         deepInputs: [
           'data/canonical/',
           'data/inventory/',
@@ -458,6 +498,12 @@ const RAW_CI_CATEGORIES = Object.freeze({
       },
       {
         ...testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
+        schedule: 'affected',
+        paths: [
+          'scripts/batch/m5-12a-',
+          'scripts/batch/authored-semantic-decision-source.mjs',
+          'tests/m5-12a.test.mjs',
+        ],
         deepInputs: [
           'data/batches/m5-12a-semantic-decisions.json',
           'data/batches/m5-12-base-canonical/',
@@ -468,10 +514,25 @@ const RAW_CI_CATEGORIES = Object.freeze({
       },
       {
         ...inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
+        schedule: 'affected',
+        paths: [
+          'scripts/verify/m2-pipeline.mjs',
+          'scripts/build',
+          'scripts/normalize',
+          'schema',
+          'scripts/validate/canonical-jsonl.mjs',
+        ],
         deepInputs: ['data/canonical/'],
       },
       {
         ...testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+        schedule: 'affected',
+        paths: [
+          'scripts/build',
+          'scripts/normalize',
+          'schema',
+          'tests/reproducibility.test.mjs',
+        ],
         deepInputs: ['data/batches/m5-10a-wave-a-base-canonical/'],
       },
       independentBuildProof(pnpmCheck(
@@ -500,6 +561,15 @@ const RAW_CI_CATEGORIES = Object.freeze({
             '--fixed-level-evidence=config/ci-level-evidence.json',
           ],
         ),
+        schedule: 'affected',
+        paths: [
+          'scripts/benchmark',
+          'scripts/build',
+          'scripts/normalize',
+          'schema',
+          'config/ci-level-evidence.json',
+          'tests/scale-benchmark.test.mjs',
+        ],
         deepInputs: ['data/canonical/'],
       },
     ],

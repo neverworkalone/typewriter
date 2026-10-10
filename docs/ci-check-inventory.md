@@ -7,15 +7,28 @@ estimate, tier, schedule, trigger, consumer, and keep/move reason.
 that the inventory has exactly one row for every live registration and that its
 owner, contract, tier, and schedule stay in sync with the runner.
 
-Deep data dependencies are recorded as `deep_input_paths` on their owning
-registry rows. The Deep Gate derives these paths from the registry. Non-Deep
-documentation and product files are an exact allowlist in
+Deep data dependencies are recorded as `deep_input_paths`; they describe
+check inputs but do not by themselves trigger a PR Deep run. Contract
+dependencies are recorded separately as `dependency_paths` and select only
+their owning check(s). Non-Deep product files are an exact allowlist in
 [`scripts/ci/deep-gate-known-non-deep-paths.json`](../scripts/ci/deep-gate-known-non-deep-paths.json);
 pure Stage 1 candidate skips are limited to `manifest.json` and `candidates.jsonl`
-at the candidate directory root when no Deep check registers that input. Any
-unlisted path runs Deep. The Deep decision and any resulting `ci:all` run live
-inside the existing `Validate and test Typewriter` PR check; classification
-does not publish a separate status check.
+at the candidate directory root. Routine canonical, relation-backfill,
+inventory, reviewed-candidate, and report data must pass changed-row/schema or
+JSON shape validation before classification can send the PR through Normal.
+The existing Normal validators continue to enforce semantic authority,
+provenance, integrity, freshness and product behavior.
+
+The existing `Validate and test Typewriter` PR check runs `ci:normal` for
+ordinary changes, `ci:pr --base <sha> --head <sha>` for Normal plus affected
+Deep checks, or `ci:all` for full current-system Deep coverage. CI runner,
+workflow, registry and classifier changes; unknown paths; and invalid data
+evidence fail closed to `ci:all`. Docs-only changes retain the exact-HEAD
+Normal skip, and pure Stage 1 artifacts retain `ci:candidates`. The check
+summary records exact revisions, change class, matched dependencies, selected
+and skipped checks, and the chosen gate. A final step records the gates that
+actually ran and the job result. Classification remains within this single PR
+status check.
 
 ## Classification
 

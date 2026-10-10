@@ -154,6 +154,7 @@
     "ci:candidates": "node scripts/ci/run-category.mjs candidates",
     "ci:normal": "node scripts/ci/run-category.mjs normal",
     "ci:all": "node scripts/ci/run-category.mjs all",
+    "ci:pr": "node scripts/ci/run-category.mjs pr",
     "ci:deep": "node scripts/ci/run-category.mjs deep",
     "ci:historical": "node scripts/ci/run-category.mjs historical",
     "test": "pnpm run ci:normal",

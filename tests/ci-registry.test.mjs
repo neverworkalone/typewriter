@@ -77,7 +77,10 @@ test('CI categories are ordered and every category has a descriptive label', () 
       assert.equal(typeof check.command, 'function');
       assert.equal(check.owner, categoryName);
       assert.ok(CI_EXECUTION_TIERS.includes(check.tier));
-      assert.equal(check.schedule, check.tier === 'historical' ? 'manual' : 'always');
+      const expectedSchedule = check.tier === 'historical'
+        ? 'manual'
+        : check.tier === 'deep' ? 'affected' : 'always';
+      assert.equal(check.schedule, expectedSchedule);
       assert.equal(check.protectedContract, check.label);
       assert.ok(Array.isArray(check.deepInputs));
       if (check.tier === 'historical') assert.ok(check.historicalScopes.length > 0);
@@ -122,6 +125,7 @@ test('Issue #464 inventory covers every registered check and records its decisio
     assert.equal(item.protected_contract, registration.protectedContract);
     assert.equal(item.selected_tier, registration.tier);
     assert.equal(item.schedule, registration.schedule);
+    assert.deepEqual(item.dependency_paths ?? [], registration.paths);
     assert.deepEqual(item.historical_scopes, registration.historicalScopes);
     assert.deepEqual(item.deep_input_paths ?? [], registration.deepInputs);
     assert.ok(item.trigger.length > 0);
@@ -497,6 +501,7 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.fast, CI_FAST_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.pr, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.historical, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.candidates, CI_ALL_CATEGORY_ORDER);
@@ -507,6 +512,7 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.normal.tiers, ['normal']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.deep.tiers, ['deep']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.all.tiers, ['normal', 'deep']);
+  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.pr.tiers, ['normal', 'deep']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.candidates.tiers, ['candidate']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.historical.tiers, ['historical']);
   assert.equal(CI_LEVEL_EXECUTION_POLICY.historical.includeManual, true);
@@ -611,29 +617,46 @@ test('ci:historical requires one valid scope and selects only matching manual re
   );
 });
 
-test('Deep coverage selects exact-head ci:all inside the existing PR check and fails closed on unknown paths', async () => {
+test('Deep gate separates validated data from affected contracts and fails closed', async () => {
+  const deepCheckIds = (result) => result.selectedDeepChecks ?? [];
+  const benchmarkId = 'deep/Run 100K/500K/1M release-shaped performance and scale benchmark';
+  const relationId = 'batch/Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply';
+  const targetInventoryId = 'canonical/Test target inventory';
+  const m512aId = 'deep/Test M5-12A admission and promotion contract';
+
   for (const pathValue of [
     '.github/workflows/deep.yml',
     '.github/workflows/ci.yml',
     'scripts/ci/run-category.mjs',
-    'scripts/factory/admission.mjs',
-    'scripts/relation/backfill-queue.mjs',
-    'tests/m5-12a.test.mjs',
-    'scripts/relation/backfill-apply.test.mjs',
-    'data/canonical/m5-15.jsonl',
-    'data/candidates/C000003/candidates.jsonl',
-    'data/inventory/m5-target-promotions.jsonl',
-    'data/relation-backfill/R000001.json',
-    'data/reviews/C000003/manifest.json',
-    'data/validation/canonical-semantic-decision-source.json',
-    'data/batches/m5-12a-semantic-decisions.json',
+    'scripts/ci/deep-gate.mjs',
     'tests/ci-registry.test.mjs',
-    'config/ci-level-evidence.json',
+    'tests/ci-runner.test.mjs',
+    'new/unknown/path.txt',
+    'data/new-deep-input.json',
+    'data/candidates/C000001/new-file.json',
+    'data/candidates/C000001/nested/candidates.jsonl',
   ]) {
-    assert.equal(classifyDeepGatePaths([pathValue]).runDeep, true, pathValue);
+    assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'full', pathValue);
   }
+
+  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs'])), [benchmarkId]);
+  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['config/ci-level-evidence.json'])), [benchmarkId]);
+  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['tests/target-inventory.test.mjs'])), [targetInventoryId]);
+  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['tests/m5-12a.test.mjs'])), [m512aId]);
+  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['scripts/relation/backfill-apply.test.mjs'])), [relationId]);
+  assert.deepEqual(
+    deepCheckIds(classifyDeepGatePaths(['schema/canonical-record.schema.json'])).sort(),
+    [
+      'deep/Run current-revision SQLite reproducibility audit',
+      'deep/Run 100K/500K/1M release-shaped performance and scale benchmark',
+      'deep/Run single-pass global canonical audit',
+      'deep/Test reproducible dictionary builds',
+    ].sort(),
+  );
+
   for (const pathValue of [
     'docs/review-toolchain.md',
+    'docs/new-deep-gate-contract.md',
     'data/candidates/C000001/candidates.jsonl',
     'data/candidates/C000001/manifest.json',
     'src/components/SearchBar.vue',
@@ -643,57 +666,124 @@ test('Deep coverage selects exact-head ci:all inside the existing PR check and f
     'tests/issue-219-search.test.mjs',
     'tests/historical-replay-cli.test.mjs',
   ]) {
-    assert.equal(classifyDeepGatePaths([pathValue]).runDeep, false, pathValue);
+    assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'none', pathValue);
   }
-  for (const pathValue of [
-    'docs/new-deep-gate-contract.md',
-    'src/ui/new-deep-only-invariant.ts',
-    'web/src/new-deep-contract.js',
-    'public/new-deep-contract.json',
-    'data/new-deep-input.json',
-    'data/candidates/C000001/new-file.json',
-    'data/candidates/C000001/nested/candidates.jsonl',
-  ]) {
-    assert.equal(classifyDeepGatePaths([pathValue]).runDeep, true, pathValue);
-  }
-  assert.equal(classifyDeepGatePaths(['tests/new-unregistered-check.test.mjs']).runDeep, true);
-  assert.equal(classifyDeepGatePaths(['new/unknown/path.txt']).runDeep, true);
   assert.equal(
-    classifyDeepGatePaths(['docs/review-toolchain.md', 'scripts/ci/run-category.mjs']).runDeep,
-    true,
-  );
-  assert.equal(classifyDeepGatePaths([]).runDeep, true);
-  assert.equal(classifyDeepGatePaths(['../outside']).runDeep, true);
-  assert.equal(classifyDeepGateDiff(undefined, 'head').runDeep, true);
-  assert.equal(classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('') }).runDeep, true);
-  assert.equal(
-    classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('docs/review-toolchain.md\0') }).runDeep,
-    false,
+    classifyDeepGatePaths(['data/canonical/records.jsonl']).deepMode,
+    'full',
+    'path-only canonical evidence cannot select the routine-data exemption',
   );
   assert.equal(
-    classifyDeepGateDiff('base', 'head', {
-      runGit: () => Buffer.from('docs/review-toolchain.md\0docs/new-review-contract.md\0'),
-    }).runDeep,
-    true,
+    classifyDeepGatePaths(['data/canonical/records.jsonl'], {
+      validatedDataPaths: new Set(['data/canonical/records.jsonl']),
+    }).deepMode,
+    'none',
+  );
+  assert.equal(classifyDeepGatePaths(['tests/new-unregistered-check.test.mjs']).deepMode, 'full');
+  assert.equal(classifyDeepGatePaths(['docs/review-toolchain.md', 'scripts/ci/run-category.mjs']).deepMode, 'full');
+  assert.equal(classifyDeepGatePaths([]).deepMode, 'full');
+  assert.equal(classifyDeepGatePaths(['../outside']).deepMode, 'full');
+  assert.equal(classifyDeepGateDiff(undefined, 'head').deepMode, 'full');
+  assert.equal(classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('') }).deepMode, 'full');
+  assert.equal(
+    classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('docs/review-toolchain.md\0') }).deepMode,
+    'none',
   );
   assert.equal(
-    classifyDeepGateDiff('base', 'head', { runGit: () => { throw new Error('git diff failed'); } }).runDeep,
-    true,
+    classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('scripts/benchmark/sqlite-runtime.mjs\0') }).deepMode,
+    'selective',
+  );
+  assert.equal(
+    classifyDeepGateDiff('base', 'head', { runGit: () => { throw new Error('git diff failed'); } }).deepMode,
+    'full',
   );
 
-  const workflow = await readFile(
-    path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'),
-    'utf8',
+  const canonicalPath = 'data/canonical/pilot.jsonl';
+  const canonicalFile = await readFile(path.resolve(TEST_DIRECTORY, '../', canonicalPath), 'utf8');
+  const originalRecord = JSON.parse(canonicalFile.split('\n')[0]);
+  const changedRecord = { ...originalRecord, lemma: `${originalRecord.lemma}확인` };
+  const canonicalRunGit = (nextRecord) => (args) => {
+    if (args[0] === 'diff' && args.includes('--name-only')) return Buffer.from(`${canonicalPath}\0`);
+    if (args[0] === 'diff' && args.includes('--unified=0')) {
+      return Buffer.from(`--- a/${canonicalPath}\n+++ b/${canonicalPath}\n@@ -1 +1 @@\n-${JSON.stringify(originalRecord)}\n+${JSON.stringify(nextRecord)}\n`);
+    }
+    throw new Error(`unexpected git command: ${args.join(' ')}`);
+  };
+  const validCanonical = classifyDeepGateDiff('base', 'head', { runGit: canonicalRunGit(changedRecord) });
+  assert.equal(validCanonical.deepMode, 'none');
+  assert.equal(validCanonical.changeClass, 'routine-data');
+  const malformedCanonical = classifyDeepGateDiff('base', 'head', {
+    runGit: canonicalRunGit({ ...changedRecord, unknown_schema_field: true }),
+  });
+  assert.equal(malformedCanonical.deepMode, 'full');
+  assert.equal(malformedCanonical.reason, 'routine-data-validation-failed');
+
+  const packetPath = 'data/relation-backfill/R999999.json';
+  const packet = JSON.parse(await readFile(path.resolve(TEST_DIRECTORY, '../data/relation-backfill/R000004.json'), 'utf8'));
+  packet.packet_id = 'R999999';
+  const packetRunGit = (value) => (args) => {
+    if (args[0] === 'diff' && args.includes('--name-only')) return Buffer.from(`${packetPath}\0`);
+    if (args[0] === 'show') return Buffer.from(JSON.stringify(value));
+    throw new Error(`unexpected git command: ${args.join(' ')}`);
+  };
+  assert.equal(classifyDeepGateDiff('base', 'head', { runGit: packetRunGit(packet) }).deepMode, 'none');
+  const malformedPacket = structuredClone(packet);
+  malformedPacket.packet_id = 'R000004';
+  assert.equal(classifyDeepGateDiff('base', 'head', { runGit: packetRunGit(malformedPacket) }).deepMode, 'full');
+
+  const deletedPacketRunGit = (deleted) => (args) => {
+    if (args[0] === 'diff' && args.includes('--diff-filter=D')) {
+      return Buffer.from(deleted ? `${packetPath}\0` : '');
+    }
+    if (args[0] === 'diff' && args.includes('--name-only')) return Buffer.from(`${packetPath}\0`);
+    if (args[0] === 'show' && args[1] === `base:${packetPath}`) return Buffer.from(JSON.stringify(packet));
+    if (args[0] === 'show') throw new Error('head blob is unavailable');
+    throw new Error(`unexpected git command: ${args.join(' ')}`);
+  };
+  assert.equal(
+    classifyDeepGateDiff('base', 'head', { runGit: deletedPacketRunGit(true) }).deepMode,
+    'none',
+    'a confirmed deletion validates the prior packet shape before Normal handles integrity',
   );
+  const unreadableHead = classifyDeepGateDiff('base', 'head', {
+    runGit: deletedPacketRunGit(false),
+  });
+  assert.equal(unreadableHead.deepMode, 'full');
+  assert.equal(unreadableHead.reason, 'routine-data-validation-failed');
+
+  const allChecks = CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => CI_CATEGORIES[categoryName].checks);
+  const normalFactoryContract = allChecks.find((check) => (
+    check.tier === 'normal' && check.command({}).args.includes('scripts/factory/validate.mjs')
+  ));
+  assert.ok(normalFactoryContract, 'Normal must validate source-bound Stage 3 and relation-backfill history');
+  assert.equal(normalFactoryContract.schedule, 'always');
+  const normalSemanticAuthorityTest = CI_CATEGORIES.lexical.checks.find((check) => (
+    check.tier === 'normal' && check.testFiles?.includes('tests/semantic-audit-decision-source.test.mjs')
+  ));
+  assert.ok(normalSemanticAuthorityTest, 'Normal must retain semantic-authority regressions');
+  const allDeep = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all).filter((check) => check.tier === 'deep');
+  assert.equal(allDeep.length, 8, 'scheduled/manual ci:all keeps all current-system Deep checks');
+  const affectedBenchmarkChecks = selectChecksForPolicy(allChecks, {
+    tiers: ['deep'],
+    changedPaths: ['scripts/benchmark/sqlite-runtime.mjs'],
+    selectedDeepCheckIds: deepCheckIds(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs'])),
+  });
+  assert.deepEqual(affectedBenchmarkChecks.map((check) => `${check.owner}/${check.label}`), [benchmarkId]);
+
+  const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   assert.match(workflow, /^name: CI$/mu);
   assert.match(workflow, /^  validate:$/mu);
   assert.match(workflow, /name: Classify changed files/u);
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u);
   assert.match(workflow, /continue-on-error: true/u);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
-  assert.match(workflow, /pnpm run ci:all/u);
+  assert.match(workflow, /run: pnpm run ci:pr -- --base/u);
+  assert.match(workflow, /run: pnpm run ci:all/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success'/u);
-  assert.match(workflow, /steps\.changes\.outputs\.run_deep == 'true'/u);
+  assert.match(workflow, /steps\.changes\.outputs\.deep_mode == 'selective'/u);
+  assert.match(workflow, /steps\.changes\.outputs\.deep_mode == 'full'/u);
+  assert.match(workflow, /name: Record executed CI gate/u);
+  assert.match(workflow, /- Final gate result: \$\{FINAL_GATE:-unknown\}/u);
   assert.doesNotMatch(workflow, /name: Classify Deep coverage/u);
   assert.doesNotMatch(workflow, /^  classify:$/mu);
 });
@@ -706,12 +796,12 @@ test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate g
   const block = workflow.split('      - name: Classify changed files\n')[1]
     ?.split('      - name: Install pinned dependencies\n')[0];
   assert.ok(block, 'workflow must classify PR changes before validation');
-  const scriptBlock = block.split('\n          # The Deep path decision stays inside this PR check; it is not a separate check run.\n')[0];
+  const scriptBlock = block.split('\n          # Deep impact and exact-check selection stay inside this PR check.\n')[0];
   const script = scriptBlock.split('        run: |\n')[1]
     ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u, 'Deep classification must run inside the existing classifier step');
-  assert.match(workflow, /if: \$\{\{ steps\.changes\.outcome == 'success' && steps\.changes\.outputs\.run_level == 'candidates'/u);
+  assert.match(workflow, /if: \$\{\{ steps\.changes\.outputs\.run_level == 'candidates' \}\}/u);
   assert.match(workflow, /if: \$\{\{ steps\.changes\.outcome == 'success' && steps\.changes\.outputs\.run_level == 'normal'/u);
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
@@ -853,10 +943,15 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /run: pnpm run ci:normal/u);
   assert.equal((workflow.match(/run: pnpm run ci:normal/gu) ?? []).length, 1);
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u);
-  assert.match(workflow, /name: Deep validation \(Normal \+ current Deep\)/u);
+  assert.match(workflow, /name: Selective Deep validation \(Normal \+ affected current Deep\)/u);
+  assert.match(workflow, /name: Full Deep validation \(Normal \+ all current Deep\)/u);
   assert.match(workflow, /run: pnpm run ci:all/u);
+  assert.match(workflow, /run: pnpm run ci:pr -- --base/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success'/u);
-  assert.match(workflow, /steps\.changes\.outputs\.run_deep == 'true'/u);
+  assert.match(workflow, /steps\.changes\.outputs\.deep_mode == 'selective'/u);
+  assert.match(workflow, /steps\.changes\.outputs\.deep_mode == 'full'/u);
+  assert.match(workflow, /name: Record executed CI gate/u);
+  assert.match(workflow, /FINAL_GATE: \$\{\{ job\.status \}\}/u);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
   assert.doesNotMatch(workflow, /name: Classify Deep coverage/u);
   assert.doesNotMatch(workflow, /^  classify:$/mu);
@@ -870,6 +965,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.equal((workflow.match(/run: pnpm run ci:candidates/gu) ?? []).length, 1);
   assert.doesNotMatch(workflow, /run: pnpm run ci:fast/u);
   assert.equal(packageJson.scripts['ci:candidates'], 'node scripts/ci/run-category.mjs candidates');
+  assert.equal(packageJson.scripts['ci:pr'], 'node scripts/ci/run-category.mjs pr');
   assert.equal(packageJson.scripts['ci:historical'], 'node scripts/ci/run-category.mjs historical');
   assert.equal((workflow.match(/run: pnpm run ci:all/gu) ?? []).length, 1);
 

@@ -412,6 +412,94 @@ test('ci:all completes Normal before Deep checks in the same domain and preserve
   }
 });
 
+test('ci:pr CLI recomputes exact-head impact and runs Normal before only the selected Deep check', async (t) => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-pr-selection-'));
+  t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
+  const ledgerPath = path.join(temporaryDirectory, 'ledger.jsonl');
+  await writeFile(ledgerPath, '', 'utf8');
+  const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
+  const canonicalRevision = 'synthetic-pr-current-revision';
+  const normalCheck = registerCheck({
+    label: 'synthetic Normal completeness gate',
+    command: () => ({ executable: 'synthetic', args: ['normal'] }),
+  }, { owner: 'canonical', tier: 'normal' });
+  const selectedDeep = CI_CATEGORIES.deep.checks.find(
+    (check) => check.label === 'Run 100K/500K/1M release-shaped performance and scale benchmark',
+  );
+  const unrelatedDeep = CI_CATEGORIES.batch.checks.find(
+    (check) => check.label === 'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
+  );
+  const categories = {
+    canonical: { label: 'Synthetic canonical gates', checks: [normalCheck, selectedDeep, unrelatedDeep] },
+  };
+  const executed = [];
+
+  await runCli(['pr', '--', '--base', 'a'.repeat(40), '--head', 'b'.repeat(40)], {
+    getCurrentHead: () => 'b'.repeat(40),
+    classify: (base, head) => {
+      assert.equal(base, 'a'.repeat(40));
+      assert.equal(head, 'b'.repeat(40));
+      return {
+        deepMode: 'selective',
+        reason: 'registered-deep-contract-dependency',
+        selectedDeepChecks: [`${selectedDeep.owner}/${selectedDeep.label}`],
+        changedPaths: ['tests/scale-benchmark.test.mjs'],
+      };
+    },
+    categories,
+    levels: { fast: ['canonical'], pr: ['canonical'] },
+    createSession: async () => ({
+      canonicalContext: {
+        contractVersion: 'synthetic-context-v1',
+        canonicalDirectory,
+        canonicalRevision,
+        fileCount: 1,
+        recordCount: 1,
+        senseCount: 1,
+        relationCount: 0,
+        candidateCount: 1,
+        startCount: 1,
+        referenceOnlyCount: 0,
+        expressionCount: 0,
+        searchFormCount: 1,
+        statistics: {},
+        metrics: { sqlite_build_count: 0 },
+      },
+      completedChecks: new Set(),
+      temporaryDirectory,
+      processMetrics: { path: ledgerPath },
+      phase: 'normal',
+    }),
+    log: () => {},
+    execute: async (command, context, check) => {
+      executed.push(`${context.phase}:${check.label}`);
+      if (check === normalCheck) {
+        await appendFile(ledgerPath, `${JSON.stringify({
+          type: 'sqlite-build',
+          pid: process.pid,
+          count: 1,
+          canonical_revision: canonicalRevision,
+          canonical_directory: canonicalDirectory,
+          phase: 'normal',
+        })}\n`);
+        context.canonicalContext.metrics.sqlite_build_count += 1;
+      }
+      assert.ok(command.args.length > 0);
+    },
+  });
+
+  assert.deepEqual(executed, [
+    'normal:synthetic Normal completeness gate',
+    `deep:${selectedDeep.label}`,
+  ]);
+  await assert.rejects(
+    runCli(['pr', '--base', 'a'.repeat(40), '--head', 'b'.repeat(40)], {
+      getCurrentHead: () => 'c'.repeat(40),
+    }),
+    /checkout HEAD does not match/u,
+  );
+});
+
 test('ci:deep searches every domain scope and runs only current-system Deep checks', async () => {
   const deepCheck = registerCheck({
     label: 'Deep check owned by canonical scope',

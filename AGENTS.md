@@ -381,14 +381,20 @@ of both levels and the weekly **Deep** workflow. The separate **Historical**
 workflow runs weekly and via `workflow_dispatch`, selecting registered scopes
 individually. `ci:historical` still requires exactly one registered `--scope`
 and runs only checks tagged for that scope; it has no all-history CLI default. The existing `Validate and test Typewriter` PR check
-classifies Deep coverage and runs `ci:all` on the exact PR HEAD when a Deep
-contract, runner, check, or workflow may have changed. The path classifier is
-not a separate PR check.
-Deep check data inputs belong in each check's `deepInputs` registry metadata.
-Only exact files in the known non-Deep path contract and the two root candidate
-artifacts (`manifest.json`, `candidates.jsonl`) may skip Deep when they are not
-registered as Deep inputs; unlisted paths, including new descendants of known
-directories, run Deep. A skipped Deep run is not evidence that Deep ran.
+always runs the applicable Normal gate and uses `ci:pr` to run only affected
+Deep checks at the exact PR HEAD. `ci:all` retains full current-system Deep
+coverage for scheduled/manual runs and fail-closed classification. The path
+classifier is not a separate PR check.
+Deep data inputs belong in each check's `deepInputs` registry metadata;
+`dependency_paths` separately name changes that invalidate that check's
+contract. A data file appearing in `deepInputs` does not alone select the
+check. Routine canonical and reviewed relation changes must pass schema/shape
+classification and the existing Normal source-bound validators. Docs-only
+changes retain the exact-head Normal skip, and pure root candidate artifacts
+retain `ci:candidates`. CI runner/registry/workflow/classifier edits, unknown
+paths, missing/empty diff evidence and malformed data fail closed to full
+Deep. A skipped Deep check must be listed with its reason; it never counts as
+completed Deep evidence.
 
 For data changes, validation may include:
 
