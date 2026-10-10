@@ -7,55 +7,65 @@ Consult `domain-model.md` only if the affected contract needs it.
 
 ## Lexical meaning and relation decisions
 
-- Canonical data is the editable source of truth, never generated drafts or
-  confidence scores. Keep schema, IDs, input order and generated metadata honest.
-- Review gloss, POS, sense boundaries, `direct` and `antonym` at dictionary-grade
-  precision. A `direct` relation must be substitutable **for the bound sense**.
-- Review `near`, `mood`, `scene`, `sensory`, `action` and `association` for
-  useful, honestly typed **sense-bound** relationships; plausible subjective
-  associations are not lexical equivalence.
-- Judge `near` against the **actual source AND target sense definitions and POS**,
-  not shared keywords in glosses. A broader/narrower term (hypernym/hyponym),
-  figurative vs concrete meaning, state vs action/attitude, or trigger vs action
-  normally belongs in `association`, not `near`.
-- Check any **already-authored reverse link** between those same senses for
-  consistent judgments. Do not invent a reverse link merely for symmetry.
-- Sense distinctions, ranking and grouping must prioritize the intended writing
-  use over noise. Relation enrichment **must not** block an otherwise valid
-  lemma/POS/sense: zero relations are allowed at admission and direct search.
-- Subjective meaning/ranking judgments require **source-bound editorial QA**;
-  don't turn them into blanket mechanical synonym validators or reject all
-  records without a subjective relation.
+**Apply the current owner decision in [relation-editorial-policy.md](relation-editorial-policy.md).**
+It overrides stricter historical near/direct substitution and broader/narrower
+exclusion criteria. These rules apply to new Stage 2 authoring, Stage D backfill,
+Stage 1 focused review and Stage 2 independent review.
+
+- Canonical is the source of truth; preserve real source/target sense bindings,
+  POS, relation types, directions, source order, provenance and digests.
+- **Dictionary: direct (유의어) and antonym (반의어)** are assessed for actual
+  lexical synonymy and opposition of bound senses. A synonym need not replace
+  its peer in every sentence or have identical gloss breadth, intensity or
+  register. Differences alone cannot justify demotion to near/association.
+  Reject genuinely unsupported dictionary relationships. No relevance field.
+- **Writer exploration: near/mood (말의 결), scene/sensory/action/association
+  (연상)** should enrich a writer's language and imagination. Preserve any
+  intelligible creative path, even when figurative, unusual, broader/narrower,
+  cross-POS or contextual. A preference for other words or a rigid
+  word-substitution rule is not a veto. Association is not a dumping ground
+  for legitimate dictionary synonyms.
+- Reject clear broken sense bindings, plainly incoherent connections without
+  a defensible writer path, illegal target-POS/type contracts, or real
+  structural/semantic errors. A plausible but marginal link should ordinarily
+  receive **lower relevance**, not be removed.
+- **Primary exploratory review:** compare new relevance 1–9 **against
+  already-authored canonical and proposed relations of the SAME source sense
+  and UI group**, not against unrelated words. Inspect actual ranks and
+  writer-facing reasons, flag significant inversions and unjustified
+  preference. If 사람→엄마 is rank 2, a new 사람→아빠 rated 1 normally merits
+  2 absent a real distinction. Equal values are fine. 4 vs 5 is ordinarily
+  subjective, **not a blocker**. Relevance is ordinal display priority,
+  **not** semantic distance or confidence.
+- Reverse links need valid source/target identities and preserved provenance;
+  do not create them for symmetry or require identical relevance across
+  different source senses. Valid entries with zero relations remain
+  admissible and searchable. Avoid mechanical subjective scoring validators.
 
 ## Systemic relation defects — Stage 2 and re-review
 
-If one relation misclassifies a broader term as `near`, do **not** simply reject
-the named pair and accept a later producer claim that “all similar pairs passed”.
+A **proven shared defect** requires an actual incorrect behavior and a
+demonstrable shared rule or implementation flaw. One subjective near/mood/
+association judgment, a broader definition or a slight relevance disagreement
+**does not** establish a systemic defect.
 
-1. Establish the erroneous **common rule** and the **affected population**:
-   all matching relations in the batch/current affected material, related
-   same-source senses, previously authored reverse links and any other
-   production path sharing that classification rule (including future batches).
-2. For each at-risk member, examine the **source sense, actual bound target
-   sense and evidence**. Use relevant positive controls (legitimate `near`)
-   and negative controls (hypernyms, semantic-topic neighbors, mismatched POS,
-   state/action shifts). Inspect actual results, not just a summary count.
-3. Demand a **producer/common authoring-rule correction** plus a generalizable
-   regression or source-bound editorial check that covers applicable existing
-   data and future additions. A one-pair patch or a regression hard-coded to
-   the cited words is insufficient.
-4. Re-review the **entire identified affected class and changed results**,
-   including new or unchanged misclassifications, before claiming class-wide
-   resolution. Account for omitted, held or unverifiable members explicitly.
-   A representative probe can orient the review; it **cannot** certify full
-   population coverage or override independent verification.
-5. Match effort to demonstrated risk. Do **not** demand an exhaustive scan of
-   unrelated canonical records on every routine PR.
-
-For mechanical invariants (schema, reference integrity, duplicate IDs,
-self-references, missing targets, contradictory fixed metadata), use shared
-validators and their CI evidence; only machine-checkable general rules belong
-in validators. See `docs/review-toolchain.md` if the code or test changes.
+1. Identify the actual cause and **bounded affected population**. For
+   dictionary errors, verify the paired bound senses and relevant positive/
+   negative controls. For relevance errors, demonstrate materially wrong
+   same-source/same-group rank comparisons, not an abstract disagreement.
+2. When genuinely shared, fix the relevant producer/policy path and verify
+   the affected existing records and applicable future Stage 2/Stage D paths.
+   Do not demand a word-specific exception or mechanical creativity validator.
+3. Re-review the demonstrated affected class after the fix; do not inflate
+   one questionable association into a mandatory audit of all near relations,
+   all historical reverse links, or unrelated canonical senses.
+4. **Blocking discipline:** Stage 1/2 -1 requires a concrete, material
+   lexical, structural, provenance or user-facing error, or an evidenced
+   substantial relevance inversion. Plausible creative routes and minor
+   subjective ranking adjustments are **non-blocking feedback**.
+5. Mechanical invariants (IDs, reference integrity, duplicate/self edges,
+   missing targets, inconsistent fixed metadata) still use shared validators
+   and their ordinary CI gate; see [review-toolchain.md](review-toolchain.md).
 
 ## Factory hand-off, honesty and fail-closed decisions
 
