@@ -56,14 +56,3 @@ export function preservesReviewedRecord(reviewedRecord, canonicalRecord) {
       === JSON.stringify(projectedRelations(reviewedRelations));
   });
 }
-
-export function preservesReviewedRecords(reviewedRecords, canonicalRecords) {
-  if (!Array.isArray(reviewedRecords) || !Array.isArray(canonicalRecords)
-    || reviewedRecords.length !== canonicalRecords.length) return false;
-  return reviewedRecords.every((reviewed, index) => (
-    preservesReviewedRecord(
-      reviewed?.record ?? reviewed,
-      canonicalRecords[index]?.record ?? canonicalRecords[index],
-    )
-  ));
-}

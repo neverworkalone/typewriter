@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   LEXICAL_PRODUCTION_STAGE_IDS,
+  assertAdmissionInputsBoundToProducer,
   createLexicalProductionPayload,
   createLexicalProductionRun,
   createLexicalProductionState,
@@ -344,17 +345,54 @@ test('shared producer binds selected and prospective values to their exact prede
     baseB,
     appendEnrichment(selectedWithRelation, 'w904'),
   ];
-  const historicalProspectiveSpec = (output) => prospectiveSpec(output, {
+  const relationBoundSpec = (output) => prospectiveSpec(output, {
     baseRecords: [baseWithRelation, baseB],
     selectedRecords: [selectedWithRelation],
   });
+  const exactReviewedOutput = [baseWithRelation, baseB, selectedWithRelation];
   assert.doesNotThrow(() => createLexicalProductionPayload(
-    historicalProspectiveSpec(relationEnrichedOutput),
+    relationBoundSpec(exactReviewedOutput),
   ));
-  const changedOriginalRelation = structuredClone(relationEnrichedOutput);
+  assert.throws(
+    () => createLexicalProductionPayload(relationBoundSpec(relationEnrichedOutput)),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+    'live producer output rejects an unreviewed relation appended to a base or selected record',
+  );
+  const changedOriginalRelation = structuredClone(exactReviewedOutput);
   changedOriginalRelation[0].senses[0].relations[0].target = 'w999';
   assert.throws(
-    () => createLexicalProductionPayload(historicalProspectiveSpec(changedOriginalRelation)),
+    () => createLexicalProductionPayload(relationBoundSpec(changedOriginalRelation)),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+});
+
+test('admission inputs reject prospective relation additions absent from producer review', () => {
+  const batchId = 'future-batch-unreviewed-relation';
+  const { payloads } = emitThroughAudit(batchId);
+  const reviewedRecord = payloads.selection.output.selected_records[0];
+  const prospectiveRecords = payloads.prospective_canonical.output;
+  const admissionInputs = {
+    candidateRecords: payloads.candidate_intake.output,
+    baseRecords: [],
+    reviewedRecordInfos: [{ record: reviewedRecord, decision: 'included' }],
+    prospectiveRecords,
+    semanticAudit: { semantic_audit: batchId },
+  };
+
+  assert.doesNotThrow(() => assertAdmissionInputsBoundToProducer(payloads, admissionInputs));
+
+  const enrichedWithoutReview = structuredClone(prospectiveRecords);
+  enrichedWithoutReview[0].senses[0].relations = [{
+    target: 'w999',
+    target_sense: 'w999-s1',
+    type: 'association',
+    note: 'Unreviewed prospective relation.',
+  }];
+  assert.throws(
+    () => assertAdmissionInputsBoundToProducer(payloads, {
+      ...admissionInputs,
+      prospectiveRecords: enrichedWithoutReview,
+    }),
     (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );
 });

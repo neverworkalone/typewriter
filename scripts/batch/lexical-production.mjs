@@ -16,7 +16,6 @@ import {
   validateLexicalSemanticReview,
 } from '../validate/lexical-quality.mjs';
 import { validateLexicalDispositionBasis } from '../validate/lexical-disposition.mjs';
-import { preservesReviewedRecord } from '../validate/relevance-projection.mjs';
 import { verifyGrandfatheredHistoricalDispositions } from './historical-disposition-source.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
@@ -819,9 +818,9 @@ export function validateLexicalProduction({
     if (!selectedForAdmission) continue;
     const reviewedRecord = recordOf(entry.reviewed_record);
     const prospectiveRecord = prospectiveRecordsById.get(reviewedRecord.id);
-    if (!prospectiveRecord || !preservesReviewedRecord(reviewedRecord, prospectiveRecord)) {
+    if (!prospectiveRecord || JSON.stringify(prospectiveRecord) !== JSON.stringify(reviewedRecord)) {
       fail(
-        `production.reviews[${index}].reviewed_record fields or original relations differ from prospective_records`,
+        `production.reviews[${index}].reviewed_record is not present unchanged in prospective_records`,
         'LEXICAL_PRODUCTION_BINDING',
       );
     }
