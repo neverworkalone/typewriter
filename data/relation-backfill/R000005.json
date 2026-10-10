@@ -1,0 +1,2212 @@
+{
+ "packet_id": "R000005",
+ "relation_corrections": [
+  {
+   "source_record_id": "w002",
+   "source_sense_id": "w002-s1",
+   "source_gloss_sha256": "4d55c130b7bc7a1a348e47adf03aa000048ae7729366c609efa35b9de1753934",
+   "target_meaning_sha256": "ea73c21e5a99d93ceb43d6fe8a74f65e7561a77688cf4aecbd1282a06bec6079",
+   "previous_relation": {
+    "target": "w027",
+    "target_sense": "w027-s1",
+    "type": "association",
+    "note": "초조는 결과를 기다리며 마음이 급해진 불안이라 불안의 한 갈래이고, 불안 일반과 바꿔 쓰면 뜻이 좁아진다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w027",
+    "target_sense": "w027-s1",
+    "type": "mood",
+    "note": "결과를 기다리며 마음이 급해지는 초조함은 불안의 조급한 기색을 드러낸다.",
+    "relevance": 4
+   },
+   "position": 2,
+   "rationale": "w002 w002-s1 → w027-s1: 기다림에서 오는 초조는 불안과 같은 불편한 마음의 결을 보이는 정서적 색조다."
+  },
+  {
+   "source_record_id": "w002",
+   "source_sense_id": "w002-s1",
+   "source_gloss_sha256": "4d55c130b7bc7a1a348e47adf03aa000048ae7729366c609efa35b9de1753934",
+   "target_meaning_sha256": "249a7f79dec52599e885d965542e2fe889cc19cc399f084ecfb4bb05e4d88e6f",
+   "previous_relation": {
+    "target": "w016",
+    "target_sense": "w016-s1",
+    "type": "association",
+    "note": "두려움은 위험을 앞두고 느끼는 무서운 마음이라, 확신이 없어 편하지 않은 불안과 이어지지만 대상이 분명한 공포 쪽에 기운다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w016",
+    "target_sense": "w016-s1",
+    "type": "near",
+    "note": "불안과 두려움은 마음이 놓이지 않는 상태를 공유하지만, 두려움에는 위협을 마주한 기색이 더 선명하다.",
+    "relevance": 4
+   },
+   "position": 3,
+   "rationale": "w002 w002-s1 → w016-s1: bound 뜻은 불확실성에서 오는 불안과 위험을 앞둔 두려움의 가까움을 보여 주며, 위협의 유무가 표현의 결을 가른다."
+  },
+  {
+   "source_record_id": "w002",
+   "source_sense_id": "w002-s1",
+   "source_gloss_sha256": "4d55c130b7bc7a1a348e47adf03aa000048ae7729366c609efa35b9de1753934",
+   "target_meaning_sha256": "d867351f5d17b1a8cf2e244b7b41d0d894cd190a5fc1d1725e5d65cd58fbcbc3",
+   "previous_relation": {
+    "target": "w399",
+    "target_sense": "w399-s1",
+    "type": "association",
+    "note": "긴장감은 팽팽하게 걸린 압력으로 장면의 긴장 쪽에 기울어, 확신이 없어 편하지 않은 불안과 느낌의 방향이 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w399",
+    "target_sense": "w399-s1",
+    "type": "near",
+    "note": "불안이 마음을 놓지 못하게 하고, 긴장감은 그 팽팽한 상태를 몸이나 장면에 드러낸다.",
+    "relevance": 4
+   },
+   "position": 4,
+   "rationale": "w002 w002-s1 → w399-s1: 불안과 긴장감은 팽팽하게 놓이지 않는 상태를 공유하는 writer-facing nuance다."
+  },
+  {
+   "source_record_id": "w004",
+   "source_sense_id": "w004-s1",
+   "source_gloss_sha256": "d124e8ac02656e3ffc97b3f06ec0e3c664da9a8792f8a3f620b77877c7c6500e",
+   "target_meaning_sha256": "5ac861af2596f3640f2c76926ffc1a21a15c3cfc590c2d1e7edd4babea69c847",
+   "previous_relation": {
+    "target": "w012",
+    "target_sense": "w012-s1",
+    "type": "association",
+    "note": "미련은 끝난 일을 놓지 못하는 마음이라, 떠난 대상을 다시 바라는 그리움과 이어지지만 놓지 못함 쪽에 기운다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w012",
+    "target_sense": "w012-s1",
+    "type": "mood",
+    "note": "떠난 대상을 다시 바라는 그리움에서, 쉽게 놓지 못하는 미련의 정서로 이어진다.",
+    "relevance": 5
+   },
+   "position": 2,
+   "rationale": "w004 w004-s1 → w012-s1: 그리움과 미련은 떠나거나 끝난 대상을 향한 정서이지만, 다시 가까워지길 바람과 놓지 못함의 차이를 유지한다."
+  },
+  {
+   "source_record_id": "w005",
+   "source_sense_id": "w005-s1",
+   "source_gloss_sha256": "4a30ddb132b5a43e2b684df5908d5af23c4e9d9be6059ed9efd3246cee92bd1a",
+   "target_meaning_sha256": "4f9ce3c1d73611836972a010bcd6f53196b76b778f6ac87b66f5b944d8c95dd6",
+   "previous_relation": {
+    "target": "w396",
+    "target_sense": "w396-s1",
+    "type": "association",
+    "note": "아쉬움은 바라던 만큼 이루어지지 않아 모자라게 느끼는 마음이라, 기대한 관심을 받지 못해 상한 서운함과 일부만 겹친다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w396",
+    "target_sense": "w396-s1",
+    "type": "near",
+    "note": "기대한 관심을 받지 못해 상한 서운함에서, 바라던 만큼 이루어지지 않은 아쉬움의 결로 옮겨 볼 수 있다.",
+    "relevance": 5
+   },
+   "position": 3,
+   "rationale": "w005 w005-s1 → w396-s1: 두 bound 뜻은 기대가 충족되지 않았을 때의 마음을 공유하되, 대인 배려와 바람의 미충족이라는 차이를 보존한다."
+  },
+  {
+   "source_record_id": "w009",
+   "source_sense_id": "w009-s1",
+   "source_gloss_sha256": "c6bff44cf02e2040f36325958d1e6e9f55488bfd472c74f9fcfced98c6f009a9",
+   "target_meaning_sha256": "85c641d3cc042e1dce686007e6b1ce9fefb1f7de93ff8d4e30ad9c4856627daf",
+   "previous_relation": {
+    "target": "w316",
+    "target_sense": "w316-s2",
+    "type": "association",
+    "note": "팽팽하다는 분위기나 관계에 긴장이 높은 상태를 말해, 몸과 마음의 긴장 자체인 긴장과 대상이 다르다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w316",
+    "target_sense": "w316-s2",
+    "type": "near",
+    "note": "몸과 마음에 모인 긴장이 관계나 장면에 팽팽하게 걸린 모습으로 이어진다.",
+    "relevance": 6
+   },
+   "position": 2,
+   "rationale": "w009 w009-s1 → w316-s2: 긴장과 팽팽한 분위기는 힘이 느슨하지 않은 상태를 공유하지만, target은 관계나 장면에 한정된 묘사라 낮은 우선순위를 둔다."
+  },
+  {
+   "source_record_id": "w018",
+   "source_sense_id": "w018-s1",
+   "source_gloss_sha256": "55a1aa3fb5118e37d551f76a4d0b32d573ccb837828af74cec630d186d92f6f0",
+   "target_meaning_sha256": "e8aaae0b520fdd078dae4b55137ba2f0f009fae724f9d7abf8d91ffeb07f1565",
+   "previous_relation": {
+    "target": "w579",
+    "target_sense": "w579-s1",
+    "type": "association",
+    "note": "환희는 더없이 기쁜 마음이 크게 솟는 상태라, 기쁨의 극단적인 한 정도이지 기쁨 일반과 바꿔 쓸 수 없다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w579",
+    "target_sense": "w579-s1",
+    "type": "direct",
+    "note": "더없이 크게 솟는 즐거움을 가리킬 때 환희는 기쁨과 같은 감정의 강한 표현이다."
+   },
+   "position": 1,
+   "rationale": "w018 w018-s1 → w579-s1: 기쁨과 환희는 bound gloss에서 즐거운 마음이라는 사전적 의미를 공유한다. 환희의 강도 차이는 유의어 관계를 부정하지 않는다."
+  },
+  {
+   "source_record_id": "w018",
+   "source_sense_id": "w018-s1",
+   "source_gloss_sha256": "55a1aa3fb5118e37d551f76a4d0b32d573ccb837828af74cec630d186d92f6f0",
+   "target_meaning_sha256": "c9e74669fb18ec0538708526551a16d35ccf317a30a0bf0d7e200ad8156874b2",
+   "previous_relation": {
+    "target": "w647",
+    "target_sense": "w647-s1",
+    "type": "association",
+    "note": "희열은 큰 기쁨을 얻을 때의 벅찬 즐거움이라, 기쁨의 강한 한 모습이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w647",
+    "target_sense": "w647-s1",
+    "type": "direct",
+    "note": "큰 기쁨이 벅찬 즐거움으로 치솟는 감정을 가리킬 때 희열을 쓸 수 있다."
+   },
+   "position": 2,
+   "rationale": "w018 w018-s1 → w647-s1: 기쁨과 희열은 bound gloss에서 즐거운 마음이라는 사전적 의미를 공유하며, 희열의 강도와 성취 맥락은 synonymy를 배제하지 않는다."
+  },
+  {
+   "source_record_id": "w018",
+   "source_sense_id": "w018-s1",
+   "source_gloss_sha256": "55a1aa3fb5118e37d551f76a4d0b32d573ccb837828af74cec630d186d92f6f0",
+   "target_meaning_sha256": "b3902ee27110af9421e6937856febd470743fa22eac3711f8c4e9505f3aa34de",
+   "previous_relation": {
+    "target": "w301",
+    "target_sense": "w301-s1",
+    "type": "association",
+    "note": "감격은 뜻밖의 기쁨이나 감동이 북받치는 마음이라, 기쁨보다 감동에 기울어 바꿔 쓰기 어렵다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w301",
+    "target_sense": "w301-s1",
+    "type": "mood",
+    "note": "기쁨이 뜻밖의 감동과 함께 크게 북받치는 순간의 정서를 더한다.",
+    "relevance": 4
+   },
+   "position": 3,
+   "rationale": "w018 w018-s1 → w301-s1: 감격은 기쁨에 감동이 겹쳐 북받치는 정서이므로, 같은 감정군의 writer-facing mood path로 남긴다."
+  },
+  {
+   "source_record_id": "w018",
+   "source_sense_id": "w018-s1",
+   "source_gloss_sha256": "55a1aa3fb5118e37d551f76a4d0b32d573ccb837828af74cec630d186d92f6f0",
+   "target_meaning_sha256": "334d4c8a4a00ce9151e59602ed257fe2fd1815694e8640c3d01cd0708eeac4ee",
+   "previous_relation": {
+    "target": "w632",
+    "target_sense": "w632-s1",
+    "type": "association",
+    "note": "만족감은 바라는 일이 이루어져 흡족한 마음이라, 기쁨의 한 갈래이지 기쁨 일반과 바꿔 쓸 수는 없다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w632",
+    "target_sense": "w632-s1",
+    "type": "near",
+    "note": "바라는 일이 이루어진 기쁨이 마음의 흡족함으로 기울 때 만족감이 가깝다.",
+    "relevance": 5
+   },
+   "position": 4,
+   "rationale": "w018 w018-s1 → w632-s1: 만족감은 이루어진 바람에서 오는 흡족함으로 기쁨과 맞닿지만 동일한 감정은 아니다."
+  },
+  {
+   "source_record_id": "w019",
+   "source_sense_id": "w019-s1",
+   "source_gloss_sha256": "c0ef19d12340d1908793de332d35c3c331804058b2670613c315f77cd4e58f14",
+   "target_meaning_sha256": "ab9bbbea10aa48ce5c9dfce728219fcb1a35a7780557cd422c24701803d4ac19",
+   "previous_relation": {
+    "target": "w357",
+    "target_sense": "w357-s1",
+    "type": "association",
+    "note": "서러움은 억울함과 외로움이 겹친 아픔이라, 슬픔 일반보다 좁은 한 갈래다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w357",
+    "target_sense": "w357-s1",
+    "type": "near",
+    "note": "잃음이나 좌절에서 온 슬픔에 억울함과 외로움이 겹치면 서러움의 결을 띤다.",
+    "relevance": 5
+   },
+   "position": 4,
+   "rationale": "w019 w019-s1 → w357-s1: 서러움은 슬픔의 한 양상으로, bound gloss의 억울함과 외로움이라는 추가 정서를 보존한다."
+  },
+  {
+   "source_record_id": "w019",
+   "source_sense_id": "w019-s1",
+   "source_gloss_sha256": "c0ef19d12340d1908793de332d35c3c331804058b2670613c315f77cd4e58f14",
+   "target_meaning_sha256": "45d0cd43ad1c5ffcbad0919b8ca135be5f285a87d1d0493f55a375101618633f",
+   "previous_relation": {
+    "target": "w2142",
+    "target_sense": "w2142-s1",
+    "type": "association",
+    "note": "찡함은 슬픔이나 감동이 짧고 강하게 가슴을 건드리는 느낌이라, 가라앉고 아픈 슬픔과 지속과 방향이 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w2142",
+    "target_sense": "w2142-s1",
+    "type": "mood",
+    "note": "슬픔이 짧고 강하게 가슴을 건드리는 순간의 감정에 가깝다.",
+    "relevance": 5
+   },
+   "position": 8,
+   "rationale": "w019 w019-s1 → w2142-s1: 찡함은 슬픔이나 감동에 대한 짧은 감정 반응이라, 슬픔에서 갈라지는 writer-facing mood path다."
+  },
+  {
+   "source_record_id": "w021",
+   "source_sense_id": "w021-s1",
+   "source_gloss_sha256": "2c20ff59f26533998dd72c121e5dea6faaa43d0251228d378f3162906f5673ef",
+   "target_meaning_sha256": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
+   "previous_relation": {
+    "target": "w281",
+    "target_sense": "w281-s1",
+    "type": "association",
+    "note": "소원은 이루어지기를 간절히 바라는 일 자체를 가리켜, 가능성을 믿는 마음인 희망보다 바라는 대상에 기운다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w281",
+    "target_sense": "w281-s1",
+    "type": "near",
+    "note": "바라는 일이 이루어질 가능성을 믿는 희망에서, 이루어지기를 간절히 바라는 소원의 결로 이어진다.",
+    "relevance": 4
+   },
+   "position": 5,
+   "rationale": "w021 w021-s1 → w281-s1: 희망과 소원은 바람을 공유하지만 가능성을 믿는 마음과 바라는 대상/마음의 차이가 있어 direct 대신 near로 둔다."
+  },
+  {
+   "source_record_id": "w026",
+   "source_sense_id": "w026-s1",
+   "source_gloss_sha256": "65c3775081a6f129dabe18d4ba2c9467d4eb159eb6f45ff77729ea41ed2b5912",
+   "target_meaning_sha256": "77ac3563420ee9063bd819de00e93c2410bf88b76a438b73b4a702e26b6e3b70",
+   "previous_relation": {
+    "target": "w361",
+    "target_sense": "w361-s2",
+    "type": "association",
+    "note": "담백하다는 말투나 태도에 꾸밈이 없다는 뜻이라, 감정의 흔들림이 없어 차분한 담담하다와 대상이 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w361",
+    "target_sense": "w361-s2",
+    "type": "near",
+    "note": "감정에 흔들리지 않는 담담함에서 꾸밈없는 말투와 태도의 담백함을 떠올릴 수 있다.",
+    "relevance": 6
+   },
+   "position": 5,
+   "rationale": "w026 w026-s1 → w361-s2: 담담함과 담백함은 과장되지 않은 태도라는 연결을 갖지만, 감정의 안정과 꾸밈없음은 다른 의미축이다."
+  },
+  {
+   "source_record_id": "w028",
+   "source_sense_id": "w028-s1",
+   "source_gloss_sha256": "d86e2a8490ebe726263d02c21928676c54c2a8e93362397f430c344afc665b6e",
+   "target_meaning_sha256": "481546be97aee4434b66722b68d3650130455b725022a91a9c4dc6f80c862099",
+   "previous_relation": {
+    "target": "w788",
+    "target_sense": "w788-s1",
+    "type": "association",
+    "note": "난감함은 어찌할 방법을 찾기 어려운 난처한 마음이라, 앞이 보이지 않아 답답한 막막함보다 당황의 성격이 강하다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w788",
+    "target_sense": "w788-s1",
+    "type": "near",
+    "note": "방향이나 방법이 보이지 않아 막막할 때, 어찌할지 어려운 난감함으로 표현의 결을 옮길 수 있다.",
+    "relevance": 5
+   },
+   "position": 3,
+   "rationale": "w028 w028-s1 → w788-s1: 막막함과 난감함은 방법을 찾기 어려운 상황을 공유하되, 답답함과 당혹스러움의 nuance를 유지한다."
+  },
+  {
+   "source_record_id": "w028",
+   "source_sense_id": "w028-s1",
+   "source_gloss_sha256": "d86e2a8490ebe726263d02c21928676c54c2a8e93362397f430c344afc665b6e",
+   "target_meaning_sha256": "d4b320ec07a482324f27ee62f01d0cd5ebcc41d8f9cc99faddcfedc1a44d42a8",
+   "previous_relation": {
+    "target": "w2144",
+    "target_sense": "w2144-s1",
+    "type": "association",
+    "note": "아득함은 너무 멀어 손에 잡히지 않는 느낌이라, 방향이나 방법을 못 찾는 막막함과 거리감의 면이 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w2144",
+    "target_sense": "w2144-s1",
+    "type": "near",
+    "note": "앞이 보이지 않는 막막함에서 너무 멀어 손에 닿지 않는 듯한 아득함으로 감각이 이어진다.",
+    "relevance": 6
+   },
+   "position": 4,
+   "rationale": "w028 w028-s1 → w2144-s1: 막막함과 아득함은 해결 불가능하게 느끼는 상황을 잇지만, 거리감이 더해진 target이므로 낮은 relevance를 둔다."
+  },
+  {
+   "source_record_id": "w029",
+   "source_sense_id": "w029-s1",
+   "source_gloss_sha256": "5037fa8cbd575a032f40f7426bd07ee4f7170bd6eb304b39399a5050b0728eca",
+   "target_meaning_sha256": "839ebc3d51cbd5f27707c91db741d55c57983bc8173ef1353f889d61d621ecd6",
+   "previous_relation": {
+    "target": "w303",
+    "target_sense": "w303-s1",
+    "type": "association",
+    "note": "허탈감은 애쓴 일이 끝난 뒤 힘이 빠지는 마음이라, 곁이나 무언가가 빠져 채워지지 않는 허전함과 계기가 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w303",
+    "target_sense": "w303-s1",
+    "type": "mood",
+    "note": "무언가 빠져 채워지지 않는 허전함이 애쓴 뒤 힘이 빠지는 허탈감과 이어진다.",
+    "relevance": 5
+   },
+   "position": 6,
+   "rationale": "w029 w029-s1 → w303-s1: 허탈감은 기대나 노력이 끝난 뒤의 정서로, 허전함과 감정의 결을 공유하면서 계기 차이를 유지한다."
+  },
+  {
+   "source_record_id": "w029",
+   "source_sense_id": "w029-s1",
+   "source_gloss_sha256": "5037fa8cbd575a032f40f7426bd07ee4f7170bd6eb304b39399a5050b0728eca",
+   "target_meaning_sha256": "c2e67a1f9945f398ac710445ca0106d0e106b5d49f7e61bdfa379259ef53d8a0",
+   "previous_relation": {
+    "target": "w397",
+    "target_sense": "w397-s1",
+    "type": "association",
+    "note": "허무함은 애써 이룬 일에서 의미가 빠져나간 마음이라, 허전함보다 의미의 상실에 기운다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w397",
+    "target_sense": "w397-s1",
+    "type": "mood",
+    "note": "마음이 비어 허전할 때, 기대나 성취에서 의미를 잃은 허무함의 정서가 가까이 놓인다.",
+    "relevance": 5
+   },
+   "position": 7,
+   "rationale": "w029 w029-s1 → w397-s1: 허무함은 의미가 빠진 느낌을 더해 허전함과 겹치지만 같은 상태로 단정하지 않는다."
+  },
+  {
+   "source_record_id": "w029",
+   "source_sense_id": "w029-s1",
+   "source_gloss_sha256": "5037fa8cbd575a032f40f7426bd07ee4f7170bd6eb304b39399a5050b0728eca",
+   "target_meaning_sha256": "5a6c5351175b0137619f5df9fc8da1f1a06c656783cb33cef95c44122cc338aa",
+   "previous_relation": {
+    "target": "w11429",
+    "target_sense": "w11429-s1",
+    "type": "association",
+    "note": "상실감은 무엇을 잃어 생긴 허전함이라, 허전하다가 가리키는 여러 원인 가운데 하나에 한정된다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w11429",
+    "target_sense": "w11429-s1",
+    "type": "mood",
+    "note": "무언가 잃은 뒤 마음이 비는 허전함에서 상실감의 정서로 이어진다.",
+    "relevance": 5
+   },
+   "position": 8,
+   "rationale": "w029 w029-s1 → w11429-s1: 상실감은 잃음이라는 계기를 특정한 정서적 연상으로 보존한다."
+  },
+  {
+   "source_record_id": "w030",
+   "source_sense_id": "w030-s1",
+   "source_gloss_sha256": "0efdc35788065cca0802b18a2e3da46af148271a71def76b64b34579ab88f835",
+   "target_meaning_sha256": "c0fbb8aba58ecbbf5114ee00c5e8ce2f74c249688b89b5a93dd2eacb76d5e878",
+   "previous_relation": {
+    "target": "w7964",
+    "target_sense": "w7964-s1",
+    "type": "association",
+    "note": "태평은 걱정이 없어 한가로운 쪽에 기울어, 마음이나 주변이 잔잔한 평온과 느낌이 조금 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w7964",
+    "target_sense": "w7964-s1",
+    "type": "mood",
+    "note": "마음과 주변이 잔잔한 평온에서 걱정 없이 한가로운 태평의 분위기로 이어진다.",
+    "relevance": 4
+   },
+   "position": 2,
+   "rationale": "w030 w030-s1 → w7964-s1: 평온과 태평은 걱정이 적은 차분한 상태를 공유하지만, 태평에는 근심 없음과 한가로움이 더해진다."
+  },
+  {
+   "source_record_id": "w031",
+   "source_sense_id": "w031-s1",
+   "source_gloss_sha256": "1399a68c9b405ae59d4cb1571ebb45a159123a523a6ec7f395227ed8fc9b94c8",
+   "target_meaning_sha256": "70ef98386b6be2ad360867e841d1a485e8d67c9f3638442cef0aea5e18816717",
+   "previous_relation": {
+    "target": "w2099",
+    "target_sense": "w2099-s1",
+    "type": "association",
+    "note": "따뜻함은 온기가 느껴지는 성질까지 가리켜, 사람을 살뜰히 대하는 다정하다보다 쓰임이 넓다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w2099",
+    "target_sense": "w2099-s1",
+    "type": "mood",
+    "note": "다정한 태도에서 전해지는 온기가 사람의 마음에 남을 때 따뜻함으로 이어진다.",
+    "relevance": 4
+   },
+   "position": 4,
+   "rationale": "w031 w031-s1 → w2099-s1: 따뜻함은 다정한 대인 태도가 주는 정서적 인상을 가리키며, writer-facing mood path로 유지한다."
+  },
+  {
+   "source_record_id": "w031",
+   "source_sense_id": "w031-s1",
+   "source_gloss_sha256": "1399a68c9b405ae59d4cb1571ebb45a159123a523a6ec7f395227ed8fc9b94c8",
+   "target_meaning_sha256": "6d9360ca586adf553138335f01829e54ed7cc07c055dfed3bdb79486c71bc3eb",
+   "previous_relation": {
+    "target": "w045",
+    "target_sense": "w045-s2",
+    "type": "association",
+    "note": "부드럽다는 말이나 태도가 온화하다는 뜻이라, 따뜻하고 살뜰하게 대하는 다정하다보다 살뜰함이 빠진다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w045",
+    "target_sense": "w045-s2",
+    "type": "near",
+    "note": "따뜻하고 살뜰한 다정함은 말과 태도가 온화한 부드러움과 만난다.",
+    "relevance": 6
+   },
+   "position": 7,
+   "rationale": "w031 w031-s1 → w045-s2: 다정함과 부드러움은 대하는 태도의 온화함을 공유하지만, 살뜰한 배려와 편안한 말투의 차이가 있다."
+  },
+  {
+   "source_record_id": "w041",
+   "source_sense_id": "w041-s1",
+   "source_gloss_sha256": "a853fca8fea3d9c5828a8b8ee3dd79412acaeb51fe30bb728a6f1020b2dabced",
+   "target_meaning_sha256": "47b577af17f7ef68f61b96e5a02b57e6a6eed0c3d2adfed5cda979374f4f5bad",
+   "previous_relation": {
+    "target": "w688",
+    "target_sense": "w688-s1",
+    "type": "association",
+    "note": "아득하다는 거리나 시간이 멀어 희미하게 느껴지는 것이라, 빛과 윤곽이 약한 희미하다와 원인이 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w688",
+    "target_sense": "w688-s1",
+    "type": "near",
+    "note": "빛이나 윤곽이 약한 희미함이 거리나 시간 때문에 멀게 느껴지는 아득함으로 이어진다.",
+    "relevance": 6
+   },
+   "position": 4,
+   "rationale": "w041 w041-s1 → w688-s1: 희미함과 아득함은 희미해 보이는 감각을 공유하되 거리나 시간이라는 조건 차이를 보존한다."
+  },
+  {
+   "source_record_id": "w041",
+   "source_sense_id": "w041-s1",
+   "source_gloss_sha256": "a853fca8fea3d9c5828a8b8ee3dd79412acaeb51fe30bb728a6f1020b2dabced",
+   "target_meaning_sha256": "1f366f3a5ea7642d1675fa3aab90fb3059768618d78392dabc278558b17c5815",
+   "previous_relation": {
+    "target": "w070",
+    "target_sense": "w070-s1",
+    "type": "association",
+    "note": "빛바램은 색이나 빛이 시간이 지나 약해진 상태라, 희미함의 한 원인이지 같은 말은 아니다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w070",
+    "target_sense": "w070-s1",
+    "type": "sensory",
+    "note": "빛이나 윤곽이 약해진 모습에서 색과 빛이 바랜 시각적 흔적을 찾을 수 있다.",
+    "relevance": 4
+   },
+   "position": 5,
+   "rationale": "w041 w041-s1 → w070-s1: 두 bound 뜻은 빛의 약화와 흐린 시각 이미지를 공유해 sensory가 정확하다."
+  },
+  {
+   "source_record_id": "w056",
+   "source_sense_id": "w056-s1",
+   "source_gloss_sha256": "be269c4e8c00b0a786e92b8075fdfd12986f8f88c531b596d1cb02dece5ae8cf",
+   "target_meaning_sha256": "923bdaf29cb1fb983430f806d8446b71e35a1334befa14eeee0a61a4d6d09ea1",
+   "previous_relation": {
+    "target": "w6357",
+    "target_sense": "w6357-s1",
+    "type": "association",
+    "note": "추위는 기온이 낮아 몸에 느껴지는 상태라, 서늘한 기운인 냉기보다 기후의 면이 강하다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w6357",
+    "target_sense": "w6357-s1",
+    "type": "near",
+    "note": "차갑게 느껴지는 냉기에서 낮은 기온이 몸에 닿는 추위의 감각으로 이어진다.",
+    "relevance": 6
+   },
+   "position": 6,
+   "rationale": "w056 w056-s1 → w6357-s1: 냉기와 추위는 차가운 느낌을 공유하지만, target은 기온과 신체 감각 쪽으로 범위가 달라 낮은 relevance를 둔다."
+  },
+  {
+   "source_record_id": "w060",
+   "source_sense_id": "w060-s1",
+   "source_gloss_sha256": "7be9a587a811857b0d3f4062f4570238faf52b04d33fe34a85535220ec81ef24",
+   "target_meaning_sha256": "b82e1990cbb218f0edfbbed64ed6f9155df7a3cce5da12f506a47822f39070c8",
+   "previous_relation": {
+    "target": "r045",
+    "target_sense": "r045-s1",
+    "type": "association",
+    "note": "잔상은 자극이 사라진 뒤 눈이나 마음에 남는 흔적이라, 느낌이 남는 여운과 시각 쪽으로 기운다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "r045",
+    "target_sense": "r045-s1",
+    "type": "sensory",
+    "note": "자극이 사라진 뒤 눈이나 마음에 남는 잔상은 사건 뒤에도 이어지는 여운을 시각적으로 구체화한다.",
+    "relevance": 5
+   },
+   "position": 2,
+   "rationale": "w060 w060-s1 → r045-s1: 잔상과 여운은 사라진 자극 뒤에 남는 감각을 공유하며, target의 시각 이미지가 sensory 유형에 맞는다."
+  },
+  {
+   "source_record_id": "w060",
+   "source_sense_id": "w060-s1",
+   "source_gloss_sha256": "7be9a587a811857b0d3f4062f4570238faf52b04d33fe34a85535220ec81ef24",
+   "target_meaning_sha256": "89faf300d8e264beba6684b0d61a796c9b4c5fc1774cc654e89b1e3e00b9dd6b",
+   "previous_relation": {
+    "target": "w3203",
+    "target_sense": "w3203-s1",
+    "type": "association",
+    "note": "여음은 연주가 끝난 뒤 남는 소리라, 마음과 감각에 남는 여운 가운데 소리로 나타나는 한 모습이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w3203",
+    "target_sense": "w3203-s1",
+    "type": "sensory",
+    "note": "연주가 끝난 뒤 남는 여음은 감각에 이어지는 여운을 소리로 구체화한다.",
+    "relevance": 4
+   },
+   "position": 3,
+   "rationale": "w060 w060-s1 → w3203-s1: 여음은 소리의 잔향으로 여운의 청각적 경로를 이루므로 sensory가 맞다."
+  },
+  {
+   "source_record_id": "w060",
+   "source_sense_id": "w060-s1",
+   "source_gloss_sha256": "7be9a587a811857b0d3f4062f4570238faf52b04d33fe34a85535220ec81ef24",
+   "target_meaning_sha256": "71d3a10d287708a0bdb605b441c6ff1f5c191bdbfc2749752c566d6f42d0963b",
+   "previous_relation": {
+    "target": "w3131",
+    "target_sense": "w3131-s1",
+    "type": "association",
+    "note": "마음에 남다는 감정이 이어지는 동작을 말하는 표현이라, 그렇게 남는 느낌을 가리키는 여운과 품사와 초점이 다르다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w3131",
+    "target_sense": "w3131-s1",
+    "type": "near",
+    "note": "말이나 사건 뒤에도 마음에 남는 느낌을 마음에 남는다고 풀어 표현할 수 있다.",
+    "relevance": 4
+   },
+   "position": 4,
+   "rationale": "w060 w060-s1 → w3131-s1: 여운과 마음에 남다는 감정이 끝난 뒤 이어지는 경험을 가리키는 가까운 표현이며, 품사 차이는 exploratory link를 막지 않는다."
+  },
+  {
+   "source_record_id": "w060",
+   "source_sense_id": "w060-s1",
+   "source_gloss_sha256": "7be9a587a811857b0d3f4062f4570238faf52b04d33fe34a85535220ec81ef24",
+   "target_meaning_sha256": "f491205a838767fc9c52115e9cec41a02d4a329bcf265f19a644c0c9fb926c7f",
+   "previous_relation": {
+    "target": "w524",
+    "target_sense": "w524-s1",
+    "type": "association",
+    "note": "기억에 남다는 잊히지 않는 상태를 말하는 표현이라, 감각과 마음에 남는 느낌인 여운과 초점이 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w524",
+    "target_sense": "w524-s1",
+    "type": "near",
+    "note": "감각에 남는 여운이 기억에 오래 새겨지는 경험으로 이어질 때 기억에 남다를 쓸 수 있다.",
+    "relevance": 5
+   },
+   "position": 5,
+   "rationale": "w060 w060-s1 → w524-s1: 기억에 남다는 여운이 지속되는 한 경로를 보여 주며, 기억 쪽으로 범위가 좁아 낮은 relevance를 둔다."
+  },
+  {
+   "source_record_id": "w061",
+   "source_sense_id": "w061-s1",
+   "source_gloss_sha256": "240ec3791a8e4ca174bdf2a1622fd6d282e00a8dadebf72d7385e3ff4c3c448d",
+   "target_meaning_sha256": "b437ed94c8c7c6de94a3ca2340e98c6be28e7426651f14cac6d556ccf4a38724",
+   "previous_relation": {
+    "target": "w11188",
+    "target_sense": "w11188-s1",
+    "type": "association",
+    "note": "내음은 코로 맡는 향기나 냄새를 모두 가리켜, 기분 좋은 냄새인 향기보다 넓다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w11188",
+    "target_sense": "w11188-s1",
+    "type": "direct",
+    "note": "대상에서 느껴지는 향을 내음이라 부를 때 향기와 같은 냄새의 뜻을 가리킨다."
+   },
+   "position": 5,
+   "rationale": "w061 w061-s1 → w11188-s1: 향기와 내음은 bound senses에서 냄새로 지각되는 향을 가리키는 어휘적 유의 관계다. 긍정적 향과 더 넓은 scent의 사용 차이는 이 연결을 무효화하지 않는다."
+  },
+  {
+   "source_record_id": "w061",
+   "source_sense_id": "w061-s1",
+   "source_gloss_sha256": "240ec3791a8e4ca174bdf2a1622fd6d282e00a8dadebf72d7385e3ff4c3c448d",
+   "target_meaning_sha256": "b7f9db471487e5dfb9fa783cf2bceabf10c219a29c66cdd2a3857fdc1fa9c23e",
+   "previous_relation": {
+    "target": "w2498",
+    "target_sense": "w2498-s1",
+    "type": "association",
+    "note": "짙은 향은 농도가 높아 강하게 느껴지는 냄새라, 기분 좋은 냄새인 향기의 강한 한 모습이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w2498",
+    "target_sense": "w2498-s1",
+    "type": "sensory",
+    "note": "짙은 향은 향기의 농도와 코에 남는 감각을 더 선명하게 드러낸다.",
+    "relevance": 3
+   },
+   "position": 6,
+   "rationale": "w061 w061-s1 → w2498-s1: 짙은 향은 향기와 같은 후각 이미지에서 강도를 더한 sensory link이며, 현재 same-source peers의 relevance 3-4와 비교해 핵심 이미지를 3에 둔다."
+  },
+  {
+   "source_record_id": "w076",
+   "source_sense_id": "w076-s1",
+   "source_gloss_sha256": "d7ebaab7fb3392826c2e450d0e5b1df93a02257ac2075966372210e738e942f1",
+   "target_meaning_sha256": "240ed9e687df274d15980e93e545b5a502a6a8c1e7e62b2af29e09ae94443b64",
+   "previous_relation": {
+    "target": "w055",
+    "target_sense": "w055-s1",
+    "type": "association",
+    "note": "온기는 따뜻하게 느껴지는 기운이라, 뜨거운 기운인 열기와 온도의 정도가 다르다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w055",
+    "target_sense": "w055-s1",
+    "type": "near",
+    "note": "뜨거운 열기에서 따뜻하게 느껴지는 온기로 온도의 결을 낮추어 표현할 수 있다.",
+    "relevance": 5
+   },
+   "position": 3,
+   "rationale": "w076 w076-s1 → w055-s1: 열기와 온기는 같은 온감의 서로 다른 강도를 표현하므로 near가 맞고, 강도 차이는 유의어 분류를 기계적으로 결정하지 않는다."
+  },
+  {
+   "source_record_id": "w077",
+   "source_sense_id": "w077-s1",
+   "source_gloss_sha256": "3794a68f2e529bc0c8f79d0bb559684fa12a12f543c5d05921bcbab739781520",
+   "target_meaning_sha256": "95a7f64a6085fb16b83a29ecba524c75aa9e2f6ec03fb21a1c367200f9d8c589",
+   "previous_relation": {
+    "target": "w2513",
+    "target_sense": "w2513-s1",
+    "type": "association",
+    "note": "눅눅함은 습기가 차서 축축하게 느껴지는 성질이라, 습기가 일으키는 결과이지 습기 자체가 아니다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w2513",
+    "target_sense": "w2513-s1",
+    "type": "near",
+    "note": "공기나 물체의 습기가 표면에서 축축하게 느껴지는 눅눅함으로 드러난다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w077 w077-s1 → w2513-s1: 습기와 눅눅함은 수분이 남기는 가까운 질감이지만, 수분 자체와 그 체감 상태를 구분한다."
+  },
+  {
+   "source_record_id": "w077",
+   "source_sense_id": "w077-s1",
+   "source_gloss_sha256": "3794a68f2e529bc0c8f79d0bb559684fa12a12f543c5d05921bcbab739781520",
+   "target_meaning_sha256": "6cb630204ca8d38e87f50060767773374d0c4efcbe92db2f8b1749587b5a36d9",
+   "previous_relation": {
+    "target": "w320",
+    "target_sense": "w320-s1",
+    "type": "association",
+    "note": "눅눅하다는 물기 때문에 눅은 느낌을 말하는 형용사라, 수분을 가리키는 습기의 결과 쪽이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w320",
+    "target_sense": "w320-s1",
+    "type": "near",
+    "note": "습기가 머문 곳에서 물기 때문에 눅은 느낌이 드는 눅눅함으로 표현을 옮길 수 있다.",
+    "relevance": 5
+   },
+   "position": 2,
+   "rationale": "w077 w077-s1 → w320-s1: 습기와 눅눅하다는 수분으로 인한 체감 상태를 공유하는 writer-facing nuance다."
+  },
+  {
+   "source_record_id": "w077",
+   "source_sense_id": "w077-s1",
+   "source_gloss_sha256": "3794a68f2e529bc0c8f79d0bb559684fa12a12f543c5d05921bcbab739781520",
+   "target_meaning_sha256": "3d19ab6d4a82d534aa9b202eca483bae8f2ed8db10e17a7eed3eddce5e3c2dd0",
+   "previous_relation": {
+    "target": "w2417",
+    "target_sense": "w2417-s1",
+    "type": "association",
+    "note": "물기는 물이나 습기가 표면에 조금 남은 상태라, 공기나 물체에 포함된 눅눅한 수분인 습기보다 표면에 남은 구체적인 모습에 한정된다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w2417",
+    "target_sense": "w2417-s1",
+    "type": "sensory",
+    "note": "표면에 남은 물기에서 습기가 만져지거나 보이는 구체적 상태로 이어진다.",
+    "relevance": 4
+   },
+   "position": 3,
+   "rationale": "w077 w077-s1 → w2417-s1: 물기는 습기가 표면에 나타난 촉각·시각 이미지라 sensory가 맞고, 같은-source 연상 peers 3-4와 비교해 relevance 4를 둔다."
+  },
+  {
+   "source_record_id": "w086",
+   "source_sense_id": "w086-s1",
+   "source_gloss_sha256": "6f4b7778dee00e7c3c1d169908285a2e50fade9580f75ed41642e77aec7b959b",
+   "target_meaning_sha256": "2192a1d2fed025bdd1908e8054cb65365436c4b9b6aa80cd8b4c8d9ac4e8f651",
+   "previous_relation": {
+    "target": "w087",
+    "target_sense": "w087-s1",
+    "type": "association",
+    "note": "울림은 소리가 퍼지거나 되돌아와 길게 느껴지는 현상이라, 소리의 한 모습이지 소리 일반이 아니다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w087",
+    "target_sense": "w087-s1",
+    "type": "sensory",
+    "note": "울림은 소리가 퍼지거나 되돌아와 귀에 길게 남는 청각적 모습을 보여 준다.",
+    "relevance": 3
+   },
+   "position": 1,
+   "rationale": "w086 w086-s1 → w087-s1: 소리와 울림은 청각 감각을 직접 공유하므로 sensory가 맞고, 같은-source sensory peers 메아리 3 및 빗소리 4 사이에서 3을 둔다."
+  },
+  {
+   "source_record_id": "w106",
+   "source_sense_id": "w106-s1",
+   "source_gloss_sha256": "fdbbe991ecfd46416f64c59ba2c7833060772c39f559f86e64208c4742ef141d",
+   "target_meaning_sha256": "4b37409c76430077c6a1f597091bf8a4723c12bf1a53496c0eb79cd667117c34",
+   "previous_relation": {
+    "target": "w3207",
+    "target_sense": "w3207-s1",
+    "type": "association",
+    "note": "따끔거림은 작은 바늘에 찔린 듯한 약한 통증이라, 통증의 한 모습이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w3207",
+    "target_sense": "w3207-s1",
+    "type": "sensory",
+    "note": "바늘에 찔린 듯 반복되는 따끔거림은 통증의 촉각적 양상을 구체화한다.",
+    "relevance": 3
+   },
+   "position": 1,
+   "rationale": "w106 w106-s1 → w3207-s1: 따끔거림은 통증의 한 감각 양상이므로 sensory가 맞으며, 기존 sensory peers 아릿하다·시큰하다·얼얼함이 모두 relevance 3이다."
+  },
+  {
+   "source_record_id": "w106",
+   "source_sense_id": "w106-s1",
+   "source_gloss_sha256": "fdbbe991ecfd46416f64c59ba2c7833060772c39f559f86e64208c4742ef141d",
+   "target_meaning_sha256": "97d33776e951e326ef0704927e689c8735e53993fd0620bc30284adc1f3dc7a0",
+   "previous_relation": {
+    "target": "w3215",
+    "target_sense": "w3215-s1",
+    "type": "association",
+    "note": "욱신거림은 맥박처럼 밀려오는 통증이라, 통증의 한 모습이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w3215",
+    "target_sense": "w3215-s1",
+    "type": "sensory",
+    "note": "맥박처럼 밀려오는 욱신거림은 통증이 몸에 전해지는 리듬을 구체화한다.",
+    "relevance": 3
+   },
+   "position": 2,
+   "rationale": "w106 w106-s1 → w3215-s1: 욱신거림은 통증의 주기적 감각 양상이므로 sensory가 맞고, 기존 pain sensory peers relevance 3과 같은 우선순위를 둔다."
+  },
+  {
+   "source_record_id": "w106",
+   "source_sense_id": "w106-s1",
+   "source_gloss_sha256": "fdbbe991ecfd46416f64c59ba2c7833060772c39f559f86e64208c4742ef141d",
+   "target_meaning_sha256": "5d8e90055686e28c6a83d595c4c795843104492881c7309f04d52be68a8dd64b",
+   "previous_relation": {
+    "target": "w3218",
+    "target_sense": "w3218-s1",
+    "type": "association",
+    "note": "둔통은 날카롭지 않고 묵직하게 이어지는 통증이라, 통증의 한 갈래다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w3218",
+    "target_sense": "w3218-s1",
+    "type": "sensory",
+    "note": "날카롭지 않고 묵직하게 이어지는 둔통은 통증의 감각적 결을 구분한다.",
+    "relevance": 4
+   },
+   "position": 3,
+   "rationale": "w106 w106-s1 → w3218-s1: 둔통은 통증의 한 감각적 유형이며, 전문적이고 묵직한 양상이라 기존 pain sensory peers 3보다 한 단계 낮은 4를 둔다."
+  },
+  {
+   "source_record_id": "w106",
+   "source_sense_id": "w106-s1",
+   "source_gloss_sha256": "fdbbe991ecfd46416f64c59ba2c7833060772c39f559f86e64208c4742ef141d",
+   "target_meaning_sha256": "8f1ad399be8a6bba9c96e10b1b57510ea5afb9ee1601ae98ba4f1b49b502af93",
+   "previous_relation": {
+    "target": "w3219",
+    "target_sense": "w3219-s1",
+    "type": "association",
+    "note": "압통은 눌렀을 때 나타나는 통증이라, 통증을 계기로 좁힌 하위 말이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w3219",
+    "target_sense": "w3219-s1",
+    "type": "sensory",
+    "note": "특정 부위를 누를 때 드러나는 압통은 통증을 느끼는 조건을 구체화한다.",
+    "relevance": 4
+   },
+   "position": 4,
+   "rationale": "w106 w106-s1 → w3219-s1: 압통은 압력에 반응하는 통증의 감각 유형이며 조건이 한정되어 relevance 4를 둔다."
+  },
+  {
+   "source_record_id": "w106",
+   "source_sense_id": "w106-s1",
+   "source_gloss_sha256": "fdbbe991ecfd46416f64c59ba2c7833060772c39f559f86e64208c4742ef141d",
+   "target_meaning_sha256": "4c1e264817028a9b87861dbd098e549350bf0ad3be20250ad951df082e9b2e4f",
+   "previous_relation": {
+    "target": "w080",
+    "target_sense": "w080-s1",
+    "type": "association",
+    "note": "따가움은 살갗이 찌르듯 아픈 구체적인 감각이라, 통증의 한 양상이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w080",
+    "target_sense": "w080-s1",
+    "type": "sensory",
+    "note": "살갗이 바늘로 찌르듯 아픈 따가움은 통증의 날카로운 감각을 보여 준다.",
+    "relevance": 3
+   },
+   "position": 5,
+   "rationale": "w106 w106-s1 → w080-s1: 따가움은 통증과 같은 아픈 감각 이미지의 구체적 양상이므로 sensory가 맞고, 동료 pain sensory peers와 함께 relevance 3을 둔다."
+  },
+  {
+   "source_record_id": "w120",
+   "source_sense_id": "w120-s1",
+   "source_gloss_sha256": "fe23d7975273bd27dca0dbe2dc3239451525b1044f7f762c25b6b4aec66a5e0b",
+   "target_meaning_sha256": "df09e913905efc33d7916c0e3d6ed785f61d3a5655dbcad21d6ac87701dc62ad",
+   "previous_relation": {
+    "target": "w2403",
+    "target_sense": "w2403-s1",
+    "type": "association",
+    "note": "말소리는 사람이 말할 때 입에서 나오는 소리로 말하는 경우에 한정되어, 음색까지 아우르는 목소리의 한 부분이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w2403",
+    "target_sense": "w2403-s1",
+    "type": "sensory",
+    "note": "말소리는 사람이 말할 때 들리는 목소리의 소리를 구체적으로 좁힌다.",
+    "relevance": 4
+   },
+   "position": 1,
+   "rationale": "w120 w120-s1 → w2403-s1: 말소리와 목소리는 같은 청각 이미지를 공유하되 speech 쪽으로 좁아 sensory로 남기고 같은-source association peers 3-4에 맞춰 relevance 4를 둔다."
+  },
+  {
+   "source_record_id": "w120",
+   "source_sense_id": "w120-s1",
+   "source_gloss_sha256": "fe23d7975273bd27dca0dbe2dc3239451525b1044f7f762c25b6b4aec66a5e0b",
+   "target_meaning_sha256": "0a32b02e1ca015722a6b2b69ea4929c2e52e0aec0afb3c5da3f89880712e250b",
+   "previous_relation": {
+    "target": "w2344",
+    "target_sense": "w2344-s1",
+    "type": "association",
+    "note": "음색은 소리를 서로 다르게 들리게 하는 고유한 빛깔이라, 목소리의 한 요소이지 목소리 전체가 아니다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w2344",
+    "target_sense": "w2344-s1",
+    "type": "sensory",
+    "note": "음색은 목소리를 서로 다르게 들리게 하는 고유한 소리 빛깔을 구체화한다.",
+    "relevance": 4
+   },
+   "position": 2,
+   "rationale": "w120 w120-s1 → w2344-s1: 음색은 목소리의 청각적 질감 요소이므로 sensory가 맞고, 다른 same-source vocal texture peers와 relevance 4로 맞춘다."
+  },
+  {
+   "source_record_id": "w120",
+   "source_sense_id": "w120-s1",
+   "source_gloss_sha256": "fe23d7975273bd27dca0dbe2dc3239451525b1044f7f762c25b6b4aec66a5e0b",
+   "target_meaning_sha256": "982d3c90736300023341e7ebc4cad8ecc6aefc6a25c9e6a5bc0af85e6d98517b",
+   "previous_relation": {
+    "target": "w2472",
+    "target_sense": "w2472-s1",
+    "type": "association",
+    "note": "떨리는 음성은 감정으로 흔들리는 목소리라, 목소리의 구체적인 한 모습이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w2472",
+    "target_sense": "w2472-s1",
+    "type": "sensory",
+    "note": "긴장이나 감정으로 흔들리는 목소리는 목소리의 떨리는 청각적 모습을 보여 준다.",
+    "relevance": 4
+   },
+   "position": 3,
+   "rationale": "w120 w120-s1 → w2472-s1: 떨리는 음성은 bound source voice의 감정적·청각적 변형이므로 sensory가 맞고, 동료 음성 관계의 relevance 4를 유지한다."
+  },
+  {
+   "source_record_id": "w120",
+   "source_sense_id": "w120-s1",
+   "source_gloss_sha256": "fe23d7975273bd27dca0dbe2dc3239451525b1044f7f762c25b6b4aec66a5e0b",
+   "target_meaning_sha256": "7b827781ebd81a5f98a906b77d36225c5789bb21c30bba3ca770161a039867a2",
+   "previous_relation": {
+    "target": "w2473",
+    "target_sense": "w2473-s1",
+    "type": "association",
+    "note": "가라앉은 목소리는 높낮이와 힘이 낮아진 목소리라, 목소리의 구체적인 한 모습이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w2473",
+    "target_sense": "w2473-s1",
+    "type": "sensory",
+    "note": "높낮이와 힘이 낮아진 목소리는 가라앉은 음색의 청각적 이미지를 구체화한다.",
+    "relevance": 4
+   },
+   "position": 4,
+   "rationale": "w120 w120-s1 → w2473-s1: 가라앉은 목소리는 source voice의 음색 변형을 보여 주는 sensory link이며 동료 relevance 4를 유지한다."
+  },
+  {
+   "source_record_id": "w157",
+   "source_sense_id": "w157-s1",
+   "source_gloss_sha256": "5a44ee20caa149da50dcaece889a5bdb123d41028f3827f73f7af3cab746c27d",
+   "target_meaning_sha256": "a3721462b5433e5e94afb45933e5147bdff0d9ea721094978bfe0f9ce4ff44b6",
+   "previous_relation": {
+    "target": "w10040",
+    "target_sense": "w10040-s1",
+    "type": "association",
+    "note": "기차역은 기차가 서는 역이라, 기차와 전철이 함께 서는 역의 한 종류다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w10040",
+    "target_sense": "w10040-s1",
+    "type": "near",
+    "note": "역의 공통된 기능을 떠올리면서 기차가 서는 역이라는 구체적인 장면으로 좁혀 볼 수 있다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w157 w157-s1 → w10040-s1: 기차역은 역의 철도 쪽 구체화로 작가에게 가까운 명칭을 제시하되, 전철까지 포함하는 source와 동일 범위라고 주장하지 않는다. 같은-source near 정거장 5와 같은 우선순위다."
+  },
+  {
+   "source_record_id": "w200",
+   "source_sense_id": "w200-s1",
+   "source_gloss_sha256": "3b826fbefb32fef275465b08eee5864574dc12197dfcbfe0192cf86c6711de0a",
+   "target_meaning_sha256": "a538e19a51d4496bc86fc46d328000571d85b215331819c44645a3abc95e7d2e",
+   "previous_relation": {
+    "target": "w199",
+    "target_sense": "w199-s1",
+    "type": "association",
+    "note": "대답하다는 묻거나 부른 말에 맞추어 말하는 것이라, 말하다의 한 방식으로 좁혀진 하위 동작이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w199",
+    "target_sense": "w199-s1",
+    "type": "action",
+    "note": "말을 주고받는 장면에서 대답하는 구체적인 말하기 동작으로 이어진다.",
+    "relevance": 3
+   },
+   "position": 2,
+   "rationale": "w200 w200-s1 → w199-s1: 대답하다는 질문이나 부름에 반응하는 발화 행동이므로 action type이 관계를 정직하게 표현한다."
+  },
+  {
+   "source_record_id": "w202",
+   "source_sense_id": "w202-s1",
+   "source_gloss_sha256": "b546d12f9e80127f4291e2989d6611e16e7e501963d797ca5a8aaac90345b902",
+   "target_meaning_sha256": "2df00e20f7124489212e3e8f7e5c9d81882059368a554b905f3d40bc080a78e4",
+   "previous_relation": {
+    "target": "w12087",
+    "target_sense": "w12087-s1",
+    "type": "association",
+    "note": "건너다보다는 맞은편을 바라보는 구체적인 동작이라, 바라보다의 한 경우다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w12087",
+    "target_sense": "w12087-s1",
+    "type": "near",
+    "note": "바라보는 동작이 맞은편을 향할 때 건너다보다는 구체적인 방향을 더한다.",
+    "relevance": 6
+   },
+   "position": 4,
+   "rationale": "w202 w202-s1 → w12087-s1: 바라보다와 건너다보다는 시선을 두는 동작을 공유하되 방향이 한정되어 near relevance 6으로 둔다."
+  },
+  {
+   "source_record_id": "w202",
+   "source_sense_id": "w202-s1",
+   "source_gloss_sha256": "b546d12f9e80127f4291e2989d6611e16e7e501963d797ca5a8aaac90345b902",
+   "target_meaning_sha256": "f29846f4540bcd3c838e480d153fe7a693ff64b9e6b6199b59b635620e5a47a6",
+   "previous_relation": {
+    "target": "w12589",
+    "target_sense": "w12589-s1",
+    "type": "association",
+    "note": "보다는 눈으로 모습을 알아차리는 넓은 동작이라, 계속 눈을 두는 바라보다를 포함하는 상위 동작이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w12589",
+    "target_sense": "w12589-s1",
+    "type": "direct",
+    "note": "대상을 눈으로 살피는 기본 동작을 가리키는 보다와 바라보다의 bound visual sense는 어휘적으로 겹친다."
+   },
+   "position": 5,
+   "rationale": "w202 w202-s1 → w12589-s1: 보다와 바라보다의 bound senses는 대상을 눈으로 보는 동작을 가리키는 사전적 유의 관계이며, 바라보다의 지속성 차이는 synonymy를 배제하지 않는다."
+  },
+  {
+   "source_record_id": "w202",
+   "source_sense_id": "w202-s1",
+   "source_gloss_sha256": "b546d12f9e80127f4291e2989d6611e16e7e501963d797ca5a8aaac90345b902",
+   "target_meaning_sha256": "783bf9f3d96f65935d9d9ad844b087f6754f71672bb239401f87311a228b3e7c",
+   "previous_relation": {
+    "target": "w2818",
+    "target_sense": "w2818-s1",
+    "type": "association",
+    "note": "주시하다는 눈을 떼지 않고 집중해 바라보는 것이라, 바라보다의 한 방식으로 좁혀진 하위 동작이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w2818",
+    "target_sense": "w2818-s1",
+    "type": "direct",
+    "note": "대상에 시선을 두고 계속 보는 뜻에서 주시하다와 바라보다가 만난다."
+   },
+   "position": 3,
+   "rationale": "w202 w202-s1 → w2818-s1: 주시하다와 바라보다의 bound senses는 대상을 계속 바라보는 동작으로 어휘적 유의 관계를 이룬다. 주시하다의 집중성은 nuance 차이다."
+  },
+  {
+   "source_record_id": "w203",
+   "source_sense_id": "w203-s1",
+   "source_gloss_sha256": "60c1152fd5a0aaab296f66ca099969a250b2a5c822645347424746748c5bf24c",
+   "target_meaning_sha256": "b4bc907110a0d31a850d75e1f4ee3ed3a49c95bc72983c0a14b56665836bd57f",
+   "previous_relation": {
+    "target": "w10841",
+    "target_sense": "w10841-s1",
+    "type": "association",
+    "note": "깔깔거리다는 높은 소리로 자꾸 웃는 방식이라, 웃다의 한 방식으로 좁혀진 하위 동작이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w10841",
+    "target_sense": "w10841-s1",
+    "type": "near",
+    "note": "높은 소리로 거침없이 웃는 깔깔거리다는 웃음의 음량과 리듬을 선명하게 한다.",
+    "relevance": 4
+   },
+   "position": 2,
+   "rationale": "w203 w203-s1 → w10841-s1: 깔깔거림은 웃다의 특정한 소리·리듬을 보여 주는 writer-facing texture이며, same-source 웃음·기쁨 peers relevance 4보다 강하게 두지 않는다."
+  },
+  {
+   "source_record_id": "w203",
+   "source_sense_id": "w203-s1",
+   "source_gloss_sha256": "60c1152fd5a0aaab296f66ca099969a250b2a5c822645347424746748c5bf24c",
+   "target_meaning_sha256": "71aca3243078830f025179b059af4c4e59fa9b6171159ef9abbaee11e98d7b79",
+   "previous_relation": {
+    "target": "w12492",
+    "target_sense": "w12492-s1",
+    "type": "association",
+    "note": "깔깔대다는 소리 내어 크게 웃는 방식이라, 웃다의 한 방식으로 좁혀진 하위 동작이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w12492",
+    "target_sense": "w12492-s1",
+    "type": "near",
+    "note": "소리 내어 크게 웃는 깔깔대다는 웃음의 크기와 활기를 드러낸다.",
+    "relevance": 4
+   },
+   "position": 3,
+   "rationale": "w203 w203-s1 → w12492-s1: 깔깔댐은 웃음의 강도와 소리를 구체화하는 near texture로, same-source laughter peers와 비교해 relevance 4를 둔다."
+  },
+  {
+   "source_record_id": "w203",
+   "source_sense_id": "w203-s1",
+   "source_gloss_sha256": "60c1152fd5a0aaab296f66ca099969a250b2a5c822645347424746748c5bf24c",
+   "target_meaning_sha256": "fede0d919541b7fc92bc01c1c31c6474f5f8df447d72bb9faf2bf2404f48b4ee",
+   "previous_relation": {
+    "target": "w10537",
+    "target_sense": "w10537-s1",
+    "type": "association",
+    "note": "키득거리다는 참다가 새어 나오듯 낮게 웃는 방식이라, 웃다의 한 방식으로 좁혀진 하위 동작이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w10537",
+    "target_sense": "w10537-s1",
+    "type": "near",
+    "note": "참다가 새어 나오듯 낮게 웃는 키득거림은 웃음의 억눌린 리듬을 드러낸다.",
+    "relevance": 4
+   },
+   "position": 4,
+   "rationale": "w203 w203-s1 → w10537-s1: 키득거림은 웃음의 구체적 소리 결을 찾는 near 관계이며, 같은-source peers와 relevance 4로 둔다."
+  },
+  {
+   "source_record_id": "w203",
+   "source_sense_id": "w203-s1",
+   "source_gloss_sha256": "60c1152fd5a0aaab296f66ca099969a250b2a5c822645347424746748c5bf24c",
+   "target_meaning_sha256": "9c7fc2d29fb8b5308adb43f8fa4919f0fa449d3f05e06e3bcafaec576f3b6489",
+   "previous_relation": {
+    "target": "w10702",
+    "target_sense": "w10702-s1",
+    "type": "association",
+    "note": "낄낄거리다는 낮고 끊기는 소리로 자꾸 웃는 방식이라, 웃다의 한 방식으로 좁혀진 하위 동작이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w10702",
+    "target_sense": "w10702-s1",
+    "type": "near",
+    "note": "낮고 끊기는 소리로 자꾸 웃는 낄낄거림은 웃음의 리듬을 구체화한다.",
+    "relevance": 4
+   },
+   "position": 5,
+   "rationale": "w203 w203-s1 → w10702-s1: 낄낄거림은 웃음의 구체적인 소리 결을 드러내는 near relation이며 같은-source peers와 relevance 4로 둔다."
+  },
+  {
+   "source_record_id": "w203",
+   "source_sense_id": "w203-s1",
+   "source_gloss_sha256": "60c1152fd5a0aaab296f66ca099969a250b2a5c822645347424746748c5bf24c",
+   "target_meaning_sha256": "2b76cdb686b61baf71475acf2427a6e69c3343abb64a1c89011b23fc15ea9463",
+   "previous_relation": {
+    "target": "w3158",
+    "target_sense": "w3158-s1",
+    "type": "association",
+    "note": "짧게 웃다는 웃음을 오래 잇지 않고 잠깐 웃는 방식이라, 웃다의 한 방식으로 좁혀진 하위 동작이다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w3158",
+    "target_sense": "w3158-s1",
+    "type": "near",
+    "note": "웃음을 잠깐만 드러내는 짧게 웃다는 웃음의 지속 시간을 바꾸어 표현한다.",
+    "relevance": 5
+   },
+   "position": 6,
+   "rationale": "w203 w203-s1 → w3158-s1: 짧게 웃다는 웃다의 시간적 변형을 보여 주는 writer-facing near link이며, 더 생생한 소리 표현 peers relevance 4보다 낮은 5를 둔다."
+  },
+  {
+   "source_record_id": "r031",
+   "source_sense_id": "r031-s1",
+   "source_gloss_sha256": "e4ff0e844f96975e49256b65cbe1a9090a91f40dd5c56edaaadc0166886a45e7",
+   "target_meaning_sha256": "a1c612368a67795bf0930b88d580b4618e5acde429c5619b03871b0f4a1e9c3a",
+   "previous_relation": {
+    "target": "w6245",
+    "target_sense": "w6245-s1",
+    "type": "association",
+    "note": "휴식은 일을 멈추고 몸과 마음을 쉬게 하는 일이고, 쉬다는 그 동작을 가리키므로 같은 쉼의 상황에서 이어 찾을 수 있지만 서로 바꿔 쓸 말은 아니다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w6245",
+    "target_sense": "w6245-s1",
+    "type": "near",
+    "note": "활동을 멈춰 몸과 마음을 편하게 하는 쉬다를 휴식이라는 상태 이름으로도 찾을 수 있다.",
+    "relevance": 5
+   },
+   "position": 0,
+   "rationale": "r031 r031-s1 → w6245-s1: 쉬다와 휴식은 같은 쉼의 경험을 동사와 명사로 다르게 표현하므로 direct synonym 대신 near로 보존한다."
+  },
+  {
+   "source_record_id": "r033",
+   "source_sense_id": "r033-s1",
+   "source_gloss_sha256": "1aafe0e4baca99e385f6274e145cfd3960bb7127813f0ae6870765f761285678",
+   "target_meaning_sha256": "e890d2cefaad96e5f6059392d1e4340adc274fdb29e6e8834b1bc41b07b4b4bb",
+   "previous_relation": {
+    "target": "w006",
+    "target_sense": "w006-s1",
+    "type": "association",
+    "note": "쓸쓸함은 곁이 비어 허전한 정서에 초점이 있어, 홀로 있음을 깊이 느끼는 고독과 겹치지만 서로 바꿔 쓸 말은 아니다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w006",
+    "target_sense": "w006-s1",
+    "type": "near",
+    "note": "혼자 있음을 깊이 느끼는 고독에서 곁이 비어 허전한 쓸쓸함의 정서로 이어진다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "r033 r033-s1 → w006-s1: 고독과 쓸쓸함은 외로운 정서를 공유하지만, 혼자 있음과 마음을 나눌 곳의 부재를 구분해 near로 둔다. 같은-source 외로움 near 5와 비교해 5다."
+  },
+  {
+   "source_record_id": "r036",
+   "source_sense_id": "r036-s1",
+   "source_gloss_sha256": "66a7820eb5d3f28b309cbcf8e9447fce6027b46d16d48ce4f0e9f0c4767803b1",
+   "target_meaning_sha256": "60009d868902392f5066801f0dd0c21d310d17012ad383f0dcb937c44230edc1",
+   "previous_relation": {
+    "target": "w11004",
+    "target_sense": "w11004-s1",
+    "type": "association",
+    "note": "탄복은 깊이 감동한 경우로 좁혀진 감탄이라, 일반적인 감탄에서 더 강한 반응을 찾을 때 이어 볼 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w11004",
+    "target_sense": "w11004-s1",
+    "type": "direct",
+    "note": "훌륭함을 깊이 느껴 반응하는 탄복은 감탄의 어휘적 유의어로 쓸 수 있다."
+   },
+   "position": 1,
+   "rationale": "r036 r036-s1 → w11004-s1: 감탄과 탄복의 bound gloss는 훌륭함을 느껴 강하게 반응하는 의미를 공유한다. 탄복의 강도 차이는 유의 관계를 무효화하지 않는다."
+  },
+  {
+   "source_record_id": "r036",
+   "source_sense_id": "r036-s1",
+   "source_gloss_sha256": "66a7820eb5d3f28b309cbcf8e9447fce6027b46d16d48ce4f0e9f0c4767803b1",
+   "target_meaning_sha256": "39172ad3b5f86add2f05a2f2af4786a8cbda2fcb7aa8c34e195403d713867191",
+   "previous_relation": {
+    "target": "w2886",
+    "target_sense": "w2886-s1",
+    "type": "association",
+    "note": "감탄은 훌륭함을 느껴 크게 반응하는 마음이고, 감탄하다는 그 반응을 드러내는 동작이므로 같은 경험에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w2886",
+    "target_sense": "w2886-s1",
+    "type": "near",
+    "note": "대상을 훌륭하다고 느껴 놀라며 칭찬하는 감탄하다로 감탄의 반응을 동작으로 표현한다.",
+    "relevance": 5
+   },
+   "position": 2,
+   "rationale": "r036 r036-s1 → w2886-s1: 감탄과 감탄하다는 같은 경험을 명사 감정과 동사 반응으로 잇는 near relation이며, 같은-source 경탄 near보다 우선순위를 높여 5를 둔다."
+  },
+  {
+   "source_record_id": "r037",
+   "source_sense_id": "r037-s1",
+   "source_gloss_sha256": "f0dc089d0ec121466c0418347b3b3816679d871394845370c62e3fda6418b25c",
+   "target_meaning_sha256": "acd0e45b77c3f0539aa3fd496006babc3f678d0c8c8bd80ea2c2cd82e9343ec4",
+   "previous_relation": {
+    "target": "w437",
+    "target_sense": "w437-s1",
+    "type": "association",
+    "note": "공허는 의미가 빠진 듯한 느낌을 이름 붙이고, 공허하다는 마음이나 삶이 비어 있는 상태를 서술하므로 같은 상태의 개념과 서술을 잇는다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w437",
+    "target_sense": "w437-s1",
+    "type": "near",
+    "note": "마음이나 삶이 비어 의미가 빠진 공허함을 공허하다로 서술할 수 있다.",
+    "relevance": 4
+   },
+   "position": 0,
+   "rationale": "r037 r037-s1 → w437-s1: 공허와 공허하다는 같은 bound meaning을 명사와 형용사로 잇는 exploratory link다. 같은-source 허전함 near 5보다 가깝게 4를 둔다."
+  },
+  {
+   "source_record_id": "r042",
+   "source_sense_id": "r042-s1",
+   "source_gloss_sha256": "4fbdb08613579cf4f793b09132575024323063c6cf4cee56a6387071ecb15ad1",
+   "target_meaning_sha256": "c2fad3eace530679f23a9f46c4ed4b698237f1e19c97a06a88c6fefaacbaa2d8",
+   "previous_relation": {
+    "target": "w321",
+    "target_sense": "w321-s1",
+    "type": "association",
+    "note": "미지근하다의 첫째 뜻은 온도를 서술하는 형용사라, 상태를 이름 붙이는 명사 미온에서 온도 쪽 표현으로 이어 찾을 수 있지만 서로 바꿔 쓸 말은 아니다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w321",
+    "target_sense": "w321-s1",
+    "type": "near",
+    "note": "온도가 뜨겁지도 차갑지도 않은 미지근한 상태를 형용사 미지근하다로 표현할 수 있다.",
+    "relevance": 5
+   },
+   "position": 0,
+   "rationale": "r042 r042-s1 → w321-s1: 미온과 미지근하다 s1은 같은 온도 상태를 명사와 형용사로 잇는 near relation이며, 미지근함 near 5와 나란히 둔다."
+  },
+  {
+   "source_record_id": "r042",
+   "source_sense_id": "r042-s1",
+   "source_gloss_sha256": "4fbdb08613579cf4f793b09132575024323063c6cf4cee56a6387071ecb15ad1",
+   "target_meaning_sha256": "ce2d8039a8282e5b7e671cae0f22822819f05e4c1113b5e51fb765c7f50a3c7f",
+   "previous_relation": {
+    "target": "w321",
+    "target_sense": "w321-s2",
+    "type": "association",
+    "note": "미지근하다의 둘째 뜻은 반응이나 태도가 적극적이지 않다고 서술하는 형용사라, 명사 미온의 반응 쪽에서 이어 찾을 수 있지만 서로 바꿔 쓸 말은 아니다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w321",
+    "target_sense": "w321-s2",
+    "type": "mood",
+    "note": "적극적이지 않고 시큰둥한 반응을 미지근하다고 묘사하는 정서적·태도적 결을 더한다.",
+    "relevance": 6
+   },
+   "position": 1,
+   "rationale": "r042 r042-s1 → w321-s2: 미온의 반응 의미와 미지근하다 s2의 태도 의미가 맞닿지만 온도 뜻보다 상황 의존적이라 mood relevance 6을 둔다."
+  },
+  {
+   "source_record_id": "w036",
+   "source_sense_id": "w036-s1",
+   "source_gloss_sha256": "2a0efdcc96314977747b47fa186cf6ba0cdc38ad9299d7c415dd1193b6251026",
+   "target_meaning_sha256": "a7bf7c5a2786467eb7c67d4e59566735f96bae14e38831a891c9424b276ab62b",
+   "previous_relation": {
+    "target": "w2227",
+    "target_sense": "w2227-s1",
+    "type": "association",
+    "note": "어색함은 말과 행동이 굳는 불편한 상태를 이름 붙여, 어색하다와 같은 장면에서 이어 찾을 수 있는 명사 개념이다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w2227",
+    "target_sense": "w2227-s1",
+    "type": "near",
+    "note": "사람이나 상황 사이가 자연스럽지 않아 굳는 어색함을 명사로 가리킨다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w036 w036-s1 → w2227-s1: 어색하다와 어색함은 같은 bound state를 형용사와 명사로 연결하는 near relation이다."
+  },
+  {
+   "source_record_id": "w069",
+   "source_sense_id": "w069-s1",
+   "source_gloss_sha256": "afe0eacb7b6c41deb80af135bedb4cc9525674f1490250674da29b70f9b14b0d",
+   "target_meaning_sha256": "c9b421309cac010b88aeea120ab3645544fb52bf7f7e37cc192a0ba204b3fef1",
+   "previous_relation": {
+    "target": "w5662",
+    "target_sense": "w5662-s1",
+    "type": "association",
+    "note": "반짝임은 작은 빛이 순간적으로 드러나는 모습이고, 빛나다는 빛을 내거나 반사하는 동작을 넓게 말해 특정한 빛의 모습과 그 동작을 잇는다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w5662",
+    "target_sense": "w5662-s1",
+    "type": "near",
+    "note": "작은 빛이 순간 드러나는 반짝임에서 빛을 내거나 반사하는 빛나다의 움직임으로 이어진다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w069 w069-s1 → w5662-s1: 반짝임과 빛나다는 같은 시각적 사건을 명사와 동사로 잇되, target은 범위가 넓어 near로 둔다."
+  },
+  {
+   "source_record_id": "w071",
+   "source_sense_id": "w071-s1",
+   "source_gloss_sha256": "9c170631af674aa9e25fd3fe588ba9d8260ced09cc97cd42d2ad9446ce790185",
+   "target_meaning_sha256": "1ad6c5a176de4d492be0f02d6c2f407ba6cc06274dce4ecae356c902e28d1b36",
+   "previous_relation": {
+    "target": "r029",
+    "target_sense": "r029-s1",
+    "type": "association",
+    "note": "색조는 색의 느낌과 밝고 어두운 정도로 초점이 좁아, 장면의 색 느낌과 구성을 말하는 색채에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "r029",
+    "target_sense": "r029-s1",
+    "type": "near",
+    "note": "장면이 띠는 색채에서 색이 주는 밝고 어두운 느낌과 색조로 이어진다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w071 w071-s1 → r029-s1: 색채와 색조는 색의 인상을 공유하되 구성과 명암의 초점이 달라 near다. 같은-source 빛깔 near 4보다 낮은 5를 둔다."
+  },
+  {
+   "source_record_id": "w088",
+   "source_sense_id": "w088-s1",
+   "source_gloss_sha256": "bcff9a60302d6b95a8f1e4d27957edb4e7463b38c3666d74d1d54aa6a074bfe1",
+   "target_meaning_sha256": "eb713b1ede3cf660cea105d3a045d2c380ea39a60376311f1bb3f212e68c9715",
+   "previous_relation": {
+    "target": "w11245",
+    "target_sense": "w11245-s1",
+    "type": "association",
+    "note": "메아리는 소리가 되돌아오는 현상이고, 메아리치다는 그 소리가 울려 되돌아오는 일을 서술하므로 현상명과 사건을 잇는다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w11245",
+    "target_sense": "w11245-s1",
+    "type": "near",
+    "note": "소리가 되돌아오는 메아리 현상을 메아리치다로 동작처럼 표현한다.",
+    "relevance": 4
+   },
+   "position": 2,
+   "rationale": "w088 w088-s1 → w11245-s1: 메아리와 메아리치다는 같은 bound acoustic event를 명사와 동사로 잇는 near relation이다. 같은-source 울림 near 4와 맞춘다."
+  },
+  {
+   "source_record_id": "w2138",
+   "source_sense_id": "w2138-s1",
+   "source_gloss_sha256": "9caa753ee679dc5e09c5813a26e248065f7d215bdb5b293b03eba335da2bba20",
+   "target_meaning_sha256": "4c977bf8fb1bb3e5451023ed02950f7644043221ec8f8f4a4b0aa33878b77160",
+   "previous_relation": {
+    "target": "w436",
+    "target_sense": "w436-s1",
+    "type": "association",
+    "note": "아련함은 희미한 기억이나 감정이 오래 남는 느낌을 이름 붙이고, 아련하다는 그 느낌이 떠오르는 상태를 서술한다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w436",
+    "target_sense": "w436-s1",
+    "type": "near",
+    "note": "희미하게 떠올라 오래 남는 아련함을 아련하다로 감각과 상태의 표현으로 바꿀 수 있다.",
+    "relevance": 5
+   },
+   "position": 0,
+   "rationale": "w2138 w2138-s1 → w436-s1: 아련함과 아련하다는 같은 정서적·감각적 의미를 명사와 형용사로 잇는 near relation이다."
+  },
+  {
+   "source_record_id": "w224",
+   "source_sense_id": "w224-s1",
+   "source_gloss_sha256": "ebe8e686be883d4e908724affd220793c00ca00ff1efecf31ac2429bfc135fac",
+   "target_meaning_sha256": "cb3c9a79fa590c1612f6c13275f65ff390d537e03df24b87c68aab8a0ad178b1",
+   "previous_relation": {
+    "target": "w5471",
+    "target_sense": "w5471-s1",
+    "type": "association",
+    "note": "확인은 대상이나 사실이 맞는지 살펴 알아보는 행위를 이름 붙이고, 확인하다는 그 행위를 수행하는 동사라 같은 검증 장면에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w5471",
+    "target_sense": "w5471-s1",
+    "type": "near",
+    "note": "사실이나 상태를 살펴 확인하는 일을 명사 확인으로도 찾을 수 있다.",
+    "relevance": 5
+   },
+   "position": 0,
+   "rationale": "w224 w224-s1 → w5471-s1: 확인하다와 확인은 같은 검증 행위를 동사와 명사로 표현하므로 direct가 아닌 near link로 보존한다."
+  },
+  {
+   "source_record_id": "w224",
+   "source_sense_id": "w224-s1",
+   "source_gloss_sha256": "ebe8e686be883d4e908724affd220793c00ca00ff1efecf31ac2429bfc135fac",
+   "target_meaning_sha256": "d2bd2cc25e7c76d047f8d552afc25a14a407e8499cc76c7a5f2f7b73096fb2ed",
+   "previous_relation": {
+    "target": "w7667",
+    "target_sense": "w7667-s1",
+    "type": "association",
+    "note": "체크는 빠진 것이 없는지 살펴 확인하는 일을 이름 붙이고, 확인하다는 그 일을 수행하므로 같은 점검 장면에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w7667",
+    "target_sense": "w7667-s1",
+    "type": "near",
+    "note": "빠진 것이 없는지 체크하는 일은 확인하다의 점검 장면과 맞닿는다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w224 w224-s1 → w7667-s1: 확인하다와 체크는 같은 점검 장면을 동사와 명사로 잇지만, 체크의 누락 확인 초점을 유지한다."
+  },
+  {
+   "source_record_id": "w225",
+   "source_sense_id": "w225-s1",
+   "source_gloss_sha256": "86ba429eeb309860a69977623f73d70d92f218154c45cf0cf9c787f15d6dd2c8",
+   "target_meaning_sha256": "8c8dee44af0e5d0f67088cf67b0208004a0c284e0ff253a52906b102b5a1d167",
+   "previous_relation": {
+    "target": "w5498",
+    "target_sense": "w5498-s1",
+    "type": "association",
+    "note": "선택은 여럿 가운데 하나를 골라 정하는 일을 이름 붙이고, 선택하다는 그 행동을 수행하므로 같은 결정 장면에서 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w5498",
+    "target_sense": "w5498-s1",
+    "type": "near",
+    "note": "여럿 가운데 하나를 정하는 선택의 동작을 명사 선택으로도 찾을 수 있다.",
+    "relevance": 5
+   },
+   "position": 2,
+   "rationale": "w225 w225-s1 → w5498-s1: 선택하다와 선택은 같은 결정 행위를 동사와 명사로 잇는 near relation이며, direct alternatives는 별도로 보존한다."
+  },
+  {
+   "source_record_id": "w297",
+   "source_sense_id": "w297-s1",
+   "source_gloss_sha256": "755658928add2d0676e9321a6ea5da6150892f9bf7bb6d037f27c59fa666ddf5",
+   "target_meaning_sha256": "b7b6a56f9cf64d2c35bd094cb89b3c990ddc2aa480cdf3ee44070459e041ab4b",
+   "previous_relation": {
+    "target": "w1271",
+    "target_sense": "w1271-s1",
+    "type": "association",
+    "note": "귀를 세우다는 작은 소리에도 주의를 곤두세워 듣는다는 뜻이라, 일반적인 집중 청취인 귀를 기울이다에서 더 긴장된 듣기로 이어 찾을 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w1271",
+    "target_sense": "w1271-s1",
+    "type": "near",
+    "note": "작은 소리에도 주의를 곤두세우는 귀를 세우다는 집중해 듣는 귀를 기울이다와 맞닿는다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w297 w297-s1 → w1271-s1: 두 표현은 집중해서 듣는 동작을 공유하지만 긴장과 경계의 차이를 유지하는 writer-facing near link다."
+  },
+  {
+   "source_record_id": "r001",
+   "source_sense_id": "r001-s1",
+   "source_gloss_sha256": "73262ca00b25a1ee469689c2f9c20eac79d512ea7ee8069d98d4bb37f2579c46",
+   "target_meaning_sha256": "890129eb3593f5282f7b2445b9204868f53af973a9d304b23108fdd639e0f632",
+   "previous_relation": {
+    "target": "w061",
+    "target_sense": "w061-s1",
+    "type": "near",
+    "note": "향기는 기분 좋게 느껴지는 냄새라, 냄새로 느껴지는 향기를 가리키는 향내와 바꿔 쓸 수 있는 말이다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w061",
+    "target_sense": "w061-s1",
+    "type": "direct",
+    "note": "냄새로 느끼는 향기를 가리키는 향내와 기분 좋게 느껴지는 향기는 같은 향의 뜻을 공유한다."
+   },
+   "position": 0,
+   "rationale": "r001 r001-s1 → w061-s1: 향내와 향기의 bound senses는 향기로운 냄새를 가리키는 사전적 유의 관계다. 기존 반대 방향 direct와도 일치시킨다."
+  },
+  {
+   "source_record_id": "r009",
+   "source_sense_id": "r009-s1",
+   "source_gloss_sha256": "9e54b7f82e31ea1338130ee4f9bb2e902c6fd13b2443dd9d4605d0733c2a3fe4",
+   "target_meaning_sha256": "0d608bc3bb0dfe098431da70f83b92e0f48dbb2cc770dcdd340a4a92b69f7cf6",
+   "previous_relation": {
+    "target": "w030",
+    "target_sense": "w030-s1",
+    "type": "near",
+    "note": "평온은 마음이나 주변이 어지럽지 않고 잔잔한 상태라, 마음이 편하고 주변이 안정된 평안과 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w030",
+    "target_sense": "w030-s1",
+    "type": "direct",
+    "note": "마음과 주변이 안정된 평안은 잔잔하고 어지럽지 않은 평온과 어휘적으로 겹친다."
+   },
+   "position": 0,
+   "rationale": "r009 r009-s1 → w030-s1: 평안과 평온은 bound definitions에서 마음/주변의 안정된 상태를 공유하고, 기존 reverse direct link와 일치한다."
+  },
+  {
+   "source_record_id": "r033",
+   "source_sense_id": "r033-s1",
+   "source_gloss_sha256": "1aafe0e4baca99e385f6274e145cfd3960bb7127813f0ae6870765f761285678",
+   "target_meaning_sha256": "9ac4fb0560bb2a65b5a08efcc368a27227be514eea764268ed954234468a9227",
+   "previous_relation": {
+    "target": "w007",
+    "target_sense": "w007-s1",
+    "type": "near",
+    "note": "외로움은 주변에 함께할 사람이 없어 홀로라고 느끼는 마음이라, 혼자 있는 상태를 깊이 느끼는 고독과 가깝게 바꿔 쓸 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w007",
+    "target_sense": "w007-s1",
+    "type": "direct",
+    "note": "홀로 있음을 깊이 느끼는 고독은 주변에 함께할 사람이 없어 느끼는 외로움과 어휘적으로 겹친다."
+   },
+   "position": 0,
+   "rationale": "r033 r033-s1 → w007-s1: 고독과 외로움의 bound senses는 외로운 상태와 감정을 가리키는 사전적 유의 관계다."
+  },
+  {
+   "source_record_id": "r036",
+   "source_sense_id": "r036-s1",
+   "source_gloss_sha256": "66a7820eb5d3f28b309cbcf8e9447fce6027b46d16d48ce4f0e9f0c4767803b1",
+   "target_meaning_sha256": "6ad3fddaafb3d44655c588b7a71d66304daadcc8c31eeb53e715feb9134fe10b",
+   "previous_relation": {
+    "target": "w781",
+    "target_sense": "w781-s1",
+    "type": "near",
+    "note": "경탄은 훌륭한 대상을 보고 느끼는 감탄이라, 감탄과 거의 같은 뜻으로 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w781",
+    "target_sense": "w781-s1",
+    "type": "direct",
+    "note": "훌륭한 대상을 보고 느끼는 경탄은 감탄과 같은 반응을 가리킨다."
+   },
+   "position": 0,
+   "rationale": "r036 r036-s1 → w781-s1: 경탄과 감탄의 bound definitions는 훌륭함을 느껴 크게 반응하는 의미를 공유한다."
+  },
+  {
+   "source_record_id": "w001",
+   "source_sense_id": "w001-s1",
+   "source_gloss_sha256": "505acd48301d44a8da49c27219f2817f21207a792751868ecfb14eea32334dcc",
+   "target_meaning_sha256": "253b2c0283c626ae54a1e0953f0d73d10284519c0de13b8eafb8a8ba6cccde0c",
+   "previous_relation": {
+    "target": "w2374",
+    "target_sense": "w2374-s1",
+    "type": "near",
+    "note": "움직임이 없어 고요하게 머무는 상태로 고요와 가깝다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w2374",
+    "target_sense": "w2374-s1",
+    "type": "direct",
+    "note": "소리와 움직임이 잦아든 고요는 움직임이 없거나 적어 잠잠한 정적과 어휘적으로 겹친다."
+   },
+   "position": 2,
+   "rationale": "w001 w001-s1 → w2374-s1: 고요와 정적은 bound senses에서 움직임이 잦아든 조용한 상태를 공유한다."
+  },
+  {
+   "source_record_id": "w026",
+   "source_sense_id": "w026-s1",
+   "source_gloss_sha256": "65c3775081a6f129dabe18d4ba2c9467d4eb159eb6f45ff77729ea41ed2b5912",
+   "target_meaning_sha256": "355d57f46113cedd33d9103512029bbcbb3ac4e02405c9192faf532eaaeb5037",
+   "previous_relation": {
+    "target": "w370",
+    "target_sense": "w370-s1",
+    "type": "near",
+    "note": "마음이 가라앉아 안정된 상태로 담담하다와 가깝다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w370",
+    "target_sense": "w370-s1",
+    "type": "direct",
+    "note": "감정의 흔들림을 드러내지 않고 차분한 상태를 가리킬 때 차분하다와 담담하다가 만난다."
+   },
+   "position": 3,
+   "rationale": "w026 w026-s1 → w370-s1: 담담하다와 차분하다의 bound senses는 감정이 흔들리지 않는 차분한 상태를 공유하는 dictionary synonyms다."
+  },
+  {
+   "source_record_id": "w031",
+   "source_sense_id": "w031-s1",
+   "source_gloss_sha256": "1399a68c9b405ae59d4cb1571ebb45a159123a523a6ec7f395227ed8fc9b94c8",
+   "target_meaning_sha256": "79674d3b5d58c57e002b5ce6a995532d3f34913a4ef0433475e6ec4458c1490a",
+   "previous_relation": {
+    "target": "w450",
+    "target_sense": "w450-s1",
+    "type": "near",
+    "note": "작은 사정까지 살피며 따뜻하게 대한다는 점에서 다정하다와 가깝다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w450",
+    "target_sense": "w450-s1",
+    "type": "direct",
+    "note": "작은 사정까지 살피며 따뜻하게 대하는 자상한 태도는 다정하다의 뜻과 겹친다."
+   },
+   "position": 1,
+   "rationale": "w031 w031-s1 → w450-s1: 자상하다와 다정하다의 bound senses는 따뜻하고 세심하게 대하는 태도를 가리키는 lexical synonyms다."
+  },
+  {
+   "source_record_id": "w031",
+   "source_sense_id": "w031-s1",
+   "source_gloss_sha256": "1399a68c9b405ae59d4cb1571ebb45a159123a523a6ec7f395227ed8fc9b94c8",
+   "target_meaning_sha256": "b41e86ca632fd161aa11f95035b61c43d29843348ced221d6857e447b4bedaec",
+   "previous_relation": {
+    "target": "w911",
+    "target_sense": "w911-s1",
+    "type": "near",
+    "note": "남을 배려하며 따뜻하게 대하는 태도로 가깝다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w911",
+    "target_sense": "w911-s1",
+    "type": "direct",
+    "note": "남을 배려하고 따뜻하게 대하는 친절한 태도는 다정하다와 어휘적으로 가깝다."
+   },
+   "position": 3,
+   "rationale": "w031 w031-s1 → w911-s1: 친절하다와 다정하다의 bound senses는 상대를 따뜻하고 배려해 대하는 태도를 공유하는 dictionary synonyms다."
+  },
+  {
+   "source_record_id": "w041",
+   "source_sense_id": "w041-s1",
+   "source_gloss_sha256": "a853fca8fea3d9c5828a8b8ee3dd79412acaeb51fe30bb728a6f1020b2dabced",
+   "target_meaning_sha256": "431b340e93cb05a7da91d87dddeb0cd0eb8619548a32f88007cd644af0fe52b8",
+   "previous_relation": {
+    "target": "w362",
+    "target_sense": "w362-s1",
+    "type": "near",
+    "note": "빛이나 윤곽이 분명하지 않고 뿌옇다는 점에서 가깝다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w362",
+    "target_sense": "w362-s1",
+    "type": "direct",
+    "note": "빛이나 윤곽이 또렷하지 않은 상태를 흐릿하다와 희미하다로 표현할 수 있다."
+   },
+   "position": 3,
+   "rationale": "w041 w041-s1 → w362-s1: 희미하다와 흐릿하다의 bound visual meanings는 빛/윤곽이 분명하지 않음을 가리키는 lexical synonyms다."
+  },
+  {
+   "source_record_id": "w055",
+   "source_sense_id": "w055-s1",
+   "source_gloss_sha256": "621f48453d47574741219afdd3b6aa44a6c68a47059f5b2bf1446223166f7c8b",
+   "target_meaning_sha256": "7018ab2aa364898b10423eccf53b3ffa928dfb0761f94c81e8f751f62a59b88f",
+   "previous_relation": {
+    "target": "w975",
+    "target_sense": "w975-s1",
+    "type": "near",
+    "note": "훈기는 따뜻하게 느껴지는 기운이라, 따뜻하게 느껴지는 기운이나 열을 뜻하는 온기와 거의 같은 뜻이다.",
+    "relevance": 7
+   },
+   "relation": {
+    "target": "w975",
+    "target_sense": "w975-s1",
+    "type": "direct",
+    "note": "따뜻하게 느껴지는 기운을 훈기와 온기로 함께 표현할 수 있다."
+   },
+   "position": 2,
+   "rationale": "w055 w055-s1 → w975-s1: 온기와 훈기의 bound senses는 따뜻하게 느껴지는 기운을 같은 뜻으로 가리킨다."
+  },
+  {
+   "source_record_id": "w055",
+   "source_sense_id": "w055-s1",
+   "source_gloss_sha256": "621f48453d47574741219afdd3b6aa44a6c68a47059f5b2bf1446223166f7c8b",
+   "target_meaning_sha256": "ab76e58d3f45582c94d34b0dce8190d93ac8df095c79723316335d15c3679306",
+   "previous_relation": {
+    "target": "r041",
+    "target_sense": "r041-s1",
+    "type": "near",
+    "note": "따스함은 몸이나 마음에 따뜻하게 느껴지는 기운이라, 온기와 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "r041",
+    "target_sense": "r041-s1",
+    "type": "direct",
+    "note": "몸이나 마음에 따뜻하게 느껴지는 기운은 온기와 따스함이 공유하는 뜻이다."
+   },
+   "position": 3,
+   "rationale": "w055 w055-s1 → r041-s1: 온기와 따스함은 bound senses에서 따뜻하게 느껴지는 기운을 공유하는 lexical synonyms다."
+  },
+  {
+   "source_record_id": "w056",
+   "source_sense_id": "w056-s1",
+   "source_gloss_sha256": "be269c4e8c00b0a786e92b8075fdfd12986f8f88c531b596d1cb02dece5ae8cf",
+   "target_meaning_sha256": "4e51464d78f4323fbb045872909bebce7b241523f320fadc3151d11099533f50",
+   "previous_relation": {
+    "target": "w996",
+    "target_sense": "w996-s1",
+    "type": "near",
+    "note": "몸을 움츠리게 하는 찬 기운으로 냉기와 가깝다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w996",
+    "target_sense": "w996-s1",
+    "type": "direct",
+    "note": "몸을 움츠리게 하는 찬 기운을 한기와 냉기로 함께 가리킬 수 있다."
+   },
+   "position": 2,
+   "rationale": "w056 w056-s1 → w996-s1: 냉기와 한기는 bound senses에서 차갑게 느껴지는 기운을 공유하는 dictionary synonyms다."
+  },
+  {
+   "source_record_id": "w067",
+   "source_sense_id": "w067-s1",
+   "source_gloss_sha256": "8a7403ff7e94e082980d8b4564bce8e7fd931060e214852ab4c470ad2c95bf29",
+   "target_meaning_sha256": "235b05243a5f33ba72a4457e68319579ef12957e4e1685061e1a5bd693530b9c",
+   "previous_relation": {
+    "target": "w8104",
+    "target_sense": "w8104-s1",
+    "type": "near",
+    "note": "빛이 거의 없어 앞을 보기 어려운 어둠으로 어둠과 가깝다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w8104",
+    "target_sense": "w8104-s1",
+    "type": "direct",
+    "note": "빛이 거의 없어 사물이 잘 보이지 않는 상태를 암흑이라고도 한다."
+   },
+   "position": 2,
+   "rationale": "w067 w067-s1 → w8104-s1: 어둠과 암흑의 bound senses는 빛이 거의 없는 상태라는 lexical meaning을 공유한다."
+  },
+  {
+   "source_record_id": "w071",
+   "source_sense_id": "w071-s1",
+   "source_gloss_sha256": "9c170631af674aa9e25fd3fe588ba9d8260ced09cc97cd42d2ad9446ce790185",
+   "target_meaning_sha256": "f86fdefe53a31fed01dcc0291d3afabfe6d9539682ff6a0010512ae17b5f261c",
+   "previous_relation": {
+    "target": "w950",
+    "target_sense": "w950-s1",
+    "type": "near",
+    "note": "빛깔은 빛이 드러내는 색의 느낌이라, 사물이 띠는 색의 느낌을 가리키는 색채와 바꿔 쓸 수 있는 말이다.",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w950",
+    "target_sense": "w950-s1",
+    "type": "direct",
+    "note": "사물이나 장면이 띠는 색의 느낌은 빛깔이라는 말로도 찾을 수 있다."
+   },
+   "position": 2,
+   "rationale": "w071 w071-s1 → w950-s1: 색채와 빛깔은 bound senses에서 사물/장면의 색감을 가리키는 lexical synonyms이며, target의 narrower gloss alone is not a veto."
+  },
+  {
+   "source_record_id": "w072",
+   "source_sense_id": "w072-s1",
+   "source_gloss_sha256": "d07ae8cb9c862fe4e8ec3a3464138331d7109e5dd7dd59ebf7cbb5bd8d6d34d6",
+   "target_meaning_sha256": "f88ea28d59d2af9a9791122c3937dab1383f1f6017d1e4109f3a6c48d697f62b",
+   "previous_relation": {
+    "target": "w9815",
+    "target_sense": "w9815-s1",
+    "type": "near",
+    "note": "붉은 빛깔로 붉음과 가깝다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w9815",
+    "target_sense": "w9815-s1",
+    "type": "direct",
+    "note": "색이나 표면의 붉은 빛을 띠는 성질은 붉은색으로도 가리킨다."
+   },
+   "position": 2,
+   "rationale": "w072 w072-s1 → w9815-s1: 붉음과 붉은색의 bound meanings는 붉은 색조를 가리키는 lexical synonyms다."
+  },
+  {
+   "source_record_id": "w072",
+   "source_sense_id": "w072-s1",
+   "source_gloss_sha256": "d07ae8cb9c862fe4e8ec3a3464138331d7109e5dd7dd59ebf7cbb5bd8d6d34d6",
+   "target_meaning_sha256": "7ccc700b4e523980a82e2fd3616e2ed5d7ed0dbc06bbad434b946d5b0442594e",
+   "previous_relation": {
+    "target": "w948",
+    "target_sense": "w948-s1",
+    "type": "near",
+    "note": "붉은색으로 보이는 빛깔로 붉음과 가깝다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w948",
+    "target_sense": "w948-s1",
+    "type": "direct",
+    "note": "붉은색으로 보이는 빛깔은 붉음의 색감을 다른 말로 드러낸다."
+   },
+   "position": 3,
+   "rationale": "w072 w072-s1 → w948-s1: 붉음과 붉은빛의 bound meanings는 같은 붉은 색감을 가리킨다."
+  },
+  {
+   "source_record_id": "w072",
+   "source_sense_id": "w072-s1",
+   "source_gloss_sha256": "d07ae8cb9c862fe4e8ec3a3464138331d7109e5dd7dd59ebf7cbb5bd8d6d34d6",
+   "target_meaning_sha256": "0d2d4d5f972f63a85b29f120b8515b49bc31c66cf68304a5233a79231a78b8f7",
+   "previous_relation": {
+    "target": "w10476",
+    "target_sense": "w10476-s1",
+    "type": "near",
+    "note": "붉은 빛깔을 외래어로 말한 것으로 붉음과 가깝다.",
+    "relevance": 3
+   },
+   "relation": {
+    "target": "w10476",
+    "target_sense": "w10476-s1",
+    "type": "direct",
+    "note": "붉은 빛깔을 레드라고 부르는 표현도 같은 색을 가리킨다."
+   },
+   "position": 7,
+   "rationale": "w072 w072-s1 → w10476-s1: 붉음과 레드의 bound meanings는 같은 붉은 색을 가리키며, loanword/register 차이는 유의어 관계를 배제하지 않는다."
+  },
+  {
+   "source_record_id": "w087",
+   "source_sense_id": "w087-s1",
+   "source_gloss_sha256": "e9aaf59f27eef1c85bed104b00a0b9d5a89aabb8ef2d8e62e6d597fbb807d975",
+   "target_meaning_sha256": "9b2dc8c034f721237fc3465814450d88f8470e693c40d4df9a05a2f5a7621d45",
+   "previous_relation": {
+    "target": "w11333",
+    "target_sense": "w11333-s1",
+    "type": "near",
+    "note": "음향은 소리의 울림이라고 풀려 있어, 소리가 퍼지거나 되돌아와 길게 느껴지는 울림과 바꿔 쓸 수 있는 말이다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w11333",
+    "target_sense": "w11333-s1",
+    "type": "direct",
+    "note": "소리가 퍼지거나 되돌아와 길게 느껴지는 울림은 음향의 bound sense와 겹친다."
+   },
+   "position": 2,
+   "rationale": "w087 w087-s1 → w11333-s1: 울림과 음향의 bound glosses both name sound resonance, supporting a lexical synonym relation despite the difference in breadth."
+  },
+  {
+   "source_record_id": "w088",
+   "source_sense_id": "w088-s1",
+   "source_gloss_sha256": "bcff9a60302d6b95a8f1e4d27957edb4e7463b38c3666d74d1d54aa6a074bfe1",
+   "target_meaning_sha256": "83211ece694b90df282d6610aa844ec5ece0042b294c79945081fb6cc2857992",
+   "previous_relation": {
+    "target": "w4281",
+    "target_sense": "w4281-s1",
+    "type": "near",
+    "note": "반향은 벽이나 바닥에 부딪힌 소리가 되돌아와 겹쳐 들리는 현상이라, 메아리와 같은 현상을 가리키는 바꿔 쓸 수 있는 말이다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w4281",
+    "target_sense": "w4281-s1",
+    "type": "direct",
+    "note": "벽이나 바닥에 부딪힌 소리가 되돌아오는 현상은 메아리와 반향이 함께 가리킨다."
+   },
+   "position": 1,
+   "rationale": "w088 w088-s1 → w4281-s1: 메아리와 반향의 bound senses both name a rebounding sound phenomenon, a dictionary-level lexical synonym relationship."
+  },
+  {
+   "source_record_id": "w094",
+   "source_sense_id": "w094-s1",
+   "source_gloss_sha256": "43abc2ce34f37d3e2527edfeac27d59209a7ab3c709260a63f9f1f030229ac08",
+   "target_meaning_sha256": "8d50bae38e7668ae000e86a28df49ed61ea4fc91e35acd3a8917934d75cf5c2f",
+   "previous_relation": {
+    "target": "w116",
+    "target_sense": "w116-s1",
+    "type": "near",
+    "note": "맥박은 심장이 뛰면서 혈관에서 반복적으로 느껴지는 박동이라, 심장이 뛰며 반복되는 리듬인 심장박동과 거의 같은 것을 가리킨다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w116",
+    "target_sense": "w116-s1",
+    "type": "direct",
+    "note": "심장이 뛰며 반복되는 리듬을 혈관에서 느껴지는 박동인 맥박으로도 가리킬 수 있다."
+   },
+   "position": 1,
+   "rationale": "w094 w094-s1 → w116-s1: 심장박동과 맥박의 bound senses name the same recurring heartbeat event; the sensing point in the vessels does not negate lexical synonymy."
+  },
+  {
+   "source_record_id": "w094",
+   "source_sense_id": "w094-s1",
+   "source_gloss_sha256": "43abc2ce34f37d3e2527edfeac27d59209a7ab3c709260a63f9f1f030229ac08",
+   "target_meaning_sha256": "5aec719cf42e4b2ebcd5f14c071fdfc82c46562add851c56c31778eedf7e396e",
+   "previous_relation": {
+    "target": "w3204",
+    "target_sense": "w3204-s1",
+    "type": "near",
+    "note": "박동은 심장이나 맥이 규칙적으로 뛰는 움직임이라, 심장박동과 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w3204",
+    "target_sense": "w3204-s1",
+    "type": "direct",
+    "note": "심장이나 맥이 규칙적으로 뛰는 박동은 심장박동의 bound meaning과 겹친다."
+   },
+   "position": 2,
+   "rationale": "w094 w094-s1 → w3204-s1: 심장박동과 박동은 bound glosses에서 심장의 반복되는 움직임을 공유하는 lexical synonyms다."
+  },
+  {
+   "source_record_id": "w094",
+   "source_sense_id": "w094-s1",
+   "source_gloss_sha256": "43abc2ce34f37d3e2527edfeac27d59209a7ab3c709260a63f9f1f030229ac08",
+   "target_meaning_sha256": "1f70dd8d9efd4d43342a811518b6140ddb12e8b79765d1e2ec2ae6fbdb7e8740",
+   "previous_relation": {
+    "target": "w2414",
+    "target_sense": "w2414-s1",
+    "type": "near",
+    "note": "고동은 심장이 규칙적으로 뛰며 몸 안에 전해지는 박동이라, 심장박동을 몸 안에서 느끼는 쪽으로 말한다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w2414",
+    "target_sense": "w2414-s1",
+    "type": "direct",
+    "note": "몸 안에 전해지는 심장의 규칙적인 고동은 심장박동을 가리키는 말로 이어진다."
+   },
+   "position": 3,
+   "rationale": "w094 w094-s1 → w2414-s1: 심장박동과 고동의 bound senses both name the heart beating rhythmically, supporting dictionary-level synonymy."
+  },
+  {
+   "source_record_id": "w1250",
+   "source_sense_id": "w1250-s1",
+   "source_gloss_sha256": "0312a18b3e7a7062228080bc1bda2f0059bb4918b2911533ed751f192a185851",
+   "target_meaning_sha256": "2f5f80d5d855efabf0c1cdc340e8b1063aa7685b92c8952d62b4a05a2e9de2f8",
+   "previous_relation": {
+    "target": "w134",
+    "target_sense": "w134-s2",
+    "type": "near",
+    "note": "바람은 이루어지기를 바라는 마음이나 소망이라, 이루어지기를 바라는 마음인 소망과 거의 같은 뜻이다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w134",
+    "target_sense": "w134-s2",
+    "type": "direct",
+    "note": "이루어지기를 바라는 마음을 바람이나 소망으로 표현할 수 있다."
+   },
+   "position": 0,
+   "rationale": "w1250 w1250-s1 → w134-s2: 소망과 바람의 bound senses both denote a wish for something to come true."
+  },
+  {
+   "source_record_id": "w1250",
+   "source_sense_id": "w1250-s1",
+   "source_gloss_sha256": "0312a18b3e7a7062228080bc1bda2f0059bb4918b2911533ed751f192a185851",
+   "target_meaning_sha256": "bc11debe1a39c0a23f7204de84a69d482a1511b458b93da20b532135bd79955e",
+   "previous_relation": {
+    "target": "w281",
+    "target_sense": "w281-s1",
+    "type": "near",
+    "note": "소원은 이루어지기를 간절히 바라는 일이나 마음이라, 소망과 거의 같은 뜻으로 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w281",
+    "target_sense": "w281-s1",
+    "type": "direct",
+    "note": "이루어지기를 바라는 마음과 소원을 같은 뜻으로 찾을 수 있다."
+   },
+   "position": 1,
+   "rationale": "w1250 w1250-s1 → w281-s1: 소망과 소원의 bound senses share the wish for something to come true, supporting direct."
+  },
+  {
+   "source_record_id": "w194",
+   "source_sense_id": "w194-s1",
+   "source_gloss_sha256": "f2dd8ac024393f66d9ac49ce5f4e1afee96516a6c9f9dbcbd1c7527be87310d7",
+   "target_meaning_sha256": "3a3eaba4f321bbfd831c13a2e621afe349d6646fa37fa9630d227b591bb9b63b",
+   "previous_relation": {
+    "target": "w3641",
+    "target_sense": "w3641-s1",
+    "type": "near",
+    "note": "붙들다는 움직이거나 떠나지 못하게 손으로 단단히 잡는다는 뜻이라, 손으로 붙들어 움직이지 않게 하는 잡다와 거의 같은 뜻이다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w3641",
+    "target_sense": "w3641-s1",
+    "type": "direct",
+    "note": "손으로 붙들어 움직이지 않게 하는 잡기는 단단히 붙드는 붙들다와 겹친다."
+   },
+   "position": 0,
+   "rationale": "w194 w194-s1 → w3641-s1: 잡다와 붙들다의 bound senses both mean holding an object/person by hand to keep it from moving."
+  },
+  {
+   "source_record_id": "w194",
+   "source_sense_id": "w194-s1",
+   "source_gloss_sha256": "f2dd8ac024393f66d9ac49ce5f4e1afee96516a6c9f9dbcbd1c7527be87310d7",
+   "target_meaning_sha256": "25324b719bcdd1b59a797a32805e2ba49cba6a22d88de84da4a14352d0bb58f5",
+   "previous_relation": {
+    "target": "w215",
+    "target_sense": "w215-s1",
+    "type": "near",
+    "note": "붙잡다는 손이나 힘으로 대상을 단단히 잡아 놓치지 않는다는 뜻이라, 잡다와 바꿔 쓸 수 있다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w215",
+    "target_sense": "w215-s1",
+    "type": "direct",
+    "note": "대상을 손이나 힘으로 놓치지 않게 붙잡는 일은 잡다의 bound sense와 겹친다."
+   },
+   "position": 1,
+   "rationale": "w194 w194-s1 → w215-s1: 잡다와 붙잡다의 bound senses share the act of holding a person/object so it cannot move away."
+  },
+  {
+   "source_record_id": "w225",
+   "source_sense_id": "w225-s1",
+   "source_gloss_sha256": "86ba429eeb309860a69977623f73d70d92f218154c45cf0cf9c787f15d6dd2c8",
+   "target_meaning_sha256": "b7a47485ab8c6a409d23266b35fe337cefbee7eb4e85eb61e32ba1da42acc5bd",
+   "previous_relation": {
+    "target": "w2821",
+    "target_sense": "w2821-s1",
+    "type": "near",
+    "note": "고르다는 여럿 가운데 조건에 맞는 것을 선택한다는 뜻이라, 선택하다와 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w2821",
+    "target_sense": "w2821-s1",
+    "type": "direct",
+    "note": "여럿 가운데 하나를 조건에 맞게 고르는 일은 선택하다와 고르다가 공유한다."
+   },
+   "position": 0,
+   "rationale": "w225 w225-s1 → w2821-s1: 선택하다와 고르다의 bound senses both mean choosing one among alternatives, supporting direct."
+  },
+  {
+   "source_record_id": "w225",
+   "source_sense_id": "w225-s1",
+   "source_gloss_sha256": "86ba429eeb309860a69977623f73d70d92f218154c45cf0cf9c787f15d6dd2c8",
+   "target_meaning_sha256": "e445e457cfc3a561688134a19a9acb4c55a6de08f6f7c61f6381071012c3f396",
+   "previous_relation": {
+    "target": "w6048",
+    "target_sense": "w6048-s1",
+    "type": "near",
+    "note": "택하다는 여러 가능성 가운데 하나를 골라 정한다는 뜻이라, 선택하다와 거의 같은 뜻이다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w6048",
+    "target_sense": "w6048-s1",
+    "type": "direct",
+    "note": "여러 가능성 가운데 하나를 정하는 택하다는 선택하다와 같은 뜻을 가리킨다."
+   },
+   "position": 1,
+   "rationale": "w225 w225-s1 → w6048-s1: 선택하다와 택하다의 bound senses share choosing one option from several, a dictionary synonym relation."
+  },
+  {
+   "source_record_id": "w281",
+   "source_sense_id": "w281-s1",
+   "source_gloss_sha256": "aac168cc0d357791b16dbc4951a9bb5665dd08592c2c73f177a01675afed0940",
+   "target_meaning_sha256": "124a32727a97cf4dc365dab712ebec978fdb15ba314e3afe2ae91efb987ea88b",
+   "previous_relation": {
+    "target": "w1250",
+    "target_sense": "w1250-s1",
+    "type": "near",
+    "note": "소망은 이루어지기를 바라는 마음이라, 소원이 가리키는 바라는 일이나 마음과 거의 같은 뜻으로 바꿔 쓸 수 있다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w1250",
+    "target_sense": "w1250-s1",
+    "type": "direct",
+    "note": "이루어지기를 간절히 바라는 소원은 소망과 같은 뜻을 가리킨다."
+   },
+   "position": 2,
+   "rationale": "w281 w281-s1 → w1250-s1: 소원과 소망 share the same bound meaning of wishing for something to come true."
+  },
+  {
+   "source_record_id": "w281",
+   "source_sense_id": "w281-s1",
+   "source_gloss_sha256": "aac168cc0d357791b16dbc4951a9bb5665dd08592c2c73f177a01675afed0940",
+   "target_meaning_sha256": "2f5f80d5d855efabf0c1cdc340e8b1063aa7685b92c8952d62b4a05a2e9de2f8",
+   "previous_relation": {
+    "target": "w134",
+    "target_sense": "w134-s2",
+    "type": "near",
+    "note": "바람은 이루어지기를 바라는 마음이나 소망이라, 소원과 바꿔 쓸 수 있는 말이다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w134",
+    "target_sense": "w134-s2",
+    "type": "direct",
+    "note": "이루어지기를 간절히 바라는 마음은 바람의 bound sense와 겹친다."
+   },
+   "position": 3,
+   "rationale": "w281 w281-s1 → w134-s2: 소원과 바람 share the bound wish meaning; intensity alone does not negate synonymy."
+  },
+  {
+   "source_record_id": "w726",
+   "source_sense_id": "w726-s1",
+   "source_gloss_sha256": "e76589f65d4f0dea71bc3c9db2ed2cb8a6e676c2c0820c88623d9665eb6f9795",
+   "target_meaning_sha256": "3804b6a9af2e1b00340f06a0f091f0c55afa2af33f89284cbef0f2699121d3f5",
+   "previous_relation": {
+    "target": "w6157",
+    "target_sense": "w6157-s1",
+    "type": "near",
+    "note": "쓰다듬다는 손으로 표면을 부드럽게 문지른다는 뜻이라, 손으로 부드럽게 쓰다듬는 어루만지다와 거의 같은 동작이다.",
+    "relevance": 7
+   },
+   "relation": {
+    "target": "w6157",
+    "target_sense": "w6157-s1",
+    "type": "direct",
+    "note": "손으로 표면을 부드럽게 문지르는 쓰다듬다는 어루만지다와 같은 동작을 가리킨다."
+   },
+   "position": 0,
+   "rationale": "w726 w726-s1 → w6157-s1: 어루만지다와 쓰다듬다의 bound senses both mean gently stroking/rubbing by hand."
+  }
+ ]
+}
