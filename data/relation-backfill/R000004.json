@@ -5281,10 +5281,11 @@
    "relation": {
     "target": "w078",
     "target_sense": "w078-s1",
-    "type": "antonym",
-    "note": "건조는 수분이 적어 마른 상태라 수분이 있는 상태와 반대다."
+    "type": "association",
+    "note": "수분은 물질에 들어 있는 물기 자체이고, 건조는 수분이 적어 마르고 눅눅하지 않은 상태다. 물기라는 대상과 그것이 적은 상태라 같은 축의 양 끝으로 확인되지 않으므로, 물질에 들어 있는 물기에서 수분이 적은 상태 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w11287-s1: 후보 검토에서 w078-s1를 antonym 관계로 판단했다."
+   "rationale": "w11287-s1 w078-s1: 두 bound gloss가 현상(또는 대상)과 그 부재·상태로 갈려 같은 의미축의 양 끝으로 확인되지 않아 antonym이 아니라 association으로 정리했다. 기존 역방향은 없었고 새로 만들지 않았다."
   },
   {
    "source_record_id": "w11287",
@@ -6935,10 +6936,11 @@
    "relation": {
     "target": "w040",
     "target_sense": "w040-s1",
-    "type": "antonym",
-    "note": "선명하다는 윤곽이 흐리지 않고 뚜렷하다는 뜻이라 앞이 흐려지는 안개와 반대다."
+    "type": "association",
+    "note": "안개는 공중의 물방울이 낮게 퍼져 앞이 흐려지는 현상이고, 선명하다는 빛깔이나 윤곽이 흐리지 않고 뚜렷하다는 뜻이다. 앞은 흐려지게 하는 원인 현상, 뒤는 뚜렷한 가시성의 상태라 맞서는 짝으로 확인되지 않으므로, 앞이 흐려지는 현상에서 윤곽이 뚜렷한 상태 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w135-s1: 후보 검토에서 w040-s1를 antonym 관계로 판단했다."
+   "rationale": "w135-s1 w040-s1: 두 bound gloss가 현상(또는 대상)과 그 부재·상태로 갈려 같은 의미축의 양 끝으로 확인되지 않아 antonym이 아니라 association으로 정리했다. 기존 역방향은 없었고 새로 만들지 않았다."
   },
   {
    "source_record_id": "w136",
@@ -7608,10 +7610,11 @@
    "relation": {
     "target": "w067",
     "target_sense": "w067-s1",
-    "type": "antonym",
-    "note": "어둠은 빛이 거의 없어 잘 보이지 않는 상태라 불빛과 반대다."
+    "type": "association",
+    "note": "불빛은 불에서 나와 주변을 밝히는 빛이라는 현상이고, 어둠은 빛이 거의 없어 사물이 잘 보이지 않는 상태다. 빛이라는 현상과 그 빛이 없는 상태라 같은 축의 양 끝을 정의하는 짝으로 확인되지 않으므로, 주변을 밝히는 빛에서 빛이 거의 없는 상태 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w180-s1: 후보 검토에서 w067-s1를 antonym 관계로 판단했다."
+   "rationale": "w180-s1 w067-s1: 두 bound gloss가 현상(또는 대상)과 그 부재·상태로 갈려 같은 의미축의 양 끝으로 확인되지 않아 antonym이 아니라 association으로 정리했다. 기존 역방향은 없었고 새로 만들지 않았다."
   },
   {
    "source_record_id": "w181",
@@ -9540,10 +9543,11 @@
    "relation": {
     "target": "w5356",
     "target_sense": "w5356-s1",
-    "type": "antonym",
-    "note": "기억은 지난 일을 마음속에 간직하는 작용이라 잊음과 반대되는 상태다."
+    "type": "association",
+    "note": "잊다는 기억이나 마음에서 더 이상 떠올리지 못하게 되는 일이고, 기억은 지난 일을 마음속에 간직하는 정신 작용이다. 앞은 떠올리지 못하게 되는 일, 뒤는 간직하는 작용 자체라 같은 축의 양 끝으로 확인되지 않으므로, 떠올리지 못하게 되는 일에서 간직하는 작용 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w240-s1: 후보 검토에서 w5356-s1를 antonym 관계로 판단했다."
+   "rationale": "w240-s1 w5356-s1: 두 bound gloss가 현상(또는 대상)과 그 부재·상태로 갈려 같은 의미축의 양 끝으로 확인되지 않아 antonym이 아니라 association으로 정리했다. 기존 역방향은 없었고 새로 만들지 않았다."
   },
   {
    "source_record_id": "w240",
@@ -9734,10 +9738,11 @@
    "relation": {
     "target": "w2419",
     "target_sense": "w2419-s1",
-    "type": "antonym",
-    "note": "건조함은 물기나 습기가 적어 메마른 상태라 물기와 반대다."
+    "type": "association",
+    "note": "물기는 물이나 습기가 표면에 조금 남아 있는 상태이고, 건조함은 물기나 습기가 적어 메마른 상태다. 앞은 남아 있는 물기라는 대상에 가깝고 뒤는 그것이 적은 상태라 같은 축의 양 끝으로 확인되지 않으므로, 표면에 남은 물기에서 메마른 상태 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w2417-s1: 후보 검토에서 w2419-s1를 antonym 관계로 판단했다."
+   "rationale": "w2417-s1 w2419-s1: 두 bound gloss가 현상(또는 대상)과 그 부재·상태로 갈려 같은 의미축의 양 끝으로 확인되지 않아 antonym이 아니라 association으로 정리했다. 기존 역방향은 없었고 새로 만들지 않았다."
   },
   {
    "source_record_id": "w2422",
@@ -19844,7 +19849,7 @@
   "rel-0e9024ee100d9a3d7a8cca0d": "2cfef9399eb1d774bc4d6548b576bca4ee3c2052569d7512e46192fbe3033fce",
   "rel-667183aa38ad564186f38cb1": "3d19ab6d4a82d534aa9b202eca483bae8f2ed8db10e17a7eed3eddce5e3c2dd0",
   "rel-f8edab24ff611366a148311a": "10358490fc61e65ead200c4ca1043caa1b30b8d9c509d61575126910ffac91be",
-  "rel-f5fe02ed83a69741e0e16dc0": "64871c4ace132edc56952028c326591897608326e128acc23595f8969cb915c6",
+  "rel-71f00deb581654b033c05e69": "64871c4ace132edc56952028c326591897608326e128acc23595f8969cb915c6",
   "rel-ddd49b21dbc9fabad3edb42d": "39994608316ce08ca733f3dfaf1b59df3c7fa46275618228a00ecd50c2162cca",
   "rel-16069e09c2f300db29ae5920": "476be3b0a8fab78770a2abedcf364c46753a5576b1449e341e2aaf1a4d7d5a98",
   "rel-3a2425ede4012fd7f0d81c94": "2b76cdb686b61baf71475acf2427a6e69c3343abb64a1c89011b23fc15ea9463",
@@ -19972,7 +19977,7 @@
   "rel-b71931041e19fbb55772a21b": "4e650abe7fcc8430321469ec2951b0aaf16da2f4921687474a4412b4d1c44826",
   "rel-74fb5dd1d6ddceae6332c4ea": "8e80384280db7c92dba829ba8ec5b8fa771ca4ac16e8e42bf1f186f7fcf7672f",
   "rel-9bf98bb857721b9cc4f18628": "525934924e0d419ba22fa8853f7943bd8ab7172a27e1b9337b471ead4f1e0beb",
-  "rel-065a938cf1f17f114e0e240e": "bcc8c20a145f227624becaaca9ce88aaf11943278e11826934b8dc4347ad7fb6",
+  "rel-21d1b4fbfd6fb41100ba93e5": "bcc8c20a145f227624becaaca9ce88aaf11943278e11826934b8dc4347ad7fb6",
   "rel-71eda79f1de1cdb4cecd6585": "b8170dd6e87cd8aa398418f9cdcf98ad541e6bca6e73042d5cb4b1888945573c",
   "rel-bf49a58a59216c1cd1cba25a": "422067e85b08c39b8b1cbf32e53f5bd17586365180282facc5d1c229576fc5df",
   "rel-d7ca2927339cc799503f226a": "6f48a0fbdc22cd4e4e58285f9223831bf2be44ebf5622814cbffd5c5de1433f9",
@@ -20024,7 +20029,7 @@
   "rel-d17556d3a716f2c917d1211f": "68c301f9e6f5a4d7c0ae87bb2a1163c99e2bb5209a5a5cb25af21009a117ce7f",
   "rel-b3f8ed28dacf7723d001bdf3": "c22158b12ffeef811ceb5bf5aa1e2e5e53c1e8621e13b989c0abffa2bdf94cea",
   "rel-61cc48f65bfaef3a7ea2f30f": "e582f87ea2d2a0001a6ff60871a8f447484caa5614b1361ce27e518ce22c11f5",
-  "rel-d931af078e4f7dacfc1ac71f": "d52683c3c983db743a944b80653e951a0b84ea9a8d36dd4ed0fd1f9a8ebfafe9",
+  "rel-23e6c3a38aec08d0e4e75e27": "d52683c3c983db743a944b80653e951a0b84ea9a8d36dd4ed0fd1f9a8ebfafe9",
   "rel-a6a946e57c2670308de85d86": "d783160e699195811fba2ec7cf1de1de1d0bc8fe1037999a427ffece13f26720",
   "rel-71f7fe740f852fc1d5828c7b": "4db2a91cd03d1f46e6c0ecc29deb9ee43633c4bad075dd115e942004e1efa6b0",
   "rel-a96deb1da43cc7d8a4ea9048": "8d4dc3e53c469316274469027866b58623c877f8ba2cdd77c2188572e1e2eeb6",
@@ -20174,7 +20179,7 @@
   "rel-019122946f64babd8fb91ef1": "cfe58e647cb3247cced3281420df48f03ac4e8e8d9b2bb7e188851b989c0ef86",
   "rel-adb45a3c905eb1f5da588819": "b22b285dcba10b6d24036e3f4aa61f1ac529f08b1aca29ef6cbf91ba272d149b",
   "rel-4412f5f9b098da555ca59954": "4fc257d610d923b58cf1e8f7006f0ebd9f04432ccb1a8bc52300088ad6d97940",
-  "rel-29ed7b782a7643d86e234573": "be1093bbfaaae8a11ee7a94f52b4e3ccbad5e7c7e1bf7217c2fd274ae48a2adf",
+  "rel-28f0a3e1195d2c83436e7019": "be1093bbfaaae8a11ee7a94f52b4e3ccbad5e7c7e1bf7217c2fd274ae48a2adf",
   "rel-aae6a5b6b40268db60f9495f": "346c40d878ad03027778943a2ff02deba869eae5f5f972f405aa399b15821ed8",
   "rel-9b160c75a02a82fa1adc5979": "c630dce0c860c1d0e7c517f07fa610908d28bd564faf597a6edcf080c832f824",
   "rel-a8575a1e78708e0b2903051c": "f9f40b909e179094fcce26a4c0a42013cb1cdb6643f0d810457e679ecb3093a4",
@@ -20189,7 +20194,7 @@
   "rel-cfcedad443eb6044e9614b58": "58ddff439f63eb983bd410f2a3210524d0f3cbd8d9b4cef110d2a0c56240b0d1",
   "rel-3f57587e4a43b5d2a102fc3b": "fb189af6e13e741d03b81551bb9d7c26ea6504aaddb72458fd9f12745561a9f4",
   "rel-a62fb263d987eae2ca5a7794": "cfb290cb2bf009e7451d46aba80d5dae637a35dd1b7ad35bdcad69b9b1b9db99",
-  "rel-005d469ee8c93b4ee2ff7bad": "e132d86701eb5df0ad7e959862666eacbb578ff6d34cc07bede9009670b638fb",
+  "rel-c24feb9f5d0a301cc2a256a1": "e132d86701eb5df0ad7e959862666eacbb578ff6d34cc07bede9009670b638fb",
   "rel-13e39599af86c37d8a038777": "100832cdd1520f388e9af102c6aa0dda985c7af66df529d00208d5e4ec6f792c",
   "rel-46f8b5424b11ca610280f3ca": "4138a5555215c25921e873a7a3d2835d9b3e85059d2fb4562950cfb3f3cc2131",
   "rel-8668d49a9cf3a407889ebd34": "541e23a916191b06728318b91ad31afee2925d72ba34796adaa22cf08281620f",
