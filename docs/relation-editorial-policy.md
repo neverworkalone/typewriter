@@ -24,6 +24,13 @@ not rewritten by this policy change.
   dictionary-synonym candidates rather than mere creative associations.
 - Antonym requires genuinely opposed meanings along a meaningful matching
   sense axis, not simply things found in contrasting scenes.
+- Do not infer either dictionary label from a topical link or a contrastive
+  rationale alone: a sensory property and its descriptor, a capability and a
+  treatment that suppresses it, or a substance and a resulting state may be
+  closely related without being lexical synonyms or opposites. Check the
+  bound meanings themselves. POS differences can prompt closer inspection,
+  but are not a mechanical rejection rule; retain useful non-dictionary
+  paths under a fitting exploratory type.
 - False sense bindings and false dictionary claims can block. These types
   never carry relevance.
 

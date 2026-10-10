@@ -1,0 +1,131 @@
+{
+ "packet_id": "R000008",
+ "relation_corrections": [
+  {
+   "source_record_id": "w099",
+   "source_sense_id": "w099-s1",
+   "source_gloss_sha256": "b6bea8a655f4e76a3bc5c93df61319cf15d203bdd8d330a1fa351604e2ce59e6",
+   "target_meaning_sha256": "ac3dc42eb7e031d42368c16dbcfb461de3bf7a907ee235a0e6dbd24c110e561f",
+   "previous_relation": {
+    "target": "w935",
+    "target_sense": "w935-s1",
+    "type": "direct",
+    "note": "달다는 설탕처럼 단맛이 느껴지는 상태로 단맛의 형용 표현이다."
+   },
+   "relation": {
+    "target": "w935",
+    "target_sense": "w935-s1",
+    "type": "near",
+    "note": "달다는 단맛이 느껴지는 상태를 서술해 단맛과 가까운 감각의 말결을 이룬다.",
+    "relevance": 5
+   },
+   "position": 2,
+   "rationale": "w099-s1: 단맛은 맛을 가리키고 달다는 그 맛이 나는 상태를 서술하므로 같은 어휘 의미의 유의어가 아니다. 감각의 말결을 연결하는 near로 둔다."
+  },
+  {
+   "source_record_id": "w100",
+   "source_sense_id": "w100-s1",
+   "source_gloss_sha256": "de39a33ddc43d6ecf5629e7fe31dd6747179ab66321935329a407f0d3759927b",
+   "target_meaning_sha256": "4fe470f9ab81c41cd6857b5adb184a6d89884fdc1636f6ab300213eae01b4ef2",
+   "previous_relation": {
+    "target": "w462",
+    "target_sense": "w462-s1",
+    "type": "direct",
+    "note": "씁쓸하다는 입안에 쓴맛이 느껴지는 상태로 쓴맛을 직접 표현한다."
+   },
+   "relation": {
+    "target": "w462",
+    "target_sense": "w462-s1",
+    "type": "near",
+    "note": "씁쓸하다는 입안에 쓴맛이 느껴지는 상태를 서술해 쓴맛과 가까운 감각의 말결을 이룬다.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w100-s1: 쓴맛은 맛의 이름이고 씁쓸하다는 그 맛을 느끼는 상태를 서술하므로 직접 유의어가 아니다. 같은 감각의 말결을 잇는 near로 둔다."
+  },
+  {
+   "source_record_id": "w100",
+   "source_sense_id": "w100-s1",
+   "source_gloss_sha256": "de39a33ddc43d6ecf5629e7fe31dd6747179ab66321935329a407f0d3759927b",
+   "target_meaning_sha256": "951b3dcba4c7ce15d157494828c5ebae1eebcab838af6e84c993e22a6ccfbc59",
+   "previous_relation": {
+    "target": "w237",
+    "target_sense": "w237-s4",
+    "type": "direct",
+    "note": "쓰다 sense 4는 맛이 혀에 불쾌하고 자극적으로 느껴지는 상태로 쓴맛을 직접 나타낸다."
+   },
+   "relation": {
+    "target": "w237",
+    "target_sense": "w237-s4",
+    "type": "near",
+    "note": "쓰다 sense 4는 혀에 쓴맛이 느껴지는 상태를 서술해 쓴맛과 가까운 감각의 말결을 이룬다.",
+    "relevance": 5
+   },
+   "position": 4,
+   "rationale": "w100-s1: 쓴맛은 맛의 이름이고 쓰다 sense 4는 그 맛을 느끼는 상태를 서술하므로 직접 유의어가 아니다. 같은 감각의 말결을 잇는 near로 둔다."
+  },
+  {
+   "source_record_id": "w11287",
+   "source_sense_id": "w11287-s1",
+   "source_gloss_sha256": "f38133e970434e5525fcfb59de77f8d47e1dbbd99868f52899bc13885315603e",
+   "target_meaning_sha256": "64871c4ace132edc56952028c326591897608326e128acc23595f8969cb915c6",
+   "previous_relation": {
+    "target": "w078",
+    "target_sense": "w078-s1",
+    "type": "antonym",
+    "note": "건조는 수분이 적어 마른 상태로 물기를 가진 수분과 반대다."
+   },
+   "relation": {
+    "target": "w078",
+    "target_sense": "w078-s1",
+    "type": "association",
+    "note": "건조는 수분 자체가 아니라 수분이 적어 나타나는 마른 상태로, 수분과 대비해 탐색할 수 있다.",
+    "relevance": 4
+   },
+   "position": 2,
+   "rationale": "w11287-s1: 수분은 물질에 들어 있는 물기이고 건조는 수분이 적은 상태이므로 물질과 결과 상태의 관계이지 어휘 뜻의 반의 관계가 아니다. 유용한 대비 경로로 association에 둔다."
+  },
+  {
+   "source_record_id": "w11287",
+   "source_sense_id": "w11287-s1",
+   "source_gloss_sha256": "f38133e970434e5525fcfb59de77f8d47e1dbbd99868f52899bc13885315603e",
+   "target_meaning_sha256": "2dfb020128a9527318e97c01e0427dc466b1e135154b7dbb192df5059f2ed148",
+   "previous_relation": {
+    "target": "w085",
+    "target_sense": "w085-s1",
+    "type": "antonym",
+    "note": "메마름은 수분이나 생기가 빠져 바싹 마른 상태다."
+   },
+   "relation": {
+    "target": "w085",
+    "target_sense": "w085-s1",
+    "type": "association",
+    "note": "메마름은 수분이나 생기가 빠져 나타나는 상태로 수분 자체와 대비해 탐색할 수 있다.",
+    "relevance": 4
+   },
+   "position": 3,
+   "rationale": "w11287-s1: 수분은 물질에 들어 있는 물기이고 메마름은 수분이 빠져 나타나는 상태이므로 물질과 결과 상태의 관계이지 어휘 뜻의 반의 관계가 아니다. 유용한 대비 경로로 association에 둔다."
+  },
+  {
+   "source_record_id": "w1225",
+   "source_sense_id": "w1225-s1",
+   "source_gloss_sha256": "09c01c8d5f762d143a2e5b21c4df4e043129d71ed1971597d8aba8e45ef3537b",
+   "target_meaning_sha256": "13f81b985ac257ba451956a23d28047dad773eb28da7f88f0f1a878aad0420ec",
+   "previous_relation": {
+    "target": "w10086",
+    "target_sense": "w10086-s1",
+    "type": "antonym",
+    "note": "마취는 감각을 일시적으로 잃게 하는 상태로 감각을 느끼는 능력의 일시적 부재를 만든다."
+   },
+   "relation": {
+    "target": "w10086",
+    "target_sense": "w10086-s1",
+    "type": "association",
+    "note": "마취는 약물 처치로 감각을 일시적으로 잃게 하므로 감각 능력과 처치·결과의 관계로 함께 살필 수 있다.",
+    "relevance": 4
+   },
+   "position": 6,
+   "rationale": "w1225-s1: 감각은 몸으로 느끼고 알아차리는 능력이며 마취는 그 감각을 일시적으로 잃게 하는 약물 처치이므로 능력과 처치의 관계이지 반의 관계가 아니다. 유용한 연결로 association에 둔다."
+  }
+ ]
+}
