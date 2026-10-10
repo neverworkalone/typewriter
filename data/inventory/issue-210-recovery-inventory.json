@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "d925f1f56e277129d14e2ff2104742c9f5ccee0dbe8490c59bc2cc55ae31cbd7",
+    "current_canonical_revision": "330c9ea6181bbfa6243a622cc945a8ca5ac275cef0a6ab624ff7f7044d652252",
     "source_manifest": [
       {
         "path": "AGENTS.md",
@@ -13,8 +13,8 @@
       },
       {
         "path": "config/artifact-policy.json",
-        "sha256": "2c8f3311ccec959869500601b5daa4c378693ec9f3358fe010f62f1aaf2ec83c",
-        "byte_count": 157523
+        "sha256": "f45e2a573328339c1a17f9735fe6c1b8ff4646282100ea0f7d1b31aa50851a7f",
+        "byte_count": 158981
       },
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -688,8 +688,8 @@
       },
       {
         "path": "data/canonical/m5-10a-wave-a2.jsonl",
-        "sha256": "ee10a5aa51756c616897fe3cf49bfac898822ff83148f260861aff00f55cb908",
-        "byte_count": 16703
+        "sha256": "dfbbc6753cb4949698aa21daa0648c2bff295da433d22f6ed2568f37bda943e2",
+        "byte_count": 16754
       },
       {
         "path": "data/canonical/m5-11-expansion.jsonl",
@@ -753,17 +753,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "9b36552fda89e08cf68109440a25721907c789a2262bbf41d7d41c3a4de8b8e6",
-        "byte_count": 15665185
+        "sha256": "f0b299a22c3170cc1f2a4d7fcbaab7d2b1f2201af29d2c53149c2d5501d83121",
+        "byte_count": 15670069
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "d4af569e4aaf468c81267f4e6a1ee502666d48ebd72fcd97206f0c0b700b90a7",
+        "sha256": "afa4670785db7e00454807eb8c754e38d020453c69755bd22f8ec5fe28c96c86",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "a878e742e1badc036eb47980df6639ac78d486c479eab8482572f0e0c98da616",
+        "sha256": "c9bbf52a945dcbb4d9653dcefe743f5b9c9aab0f6010fd1cc787454e32057756",
         "byte_count": 29643
       },
       {
@@ -803,7 +803,7 @@
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "5461e871f4ed8acd1ee6ef96195874d9eece2f2c0af4e87cd5d9da11c3dd5d19",
+        "sha256": "eac4e49827ad2ce97646a72dc3ac9e49d08ffd88b3b6d995534b67d299fcdcf6",
         "byte_count": 8780
       },
       {
@@ -858,8 +858,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "da61c6721df17e7cbce9fa926b27b6193afb628d1d45660a9e71456c3992f496",
-        "byte_count": 12964
+        "sha256": "14894036b44a643203abe86e0d6e29579371b97fd5b0fe774e6825f5fa092eeb",
+        "byte_count": 13029
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -923,8 +923,8 @@
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "8453f3b3c0c3d9d8e24f36a1fdf02384368e466b76ec371c47fae3d119fd2453",
-        "byte_count": 33802
+        "sha256": "470907781b40d555cf70367a26e7580102aad6675072c132d16f640c93f0e9d1",
+        "byte_count": 33851
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
@@ -948,8 +948,8 @@
       },
       {
         "path": "scripts/reference/run-corpus-lemma-pilot.test.mjs",
-        "sha256": "9716054576f0d8aa55ac411a7fb631f3f8b1612bf3b8fa6d6ace134563a46c2b",
-        "byte_count": 20562
+        "sha256": "86cf8b0308f64c11fa4fdfe8339c4ade871855a58c0635dff15eadd8218191ab",
+        "byte_count": 20962
       },
       {
         "path": "scripts/reference/test-corpus-lemma-pilot.py",
@@ -968,8 +968,8 @@
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "c88179e01a58abd5f8b10a7383bf69e11f9d5a69073e2edbf212f57f8b98f502",
-        "byte_count": 140085
+        "sha256": "d6eaeeae486ee3ff1e48aee0322e13c8324aeb18996351ffd7f14681ac59342a",
+        "byte_count": 142954
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",

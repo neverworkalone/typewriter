@@ -142,6 +142,7 @@
     "factory:literature-rescue": "node scripts/factory/literature-rescue-cli.mjs",
     "relation:candidates": "node scripts/relation/stage2-candidates.mjs",
     "relation:near-review": "node scripts/relation/near-review.mjs",
+    "relation:correct": "node scripts/relation/correct-cli.mjs",
     "reference:literature:evidence": "node scripts/reference/literature-evidence-pack.mjs",
     "reference:literature:validate": "node scripts/reference/literature-validation.mjs",
     "reference:literature:boundary:measure": "node scripts/reference/literature-boundary-measure.mjs",

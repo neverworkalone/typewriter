@@ -5,6 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { validateReviewArtifacts } from './artifacts.mjs';
+import { revertRelationCorrections } from './relation-corrections.mjs';
 import { matchesHistoricalRecordSha256, validateStage3AdmissionManifest } from './admission.mjs';
 import {
   parseJsonl,
@@ -267,6 +268,8 @@ export function walkStage3History(entryId, canonical, changes) {
       const ids = new Set(change.added_sense_ids);
       if (state.senses.filter((sense) => ids.has(sense.id)).length !== ids.size) { errors.push(`${entryId}: amendment ${change.batchId} does not add every declared sense`); break; }
       state = { ...state, senses: state.senses.filter((sense) => !ids.has(sense.id)) };
+    } else if (change.operation === 'amend_relations') {
+      state = revertRelationCorrections(state, change.relationCorrections ?? []);
     } else {
       const added = change.relationAmendments.filter((item) => item.source_record_id === entryId && item.outcome === 'appended' && change.added_relation_ids.includes(item.relation_id));
       state = { ...state, senses: state.senses.map((sense) => {
@@ -314,7 +317,7 @@ async function readBackfillPackets(root) {
 }
 
 const backfillChangesOf = (events) => events.flatMap((event) => (event.changes ?? []).map((change) => ({
-  ...change, batchId: event.batch_id, decisionById: new Map(), relationAmendments: event.relation_amendments ?? [],
+  ...change, batchId: event.batch_id, decisionById: new Map(), relationAmendments: event.relation_amendments ?? [], relationCorrections: event.relation_corrections ?? [],
 })));
 
 function validateStage3RecordChanges(reviewArtifacts, canonicalById, backfillChanges = []) {
@@ -390,6 +393,7 @@ function validateStage3RecordChanges(reviewArtifacts, canonicalById, backfillCha
 
 function validateStage3RelationMappings(reviewArtifacts, canonicalById, backfillEvents = []) {
   const errors = [];
+  const correctionEvents = backfillEvents.filter((event) => event.relation_corrections?.length);
   // Relations appended after admission (reverse amendments #399, backfill #446) follow the reviewed relations.
   const appended = new Map();
   const amendments = [
@@ -417,8 +421,10 @@ function validateStage3RelationMappings(reviewArtifacts, canonicalById, backfill
     for (const row of decisions) {
       const mapping = bySource.get(row.source_candidate_id);
       if (!mapping) continue;
-      const canonical = canonicalById.get(mapping.record_id);
-      if (!canonical) continue;
+      const current = canonicalById.get(mapping.record_id);
+      if (!current) continue;
+      // Relation corrections (#501) rewrite a reviewed relation in place; compare the record as it was before them.
+      const canonical = correctionEvents.reduceRight((record, event) => revertRelationCorrections(record, event.relation_corrections), current);
       for (const [index, reviewed] of row.reviewed_record.senses.entries()) {
         const actual = canonical.senses.find((sense) => sense.id === mapping.sense_ids[index]);
         if (!actual) continue;

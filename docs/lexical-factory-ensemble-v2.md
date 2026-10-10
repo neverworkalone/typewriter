@@ -207,7 +207,9 @@ surface forms and source references), so a lower-ranked POS (e.g. a new POS of a
 Stage 1; `selection.selected_lemma_count` records the lemma count. Both the direct and the cached re-selection path share this logic
 and are covered by `scripts/reference/test-corpus-lemma-pilot.py` (registered in the normal CI via
 `tests/corpus-lemma-pilot-python.test.mjs`). A matched eojeol that carries punctuation (not a bounded word form) is counted in the run
-summary as `omittedNonWordFormHits` and never stored; phrases, sentences or control text still fail the run closed.
+summary as `omittedNonTokenSurfaceHits` and never stored or rewritten. If a candidate has no valid hit, it remains
+visible with the generic `no_evidence` hold and a bounded lemma placeholder; the shared candidate validator continues
+to reject any non-token tracked surface. Raw corpus text remains outside Git.
 
 Manifest vs cohort counts: the manifest's `ensemble.counts` cover only this batch (retained observations + its verification queue).
 The run summary's `ensemble` block measures the whole evidence cohort, including observations of lemmas deferred to later batches.

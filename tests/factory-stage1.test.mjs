@@ -203,18 +203,27 @@ test('a candidate without a located paragraph is held on its surface observation
   assert.deepEqual(rows[0].observations.map((o) => [o.evidence.kind, o.holds]), [['corpus-surface', ['no_evidence']]]);
 });
 
-test('a punctuated eojeol hit is counted and omitted, never stored; a phrase still fails closed', async () => {
-  const { rows, summary } = await produce(evidenceDoc([
-    cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), hit('d3', 'p2', "걸음'을")]),
-    cand('낯설다', 'adjective', [hit('d5', 'p1', "낯선'")]),
+test('non-token corpus surfaces are counted and omitted; candidates with no valid hit keep a no_evidence hold', async () => {
+  const invalidSurfaces = ["걸음'을", "낯선'", '걸음 을 걷다', '🙂', '1\uFE0F\u20E3', '걸음1\uFE0F\u20E3', '1.', '걸음🙂', '걸음\u0007', '가'.repeat(25), '걸음\u0301'];
+  const { manifest, rows, candidatesText, summary } = await produce(evidenceDoc([
+    cand('걸음', 'noun', [hit('d3', 'p1', '걸음'), ...invalidSurfaces.map((surface, index) => hit('d3', `bad${index}`, surface))]),
+    cand('다시', 'adverb', [hit('d5', 'p1', '다시\u0301'), hit('d5', 'p2', '가'.repeat(25))]),
   ]));
-  assert.equal(summary.omittedNonWordFormHits, 2);
-  assert.deepEqual(rows.find((row) => row.input === '걸음').observations.map((o) => o.evidence.ref), ['d3#p1']);
-  assert.deepEqual(rows.find((row) => row.input === '낯설다')?.observations.map((o) => [o.evidence.kind, o.holds]) ?? [['corpus-surface', ['no_evidence']]], [['corpus-surface', ['no_evidence']]]);
-  await assert.rejects(() => produce(evidenceDoc([cand('걸음', 'noun', [hit('d3', 'p1', '걸음 을 걷다')])])), /single bounded word form/);
-  for (const bad of ['🙂', '1\uFE0F\u20E3', '걸음1\uFE0F\u20E3', '1.', '걸음🙂', '걸음\u0007', '가'.repeat(25), '걸음 을']) {
-    await assert.rejects(() => produce(evidenceDoc([cand('걸음', 'noun', [hit('d3', 'p1', bad)])])), /single bounded word form/, `symbol/control/oversize form ${JSON.stringify(bad)} must fail closed`);
-  }
+  assert.equal(summary.omittedNonTokenSurfaceHits, invalidSurfaces.length + 2);
+  const byLemma = new Map(rows.map((row) => [row.input, row]));
+  assert.deepEqual(byLemma.get('걸음').forms.map((form) => form.surface), ['걸음']);
+  assert.deepEqual(byLemma.get('걸음').observations.map((observation) => observation.evidence.ref), ['d3#p1']);
+  assert.deepEqual(byLemma.get('다시').observations.map((observation) => [observation.evidence.kind, observation.holds]), [['corpus-surface', ['no_evidence']]]);
+  assert.deepEqual(invalidSurfaces.filter((surface) => candidatesText.includes(JSON.stringify(surface))), []);
+  assert.ok(!candidatesText.includes(JSON.stringify('다시\u0301')));
+  assert.deepEqual(validateCandidateBatch({ manifest, candidatesText }), []);
+
+  const malformedRows = structuredClone(rows);
+  malformedRows[0].forms[0].surface = '걸음 을';
+  const malformedCandidatesText = `${malformedRows.map((row) => JSON.stringify(row)).join('\n')}\n`;
+  const malformedManifest = { ...manifest, candidates_sha256: sha256Hex(malformedCandidatesText) };
+  assert.ok(validateCandidateBatch({ manifest: malformedManifest, candidatesText: malformedCandidatesText })
+    .some((error) => /single bounded word form/u.test(error)), 'the shared validator still rejects non-token output');
 });
 
 test('canonical comparison: new lemma, new POS, possible new sense, and unsupported search forms are routed, never auto-covered', async () => {

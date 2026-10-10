@@ -7,6 +7,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
 } from './canonical-jsonl.mjs';
 import { loadCanonicalContext } from './canonical-context.mjs';
+import { revertRelationCorrections } from '../factory/relation-corrections.mjs';
 import {
   LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION,
   LEXICAL_TOPIC_EVIDENCE_KIND,
@@ -290,6 +291,8 @@ export function factoryHistoryReachesCorrection(record, events, correctionDigest
         const { relations, ...rest } = sense;
         return kept.length ? { ...rest, relations: kept } : rest;
       }) };
+    } else if (change.operation === 'amend_relations') {
+      state = revertRelationCorrections(state, event.relation_corrections ?? []);
     } else {
       return false;
     }
@@ -2528,7 +2531,7 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
       if (mappings.has(entry.source_candidate_id)) fail(`${eventLabel} repeats ${entry.source_candidate_id}`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       mappings.set(entry.source_candidate_id, entry);
     }
-    if (backfill && (entries.length > 0 || (event.changes ?? []).some((change) => change?.operation !== 'append_relations'))) {
+    if (backfill && (entries.length > 0 || (event.changes ?? []).some((change) => !['append_relations', 'amend_relations'].includes(change?.operation)))) {
       fail(`${eventLabel} is a relation backfill and may only append relations`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
     }
     const changes = requireArray(event.changes, `${eventLabel}.changes`);
@@ -2568,6 +2571,15 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
           || !Array.isArray(change.added_relation_ids) || JSON.stringify(ids) !== JSON.stringify(change.added_relation_ids)) {
           fail(`${changeLabel} relation amendments do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
         }
+      } else if (change.operation === 'amend_relations') {
+        // A relation correction (#501) exists only as a candidate-less backfill packet bound to its recorded corrections.
+        const corrected = (backfill ? requireArray(event.relation_corrections, `${eventLabel}.relation_corrections`) : [])
+          .filter((item) => item?.source_record_id === change.entry_id && item.outcome === 'amended');
+        if (!backfill || mappingSources.length !== 1 || mappingSources[0] !== event.batch_id || corrected.length === 0
+          || !Array.isArray(change.amended_relation_ids)
+          || JSON.stringify(corrected.map((item) => item.previous_relation_id)) !== JSON.stringify(change.amended_relation_ids)) {
+          fail(`${changeLabel} relation corrections do not bind the backfill packet`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
       } else if (mappingSources.length === 0 || mappingSources.some((sourceCandidateId) => mappings.get(sourceCandidateId)?.record_id !== change.entry_id)) {
         fail(`${changeLabel}.source_candidate_ids do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
@@ -2586,6 +2598,20 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
         || !SHA256_PATTERN.test(amendment.source_gloss_sha256 ?? '') || !SHA256_PATTERN.test(amendment.rationale_sha256 ?? '')
         || typeof amendment.relation_id !== 'string' || !amendment.relation || typeof amendment.relation !== 'object') {
         fail(`${amendmentLabel} is not a source-bound relation amendment`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+    }
+    if (event.relation_corrections !== undefined && !backfill) fail(`${eventLabel} relation corrections exist only on a relation backfill packet`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+    for (const [correctionIndex, correction] of (event.relation_corrections ?? []).entries()) {
+      const correctionLabel = `${eventLabel}.relation_corrections[${correctionIndex}]`;
+      requireObject(correction, correctionLabel);
+      const amended = correction.outcome === 'amended';
+      if (correction.source_candidate_id !== event.batch_id || !['amended', 'already_applied'].includes(correction.outcome)
+        || typeof correction.source_record_id !== 'string' || typeof correction.source_sense_id !== 'string'
+        || !SHA256_PATTERN.test(correction.source_gloss_sha256 ?? '') || !SHA256_PATTERN.test(correction.rationale_sha256 ?? '')
+        || !SHA256_PATTERN.test(correction.target_meaning_sha256 ?? '') || typeof correction.previous_relation_id !== 'string' || !correction.previous_relation || typeof correction.previous_relation !== 'object'
+        || (correction.relation === null ? correction.relation_id !== null : typeof correction.relation_id !== 'string' || typeof correction.relation !== 'object')
+        || (amended ? !Number.isInteger(correction.position) || correction.position < 0 : correction.position !== null)) {
+        fail(`${correctionLabel} is not a source-bound relation correction`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
     }
     if (entries.some((entry) => !seenRecords.has(entry.record_id))) fail(`${eventLabel} has a candidate mapping without a canonical change`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
@@ -2928,7 +2954,7 @@ export function restorePreFactoryDecisionSource(currentSource, snapshotRecords) 
   return source;
 }
 
-const FACTORY_OPERATIONS = ['create', 'append_senses', 'append_relations'];
+const FACTORY_OPERATIONS = ['create', 'append_senses', 'append_relations', 'amend_relations'];
 
 /**
  * A Stage 3 amendment is additive, and only in the way its operation declares (modulo #396 relevance):
@@ -2979,8 +3005,11 @@ export function canonicalRecordsBeforeFactoryAdmissions(recordInfos, decisionSou
       if (!original || sha256Json(original) !== change.before_sha256) {
         fail('historical canonical reconstruction lacks the bound original record', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
-      if (!isAdditiveFactoryAmendment(original, current, change.operation,
-        (event.relation_amendments ?? []).filter((item) => item.source_record_id === change.entry_id && item.outcome === 'appended'))) {
+      // A relation correction is the one non-additive operation: it must rewind exactly to the preserved original.
+      if (change.operation === 'amend_relations'
+        ? JSON.stringify(revertRelationCorrections(current, event.relation_corrections ?? [])) !== JSON.stringify(original)
+        : !isAdditiveFactoryAmendment(original, current, change.operation,
+          (event.relation_amendments ?? []).filter((item) => item.source_record_id === change.entry_id && item.outcome === 'appended'))) {
         fail('factory admission rewrote an existing canonical payload', 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       records.set(change.entry_id, info.record ? { ...info, record: structuredClone(original) } : structuredClone(original));
