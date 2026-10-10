@@ -5,12 +5,13 @@ import { relationTupleErrors } from './relation-amendments.mjs';
 // canonical relation. The target never changes, so a correction is bound to its source sense by the gloss digest and
 // to the relation it replaces by the exact previous tuple; the previous tuple and its position stay in the ledger so
 // the history walkers can always rewind to the record as it was before the packet.
-// Packet field: `relation_corrections: [{ source_record_id, source_sense_id, source_gloss_sha256, previous_relation,
-// relation, position, rationale }]`; `relation` is the replacement tuple, or null to remove the relation, and
+// Packet field: `relation_corrections: [{ source_record_id, source_sense_id, source_gloss_sha256, target_meaning_sha256,
+// previous_relation, relation, position, rationale }]`; `target_meaning_sha256` is the digest of `[lemma, gloss]` of the
+// target sense the reviewer saw (the judgment depends on it, so a changed target meaning makes the correction stale); `relation` is the replacement tuple, or null to remove the relation, and
 // `position` is where the previous tuple sits in the sense's relation list when this item is applied (items apply in order).
 
 export const CORRECTION_FIELD = 'relation_corrections';
-const KEYS = ['source_record_id', 'source_sense_id', 'source_gloss_sha256', 'previous_relation', 'relation', 'position', 'rationale'];
+const KEYS = ['source_record_id', 'source_sense_id', 'source_gloss_sha256', 'target_meaning_sha256', 'previous_relation', 'relation', 'position', 'rationale'];
 const RELATION_KEYS = ['target', 'target_sense', 'type', 'note', 'relevance'];
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
@@ -38,6 +39,7 @@ export function relationCorrectionErrors(row, at) {
     if (!recordOk) errors.push(`${here}.source_record_id must be an existing canonical record id`);
     if (!senseOk) errors.push(`${here}.source_sense_id must be a sense of source_record_id`);
     if (!(Number.isInteger(item.position) && item.position >= 0)) errors.push(`${here}.position must be a non-negative integer`);
+    if (!(typeof item.target_meaning_sha256 === 'string' && /^[0-9a-f]{64}$/u.test(item.target_meaning_sha256))) errors.push(`${here}.target_meaning_sha256 must be a sha256 of the reviewed target sense meaning`);
     if (!(typeof item.source_gloss_sha256 === 'string' && /^[0-9a-f]{64}$/u.test(item.source_gloss_sha256))) errors.push(`${here}.source_gloss_sha256 must be a sha256 of the source sense gloss`);
     if (!(senseOk && isText(item.rationale) && item.rationale.includes(item.source_record_id) && item.rationale.includes(item.source_sense_id))) {
       errors.push(`${here}.rationale must be source-bound: cite the source record and sense ids`);

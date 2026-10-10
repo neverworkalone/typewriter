@@ -2,7 +2,7 @@ import { readFile, readdir, writeFile, mkdir, rename } from 'node:fs/promises';
 import path from 'node:path';
 
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
-import { canonicalRecordSha256, planRelationBackfill, planRelationCorrections, writePlannedRecords } from '../factory/admission.mjs';
+import { canonicalRecordSha256, planRelationBackfill, planRelationCorrections, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
 import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
 import { CORRECTION_FIELD, canonicalTuple, relationCorrectionErrors, revertRelationCorrections, sameTuple } from '../factory/relation-corrections.mjs';
 import { sha256Hex } from '../factory/contract.mjs';
@@ -41,7 +41,7 @@ export function approvedAmendments(state, index) {
   return { amendments, stale };
 }
 
-async function readCanonicalFiles(root) {
+export async function readCanonicalFiles(root) {
   const dir = path.join(root, 'data/canonical');
   const records = [];
   const recordPathById = new Map();
@@ -193,17 +193,18 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
 
 /**
  * Turns reviewed correction proposals into packet items against the current canonical records (#501). A proposal is
- * `{ source_sense_id, previous_relation, relation, rationale }`: the exact tuple the reviewer saw and its replacement
- * (null removes it). The source record, gloss digest and the item's position are derived here, in application order.
+ * `{ source_sense_id, previous_relation, target_meaning_sha256, relation, rationale }`: the exact tuple the reviewer saw,
+ * the digest of the target sense's `[lemma, gloss]` they judged it against, and its replacement (null removes it). The source record, gloss digest and the item's position are derived here, in application order.
  * A proposal whose replacement is already exactly in place is settled and yields no item; any other mismatch is stale.
  */
 export function correctionItemsFor(records, proposals) {
+  const byId = new Map(records.map((record) => [record.id, record]));
   const working = new Map();
   const items = [];
   for (const proposal of proposals) {
     const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
     if (!object(proposal) || !object(proposal.previous_relation) || (proposal.relation !== null && !object(proposal.relation))) {
-      throw new Error('a correction proposal needs source_sense_id, previous_relation, relation (a tuple, or null to remove) and rationale');
+      throw new Error('a correction proposal needs source_sense_id, previous_relation, target_meaning_sha256, relation (a tuple, or null to remove) and rationale');
     }
     const recordId = /^([wr]\d+)-s\d+$/u.exec(proposal.source_sense_id ?? '')?.[1];
     const record = records.find(({ id }) => id === recordId);
@@ -220,10 +221,16 @@ export function correctionItemsFor(records, proposals) {
       if (!settled) throw new Error(`${sense.id}: the relation to ${proposal.previous_relation.target_sense} is no longer the reviewed ${proposal.previous_relation.type} tuple; re-review the correction`);
       continue;
     }
+    // The reviewer's digest of the target meaning must still describe the target, or the judgment was made on other words.
+    const targetMeaning = targetMeaningSha256(byId, proposal.previous_relation.target_sense);
+    if (targetMeaning === null || proposal.target_meaning_sha256 !== targetMeaning) {
+      throw new Error(`${sense.id}: the target ${proposal.previous_relation.target_sense} does not have the meaning that was reviewed (target_meaning_sha256); re-review the correction`);
+    }
     items.push({
       source_record_id: record.id,
       source_sense_id: sense.id,
       source_gloss_sha256: canonicalRecordSha256(sense.gloss),
+      target_meaning_sha256: targetMeaning,
       previous_relation: structuredClone(relations[position]),
       relation: replacement,
       position,
@@ -233,6 +240,13 @@ export function correctionItemsFor(records, proposals) {
     else relations[position] = replacement;
   }
   return items;
+}
+
+/** What a reviewer needs to cite for a correction: each relation of the sense with its target's meaning digest. */
+export function relationMeanings(records, senseId) {
+  const byId = new Map(records.map((record) => [record.id, record]));
+  const sense = records.flatMap((record) => record.senses).find(({ id }) => id === senseId);
+  return (sense?.relations ?? []).map((relation) => ({ relation, target_meaning_sha256: targetMeaningSha256(byId, relation.target_sense) }));
 }
 
 /**

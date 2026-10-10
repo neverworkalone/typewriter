@@ -239811,7 +239811,7 @@
     {
       "batch_id": "R000004",
       "attempt": 1,
-      "semantic_decisions_sha256": "52d1f27e9690d52e2a34ad89a773eebdf9fd5a6470c2c1224272c1cccab19ec3",
+      "semantic_decisions_sha256": "c7dd732e942a706cf35b1586e17ced47ef1b1537eab8a15f99e4322ff2ac86b2",
       "entries": [],
       "relation_corrections": [
         {
@@ -239819,6 +239819,7 @@
           "source_record_id": "w587",
           "source_sense_id": "w587-s1",
           "source_gloss_sha256": "e61ca24bc5bb2ade47677b423cedc58d460f4863b4bf1406424382c1ec796524",
+          "target_meaning_sha256": "d1bd7c4d286c36255331c5ec74ee20ce01a83d4fd1c336d5eb0999a3e427693a",
           "previous_relation_id": "rel-014576fde7b8490703b002fe",
           "previous_relation": {
             "target": "w306",
@@ -239908,7 +239909,7 @@
           "semantic_review_sha256": "82fde0979e9adbac090c9f331e23167f8672d84f7dda442ec65592f210c455d1"
         }
       ],
-      "sha256": "b3b48e0853b4f519878b9a821a1bc87deec88f35a5dad6e6c2f547626a1002a0"
+      "sha256": "e152a87b38e6e659a7dc174fe1367f7fac74206d74e1fe0886264cebdc80848b"
     }
   ]
 }

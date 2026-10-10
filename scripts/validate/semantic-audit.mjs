@@ -2608,7 +2608,7 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
       if (correction.source_candidate_id !== event.batch_id || !['amended', 'already_applied'].includes(correction.outcome)
         || typeof correction.source_record_id !== 'string' || typeof correction.source_sense_id !== 'string'
         || !SHA256_PATTERN.test(correction.source_gloss_sha256 ?? '') || !SHA256_PATTERN.test(correction.rationale_sha256 ?? '')
-        || typeof correction.previous_relation_id !== 'string' || !correction.previous_relation || typeof correction.previous_relation !== 'object'
+        || !SHA256_PATTERN.test(correction.target_meaning_sha256 ?? '') || typeof correction.previous_relation_id !== 'string' || !correction.previous_relation || typeof correction.previous_relation !== 'object'
         || (correction.relation === null ? correction.relation_id !== null : typeof correction.relation_id !== 'string' || typeof correction.relation !== 'object')
         || (amended ? !Number.isInteger(correction.position) || correction.position < 0 : correction.position !== null)) {
         fail(`${correctionLabel} is not a source-bound relation correction`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');

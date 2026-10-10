@@ -9,7 +9,7 @@ import { buildCanonicalSemanticAudit, canonicalRecordsBeforeFactoryAdmissions, s
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
-import { planRelationCorrections, writePlannedRecords } from '../factory/admission.mjs';
+import { planRelationCorrections, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
 import { relationCorrectionErrors, revertRelationCorrections } from '../factory/relation-corrections.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { planRelationBackfill } from '../factory/admission.mjs';
@@ -62,7 +62,7 @@ function pick(records, { sole = false } = {}) {
       const relations = sense.relations ?? [];
       if (sole ? relations.length !== 1 : relations.length < 2) continue;
       const at = relations.findIndex((relation) => relation.type === 'near');
-      if (at >= 0) return { record, sense, relation: relations[at], at };
+      if (at >= 0) return { record, sense, relation: relations[at], at, meaning: targetMeaningSha256(new Map(records.map((item) => [item.id, item])), relations[at].target_sense) };
     }
   }
   throw new Error('the live canonical has no suitable relation');
@@ -71,6 +71,7 @@ function pick(records, { sole = false } = {}) {
 const retype = (picked, extra = {}) => ({
   source_sense_id: picked.sense.id,
   previous_relation: picked.relation,
+  target_meaning_sha256: picked.meaning,
   relation: { ...picked.relation, type: 'association', note: '회귀 시험용 연상으로 유형을 바로잡는다.', relevance: 4, ...extra },
   rationale: `${picked.record.id} ${picked.sense.id}: 회귀 시험용 근거로 유형을 바로잡는다.`,
 });
@@ -233,6 +234,8 @@ test('the correction contract rejects malformed packets and rewinds only applied
     [{ ...item, position: -1 }],
     [{ ...item, position: undefined }],
     [{ ...item, relation: undefined }],
+    [{ ...item, target_meaning_sha256: undefined }],
+    [{ ...item, target_meaning_sha256: 'x' }],
     [{ ...item, previous_relation: { ...item.previous_relation, target_sense: undefined } }],
     [item, item],
   ]) assert.notDeepEqual(relationCorrectionErrors({ relation_corrections: bad }, 'packet'), []);
@@ -302,6 +305,67 @@ test('a correction first finishes an interrupted appended-relation packet while 
       }
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  }
+});
+
+// The type and note were judged against the target as the reviewer saw it: with the source gloss and the previous tuple
+// unchanged, a target whose meaning changed makes the correction stale at first apply and at resume, and the bound
+// meaning still lets an unchanged target through.
+const changeTargetGloss = async (root, senseId) => {
+  const dir = path.join(root, 'data/canonical');
+  for (const name of await readdir(dir)) {
+    const text = await readFile(path.join(dir, name), 'utf8');
+    const next = text.split('\n').map((line) => {
+      if (!line) return line;
+      const record = JSON.parse(line);
+      if (!record.senses.some((sense) => sense.id === senseId)) return line;
+      return JSON.stringify({ ...record, senses: record.senses.map((sense) => (sense.id === senseId ? { ...sense, gloss: `${sense.gloss} (뜻이 바뀜)` } : sense)) });
+    }).join('\n');
+    if (next !== text) await writeFile(path.join(dir, name), next);
+  }
+};
+
+test('a correction is bound to the reviewed target meaning at first apply and at resume', async () => {
+  // First apply: the reviewer cited a digest of a target meaning that canonical no longer holds.
+  const root = await scratchRoot();
+  try {
+    const records = await readRecords(root);
+    const picked = pick(records);
+    const events = (await readAuthority(root)).factory_admissions.length;
+    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), target_meaning_sha256: 'b'.repeat(64) }], refreshReports: false }), /does not have the meaning that was reviewed/u);
+    await changeTargetGloss(root, picked.relation.target_sense);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked)] , refreshReports: false }), /does not have the meaning that was reviewed/u);
+    assert.equal((await readAuthority(root)).factory_admissions.length, events, 'nothing is recorded');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+
+  // Resume: the intent packet was committed, then the target meaning changed before the apply finished.
+  for (const targetChanged of [false, true]) {
+    const resumeRoot = await scratchRoot();
+    try {
+      const records = await readRecords(resumeRoot);
+      const picked = pick(records);
+      const proposal = retype(picked);
+      const items = correctionItemsFor(records, [proposal]);
+      const id = nextPacketId((await readAuthority(resumeRoot)).factory_admissions);
+      await mkdir(path.join(resumeRoot, 'data/relation-backfill'), { recursive: true });
+      await writeFile(path.join(resumeRoot, `data/relation-backfill/${id}.json`), `${JSON.stringify({ packet_id: id, relation_corrections: items }, null, 1)}\n`);
+      const events = (await readAuthority(resumeRoot)).factory_admissions.length;
+      if (targetChanged) {
+        await changeTargetGloss(resumeRoot, picked.relation.target_sense);
+        const before = await readRecords(resumeRoot);
+        await assert.rejects(applyRelationCorrections({ root: resumeRoot, proposals: [proposal], refreshReports: false }), /changed meaning since it was reviewed/u);
+        assert.deepEqual(await readRecords(resumeRoot), before, 'canonical is untouched');
+        assert.equal((await readAuthority(resumeRoot)).factory_admissions.length, events);
+      } else {
+        assert.equal((await applyRelationCorrections({ root: resumeRoot, proposals: [proposal], refreshReports: false })).status, 'applied');
+        const event = (await readAuthority(resumeRoot)).factory_admissions.at(-1);
+        assert.equal(event.relation_corrections[0].target_meaning_sha256, picked.meaning, 'the ledger keeps the reviewed meaning digest');
+      }
+    } finally {
+      await rm(resumeRoot, { recursive: true, force: true });
     }
   }
 });

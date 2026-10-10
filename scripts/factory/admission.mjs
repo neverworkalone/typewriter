@@ -229,6 +229,13 @@ export function planRelationBackfill({ packetId, amendments, canonicalRecords, r
  * A correction whose previous tuple is gone is stale unless the replacement is already exactly in place, which is an
  * idempotent `already_applied` outcome with no canonical change.
  */
+/** Digest of `[lemma, gloss]` of a canonical sense: what a reviewer saw of a relation target (null when it is gone). */
+export function targetMeaningSha256(byId, senseId) {
+  const record = byId.get(/^([wr]\d+)-s\d+$/u.exec(senseId ?? '')?.[1]);
+  const sense = record?.senses?.find(({ id }) => id === senseId);
+  return sense ? canonicalRecordSha256([record.lemma, sense.gloss]) : null;
+}
+
 export function planRelationCorrections({ packetId, corrections, canonicalRecords, recordPathById }) {
   if (!BACKFILL_ID.test(packetId ?? '')) systemic('backfill packet id must look like R000001', 'STAGE3_BACKFILL_ID');
   const byId = new Map(canonicalRecords.map((record) => [record.id, record]));
@@ -243,6 +250,7 @@ export function planRelationCorrections({ packetId, corrections, canonicalRecord
       lexical(`${at} changed meaning since it was reviewed; the correction is stale and needs re-review`, 'STAGE3_STALE_RELATION_SOURCE');
     }
     const previous = canonicalTuple(item.previous_relation);
+    const targetMeaning = targetMeaningSha256(byId, previous.target_sense);
     const replacement = item.relation === null ? null : canonicalTuple(item.relation);
     const record = working.get(item.source_record_id) ?? { ...base, senses: base.senses.map((sense) => ({ ...sense })) };
     working.set(item.source_record_id, record);
@@ -254,6 +262,7 @@ export function planRelationCorrections({ packetId, corrections, canonicalRecord
       source_record_id: item.source_record_id,
       source_sense_id: item.source_sense_id,
       source_gloss_sha256: item.source_gloss_sha256,
+      target_meaning_sha256: item.target_meaning_sha256,
       previous_relation_id: reviewedRelationId(item.source_sense_id, previous),
       previous_relation: previous,
       relation_id: replacement === null ? null : reviewedRelationId(item.source_sense_id, replacement),
@@ -267,6 +276,10 @@ export function planRelationCorrections({ packetId, corrections, canonicalRecord
       if (!settled) lexical(`${at} no longer holds the relation it corrects (${previous.type} to ${previous.target_sense}); the correction is stale and needs re-review`, 'STAGE3_RELATION_CORRECTION_STALE');
       audit.push({ ...entry, position: null, outcome: 'already_applied' });
       continue;
+    }
+    // The type and note were judged against the target as the reviewer saw it; a changed target meaning is stale.
+    if (targetMeaning !== item.target_meaning_sha256) {
+      lexical(`${at} target ${previous.target_sense} changed meaning since it was reviewed; the correction is stale and needs re-review`, 'STAGE3_STALE_RELATION_TARGET');
     }
     // The ledger keeps the replaced tuple byte-for-byte as canonical stored it, so a rewind restores the exact record.
     entry.previous_relation = structuredClone(relations[position]);
