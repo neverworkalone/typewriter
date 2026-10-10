@@ -53,18 +53,83 @@
   "candidates_sha256": "3c8e7bc056d872b661317c9c3f8499e5fa9019bdfbeff06663343150dc6e6973",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000032.json",
-    "sha256": "a51ee3bcb5b83693cccc482594fc52a603e988aa22195b50fb590566163e8bc7",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 972,
     "unresolved_sha256": "2a11c26412d3478b3021cfdb0a5b855e72796d62a0fd85be5315ebb4bad89688",
     "excluded_count": 2,
     "context_decision_count": 0
   },
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "던지다",
+      "pos": "verb",
+      "surface": "던지기",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.417"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "96fd81b41b438c78e005f0e8b6b98de53fb6368ce18a76ee9e19670332e5cb03"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "5a3b5394f8c7676888c6dd7ed9dbe228b9c31f31f36129162ca175305a41e810",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "af6e5d7fbcc2068e228851ddc337a248c23675da662568e8e8acc6886b7cb218",
+        "alternatives": [
+          {
+            "lemma": "던지기",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "선",
+      "pos": "noun",
+      "surface": "선",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.129"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ca8a8225e4286f7100688c375fd80b59df212a1a39bf657874866afc495b72c6"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "89f8e6281045b7f7a368ad4e1d40bfa09b36601d6e46cf22696959c8b7869230",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "0a9a28ed1354cc8758fadfbbd232ac96eefe5708d6f35396746dccd4ac0572bb",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    }
+  ],
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

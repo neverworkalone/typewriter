@@ -53,18 +53,121 @@
   "candidates_sha256": "decf43ccf6e5cd73e8f32a19eb5e071b8c3101983a7d1ed52d9e3d182c61d5b0",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000041.json",
-    "sha256": "dded3579c826c9799fef312685063bcf27785d6e1517b8748c455568353d72a1",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 976,
     "unresolved_sha256": "5ab0e752c2a590358e723983be4778652d38d5464fe21a0932160621a14119f5",
     "excluded_count": 3,
     "context_decision_count": 0
   },
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "개",
+      "pos": "noun",
+      "surface": "개가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.280"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "04ea575527820dc8d6052f021944968edda3b8275863d05db1035c1ff838f1f0"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "6df8d119fb057b034b154c30fb73126f80734a88d8a3625ea0ca2f5fe8755fc5",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "b9f9e79b5358c49f62f6815b8d24f4f2e5be32f2725a2103eb3975f0b63b1ad0",
+        "alternatives": [
+          {
+            "lemma": "개가",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "개간지",
+      "pos": "noun",
+      "surface": "개간지",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500015730.1#WARW2500015730.1.211"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6def27cf76c41c442dfd724e5a678e1de85f0347d2dfb53e0f54ee18e4f8d369"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "64ec082b2f23e33845e51a77aab3a390e7bc01a7ff2023936add3f4d86adba3e",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "d306381df580526756d004d1dcdabaa461fd9501be80665780535b4e9faf0e80",
+        "alternatives": [
+          {
+            "lemma": "개가",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "과소평가",
+      "pos": "noun",
+      "surface": "과소평가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005360.1#WARW2500005360.1.118"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b88c3a35cd1183a8d7c915424f501526e3b79f40d35be6f2292d106200c2734c"
+      },
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "observation_digest": "c6d39ca5b2d4001ab3991f7988b903f53d70151e897dc54318640962ef31d8cf",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "ad6be9e390d5cacf49f66e59af19cc9bbef5d98f08d6c6f3f418428b903fee83",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    }
+  ],
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

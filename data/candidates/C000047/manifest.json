@@ -53,18 +53,176 @@
   "candidates_sha256": "65c4ca8543eb2b9969839c9270d91c722c5dd7c13601d6bc15f58d2a8dcf5581",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000047.json",
-    "sha256": "d01081815bb994917585ce497230e4058d9b5e8d24ceec3bcbb6c41c13e5fdda",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 926,
     "unresolved_sha256": "b8339f34e6ee77ee72329ae0fdf0032144eff0d2c6377153464dc8deaa04f2be",
     "excluded_count": 4,
     "context_decision_count": 0
   },
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "계산",
+      "pos": "noun",
+      "surface": "계산대로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000250.1#WARW2500000250.1.239"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ab743ec7543ee3532e66e42087a0b9c0107858ec68c6bb90e7c0a7c46df8023c"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "9b21cda25a15b85e988e8cc21bdb827df8f5eb96c11e48b4c1f4f87bf9a0085a",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "4c45f2d3ecf5ad32ebd103661cc3d540d7ae7179cf80376e7e36b392372e54fd",
+        "alternatives": [
+          {
+            "lemma": "계산대",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "서",
+      "pos": "noun",
+      "surface": "서가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.1621"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "04e455677939c48ad9a8b073ef61eed823847ebc072959863761f7a9a0ce5599"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "f0315892e74565cfe7acc83dd9d8f37dc1eb29a0ab962f60408354f48035a027",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "1d6e7d289e51547f8524f3b73a6d7ce65882330b3232f5ea5c8141655009d692",
+        "alternatives": [
+          {
+            "lemma": "서가",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "수",
+      "pos": "noun",
+      "surface": "수로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001370.1#WARW2500001370.1.198"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "dfecd2688cf97c486d841175197f67f76223ae0e6ef9b2547a24432bfad1af94"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "fc2fc9cfbd40ae4719a529527c137b329455894885ec3e3fc685e82580373ea6",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "49cf3b54d70773cfcb5cdb205086c85998fc098af8a74ef2679ad78a0dd2f72c",
+        "alternatives": [
+          {
+            "lemma": "수로",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "피다",
+      "pos": "verb",
+      "surface": "피고",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.149"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "a497d51f1f16ad98cd0ef8c78ba1f02af1c7ca4e7f6392f40faad3cd9006e583"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "58971ab13cc538c4e9f757c44d77a8277eb8bae180c52a4c8ee728ca24513673",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "f7fa524746cc4e4392c55593f96d1adba32ace08645d02f791dc8ec2a9fade11",
+        "alternatives": [
+          {
+            "lemma": "피",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "피고",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

@@ -53,18 +53,119 @@
   "candidates_sha256": "d63e34872334f63f97b3da8e435c16a9efe1f530ec03b9873a6a0b4e8dd3e5b5",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000036.json",
-    "sha256": "c7969ef65ff191a28db7a526f6b0249afc97ee1c73cd975a03d6c1be741eb7bd",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 974,
     "unresolved_sha256": "2c4256339004eacb158c07db6a4f7e61ca07dd9038f9df9ab18165693e869724",
     "excluded_count": 3,
     "context_decision_count": 0
   },
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "나누다",
+      "pos": "verb",
+      "surface": "나눔이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005980.1#WARW2500005980.1.2369"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ae4f0a5629aba8f6bc17f80cec300da5c777c67f596f060ccefc83bb01c70dc6"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "541a331f2f4fdf0ac2b5e8d00f4aa24507b39087ffd89f8e13fb4337c506da8c",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "d891583182c2992220316f8208de743e8cdb1eb6cbcf9b0a6a6972ad06cc4fe4",
+        "alternatives": [
+          {
+            "lemma": "나눔",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "말",
+      "pos": "noun",
+      "surface": "말이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.34"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "250054307dc16bb3bc3e290cbe48ad8f42a10bd0a74f440b65493fc75c886502"
+      },
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "observation_digest": "c0d741ad4745a259f564455d544c32ef7c368f80edfecd69c5e8e241a60dd3bd",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "b2d40fa764fe87e852496d6f61f0e32b8bd3881d1f496479d2102c51b09d6aea",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "신경",
+      "pos": "noun",
+      "surface": "신경과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.4775"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5dd16c95f439bc00e221bba7b5402272891d13958f582e988649e13e96162d6a"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "c333b6fced3dd321177a4d0121aed2f2fd6319ad4d92680d93b193cbd53c79fb",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "eb0b00325c4725bd6d3d4e6d368ac4385c583540984fc9010149f904a42f70f4",
+        "alternatives": [
+          {
+            "lemma": "신경과",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

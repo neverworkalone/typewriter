@@ -53,18 +53,61 @@
   "candidates_sha256": "eb040838eb6eb2b532b69a607642ac75e07551c0f9a60e3afb06efd7345e3edd",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000038.json",
-    "sha256": "44e0e94fb360923c98d9c1472a3fdb5bf24731cd6eedf12b494905e20203e51b",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 978,
     "unresolved_sha256": "b6ec8e04f8b8b804dbafb1e92d1b1e7a9a6ade85d6efe97f960d7b61165c2af9",
     "excluded_count": 1,
     "context_decision_count": 0
   },
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "지지",
+      "pos": "noun",
+      "surface": "지지도",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005460.1#WARW2500005460.1.265"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "a704fc0aed10e568477131c4a25d12bcfc9cf9bb5630b563c3a58d65dec22723"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "82dd93740164d3ad010bac5ba7c2a228b4b43ecc4c61bb5583787ad1db86d551",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "ca53c609566d0deab5c1b8fbe2e1cb22d3a2af7faadce5ff40412c64f4e219db",
+        "alternatives": [
+          {
+            "lemma": "지다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "지지도",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

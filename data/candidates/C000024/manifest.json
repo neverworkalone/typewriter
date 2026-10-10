@@ -51,9 +51,7 @@
   "candidates_sha256": "15ce8706419b656c1e3fd64451667f5828fcee5aa37ca5d7cd5b2cb281f2b07e",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000024.json",
-    "sha256": "d2366910e1bf85d030c409aaf2f32fddda84aca00812a0cc346990a93253b9c5",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 1000,
     "unresolved_sha256": "eec5e9bd4a7d8ca575954732ad27fd552a22b2d60ccfe162eb952505ed46a2aa",
     "excluded_count": 0,
@@ -61,8 +59,7 @@
   },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

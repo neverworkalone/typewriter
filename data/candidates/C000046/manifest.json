@@ -53,18 +53,61 @@
   "candidates_sha256": "31709c6bafcfb0941d401b067b682f84e757e22b9628c0ed2608ecf15f45333a",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000046.json",
-    "sha256": "65f8eb92808e5f4462550bb619aa878256a7180933a1d886c54f4eca5f5e12f7",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 841,
     "unresolved_sha256": "a4604f6c3ee0be0e270592797d501ab06c6868e8095d9d3c8cd16dac8c0c7ac4",
     "excluded_count": 1,
     "context_decision_count": 0
   },
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "보신",
+      "pos": "noun",
+      "surface": "보신",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.677"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "cb24f5f4b61d3fe2e63b092fa98cc32200622d2a6e1307eb8f0feba9e6d4e68b"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "15cc82f649675528c269b391474f7738edcaf9ef28ee7bc936c040525c50e9a2",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "1cb6eee2021f8c977f5613e659baa5a5566d25e663c2839ff250e6fca45873cc",
+        "alternatives": [
+          {
+            "lemma": "보다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "보시다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

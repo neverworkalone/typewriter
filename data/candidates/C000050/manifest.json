@@ -53,18 +53,111 @@
   "candidates_sha256": "4291c2899e0648efdcb6ed8f2ae3df98eeb68942d96bdbce9d3e617d96746cd7",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000050.json",
-    "sha256": "ef37c3398f632d21c237563e785de3cfecd3710f8d1edafdc15a8a3357eecb75",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 863,
     "unresolved_sha256": "8f8e59735ee0e53a8b044bf6af7c7fcc3d0e98ceb355198d1be892a69a5fcdee",
     "excluded_count": 3,
     "context_decision_count": 0
   },
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "진혼곡",
+      "pos": "noun",
+      "surface": "진혼곡을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002690.1#WARW2500002690.1.50"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "8a7a7618ce0def2cc166354e9a30cac06976675789728a19fa0361cacaacda23"
+      },
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "observation_digest": "242cbe307feb0b6d573db2697ecafa95d0974760add7da5304ea32c7eca5c119",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "7a1a60f717425638f1acef9545fc4767b8db3f26173fdbe07213f352819030ea",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "치대다",
+      "pos": "verb",
+      "surface": "치대는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005250.1#WARW2500005250.1.3181"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "adbfffe29da11547e1a9e1a2cf2f9973579544cca136f0d045d91b8db560f42f"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "768964df798011eddc7c164a223386dd58e652cceb6806423de3b07d09e4e096",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "95d847987b582cfd7cdddd5066f6839f497356fb94e8686f884512cdaf01854a",
+        "alternatives": [
+          {
+            "lemma": "치대",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "하다",
+      "pos": "verb",
+      "surface": "해서",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.630"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "91cbeb2e0a1193dc2da98bb0a0282e145c6af6b691809a612271b8f2ee46e190"
+      },
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "observation_digest": "df1a29b8b11db34fe14f1b909c45eaebd7c5d957940f33964bed8474158ca09a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "bc20468557cfff8611ab5495367684fbc4a3cc52b3cf3aa4b82357a5dcfee6d7",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    }
+  ],
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

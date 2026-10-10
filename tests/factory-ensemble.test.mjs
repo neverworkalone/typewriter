@@ -576,11 +576,11 @@ test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without wo
   const fresh = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-replay-'));
   const freshCache = await cacheForTask(fresh);
   await writeFile(path.join(freshCache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
-  await writeFile(path.join(freshCache.taskDirectory, 'bad-replay.json'), JSON.stringify({ contract: 'lexical-factory-candidate-manifest-v3', batch_id: '../../outside', archive: { path: 'data/candidate-history/../../outside.json', sha256: HEX } }));
+  await writeFile(path.join(freshCache.taskDirectory, 'bad-replay.json'), JSON.stringify({ contract: 'lexical-factory-candidate-manifest-v3', batch_id: '../../outside' }));
   await assert.rejects(() => runStage1([...args, '--dry-run', '--context-replay', 'runs/T000001/bad-replay.json'],
     { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK) }), /invalid compact context replay reference/);
   await mkdir(path.join(fresh, 'data/validation'), { recursive: true });
-  await copyFile(path.join(root, produced.manifest.archive.path), path.join(fresh, 'data/validation/context-replay.json'));
+  await writeFile(path.join(fresh, 'data/validation/context-replay.json'), JSON.stringify(produced.manifest));
   const replayed = await runStage1([...args, '--dry-run', '--context-replay', 'data/validation/context-replay.json'],
     { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK), contextSource: undefined });
   assert.equal(replayed.candidatesText, produced.candidatesText);
@@ -628,7 +628,15 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     const deps = { root, cachePaths: cache.cachePaths, providers: triple({ k, h: hh, m: hh }), permission: async () => {}, log: () => {} };
     const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '1'];
     const compactResult = await runStage1(args, deps);
-    const result = { ...compactResult, manifest: restoreManifest(compactResult.manifest, JSON.parse(await readFile(path.join(root, compactResult.manifest.archive.path), 'utf8')), trashIndex(await loadTrash(root))) };
+    const archive = await loadTrash(root);
+    const history = { batch_id: compactResult.manifest.batch_id,
+      unresolved: [...archive.values()].flatMap((rows) => rows.flatMap((row) => row.variants.flatMap((variant) =>
+        variant.occurrences.filter((item) => item.batch_id === compactResult.manifest.batch_id).map((item) => ({
+          observation_id: row.observation_id, analysis_sha256: variant.analysis_sha256, queue_id: item.queue_id,
+        }))))).sort((a, b) => a.queue_id.localeCompare(b.queue_id)),
+      excluded_observations: compactResult.manifest.excluded_observations,
+      context_fallback: compactResult.manifest.context_fallback };
+    const result = { ...compactResult, manifest: restoreManifest(compactResult.manifest, history, trashIndex(archive)) };
     assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
     assert.equal(result.summary.skippedProducedLemmas, 1);
     assert.equal(result.manifest.excluded_observations.length, 3);
@@ -1160,6 +1168,22 @@ test('production CLI refills valid lemmas, skips trash proposals before analysis
   await writeFile(trashPath, 'malformed\n');
   assert.match((await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) })).join(), /JSONL|Unexpected token/);
   await writeFile(trashPath, originalTrash);
+  // The common validator rejects cross-chunk duplicates against an unchanged
+  // baseline, while a distinct observation passes the same production path.
+  const extraPath = path.join(root, 'data/candidate-trash/T000002.jsonl');
+  await writeFile(extraPath, originalTrash);
+  assert.match((await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) })).join(), /duplicate archive identity/);
+  const originalRow = [...trash.values()][0][0];
+  const observation = structuredClone(originalRow.variants[0].observation);
+  observation.evidence.ref += '-distinct';
+  const different = mergeUnresolved(new Map(), [{ batch_id: 'C000002', source_snapshot: produced.manifest.source_snapshot, unresolved_observations: [observation] }]);
+  await writeFile(extraPath, chunkText([...different.chunks.values()][0]));
+  assert.deepEqual(await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) }), []);
+  // Two changed chunks must also be compared with each other.
+  const thirdPath = path.join(root, 'data/candidate-trash/T000003.jsonl');
+  await writeFile(thirdPath, await readFile(extraPath, 'utf8'));
+  assert.match((await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) })).join(), /duplicate archive identity/);
+  await rm(extraPath); await rm(thirdPath);
   // An earlier failed proposal is excluded before a provider is called, even
   // when a new input file accidentally supplies it again.
   const secondCache = await cacheForTask(root, 'T000002');

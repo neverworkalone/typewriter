@@ -15,7 +15,7 @@ import { parseJsonl, sha256Hex } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { publishArtifacts, recoverArtifacts } from './artifact-transaction.mjs';
 import { refillCandidateBatch } from './refill.mjs';
-import { COMPACT_CONTRACT, HISTORY_DIRECTORY, loadTrash, failedProposalLemmas, mergeUnresolved, compactManifest, TRASH_DIRECTORY, chunkText, jsonText, digest } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, loadTrash, failedProposalLemmas, mergeUnresolved, compactManifest, TRASH_DIRECTORY, chunkText, jsonText, digest } from './permanent-trash.mjs';
 import { validateFactoryRepository, loadBaseManifests, loadCanonicalEntries } from './validate.mjs';
 import {
   assertWithinDirectory,
@@ -412,12 +412,7 @@ export async function runStage1(argv, {
       catch (error) { throw new Stage1Error([error.message]); }
     }
     let file = await readJson(filePath, 'context replay record');
-    if (file.contract === COMPACT_CONTRACT) {
-      if (!/^C\d{6}$/.test(file.batch_id) || file.archive?.path !== `${HISTORY_DIRECTORY}/${file.batch_id}.json`) throw new Stage1Error(['invalid compact context replay reference']);
-      const historyText = await readFile(path.join(root, file.archive.path), 'utf8');
-      if (digest(historyText) !== file.archive.sha256) throw new Stage1Error(['compact context replay history digest mismatch']);
-      file = JSON.parse(historyText);
-    }
+    if (file.contract === COMPACT_CONTRACT && !/^C\d{6}$/.test(file.batch_id)) throw new Stage1Error(['invalid compact context replay reference']);
     contextReplay = Array.isArray(file) ? file : file.context_fallback?.decisions;
     if (!Array.isArray(contextReplay)) throw new Stage1Error(['context replay record must be a manifest or a decisions array']);
   }
@@ -508,7 +503,6 @@ export async function runStage1(argv, {
     compact.manifest.production = produced.production;
     if (!produced.rows.length) compact.manifest.status = 'exhausted';
     const files = new Map([...merged.changed].map((file) => [`${TRASH_DIRECTORY}/${file}`, chunkText(merged.chunks.get(file))]));
-    files.set(compact.manifest.archive.path, compact.historyText);
     files.set(`data/candidates/${batchId}/candidates.jsonl`, produced.candidatesText);
     files.set(`data/candidates/${batchId}/manifest.json`, jsonText(compact.manifest));
     // Same base comparison as the CI validator, so already-merged reviews are not re-validated as new work.

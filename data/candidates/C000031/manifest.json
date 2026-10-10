@@ -53,18 +53,99 @@
   "candidates_sha256": "8a85b8ac37e6c4a2e26807c64375ecf98d452bb21c9673d81588c1120c16bf61",
   "status": "created",
   "archive": {
-    "contract": "lexical-factory-candidate-history-v1",
-    "path": "data/candidate-history/C000031.json",
-    "sha256": "8c79f466ce8f30f1007bccb7d7b4964ea1d785c2ef9d41411ddf29677666e04e",
+    "contract": "lexical-factory-permanent-trash-v1",
     "unresolved_count": 1021,
     "unresolved_sha256": "f6e71a8ab9f1937b6728a29ca899b42eb85a643a67af08872da55e51e499c42d",
     "excluded_count": 2,
     "context_decision_count": 0
   },
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "매기다",
+      "pos": "verb",
+      "surface": "매기는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003830.1#WARW2500003830.1.400"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f03698d9a254d8bc1985557ef1b1adb34e845b8c7620fbf1e9f336d7bbec207f"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "68d8e6d3eaf058069e745461c6c8a97de9e5a6ea1e8faf70efbfcc86f848e140",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "5abaabab248ad41f5d6c393ba2a06769df02067ed71580b087b221c13cd532ef",
+        "alternatives": [
+          {
+            "lemma": "매기",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "매다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "집",
+      "pos": "noun",
+      "surface": "집도",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.508"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "18da67033f94cfb9d0dcb0b0a58402c27c5d6cec78fa1e29d4a1ba0e551844ce"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "10a3a95adcf9a309e81223bc4db69882271d542b66c19aff465b28dd0d58ca50",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "63515e2180bf0c91687dee2af1afbc3ead559db8b7982312f6bd4a56d7f3b35f",
+        "alternatives": [
+          {
+            "lemma": "집도",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
-    "decision_count": 0,
-    "resolved_ids": []
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
   }
 }

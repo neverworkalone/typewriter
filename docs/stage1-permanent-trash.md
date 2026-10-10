@@ -31,9 +31,10 @@ manifest. No corpus sentences or paragraphs are introduced.
 ## Compact manifests and historical audit
 
 Candidate manifest v3 preserves candidate bytes and all source/producer metadata.
-Unresolved, excluded and fallback details move to a sibling history artifact;
-the manifest holds their counts, digests and its history reference. Excluded
-observations retain their produced/deferred dispositions outside trash.
+Only unresolved observation payloads move to permanent trash. The manifest
+holds their count and original-array digest; trash occurrences retain their
+batch and queue IDs. Excluded dispositions and full context decisions stay in
+the manifest. There is no separate batch-history folder or file dependency.
 Review/admission `candidates_sha256` continues to bind **candidates.jsonl** bytes.
 It is distinct from the manifest file SHA. The migration report records both
 old and new manifest file SHA for every batch.
@@ -48,8 +49,10 @@ Historical CI. Git retains the original manifest revision for rollback.
 Normal validation checks current candidates and compact metadata. It validates
 basic shape, IDs, bounds and provenance of new/modified trash files through the
 existing factory validator. It does not replay all historical analysis records
-or reconstruct old manifests on each batch. Global archive deduplication is the
-writer's responsibility, with a complete one-time migration proof.
+or reconstruct old manifests on each batch. When trash files change, the common validator compares their IDs with existing
+row IDs to reject cross-file duplicates; it does not parse or revalidate past
+analysis payloads. Unchanged runs skip all trash reads. The writer also enforces
+global uniqueness, with a complete one-time migration proof.
 
 ## Production target
 
@@ -102,10 +105,9 @@ provider leaves no partial candidate/trash publication.
 Migration proof: 57 batches, 50,662 unresolved appearances, 46,480 unique
 observations, 46,498 distinct analysis variants and all 50,662 batch occurrences
 preserved in 93 chunks. Normal excluded dispositions (96) and context decisions
-(2,493) remain in batch history. Candidate bytes and existing review bindings are
+(2,493) remain in their original manifests. Candidate bytes and existing review bindings are
 unchanged; the report maps every old/new manifest SHA independently.
 
-Committed-master Stage 2/3 snapshots list history paths and verify that each
-compact manifest's history reference exists in the committed tree. They do not
-stage or reread past trash/history payloads. Current candidates, review bindings
-and admission contracts continue through the existing common validator.
+Stage 2/3 snapshots continue to load candidate manifests and rows through their
+existing paths. Trash payloads are outside those snapshots. Current candidates,
+review bindings and admission contracts use the existing common validator.

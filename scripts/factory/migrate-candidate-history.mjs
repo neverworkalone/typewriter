@@ -43,10 +43,9 @@ export async function planHistoryMigration(root) {
     const errors = validateCandidateBatch({ manifest: compact.manifest, candidatesText });
     if (errors.length) throw new Error(`${manifest.batch_id}: ${errors.join('\n')}`);
     const nextText = jsonText(compact.manifest);
-    files.set(compact.manifest.archive.path, compact.historyText);
     files.set(`data/candidates/${manifest.batch_id}/manifest.json`, nextText);
     mapping.push({ batch_id: manifest.batch_id, before_manifest_sha256: digest(text), after_manifest_sha256: digest(nextText),
-      candidates_sha256: digest(candidatesText), history_sha256: digest(compact.historyText),
+      candidates_sha256: digest(candidatesText),
       unresolved_count: manifest.unresolved_observations.length, excluded_count: manifest.excluded_observations?.length ?? 0,
       context_decision_count: manifest.context_fallback?.decisions.length ?? 0 });
   }

@@ -13,7 +13,7 @@ import {
   validateReviewField,
 } from './ensemble-resolver.mjs';
 import { RESOLVING_OUTCOMES, contextDecisionsSha256, fallbackBlockers, validateContextDecisions } from './context-fallback.mjs';
-import { COMPACT_CONTRACT, HISTORY_CONTRACT, HISTORY_DIRECTORY } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, TRASH_CONTRACT } from './permanent-trash.mjs';
 import {
   PROPOSAL_CONTRACT,
   CANDIDATE_STATUSES,
@@ -262,7 +262,7 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
     if (selection.eligible_lemma_count !== manifest.candidate_count + selection.deferred_lemma_count) errors.push('candidate manifest: eligible lemmas must equal candidates plus deferred lemmas');
   }
   const ensemble = manifest.resolution_policy === ENSEMBLE_POLICY;
-  const decisionIds = new Set(compact ? manifest.context_fallback?.resolved_ids ?? [] : (manifest.context_fallback?.decisions ?? [])
+  const decisionIds = new Set((manifest.context_fallback?.decisions ?? [])
     .filter((entry) => RESOLVING_OUTCOMES.includes(entry?.outcome)).map((entry) => entry.decision_id));
   if (compact) errors.push(...validateCompactMetadata(manifest, ensemble));
   else errors.push(...validateUnresolved(manifest.unresolved_observations, ensemble, maxUnresolved));
@@ -293,16 +293,16 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
 function validateCompactMetadata(manifest, ensemble) {
   const errors = [];
   const keys = new Set(['contract', 'lemma_policy', 'task_id', 'batch_id', 'candidate_count', 'observation_count', 'selection',
-    'archive', 'source_adapter', 'source_snapshot', 'canonical_snapshot_digest', 'producer_revision', 'extractor_version',
+    'archive', 'excluded_observations', 'source_adapter', 'source_snapshot', 'canonical_snapshot_digest', 'producer_revision', 'extractor_version',
     'analyzer_version', 'analyzer_digest', 'proposal_contract', 'analyzer_providers', 'resolution_policy', 'ensemble',
     'context_fallback', 'source_evidence_sha256', 'candidates_sha256', 'status', 'production']);
   for (const key of Object.keys(manifest)) if (!keys.has(key)) errors.push(`compact manifest: unknown field ${key}`);
   const archive = manifest.archive;
-  if (!isPlainObject(archive) || Object.keys(archive).sort().join() !== 'context_decision_count,contract,excluded_count,path,sha256,unresolved_count,unresolved_sha256'
-    || archive.contract !== HISTORY_CONTRACT || archive.path !== `${HISTORY_DIRECTORY}/${manifest.batch_id}.json`
-    || !isSha256(archive.sha256) || !isSha256(archive.unresolved_sha256)
+  if (!isPlainObject(archive) || Object.keys(archive).sort().join() !== 'context_decision_count,contract,excluded_count,unresolved_count,unresolved_sha256'
+    || archive.contract !== TRASH_CONTRACT
+    || !isSha256(archive.unresolved_sha256)
     || ['unresolved_count', 'excluded_count', 'context_decision_count'].some((key) => !Number.isSafeInteger(archive[key]) || archive[key] < 0)) errors.push('candidate manifest: invalid compact archive reference');
-  if (manifest.unresolved_observations !== undefined || manifest.excluded_observations !== undefined) errors.push('compact manifests cannot contain observation history arrays');
+  if (manifest.unresolved_observations !== undefined) errors.push('compact manifests cannot contain observation history arrays');
   if (manifest.production !== undefined) {
     const production = manifest.production;
     if (!isPlainObject(production) || production.contract !== 'lexical-factory-refill-v1'
@@ -315,18 +315,21 @@ function validateCompactMetadata(manifest, ensemble) {
   }
   if (ensemble) {
     const fallback = manifest.context_fallback;
-    if (!isPlainObject(fallback) || Object.keys(fallback).sort().join() !== 'contract,decision_count,decisions_sha256,resolved_ids'
-      || fallback.contract !== 'context-fallback-decisions-v1' || !isSha256(fallback.decisions_sha256)
-      || fallback.decision_count !== archive?.context_decision_count || !Array.isArray(fallback.resolved_ids)
-      || fallback.resolved_ids.some((id) => typeof id !== 'string' || !/^D\d{4,}$/.test(id))
-      || JSON.stringify(fallback.resolved_ids) !== JSON.stringify([...new Set(fallback.resolved_ids)].sort())
-      || fallback.resolved_ids.length > fallback.decision_count) errors.push('candidate manifest: invalid compact context references');
+    if (!isPlainObject(fallback) || Object.keys(fallback).sort().join() !== 'contract,decisions,decisions_sha256'
+      || fallback.contract !== 'context-fallback-decisions-v1' || !Array.isArray(fallback.decisions)
+      || fallback.decisions.length !== archive?.context_decision_count
+      || contextDecisionsSha256(fallback.decisions) !== fallback.decisions_sha256) errors.push('candidate manifest: invalid context decisions');
+    else errors.push(...validateContextDecisions(fallback.decisions));
+    const decisionIds = new Set((fallback?.decisions ?? []).filter((entry) => RESOLVING_OUTCOMES.includes(entry?.outcome)).map((entry) => entry.decision_id));
+    errors.push(...validateExcludedObservations(manifest, decisionIds));
     // Counts and traces remain historical metadata; their full relationship was
     // checked once before compaction, not reconstructed on every future PR.
     if (![ENSEMBLE_CONTRACT, LEGACY_ENSEMBLE_CONTRACT].includes(manifest.ensemble?.contract)
       || !isSha256(manifest.ensemble?.trace_sha256)) errors.push('candidate manifest: invalid ensemble metadata');
     const counts = manifest.ensemble?.counts;
     const current = manifest.ensemble?.contract === ENSEMBLE_CONTRACT;
+    if (current && (!Array.isArray(manifest.excluded_observations)
+      || manifest.excluded_observations.length !== archive?.excluded_count)) errors.push('candidate manifest: current ensemble requires excluded_observations matching its count');
     if (!isPlainObject(counts) || Object.keys(counts).sort().join() !== (current ? 'categories,excluded,input_observations,observations,queue' : 'categories,observations,queue')
       || counts.queue !== archive?.unresolved_count || counts.observations !== manifest.observation_count + archive?.unresolved_count + archive?.excluded_count
       || (current && (counts.excluded !== archive?.excluded_count || counts.input_observations !== counts.observations))
@@ -396,39 +399,6 @@ function validateExcludedObservations(manifest, decisionIds) {
     const order = `${entry.disposition}\u0000${entry.lemma}\u0000${entry.observation_digest}`;
     if (previousOrder !== null && !(previousOrder < order)) errors.push(`${at}: excluded observations must be uniquely and deterministically sorted`);
     previousOrder = order;
-  }
-  return errors;
-}
-
-// Read only newly bound/changed batch history. This checks its local contract,
-// not its relationship to every observation in the permanent historical archive.
-export function validateCandidateHistory(manifest, historyText) {
-  let history;
-  try { history = JSON.parse(historyText); } catch { return ['candidate history must be JSON']; }
-  const errors = [];
-  const ensemble = manifest.resolution_policy === ENSEMBLE_POLICY;
-  const current = manifest.ensemble?.contract === ENSEMBLE_CONTRACT;
-  const expected = ['contract', 'batch_id', 'unresolved', ...(ensemble ? ['context_fallback'] : []), ...(current ? ['excluded_observations'] : [])].sort().join();
-  if (!isPlainObject(history) || Object.keys(history).sort().join() !== expected || history.contract !== HISTORY_CONTRACT
-    || history.batch_id !== manifest.batch_id) return ['candidate history has invalid fields or batch binding'];
-  if (!Array.isArray(history.unresolved) || history.unresolved.length !== manifest.archive.unresolved_count
-    || history.unresolved.some((ref) => !isPlainObject(ref) || Object.keys(ref).sort().join() !== 'analysis_sha256,observation_id,queue_id'
-      || !isSha256(ref.observation_id) || !isSha256(ref.analysis_sha256) || (ref.queue_id !== null && !/^U\d{4,}$/.test(ref.queue_id)))) errors.push('candidate history has invalid unresolved references');
-  if (ensemble) {
-    const fallback = history.context_fallback;
-    if (!isPlainObject(fallback) || Object.keys(fallback).sort().join() !== 'contract,decisions,decisions_sha256'
-      || fallback.contract !== 'context-fallback-decisions-v1' || !Array.isArray(fallback.decisions)) errors.push('candidate history has invalid context decisions');
-    else {
-      errors.push(...validateContextDecisions(fallback.decisions));
-      if (fallback.decisions.length !== manifest.archive.context_decision_count
-        || fallback.decisions_sha256 !== manifest.context_fallback.decisions_sha256
-        || contextDecisionsSha256(fallback.decisions) !== fallback.decisions_sha256
-        || JSON.stringify(fallback.decisions.filter((entry) => RESOLVING_OUTCOMES.includes(entry.outcome)).map((entry) => entry.decision_id).sort()) !== JSON.stringify(manifest.context_fallback.resolved_ids)) errors.push('candidate history context counts/digest/references differ from manifest');
-    }
-    if (current) {
-      if (history.excluded_observations?.length !== manifest.archive.excluded_count) errors.push('candidate history excluded count differs from manifest');
-      errors.push(...validateExcludedObservations({ ...manifest, excluded_observations: history.excluded_observations }, new Set(manifest.context_fallback?.resolved_ids ?? [])));
-    }
   }
   return errors;
 }

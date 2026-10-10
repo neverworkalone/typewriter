@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -16,12 +16,12 @@ import {
 } from './contract.mjs';
 import { confusableLemmaAdvisories, validateDecisionHandoff } from './handoff.mjs';
 import { buildCanonicalIndex } from './identity-adapter.mjs';
-import { isLemmaRow, validateCandidateHistory } from './lemma-contract.mjs';
+import { isLemmaRow } from './lemma-contract.mjs';
 import { nonliteralCoverageAdvisories, validateLemmaDecision } from './lemma-decisions.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
-import { COMPACT_CONTRACT, HISTORY_DIRECTORY, TRASH_DIRECTORY, digest, validateTrashChunk } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, TRASH_DIRECTORY, validateTrashChunk } from './permanent-trash.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DEFAULT_BASE_REF = 'origin/master';
@@ -82,7 +82,7 @@ export async function loadCanonicalEntries(root) {
 // reported in `report.staleContractReviews`; Stage 3 never admits it until a contract repair
 // re-binds it. A review that is new or changed against the base is validated strictly, which keeps
 // stale results out of every PR. `mergedMaster` marks the worker's view, where all content is merged.
-export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries, mergedMaster = false, committedHistoryPaths = null, report = {} } = {}) {
+export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries, mergedMaster = false, report = {} } = {}) {
   report.staleContractReviews = [];
   report.advisories = [];
   const errors = [];
@@ -92,7 +92,6 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   }
   report.archiveValidation = { checked_chunks: 0, unchanged_chunks_skipped: 0 };
   errors.push(...await validateChangedArchive(root, archiveBase, report.archiveValidation));
-  const changedHistory = archiveBase?.commit ? new Set(git(['diff', '--name-only', archiveBase.commit, '--', HISTORY_DIRECTORY], root).split('\n')) : null;
   const candidateBatches = await subdirectories(path.join(root, 'data/candidates'));
   const reviewBatches = await subdirectories(path.join(root, 'data/reviews'));
   const currentCanonicalSnapshot = reviewBatches.length ? await canonicalSnapshotDigest(root) : null;
@@ -109,24 +108,6 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     const manifestText = await readOptional(path.join(directory, 'manifest.json'));
     if (manifestText === undefined) { errors.push(`${batch}: candidates manifest.json missing`); continue; }
     const manifest = JSON.parse(manifestText);
-    if (manifest.contract === COMPACT_CONTRACT && manifest.archive?.path === `${HISTORY_DIRECTORY}/${batch}.json`) {
-      if (mergedMaster && committedHistoryPaths instanceof Set) {
-        if (!committedHistoryPaths.has(manifest.archive.path)) errors.push(`${batch}: candidate history missing from committed master tree`);
-      } else {
-        // Existing history is immutable and was checked when committed. Only new
-        // or rebound history is read; no historical archive reconstruction here.
-        let previous = base?.candidate?.[batch];
-        if (!base && archiveBase?.commit) {
-          try { previous = JSON.parse(git(['show', `${archiveBase.commit}:data/candidates/${batch}/manifest.json`], root)); } catch { /* new batch */ }
-        }
-        try { await stat(path.join(root, manifest.archive.path)); } catch { errors.push(`${batch}: candidate history missing`); }
-        if (!previous || previous.archive?.sha256 !== manifest.archive.sha256 || changedHistory?.has(manifest.archive.path)) {
-          const historyText = await readOptional(path.join(root, manifest.archive.path));
-          if (historyText === undefined || digest(historyText) !== manifest.archive.sha256) errors.push(`${batch}: missing or altered candidate history`);
-          else errors.push(...validateCandidateHistory(manifest, historyText).map((error) => `${batch}: ${error}`));
-        }
-      }
-    }
     if (manifest.batch_id !== batch) errors.push(`${batch}: batch_id ${manifest.batch_id} does not match its directory`);
     const candidatesText = await readOptional(path.join(directory, 'candidates.jsonl'));
     errors.push(...validateCandidateBatch({ manifest, candidatesText }).map((error) => `${batch}: ${error}`));
@@ -513,14 +494,21 @@ async function validateChangedArchive(root, base, report) {
     changed = new Set(git(['diff', '--name-only', base.commit, '--', TRASH_DIRECTORY], root).split('\n').filter(Boolean).map((file) => path.basename(file)));
     for (const file of oldNames) if (!names.includes(file)) errors.push(`permanent trash file was deleted: ${file}`);
   }
+  const changedIds = new Map();
+  const unchangedNames = [];
   for (const name of names) {
     if (!/^T\d{6}\.jsonl$/.test(name)) { errors.push(`unexpected trash file ${name}`); continue; }
-    if (changed && oldNames.includes(name) && !changed.has(name)) { report.unchanged_chunks_skipped += 1; continue; }
+    if (changed && oldNames.includes(name) && !changed.has(name)) { report.unchanged_chunks_skipped += 1; unchangedNames.push(name); continue; }
     report.checked_chunks += 1;
     const text = await readFile(path.join(root, TRASH_DIRECTORY, name), 'utf8');
     const chunkErrors = validateTrashChunk(text);
     errors.push(...chunkErrors.map((error) => `${name}: ${error}`));
     if (chunkErrors.length) continue;
+    for (const row of text.trimEnd().split('\n').filter(Boolean).map(JSON.parse)) {
+      const previous = changedIds.get(row.observation_id);
+      if (previous) errors.push(`${name}: duplicate archive identity ${row.observation_id} also in ${previous}`);
+      else changedIds.set(row.observation_id, name);
+    }
     // A changed chunk may add occurrences/variants but never remove existing
     // observations or history. This reads only the changed baseline chunk.
     if (base?.commit && oldNames.includes(name)) {
@@ -535,6 +523,15 @@ async function validateChangedArchive(root, base, report) {
             || variant.occurrences.some((occurrence) => !following.occurrences.some((item) => JSON.stringify(item) === JSON.stringify(occurrence)))) errors.push(`${name}: permanent analysis history removed or altered`);
         }
       }
+    }
+  }
+  // Only when IDs change, scan existing row IDs. Do not parse or validate past
+  // analyses, occurrences or relationships, and do not create another index.
+  if (changedIds.size) for (const name of unchangedNames) {
+    const text = await readFile(path.join(root, TRASH_DIRECTORY, name), 'utf8');
+    for (const line of text.split('\n')) {
+      const id = /"observation_id"\s*:\s*"([a-f0-9]{64})"/u.exec(line)?.[1];
+      if (changedIds.has(id)) errors.push(`${changedIds.get(id)}: duplicate archive identity ${id} also in ${name}`);
     }
   }
   return errors;

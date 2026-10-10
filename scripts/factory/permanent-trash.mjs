@@ -5,9 +5,7 @@ import { validateUnresolved, isReferenceToken } from './lemma-contract.mjs';
 
 export const COMPACT_CONTRACT = 'lexical-factory-candidate-manifest-v3';
 export const TRASH_CONTRACT = 'lexical-factory-permanent-trash-v1';
-export const HISTORY_CONTRACT = 'lexical-factory-candidate-history-v1';
 export const TRASH_DIRECTORY = 'data/candidate-trash';
-export const HISTORY_DIRECTORY = 'data/candidate-history';
 export const CHUNK_SIZE = 500;
 export const digest = (value) => createHash('sha256').update(value).digest('hex');
 const json = (value) => JSON.stringify(value);
@@ -93,19 +91,18 @@ export function mergeUnresolved(chunks, manifests) {
 
 export function compactManifest(manifest, references) {
   const { unresolved_observations: unresolved, excluded_observations: excluded, context_fallback: fallback, ...metadata } = manifest;
-  const history = { contract: HISTORY_CONTRACT, batch_id: manifest.batch_id, unresolved: references,
+  const history = { batch_id: manifest.batch_id, unresolved: references,
     ...(excluded === undefined ? {} : { excluded_observations: excluded }),
     ...(fallback === undefined ? {} : { context_fallback: fallback }) };
-  const historyText = jsonText(history);
+  // Only unresolved payloads leave the manifest. Batch dispositions and context
+  // decisions stay in their original location; history is temporary audit input.
   const compact = { ...metadata, contract: COMPACT_CONTRACT,
-    archive: { contract: HISTORY_CONTRACT, path: `${HISTORY_DIRECTORY}/${manifest.batch_id}.json`,
-      sha256: digest(historyText), unresolved_count: unresolved.length,
+    archive: { contract: TRASH_CONTRACT, unresolved_count: unresolved.length,
       unresolved_sha256: digest(json(unresolved)), excluded_count: excluded?.length ?? 0,
       context_decision_count: fallback?.decisions.length ?? 0 },
-    ...(fallback ? { context_fallback: { contract: fallback.contract, decisions_sha256: fallback.decisions_sha256,
-      decision_count: fallback.decisions.length,
-      resolved_ids: fallback.decisions.filter((item) => ['context_confirmed', 'context_reassigned'].includes(item.outcome)).map((item) => item.decision_id).sort() } } : {}) };
-  return { manifest: compact, history, historyText };
+    ...(excluded === undefined ? {} : { excluded_observations: excluded }),
+    ...(fallback === undefined ? {} : { context_fallback: fallback }) };
+  return { manifest: compact, history };
 }
 
 export function restoreManifest(compact, history, index) {
