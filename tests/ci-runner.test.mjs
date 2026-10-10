@@ -6,6 +6,7 @@ import process from 'node:process';
 import test from 'node:test';
 
 import { CI_CATEGORIES, registerCheck } from '../scripts/ci/registry.mjs';
+import { classifyDeepGateDiff } from '../scripts/ci/deep-gate.mjs';
 import { materializeHistoricalInputs, runChecks, runCli, runLevel } from '../scripts/ci/run-category.mjs';
 import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 
@@ -439,12 +440,13 @@ test('ci:pr CLI recomputes exact-head impact and runs Normal before only the sel
     classify: (base, head) => {
       assert.equal(base, 'a'.repeat(40));
       assert.equal(head, 'b'.repeat(40));
-      return {
-        deepMode: 'selective',
-        reason: 'registered-deep-contract-dependency',
-        selectedDeepChecks: [`${selectedDeep.owner}/${selectedDeep.label}`],
-        changedPaths: ['tests/scale-benchmark.test.mjs'],
-      };
+      return classifyDeepGateDiff(base, head, {
+        runGit: (args) => {
+          assert.equal(args[0], 'diff');
+          assert.ok(args.includes('--name-only'));
+          return Buffer.from('scripts/benchmark/sqlite-runtime.mjs\0');
+        },
+      });
     },
     categories,
     levels: { fast: ['canonical'], pr: ['canonical'] },

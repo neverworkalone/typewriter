@@ -751,6 +751,41 @@ test('Deep gate separates validated data from affected contracts and fails close
   assert.equal(unreadableHead.deepMode, 'full');
   assert.equal(unreadableHead.reason, 'routine-data-validation-failed');
 
+  const relationRepairPaths = [
+    canonicalPath,
+    packetPath,
+    'data/inventory/issue-210-recovery-inventory.json',
+    'data/validation/canonical-semantic-decision-source.json',
+    'data/validation/issue-512-relation-repair-report.json',
+    'docs/relation-pilot-repair-issue-507.md',
+  ];
+  const relationRepairValues = new Map([
+    [packetPath, packet],
+    ['data/inventory/issue-210-recovery-inventory.json', { records: [] }],
+    ['data/validation/canonical-semantic-decision-source.json', { contract_version: 'fixture' }],
+    ['data/validation/issue-512-relation-repair-report.json', { outcome: 'fixture' }],
+  ]);
+  const relationRepair = classifyDeepGateDiff('base', 'head', {
+    runGit: (args) => {
+      if (args[0] === 'diff' && args.includes('--name-only')) {
+        return Buffer.from(`${relationRepairPaths.join('\0')}\0`);
+      }
+      if (args[0] === 'diff' && args.includes('--unified=0')) {
+        return Buffer.from(`--- a/${canonicalPath}\n+++ b/${canonicalPath}\n@@ -1 +1 @@\n-${JSON.stringify(originalRecord)}\n+${JSON.stringify(changedRecord)}\n`);
+      }
+      if (args[0] === 'show') {
+        const filePath = args[1].split(':').slice(1).join(':');
+        if (!relationRepairValues.has(filePath)) throw new Error(`unexpected HEAD data path: ${filePath}`);
+        return Buffer.from(JSON.stringify(relationRepairValues.get(filePath)));
+      }
+      throw new Error(`unexpected git command: ${args.join(' ')}`);
+    },
+  });
+  assert.equal(relationRepair.deepMode, 'none');
+  assert.equal(relationRepair.changeClass, 'routine-data');
+  assert.equal(relationRepair.normalDataPaths.length, 5);
+  assert.equal(relationRepair.selectedDeepChecks.length, 0);
+
   const allChecks = CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => CI_CATEGORIES[categoryName].checks);
   const normalFactoryContract = allChecks.find((check) => (
     check.tier === 'normal' && check.command({}).args.includes('scripts/factory/validate.mjs')
