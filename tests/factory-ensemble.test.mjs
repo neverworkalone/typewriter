@@ -1229,3 +1229,22 @@ test('one-time history migration proves every original manifest and candidate bi
   assert.deepEqual(await validateFactoryRepository({ root }), []);
   await assert.rejects(() => planHistoryMigration(root), /already applied/);
 });
+
+test('the 500 final-lemma target refills a short page and preserves overflow as normal deferred observations', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-500-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  // Structural fixture labels only, never admitted or used as lexical judgments.
+  const labels = Array.from({ length: 501 }, (_, index) => `가${String.fromCodePoint(0xac00 + index)}`);
+  const table = Object.fromEntries(labels.map((label) => [label, [p(label, 'noun', label)]]));
+  const evidenceFor = (names) => evidenceDoc(names.map((label) => cand(label, 'noun', [h(label, label)])));
+  const result = await refillCandidateBatch({
+    initialEvidence: evidenceFor(labels.slice(0, 499)), exclusions: new Set(), checkpointPath: path.join(root, 'checkpoint.json'),
+    arguments: { batchId: 'C000001', taskId: 'T000001', maxCandidates: 500, canonicalEntries: [], canonicalDigest: HEX, policy: ENSEMBLE_POLICY, providers: triple({ k: table, h: table, m: table }) },
+    selectPage: async () => ({ ...evidenceFor(labels.slice(499)), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }),
+  });
+  assert.equal(result.rows.length, 500);
+  assert.equal(result.production.pages, 2);
+  assert.equal(result.manifest.selection.deferred_lemma_count, 1);
+  assert.equal(result.manifest.excluded_observations[0].disposition, 'deferred_lemma');
+  assert.equal(result.manifest.unresolved_observations.length, 0);
+});

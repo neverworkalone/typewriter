@@ -347,6 +347,8 @@ export async function runStage1(argv, {
   } catch (error) {
     throw new Stage1Error([`cannot read evidence ${options.evidence}: ${error.message}`]);
   }
+  // Exclusion is before morphology, never before the source/text-free contract.
+  observationsFromCorpusEvidence(evidence);
   const sourceExcludedLemmas = await evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths });
   const canonicalEntries = await loadCanonicalEntries(root);
   const producerRevision = producerRevisionFor(root);

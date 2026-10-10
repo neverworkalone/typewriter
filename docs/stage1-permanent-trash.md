@@ -97,3 +97,8 @@ observations, 46,498 distinct analysis variants and all 50,662 batch occurrences
 preserved in 93 chunks. Normal excluded dispositions (96) and context decisions
 (2,493) remain in batch history. Candidate bytes and existing review bindings are
 unchanged; the report maps every old/new manifest SHA independently.
+
+Committed-master Stage 2/3 snapshots list history paths and verify that each
+compact manifest's history reference exists in the committed tree. They do not
+stage or reread past trash/history payloads. Current candidates, review bindings
+and admission contracts continue through the existing common validator.

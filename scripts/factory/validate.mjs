@@ -82,7 +82,7 @@ export async function loadCanonicalEntries(root) {
 // reported in `report.staleContractReviews`; Stage 3 never admits it until a contract repair
 // re-binds it. A review that is new or changed against the base is validated strictly, which keeps
 // stale results out of every PR. `mergedMaster` marks the worker's view, where all content is merged.
-export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries, mergedMaster = false, report = {} } = {}) {
+export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, base = null, canonicalEntries, mergedMaster = false, committedHistoryPaths = null, report = {} } = {}) {
   report.staleContractReviews = [];
   report.advisories = [];
   const errors = [];
@@ -110,17 +110,21 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     if (manifestText === undefined) { errors.push(`${batch}: candidates manifest.json missing`); continue; }
     const manifest = JSON.parse(manifestText);
     if (manifest.contract === COMPACT_CONTRACT && manifest.archive?.path === `${HISTORY_DIRECTORY}/${batch}.json`) {
-      // Existing history is immutable and was checked when committed. Only new
-      // or rebound history is read; no historical archive reconstruction here.
-      let previous = base?.candidate?.[batch];
-      if (!base && archiveBase?.commit) {
-        try { previous = JSON.parse(git(['show', `${archiveBase.commit}:data/candidates/${batch}/manifest.json`], root)); } catch { /* new batch */ }
-      }
-      try { await stat(path.join(root, manifest.archive.path)); } catch { errors.push(`${batch}: candidate history missing`); }
-      if (!previous || previous.archive?.sha256 !== manifest.archive.sha256 || changedHistory?.has(manifest.archive.path)) {
-        const historyText = await readOptional(path.join(root, manifest.archive.path));
-        if (historyText === undefined || digest(historyText) !== manifest.archive.sha256) errors.push(`${batch}: missing or altered candidate history`);
-        else errors.push(...validateCandidateHistory(manifest, historyText).map((error) => `${batch}: ${error}`));
+      if (mergedMaster && committedHistoryPaths instanceof Set) {
+        if (!committedHistoryPaths.has(manifest.archive.path)) errors.push(`${batch}: candidate history missing from committed master tree`);
+      } else {
+        // Existing history is immutable and was checked when committed. Only new
+        // or rebound history is read; no historical archive reconstruction here.
+        let previous = base?.candidate?.[batch];
+        if (!base && archiveBase?.commit) {
+          try { previous = JSON.parse(git(['show', `${archiveBase.commit}:data/candidates/${batch}/manifest.json`], root)); } catch { /* new batch */ }
+        }
+        try { await stat(path.join(root, manifest.archive.path)); } catch { errors.push(`${batch}: candidate history missing`); }
+        if (!previous || previous.archive?.sha256 !== manifest.archive.sha256 || changedHistory?.has(manifest.archive.path)) {
+          const historyText = await readOptional(path.join(root, manifest.archive.path));
+          if (historyText === undefined || digest(historyText) !== manifest.archive.sha256) errors.push(`${batch}: missing or altered candidate history`);
+          else errors.push(...validateCandidateHistory(manifest, historyText).map((error) => `${batch}: ${error}`));
+        }
       }
     }
     if (manifest.batch_id !== batch) errors.push(`${batch}: batch_id ${manifest.batch_id} does not match its directory`);

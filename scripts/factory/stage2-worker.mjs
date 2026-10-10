@@ -33,7 +33,7 @@ function gitRun(root, args, { allowFailure = false } = {}) {
 }
 
 // Every tracked path class the merged-master snapshot loader reads; the Stage 2 and Stage 3 Git adapters must list the same set.
-export const FACTORY_SNAPSHOT_PATHSPEC = ['data/candidates', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json'];
+export const FACTORY_SNAPSHOT_PATHSPEC = ['data/candidates', 'data/candidate-history', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json'];
 
 export function createGitRepository({ root = process.cwd() } = {}) {
   return {
@@ -95,6 +95,7 @@ const pathRule = {
   canonical: /^data\/canonical\/[^/]+\.jsonl$/u,
   // Relation-only backfill packets (#446) are the committed evidence that a semantic-authority backfill event is bound to.
   backfillPacket: /^data\/relation-backfill\/R\d{6}\.json$/u,
+  candidateHistory: /^data\/candidate-history\/C\d{6}\.json$/u,
 };
 
 export async function loadFactorySnapshot({ git, headSha }) {
@@ -103,6 +104,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
   const reviewFiles = new Map();
   const canonicalPaths = [];
   const backfillPacketPaths = [];
+  const committedHistoryPaths = new Set();
   for (const file of files) {
     const candidate = file.match(pathRule.candidate);
     const review = file.match(pathRule.review);
@@ -114,6 +116,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
       reviewFiles.get(review[1]).set(review[2], file);
     } else if (pathRule.canonical.test(file)) canonicalPaths.push(file);
     else if (pathRule.backfillPacket.test(file)) backfillPacketPaths.push(file);
+    else if (pathRule.candidateHistory.test(file)) committedHistoryPaths.add(file);
     else if (file.startsWith('data/candidates/') || file.startsWith('data/reviews/')) {
       throw new Stage2WorkerError('unrecognized factory artifact path on master: ' + file);
     }
@@ -151,7 +154,9 @@ export async function loadFactorySnapshot({ git, headSha }) {
       await mkdir(path.dirname(target), { recursive: true });
       await writeFile(target, content, 'utf8');
     }
-    const errors = await validateFactoryRepository({ root, canonicalEntries, mergedMaster: true, report });
+    // History was checked on admission to master. Workers verify the committed
+    // tree references, without reading/reconstructing all past observations.
+    const errors = await validateFactoryRepository({ root, canonicalEntries, mergedMaster: true, committedHistoryPaths, report });
     if (errors.length) throw new Stage2WorkerError('merged master factory data failed validation:\n' + errors.join('\n'));
   } finally {
     await rm(root, { recursive: true, force: true });

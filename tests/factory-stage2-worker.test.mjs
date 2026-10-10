@@ -604,6 +604,17 @@ test('the production Git adapter and snapshot loader accept the committed relati
   assert.ok(packets.length >= 1, 'the production adapter lists the committed relation backfill packets');
   const snapshot = await loadFactorySnapshot({ git, headSha: 'HEAD' });
   assert.equal(snapshot.validated, true);
+  const history = git.listFiles('HEAD').filter((file) => /^data\/candidate-history\/C\d{6}\.json$/u.test(file));
+  if (history.length) {
+    const metadataOnly = { ...git, show: (ref, file) => {
+      assert.equal(file.startsWith('data/candidate-history/'), false, 'merged historical payload is not replayed');
+      assert.equal(file.startsWith('data/candidate-trash/'), false, 'trash is outside Stage 2/3 snapshots');
+      return git.show(ref, file);
+    } };
+    assert.equal((await loadFactorySnapshot({ git: metadataOnly, headSha: 'HEAD' })).validated, true);
+    const missingHistory = { ...git, listFiles: (ref) => git.listFiles(ref).filter((file) => file !== history[0]) };
+    await assert.rejects(loadFactorySnapshot({ git: missingHistory, headSha: 'HEAD' }), /candidate history missing/u);
+  }
 
   const withoutPacket = { ...git, listFiles: (ref) => git.listFiles(ref).filter((file) => file !== packets[0]) };
   await assert.rejects(loadFactorySnapshot({ git: withoutPacket, headSha: 'HEAD' }), /has no committed packet file/u);
