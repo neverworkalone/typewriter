@@ -25,7 +25,7 @@ import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
 import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import { HEX, hit, item, khaiii, kiwi, stub } from './support/khaiii-fixtures.mjs';
-import { mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkText, validateTrashChunk, failedProposalLemmas, loadTrash } from '../scripts/factory/permanent-trash.mjs';
+import { mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkText, validateTrashChunk, validateArchivedUnresolved, failedProposalLemmas, loadTrash } from '../scripts/factory/permanent-trash.mjs';
 import { refillCandidateBatch } from '../scripts/factory/refill.mjs';
 import { publishArtifacts, recoverArtifacts } from '../scripts/factory/artifact-transaction.mjs';
 import { planHistoryMigration } from '../scripts/factory/migrate-candidate-history.mjs';
@@ -1181,6 +1181,21 @@ test('Normal factory rejects missing or substituted valid archived observations 
     'substituting another individually valid observation must fail manifest digest binding');
   await writeFile(archivePath, original);
   assert.deepEqual(await validateFactoryRepository({ root }), [], 'the valid complete batch still passes');
+  const oldChunks = new Map([['T000001.jsonl', rows]]);
+  const second = {
+    batch_id: 'C654321',
+    source_snapshot: produced.manifest.source_snapshot,
+    unresolved_observations: [{ queue_id: 'U0001', ...rows[0].variants[0].observation }],
+  };
+  const reused = mergeUnresolved(oldChunks, [second]);
+  assert.deepEqual([...reused.changed], ['T000001.jsonl'], 'reuse appends an occurrence to the old chunk');
+  const nextCompact = compactManifest(second, reused.references.get(second.batch_id)).manifest;
+  const changedOccurrences = [...reused.chunks.values()].flatMap((chunk) => chunk.flatMap((row) =>
+    row.variants.flatMap((variant) => variant.occurrences
+      .filter((occurrence) => occurrence.batch_id === second.batch_id)
+      .map((occurrence) => ({ row, variant, occurrence })))));
+  assert.deepEqual(validateArchivedUnresolved(nextCompact, changedOccurrences), [],
+    'a new batch may reuse a valid observation by modifying an existing archive chunk');
 });
 
 test('production CLI refills valid lemmas, skips trash proposals before analysis and publishes compact artifacts', async (t) => {
