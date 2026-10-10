@@ -26,6 +26,10 @@ const M5_3_HISTORICAL_CANONICAL_DIRECTORY = path.join(
   BATCH_DIRECTORY,
   'm5-10a-wave-a-base-canonical',
 );
+const M5_5_HISTORICAL_CANONICAL_DIRECTORY = path.join(
+  BATCH_DIRECTORY,
+  'm5-9-postimport-canonical',
+);
 
 async function readBatchJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
@@ -327,7 +331,7 @@ test('M5-5 follow-up timing is a measured lower bound until the missing fix pass
   const [manifest, relationDiff, canonicalResult] = await Promise.all([
     readBatchJson('m5-5-recalibration.json'),
     readBatchJson('m5-5-recalibration-relation-diff.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(M5_5_HISTORICAL_CANONICAL_DIRECTORY),
   ]);
 
   const incomplete = deriveBatchMetrics({
@@ -376,7 +380,7 @@ test('repeated follow-up timing binds every cycle and rejects stale or missing f
   const [manifest, relationDiff, canonicalResult] = await Promise.all([
     readBatchJson('m5-5-recalibration.json'),
     readBatchJson('m5-5-recalibration-relation-diff.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(M5_5_HISTORICAL_CANONICAL_DIRECTORY),
   ]);
 
   const repeatedManifest = structuredClone(manifest);

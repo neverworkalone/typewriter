@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { deepFreezeJson, memoizedDigest } from '../validate/immutable-digest.mjs';
+import { preservesReviewedRecord, preservesReviewedRecords } from '../validate/relevance-projection.mjs';
 
 export const LEXICAL_PRODUCTION_STATE_CONTRACT_VERSION = 'lexical-production-state-v2';
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
@@ -441,9 +442,9 @@ export function assertProspectiveRecordsDerivedFromBaseRecords(
   }
   for (const expectedRecord of expectedProspectiveRecords) {
     const prospectiveRecord = prospectiveById.get(expectedRecord.id);
-    if (!prospectiveRecord || JSON.stringify(prospectiveRecord) !== JSON.stringify(expectedRecord)) {
+    if (!prospectiveRecord || !preservesReviewedRecord(expectedRecord, prospectiveRecord)) {
       fail(
-        `${label}.output must equal the base dataset transformed only by selected/reviewed records; record ${expectedRecord.id} drifted`,
+        `${label}.output must preserve the base dataset and selected/reviewed fields; record ${expectedRecord.id} drifted`,
         'LEXICAL_PRODUCTION_STATE_BINDING',
       );
     }
@@ -518,9 +519,9 @@ export function assertAdmissionInputsBoundToProducer(
       'LEXICAL_PRODUCTION_STATE_BINDING',
     );
   }
-  if (JSON.stringify(prospectiveRecords) !== JSON.stringify(prospectiveOutput)) {
+  if (!preservesReviewedRecords(prospectiveOutput, prospectiveRecords)) {
     fail(
-      `${label}.prospective_records must equal the producer-owned prospective output`,
+      `${label}.prospective_records must preserve the producer-owned records and original relations`,
       'LEXICAL_PRODUCTION_STATE_BINDING',
     );
   }

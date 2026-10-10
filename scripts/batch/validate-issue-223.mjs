@@ -1,4 +1,4 @@
-import { withoutRelevance } from '../validate/relevance-projection.mjs';
+import { preservesReviewedRecord } from '../validate/relevance-projection.mjs';
 import { readImportBytesBeforeFactoryAdmissions } from '../validate/historical-import.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -606,7 +606,10 @@ async function validateCorpusBatches(currentCanonical, { verifyLocalCorpusEviden
     for (const record of importRecords) {
       const stored = currentCanonical.records.find((info) => recordOf(info).id === record.id);
       assert.ok(stored, `${candidateLabel} ${record.id} exists in canonical data`);
-      assert.deepEqual(withoutRelevance(recordOf(stored)), record, `${candidateLabel} ${record.id} matches its reviewed canonical record`);
+      assert.ok(
+        preservesReviewedRecord(record, recordOf(stored)),
+        `${candidateLabel} ${record.id} preserves its reviewed fields and original relations`,
+      );
     }
     batches.push({
       batch_id: candidateReview.batch_id,

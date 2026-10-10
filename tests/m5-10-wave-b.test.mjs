@@ -38,7 +38,8 @@ import {
 } from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
-const CURRENT_SHARD_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-b.jsonl');
+const HISTORICAL_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-11-base-canonical');
+const HISTORICAL_SHARD_PATH = path.join(HISTORICAL_CANONICAL_DIRECTORY, 'm5-10-wave-b.jsonl');
 const RECORDERS_TEMP_PARENT = path.resolve('artifacts/.test-wave-b-recorders');
 
 async function readJson(filePath) {
@@ -48,7 +49,7 @@ async function readJson(filePath) {
 async function makeStagingDirectory() {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10-wave-b-'));
   const stagingPath = path.join(directory, 'reviewed.jsonl');
-  await writeFile(stagingPath, await readFile(CURRENT_SHARD_PATH), 'utf8');
+  await writeFile(stagingPath, await readFile(HISTORICAL_SHARD_PATH), 'utf8');
   const baseCanonical = await readCanonicalRecords(DEFAULT_BASE_CANONICAL_DIRECTORY);
   const staged = await readCanonicalRecords(stagingPath);
   const semanticAuditPath = path.join(directory, 'semantic-audit.json');
@@ -96,6 +97,7 @@ async function validateWaveB(options = {}) {
   const fixture = waveBFixtures.get(options.stagedRecordsPath);
   return validateWaveBContract({
     ...options,
+    canonicalDirectory: options.canonicalDirectory ?? HISTORICAL_CANONICAL_DIRECTORY,
     manifestPath: options.manifestPath ?? fixture?.manifestPath,
     stagePath: options.stagePath ?? fixture?.stagePath,
     semanticAuditPath: options.semanticAuditPath ?? fixture?.semanticAuditPath,

@@ -279,16 +279,19 @@ test('shared producer binds selected and prospective values to their exact prede
   const changedSelected = typedRecord(`${batchId}:selected`, 'changed-selected');
   const changedBaseB = typedRecord(`${batchId}:base-b`, 'changed-base-b');
   const unselectedExtra = typedRecord(`${batchId}:extra`, 'unselected-extra');
-  const prospectiveSpec = (output) => ({
+  const prospectiveSpec = (
+    output,
+    { baseRecords = [baseA, baseB], selectedRecords = [selected] } = {},
+  ) => ({
     stageId: 'prospective_canonical',
     batchId,
-    input: { selected_records: [selected] },
+    input: { selected_records: selectedRecords },
     output,
     inputKind: 'selected-records',
     outputKind: 'prospective-canonical',
     details: {
-      base_records: [baseA, baseB],
-      base_records_sha256: productionValueSha256([baseA, baseB]),
+      base_records: baseRecords,
+      base_records_sha256: productionValueSha256(baseRecords),
       prospective_records_sha256: productionValueSha256(output),
     },
   });
@@ -306,6 +309,54 @@ test('shared producer binds selected and prospective values to their exact prede
       ].includes(error.code),
     );
   }
+
+  const withReviewedRelation = (record, target) => ({
+    ...record,
+    senses: record.senses.map((sense) => ({
+      ...sense,
+      relations: [{
+        target,
+        target_sense: `${target}-s1`,
+        type: 'near',
+        note: `Reviewed link from ${record.id}.`,
+      }],
+    })),
+  });
+  const baseWithRelation = withReviewedRelation(baseA, 'w901');
+  const selectedWithRelation = withReviewedRelation(selected, 'w902');
+  const appendEnrichment = (record, target) => ({
+    ...record,
+    senses: record.senses.map((sense) => ({
+      ...sense,
+      relations: [
+        { ...sense.relations[0], relevance: 5 },
+        {
+          target,
+          target_sense: `${target}-s1`,
+          type: 'association',
+          note: `Later relation enrichment for ${record.id}.`,
+        },
+      ],
+    })),
+  });
+  const relationEnrichedOutput = [
+    appendEnrichment(baseWithRelation, 'w903'),
+    baseB,
+    appendEnrichment(selectedWithRelation, 'w904'),
+  ];
+  const historicalProspectiveSpec = (output) => prospectiveSpec(output, {
+    baseRecords: [baseWithRelation, baseB],
+    selectedRecords: [selectedWithRelation],
+  });
+  assert.doesNotThrow(() => createLexicalProductionPayload(
+    historicalProspectiveSpec(relationEnrichedOutput),
+  ));
+  const changedOriginalRelation = structuredClone(relationEnrichedOutput);
+  changedOriginalRelation[0].senses[0].relations[0].target = 'w999';
+  assert.throws(
+    () => createLexicalProductionPayload(historicalProspectiveSpec(changedOriginalRelation)),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
 });
 
 test('post-hoc descriptors and fabricated pre-admission admission fail closed', () => {

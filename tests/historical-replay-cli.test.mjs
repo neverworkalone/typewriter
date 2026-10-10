@@ -31,12 +31,12 @@ async function runValidator(scriptPath, args) {
 test('historical A2 and Wave B CLIs forward the external semantic audit contract', async () => {
   const a2 = await materializeExternalReplayInputs(
     'm5-10a-wave-a2-cli',
-    path.join(REPOSITORY_DIRECTORY, 'data/canonical/m5-10a-wave-a2.jsonl'),
+    path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-11-base-canonical/m5-10a-wave-a2.jsonl'),
     path.join(VALIDATION_DIRECTORY, 'm5-10a-wave-a2-semantic-audit.json'),
   );
   const waveB = await materializeExternalReplayInputs(
     'm5-10-wave-b-cli',
-    path.join(REPOSITORY_DIRECTORY, 'data/canonical/m5-10-wave-b.jsonl'),
+    path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-11-base-canonical/m5-10-wave-b.jsonl'),
     path.join(VALIDATION_DIRECTORY, 'm5-10-wave-b-semantic-audit.json'),
   );
 
@@ -51,6 +51,7 @@ test('historical A2 and Wave B CLIs forward the external semantic audit contract
       runValidator('scripts/batch/validate-m5-10-wave-b.mjs', [
         `--staged=${waveB.stagedPath}`,
         `--semantic-audit=${waveB.semanticAuditPath}`,
+        '--canonical-dir=data/batches/m5-11-base-canonical',
       ]),
     ]);
 

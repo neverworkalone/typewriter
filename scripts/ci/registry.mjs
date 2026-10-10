@@ -352,6 +352,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
         command: ({ historicalInputs }) => pnpmCommand('batch:m5-10:wave-b:check', [
           `--staged=${historicalInputs.waveBReviewed}`,
           `--semantic-audit=${historicalInputs.waveBSemanticAudit}`,
+          '--canonical-dir=data/batches/m5-11-base-canonical',
         ]),
         testFiles: [],
       },

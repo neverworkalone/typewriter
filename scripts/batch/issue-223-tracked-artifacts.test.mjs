@@ -6,6 +6,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { loadSemanticReviewerRegistry } from './build-issue-223-corpus-batch.mjs';
+import { preservesReviewedRecord } from '../validate/relevance-projection.mjs';
 import {
   classifyIssue223QaOutcome,
   summarizeIssue223QaOutcomes,
@@ -23,6 +24,51 @@ const BATCHES = ['06', '07', '08', '09'];
 const HISTORICAL_QA_BATCHES = ['01', '02', '03', '04'];
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const read = (relativePath) => readFile(path.join(ROOT, relativePath));
+
+function assertImportPreservesReviewedRecords(importRecords, sourceRecords, label) {
+  for (let recordIndex = 0; recordIndex < sourceRecords.length; recordIndex += 1) {
+    const imported = importRecords[recordIndex];
+    const source = sourceRecords[recordIndex];
+    assert.ok(
+      preservesReviewedRecord(source, imported),
+      `${label} preserves reviewed fields and original relations for ${source.id}`,
+    );
+  }
+}
+
+test('reviewed records allow only append-only relation enrichment', () => {
+  const reviewed = {
+    id: 'w001',
+    lemma: 'fixture',
+    senses: [{
+      id: 'w001-s1',
+      pos: 'noun',
+      gloss: 'Reviewed gloss.',
+      relations: [{ target: 'w002', target_sense: 'w002-s1', type: 'near', note: 'Reviewed relation.' }],
+    }],
+  };
+  const enriched = structuredClone(reviewed);
+  enriched.senses[0].relations[0].relevance = 5;
+  enriched.senses[0].relations.push({
+    target: 'w003',
+    target_sense: 'w003-s1',
+    type: 'association',
+    note: 'Later relation enrichment.',
+  });
+  assert.equal(preservesReviewedRecord(reviewed, enriched), true);
+
+  const changedGloss = structuredClone(enriched);
+  changedGloss.senses[0].gloss = 'Changed gloss.';
+  assert.equal(preservesReviewedRecord(reviewed, changedGloss), false);
+
+  const changedOriginalRelation = structuredClone(enriched);
+  changedOriginalRelation.senses[0].relations[0].target = 'w004';
+  assert.equal(preservesReviewedRecord(reviewed, changedOriginalRelation), false);
+
+  const removedOriginalRelation = structuredClone(reviewed);
+  removedOriginalRelation.senses[0].relations = [];
+  assert.equal(preservesReviewedRecord(reviewed, removedOriginalRelation), false);
+});
 
 async function load(number = '06') {
   const STEM = `issue-223-m9-e-corpus-batch-${number}`;
@@ -78,7 +124,11 @@ test('every committed reviewer-checked batch is bound to its artifacts', async (
   for (const number of BATCHES) {
     const { args, importRecords, semanticSource, candidateReview } = await load(number);
     validateSemanticReviewInputBinding(args());
-    assert.deepEqual(importRecords, semanticSource.candidate_records, `B${number} import matches its source`);
+    assertImportPreservesReviewedRecords(
+      importRecords,
+      semanticSource.candidate_records,
+      `B${number} import`,
+    );
     assert.equal(importRecords.length, candidateReview.decision_counts.admit);
   }
 });
