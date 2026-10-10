@@ -124,7 +124,11 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     // Existing committed batches are immutable. Compare the new/changed
     // production batches only, not every historical compact archive.
     const earlier = base?.candidate?.[batch];
-    if (base && earlier && JSON.stringify(earlier) === JSON.stringify(manifest)) continue;
+    // Stage 2 admission/review may update status or downstream metadata on a
+    // previously merged candidate without changing its immutable archive.
+    // Such updates must not demand that untouched historic chunks be staged.
+    if (earlier && earlier.source_snapshot === manifest.source_snapshot
+      && JSON.stringify(earlier.archive) === JSON.stringify(manifest.archive)) continue;
     if (!base && archiveBase?.commit) continue; // no explicit baseline; synthetic HEAD is the existing snapshot
     errors.push(...validateArchivedUnresolved(manifest, changedArchiveOccurrences.get(batch) ?? []));
   }
