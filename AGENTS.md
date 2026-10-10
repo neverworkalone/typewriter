@@ -400,7 +400,12 @@ Deep data inputs belong in each check's `deepInputs` registry metadata;
 `dependency_paths` separately name changes that invalidate that check's
 contract. A data file appearing in `deepInputs` does not alone select the
 check. Routine canonical and reviewed relation changes must pass schema/shape
-classification and the existing Normal source-bound validators. Docs-only
+classification and the existing Normal source-bound validators.
+Stage 1 `data/candidate-trash/T######.jsonl` files use the same principle:
+strict changed-chunk JSONL and the shared permanent-trash contract must pass
+before selecting Normal. Normal factory validation still checks changed and
+historic archive identities and immutability; candidate+trash changes are not
+candidate-only. New or malformed archive paths remain fail-closed. Docs-only
 changes retain the exact-head Normal skip, and pure root candidate artifacts
 retain `ci:candidates`. CI runner/registry/workflow/classifier edits, unresolved unknown
 paths, missing/empty diff evidence and malformed data fail closed to full

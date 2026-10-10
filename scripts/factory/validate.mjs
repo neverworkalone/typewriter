@@ -21,7 +21,7 @@ import { nonliteralCoverageAdvisories, validateLemmaDecision } from './lemma-dec
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
-import { COMPACT_CONTRACT, TRASH_DIRECTORY, validateTrashChunk } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, TRASH_DIRECTORY, validateTrashChunk, validateArchivedUnresolved } from './permanent-trash.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DEFAULT_BASE_REF = 'origin/master';
@@ -91,7 +91,8 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     try { if (git(['rev-parse', '--show-toplevel'], root) === root) archiveBase = { commit: git(['rev-parse', 'HEAD'], root) }; } catch { /* synthetic roots have no baseline */ }
   }
   report.archiveValidation = { checked_chunks: 0, unchanged_chunks_skipped: 0 };
-  errors.push(...await validateChangedArchive(root, archiveBase, report.archiveValidation));
+  const changedArchiveOccurrences = new Map();
+  errors.push(...await validateChangedArchive(root, archiveBase, report.archiveValidation, changedArchiveOccurrences));
   const candidateBatches = await subdirectories(path.join(root, 'data/candidates'));
   const reviewBatches = await subdirectories(path.join(root, 'data/reviews'));
   const currentCanonicalSnapshot = reviewBatches.length ? await canonicalSnapshotDigest(root) : null;
@@ -114,6 +115,22 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     const candidatesText = await readOptional(path.join(directory, 'candidates.jsonl'));
     errors.push(...validateCandidateBatch({ manifest, candidatesText, stage1DecisionsText }).map((error) => `${batch}: ${error}`));
     candidates.set(batch, { manifest, candidatesText });
+  }
+  for (const [batch, { manifest }] of candidates) {
+    // Stage 2/3 read a deliberately archive-free, already-merged master
+    // metadata snapshot; its PR admission checked the archive at exact HEAD.
+    if (mergedMaster || manifest.contract !== COMPACT_CONTRACT
+      || manifest.production?.contract !== 'lexical-factory-refill-v1') continue;
+    // Existing committed batches are immutable. Compare the new/changed
+    // production batches only, not every historical compact archive.
+    const earlier = base?.candidate?.[batch];
+    // Stage 2 admission/review may update status or downstream metadata on a
+    // previously merged candidate without changing its immutable archive.
+    // Such updates must not demand that untouched historic chunks be staged.
+    if (earlier && earlier.source_snapshot === manifest.source_snapshot
+      && JSON.stringify(earlier.archive) === JSON.stringify(manifest.archive)) continue;
+    if (!base && archiveBase?.commit) continue; // no explicit baseline; synthetic HEAD is the existing snapshot
+    errors.push(...validateArchivedUnresolved(manifest, changedArchiveOccurrences.get(batch) ?? []));
   }
   const seenIds = new Set();
   const seenUsages = new Map();
@@ -484,7 +501,7 @@ function validateAgainstBase({ base, candidates, reviews, semanticTexts }) {
   return errors;
 }
 
-async function validateChangedArchive(root, base, report) {
+async function validateChangedArchive(root, base, report, changedArchiveOccurrences = new Map()) {
   let names;
   try { names = await readdir(path.join(root, TRASH_DIRECTORY)); }
   catch (error) { if (error.code === 'ENOENT') return []; throw error; }
@@ -507,6 +524,11 @@ async function validateChangedArchive(root, base, report) {
     errors.push(...chunkErrors.map((error) => `${name}: ${error}`));
     if (chunkErrors.length) continue;
     for (const row of text.trimEnd().split('\n').filter(Boolean).map(JSON.parse)) {
+      for (const variant of row.variants) for (const occurrence of variant.occurrences) {
+        const batchEntries = changedArchiveOccurrences.get(occurrence.batch_id) ?? [];
+        batchEntries.push({ row, variant, occurrence });
+        changedArchiveOccurrences.set(occurrence.batch_id, batchEntries);
+      }
       const previous = changedIds.get(row.observation_id);
       if (previous) errors.push(`${name}: duplicate archive identity ${row.observation_id} also in ${previous}`);
       else changedIds.set(row.observation_id, name);

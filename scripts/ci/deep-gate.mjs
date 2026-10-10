@@ -12,6 +12,7 @@ import {
 import { validateCanonicalRecord } from '../validate/canonical-jsonl.mjs';
 import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
 import { relationCorrectionErrors } from '../factory/relation-corrections.mjs';
+import { validateTrashChunk } from '../factory/permanent-trash.mjs';
 import KNOWN_NON_DEEP_PATHS from './deep-gate-known-non-deep-paths.json' with { type: 'json' };
 import NORMAL_COVERAGE from './deep-gate-coverage.json' with { type: 'json' };
 
@@ -117,6 +118,7 @@ export function validateAdditiveNormalCoverage(previous, next, options) {
   return after;
 }
 const STAGE1_CANDIDATE_ARTIFACT_PATH = /^data\/candidates\/C\d{6}\/(?:manifest\.json|candidates\.jsonl|stage1-decisions\.json)$/u;
+const STAGE1_TRASH_ARTIFACT_PATH = /^data\/candidate-trash\/T\d{6}\.jsonl$/u;
 const REVIEW_ARTIFACT_PATH = /^data\/reviews\/C\d{6}\/(?:manifest\.json|decisions\.jsonl|semantic-decisions\.json|intake-handoff\.json)$/u;
 const RELATION_BACKFILL_PATH = /^data\/relation-backfill\/(R\d{6})\.json$/u;
 
@@ -181,6 +183,7 @@ function deepCheckMap(deepChecks) {
 function normalDataKind(pathValue) {
   if (/^data\/canonical\/.+\.jsonl$/u.test(pathValue)) return 'canonical-jsonl';
   if (STAGE1_CANDIDATE_ARTIFACT_PATH.test(pathValue)) return pathValue.endsWith('.jsonl') ? 'jsonl' : 'json';
+  if (STAGE1_TRASH_ARTIFACT_PATH.test(pathValue)) return 'trash-jsonl';
   if (REVIEW_ARTIFACT_PATH.test(pathValue)) return pathValue.endsWith('.jsonl') ? 'jsonl' : 'json';
   if (RELATION_BACKFILL_PATH.test(pathValue)) return 'relation-backfill';
   if (
@@ -277,8 +280,16 @@ function validateRoutineDataFile(pathValue, kind, baseSha, headSha, runGit) {
   }
 
   const text = readFileAtRevision(pathValue, baseSha, headSha, runGit);
-  if (kind === 'jsonl') {
+  if (kind === 'jsonl' || kind === 'trash-jsonl') {
+    // Keep the changed-file gate strict even if another consumer tolerates blank lines.
     parseJsonlRecords(text, pathValue);
+    if (kind === 'trash-jsonl') {
+      // Reuse the real Factory contract (identity hashes, variants, occurrences,
+      // bounded chunk size and text-free evidence); Normal additionally checks
+      // new chunks against all changed and historic archive IDs.
+      const errors = validateTrashChunk(text);
+      if (errors.length > 0) throw new Error(`${pathValue}: ${errors.join('; ')}`);
+    }
     return;
   }
 
