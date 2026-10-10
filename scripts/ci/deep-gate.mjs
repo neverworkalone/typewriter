@@ -80,7 +80,7 @@ export function validateNormalCoverage(manifest = NORMAL_COVERAGE, {
       || typeof binding?.protected_contract !== 'string'
       || !binding.protected_contract.trim()
       || !Array.isArray(tests) || tests.length === 0
-      || tests.some((test) => !/^(?:tests|scripts)\\/.+\\.test\\.mjs$/u.test(test))
+      || tests.some((test) => typeof test !== 'string' || !new RegExp('^(?:tests|scripts)/.+[.]test[.]mjs$', 'u').test(test))
       || new Set(tests).size !== tests.length
       || bindings.has(binding.path)
       || FULL_DEEP_PATHS.some((rule) => matchesPath(binding.path, rule))
