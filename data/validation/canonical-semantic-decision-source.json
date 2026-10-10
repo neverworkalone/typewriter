@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "2c63d14bac10c25349bf49422faf9674ead61fe7938c6b8ef6d031750b7bc54f"
+    "canonical_records_sha256": "08f3371ee85258bbb94deb1995fa1fa1ae7a0e1c1f4be18c3a879ac650e009b4"
   },
-  "authored_review_sha256": "2e15007b07d1b4d1db3eef289a1491cc905d96f0bc22e36bb2f9f1a6898aa382",
+  "authored_review_sha256": "ab554eab41a6c5566af7e8b222dc304d06be978a2cae38442566d52e97606d82",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "2c63d14bac10c25349bf49422faf9674ead61fe7938c6b8ef6d031750b7bc54f"
+      "canonical_records_sha256": "08f3371ee85258bbb94deb1995fa1fa1ae7a0e1c1f4be18c3a879ac650e009b4"
     },
     "records": [
       {
@@ -85400,7 +85400,7 @@
       },
       {
         "record_id": "w4281",
-        "record_sha256": "79d4decea239cdef3499fc47d7007b209c41bfcc002e0c6e26f5ec574f4d06f1",
+        "record_sha256": "4b661225ee495636fe710468e9bd995131e31d1d9a88f61e5c0357d9816b10c1",
         "boundary_review": {
           "review_id": "m5-15-agent-semantic-review-20260923-r1:canonical:w4281:boundary",
           "decision": "retain",
@@ -85419,7 +85419,7 @@
           {
             "sense_id": "w4281-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w4281 w4281-s1 3b71bf03567c [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-e18adafa0628f1d3a508b0d2 to w088; rationale digest 23a4860844cd. w4281 w4281-s1 3b71bf03567c [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-c4b89300168b93a245c504d4 to w087; rationale digest 2ea9ae5fcb15. w4281 w4281-s1 3b71bf03567c [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-51a248b8915ff44f4f02f94d to w2313; rationale digest d53535e9ec7f."
+            "relation_rationale": "w4281 w4281-s1 3b71bf03567c [R000004]: Stage 3 attempt R000004-a1 appended near relation rel-02778121b3b8dbdb68bd6b8e to w088; rationale digest ce5516af6c74. w4281 w4281-s1 3b71bf03567c [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-c4b89300168b93a245c504d4 to w087; rationale digest 2ea9ae5fcb15. w4281 w4281-s1 3b71bf03567c [R000004]: Stage 3 attempt R000004-a1 appended association relation rel-51a248b8915ff44f4f02f94d to w2313; rationale digest d53535e9ec7f."
           }
         ]
       },
@@ -241551,7 +241551,7 @@
     {
       "batch_id": "R000004",
       "attempt": 1,
-      "semantic_decisions_sha256": "91af5b02fe341344eb965cecb09adbba2dadcfa7441f41ac36c29a6f978bd229",
+      "semantic_decisions_sha256": "1dc1213f30d6d27fee6c18aec526c73595fe927fc9899a4c507446696180a1fa",
       "entries": [],
       "relation_amendments": [
         {
@@ -260694,16 +260694,16 @@
           "source_record_id": "w4281",
           "source_sense_id": "w4281-s1",
           "source_gloss_sha256": "3b71bf03567c4d06aae43ed3736e80230955629af1a238abfac2e5ec36acc7c0",
-          "authored_relation_id": "rel-e18adafa0628f1d3a508b0d2",
-          "relation_id": "rel-e18adafa0628f1d3a508b0d2",
+          "authored_relation_id": "rel-02778121b3b8dbdb68bd6b8e",
+          "relation_id": "rel-02778121b3b8dbdb68bd6b8e",
           "relation": {
             "target": "w088",
             "target_sense": "w088-s1",
             "type": "near",
-            "note": "메아리는 소리가 부딪혀 되울리는 현상이라 반향과 거의 같은 현상을 가리킨다. 틀: \"산의 반향 / 메아리\"는 되지만, \"바닥에 부딪혀 겹쳐 들리는 반향 / 바닥에 부딪혀 겹쳐 들리는 메아리\"는 출발 gloss는 \"벽이나 바닥\"이고 대상 gloss는 \"벽이나 산\"이라 바닥에 부딪힌 소리에는 바뀌지 않는다.",
+            "note": "메아리는 소리가 부딪혀 되울리는 현상이라 반향과 거의 같은 현상을 가리킨다. 틀: \"벽에 부딪힌 소리가 반향이 되어 돌아왔다 / 메아리가 되어 돌아왔다\"는 되지만, \"바닥에 부딪혀 겹쳐 들리는 반향 / 바닥에 부딪혀 겹쳐 들리는 메아리\"는 출발 gloss는 \"벽이나 바닥\"이고 대상 gloss는 \"벽이나 산\"이라 바닥에 부딪힌 소리에는 바뀌지 않는다.",
             "relevance": 6
           },
-          "rationale_sha256": "23a4860844cd018a0549a09bb309c9f9669d3b85f4f8e1ab8a06fcc988db4b1b",
+          "rationale_sha256": "ce5516af6c749539abff371e867ecf1e3a07bbb7b1a8f59fffc9b1ea8bfe86f5",
           "outcome": "appended"
         },
         {
@@ -290837,12 +290837,12 @@
             "R000004"
           ],
           "added_relation_ids": [
-            "rel-e18adafa0628f1d3a508b0d2",
+            "rel-02778121b3b8dbdb68bd6b8e",
             "rel-c4b89300168b93a245c504d4",
             "rel-51a248b8915ff44f4f02f94d"
           ],
           "before_sha256": "07c3343d47617e6c1f07dcce1f33ced36dac9b1e02acac5c24066cab966775c1",
-          "after_sha256": "79d4decea239cdef3499fc47d7007b209c41bfcc002e0c6e26f5ec574f4d06f1",
+          "after_sha256": "4b661225ee495636fe710468e9bd995131e31d1d9a88f61e5c0357d9816b10c1",
           "previous_semantic_review_sha256": "4923d919fa7707989c2f36911a5e4d012539aa37a6c7dbd7f010227003d5ca83",
           "previous_semantic_review": {
             "record_id": "w4281",
@@ -290877,7 +290877,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "0c324a4e9c7b373ca83c4e0933ae6340851b557365f1a39b057ccf695b338f96"
+          "semantic_review_sha256": "2f1a43c11cf2dc7f704366d9aec7a5a5bdd2ec1ede1e9ab3c058a9fb5b13cfb9"
         },
         {
           "entry_id": "w4288",
@@ -297341,7 +297341,7 @@
           "semantic_review_sha256": "25781db3ad1faf41c9ca731ddcf0bcf09ff68918f12cf4f247b67f05c074a17a"
         }
       ],
-      "sha256": "7ef913886db3eaa565e25eaaa1db5330966fd1adb42e69a2dcdd8117cb283529"
+      "sha256": "69b81e7232a025001bcf873e6a4629ae7c1a0197733f3786201accd1a857e7eb"
     }
   ]
 }
