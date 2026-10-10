@@ -148,7 +148,15 @@ and `stage1-decisions.json`, require the **Normal** gate, not unrelated
 Deep reproducibility or scale checks. The always-on Normal factory validator
 continues to compare changed trash chunks with the merge base and across
 changed/unchanged chunks, rejecting altered history and repeated observation
-identities. No additional historical full scan is introduced solely by the
+identities. For each **new or changed production batch**, the same Normal
+Factory gate reconstructs its ordered `U0001..` unresolved queue from
+occurrences in **only new/changed trash chunks**, including occurrences
+appended to existing chunks. It requires exactly `archive.unresolved_count`
+unique contiguous IDs, the bound source snapshot and an exact match to
+`archive.unresolved_sha256` of the original unresolved observations.
+Dropping or substituting an individually valid row is therefore a Normal
+failure, not a reason to run unrelated Deep checks. Already-merged
+unchanged batch archives are not reconstructed on every new PR. No additional historical full scan is introduced solely by the
 classifier. Other trash paths, malformed chunks, unrelated changed paths and
 unverified evidence remain fail-closed; mixed trash+candidate PRs are **not**
 eligible for the narrow candidate-only gate. This pattern applies to all
