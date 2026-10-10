@@ -1,0 +1,181 @@
+{
+ "packet_id": "R000007",
+ "relation_corrections": [
+  {
+   "source_record_id": "w051",
+   "source_sense_id": "w051-s1",
+   "source_gloss_sha256": "7d2173853eac650305c99a0e75682a2178417847195bdbbab6c279b98c45ee6e",
+   "target_meaning_sha256": "b0ce4dcfaa2b0bfdebfecc76042b0a8e980caf37b8d2bbf2c2076d40ca5b6ac5",
+   "previous_relation": {
+    "target": "w7608",
+    "target_sense": "w7608-s1",
+    "type": "action",
+    "note": "질주는 빠른 속도로 힘차게 달리는 움직임이다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w7608",
+    "target_sense": "w7608-s1",
+    "type": "association",
+    "note": "질주는 빠른 속도로 힘차게 달리는 움직임으로 빠른 상태가 드러나는 한 장면이다.",
+    "relevance": 5
+   },
+   "position": 2,
+   "rationale": "w051-s1: 빠름의 상태와 질주의 빠른 이동 사건은 관련되지만 뜻이 가까운 대체어가 아니므로 association으로 둔다."
+  },
+  {
+   "source_record_id": "w1169",
+   "source_sense_id": "w1169-s1",
+   "source_gloss_sha256": "b194b4f22426d818f9e3d43f3b3e1c73967836effc6ea1a694afb9a4701c63b8",
+   "target_meaning_sha256": "edf2db841b7b3a2a8667f4fcbc276c5725aaaeecc0fa0f1a95f1e123af933c65",
+   "previous_relation": {
+    "target": "w10680",
+    "target_sense": "w10680-s1",
+    "type": "action",
+    "note": "필기는 공책에 글씨를 써 내용을 기록하는 활동이다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w10680",
+    "target_sense": "w10680-s1",
+    "type": "association",
+    "note": "필기는 공책에 글씨를 써 기록하는 활동으로 공책의 대표적인 용도와 이어진다.",
+    "relevance": 6
+   },
+   "position": 2,
+   "rationale": "w1169-s1: 공책은 쓰기 활동을 담는 매체이고 필기는 활동이므로 용도 연상인 association으로 둔다."
+  },
+  {
+   "source_record_id": "w12620",
+   "source_sense_id": "w12620-s1",
+   "source_gloss_sha256": "0a9659782e2a6266fa97aaf42d5239085876c74b6b5366bbf00256999f65b7d0",
+   "target_meaning_sha256": "5171bcc313583779db18546b9ecb2299ca9b07b3aef33418c170c332672eb762",
+   "previous_relation": {
+    "target": "w176",
+    "target_sense": "w176-s1",
+    "type": "action",
+    "note": "편지는 멀리 있는 사람에게 글로 마음이나 소식을 전하는 전달 수단이다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w176",
+    "target_sense": "w176-s1",
+    "type": "association",
+    "note": "편지는 글로 마음이나 소식을 전하는 수단으로 전하다의 한 방식이다.",
+    "relevance": 5
+   },
+   "position": 0,
+   "rationale": "w12620-s1: 편지는 전하다의 의미와 같은 행동이나 동의어가 아니라 소식을 보내는 수단이므로 association으로 둔다."
+  },
+  {
+   "source_record_id": "w1273",
+   "source_sense_id": "w1273-s2",
+   "source_gloss_sha256": "62ea1faf66fa8783b854f967fcb8177322c0535ec366ea29d85c79fbeb105fd0",
+   "target_meaning_sha256": "7b380fbfe3edd72abce9923b1edb8590f8a8022559e7904e9ea7620494f41535",
+   "previous_relation": {
+    "target": "w002",
+    "target_sense": "w002-s1",
+    "type": "action",
+    "note": "불안은 앞일이나 상황을 확신하지 못해 마음이 편하지 않은 상태로 다독임이 진정시키는 대상이다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w002",
+    "target_sense": "w002-s1",
+    "type": "association",
+    "note": "불안은 마음이 편하지 않은 상태로 마음을 다독이는 표현이 진정시키려는 대상이다.",
+    "relevance": 5
+   },
+   "position": 0,
+   "rationale": "w1273-s2: 불안은 마음을 다독이는 표현의 가까운 대체 표현이 아니라 그 표현이 다루는 정서 상태이므로 association으로 둔다."
+  },
+  {
+   "source_record_id": "w2050",
+   "source_sense_id": "w2050-s1",
+   "source_gloss_sha256": "fb237bbb374a6f7925de310a11fcba2f836812f6287eb0c9b0f7b35ec774b769",
+   "target_meaning_sha256": "785957bba1a771d3aeadc41c462f4a0b795e8e6bd4b845644d944f8a0af9d421",
+   "previous_relation": {
+    "target": "w172",
+    "target_sense": "w172-s1",
+    "type": "action",
+    "note": "창문은 빛과 바람을 들이고 바깥을 보게 하는 부분으로 창을 여는 대상이다.",
+    "relevance": 6
+   },
+   "relation": {
+    "target": "w172",
+    "target_sense": "w172-s1",
+    "type": "association",
+    "note": "창문은 빛과 바람을 들이는 부분으로 창을 여는 행동의 대상이다.",
+    "relevance": 6
+   },
+   "position": 0,
+   "rationale": "w2050-s1: 창문은 여는 행동의 대상인 사물이고 동작 이름이 아니므로 association으로 둔다."
+  },
+  {
+   "source_record_id": "w2063",
+   "source_sense_id": "w2063-s1",
+   "source_gloss_sha256": "241a4ee546115de5cdaa5a26fe01e96a399aab619b2af9d5885d837f95a95db9",
+   "target_meaning_sha256": "a5783e77406318fd49bc93cbb9d53e30bbf51b080059befba6cfce311f01b023",
+   "previous_relation": {
+    "target": "w112",
+    "target_sense": "w112-s1",
+    "type": "action",
+    "note": "눈물은 눈물을 닦는 행동의 직접 대상이며 슬픔이 드러난 흔적이기도 하다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w112",
+    "target_sense": "w112-s1",
+    "type": "association",
+    "note": "눈물은 눈에서 흘러나오는 물기로 눈물을 닦는 표현이 직접 다루는 대상이다.",
+    "relevance": 5
+   },
+   "position": 0,
+   "rationale": "w2063-s1: 눈물은 닦는 행동의 대상이고 그 행동과 같은 동작이 아니므로 association으로 둔다."
+  },
+  {
+   "source_record_id": "w2070",
+   "source_sense_id": "w2070-s1",
+   "source_gloss_sha256": "c654debefea51b81590b74a25c59a7040e1103290a2058c38656e93d33eebb2a",
+   "target_meaning_sha256": "c630dce0c860c1d0e7c517f07fa610908d28bd564faf597a6edcf080c832f824",
+   "previous_relation": {
+    "target": "w120",
+    "target_sense": "w120-s1",
+    "type": "action",
+    "note": "목소리는 목에서 나오는 말소리와 음색으로 말하기 전 목을 가다듬는 대상이다.",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w120",
+    "target_sense": "w120-s1",
+    "type": "sensory",
+    "note": "목소리는 목에서 나오는 말소리와 음색으로 목을 가다듬은 뒤 이어지는 청각적 감각이다.",
+    "relevance": 5
+   },
+   "position": 0,
+   "rationale": "w2070-s1: 목소리의 말소리와 음색은 목을 가다듬은 뒤 이어지는 청각 경험이므로 sensory로 분류한다."
+  },
+  {
+   "source_record_id": "w2886",
+   "source_sense_id": "w2886-s1",
+   "source_gloss_sha256": "a19c6c8808790f3a3b76956c112c7bba97b4c60e7e081bd181377712dd0f6001",
+   "target_meaning_sha256": "1649b3504c12b44992cdb92897c0ef1c0701e3ae9400a2c74769d308072e512b",
+   "previous_relation": {
+    "target": "w5784",
+    "target_sense": "w5784-s1",
+    "type": "action",
+    "note": "훌륭하다고 느껴 감탄한 뒤 잘한 점을 말로 칭찬할 수 있다.",
+    "relevance": 7
+   },
+   "relation": {
+    "target": "w5784",
+    "target_sense": "w5784-s1",
+    "type": "association",
+    "note": "칭찬은 잘한 점을 좋게 말하는 표현 행위로 훌륭함에 대한 감탄 뒤 이어질 수 있다.",
+    "relevance": 7
+   },
+   "position": 3,
+   "rationale": "w2886-s1: 칭찬은 감탄 뒤 이어질 수 있는 말하기 행위의 명사형이고 감탄하다와 같은 동작 sense가 아니므로 association으로 둔다."
+  }
+ ]
+}
