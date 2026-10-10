@@ -36,9 +36,9 @@ A relationship does not need to be a strict dictionary synonym to be useful, but
 
 For example, a search may surface:
 
-- `direct`: a word or expression that can directly replace the source in a relevant sense;
-- `near`: close in meaning but not fully interchangeable;
-- `mood`: similar emotional or tonal color;
+- `direct`: a dictionary-grade lexical synonym of the bound sense, without requiring interchangeability in every sentence;
+- `near`: writer-facing expressive nuance or word texture, not a weaker-synonym fallback or a strict substitution test;
+- `mood`: an emotional or tonal color that enriches expression;
 - `scene`: evokes a related scene or situation;
 - `sensory`: shares a sensory image;
 - `action`: an action naturally associated with the source mood or situation;
@@ -125,11 +125,17 @@ low-yield batches until the issue checkpoint is reached; pause only for a new
 systemic defect, exhausted candidate sources, or an explicit product/model/
 licensing blocker. Fix systemic defects in shared rules and resume afterward.
 
-Use two editorial precision tiers: gloss, `direct`, and `antonym` require
-dictionary-grade precision; `near`, `mood`, `scene`, `sensory`, `action`, and
-`association` favor honest, writer-intelligible exploration. Relation
-enrichment remains independent of lexical admission. See
-[`docs/editorial-model.md`](docs/editorial-model.md) for the full contract.
+Use two editorial review modes: gloss, `direct`, and `antonym` require
+**dictionary-grade lexical accuracy**, while `near`, `mood`, `scene`,
+`sensory`, `action`, and `association` prioritize **plausible writer-facing
+exploration**. Preserve the latter unless a link is plainly incoherent or
+wrongly bound; compare exploratory `relevance: 1..9` against the **same
+source sense's existing and proposed peers in the same UI group** and
+adjust display priority instead of reflexively deleting a useful idea.
+A lexical synonym need not substitute in every sentence. Apply this to
+**new Stage 2 and Stage D backfill** production alike; no relation quotas.
+Relation enrichment remains independent of lexical admission. Current
+contract: [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md).
 
 #### No external model delegation for lexical QA — Codex and Claude (owner directive, 2026-10-02)
 
