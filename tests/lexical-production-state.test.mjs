@@ -341,8 +341,13 @@ test('shared producer binds selected and prospective values to their exact prede
       ],
     })),
   });
-  const relationEnrichedOutput = [
+  const relationEnrichedBaseOutput = [
     appendEnrichment(baseWithRelation, 'w903'),
+    baseB,
+    selectedWithRelation,
+  ];
+  const relationEnrichedSelectedOutput = [
+    baseWithRelation,
     baseB,
     appendEnrichment(selectedWithRelation, 'w904'),
   ];
@@ -355,9 +360,14 @@ test('shared producer binds selected and prospective values to their exact prede
     relationBoundSpec(exactReviewedOutput),
   ));
   assert.throws(
-    () => createLexicalProductionPayload(relationBoundSpec(relationEnrichedOutput)),
+    () => createLexicalProductionPayload(relationBoundSpec(relationEnrichedBaseOutput)),
     (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
-    'live producer output rejects an unreviewed relation appended to a base or selected record',
+    'live producer output rejects an unreviewed relation appended to a base record',
+  );
+  assert.throws(
+    () => createLexicalProductionPayload(relationBoundSpec(relationEnrichedSelectedOutput)),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+    'live producer output rejects an unreviewed relation appended to a selected record',
   );
   const changedOriginalRelation = structuredClone(exactReviewedOutput);
   changedOriginalRelation[0].senses[0].relations[0].target = 'w999';
