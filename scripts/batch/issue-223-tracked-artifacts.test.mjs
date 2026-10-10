@@ -36,7 +36,7 @@ function assertImportPreservesReviewedRecords(importRecords, sourceRecords, labe
   }
 }
 
-test('reviewed records allow only append-only relation enrichment', () => {
+test('historical reviewed records allow only append-only relation enrichment', () => {
   const reviewed = {
     id: 'w001',
     lemma: 'fixture',

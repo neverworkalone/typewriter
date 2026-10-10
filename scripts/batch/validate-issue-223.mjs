@@ -765,6 +765,12 @@ export async function validateIssue223({ verifyLocalCorpusEvidence = true, valid
       prospectiveRecords: currentCanonical.records,
       semanticAudit,
       canonicalContext: admissionContext,
+      // These M9-E approvals are replayed against today's canonical records;
+      // later relation-only enrichment is allowed only at this explicit
+      // historical boundary, after the source import was verified above.
+      allowReplay: true,
+      historicalReplay: true,
+      allowHistoricalRelationEnrichment: true,
       stageEvidence: productionStageEvidence({
         candidateSourceBytes: batch.candidateReviewBytes,
         semanticSourceBytes: batch.semanticSourceBytes,

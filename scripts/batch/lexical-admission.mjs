@@ -123,11 +123,17 @@ function validateLexicalAdditionInternal({
   productionPayloads,
   canonicalContext,
   allowReplay = false,
+  allowHistoricalRelationEnrichment = false,
   checkPilotCompleteness = false,
   candidateLabel = 'candidate records',
   reviewedLabel = 'reviewed canonical records',
   prospectiveLabel = 'prospective canonical dataset',
 } = {}) {
+  if (allowHistoricalRelationEnrichment && !allowReplay) {
+    const error = new Error('historical relation enrichment requires explicit replay authorization');
+    error.code = 'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED';
+    throw error;
+  }
   requireBatchId(batchId);
   if (baseRecords === undefined) {
     throw new Error('lexical admission requires the complete current base_records');
@@ -150,6 +156,8 @@ function validateLexicalAdditionInternal({
       batchId,
       sourceBytesByStage: preAuditSources,
       expectedPayloads: productionPayloads,
+      allowReplay,
+      allowHistoricalRelationEnrichment,
     });
   } else {
     if (productionState === undefined) {
@@ -168,6 +176,7 @@ function validateLexicalAdditionInternal({
       sourceBytesByStage: productionStateSources,
       expectedPayloads: replayState ? undefined : productionPayloads,
       allowReplay,
+      allowHistoricalRelationEnrichment,
     });
   }
   const hasProducerBinding = validatedProductionState?.producer_mode === 'live'
@@ -206,6 +215,7 @@ function validateLexicalAdditionInternal({
         prospectiveRecords: prospectiveInfos.map(recordOf),
         semanticAudit,
         requireAudit: validatedProductionState?.producer_mode === 'live',
+        allowHistoricalRelationEnrichment,
       },
       `${batchId} lexical admission`,
     );
@@ -253,6 +263,7 @@ function validateLexicalAdditionInternal({
     reviewedInfos.map(recordOf),
     prospectiveInfos.map(recordOf),
     `${batchId} lexical admission`,
+    { allowHistoricalRelationEnrichment },
   );
 
   for (const [index, recordInfo] of candidateInfos.entries()) {
@@ -409,6 +420,8 @@ function validateLexicalAdditionInternal({
         audit: auditPayload,
         admission: admissionPayload,
       },
+      allowReplay,
+      allowHistoricalRelationEnrichment,
     });
     validatedProductionPayloads = {
       ...productionPayloads,
@@ -424,6 +437,7 @@ function validateLexicalAdditionInternal({
         prospectiveRecords: prospectiveInfos.map(recordOf),
         semanticAudit,
         requireAudit: true,
+        allowHistoricalRelationEnrichment,
       },
       `${batchId} lexical admission`,
     );

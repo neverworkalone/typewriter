@@ -13,6 +13,7 @@ import {
   productionValueSha256,
   validateLexicalProductionState,
 } from '../scripts/batch/lexical-production-state.mjs';
+import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
 
 function payloadFor(stageId, batchId, input, output, inputKind, outputKind, details) {
   return {
@@ -394,6 +395,21 @@ test('admission inputs reject prospective relation additions absent from produce
       prospectiveRecords: enrichedWithoutReview,
     }),
     (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+});
+
+test('historical relation enrichment requires an explicit historical replay', () => {
+  assert.throws(
+    () => validateLexicalProduction({ allowHistoricalRelationEnrichment: true }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED',
+  );
+  assert.throws(
+    () => validateLexicalProduction({
+      allowReplay: true,
+      historicalReplay: false,
+      allowHistoricalRelationEnrichment: true,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED',
   );
 });
 
