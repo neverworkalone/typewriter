@@ -1,0 +1,4680 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000058",
+  "excluded_observations": [
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "초롱",
+      "pos": "noun",
+      "surface": "초롱이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005400.1#WARW2500005400.1.2875"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "49b2bdb2a750685deee153875bf1a0c7b879696e539f60139110406ee46bb8d1"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "b60699d18b6b6aaf443ff2614fa2b79fb28e26b66832f9a2ec2a99f2b64da31e",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "474ed6eb28f98dd638db82e6e7192c8949326a996332a951b1bec83c21dae90e",
+        "alternatives": [
+          {
+            "lemma": "초롱이",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "초목",
+      "pos": "noun",
+      "surface": "초목과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001760.1#WARW2500001760.1.299"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "31d1a1973b1f979f38de44708ab75b8eed0e78f0406edefa12db6a6fde37c785"
+      },
+      "holds": [],
+      "observation_digest": "db87d6b47aacafbadc30a72095a4af4a00ab100da7eda0331dd1c212f6738f3d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "4e0538c6af48e70cbfdc0d81b64d64813db980e3923fc414061699b0aff1fb88",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "초여름",
+      "pos": "noun",
+      "surface": "초여름에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002690.1#WARW2500002690.1.146"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "94ece09630240a0dcdae9b7ebf77fa49d19f48ed91290470d7a739dc3c6156dd"
+      },
+      "holds": [],
+      "observation_digest": "28885ba5646de6531621e62062836da8933ba4d72d47907a8391a7f4689c773b",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "cb54b12376fa295ed5933239bbe805e24ae9d1468e8792e10867b0b86280a64b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "촉감",
+      "pos": "noun",
+      "surface": "촉감이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005070.1#WARW2500005070.1.2812"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ce937bc189bf6d12d487a76037fd4aaa3e768c4413926c000d0bd53514493560"
+      },
+      "holds": [],
+      "observation_digest": "0a32800dc4a7b3a2f2c89bd4e99172afe293a66766b05f9d6eebfae94282e752",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "9c345b455a220327618227dd52888b3dd4b701844d521ddb363fdb505f1a68ce",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "총회",
+      "pos": "noun",
+      "surface": "총회에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005210.1#WARW2500005210.1.17"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6a79b3bf0b8215eb47a4ee72249e87c22f8b84fc1dd3a4a8e9fc884b507fae3c"
+      },
+      "holds": [],
+      "observation_digest": "a33968b1dad276f74a27d954311e56370bf39334232e04067eae2a5394d48cb8",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "7aa50992f2d8de9bd685d9c697b68817136c61a87f2c7558f62c9844fc74d600",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출근길",
+      "pos": "noun",
+      "surface": "출근길에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.1742"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "cce1d0a8ca784e3c06ad1ac4017e5d395dd523151adaa0d9e3a0b71203a1ef8a"
+      },
+      "holds": [],
+      "observation_digest": "5bdc9ebfad579168b4ac399871539a8a07829f29d355264a846a97ac797685e8",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "bef985ecccf8690b1325709560e180ea224841cc3c77bdd896e7fd9b9bcd7e7c",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출근길",
+      "pos": "noun",
+      "surface": "출근길은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.2680"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "e048fcb7100e2211e646761411a5b09427aed642460f906cd2a956c036b44df5"
+      },
+      "holds": [],
+      "observation_digest": "d61a49f962bc71b7b8fba3ae61c00675bc8aa38f592a97b8083550ddef0b23df",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "5858085f908121cc1a6c7ac9d90516367be9bdfc08b318b29c88ea2ebb3f9366",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출렁거리다",
+      "pos": "verb",
+      "surface": "출렁거리고",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.1359"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b65f0bf1d79b9247193209cc83f7cedb72e814f8814f96c8f043878d4d5995ba"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "ca2d7a5b2e5adac25798579e487b687065ff798b888308095c680915f0140973",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "b03d315948d453b8229019d5ab5e114cd335c87832d48e39dc72b381bb0ee6f9",
+        "alternatives": [
+          {
+            "lemma": "출렁",
+            "pos": "adverb",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출렁거리다",
+      "pos": "verb",
+      "surface": "출렁거리는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.779"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "4fca8f1c042acaafc5018e66bb70a4d40e191fd971033f5d08e6f238a30d32d6"
+      },
+      "holds": [],
+      "observation_digest": "e4e7be916ef38d37d566106197de4979bc3487b562abe9c3c655bb6138fe9538",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "1d6be7a13da0cf3ce673256d6bb587aaf82c032a13b9487d0ba011ececa210c7",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출렁거리다",
+      "pos": "verb",
+      "surface": "출렁거렸다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.3908"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6445555a08acee73373c623202ba60339f1728e81e555644fcb1f0f233b7c5c3"
+      },
+      "holds": [],
+      "observation_digest": "e7f2692cff587fde62145e5356a18d2d866d2f6b50aa707180f1934046dfb013",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "ef78f3932a1d16fc1509d83e91f9440e6a64c3d0f32d17d1a920395d430e7b2c",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출렁이다",
+      "pos": "verb",
+      "surface": "출렁이는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.366"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ed7a1d17b32c7df42ca87366a3172a40f0e6488e5075bfc899eb25e5e12c4f6e"
+      },
+      "holds": [],
+      "observation_digest": "6e23f4a3a29f2a074507e01c5a745247f4b5073b26b394e96f9d373c13ffe7d5",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "69bf36f11342da428d2fc69e34ecbbac6821cd2eb10ac6149532039e2abc1538",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출렁이다",
+      "pos": "verb",
+      "surface": "출렁이고",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005140.1#WARW2500005140.1.1520"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f29946c9ae823a109fa92bc4aa41c4d17321b04647e80109069e1d7a3d9b89cb"
+      },
+      "holds": [],
+      "observation_digest": "a37b0a5c136d6ff6c6613d49015d8eb3e07d9b6e9be3ece603e36288355c0eeb",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "7e7d2f474591ecc6af7025304419543116fd0d11ec555ade718839fd28575434",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출몰",
+      "pos": "noun",
+      "surface": "출몰",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003100.1#WARW2500003100.1.710"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "e17337c12c297836d738d50e9e542046f516a472f5eb2c544fa4e49f09726b0e"
+      },
+      "holds": [],
+      "observation_digest": "0fba7bc02820ebae0b16219248506b7679fc2f257e91dd84e4990ea540c58a38",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "65645b669cbfb6fffc06562779f8377c348f6c30f88070a60ced974e05bf90bb",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출병",
+      "pos": "noun",
+      "surface": "출병을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010270.1#WARW2500010270.1.2850"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9d7669e8090da1231c8b69b292b8216becde4afbe349239fe3986122859c15ce"
+      },
+      "holds": [],
+      "observation_digest": "65e0f85138c4c2ac8eb7f2951a8f51036f14a712baf5d1aaf1277144ed9122ce",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "deb6b2c03ccfa5d28f32bfe21e8194eb27e64f8a8d5081030a91cc346734dd8f",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "출병",
+      "pos": "noun",
+      "surface": "출병",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500019281.1#WARW2500019281.1.354"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "88cc717f65bd10a3e44d6c210e9ff7bf05b62f60a9efb9d580bc854b4c44c45b"
+      },
+      "holds": [],
+      "observation_digest": "d617d4a9672246e4d0eb7ef9fe411651fcd49ef94cf5fa0d66d6a6c84502aa5c",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "4c46654a8783fa9bb010ef646c5a00d8ad4b37f3da6013323d23d73c8694157e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "충분하다",
+      "pos": "adjective",
+      "surface": "충분한",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.2579"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "2e1d5d57d43a558081250457c36f165376f5f51b65325b839f7c033d7e991ecc"
+      },
+      "holds": [],
+      "observation_digest": "3919b0859154ca3d01cfbff8e01e676f4d0d8e81e2836dbc6b700103b3fe4611",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "88b816b04b28adab7f48fa1d631cbde450106e7676f0db6fc1c697e1ab27d2dd",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "충분하다",
+      "pos": "adjective",
+      "surface": "충분하다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000880.1#WARW2500000880.1.69"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "0e3ccf834eaa673e455d656a3669e50143d967d21ecc3ffadf527e2aa4284d47"
+      },
+      "holds": [],
+      "observation_digest": "623f8cf2f851cf5fa4c2e8b0ddbe0250d0f81b67ed942c0903d7778031c89937",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "ba54efe283e07c66190f052ef38481593633a30da36dc6b3ca2eead66c06e147",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "충분하다",
+      "pos": "adjective",
+      "surface": "충분할",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.1258"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "3b765682c467f02f9ab6c215033f88240dd9ef0af6255874a6a606a02b67dc9c"
+      },
+      "holds": [],
+      "observation_digest": "e4a3f4b127b1eaed91a0045378d6c5f55f96bbe8e8d35161d22dc843c51e40cb",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "74bd8089ea4eff1b755c23cc1eea9d767a895c0a28fd9c01c8aa253ed65dd952",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "충신",
+      "pos": "noun",
+      "surface": "충신을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010200.1#WARW2500010200.1.1021"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ff018fc748ff1d531f564dc6fdc4080abafc2c406a14251c96e51eb7261e8e83"
+      },
+      "holds": [],
+      "observation_digest": "b510656c217b00c9e117b0e6aaf3846eb9bf1e4095567cae3f4eb6f23423a81f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "4132552389ee0e43d7f7ccdb9fc63ff82900ebccf1884b8ce2d2912d97070863",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "취침",
+      "pos": "noun",
+      "surface": "취침",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.80"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "fbfaf56fee019acfaa0eee79d65e67d3f3cdcd9a818cb3b0c997c7eb7109ff56"
+      },
+      "holds": [],
+      "observation_digest": "2d9848a037225261e4f0924160bc4cd01ea968add3746abc5f28b3cb4dddf4c7",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "185c2c432fdc0247a33462491743710073b7f667930c7ec82ea3de98ccf51041",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "취침",
+      "pos": "noun",
+      "surface": "취침에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.329"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5f6811bc1c1edc4b08f179661b5bc89d907347fb27e9b1649734c9ddf9812f70"
+      },
+      "holds": [],
+      "observation_digest": "de4b169028333b9803dfd7e52f073e10c1aa33f49599ed5b0610fffac6abf4f6",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "ab4a1c9ea82695c62b314edefbdaf110ede852604d9ca68571aa2a0ffa63d506",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "치켜세우다",
+      "pos": "verb",
+      "surface": "치켜세우고",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002670.1#WARW2500002670.1.410"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "4a0b12a20ad89f58eacbef4eb63251b7b36d81725694737eee9234dca12611ae"
+      },
+      "holds": [],
+      "observation_digest": "c0fe7b9cc73d30ce1bacc3411a811bf740de2bfc2b6d6ac09380773aa251bbb1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e3ca630a43d49af9d1a26ac4c24b787bd15ca57c5fe00cb8ea8f278e87c7444e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "치켜세우다",
+      "pos": "verb",
+      "surface": "치켜세웠다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003670.1#WARW2500003670.1.503"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "00090945ec576e205b75492fed7c75f9993ca4c56ead7ae3f4f85e70d9c4e64a"
+      },
+      "holds": [],
+      "observation_digest": "d43510c0f911af266a11116e655ed5aede67202d0e5a735dd2777387aa42084f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "56c3ef0240137ce1dd569e2940c9bf9d2eb8e237f5259368aa3e4a8059981823",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "캠핑",
+      "pos": "noun",
+      "surface": "캠핑을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005120.1#WARW2500005120.1.691"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5607cc59e926d3c4cdc37a003642b520d17f6ade0abc46118b26526c3b1452a5"
+      },
+      "holds": [],
+      "observation_digest": "eba86629d956e714e7c9ed543b95937abb584f1d64eb38c2a5b71c2a9342f418",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "394586680122c4aff379223b45e7b7ef97bb045cef33d83dbe238fe585ab3700",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "캠핑",
+      "pos": "noun",
+      "surface": "캠핑",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.1060"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9c7b5f54fcddd12b2513492e3baebead2093aaa4d75b4d5b2c8d0ae61a0e358b"
+      },
+      "holds": [],
+      "observation_digest": "ef1f3e6e5628f1fdde4f132159c0cddfbd79e63d9605e42aeb80a76e31fed2d2",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "38f1fb4a0fca1e5ba9401f1b28eca867d01ed11a7dd6c7359c6d9b2b88d5ef76",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "커뮤니케이션",
+      "pos": "noun",
+      "surface": "커뮤니케이션을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005590.1#WARW2500005590.1.1228"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9ae288c466738b5df42a37e5657eefc810be7690b6690b60ecccd5619c92a26d"
+      },
+      "holds": [],
+      "observation_digest": "981b37df70472bcaf55649aad4f799fc9aad92bfd01ffb8340dc1a686062a8c4",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "ddd49c00256f086d6b6308ec6159dd53f5159566974b16d1aa32a5d25bb013b6",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "컨테이너",
+      "pos": "noun",
+      "surface": "컨테이너",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.811"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "0ccbd8486b25d43f87ea596dac784cc9fa2dd3396f21395b8f994fdcd28b29b0"
+      },
+      "holds": [],
+      "observation_digest": "452c3d85685d20b2e1febd9c99f0f56f0e29f4cad8bc1cd99f60f54717a5a182",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "12c8ea2859a4e26aacb8b4b3c2fcbc7744b58b1278d20253741dcbb6e07fa4d3",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "컨테이너",
+      "pos": "noun",
+      "surface": "컨테이너가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005150.1#WARW2500005150.1.485"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "1856410d7f57652ed4bfd104c9f02124cce16e586f485181f505d6d3b359c9b5"
+      },
+      "holds": [],
+      "observation_digest": "71fadc83c9d74b350eae147b02f163217a68805671e1b49ac25a42db3cf12719",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "9f0381d5f9b8cab0a7d20da6e38325c3f31a15ef03ad18a021f60249d5ccca7a",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "컨테이너",
+      "pos": "noun",
+      "surface": "컨테이너를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003590.1#WARW2500003590.1.478"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c52c364e39b4806c9729e0191619da2fadfc855402c66471d1efd7d5421814dc"
+      },
+      "holds": [],
+      "observation_digest": "d43c96487a3b0c28bb95a1569919cde16f095c2c1963f44fae92476187a7697b",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "0f3d0d251bc2f65c11f729372608933bf8f351befd28aabd52b9ba48e95b9907",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "코미디",
+      "pos": "noun",
+      "surface": "코미디를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001370.1#WARW2500001370.1.445"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "4813083b7f6cc1c35bee1cebb7de58565e720d4c5f73c0eaf11e0755508412c0"
+      },
+      "holds": [],
+      "observation_digest": "5d9627a11361e76e3fb3426eec71d7b194b8418e85db5eafc50b88f028884d37",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "8cb13d1a44a7dc7747a4c08a24322a4797cd89c6c565d872ff484c56695a3ef2",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "콧등",
+      "pos": "noun",
+      "surface": "콧등에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003670.1#WARW2500003670.1.742"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "04a581bf79472413fe7b396ccb10475a0a98f3f5406849dc0370a7e56b54e97f"
+      },
+      "holds": [],
+      "observation_digest": "6ff3a34e6b57831ccaa1353da46777e10ec14ec561aea4163cd4fd358d4b3b62",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "dbcb8151e00233383ba9ec96a7d2b2100646225519fcc82fe447c84d19947b61",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "콩나물",
+      "pos": "noun",
+      "surface": "콩나물",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001760.1#WARW2500001760.1.383"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5f9bbbae4e8125a6dfcd4b88c395430867d86e710368ebe020bbf6627dc0215b"
+      },
+      "holds": [],
+      "observation_digest": "0c50310b8def504cd58e2bda958e049b9b230509c836dca230fa9ca01a5deade",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "3e72c693064dc0910b587e7a35e6a1b7e7d5ba153f8765159427d57fe407fc82",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "콩나물",
+      "pos": "noun",
+      "surface": "콩나물을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500009780.1#WARW2500009780.1.30"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f00b39ac0140115c8ff5dcd8403b10745796e08171f9ced45ea16f789845c527"
+      },
+      "holds": [],
+      "observation_digest": "9a658275433ad52c59a3a182b770928df7d5dc484e4aae738d46ac27ddd18b13",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e8c718de067c492eacd5bcf41b955b628c48c4d9734fb22c8b69acb5e340773b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "콩나물",
+      "pos": "noun",
+      "surface": "콩나물과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500006810.1#WARW2500006810.1.366"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ff1020b39fb6508a48444312d99881c06b9381f1aebe62c283ea141854a77fc3"
+      },
+      "holds": [],
+      "observation_digest": "ec5c3562e435e7e5e90b9e462a596aeb6aa93419221e728b936912088fabed36",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "b5cf70afa0ed5e3f9564771cb82e7cdfb200d1131de40217d2640a650c42a667",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "큰아버지",
+      "pos": "noun",
+      "surface": "큰아버지",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.180"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "3d92a9bd2ba3feb9613ed6703759a48ad28e495d3c3d1a6c6fd907e75c1ec331"
+      },
+      "holds": [],
+      "observation_digest": "223ab54c09dbdfcc49d3120ba262c0482020595ce397bd51bfc6909ff9515f3d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "441252f1c76e79474e2599751ace9bff7c97a17214bd66532a60d686213c539e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "큰아버지",
+      "pos": "noun",
+      "surface": "큰아버지는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005940.1#WARW2500005940.1.292"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6cc22ded3e81c2315fcb33c669e7dbf8b1062dd625d161ddbb8d701390d02c67"
+      },
+      "holds": [],
+      "observation_digest": "50d26f9a57a624ad74a5d3c04618bb026aec01aa6bd53c2bb511913593b494aa",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "fa4357385900dc2b65eae2d06af8cd0132535d8d98f65c00d206c2a13647e0c6",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "큰아버지",
+      "pos": "noun",
+      "surface": "큰아버지가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.359"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "84aa891ea39ef265105680ffaefe81019065c3eb6e921ac2e895f0c87fa2eda8"
+      },
+      "holds": [],
+      "observation_digest": "722bc5091fb5c46c00a1fd250ea31e427c2f9c6c078d0720d9166604f753d559",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "70e7d4ca6cf4d354bce0094f5a8f0125ef7f8b966e44f25183ccbd8feb00be18",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "킁킁거리다",
+      "pos": "verb",
+      "surface": "킁킁거렸다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001560.1#WARW2500001560.1.827"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "bee257b4e3536fbef09076af76af6ca56733b333ad3fa31ede99ae5fbf568706"
+      },
+      "holds": [],
+      "observation_digest": "2c0b4203e57e422800e6dbc8b0084a70c2d192fcc40bd1c3e24d3092a61dcbd1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "77da2600bda0da1e8ace1448c92cbaf4c89bd16291689461c402f5327387f265",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "킁킁거리다",
+      "pos": "verb",
+      "surface": "킁킁거리며",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001360.1#WARW2500001360.1.156"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f062cb0bc77743b27d20304bc785e63770942d8c73080ccfc277ac9a1e80cc77"
+      },
+      "holds": [],
+      "observation_digest": "650f6cb954718a4573e76584a5667bd67db25936ef8ba66aa9479ccfd62223ec",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "d105ec057056fb674a8ff83c712ccdde757e407221aaa354375e79d375d2439e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "킁킁거리다",
+      "pos": "verb",
+      "surface": "킁킁거리는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005120.1#WARW2500005120.1.855"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f8006fb662e7f6e3999654fb427a9d367447f655b3fbf0c00a5a6fe6415b6c0d"
+      },
+      "holds": [],
+      "observation_digest": "a6eea5761d7f3144bbb1571ad44178231d0130a5c4ef32b3f1ca96f420f15940",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "0d2de2546a85ba2134771d03cdbc04aff9bea93cf0fb930fbff40b7746bfddfd",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "타지",
+      "pos": "noun",
+      "surface": "타지",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.1248"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "47ea4edc8d6a9dfcb4e3f64d4a826fc8a321c9fde37773194bbdfebbb1393f77"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "5bfb37c0e8036abb39593502cbc97a4e6c46e05688c1b38516484c812815f910",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "59f38feb1e9d4783cb55a1a6329ca25c49667ed0f35354270688a7310d3c19dc",
+        "alternatives": [
+          {
+            "lemma": "타다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "탄광",
+      "pos": "noun",
+      "surface": "탄광이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002670.1#WARW2500002670.1.3176"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "3c215fd0d2f7357091615ad9ae698f1caf5209eeb272cc28bd3fb02ea322cce3"
+      },
+      "holds": [],
+      "observation_digest": "91efe9c4146199e2a3d4a7fbd90b26664663e965e38279c10014b4b7353b097e",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "89ebb747bc992af06ac398bbfc4a83f9dbb2dd21185761027649b536a5e941c3",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "탄복",
+      "pos": "noun",
+      "surface": "탄복을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010080.1#WARW2500010080.1.431"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "a94ce54d28e3d449eb30494fa0c3ce9c1a510181ccac827e88871952c1fb55c9"
+      },
+      "holds": [],
+      "observation_digest": "62f3953c7112da4ca40f54965ed7fbe98e83f0d21c3cd8433e1ee0a16fd87db1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "2b01274bb452f39865a59fe4ab2235ae917c8a70c859d5425ab3eabfbd5718bd",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "탄약",
+      "pos": "noun",
+      "surface": "탄약을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005080.1#WARW2500005080.1.2755"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "46f1769bb1809ecc6a585d574fa6ea1c87d3f1419ed0207465355b0c2bd68014"
+      },
+      "holds": [],
+      "observation_digest": "1d5a6fbea16cb09824a6c9bf7e5fb343c11920c3c2964964938226d553a8ddc0",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "3b37abe8b37c16af26ac365ce6c596d490bc063348b30321cee7097f4debae4f",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "탄약",
+      "pos": "noun",
+      "surface": "탄약",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.1032"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "aa5de7d510cd0caceb197add1fe9a86b91dd8e28090c817fd4cac46cd556b918"
+      },
+      "holds": [],
+      "observation_digest": "40d20bb65f03f34574f0e6cf10aa6a91822e6f36c7c54fa103d6e7ba05de96ed",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "21545e89c58c1eb08c14742f65400f7124efcb21285117e8552ae16b42684a6e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "탄약",
+      "pos": "noun",
+      "surface": "탄약도",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005740.1#WARW2500005740.1.1421"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6e2d262e16be8945b3ff1ee7584a67f325d374f5f9897f326f0e229df6370bd0"
+      },
+      "holds": [],
+      "observation_digest": "beea16d2cf24abc94dbdb16556fb9b2e5338b45c5bed49199b98beb3929073f2",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "7204b254afc7801223d6b756347b45f2e6fda2e7b50cd75b1f6a79bd53328e8e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "태극기",
+      "pos": "noun",
+      "surface": "태극기를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002670.1#WARW2500002670.1.1731"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6a833604533ff9e827cd81d4812f3bbf5a251b7babbcf5f3c77391c98743c2ea"
+      },
+      "holds": [],
+      "observation_digest": "85b68abb2e9342837b34e0788bfa2ae94d8b1475b36152cbbac1fbfa2fa1b274",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "036b07047c0cd7580c5e15194b3e59c47e79d4524efe58f73cf81fc921023f43",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "태극기",
+      "pos": "noun",
+      "surface": "태극기와",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500011720.1#WARW2500011720.1.2655"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5f2e06e3870ce0fa9fc26c9b0750ace34de26701cf3b14166ed3073eeba372c3"
+      },
+      "holds": [],
+      "observation_digest": "e50a72001aef81c1b95afab624d8774581d72e5186bfbe65dc0a202688a2ca99",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "2846f15be279680eb8e6984433cf23f0bac350df7e8acf612f694209f1bc20bf",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "태반",
+      "pos": "noun",
+      "surface": "태반이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003590.1#WARW2500003590.1.1360"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ad484631ddc47e4c23d30d2eb4de7d20b9d85925086726635e0434e6edc1e3ab"
+      },
+      "holds": [],
+      "observation_digest": "28fe2600fefaf9681cb14e5172546092543acde555640ac08dff597f59982c3f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "207ccd9d3b4b94d4187ffc5580acc18b14a370c8fc6653140d665fb56b982a25",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "태반",
+      "pos": "noun",
+      "surface": "태반은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005820.1#WARW2500005820.1.970"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "10603fbc661c38749a7d7853a954321dd2a72262faf5b3964981b818728027c2"
+      },
+      "holds": [],
+      "observation_digest": "2b5afec204f0b2eb61e9c925bd1e906e7e17b73cf656d11d3e5146032dad9125",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "bb96036eae1bb32d2ab3da2dd95203ec5673b9503d8097f06b0a0fc0e75d59b4",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "태반",
+      "pos": "noun",
+      "surface": "태반을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005970.1#WARW2500005970.1.1293"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "3f59175baeac664012465369d12dee7d281237356cb7c39c16996e9f29561479"
+      },
+      "holds": [],
+      "observation_digest": "41acfdd59211ee656efa12e4e771c11fc9644462679d13fc82c2dce225ea64c9",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "f34fe812cabe9745b18d408f169dbae4529b1d0768892e6433443e2f2128a437",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "테마",
+      "pos": "noun",
+      "surface": "테마가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000880.1#WARW2500000880.1.297"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c4d185a5eeae13ee9d48ef3b7d19a303c22fefa004fc05ea37a0b50a61157f16"
+      },
+      "holds": [],
+      "observation_digest": "3dd763eddc02a336c41b03d37ce4c985dafbc232c923807b28d321a5fab62b6b",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "8ca380992979fc70df49566c9e0e55e9a355989803f7399a10569873fe0b3a3b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "테마",
+      "pos": "noun",
+      "surface": "테마를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005450.1#WARW2500005450.1.1002"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "12c2b58c90e3172690d77a8ff5d5dd5228e4dbfa50a0c724620efd124406096b"
+      },
+      "holds": [],
+      "observation_digest": "56b878699089ea2c9661a1b8b2f4ff86c60ad19104b76b300287a6c529110030",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "81a8af77463bb1deb5c16bfaf1b5db6cf83ff90f9b2f0ac8a95c4968a63714a9",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "테마",
+      "pos": "noun",
+      "surface": "테마는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003760.1#WARW2500003760.1.576"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c3a4658d053fa683eb472998c4df8231f916f751c5a2085d9f4d830cf801b5fe"
+      },
+      "holds": [],
+      "observation_digest": "734a016ef979f1a793a1e5747d96b363dc44f5e46ba28d2d97de5c1f3428bd17",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "eae1821d67c9b84ffdeb3ad4d133109723d3d0af63a6c91beea201aee75904b3",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "토스트",
+      "pos": "noun",
+      "surface": "토스트",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.2536"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c8d2b498711f4acb07bd2bb7334cd6a678ee61d330e14c48ee34c0d40b253f8c"
+      },
+      "holds": [],
+      "observation_digest": "365fdff044cdc038ec09ad5f849d4a425dd11a003b987de078a66c38e93bc6a2",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "2f75601d2a923ecb1adee1b5a3963b77ade945604944f0a3e2832f19501a9728",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "토스트",
+      "pos": "noun",
+      "surface": "토스트를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005150.1#WARW2500005150.1.1094"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "58abb8344866bd549e6a55abbaf2f8a786097dfc82482d66a5959c563abd0e39"
+      },
+      "holds": [],
+      "observation_digest": "ccdbcf5438e9cc9205de68db3880fb6f18c3f662622b4cc16145914f74d5003f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "16bc281b3f26153369635607fd2534a42de416e4254e6a368585be2088654717",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "토스트",
+      "pos": "noun",
+      "surface": "토스트가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005130.1#WARW2500005130.1.961"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "14f8be5794445aa3b42b16beefca3a6acb265f7bac54c568fd15b229dcce701d"
+      },
+      "holds": [],
+      "observation_digest": "fab1b19c08a830dba674fbda052751ec81aad09c0c7dc74aa08d2df4e9323fce",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "01eba7a513349a709dd2e46af166dd4ff8430f40ad807b686ab39523ee1347fd",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "통행",
+      "pos": "noun",
+      "surface": "통행을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002870.1#WARW2500002870.1.222"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9b765719e241e967032deddda27ac38e5e285b9ddcd90f2de7379aaa9a1cf320"
+      },
+      "holds": [],
+      "observation_digest": "2e4449c5b4f3515fe68af2a96ff906999a40966f37c24e148bca32737567641b",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "a408441a31349c194f5cdbe825dcc09bdb614fe35d50fbbf108d11845b356277",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "통행",
+      "pos": "noun",
+      "surface": "통행이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.952"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "050eefa92eb38aaf2df9e5a766a01687ee1773432991b2f2ea288725c2c0996e"
+      },
+      "holds": [],
+      "observation_digest": "3e446641a576a0efff27a9a2717d01cb3779b29bc57016a0618a410f000ff4f0",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "347cd7b5c13c43c668c4b149eae8fe79bbf202ec9eddd9979a625a6c5f66cd0e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "통행",
+      "pos": "noun",
+      "surface": "통행에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005500.1#WARW2500005500.1.3896"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "00ec39d17ed6eaf2bb1b31f731f0c60a7df6a6d770efb13c55e005773fe1783b"
+      },
+      "holds": [],
+      "observation_digest": "f7d913d41b7d8d676cfebced556204cae8988841b607db19c66555446fe24e6c",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "d837970cdaf0653e8d1b51d64acac1b494d893df0c27e4fd499617c91f0f363b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "퇴근길",
+      "pos": "noun",
+      "surface": "퇴근길",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.585"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "16e9e1ca96bf840f86377d94d6ca066e4b553c46c2ea58d7bf615d1e4dc3640d"
+      },
+      "holds": [],
+      "observation_digest": "315102e53831048cfe5599a6884b7b64e7d2968b5aaa0bea8a996e46ab50e6c5",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "89bb925cf43e47519ca7650a3dba2b4403869842a9178f56cd7eccd4be93f75a",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "퇴근길",
+      "pos": "noun",
+      "surface": "퇴근길을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500011700.1#WARW2500011700.1.14"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "47fd3c7b421ac38bc1a040fc64509ace1733efdab42875667518154633a12ba8"
+      },
+      "holds": [],
+      "observation_digest": "4f100a714f0b78d65999e1f0c1a6489b1042b68eff09a3abcfdc57c3a10bb506",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "d6d6daeb9e3a01e2419edaf81091c16f038edee0198568cf24c726a580e12e05",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "퇴근길",
+      "pos": "noun",
+      "surface": "퇴근길에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.278"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "511337e3b8108f5717082668444dd19c2bfe146f803ea0c41778c86ec1e2bc3f"
+      },
+      "holds": [],
+      "observation_digest": "8d0f056ac34386ebe32b2be0020c6dd32bebccd63e8c1f0df1ce814bd835b237",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "7253c060eb95138f31e623e8fcfeba31dfe473763d41de8a9b719f9cb32e2bdf",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "툇마루",
+      "pos": "noun",
+      "surface": "툇마루로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005430.1#WARW2500005430.1.503"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "eab6e7433c3a74062239ed8c8c0af8690590c2fe3d58866743ff6c8cbda85d27"
+      },
+      "holds": [],
+      "observation_digest": "18ffc07c3996d770c81c7c0f0bc5da4c32aacae6feb446031aba2180272c217e",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e97238b915e870f0bef2b844cdbfb3cfe22af14bd654e494d8d717bd0c9bc673",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "툇마루",
+      "pos": "noun",
+      "surface": "툇마루에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.586"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "734024b5177efeacd33087c673d316f1a28ebf8df73f446d3e3b865fa1454048"
+      },
+      "holds": [],
+      "observation_digest": "747cd9ba3cb6e0e6e8dc233aa3aeb54f4f08efbb81f71276426aebff2f452a1d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "44b7dac2dd68e82e977fb54f02528a777e816332e04863ac5db2180bdfbc0af7",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "트렌드",
+      "pos": "noun",
+      "surface": "트렌드는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001370.1#WARW2500001370.1.99"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f6316ee5e84e22a42fc390f01921ca2609de023c90355cbea73d66b36b09fd41"
+      },
+      "holds": [],
+      "observation_digest": "0b63a2f1b080de41b4fb6fb7d108c1fcdfe5c70a807edf8a1ff29102890034e5",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "f013677a4a1e44637a31679140eeac3cab65d8ff0f0e8d8e09218d23b803cbe4",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "트렌드",
+      "pos": "noun",
+      "surface": "트렌드를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001370.1#WARW2500001370.1.135"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c9bee7b743ea7136981b4e184c4cf5c00dadebf6fb97212a33610b458ab53074"
+      },
+      "holds": [],
+      "observation_digest": "0e53489a8efbeac14644436c9ed82a06ce205d6673ad75021672ac5a0b4e81a9",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e1a7c0a8f7d1849217c44f4e3afd193411240131734e88855847d114aa8474a7",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "특색",
+      "pos": "noun",
+      "surface": "특색",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.1201"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "170ea061f211bcb646096def1138f986427aa72c1943b8c6530264a608fe4d74"
+      },
+      "holds": [],
+      "observation_digest": "400376ff31f29cc2c34265e03fb25220f0e196fe63ca6ee59efaeff116227a9f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "33c7c54b0f9327dc3a1acb4eb9559da786e1c6657fb9d853252c830da4f26149",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "특색",
+      "pos": "noun",
+      "surface": "특색이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.2183"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9a2209714c5373c4586d127a96b3e6663ffa833d4629d02ee9f4a31d4f88fe65"
+      },
+      "holds": [],
+      "observation_digest": "9802d61f77d28ea9f09200d7fa946ed414ff9f8da09de1f598aabcbd12118f07",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "8f5a2970d61b4887cffce98e41f7f3277c5a7617cd9f39103aeda1dde24d71ee",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "특색",
+      "pos": "noun",
+      "surface": "특색은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001360.1#WARW2500001360.1.704"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "4ac0d693171f74b10ea210ffb722da296e299e01427080bb12bbbc132dfd8dd5"
+      },
+      "holds": [],
+      "observation_digest": "eb1a8d96512e22993dc957d7690b64d884b36f9e7d8061ec85f623c9bfb73341",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "b411dc767f322a8ab2b9944c329b5892d14bfff0b6cbd849323a5979d1a60bbc",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "파격",
+      "pos": "noun",
+      "surface": "파격이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.264"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c09e56ec52c13b804567acec104f77e384c91c6ec74fd80da925753774a7b0d8"
+      },
+      "holds": [],
+      "observation_digest": "c4cce1367341570d7a2c7ef25377594dd7123bc545bcd1d4c770b29c3f50fa3a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "40969af23c2ddaaca9d5864fca2917cb3ffbcebb1d7728b1398220b7bd7c0e77",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "파국",
+      "pos": "noun",
+      "surface": "파국을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001440.1#WARW2500001440.1.521"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "99cacb11b50a6e690b6ecaeb955ae2710fc02a936ae9f73c20f4c5d829301028"
+      },
+      "holds": [],
+      "observation_digest": "031fd8c8a445c67a46db2d15eaab4fed3397f9f66f004924322b0c558cc05302",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "a295ef0e6cbb9564242ad56571c93b8903226d7718782af9458865983af4af91",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "파국",
+      "pos": "noun",
+      "surface": "파국에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500008180.1#WARW2500008180.1.3740"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "96b0ce5217107337b3796d3cb2334c26bc79a2f634ff83d60d36f2c08d2bb3d4"
+      },
+      "holds": [],
+      "observation_digest": "834a102a465443114204e0ff22e832e8d66c12a9621a2f662cbbc5d9f411612a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "4ff32ad2be33195bd378bf250397716ed0a06b25b143f88061fcc170413d141e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "파랑",
+      "pos": "noun",
+      "surface": "파랑과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.205"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "346606c6d5a8e2a2dc310271fd9f02ecdebf1d29fca3d1bcf8c273b78a446927"
+      },
+      "holds": [],
+      "observation_digest": "9a9140b2901646255a53b0de3ab0ce484355fcdfb30be9bfb98f1d17552c4099",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "5292d5e0844af8601faeb6417f9ca576d0f23a985db8361c2b1f78706531c04b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "파스타",
+      "pos": "noun",
+      "surface": "파스타",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.525"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "716167feef470e16e3dc2dd46d560355b1520479129f77d7768c48e462bff405"
+      },
+      "holds": [],
+      "observation_digest": "f9aabbcc8bc1eee9ce23fef3f2199817a2de63f91a5c5f02925fa2993e7191e4",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "390c1220d4bc0755193e31dfdada53b982cc98545e02e66629745c695734fff0",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "파스타",
+      "pos": "noun",
+      "surface": "파스타를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.742"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6467ffe99e0cd6016cb0f8fced1d17e42d186c5ba01b3971e24beddab3ef8070"
+      },
+      "holds": [],
+      "observation_digest": "fbc897141a13944c48fd3cabfd10cbbe4d3556bc407c231e316b26afa5a0f505",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "293c5b7bf326daadba7232fd14a177b9d9b3d1744bf115eae6d5ac698e87a55c",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "패전",
+      "pos": "noun",
+      "surface": "패전을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003330.1#WARW2500003330.1.882"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6b0332fa6023e3a41ceb47fe76b492dfb60ecf357e68d5ef5605754935ce7ea7"
+      },
+      "holds": [],
+      "observation_digest": "c3c6cabcaec5fcd6d5f9ae956506ec86689efa75495f963c77b01e2241e37297",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "883c8ac01453f05428e3d67bed267ab42d71c69ef42b5f9f33d0843f90b32a1a",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "펌프",
+      "pos": "noun",
+      "surface": "펌프를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005060.1#WARW2500005060.1.912"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "afb06bd812d865e6c85c543eeabb36ad9382a355a9a5ceece404f52682d03c70"
+      },
+      "holds": [],
+      "observation_digest": "402fe0a0679433d814dc3fc95bd9fe4701c36e20aac6e6aef844fb67700b2e35",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "56943064e47f0f0f4663e7871b5f9cd90ed994d429519f615d69a9920d13b142",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "편찮다",
+      "pos": "adjective",
+      "surface": "편찮으신",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.394"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6578f7465a823f686b4c5afeed181f303eb9c0b7162ce61cfe507ad951262b54"
+      },
+      "holds": [],
+      "observation_digest": "0028b6aea0ba7f1e738df58c201e35a189093474ac8ab669be62cc776cf969c1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "9fd477d1c04bcdbe4170b26469b00de0029f2c2d7ff4281e898be26955103ba6",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "편찮다",
+      "pos": "adjective",
+      "surface": "편찮으신가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010880.1#WARW2500010880.1.4431"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "86c8464a05781ff4fb581b689778b5d33c42bd82312b98ab9e4359cbe14d8603"
+      },
+      "holds": [],
+      "observation_digest": "0f4b1c421f0ab42f023ba4d35ead80a41c0cddf16590ab7d2cfd01db8614b6dd",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "1ce4d09bcc5d633c2aa6141d328ad26f991c7f7dc06fc36b0927e220029839df",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "편찮다",
+      "pos": "adjective",
+      "surface": "편찮은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005180.1#WARW2500005180.1.2667"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "23b8ec1db59c76b7dba28e07f8c5c5edaaba1c5ab04c4d3df247fe92123c8ae0"
+      },
+      "holds": [],
+      "observation_digest": "f39c3e59eaf9f6810e4d8c406c4a89de7fa7239aca8b880137018e0af16e20ef",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "c45c6d421268a13fcaf11c726a0ee36ededdbaf9e915ef10ec19e0d6717bfdbd",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "평야",
+      "pos": "noun",
+      "surface": "평야가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001760.1#WARW2500001760.1.117"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c1906f66e3da1b610ccadc6962d1cf9b1339f3b18a45f9ff1c9e74e2351e35f4"
+      },
+      "holds": [],
+      "observation_digest": "844823c1664d9e07a0ed4aae533d85dd0cf78ccf2dbe0d5a9660ab28ec49c8b7",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "24612035cb38b2fd8ba30b4de809ac664c42b46caa01ff85916a6cb533ef1372",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "포상",
+      "pos": "noun",
+      "surface": "포상과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010800.1#WARW2500010800.1.2515"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "a8615a893d41ea5ef6a7ecacf4e638eb30c49b1a67c59cf932913b2d0a8fc306"
+      },
+      "holds": [],
+      "observation_digest": "ad65615ca82a1b5015068c3a84d6520a9eb92f24ceb69db3d34d85f906668463",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e6a144ba541d7bde8963c334017ddeee60186fec5d98fb434d8ab65d45e6714d",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "포장마차",
+      "pos": "noun",
+      "surface": "포장마차를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.2279"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "dc1a462b1fd8c335e5ba0f274fb6c553ca4f57ab8c53fb8a597284fb0f6462df"
+      },
+      "holds": [],
+      "observation_digest": "23496af17c9784c0205238ed175d004d6b24790891ea4534bc01c3d71333b31e",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "b94c38eba6057c15d2dd23c2eb35bc1770c6c29c290b8490b23b74b3945e8ed0",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "포장마차",
+      "pos": "noun",
+      "surface": "포장마차에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.729"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "55a0952d2c5384aeaf60d642a4f0197bc27321b065fecc8764f71b2adfd3da2c"
+      },
+      "holds": [],
+      "observation_digest": "af128ccd40d7faedeb15522faa6f182b6061455cb9901fd9554adffd7fc5f632",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "c3480a0413d28e94342a57efc3ce271c6fdd3e3bc619ad964e9facda9f8d9ea4",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "포획",
+      "pos": "noun",
+      "surface": "포획",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005290.1#WARW2500005290.1.2181"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "310da02bd21e76527175e12c38301184c534d8e28d2991f9cdfde02e1a1ad3b6"
+      },
+      "holds": [],
+      "observation_digest": "87e9eb9e2798e920ad79ced2123942dd1e55352f16e51713b0e41fccd0657c20",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "eedb95001ee5fac0e0637a4341aa0d4dec503a82ea9f1f6dca48ddfb2b347c12",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "폭동",
+      "pos": "noun",
+      "surface": "폭동을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005130.1#WARW2500005130.1.1532"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "0e62dcdd0c6331b11efff55871bb14e2db186f62f67e9ddbabc35ebad60c6e8c"
+      },
+      "holds": [],
+      "observation_digest": "ce25c5a22caeb4e094b34d01fe8f394fa3f4d01a02583d9c50e5e4c610dc0b21",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "12ef17338b5a443e0db8bb7fab500c8ef9c454fa3494cbe3f4461cd5ff823edb",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "폭소",
+      "pos": "noun",
+      "surface": "폭소",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010520.1#WARW2500010520.1.11"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "475d4e399b168b22304414b54e2f331c07fe0879cbac2ae8936524041561bcb8"
+      },
+      "holds": [],
+      "observation_digest": "2b9e661ff03eb323fb136c5e92548ce4ef0a5bc5269826f87ff7afbe7d09c776",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "5daf6a8dd13920f7a795399c7cd83eaef9bf27540f90e74693c8ecc7fa1db499",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "폭소",
+      "pos": "noun",
+      "surface": "폭소를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005040.1#WARW2500005040.1.2314"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f1a6e458d3e851030cbcce8c84a7f02b4a971f2ccafa37423011e736713aa71a"
+      },
+      "holds": [],
+      "observation_digest": "87172ebd119cda822e79768e0fd81ff7795d0467f360472e6e24767e7f4ce4ab",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "9fbb10b5877f8111f7d2fb7e727f980afe82970a1835333a054f3ca920e24605",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "폭죽",
+      "pos": "noun",
+      "surface": "폭죽을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005070.1#WARW2500005070.1.2376"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "50bd6b2ffce0136195cb5710179ea29d901f881851904616f2fc56591a74d3d7"
+      },
+      "holds": [],
+      "observation_digest": "1fdd41486a6b43a7057608f8cb522f731d94425f42d0705b4e76279d8990b77d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "fbd432fc0a2b392be3d05e6f4fff28580b795cb54cca971b6790186e8ab2a097",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "폭죽",
+      "pos": "noun",
+      "surface": "폭죽",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001560.1#WARW2500001560.1.254"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f303e55de09e72561f9cf7d89e2c3d456f742f26f4343e99dbd3b131a19c17e2"
+      },
+      "holds": [],
+      "observation_digest": "914882a323e7083290286502d72f797d32e9a29614a67ab7105c9c81dc0557f7",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "3541c5b54a7d310182daf7b11c99f6dcb60b81dd378d35c294266ab6e7ac4638",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "폭죽",
+      "pos": "noun",
+      "surface": "폭죽이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005130.1#WARW2500005130.1.1653"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "e74407e0877eef9edd5c691a2c6326c38b1b600573021a4168c6ff5c66958ae5"
+      },
+      "holds": [],
+      "observation_digest": "a01179c8613f81889f8b026283ef4044c57ceb4b23fd8a53407afecfee0b692d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "f5d3b6a41c307cae463288601aecd34ce17bef759acef7454a9ba189f149302e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "폭파",
+      "pos": "noun",
+      "surface": "폭파로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005970.1#WARW2500005970.1.438"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9ae8e24eeb9eb2db95668ebbbf55ca7eaf0655444167de3a950ffe961a58242b"
+      },
+      "holds": [],
+      "observation_digest": "07b230732510b3c6f9915031dc998ad829a0e4f06a6c47d592af70099492935b",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "56f151ce9e0f40e42e716eb981f8739fa56c5c7090c758399f50e37168bd0b4d",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "품속",
+      "pos": "noun",
+      "surface": "품속엔",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010790.1#WARW2500010790.1.556"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "fddfa408cfb0b54a37c155bb52f368181beaaf419b939befef2db39b06c5f541"
+      },
+      "holds": [],
+      "observation_digest": "356a21c9209a36db89b79983137b10b1b69b1d66c626f5ecbc3d1c43d040372e",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "6f003631a65fb80586a597dc062199d325e3e056a0a64116768dd09bd65fbe6b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "품속",
+      "pos": "noun",
+      "surface": "품속에서",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003100.1#WARW2500003100.1.742"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6bea391bbcfd1ccd41c636f8439e9cf09050a47d0b16c73ef1305e0238f8c8fd"
+      },
+      "holds": [],
+      "observation_digest": "39b1c9d985bf3eab888a4f117eac1dd8611422cd154bf6b78f28f63f7400c4c9",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e5766c7233d17c8ea4af8532abffe561ee0a72754fabb00a66e1fe86668815b6",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "품속",
+      "pos": "noun",
+      "surface": "품속에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005140.1#WARW2500005140.1.1634"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "2804020cb2544132ab7ff000799ed4959f82bc2d26ce4c3eef40625dba846969"
+      },
+      "holds": [],
+      "observation_digest": "d5db16a952329e57f40432c427e24cfd826fd37716cabfa19f2aba6ab136afe9",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "5813eb2c69274279d508f9609857040006f875b23dd56eb350a03382dcbcc9ec",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "프로필",
+      "pos": "noun",
+      "surface": "프로필과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002160.1#WARW2500002160.1.796"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "d4a6e88dbfa28edbf4deeee444e651aa078a36120d33185499842751ac68828a"
+      },
+      "holds": [],
+      "observation_digest": "ee89222151de188ad5833db42af022a5d660aef38fb0f55c69948b6ff7625789",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "528e04a3a59b8c489c889eac0aedd86649794476dd037c3eef03d6b3d2d835ae",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "플래시",
+      "pos": "noun",
+      "surface": "플래시가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.537"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "490ffc4d7037b12c5cf1e14238d57bfe88ca6df48995c65198598cd09b327a77"
+      },
+      "holds": [],
+      "observation_digest": "664b641d781137ea39a168804c9493408ec7c7e872f2940e329e5082ef2cf9dc",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "66280c2a31cdbb3c4a4e502c0eb453ecbf14be0a74e0f17e311a188252e21fb1",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "플래시",
+      "pos": "noun",
+      "surface": "플래시를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.2220"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "7e9e43429f7ce638351af8b1e4a1ee41d3a311f800b3496952181bddb7011d1e"
+      },
+      "holds": [],
+      "observation_digest": "add8a14cbb175fa61ee083a985d83aec33cb267a5112f770ef18c55ffbaeab91",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "0dc8ca72d133b62b2f7df13e4e75039eccedc74608de860de5d78a0ebcb1a532",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "플롯",
+      "pos": "noun",
+      "surface": "플롯을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001370.1#WARW2500001370.1.658"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b7913af10acd895303bee56c62eee67b2f8374289b798629c9621a81c021db85"
+      },
+      "holds": [],
+      "observation_digest": "f3a09a7d64fb3036472dbfbafa523515851123c92550fd8bdb87c360ae4dea11",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "ea3a29176cb05e7d0275762722cc0b46a664618ae6de855dc082eddd08d2678c",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "플롯",
+      "pos": "noun",
+      "surface": "플롯은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005550.1#WARW2500005550.1.172"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "741152531de8816f444d9a85000b811271f420265282a269959e90c10f0e78c1"
+      },
+      "holds": [],
+      "observation_digest": "f3f4729abde3176bf72546f414ac925768b05dcbdc7d9bf4335a57c11f9865c1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "48f3e5819713def325c46f5116e9cffaa6dbb4b7aacd50ecae703eb79025e740",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "피라미드",
+      "pos": "noun",
+      "surface": "피라미드를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005060.1#WARW2500005060.1.545"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "086048eb7e0010c438e69ac51978bc83bbbf831e2956ec8ef23a44a8602bcc40"
+      },
+      "holds": [],
+      "observation_digest": "2d9ccaeabc4cad98bcc7de01cf0145a50d05e6d77a7cd4b98a2cb7dcdb008bf1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "73485f8fc13ef3de0ab655aff7d515e822235bcf64d4d2ea52b57edcdbb7c222",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "피라미드",
+      "pos": "noun",
+      "surface": "피라미드가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005060.1#WARW2500005060.1.491"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "568923041e428d1f4805083384e00048f6bc5f319e386fad8ae652ecff1faa00"
+      },
+      "holds": [],
+      "observation_digest": "f096d78463c6a400bddb646ec144f9dc275e0a01af156f10ecd8b59b4dfb28c8",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "a304b17119b85eb2079a723b69e76c261d02bbf7966391d8c705a19365e285db",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "필수품",
+      "pos": "noun",
+      "surface": "필수품이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.728"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "8a0d9578dd6860c4c6befe391327e40e27b5c2f4e62fabfa3e03df1769816b2f"
+      },
+      "holds": [],
+      "observation_digest": "07c141d1224ca5505f94b830ad6356ecb8e1ccf0d1f22b8adde42da0017f01ea",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "d61fb43c5e5830296a869614d0abd8583275959d66cab51387d7f6b836f53df7",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "필수품",
+      "pos": "noun",
+      "surface": "필수품을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001360.1#WARW2500001360.1.287"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "fd32adac3cf4678aa8520e27d1bcf97ab68127b7c6c7030c95c6bab2fa61efe9"
+      },
+      "holds": [],
+      "observation_digest": "6cab38d057e4e225e2fbe25651d4a54f45cc6eab22ab6b1c4097d0d97a68456b",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "57164446844b69e8e96ea6133cca509e71b6cc8737b049553cfa948abec7fdf7",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "핏발",
+      "pos": "noun",
+      "surface": "핏발을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005430.1#WARW2500005430.1.1382"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "910eee79cdb25e5b4e4a31c06d72c88967546d39627533659ae13ef64008ce69"
+      },
+      "holds": [],
+      "observation_digest": "69dd2b7ca47228a699fa50a937bb0e25d47aa7d2cc480b16fbc45f1a8fb8c4e5",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "1cc153d8e8265b8da7fa4e0e6cfc3bf96afa2ff192d5c89932c69290445f8cea",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "핏발",
+      "pos": "noun",
+      "surface": "핏발이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.384"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "39b01e9be6ea86ed536b96225d74e0009e63946782c2f9028f2bc2a36f30dac6"
+      },
+      "holds": [],
+      "observation_digest": "f1cbbf2ecbdce7bd8181f856068e12409d7bb1267dd93691d17e433e1803170d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "0b186cd0b6c10901d95d136510fad606dbb7671c0b7d16f5bcd42f7b789f7ebd",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "하교",
+      "pos": "noun",
+      "surface": "하교가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003360.1#WARW2500003360.1.603"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "520b347f2f0cb0d37104bf0969c14070b0fef676677b6f9cbd70d0fd7c2835a6"
+      },
+      "holds": [],
+      "observation_digest": "ddf14de7c16d46101f6301ffd56942d78f10499075c7829d47516a4180455254",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "696f55b50d006ebc71b03f2be52e3e3927fddba603b99165d4238168d6a320e9",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "할인",
+      "pos": "noun",
+      "surface": "할인",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001370.1#WARW2500001370.1.483"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "37ccd7d822c8e4eb7b32844298e88259e4b5bb5fd7a610d28351c39d441f6c8e"
+      },
+      "holds": [],
+      "observation_digest": "a6e77955747a15e874fc46e06cf152e2aa51a3cf98ca2557957928a229d41c88",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "0541402f159e4edbc3d971661ddcdbce203125b4ee2b10902fd1d648abf5309a",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "할인",
+      "pos": "noun",
+      "surface": "할인을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000250.1#WARW2500000250.1.514"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "a91f3a6125577432fd5f2d2d762238fece25a13dd65584b33fcb2b32dbcf4637"
+      },
+      "holds": [],
+      "observation_digest": "e9337812bd733191b39bb86cbd7bfd116ca9e2afeb6bf495da9b2650555803ba",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "0be395f4ba9a0bdd35f37a8fb9ade13e891b4f412a1aa0b244edff657c10eaad",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "합동",
+      "pos": "noun",
+      "surface": "합동에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500035910.1#WARW2500035910.1.1821"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "084c3db79939fa4c57f922494b5d85d9f972b0d532efc98af64da53dbd8e2588"
+      },
+      "holds": [],
+      "observation_digest": "b52223f3388d0187d7d59003d705a9b7cf293ae6b917799fa31c8120a40c58b6",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "d61ffcdfd6d96da5abbb37b821427766db717df76b8316b47d8e824de2a84935",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "합동",
+      "pos": "noun",
+      "surface": "합동으로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.439"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "3a2b425f71091b081bf733140e3e9719f3d6500f15df649c235d061e0a24b3cb"
+      },
+      "holds": [],
+      "observation_digest": "b585057d37ae64f0d6c3d83f6f5fd9ecd2c81d20f050afe434253d4ea6423f5a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "a10f47d3b832f2532452e636b8277b846c44597104803d4d711398cd5ceaf52a",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "합장",
+      "pos": "noun",
+      "surface": "합장을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500004820.1#WARW2500004820.1.837"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "7b0f87b806cb14415125ed3285d4d4f7ab3138516c8f8b39ca03571d37b78afd"
+      },
+      "holds": [],
+      "observation_digest": "618e05007a9b212fcdc2aba26c82481f57b52acb0e9c5ecc11f58f81e3606c7c",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "1bffd2247b1bf1f9734e728dfd323813a75badc96b40a09d2d55e59d69cac9bd",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "해안가",
+      "pos": "noun",
+      "surface": "해안가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.1223"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "463ba8ff2530e43e98a9f8a275bdbf034be490e0c741a9dbc342d29c4ab26dda"
+      },
+      "holds": [],
+      "observation_digest": "229694c6f7119c9d4771557e83f72da8937010dad73a32cac24853c0f4ba3bc1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "a1b4c58963c07b0a4cae0fa2bfaee9a96edf87b0438fa279c1328dff30345d0e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "해안가",
+      "pos": "noun",
+      "surface": "해안가로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005070.1#WARW2500005070.1.447"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "dd57c41ad66c4dc5d8def1d267868455ec48e47f91f628ae6b99bef8e2aca557"
+      },
+      "holds": [],
+      "observation_digest": "34a31d46b33adb0153df1da806bb4572cffd6b777ea676a3d298fea91dcfc7f1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "a0da861b88ed36c1244c3f6dfdc0abb7bffb96f1b7993e0600de42666fb9fa6c",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "해안가",
+      "pos": "noun",
+      "surface": "해안가에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005070.1#WARW2500005070.1.3705"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "985089e997b94081998b6c0b155d96ed6a679bfeed0c2a4e9f6cf824aba441ed"
+      },
+      "holds": [],
+      "observation_digest": "90ebb24927b40fc2bbae4cbeb85307d66a61cbc0a1663cd58c57d10089de3a93",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "8265a7d67d64cb97c7f6fdbd3741b9cf259fb035e541f53a4aa92175f3c00f28",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "해킹",
+      "pos": "noun",
+      "surface": "해킹을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005130.1#WARW2500005130.1.340"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "1efe86c8a902316bedafcea03488e10676ff5d411c12da5c78eff9f661ac245e"
+      },
+      "holds": [],
+      "observation_digest": "628d6f8b782fba57431d90cf77d3cf366b06cb3ce5283fea7a426a8e3fe94903",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "fca2c23917d5f1bda031988b96dd8c4ae0e147d1b60fd67afef4a7ba16696986",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "해킹",
+      "pos": "noun",
+      "surface": "해킹",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005130.1#WARW2500005130.1.41"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "dec265618915943e0473256ef33f171ed5941c632ecb3319864eb1bdf798a654"
+      },
+      "holds": [],
+      "observation_digest": "89e0846c6b874c022cb23a95d42424e02a249fb6330563211704bcdc649ba8ea",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "64e6d06223aeb2f368f9d1027f4a017ab7ed8cf2c5c3973d9dd920fb9982e5d6",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "해킹",
+      "pos": "noun",
+      "surface": "해킹은",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005160.1#WARW2500005160.1.303"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "6c0ffe4a783a1160a8ff7e9f9029e95aa2d74b476c3574da0cc9a41437416a53"
+      },
+      "holds": [],
+      "observation_digest": "f5bb7dad38cabe44ecfafd2fe4d70db2cf72c580caadb02d2bf293e63e5c0821",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "c726bee8bd0acab4b7f83d4d78b0e6442c174e406b4d6fcbd13af1759f394d51",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "행로",
+      "pos": "noun",
+      "surface": "행로로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005530.1#WARW2500005530.1.158"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "0c8448090ef8b42e88f5c85c28f21bccc4fe4cc3bb310559fc325299c4850d26"
+      },
+      "holds": [],
+      "observation_digest": "671cdc2e27387bcf7d3e22e439d5c2703e10a4badaa92e70c7f209b266c81d3a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "a59216f0ef0929bbe4162681a3b3c5d7e8fdb700e7b1fa47eeb7d8cf70f91ace",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "행로",
+      "pos": "noun",
+      "surface": "행로가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500006000.1#WARW2500006000.1.2256"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ff4921133d72bac96a25113b2148f87e257b6e84d72cf11af1b82dec83f582d0"
+      },
+      "holds": [],
+      "observation_digest": "ddde6a824c6992cecad1c0c6d2a9b4b3c097886e59fa4ee52f1adb0a80c56b32",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "bb24a7aad6b03a3dff1de47b82d0a84627ccc8680e0ee094acd7b131229e296a",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "행보",
+      "pos": "noun",
+      "surface": "행보는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001450.1#WARW2500001450.1.1042"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "3d98f3ac6f379f23e6ba63a046da0ec75a9a42b49f81027c60c558de21e7b9dc"
+      },
+      "holds": [],
+      "observation_digest": "e8d363041c46837bcfed0fa5e453e85e4184130603b7e192000ebabbcf8f4b93",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "d0c683e4a6431bc511fa0fa8bc4da8e1ab2cb17020ea918721f1ca655c7264af",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "행보",
+      "pos": "noun",
+      "surface": "행보를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.1280"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "667a92aaf1a2d3639d944feb711ad051abe3d223523d3c0bef2a49b47cfe2770"
+      },
+      "holds": [],
+      "observation_digest": "e9f690dcf181a336217ef6e1ccdb2e0df65f2de917c69f7ce26e7988d1f3a0ca",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "0615ce8150e2c6c9fd801f2578dc8a543b6b022034b8e28efb9948fc760eedd1",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "향락",
+      "pos": "noun",
+      "surface": "향락에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001360.1#WARW2500001360.1.653"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c520255ec2c8010f66db869c578ccfdec4ce30e1be79fe8fd0e7868c623f2fdd"
+      },
+      "holds": [],
+      "observation_digest": "df608eeab0d90a24cd954a5db217ab3bb201ad767e03a4cbcf38cf815f2d24fc",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "6118fcb68508aaf20759f4c055b36bd8a9c07c1b1ee41e317b552f93533dfbe4",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "향락",
+      "pos": "noun",
+      "surface": "향락을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.855"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ee3c469814e9c8191c916c7fd6192df03cf8f556e5d828d97d15fe44137f7605"
+      },
+      "holds": [],
+      "observation_digest": "f036cf54065238f6a9d27bd1002617a793ed66e3340a05103841ac7ca27a4232",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "92a9f7ab6715fedf0a29b2cb0bed14ebd249b19e735f4f3fef44abb2a7aa484e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "향연",
+      "pos": "noun",
+      "surface": "향연을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001760.1#WARW2500001760.1.212"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c920364abe45308b0cea3f88e438fd7a8a87d186ab38516f1a2760520a085793"
+      },
+      "holds": [],
+      "observation_digest": "64a9a7782854d33ac6f9325e4fd8a763660aadb65a225df2c1450f0c38f7a8ae",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "1f0fd89bd24befaf4abb42e837ea551aaf0b0cc7da8395baf3063f4a8df14fcd",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "향연",
+      "pos": "noun",
+      "surface": "향연에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500004420.1#WARW2500004420.1.632"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "46204d04aba2edd76d7c5d23fb628354f0b3e42162c0cb517893a626f757734f"
+      },
+      "holds": [],
+      "observation_digest": "e019c730b530d53dea7fd9bf978e46a5734d9a42fb52039352182352312e4d09",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "736bf944cc57e997268c2b8ac00699bf24d1174be86aebfd2c4f960a747f3d40",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "향유",
+      "pos": "noun",
+      "surface": "향유를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003760.1#WARW2500003760.1.525"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5e4b4a8e300cd4fc31af0f79505af3a6e69213e19d112013a63a603c8095f4de"
+      },
+      "holds": [],
+      "observation_digest": "0a433d1808faaeed3a9bf256e55fea45f5f6b835e53f0c52c4773feb8eead4b6",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "0248212929cb1a3b57c3500ddb4b7e99ad1c522ce5cdb6cba58cd42f8817b9b9",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "허덕이다",
+      "pos": "verb",
+      "surface": "허덕이고",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000250.1#WARW2500000250.1.547"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "dce77e81f705909d8c0a082dd3bdc2e3cccd14897aaf5ea68a2981e814c95af3"
+      },
+      "holds": [],
+      "observation_digest": "37c7f27fd1ed0b311f0355c91e99a5965249e3d70623f783ef412b490b0a259d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "b907476fdc20bf66cd7c006341d89c3dc86957925e4291c51ca0f7f5684f9370",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "허둥거리다",
+      "pos": "verb",
+      "surface": "허둥거리며",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002690.1#WARW2500002690.1.844"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ed57bbbc43fb491dc6fe6b3a3b1cce97238e71a97231e8534deecb44f725273f"
+      },
+      "holds": [],
+      "observation_digest": "44bdac443e8857cd288fb3027429fb330dac781a20670483a30eaa2a5302080e",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "5bd2c58ff410ba3978d4ed5ba034f466b130d8a36a303b709cdfda5ae063ba9b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "허둥거리다",
+      "pos": "verb",
+      "surface": "허둥거렸을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500023200.1#WARW2500023200.1.461"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "141db76bab59a13de902e68fee57705994a507e8a4fb1252fba61445e2c0b8c7"
+      },
+      "holds": [],
+      "observation_digest": "829bf7fdd3554e76997e39012e4f315136fe893fded683adefbab3bef8a853cb",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "daf719ea5a4e84286d485d818345962d3770b373a0026f79c63d775547b7927c",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "허둥거리다",
+      "pos": "verb",
+      "surface": "허둥거렸다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005070.1#WARW2500005070.1.3356"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "aa2b8509dcdac509d2c48ec67c14c71c90e176cc9ffcd96467b0e9c7d839822f"
+      },
+      "holds": [],
+      "observation_digest": "b9d06649ee3cad7da0fc55e591670658d36e6553fe2060ca9f8e1e20796260c5",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "6177c4de815265b57db624c035e532f73654ee210434204aa37df3235231bc7a",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "허브",
+      "pos": "noun",
+      "surface": "허브",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.841"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "1609c80a8fddd4e4266592b424023d36c22ef96004086c581fda9c1262cfa434"
+      },
+      "holds": [],
+      "observation_digest": "496651fa71745ff011de636e7388ad570fd99d8b8824fbccf19c51f1f1803112",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "d2076c9d51df565834b8d28098fbbf8252044ae3f73e7acb549bdb603da1323e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "허브",
+      "pos": "noun",
+      "surface": "허브를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.518"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "84d3d49a610fa084c6997351fd34d6370e96999a7f6fee17f809af0d5fc9ca24"
+      },
+      "holds": [],
+      "observation_digest": "8ebf16a0721658cf30bc6c520ed00fcc143785a92f71cac3f5ae8830da182655",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "32cd2061b07a33b01981375e5bc1445dad2f47aea145391c3babb188b1eca072",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "헌병",
+      "pos": "noun",
+      "surface": "헌병이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005090.1#WARW2500005090.1.1947"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "833592e1267d4ec6c14e49fe1a8073e74a242e8e02efd36629114ad05827c03a"
+      },
+      "holds": [],
+      "observation_digest": "74b8a64c8747d9b6a8353e6c2dc5d8e1fbb7b0bb5cda7f127f2198d37cfd04e1",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "3f8afbdd9adf3741b3220f7845d71f43fe88c5e8cf5ec5c8c48b305e48daec11",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "헤어나다",
+      "pos": "verb",
+      "surface": "헤어나지",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.85"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "79f6c740ac60f1f1ddc1b3d7b5f04168b10dce0c3e121d32bf564296ad4d6cee"
+      },
+      "holds": [],
+      "observation_digest": "4f60728b6fb0d020693f3bf6be8833f3100a14abb60b29309d9dd06be1e946bf",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e781ac8cb2bd0b2740d3b90c2b8cdd35306ab8fcea50d3132c88ff5859e83814",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "현수막",
+      "pos": "noun",
+      "surface": "현수막을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.2582"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "78f6b40a873ce39ec28abc5c1a185694790a83515fa63d654b508536bec6f964"
+      },
+      "holds": [],
+      "observation_digest": "2c4d5f676a3ad752b132ef26997bf725f0ac7b9f37338187acc493cfe68d68ff",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "40c6bbd8aa125dd45b8d69e5c6f0fc81036a52380f9f4b8ecd73d9220b030890",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "현역",
+      "pos": "noun",
+      "surface": "현역이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500017081.1#WARW2500017081.1.1201"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ac9114c58cae44944b79d837b18377331455e0e7cefb032a7aa273365bc6396d"
+      },
+      "holds": [],
+      "observation_digest": "56dfadd5959ea25cd6a3454310c35140179b6fb70c71167a565b5198d0237b59",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "14e030f979079382b7ec2978e6f86e12b68eb369ea5099a3d27e584c35337d5f",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "형부",
+      "pos": "noun",
+      "surface": "형부가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000250.1#WARW2500000250.1.385"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "0c521ee499a1a60df6ac6d852021f5c5d9e3217a2f00248e6cea298a001093b6"
+      },
+      "holds": [],
+      "observation_digest": "6d0d0ef15b359b54c9e5ef344b8654ca9d5df11a372bacb02833754edf35be0a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "7cd6f80cf5e93fc922d4fb6e4776c1e76feeccb6788f6e037a6d4ceeeaaebb45",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "형용사",
+      "pos": "noun",
+      "surface": "형용사",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003920.1#WARW2500003920.1.381"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9ea16561cdf06b4c4e29abd95e6206ba3e9fd203b84f5c56fa2768d253ad88c6"
+      },
+      "holds": [],
+      "observation_digest": "77db8b6f53b00df73a97c6a4333a245a1aa8fe9980c411da61dcaa513c6d4beb",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "3bcc289ccaeeea55043e68651bf832c888718745ff7fa4a102b28cdf6aafe765",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "형용사",
+      "pos": "noun",
+      "surface": "형용사를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003920.1#WARW2500003920.1.400"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "1c5655dbea6cf8ab800221be0c5c6ec6fac2f0aba41b7ad4a65c049a3d5b961a"
+      },
+      "holds": [],
+      "observation_digest": "c94654666b56772563e3d3e2fb574c082d8279c3c822dcbfbffd48cb98b453e2",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "13d8a041434573dd60577c20e942b6abfe7aad980fbb0dae5ae6bb36a77d9863",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "형용사",
+      "pos": "noun",
+      "surface": "형용사와",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003920.1#WARW2500003920.1.362"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "a9ec7aeb3ec19334b873f7be690c798729be23f2b046cc59dab18db4dde5a5b6"
+      },
+      "holds": [],
+      "observation_digest": "cf8d19e97e8df26994f863f91d5cdecef60c7d4d27f17e771e6ae00944a5d7ed",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "9d33c1df803e9cd851d98db87aa8e1e1198270baaf9cc7cb41bff9f07c299426",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "호루라기",
+      "pos": "noun",
+      "surface": "호루라기가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001560.1#WARW2500001560.1.820"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9e47bc4065b5802f987711758ad10dfb86fd6cd18a6e14bd3f85bf28348a56a6"
+      },
+      "holds": [],
+      "observation_digest": "3467029eb1289ba8d9a19d3707e6a6a1371d7fa3714705b0a7d43951d1bb064f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "d180ef9bc8ee37a7b7dc4a5ee56ecdd19bd5c251235bc127506a98e232299f21",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "호루라기",
+      "pos": "noun",
+      "surface": "호루라기를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001560.1#WARW2500001560.1.776"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "19a85e8c821e4e7f1b2e34e5065f8324ecd0a072080a117f189ba19ad28f4e01"
+      },
+      "holds": [],
+      "observation_digest": "598248702a5033151b770c6fa9f0b56bd484672f2012ecbb76df7083b0a776be",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "56a6c85719c747173bf7d82498dd62d6c406c036bac8292e390ebfcf6623455e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "호미",
+      "pos": "noun",
+      "surface": "호미를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001360.1#WARW2500001360.1.334"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f4213ee77498af7d7f4530e5a2e651dfafcb958214d3bdec7acf109c11dc08ea"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "18cfd847db7866618e6c2de5f9fb336c7bae0220c4b04b1ba6ac84718b9275d3",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "7aa0dfeea5d2f4b0d8bd81889ab6a16c0c2678491b811e054994ab1c39245fa7",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "혼수",
+      "pos": "noun",
+      "surface": "혼수를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002690.1#WARW2500002690.1.462"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "fa182eb03f17f1e0d586fda6130cce854da30081f7a8a5d163c684003ea02f3a"
+      },
+      "holds": [],
+      "observation_digest": "793d6d291e3db23fd867df84ce37b247bc0e9116bc2d760db0aa96a1ad49a5d8",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e0967245291e6e5bca61001b34b79e66cb1420f66b93472226e2baf0207e1c42",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "혼수",
+      "pos": "noun",
+      "surface": "혼수까지",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010290.1#WARW2500010290.1.2921"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "8e89a1493d0746644407446c33ba52b353e63d09d52bc75c0ff18c6c2390e478"
+      },
+      "holds": [],
+      "observation_digest": "95d1026b3b13a416400d068796ae74815c4563c34a725456e9c65f30fe15ed1f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "96c8f38a541dace06790e71b2ff6d09712ff5850f435bf5cb275e93ebecdd69e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "화강암",
+      "pos": "noun",
+      "surface": "화강암으로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005460.1#WARW2500005460.1.168"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5548b22f5c84d8b7d09a2a1a84bfac0385a809209287590a4fe91b52bdb8df7a"
+      },
+      "holds": [],
+      "observation_digest": "040a6fe80d40e86df91c79c4ee443de8c0540de5cdacea2811d9cab58db169d6",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "46b26997f5c2886ac14e39ad58dd1bd6d5115118fb3e5b7ff9e5aa5cbd53abb7",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "화강암",
+      "pos": "noun",
+      "surface": "화강암과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500004820.1#WARW2500004820.1.916"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "613692685833b189f8f401054aaa1d4e5343bed13be05a1312610c5bf9c108d8"
+      },
+      "holds": [],
+      "observation_digest": "952f3cab66ae2c2e7674503843d4e5ae45bf5e474a649bdc5757265c92c8c345",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "451347bf45dbcb172284c64076a69a8d0c4c0c56ae25792e22ddc97df226b4c3",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "화강암",
+      "pos": "noun",
+      "surface": "화강암",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001360.1#WARW2500001360.1.443"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b0cb7d07a6a9ad4c6aa7817455e5f656a2212c7f50d21096b20b3a7dce552d36"
+      },
+      "holds": [],
+      "observation_digest": "b6e5b9ee8dab8b74595c33dfd4899a9cdb9d2f371b0d163998d0a54c0295ebcf",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "b9f0396dfb6e0bb6016d9eda8fcd7110c02d7a560455fe027a66829f2f150f13",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "화음",
+      "pos": "noun",
+      "surface": "화음을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000880.1#WARW2500000880.1.109"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "df01766e5de1731f43fd6469ee50d63545462b351b9e126ee775238f26a8b76b"
+      },
+      "holds": [],
+      "observation_digest": "09413ba1ad11c9a6c89051ce34dcc25a16413e9990c31f12023f1650848ba6f6",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "9271dead482efe391eb431a3f8df2a1dfa1217b4d679ae23d9fee8866f48fd6b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "화음",
+      "pos": "noun",
+      "surface": "화음이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005050.1#WARW2500005050.1.1206"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9b24536fdd4cafaec74dadce551934272ec65731deabc7dd4c5cb904d4327c41"
+      },
+      "holds": [],
+      "observation_digest": "765a573dd9b500025d8d0085c97bfbe74ad1ffeb69134f8f1592917414540168",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "f43dc2bf0ccd669ac3ba9c31d5e2869ab29c6001fffe941c6b907d2f999d55e0",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "화장대",
+      "pos": "noun",
+      "surface": "화장대가",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005050.1#WARW2500005050.1.2119"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b255dfe7f13baf0dfeffb3d327b6b50335231c93477f5eb20631476249c7ff09"
+      },
+      "holds": [],
+      "observation_digest": "91adef83195ed3c436fef3b8ab906baf99a4fc192a4d13d45c813e7c2f5a4c48",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "7ecd3c848a2fc1e9a767dad4e2e48799d2f1deb9c9d7c6bab01f36ae37ed0ecb",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "화풀이",
+      "pos": "noun",
+      "surface": "화풀이를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.644"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "55a51728c1cffc223b5f54c6bebcd345e5490700d970b8ddc711facbb7d618af"
+      },
+      "holds": [],
+      "observation_digest": "9806c47e34d3deba81d5ca0827b507321e69b593710f0e420d956d5486f75d4c",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e45482afba3dacb09242569a7555d4caa0ed481c11780375cc277d40076b3fb3",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "화합",
+      "pos": "noun",
+      "surface": "화합을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.292"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "236604b4d27f272851072a7a9ff1762fad39bb5709de8fb5bac133ea65a5c283"
+      },
+      "holds": [],
+      "observation_digest": "b17d3f4ee964679dce2c68b8967e829ddbba3b34f153413d5eb2eb80030a3a25",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "c1af77ce9a37f9c480b20850af077b14d9583e9d91f52848df11435e41d56bfa",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "확증",
+      "pos": "noun",
+      "surface": "확증",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000101.1#WARW2500000101.1.4983"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "0f066ea8d51b15082843d9b963e2f0242efebdff3c8edce13ff2f59a964555ab"
+      },
+      "holds": [],
+      "observation_digest": "077ad43b1d8a1ca908a032feeb1fd88cc56c41d7c2ec09924ab664f838a9917d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "b120cf55aff250266a434459e2e54784c4401866e1643f2929f105e07023218c",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "확증",
+      "pos": "noun",
+      "surface": "확증이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005110.1#WARW2500005110.1.1990"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b91bd7317e1cdd9b08b810bda9f4c62b2e87a95ea0b6ffa8e9a18f8a00ba370d"
+      },
+      "holds": [],
+      "observation_digest": "eb39d4fc6c1396f6367628cbda4588683d54758b40c3b9af38f0ce4f825d908a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "bbb7eca16c29d43ea03f38662f10f81af4e87ae97e6135cb4e013ef64284b016",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "환갑",
+      "pos": "noun",
+      "surface": "환갑이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002160.1#WARW2500002160.1.701"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "56998db45a6e17eb47a262700090c5094a59b0738be1447d44168cfcf235096e"
+      },
+      "holds": [],
+      "observation_digest": "692508205b815c4d92a9fb42242934c6131e628e9b8d76d9c05b243af0104a47",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "2dc6167920327d701c3a1984389d12b8c8e59e79b76d559f74cfb1c97fe045af",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "환갑",
+      "pos": "noun",
+      "surface": "환갑을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.90"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f4a47a97cb2ba9c1f1c7ee3393c90e0e19ed419b375d675cbe94e9ba99f3b0bf"
+      },
+      "holds": [],
+      "observation_digest": "7465534e4876f652d3887c39097dea28b81751babae220684f11d1d29d51aa94",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "38649c649f018e540965a34f56d75ad6503d8ba14aa2a53cef971fa88a14e402",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "황금색",
+      "pos": "noun",
+      "surface": "황금색을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010150.1#WARW2500010150.1.379"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "011e55abc1d01ac6cbdef0da2034927f08b9e306f751cbfed2a1176d0ae5ca48"
+      },
+      "holds": [],
+      "observation_digest": "e34b83916e8a02e3b4fc44887826140c8f9a2dc564812783cef66b8cb0374a0b",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "4222ca5e6051ed1ed672605462ddf49cfff7e368215f0546f0871d7d7692277f",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "회귀",
+      "pos": "noun",
+      "surface": "회귀는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003100.1#WARW2500003100.1.2194"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "d5e4b30c9671c58ff5882daa16b51332d347b4f68f285ee6b09ce5f0749b0900"
+      },
+      "holds": [],
+      "observation_digest": "6f499a7b389b4c0713eada289b1555c65ebf13ea56e02d120fc45d396514a53a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "161c5a3d6e0d0ae988db49a14c609c6c8ce20c9077798b19c38ca7ab07fe3351",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "회랑",
+      "pos": "noun",
+      "surface": "회랑",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005050.1#WARW2500005050.1.3166"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9ab777018590eb58d7aa53cc1ef3ad049487bd67d51dde306022b736a110d678"
+      },
+      "holds": [
+        "analysis_ambiguous"
+      ],
+      "observation_digest": "07f10793930c0c3271cb58b0835f29ee100989365091732f57490b5289d59c02",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "082b40828f35b7fd9b200b55509eb1a96e2db096951af7942cb2c871843207e9",
+        "alternatives": [
+          {
+            "lemma": "회",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "회초리",
+      "pos": "noun",
+      "surface": "회초리는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010660.1#WARW2500010660.1.2075"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "d156042423775cf56d96643e9d94df3bce08bc9908465cb8d5b75811178687b4"
+      },
+      "holds": [],
+      "observation_digest": "80c25638b6bc4b0a5906e115790333dd35343ba03f8e81a0a6ca00e697d2f13f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "634bbdbf23cb250da385069ab93516263fbb88b8ff745506b3a9e51d7c811cba",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "회초리",
+      "pos": "noun",
+      "surface": "회초리를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.2134"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "d07ae9f3924e76ef8196b225cbba4e3864ceec11e19c75833ec922feff1934c5"
+      },
+      "holds": [],
+      "observation_digest": "8de1cd5eb7bda58769c4a17a8db10565064926f1e8be08975fd009a706a8ca6d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "6bcace45488cd86de5d48675371573436c7ef2d0667e350598d404e16ced0731",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "횡령",
+      "pos": "noun",
+      "surface": "횡령을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005240.1#WARW2500005240.1.1757"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "69bc01481d79eac471462fa8bf5b6fd50b68cde786a84761417f39a5c311ad6e"
+      },
+      "holds": [],
+      "observation_digest": "00e0c5e2f67835a478de88c4015ef445c710021f3522cf9bc5487f6b0bfd958c",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e105a16a8ec5a47847faca09689261c0b53520d7004324e12a9a49c82d34cb5f",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "효능",
+      "pos": "noun",
+      "surface": "효능을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003670.1#WARW2500003670.1.670"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "945d526a4a762b7d86631ccbb10fba785197b9cf86922bd86cf698eb2a1395f8"
+      },
+      "holds": [],
+      "observation_digest": "b11dc5b5184d112f6c770cb98be391ca6414a47f4577764dd29d20b46b2801ec",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "7218406da2b066e82bc3de2e00cb36e65c3f4a118f4fc8d177104bc55f0a8ae4",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "효능",
+      "pos": "noun",
+      "surface": "효능에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500009680.1#WARW2500009680.1.153"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "22cf6bfad2f224885c5ca7e113cf7bc9217e8fbc92fd53765ee0264b13699049"
+      },
+      "holds": [],
+      "observation_digest": "b35dc235b9e37070a7444a8f574ce3f3fb4f7a0dc985676578a4986f08d0102d",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "ac3d708da6918c534916df6902178079766e26c62786a22e0415b098bfd40e9b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "효능",
+      "pos": "noun",
+      "surface": "효능이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.1160"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f2e77433796f4b18474d1b53df72efb39fa8eefc5d0a8029f5622167f11c9302"
+      },
+      "holds": [],
+      "observation_digest": "e4a90ed5ed8ae7cc016f36419e2f84029b07118465ea8cba659ac31fd466c2ec",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "189073c24aa16bc7d41b41a7dd81b449264699eea86da58d140ba69261c34c80",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "후각",
+      "pos": "noun",
+      "surface": "후각을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500003360.1#WARW2500003360.1.632"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b4a0d21245981ba4d83daa2b9d31d10762993d4f6cba56e2fa6b509561057d8a"
+      },
+      "holds": [],
+      "observation_digest": "e696de6250731c639a7a42ab09f1be6edafeb133e678e29e1ddc2d984bb77ea6",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "99c48bba029739058181bf01f8e028129c9c2fe71eabc58512792c2da5f6c9a3",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "후각",
+      "pos": "noun",
+      "surface": "후각과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005260.1#WARW2500005260.1.1741"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "5d770d78f5da0d43ffa63125d88d8f6cc4e39e2016d230e3d66c6f44f3e692e4"
+      },
+      "holds": [],
+      "observation_digest": "e7a6bc56f4911b174826b4dd0c5e9fe6f809ef4255e62904d688ca8fff8c004c",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "e018baf2214b25ff8beadbf54e091254c2e8e9545e66a00e8d5a9036e1775eac",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "후궁",
+      "pos": "noun",
+      "surface": "후궁을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005250.1#WARW2500005250.1.233"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "cff3db706881acc5d847fcdebff54f9eac18af2a16bfdbadc453d716e0b1f2c0"
+      },
+      "holds": [],
+      "observation_digest": "a283ffe49891ab70fc883d6fdebb507d9f1028b7785c2d1ffd768cef34d5f880",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "f708e1db916fc840fb9fbf8dafceef7e0d6940cfeed701dc065059c4d940188a",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "후작",
+      "pos": "noun",
+      "surface": "후작이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001390.1#WARW2500001390.1.47"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "df706485bf74fdac8909c73555b3c097959ff7eac0125334c1fcbc48bab15238"
+      },
+      "holds": [],
+      "observation_digest": "28d72fe89b2b38096bf875dfbfd2d6d58e5084b16b8310c2c8b90a3d37cc2689",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "66473c6b14b2343d03fb06a2b8daad9c738642beef05c1855b6a04b4c26cea7b",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "훈련소",
+      "pos": "noun",
+      "surface": "훈련소에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.337"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "c75b1e1672e8745f8a689b20ef694f9ff66490ff9d5e8f62b54afe0fedd4c3ab"
+      },
+      "holds": [],
+      "observation_digest": "804397e18959e40e6a8047c5e15bf6aefb667d31fe8c943106715e7271468208",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "3430eaf4f7fea850bd52e014c9c5643c86f03756918eefa64d6dce7b8d30ef25",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "훈련소",
+      "pos": "noun",
+      "surface": "훈련소를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001160.1#WARW2500001160.1.335"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b7a23402af0d6c64d21a20e34efd5f8051991240f933dab6f351b4dd67318eb8"
+      },
+      "holds": [],
+      "observation_digest": "b209c81fcad1967065fdfd05429aa7ed6097b90a213b98e2e7eae0cd24545825",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "a59f32670b98d32ac7716a445323ebb4f7041565e7c83e78edf807fff583d62f",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "훌쩍이다",
+      "pos": "verb",
+      "surface": "훌쩍이며",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500002690.1#WARW2500002690.1.66"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "542b6ef241de3406408bd8cda9ebcaa76167edb4e8014903a4a8a80da8369973"
+      },
+      "holds": [],
+      "observation_digest": "10df092b29956a2a5a240d3cd55dd16e5a983337f014627d8c2be0f720e750a7",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "3c14e812f237f6877b5ae1b5c75ca733197114cfcd48835b9e9ee7a68403a127",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "훌쩍이다",
+      "pos": "verb",
+      "surface": "훌쩍이는",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001560.1#WARW2500001560.1.71"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "9c818eaaf926020be8040246e9b27650f9ad73230ef0042489fc9279502e4069"
+      },
+      "holds": [],
+      "observation_digest": "9870a74003689e04eaf10e5c75bbaaab717b16dc6fa5b15df4be771b319da10e",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "13a24266ef52a65d2bd6a441d3d5d2a52a781a5574e6e41a5c1bffc74377b4b6",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "휴학",
+      "pos": "noun",
+      "surface": "휴학을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500001090.1#WARW2500001090.1.51"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "be7f37fafb2e6aa3625a3a07b51bcaea56e2937cc83aa8ff91099a3791b2ecc3"
+      },
+      "holds": [],
+      "observation_digest": "1161a6b8036e51ac6bfc9d9b6515746c6b4a50719212c9369b4987e9a26b5b7a",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "094cefddacfdfaf44cf632ed9e91d5993b170a58796525751743ae62d8fd6efb",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "힘줄",
+      "pos": "noun",
+      "surface": "힘줄로",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500007920.1#WARW2500007920.1.281"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "f710b606765cf5687345592511c318d42f48af1f8b53230a8f1a412cf3bd6947"
+      },
+      "holds": [],
+      "observation_digest": "46548ba94574fbf7e3cd35a96b06a991e2126a27a776aa9e3e6cd81d191ba130",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "2dd3ecc1baaece0a7d3520defedd48823125711c8173975fc3c66e4c5a07ee05",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "deferred_lemma",
+      "lemma": "힘줄",
+      "pos": "noun",
+      "surface": "힘줄이",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.984"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b3ff92a0a1c8f03463099e4ac4b65150aba256e77ec53cb1c060dcf3b3e276f3"
+      },
+      "holds": [],
+      "observation_digest": "9bc184c940517d78b0630bd31c68f0ce40e172f194cd0ae0c0c2dfff4ebbbedf",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "three_way_agreement"
+        ],
+        "trace_digest": "382eb3bd17567f44565b234c36a456e7016a073c7447802149e0f0eeb2e1e230",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "갈비뼈",
+      "pos": "noun",
+      "surface": "갈비뼈에",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005070.1#WARW2500005070.1.4138"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b73031b510fd503b025e44b3d56f4e14f4aff65553ce59412408c932a11101f5"
+      },
+      "holds": [
+        "lemma_mismatch"
+      ],
+      "observation_digest": "d610bb095f446dd89d28fc56da5096b36f49c4abf340b86ee1fc416fa812ac47",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "e0775fb0d97690f03d0665b6f071ac63278ef4274635730ca39414848cfda061",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "법",
+      "pos": "noun",
+      "surface": "법도",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000151.1#WARW2500000151.1.29"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "4df4af9bb2d949b25342247986196a50d00e2b74b0f778579515b7e01a6a2298"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "c21050de09276068a0ffd017ffe3931a31504c95352eae5e8ceb981508f7b64d",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "617c71926c706591563c9d7d264d95f2602772c07de5fe718c823f45150ff489",
+        "alternatives": [
+          {
+            "lemma": "법도",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "사다",
+      "pos": "verb",
+      "surface": "사서",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.994"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "79e1762272bf6ddd556864c73a31b969e50f0a426469394eecd01d3643dab515"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "c0b7d301e2a79d0bdb32793526938cf32f8673ec40522debdffda4288665e27d",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "77c58387ad3633ac3fca5a7cf4763e5117f4c7beb32ca75537f0d6356525cb22",
+        "alternatives": [
+          {
+            "lemma": "사서",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "신",
+      "pos": "noun",
+      "surface": "신의",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.2532"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b6a97ef8c4bdecf52f126386a4a47829a98d67d10cce97547701172acb4ac3fb"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "32f48875e1cf5f58337f6a3b2b5d7c32ec1407220041eba87eb278f2fc500111",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "6914810e53a865c28e4d90b587d709f35010881a2eac63df4a7c8a21174a0424",
+        "alternatives": [
+          {
+            "lemma": "시",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "신의",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+  }
+}
