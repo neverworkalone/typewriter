@@ -16,6 +16,7 @@ import {
   validateLexicalSemanticReview,
 } from '../validate/lexical-quality.mjs';
 import { validateLexicalDispositionBasis } from '../validate/lexical-disposition.mjs';
+import { preservesReviewedRecord } from '../validate/relevance-projection.mjs';
 import { verifyGrandfatheredHistoricalDispositions } from './historical-disposition-source.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
@@ -364,6 +365,7 @@ function createPreAuditPayloads({
   selectedRanks,
   baseRecords,
   prospectiveRecords,
+  allowHistoricalRelationEnrichment = false,
 } = {}) {
   const candidateValues = valuesOf(candidates);
   const reviewedValues = valuesOf([...selectedRecords, ...correctionRecords]);
@@ -420,6 +422,7 @@ function createPreAuditPayloads({
         base_records: valuesOf(baseRecords),
         prospective_records_sha256: productionValueSha256(prospectiveOutput),
       },
+      allowHistoricalRelationEnrichment,
     },
   };
   const payloads = Object.fromEntries(
@@ -444,6 +447,7 @@ function validateStageEvidence(
     expectedPayloads,
     payloadSpecs,
     allowReplay = false,
+    allowHistoricalRelationEnrichment = false,
   } = {},
 ) {
   if (productionState !== undefined) {
@@ -460,6 +464,7 @@ function validateStageEvidence(
         sourceBytesByStage: productionStateSources,
         expectedPayloads: replayState ? undefined : expectedPayloads,
         allowReplay,
+        allowHistoricalRelationEnrichment,
       });
       return {
         state,
@@ -545,6 +550,8 @@ function validateStageEvidence(
       batchId,
       sourceBytesByStage: preAuditSources,
       expectedPayloads,
+      allowReplay,
+      allowHistoricalRelationEnrichment,
     });
     return {
       state: undefined,
@@ -585,6 +592,7 @@ export function validateLexicalProduction({
   canonicalContext,
   allowReplay = false,
   historicalReplay = false,
+  allowHistoricalRelationEnrichment = false,
   historicalDispositionSource,
   checkPilotCompleteness = false,
   catalogCount,
@@ -594,6 +602,12 @@ export function validateLexicalProduction({
   prospectiveLabel = 'production prospective canonical records',
   requireIndependentDecisionEvidence = true,
 } = {}) {
+  if (allowHistoricalRelationEnrichment && !(allowReplay === true && historicalReplay === true)) {
+    fail(
+      'historical relation enrichment requires an explicitly authorized historical replay',
+      'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED',
+    );
+  }
   if (allowReplay === true && historicalReplay !== true) {
     fail(
       'generic lexical production never accepts replay; use an explicit historical validator boundary',
@@ -818,7 +832,10 @@ export function validateLexicalProduction({
     if (!selectedForAdmission) continue;
     const reviewedRecord = recordOf(entry.reviewed_record);
     const prospectiveRecord = prospectiveRecordsById.get(reviewedRecord.id);
-    if (!prospectiveRecord || JSON.stringify(prospectiveRecord) !== JSON.stringify(reviewedRecord)) {
+    const preservesReviewedValue = allowHistoricalRelationEnrichment
+      ? preservesReviewedRecord(reviewedRecord, prospectiveRecord)
+      : JSON.stringify(prospectiveRecord) === JSON.stringify(reviewedRecord);
+    if (!prospectiveRecord || !preservesReviewedValue) {
       fail(
         `production.reviews[${index}].reviewed_record is not present unchanged in prospective_records`,
         'LEXICAL_PRODUCTION_BINDING',
@@ -837,6 +854,7 @@ export function validateLexicalProduction({
       selectedRanks,
       baseRecords,
       prospectiveRecords,
+      allowHistoricalRelationEnrichment,
     })
     : productionPayloads;
   const productionContext = validateStageEvidence(stageEvidence, {
@@ -846,6 +864,7 @@ export function validateLexicalProduction({
     expectedPayloads: preAuditPayloads,
     payloadSpecs: preAuditPayloads?.payload_specs,
     allowReplay,
+    allowHistoricalRelationEnrichment,
   });
 
   let admission;
@@ -866,6 +885,7 @@ export function validateLexicalProduction({
       productionPayloads: preAuditPayloads,
       canonicalContext,
       allowReplay,
+      allowHistoricalRelationEnrichment,
       checkPilotCompleteness,
       candidateLabel,
       reviewedLabel,

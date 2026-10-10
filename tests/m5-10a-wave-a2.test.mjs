@@ -53,6 +53,7 @@ import {
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_CANONICAL_DIRECTORY = path.resolve('data/canonical');
+const HISTORICAL_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-11-base-canonical');
 const A2_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-preimport-inventory.json');
 const A2_BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a-base-canonical');
 const A2_POSTIMPORT_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-base-canonical');
@@ -1289,7 +1290,7 @@ test('M5-10A completion recorders require separately supplied decision artifacts
   try {
     const [editorial, canonical] = await Promise.all([
       readBatchJson('m5-10a-wave-a2-editorial-input.json'),
-      readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
+      readCanonicalRecords(HISTORICAL_CANONICAL_DIRECTORY),
     ]);
     const reviewedIds = new Set(editorial.records.slice(0, 50).map(({ canonical_id: canonicalId }) => canonicalId));
     const stagingPath = path.join(directory, 'reviewed.jsonl');
