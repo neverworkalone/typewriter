@@ -138,6 +138,22 @@ The classifier validates changed canonical JSONL rows against the current
 record schema and validates the shape of recognized JSON data before allowing
 routine data-only changes to take the Normal path. Source-bound relation
 packets still pass the existing Normal factory and semantic-authority checks.
+Stage 1 permanent trash chunks are **routine factory data** when their
+paths match `data/candidate-trash/T######.jsonl` and the exact changed
+HEAD bytes pass both strict JSONL parsing and the shared
+`validateTrashChunk` contract (identity/digest, analysis variants,
+occurrences, text-free source references, and the 500-row bound). Such
+validated chunks, even when mixed with candidate rows, compact manifests
+and `stage1-decisions.json`, require the **Normal** gate, not unrelated
+Deep reproducibility or scale checks. The always-on Normal factory validator
+continues to compare changed trash chunks with the merge base and across
+changed/unchanged chunks, rejecting altered history and repeated observation
+identities. No additional historical full scan is introduced solely by the
+classifier. Other trash paths, malformed chunks, unrelated changed paths and
+unverified evidence remain fail-closed; mixed trash+candidate PRs are **not**
+eligible for the narrow candidate-only gate. This pattern applies to all
+future valid chunk numbers, not a specific production batch.
+
 Malformed data, unknown files, missing/empty diff evidence, and unregistered
 test paths fail closed. Docs-only changes keep the exact-HEAD Normal skip, and
 pure root-level Stage 1 candidate artifacts keep `ci:candidates`. The
