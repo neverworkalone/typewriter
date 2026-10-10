@@ -39,6 +39,7 @@ EXTRACTOR_VERSION = "2"
 # this version; their changes are limited to cache/output paths or downstream
 # candidate selection. Older or unlisted source digests remain incompatible.
 REUSABLE_ANALYSIS_SOURCE_DIGESTS = frozenset({
+    "b49633949a43840fe1637d8c3c3f1c7992203ebfb739b4e8197f1063945a5838",
     "a65060846e1f5f0fb300823590965d569772bc952368be18d95f018ab297faeb",
     "0debcc9d58fa87327b64e21fa26b8dca335380fd8d27166db67cb7b31fdb386e",
     "7c18eee629d1c423a3a26ad5d7eede15772c5a420bad1900e6806ed442147c96",
@@ -503,6 +504,19 @@ def close_source(
             """,
             (token_count, lemma, pos, form),
         )
+
+
+def selection_exhaustion(staging, candidate_rows, include_canonical_lemmas=False):
+    coverage_filter = "TRUE" if include_canonical_lemmas else "covered = 0"
+    remaining = int(staging.execute(f"""
+        SELECT COUNT(DISTINCT normalized_lemma) FROM candidates
+        WHERE {coverage_filter} AND NOT EXISTS (
+            SELECT 1 FROM excluded_candidate_lemmas AS excluded
+            WHERE excluded.normalized_lemma = candidates.normalized_lemma
+        )
+    """).fetchone()[0]) - len({row["coverage_normalized_key"] for row in candidate_rows})
+    return {"contract": "corpus-selector-exhaustion-v1", "remaining_lemma_count": remaining,
+            "selected_lemma_count": len({row["coverage_normalized_key"] for row in candidate_rows})}
 
 
 def select_candidate_rows(
@@ -1034,6 +1048,7 @@ def run_extraction(
                 "row_batch_size": batch_size,
             },
             "selection": {
+                "exhaustion": selection_exhaustion(staging, candidate_rows, include_canonical_lemmas),
                 "contract_version": "m9-corpus-candidate-selection-v1",
                 "candidate_limit": candidate_limit,
                 "selected_candidate_count": len(candidate_rows),

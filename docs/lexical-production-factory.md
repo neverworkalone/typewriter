@@ -63,11 +63,13 @@ schema. The factory is a work-organization layer around the existing contracts.
 **Policy**
 
 - A task targets **10,000 distinct citation-form lemmas (표제어)**, produced in
-  serial batches of about **500 distinct headwords** (flexible; hard maximum 1,000).
+  serial batches targeting **500 final valid distinct headwords**. Extraction
+  pages are bounded checkpoints, not final candidate counts (#526).
   Neither source hits, usage rows, observed inflected forms nor POS hypotheses count
   toward that number: a lemma is counted once however many inflections, contexts
-  or POS possibilities it has. If fewer than 500 defensible lemmas exist, the batch
-  reports the actual count (or source exhaustion); there is no filler, no
+  or POS possibilities it has. Continue selecting after lexical analysis holds
+  until 500 are produced. Fewer than 500 requires explicit source exhaustion;
+  execution limits or errors cannot publish partial results. There is no filler, no
   unverified lemma guess and no artificial split. One issue/task, serial batch PRs.
   Stage 1 never waits for Stage 2 or 3.
 - **Stage 1 execution Issue lifecycle:** Use exactly one execution Issue for the
@@ -113,9 +115,12 @@ schema. The factory is a work-organization layer around the existing contracts.
      group disposition `covered` (§5.1), which must cite an existing canonical sense
      and is checked against the canonical snapshot and the search-form projection;
   5. unresolved lemma/POS analysis → **fail closed**: the observation is preserved
-     (reference and holds) in the manifest's `unresolved_observations` for
+     (reference and holds) in the permanent observation trash for
      verification, is not attached to a guessed headword and is not counted among the
      resolved headwords.
+  Permanent trash, compact manifest v3, migration and restart rules are defined
+  in [Stage 1 permanent trash](stage1-permanent-trash.md). Earlier v2 examples
+  below describe the pre-compaction representation retained in historical Git.
 - **Holds are per observation.** One ambiguous surface never holds the clear
   surfaces of the same lemma and never invalidates the lemma. An initial
   `analysis_ambiguous` is a request for further verification, not a final

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
@@ -20,9 +21,13 @@ import { createMecabProvider, pinnedMetadata as mecabMetadata } from '../scripts
 import { POLICY_ALIASES, parseArguments, runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { Stage1Error, compareResolutionPolicies, observationsFromCorpusEvidence, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
-import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
+import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import { HEX, hit, item, khaiii, kiwi, stub } from './support/khaiii-fixtures.mjs';
+import { mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkText, validateTrashChunk, failedProposalLemmas, loadTrash } from '../scripts/factory/permanent-trash.mjs';
+import { refillCandidateBatch } from '../scripts/factory/refill.mjs';
+import { publishArtifacts, recoverArtifacts } from '../scripts/factory/artifact-transaction.mjs';
+import { planHistoryMigration } from '../scripts/factory/migrate-candidate-history.mjs';
 
 // Synthetic providers (labeled synthetic: no native runtime runs here; the real-runtime smoke lives in
 // tests/factory-ensemble-native-smoke.test.mjs and is skipped with a reason when a runtime is absent).
@@ -543,7 +548,7 @@ test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without wo
   });
   const logs = [];
   const deps = { root, cachePaths: cache.cachePaths, providers: triple(FALLBACK), permission: async () => {}, log: (line) => logs.push(JSON.parse(line)), contextSource };
-  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'];
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '1'];
   const dry = await runStage1([...args, '--dry-run', '--ensemble-trace', 'trace.jsonl', '--context-review-pack', 'pack.json'], deps);
   assert.equal(logs[0].effectivePolicy, ENSEMBLE_POLICY);
   assert.deepEqual(logs[0].providerOrder, ['kiwi', 'khaiii', 'mecab']);
@@ -570,7 +575,7 @@ test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without wo
   const freshCache = await cacheForTask(fresh);
   await writeFile(path.join(freshCache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
   await mkdir(path.join(fresh, 'data/validation'), { recursive: true });
-  await copyFile(path.join(root, 'data/candidates/C000001/manifest.json'), path.join(fresh, 'data/validation/context-replay.json'));
+  await copyFile(path.join(root, produced.manifest.archive.path), path.join(fresh, 'data/validation/context-replay.json'));
   const replayed = await runStage1([...args, '--dry-run', '--context-replay', 'data/validation/context-replay.json'],
     { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK), contextSource: undefined });
   assert.equal(replayed.candidatesText, produced.candidatesText);
@@ -616,8 +621,9 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
       짠한: [p('짠하다', 'adjective', '짠하')],
     };
     const deps = { root, cachePaths: cache.cachePaths, providers: triple({ k, h: hh, m: hh }), permission: async () => {}, log: () => {} };
-    const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'];
-    const result = await runStage1(args, deps);
+    const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '1'];
+    const compactResult = await runStage1(args, deps);
+    const result = { ...compactResult, manifest: restoreManifest(compactResult.manifest, JSON.parse(await readFile(path.join(root, compactResult.manifest.archive.path), 'utf8')), trashIndex(await loadTrash(root))) };
     assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
     assert.equal(result.summary.skippedProducedLemmas, 1);
     assert.equal(result.manifest.excluded_observations.length, 3);
@@ -1078,4 +1084,148 @@ test('review fix: the corpus context source verifies the real index metadata aga
   await runStage1(args, { ...deps, contextDatabasePath: syntheticIndex(dir) });
   assert.equal(JSON.parse(await readFile(path.join(cache.taskDirectory, 'pack.json'), 'utf8'))[0].aligned, true);
   await assert.rejects(() => runStage1(args, { ...deps, providers: triple(FALLBACK), contextDatabasePath: syntheticIndex(dir, { rows: '2'.repeat(64) }) }), /does not match the evidence source snapshot/);
+});
+
+test('permanent trash merges observation histories, preserves partial candidates and bounds chunks', async () => {
+  const table = { 가는: GADA.가는 };
+  const result = await produce([
+    cand('가다', 'verb', [h('d1', '가는'), h('d1', '갈', 'p2')]),
+  ], triple({ k: table, h: table, m: table }));
+  assert.deepEqual(result.rows.map((row) => row.input), ['가다']);
+  assert.equal(result.manifest.unresolved_observations.length, 1);
+  const second = structuredClone(result.manifest);
+  second.batch_id = 'C000003';
+  second.unresolved_observations[0].verification = { state: 'truth_unknown', decision_id: 'D0001' };
+  const { chunks, references } = mergeUnresolved(new Map(), [result.manifest, second]);
+  assert.equal(trashIndex(chunks).size, 1);
+  const record = [...chunks.values()][0][0];
+  assert.equal(record.variants.length, 2);
+  assert.equal(record.variants.flatMap((variant) => variant.occurrences).length, 2);
+  assert.deepEqual([...failedProposalLemmas(chunks)], ['가다']);
+  const compact = compactManifest(result.manifest, references.get(result.manifest.batch_id));
+  assert.equal(compact.manifest.unresolved_observations, undefined);
+  assert.deepEqual(restoreManifest(compact.manifest, compact.history, trashIndex(chunks)), result.manifest);
+  assert.deepEqual(validateCandidateBatch({ manifest: compact.manifest, candidatesText: result.candidatesText }), []);
+  assert.deepEqual(validateTrashChunk(chunkText([record])), []);
+  const repeated = mergeUnresolved(chunks, [result.manifest]);
+  assert.equal(trashIndex(repeated.chunks).size, 1);
+  assert.equal(record.variants.flatMap((variant) => variant.occurrences).length, 2);
+  const anotherSnapshot = { ...result.manifest, source_snapshot: `corpus:${'c'.repeat(64)}:${'d'.repeat(64)}` };
+  assert.equal(trashIndex(mergeUnresolved(chunks, [anotherSnapshot]).chunks).size, 2);
+  const many = structuredClone(result.manifest);
+  many.unresolved_observations = Array.from({ length: 501 }, (_, i) => ({ ...many.unresolved_observations[0], queue_id: `U${String(i + 1).padStart(4, '0')}`, evidence: { kind: 'corpus-paragraph', ref: `d1#p${i}` } }));
+  const split = mergeUnresolved(new Map(), [many]);
+  assert.deepEqual([...split.chunks.values()].map((rows) => rows.length), [500, 1]);
+  assert.deepEqual(validateTrashChunk(chunkText(split.chunks.get('T000001.jsonl'))), []);
+  assert.match(validateTrashChunk(chunkText([record, record])).join(), /duplicate/);
+});
+
+test('production CLI refills valid lemmas, skips trash proposals before analysis and publishes compact artifacts', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cache = await cacheForTask(root);
+  const table = { 가는: GADA.가는, 걸음: [p('걸음', 'noun')] };
+  const providers = triple({ k: table, h: table, m: table });
+  const initial = evidenceDoc([cand('가다', 'verb', [h('d1', '가는'), h('d1', '갈', 'p2')])]);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(initial));
+  let pages = 0;
+  const produced = await runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '2'], {
+    root, cachePaths: cache.cachePaths, providers, permission: async () => {}, log: () => {},
+    selectPage: async ({ exclusions }) => {
+      pages += 1;
+      assert.ok(exclusions.has('가다'));
+      return { ...evidenceDoc([cand('걸음', 'noun', [h('d2', '걸음')])]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } };
+    },
+  });
+  assert.equal(pages, 1);
+  assert.equal(produced.rows.length, 2);
+  assert.equal(produced.manifest.contract, 'lexical-factory-candidate-manifest-v3');
+  assert.equal(produced.manifest.production.target, 2);
+  assert.equal(produced.manifest.archive.unresolved_count, 1);
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
+  const trash = await loadTrash(root);
+  assert.deepEqual([...failedProposalLemmas(trash)], ['가다']);
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd: root, stdio: 'pipe' });
+  git('init', '-q'); git('add', 'data'); git('commit', '-q', '-m', 'Factory baseline');
+  const report = {};
+  assert.deepEqual(await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root), report }), []);
+  assert.deepEqual(report.archiveValidation, { checked_chunks: 0, unchanged_chunks_skipped: 1 }, 'normal validation does not read unchanged archive payloads');
+  const trashPath = path.join(root, 'data/candidate-trash/T000001.jsonl');
+  const originalTrash = await readFile(trashPath, 'utf8');
+  await writeFile(trashPath, 'malformed\n');
+  assert.match((await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) })).join(), /JSONL|Unexpected token/);
+  await writeFile(trashPath, originalTrash);
+  // An earlier failed proposal is excluded before a provider is called, even
+  // when a new input file accidentally supplies it again.
+  const secondCache = await cacheForTask(root, 'T000002');
+  await writeFile(path.join(secondCache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(initial));
+  const rejectingProviders = providers.map((provider) => ({ ...provider, analyze: async () => { throw new Error('must not analyze excluded proposal'); } }));
+  await assert.rejects(() => runStage1(['--evidence', secondCache.evidenceArgument, '--task-id', 'T000002', '--base-ref', 'none'], {
+    root, cachePaths: secondCache.cachePaths, providers: rejectingProviders, permission: async () => {}, log: () => {},
+    selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }),
+  }), /source exhausted/);
+});
+
+test('refill resumes identical inputs, fails closed on runtime errors and records true exhaustion', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-resume-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const table = { 가는: GADA.가는, 걸음: [p('걸음', 'noun')] };
+  const providers = triple({ k: table, h: table, m: table });
+  const initialEvidence = evidenceDoc([cand('가다', 'verb', [h('d1', '가는')])]);
+  const args = { batchId: 'C000001', taskId: 'T000001', maxCandidates: 2, canonicalEntries: [], canonicalDigest: HEX, policy: ENSEMBLE_POLICY, providers };
+  const common = { initialEvidence, arguments: args, exclusions: new Set(), checkpointPath: path.join(root, 'checkpoint.json') };
+  await assert.rejects(() => refillCandidateBatch({ ...common, selectPage: async () => { throw new Error('interrupted selector'); } }), /interrupted selector/);
+  const before = providers.map((provider) => provider.calls.length);
+  const resumed = await refillCandidateBatch({ ...common, selectPage: async () => ({ ...evidenceDoc([cand('걸음', 'noun', [h('d2', '걸음')])]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) });
+  assert.equal(resumed.rows.length, 2);
+  providers.forEach((provider, index) => assert.equal(provider.calls.length, before[index] + 1, 'checkpoint avoids reanalysis of first page'));
+  const short = await refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'short.json'), selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) });
+  assert.equal(short.rows.length, 1);
+  assert.equal(short.production.exhausted, true);
+  await assert.rejects(() => refillCandidateBatch({ ...common, arguments: { ...args, maxCandidates: 3 }, selectPage: async () => {} }), /binding differs/);
+  await assert.rejects(() => refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'empty-not-exhausted.json'), selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 1 } } }) }), /not proof/);
+  const broken = providers.map((provider) => ({ ...provider, analyze: async () => { throw new Error('runtime unavailable'); } }));
+  await assert.rejects(() => refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'broken.json'), arguments: { ...args, providers: broken }, selectPage: async () => {} }), /failed closed/);
+});
+
+test('candidate and trash publication rolls back validation failures and recovers interrupted journal', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-publish-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const files = new Map([['data/candidates/C000001/candidates.jsonl', 'new\n'], ['data/candidate-trash/T000001.jsonl', 'history\n']]);
+  const journalDirectory = path.join(root, 'data/local/transaction');
+  await assert.rejects(() => publishArtifacts({ root, files, journalDirectory, validate: async () => ['contract failed'] }), /contract failed/);
+  await assert.rejects(() => readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl')), { code: 'ENOENT' });
+  await assert.rejects(() => readFile(path.join(root, 'data/candidate-trash/T000001.jsonl')), { code: 'ENOENT' });
+  // A persisted journal is the recovery boundary, including an already-written
+  // first file left by an interrupted process.
+  await mkdir(path.join(root, 'data/candidates/C000001'), { recursive: true });
+  await writeFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'new\n');
+  const recovered = await recoverArtifacts({ root, journalDirectory, validate: async () => [] });
+  assert.deepEqual(recovered, files);
+  assert.equal(await readFile(path.join(root, 'data/candidate-trash/T000001.jsonl'), 'utf8'), 'history\n');
+});
+
+test('one-time history migration proves every original manifest and candidate binding before writing', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-migration-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const table = { 가는: GADA.가는, 걸음: [p('걸음', 'noun')] };
+  const first = await produce([cand('가다', 'verb', [h('d1', '가는')]), cand('없다', 'adjective', [h('d2', '없는')])], triple({ k: table, h: table, m: table }), { batchId: 'C000001' });
+  const second = await produce([cand('걸음', 'noun', [h('d3', '걸음')]), cand('없다', 'adjective', [h('d2', '없는')])], triple({ k: table, h: table, m: table }), { batchId: 'C000002' });
+  for (const result of [first, second]) {
+    const directory = path.join(root, 'data/candidates', result.manifest.batch_id);
+    await mkdir(directory, { recursive: true });
+    await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(result.manifest, null, 2) + '\n');
+    await writeFile(path.join(directory, 'candidates.jsonl'), result.candidatesText);
+  }
+  const plan = await planHistoryMigration(root);
+  assert.equal(plan.report.totals.unresolved_before, 2);
+  assert.equal(plan.report.totals.unique_observations, 1);
+  assert.equal(plan.report.totals.occurrences_preserved, 2);
+  assert.ok(plan.report.batches.every((mapping) => mapping.before_manifest_sha256 !== mapping.after_manifest_sha256));
+  assert.equal(plan.files.has('data/candidates/C000001/candidates.jsonl'), false);
+  await assert.rejects(() => readFile(path.join(root, 'data/candidate-trash/T000001.jsonl')), { code: 'ENOENT' }, 'planning writes no archive');
+  await publishArtifacts({ root, files: plan.files, journalDirectory: path.join(root, 'data/local/migration'), validate: () => validateFactoryRepository({ root }) });
+  assert.equal(await readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'utf8'), first.candidatesText);
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
+  await assert.rejects(() => planHistoryMigration(root), /already applied/);
 });

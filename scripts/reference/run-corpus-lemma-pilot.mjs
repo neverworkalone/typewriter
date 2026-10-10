@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildDictionary } from '../build/dictionary.mjs';
 import { isSurfaceToken } from '../factory/lemma-contract.mjs';
+import { TRASH_DIRECTORY } from '../factory/permanent-trash.mjs';
 import { assertWithinDirectory, isWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 import { resolveManagedPython } from '../python/env.mjs';
 import {
@@ -241,6 +242,13 @@ export async function buildExclusionManifest(sourcePaths, {
     const relativePath = relativeExclusionSourcePath(sourcePath, { repositoryDirectory, cachePaths });
     const sourceBytes = await readFile(sourcePath);
     let artifact;
+    if (relativePath.startsWith(`${TRASH_DIRECTORY}/`)) {
+      const rows = sourceBytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map(JSON.parse);
+      const proposals = [...new Set(rows.map((row) => row.identity[4]).filter(Boolean))];
+      for (const lemma of proposals) lemmas.add(lemma);
+      sourceArtifacts.push({ path: relativePath, sha256: hashFileContents(sourceBytes) });
+      continue;
+    }
     if (path.basename(relativePath) === 'candidates.jsonl') {
       try {
         const rows = sourceBytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
@@ -726,7 +734,16 @@ async function main() {
   );
   const textFreeEvidencePath = path.join(outputDirectory, 'candidate-evidence.json');
   const exclusionManifestPath = path.join(outputDirectory, 'reviewed-lemma-exclusions.json');
-  const exclusionManifest = await buildExclusionManifest(options.exclusionLemmaSources);
+  const automaticSources = [];
+  if (options.includeCanonicalLemmas) {
+    for (const batch of (await readdir(path.join(REPOSITORY_DIRECTORY, 'data/candidates'))).filter((name) => /^C\d{6}$/.test(name)).sort()) {
+      automaticSources.push(path.join(REPOSITORY_DIRECTORY, 'data/candidates', batch, 'candidates.jsonl'));
+    }
+    try {
+      for (const file of (await readdir(path.join(REPOSITORY_DIRECTORY, TRASH_DIRECTORY))).sort()) automaticSources.push(path.join(REPOSITORY_DIRECTORY, TRASH_DIRECTORY, file));
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  const exclusionManifest = await buildExclusionManifest([...new Set([...options.exclusionLemmaSources, ...automaticSources])]);
   await writeFile(exclusionManifestPath, JSON.stringify(exclusionManifest, null, 2) + '\n', 'utf8');
 
   const temporaryDirectory = await mkdtemp(

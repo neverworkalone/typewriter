@@ -1,0 +1,920 @@
+{
+  "contract": "lexical-factory-candidate-history-v1",
+  "batch_id": "C000002",
+  "unresolved": [
+    {
+      "observation_id": "dee86db4d1deee8639cd3a964be97146718331a0058dc286f18945ca7d515327",
+      "analysis_sha256": "e3dd0d42371cc0e7229dd18b969d4b5aa30e40202cb05d551c117aef6057bee6",
+      "queue_id": "U0001"
+    },
+    {
+      "observation_id": "cbeee82bf7fb11a6b8c743b7a8a679911b56ccdc4bc883032184fae0e704489e",
+      "analysis_sha256": "dc6ff95af6badce7b80bd39f5f777648bedeea99d4798bce4ccb9dc5c44b52be",
+      "queue_id": "U0002"
+    },
+    {
+      "observation_id": "90e38cedcad2b4b29b1cfaa4e0d7623906dccf052be38625af9f12eff818823b",
+      "analysis_sha256": "e590733d38cda96b00a06b6f415cbbea5b81cdfc72a08c4337c3a4b4935037d0",
+      "queue_id": "U0003"
+    },
+    {
+      "observation_id": "f829740d8c1bd8d58cc32e8512658d8e0a347e1140147e3158f5aff4a8156393",
+      "analysis_sha256": "53435308b3ae1c8e0d3c4bf8037c9499c8da939e0ec23e7e7dc6b77fbd97805b",
+      "queue_id": "U0004"
+    },
+    {
+      "observation_id": "fe61fd19d2880be45256ad35a6c69cebdf3685eb0a5b08ac5c94b17e10f8f31a",
+      "analysis_sha256": "d5e81d56735e7dde13fe360dc7e258672010d66c3f53597af19b7c2e44a34f53",
+      "queue_id": "U0005"
+    },
+    {
+      "observation_id": "4be20a36e03ff81ef02bd6c1cb93462537cb377a5cf7666374dc4e971cbdb2d8",
+      "analysis_sha256": "37c30c8944b108ad7b46223c0619d439842ede82aa793a3b6b0337d39d48d57f",
+      "queue_id": "U0006"
+    },
+    {
+      "observation_id": "91f9ed7b80ea8da5cc0312074c3f553f70ba257dab34a66788e277933f0d2942",
+      "analysis_sha256": "a1b1905161771ed14f7879514234bde224a093494e21f9f4719d3f80b197ba11",
+      "queue_id": "U0007"
+    },
+    {
+      "observation_id": "41d6375bf3b7585b2bf025c5895dfc91f0cdb43e808839cb9fd930e74c68cc2f",
+      "analysis_sha256": "4315b7daf66a3e8bdec2406cdaef739aedfe47caca9fee3f18a6773130730b37",
+      "queue_id": "U0008"
+    },
+    {
+      "observation_id": "c90749fe5e742fe92804b2eb3d27664b1a4a6f4b854265db18d0e4674f879d97",
+      "analysis_sha256": "3c8bccb92f6afbd58b0f9427ab3493444d9a220673198be781e6dcf244e025cc",
+      "queue_id": "U0009"
+    },
+    {
+      "observation_id": "1dc652524de665be76665cf80832aa40800f1a238624e8219f9e173f1101c826",
+      "analysis_sha256": "0d7f4690884e8ea45f4c4a7097a8b86e6c2d323e99bb4bf7f85c0e424e916568",
+      "queue_id": "U0010"
+    },
+    {
+      "observation_id": "cc16a6acf65c234c1e084e6dbc66a78b57a7c1f19b31914ed79253f8ef10058d",
+      "analysis_sha256": "e177c1844f60ac5a2ded87497bca4ee1d0e5c901be61fccb792c64b90a5f2281",
+      "queue_id": "U0011"
+    },
+    {
+      "observation_id": "ae9ef7e554cc01b3d875c799f70ca1f05a1bf0866c90628dafe40a6127b72853",
+      "analysis_sha256": "e865bba14f2f466c03c1bf30147d8c52461b023a92decabe5f4f99b9a4d1372a",
+      "queue_id": "U0012"
+    },
+    {
+      "observation_id": "177d4916e7e2871b335f62c3a0500015cbb4e363e637bc80e161f2504b36e613",
+      "analysis_sha256": "dd349e20ef62074f78a055f07e90ca3f40bea71be24575ce8a138412d0bef0ab",
+      "queue_id": "U0013"
+    },
+    {
+      "observation_id": "ea3738e8b20630510c20fa59a3cd0089c4975d700e30cbf402e1dffbdcb6c172",
+      "analysis_sha256": "646d3a7398f25e108b198876ae3f2a35b81553f4850fc32b7146ff4ce41b7378",
+      "queue_id": "U0014"
+    },
+    {
+      "observation_id": "e50d9efd24fd1704470fdc13c6e455fcc743b5f3d56dd3effc2c628b783dd50c",
+      "analysis_sha256": "d1c7775b61d41daf55185d619e66a31db71ad71f26b1c01736b035b0aa29d365",
+      "queue_id": "U0015"
+    },
+    {
+      "observation_id": "2b3ebf64fc1e0e20e594cd69bf9ced51c3a50afc3ed213ad77bfff1616e76caf",
+      "analysis_sha256": "d01da33c0e7a78a994986574922240025beebb41acab1fc368cea7deecd4a418",
+      "queue_id": "U0016"
+    },
+    {
+      "observation_id": "558a5858f9b152cb97291c55c41a91499387a8baf593f7123880dfe8c776beb0",
+      "analysis_sha256": "7b048fa8adcf14d7c862841d192f6fad6170bf6f11ace8a10aac62883174e917",
+      "queue_id": "U0017"
+    },
+    {
+      "observation_id": "929155d7d040ee715dd62a8ec03a05a2011377642a5c1210b7437aa0e04d6a9d",
+      "analysis_sha256": "c9ec28e9c170e3b71dcba89254a266fe4a293ab113ac2c78cc8ec3594025c240",
+      "queue_id": "U0018"
+    },
+    {
+      "observation_id": "64f2e8d334f9651126918bc48f82d826843625681651103b375ca198a87fea37",
+      "analysis_sha256": "b89e8331c51042450cf50c6f22c3bfd63b55bc34e66a40ff93b35e9d4ff44921",
+      "queue_id": "U0019"
+    },
+    {
+      "observation_id": "de203f938a9592d04cdc421855eeec4b7c636f69e7d80edca3cdd0233f0a2b87",
+      "analysis_sha256": "35b564fc51c15778aba6f4534c2ccb9cdac41963ba8ce15acc81857db2aced93",
+      "queue_id": "U0020"
+    },
+    {
+      "observation_id": "84fa22c39425ee6be4e14419019564a9f056cf624861f44f189fe52121ec00d1",
+      "analysis_sha256": "80f2e6fbce04cbe217aef65bb4ae401aeb1da599cd2b04aa1503ad557a17e9d9",
+      "queue_id": "U0021"
+    },
+    {
+      "observation_id": "fe871bf24400acf5847dc8049c71c382b455add629fa1c51575315d6aea4e79c",
+      "analysis_sha256": "eaf4c79ecf88d956dc8f48f0a2a483efb3736300a0162989d4120eb960cc69c0",
+      "queue_id": "U0022"
+    },
+    {
+      "observation_id": "82421e852b1a5694026ac6b9c30437de061096550eef845dbd824a5421196d0a",
+      "analysis_sha256": "dd4a032921e7f9cbbd0cd5038ed3bc15bdfaa46e8536fd8a810bbe70d8e5d532",
+      "queue_id": "U0023"
+    },
+    {
+      "observation_id": "376b34cd3d17b8172caf301688711f4aead169e2814bb9b00773d12a5aa3fb82",
+      "analysis_sha256": "96de9c51386f5c4c2889d9c25513464943df39639c243cdbfc059cadca35d81a",
+      "queue_id": "U0024"
+    },
+    {
+      "observation_id": "49e60b076a212302c7fce8b053a714e60f223b96e641eeb712ce91d882199403",
+      "analysis_sha256": "83690a54e94937058ed217f77753508cbb92f5d6ba14c45872921cdc8d408982",
+      "queue_id": "U0025"
+    },
+    {
+      "observation_id": "2e7d2d3b0e41f254908fc26f96d74a9dd7b06da8673d24314a632ff0c9a275d0",
+      "analysis_sha256": "016d46b341f1cc5ad87841443fcec261f648583a97b210b779f103c161d5d744",
+      "queue_id": "U0026"
+    },
+    {
+      "observation_id": "ff2c23660c26a1ddd0c55fd806fd7fb966b819105d4bf40eb94810d7daabc66e",
+      "analysis_sha256": "a900b0eac2866b8f65b188859a00070283ff126c2d4166599313c7778449ad85",
+      "queue_id": "U0027"
+    },
+    {
+      "observation_id": "345c64453c29e110c337223851e765ab2f99abd05f61cd7470067b590a007931",
+      "analysis_sha256": "4ca3d730daf853b7d8a66f5ece7cdd0ffaa4408e3a1604b9764e1c9dcb84aab7",
+      "queue_id": "U0028"
+    },
+    {
+      "observation_id": "27bbfa5176cc07a0af30d0ec5016dc40d1d76f04107096aaa9ee16dfa3777c5c",
+      "analysis_sha256": "b00aa0d2acab1a3257b751cb7061b58a034ea8db16559ff7103bdc80ed762a50",
+      "queue_id": "U0029"
+    },
+    {
+      "observation_id": "8731e0fa1702f8a9c9eec2fb1b0aad1b6b6f5b09d210956afeb98abe40ab6f73",
+      "analysis_sha256": "c003cbdbd8123451bddd50506c35caa0beb0aac5ffd169dfd855a4e43c024b11",
+      "queue_id": "U0030"
+    },
+    {
+      "observation_id": "d5dd014116a1907e35e861b69c1016cc6443d6f857f51534a83999aeb03b1793",
+      "analysis_sha256": "38250e9d1d7e0f8507ace06b4f354478b51d8b4a4975a4aa0eb0b5e9a93a40b0",
+      "queue_id": "U0031"
+    },
+    {
+      "observation_id": "389bfc696f240a1833c1d8b85bb6602da1657e5123b1bd66fb6e11644fe78194",
+      "analysis_sha256": "c3ef6467b2dfdef6481dfe48d2130791be85d8ba53278aec021375f255a55315",
+      "queue_id": "U0032"
+    },
+    {
+      "observation_id": "131b2b326d28d529184ec6bece264d18cfd93f873386a6f6bfb4dca86724a68a",
+      "analysis_sha256": "c61ed22d259777c2762024caad4984248f9c1366553e45107fccb0496f30b6e4",
+      "queue_id": "U0033"
+    },
+    {
+      "observation_id": "9a359dd51f2d97ee29699e0babd1a529ed8ca5adbb0d6f30eb2d581439a9aa89",
+      "analysis_sha256": "c0a5ed2c32dca23543549c7a46e366340aea826098c446727a27e3e070a34da6",
+      "queue_id": "U0034"
+    },
+    {
+      "observation_id": "555f33e55eac9d2c961c4abb887961f58ff6d7e8c8d751f67fe56c31841c6a32",
+      "analysis_sha256": "47669c39fc235999ee0a2ddf31b6cb938623df03be88a71d2556017c5c5ffefc",
+      "queue_id": "U0035"
+    },
+    {
+      "observation_id": "c2fed463dca0e08827f444f6243e59e2486e74907d47805fe85886f145602b16",
+      "analysis_sha256": "f7c4944e55df0948f1af8d92fb118cde4cf9b8725fc95468772f87205915e0db",
+      "queue_id": "U0036"
+    },
+    {
+      "observation_id": "335b0c22da78dc287144261ed7e175f1f1894a82e9ba4e2a5a3d6626e10051ed",
+      "analysis_sha256": "8b4ad07133cc7f13f7ce84efb0e25a347b91a2fd3d16048cff0859338c88a0d9",
+      "queue_id": "U0037"
+    },
+    {
+      "observation_id": "e00a35e3dc140ca543394829c4f4422c3595e7801f35b2f8f5fd774bea420718",
+      "analysis_sha256": "3e022d4613004bc9401a4b991e97942de2e4df04a79ed43b1bd0676a02cfab86",
+      "queue_id": "U0038"
+    },
+    {
+      "observation_id": "b2b60bea6aa733809f9909b5cc6bfc0e4dd1e75c3316806059757873dadd7022",
+      "analysis_sha256": "1ddd5141f561603d875ed8acafee10acc69cdd59fadca43f2cf03248a27376f8",
+      "queue_id": "U0039"
+    },
+    {
+      "observation_id": "c3093faa136f9e039d6ff6b84842c5d6a02c4a7149deeac0eb4cbff526897a89",
+      "analysis_sha256": "39565b10f3b9b1eb1be3428d67f1cf56e350367546862d015d2c415aaae51894",
+      "queue_id": "U0040"
+    },
+    {
+      "observation_id": "71e19862a6a8006520ea238cfaa359e3cc48e8bfb8d5de74508beef1fb2fece1",
+      "analysis_sha256": "11b0ca18e2a377c8fc2400d04a1ecc44c95a3f141c8796560c476ba03be42d77",
+      "queue_id": "U0041"
+    },
+    {
+      "observation_id": "cc1f6ff86314887ef5b7767627e3828398e5df2253c541e83997b3884c916704",
+      "analysis_sha256": "07a55b19422baca429dcfef43df9ee245b51838bed72a6a881ed781975e94259",
+      "queue_id": "U0042"
+    },
+    {
+      "observation_id": "4626b57db3fc29259f23941c1d08b3dc236b1e9d1e1c1516eaed342768ee6b99",
+      "analysis_sha256": "2e4b8d9c6494f4074226769067fe043f773c1c34061e0ff76b23a178fd12b3a6",
+      "queue_id": "U0043"
+    },
+    {
+      "observation_id": "b28a1f217367788190db17706f6f48cf47952f43d42d863e3249259ac2e618e1",
+      "analysis_sha256": "94d98f451292fbcd4bf8fb17ec2fc0246d1c70849daf87de0ad354dcb454f3f0",
+      "queue_id": "U0044"
+    },
+    {
+      "observation_id": "61b0c2151990038ab7afd9b3f2c2990aaa72ad914bf90df6cdddef7317c12e4c",
+      "analysis_sha256": "9f4ffeaa7e6f37294e1db99db0ff51a0ac6268b07c51e3bfb8f340f5201a808c",
+      "queue_id": "U0045"
+    },
+    {
+      "observation_id": "ce30295ccdb042917b87036349ae60a4a9df26c1c6f65380f16f86c4e2740330",
+      "analysis_sha256": "3ce774dcad6d8a5ac0d5e1fff7047dc64d2a2be32194c0e7c4676a79182e7a97",
+      "queue_id": "U0046"
+    },
+    {
+      "observation_id": "85b1992589763048994c028bac06b2c0d38b8a7934f1ed81f5ab7b80d42502bf",
+      "analysis_sha256": "88e0666066b990a02d2202f9241a54026474de29cc4ff6fe13619139996a81a5",
+      "queue_id": "U0047"
+    },
+    {
+      "observation_id": "dea9aedcac7dbccd37528f3df384e7f5d95b2290cbdfe9632360deb8bbdcce4b",
+      "analysis_sha256": "985c2e5ea1dabd3f77a34ee6f1c625a8d1dc9ae72a8195b25579a9d76ace95ab",
+      "queue_id": "U0048"
+    },
+    {
+      "observation_id": "c8f922962cf0e612517106d05281ec3c6121e7c7042cf97d9b7d5855a1b443cf",
+      "analysis_sha256": "eaeae89ea9267045189d5042a44a1c7da2cd5a1e66676c6b2458744d2b592206",
+      "queue_id": "U0049"
+    },
+    {
+      "observation_id": "97dd27d58ecf7bc5ae50dbd5f66e11324b7a0647934c2dd215dba8267b1475ce",
+      "analysis_sha256": "10c703a1f87d9730e6af9a0b2ad42a545da2ac9b5373b1933fed2d5cb46d854e",
+      "queue_id": "U0050"
+    },
+    {
+      "observation_id": "1372d61d56007e7c39fd91a57b35c813abf7f7bffd74971a802a17dc434190c8",
+      "analysis_sha256": "ab422c1f8db440dd9f38c1bcff30bf39a1a9c4eca05a3b90b736298ca9e81a76",
+      "queue_id": "U0051"
+    },
+    {
+      "observation_id": "4ce455308eaa074bee3e9be5464807f96e90c029fb71d3d25e468fcbee755a8e",
+      "analysis_sha256": "782abcf24dd8469b326c6d2d5eece6c3310163aaa6b5a0d71433d8273a19118b",
+      "queue_id": "U0052"
+    },
+    {
+      "observation_id": "cad63d868e005a9ee1630ffb4a096dd0de7b9620d219b82bc75f4e525b24c999",
+      "analysis_sha256": "e7b0ab305d794a8fbfcefd0bd2d63a0edf2945feef61c79d75e8fc20af6777fb",
+      "queue_id": "U0053"
+    },
+    {
+      "observation_id": "2cc7e37415edd7301a4546412831ecc0d729ceef67bac20516f2f8342e02109b",
+      "analysis_sha256": "1d45f25f2dc36b47d5209fe8a1b15fe3a7978331a59d64bb55260c6424642a22",
+      "queue_id": "U0054"
+    },
+    {
+      "observation_id": "eb0c36b64acd9d17e868927b24738033115686c33fdedf40954a4b45ae60b9d1",
+      "analysis_sha256": "65f83ebe1b0ee7c73dbc3e6aed12b4ceade5977ee683da4aee7c0f3bf3dd2a4d",
+      "queue_id": "U0055"
+    },
+    {
+      "observation_id": "8a6e3ec82c06a2fc48245e6e53a2b6dd31c1fba4653be61ea6aff070fc29894d",
+      "analysis_sha256": "a0a94760ae6968eabf5d39e104fb5eb7f1df9ed8ed999a45126ad03ffdac91f3",
+      "queue_id": "U0056"
+    },
+    {
+      "observation_id": "e2cb9cea51552a76ec5688608be57277ce8f20227002ad74a8fdc567936bb595",
+      "analysis_sha256": "e23a919a3269d2240f8c6b1356c1f1ddc9a1f3adc06383fd434f0fbbf3417acd",
+      "queue_id": "U0057"
+    },
+    {
+      "observation_id": "0190ae7e54cdb936d1985b94eceb70d705ff75201384081e24f7e31bf15151f6",
+      "analysis_sha256": "162d741fa47b751cca2477e3a1c40b92c7a19eb9b0d005cc22870b99aec8a219",
+      "queue_id": "U0058"
+    },
+    {
+      "observation_id": "6b2eeae48cae97f42fbd819d9ab19b2ce412f890914b9956a827ab76953584c0",
+      "analysis_sha256": "91eb23c4eeec6f45ddfa1ad17050a6e56d6438ec42abb0293da6ed90d4c405e4",
+      "queue_id": "U0059"
+    },
+    {
+      "observation_id": "3aa87a5064557f421ae817745ca61ee9cfd75b41a5a5d0990592bd3e80ad8914",
+      "analysis_sha256": "6567cf132498a8427d8e0b7699dbf24fef468f0ffbab0b498293bd5a180666d6",
+      "queue_id": "U0060"
+    },
+    {
+      "observation_id": "85b6ee1066060f3ee86245e6659431161b158c3ed680e6a1e1cc1135dbac92b9",
+      "analysis_sha256": "93b0fe4bb78ac77290ef11970341a8f5e6671751f25d69427405ccbc8a52397c",
+      "queue_id": "U0061"
+    },
+    {
+      "observation_id": "fb40fbf4bd21bba052949e401ccaa4528b506e0dd9519d5cc03a18ab0054f1bd",
+      "analysis_sha256": "00ae38896f09e93610301755393f4a4988a6f1846a773d3c6a41803ec3e7263a",
+      "queue_id": "U0062"
+    },
+    {
+      "observation_id": "d9848bd37db8a114e5208d3137f13b7251e34300a0ffe851f5e0261fadd6ed99",
+      "analysis_sha256": "6769665f95032987ff1da2627d63b9e2d44770e1884a5fdad0eb9bb759799e3b",
+      "queue_id": "U0063"
+    },
+    {
+      "observation_id": "39877e63063fede28fa74ea4809d96692eff1c4f95dd155e46e769f1e265b844",
+      "analysis_sha256": "9e89222bb3f175152d37f8cb3e894f10e1d214c080f0abd9b57483280c467197",
+      "queue_id": "U0064"
+    },
+    {
+      "observation_id": "06cadc1198ceb5cf52e1d6f82937350ecdacba066f8f7c2c141c566e557d8709",
+      "analysis_sha256": "b040589957dc40f8b416fec1a7e17403c7eb4d1145b67145720d312a0206147e",
+      "queue_id": "U0065"
+    },
+    {
+      "observation_id": "bb8849ab2274830da860f3ed4a9b84e8d2bbd17f048a2dd13d8ae0c83c9b9ec2",
+      "analysis_sha256": "8940ad0e768c28b2cc61dc7140ba58d483b14fd6325e03ad66693aae373e0e6c",
+      "queue_id": "U0066"
+    },
+    {
+      "observation_id": "22e35715b1f5b5636b9a166618bff4037fd5ca38269cb8fa347a99ad6a12589c",
+      "analysis_sha256": "a113329607dd4fd4e9f797b3f9990b0b094c7971aa3d8f2b6243fa9db186591b",
+      "queue_id": "U0067"
+    },
+    {
+      "observation_id": "84c18234eb76b2fb5c02063919a8cf3d9d698630c930e25a80298716f84cf2de",
+      "analysis_sha256": "fe39752103bb2bbee73b5f406932de5944305fcbd38b34440ec016cad1614f7a",
+      "queue_id": "U0068"
+    },
+    {
+      "observation_id": "5ecefaa49505926d3652c73fada86aa1a9161c4ecbed818af93797bad06fb286",
+      "analysis_sha256": "0ff77f8ae116a5f5524f2a63781f5520121666baa516e36706a1a9a7000048d0",
+      "queue_id": "U0069"
+    },
+    {
+      "observation_id": "a6f4b701d8d336a6d1e87ddf738f8d2c2ea52dbaee3fa774e7dfa6555b5b63d7",
+      "analysis_sha256": "63c1ee778c34e037a78c207a23e5ba697267e6f4a9182bd86b5396ad0ae27931",
+      "queue_id": "U0070"
+    },
+    {
+      "observation_id": "622b5850643d841c3a150dc85b7db6cef4dc8008dda6143358f1c6776773da23",
+      "analysis_sha256": "25053bd8286428335899d4a4befce4ecfb20aa5b101607810ee1f993583814e3",
+      "queue_id": "U0071"
+    },
+    {
+      "observation_id": "d8c91468d8bb940c80bf32c4a6a89d9bdbeb59ab16c01575d27e25da09d3c817",
+      "analysis_sha256": "6967a197494320ac8cc02a6bbfecdf0289157c02ca8a9873c84d13dcfbecf606",
+      "queue_id": "U0072"
+    },
+    {
+      "observation_id": "149ba0d05c4af6af33b12a0485f5a5cd4746858eb03d658399e84c326ea50b32",
+      "analysis_sha256": "b3600e86bea5849f4279c3154d27066483649db0bb292f7dfc1fd5f46d9e6ff3",
+      "queue_id": "U0073"
+    },
+    {
+      "observation_id": "bb6e4ea260e89a0ce1eb0f690922cd7a255fc0738a0f575217e2aee557baf3f2",
+      "analysis_sha256": "b7e3425cc1a5fde825ec7561728344a0c950ccc7a3b5bcc77c1f25c6f8965405",
+      "queue_id": "U0074"
+    },
+    {
+      "observation_id": "c1f9e2b3695b18de26d08215055f7b193987d8fdcecf4ff4c58dbfc8e36b93b6",
+      "analysis_sha256": "0351cb2240c969a037b4c46e7cfee5950c9c36a763041a2b1cb21e19f8287bdd",
+      "queue_id": "U0075"
+    },
+    {
+      "observation_id": "4dc89989968a4ef1970d1cdeb7672bc5da751e431726218715386e908bc0df63",
+      "analysis_sha256": "9893d5931fc24a4e6869c8baf9093722156aa9e9f20f8297545c07240b80263f",
+      "queue_id": "U0076"
+    },
+    {
+      "observation_id": "c98bba493561d13f599935c624b3ebe34dadde4b41c1e47fdced0475fd161027",
+      "analysis_sha256": "07ef964360be35f683c2b8b7695d1e1459c9165ba359b087ccf0a872c10e5451",
+      "queue_id": "U0077"
+    },
+    {
+      "observation_id": "519d031e7ad3e1cf8e6203cfb2fb8f2991c6211904ba1f644045517d006dd4ca",
+      "analysis_sha256": "7b44a7c4cb37c1bd28910fb483d839068ed986c2c428f708aae746eb56217647",
+      "queue_id": "U0078"
+    },
+    {
+      "observation_id": "55a21d4a8d9c28e0399b6b0506f509fb286a52e4ff79721bbd67162ef8f4f78c",
+      "analysis_sha256": "7f94c16ca6f8a5616bdb8027285f8f3d1477c2f4b9d1a86bdb34e96f5ec8a49e",
+      "queue_id": "U0079"
+    },
+    {
+      "observation_id": "65e4b367dc502f8b910deb7157d5035a2b32a63055c7d53b0dbb1bf617f6649a",
+      "analysis_sha256": "653de3133dd0fc51528cc13744392d1add1d5a3c951202685d48c501336aa517",
+      "queue_id": "U0080"
+    },
+    {
+      "observation_id": "05ef1cd105c2b622c2679e670f895df6fe58400cbd8b52d45c1ca569c8aa7a9c",
+      "analysis_sha256": "54f13a047917927e9ad2ea21001b1990d72086e014ef35eceb413d52d30065d6",
+      "queue_id": "U0081"
+    },
+    {
+      "observation_id": "4e8a03b0ce282fd19aa2225ee8f75397c8015ac55b03f269309413665a51360e",
+      "analysis_sha256": "1cf0fbd58a399d84b064907fc6b21e0debae2188a764bf9947b3c37f68356d46",
+      "queue_id": "U0082"
+    },
+    {
+      "observation_id": "aa28241ee15f347d3deeba16864216d04dae9e5235b2ab645cccb83c416e5fed",
+      "analysis_sha256": "bea7e7fdeaf510aecff52e2a0b3bd1a3b9de0ee0d1bb8819ffc335856e2d2827",
+      "queue_id": "U0083"
+    },
+    {
+      "observation_id": "a5fc162f6ccd4cc81e9177ee4ed78fd8d44f36f97912ded94e1fe2637bf946cf",
+      "analysis_sha256": "165f355c0b27e1701cd6a346fc31a81f524c78a2751c01554b9bb55f08342683",
+      "queue_id": "U0084"
+    },
+    {
+      "observation_id": "5254db979c24a21bdbe7d780f1f46e5f7a70709fd0d6dcda5650817c524b1efe",
+      "analysis_sha256": "2e49b1292ae4f7206ddce73b7b3d7d19601dc4bc2a0d025c060c873fc043cd68",
+      "queue_id": "U0085"
+    },
+    {
+      "observation_id": "9779b0e82b9d9c1f6488cc12f5ff0e576535b75dff41fa871d32d4d58aab54b7",
+      "analysis_sha256": "e440869c00ca066d9cf8574c5775b125409ca71c6771f962df3ba79565a782a9",
+      "queue_id": "U0086"
+    },
+    {
+      "observation_id": "8c470f7673a94ce415d37d76bdefde81752d87f046b805206df9d57421601897",
+      "analysis_sha256": "76f61ebab8b73d94af41637313e286ec167fc49adce922057604b5049c375f3c",
+      "queue_id": "U0087"
+    },
+    {
+      "observation_id": "5c45a0a0c5126585eace80bb46a16409ce0838979b7b0157c1451b1dbb236912",
+      "analysis_sha256": "4051efb77f77320445c604070d428a61402ff22d0ad066689d433d6ce4ced0fe",
+      "queue_id": "U0088"
+    },
+    {
+      "observation_id": "46747eeb12cc758e1af16232f057e1a5bc28e6e9dbf094ebe92c2a812651072e",
+      "analysis_sha256": "8c148f76d98fa71f8d32ad320030c78208a3fd01dcb6f1a1a5ea891c9ba3aab3",
+      "queue_id": "U0089"
+    },
+    {
+      "observation_id": "739acf6e2330c3c2c48bb32dd53a9d0823781fc1479574584dce1f7c794ea468",
+      "analysis_sha256": "8fc67cd98c55675c9b772e7981ecde36b7af4d4cfaf3bf9dd33147400f928f1f",
+      "queue_id": "U0090"
+    },
+    {
+      "observation_id": "94a80b556c4d66844ccfa9fc7e1e94a0108ffa918572da5126c69971fe079f95",
+      "analysis_sha256": "bb3fdb061fbba37ad9b8549ca3194b3fad4d41855e386f8f727d34d2d17d2a5e",
+      "queue_id": "U0091"
+    },
+    {
+      "observation_id": "0df5fb01801401ca19cacd214a47906e6471ee5a38b86ade8660e57825032606",
+      "analysis_sha256": "d1060c1fdf3751e93ffed46b7418752db31e56eb1c16d46700cbd9a51ecf2ac7",
+      "queue_id": "U0092"
+    },
+    {
+      "observation_id": "29650ef8bb92b5a5718b4551404981c80d41290e04a121717e03616c39b3bc89",
+      "analysis_sha256": "9e4e1e10d8f1263862c08fe7030d6331e2f74da3bcd4ba72ce98d451dfcbc99c",
+      "queue_id": "U0093"
+    },
+    {
+      "observation_id": "682184c01b8beaafe9b6f725246ce88285ce5ea9ed673fca8cf90bbadcda4676",
+      "analysis_sha256": "3485e8a2783f0349687ae4e6fa7226d5579b7884c16fe0a8bffaa74b9979deab",
+      "queue_id": "U0094"
+    },
+    {
+      "observation_id": "74872717b59992149cba6d3e215cbe21346a1e30080ab7502f5d050a769ac20d",
+      "analysis_sha256": "4b9b5c22f30fd32bea35ecbed01f201ad3764c393a6c997d21363221db550ece",
+      "queue_id": "U0095"
+    },
+    {
+      "observation_id": "cb8fb5dd1a95543eb1114ad381ddc1655594347c1e486857adcbbdb1b114efb9",
+      "analysis_sha256": "88f06e3400f1c7156f7d0cd9ad8bb582ed8b30e77ff821cbf74e5ed1f6fcc21f",
+      "queue_id": "U0096"
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [
+      {
+        "decision_id": "D0001",
+        "observation_digest": "29865c1b93b0bace505de8d1098189a8424c7b2c5ac21d09ac626af25b622617",
+        "trace_digest": "cd077be90131244791ed9acdfa601567e85d62fd091777fd4d53fa504af48f8e",
+        "surface": "만날",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.78"
+        },
+        "considered": [
+          {
+            "lemma": "만나다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "만날",
+            "pos": "adverb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "만나다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2bfc0a84555b70bea967331d3c4e317fde3e60819dbdb4b844d170c74be669a1",
+        "decision_sha256": "d0a50b0770cb82d152fa5ea341753d12905465e26ac0cb643340dedb1337f918"
+      },
+      {
+        "decision_id": "D0002",
+        "observation_digest": "2b692ca9ab597ef3f65ac6a343b47717ea55dbcf9e3bc45e5d6523d415302771",
+        "trace_digest": "8c5a337712cc13996ed74a88baaff542db14c08f4dc91abe3a487335081b8ac2",
+        "surface": "먹을",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.103"
+        },
+        "considered": [
+          {
+            "lemma": "먹",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "먹다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "먹다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "2b8025908199ddb647fb00b1623c171c78ac6195e0af20acc1b12e7126523713",
+        "decision_sha256": "e184efc4c80320d22e114638fe17cdf82b51b1bd18db303bf6ba5172053897e8"
+      },
+      {
+        "decision_id": "D0003",
+        "observation_digest": "2e42c52df0f7b42ae85e8c60e7b0473da6a880145f39755eded3526e3df52172",
+        "trace_digest": "736f9bad84bc76e3d343fe2116347f1ec7c1868e2f2147a18398eeb7968eb460",
+        "surface": "모른다",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000101.1#WARW2500000101.1.53"
+        },
+        "considered": [
+          {
+            "lemma": "모르다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "모른다",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "모르다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "922f526201555e869eaedc6c3a4831a9c1e0899ec63ed51156c65a908252a500",
+        "decision_sha256": "ee07eb11ae55bb9f4e11d46adde67f32ab68acc9c0b1689803c9ecd2c13d3c53"
+      },
+      {
+        "decision_id": "D0004",
+        "observation_digest": "3ecf05fbe1d5c95b08bdc882aaac9e9b1379f58995d987da78802e219543b9f8",
+        "trace_digest": "b6995b3da70ef26102c9144b586af43b8f8d3cbd3487d89451babc50b7335b0b",
+        "surface": "보이는",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.95"
+        },
+        "considered": [
+          {
+            "lemma": "보다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "보이",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "보이다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "보이다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "8435cb3f5c2cc86b55c6ba133f0bcabd4be567fd053a99cb1252aca60d7ced32",
+        "decision_sha256": "0f3f3a3cb001297fae7345f28254143442b22c41ade2715ec48339daa5e0390b"
+      },
+      {
+        "decision_id": "D0005",
+        "observation_digest": "a6ca29928bdbf090d3cef114ce88b6cfb59596ba9cc3783ef4aad9be720d35d6",
+        "trace_digest": "d0e12ed3324e607a580f9cb6f672bfdea827f92c7aa346727569902fcd22e6ba",
+        "surface": "맞지",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.278"
+        },
+        "considered": [
+          {
+            "lemma": "맞다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "맞지",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "맞다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "884b005ebdea0e5e4810fa71b2af0fd740723dfb9a0ccd57a884b0555c3c34b2",
+        "decision_sha256": "acd468563e4f7d0d7cfdf54e9593f1d8ea6b2e2ad3eb384df2f78158c65fbcec"
+      },
+      {
+        "decision_id": "D0006",
+        "observation_digest": "aa4477d2f8f9b470e15b3f1cd8ddbb0cd9ead4f911d004565e8eba389f51d5bf",
+        "trace_digest": "f69526f63867451e9cc1ec6188db777588e1aaae6b9fdf242495fd4614eea95b",
+        "surface": "사람",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.26"
+        },
+        "considered": [
+          {
+            "lemma": "사다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "사람",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "사람",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "be4f9726c92ba8b672605b910d559a348274280ae201457b1958cdc8ee7ce2aa",
+        "decision_sha256": "2694cdb17306af4d0c31eb5ee1028cc61b6003b0b49e154095ba737cf952779d"
+      },
+      {
+        "decision_id": "D0007",
+        "observation_digest": "c3243e44d41ee261dd952d0cf3a0a56f45439fc575eb843b5d6f50e5d5ceb0cd",
+        "trace_digest": "8c218530a38ec6abb97bfac429bd4af170c733e6e514889bb591a4b9c9bb2539",
+        "surface": "모르게",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.1003"
+        },
+        "considered": [
+          {
+            "lemma": "모르게",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "모르다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "모르다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "05fa5b8406c4a23f997c7ed639bb72d57796498de70f42e26c55d29414dcbccc",
+        "decision_sha256": "ca34529da8007a21f9127ac1e56d1e5eaf564bfc1cc38af92b060c1079d2fd43"
+      },
+      {
+        "decision_id": "D0008",
+        "observation_digest": "d72de3edab254f9cf0f847c2e51188e0066b5d1b15a912fc947fd129cd204ae8",
+        "trace_digest": "37c851c5d2b1e7944dd6cfaaee237392b4eacb43d986af39428cc7f1145f6c95",
+        "surface": "맞아",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.162"
+        },
+        "considered": [
+          {
+            "lemma": "맞다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "맞아",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "맞다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "46b006f3258e60484277452b31e3524ebb9191d1bffaa24e3c005083ca21dc3d",
+        "decision_sha256": "cb0493523a3fa84fc2071ab5490f420800e79a04474f36f031d6f07b61ed2068"
+      },
+      {
+        "decision_id": "D0009",
+        "observation_digest": "d79673ecfbdb8644108301603f4c849567f9917505e08c61cbd451c7c938a66b",
+        "trace_digest": "06371eb49e048fb14a0089903c3eef4f242d4db8a654f3df7d09a900f67dcde4",
+        "surface": "만난",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.119"
+        },
+        "considered": [
+          {
+            "lemma": "만나",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          },
+          {
+            "lemma": "만나다",
+            "pos": "verb",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "만난",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "만나다",
+        "pos": "verb",
+        "reason_code": "context_supports_reading",
+        "source_digest": "45bfa6db315439e25c579a47baccbccdb8bd67227dc286748d28f54a2c12c81c",
+        "decision_sha256": "04b6bb62f9354e525414831f1fb1cf344f89c5e9464137806f131f012e166e2c"
+      },
+      {
+        "decision_id": "D0010",
+        "observation_digest": "e5755d8fee48cca68c9a7a56d97a6dbad2195759476f870eb22ff4a09c3e8fc2",
+        "trace_digest": "bd4eab3e480f93364f4e31c69cccc47025a544c79497ef2a1eafb7ff3c172fe5",
+        "surface": "모습",
+        "evidence": {
+          "kind": "corpus-paragraph",
+          "ref": "WARW2500000091.1#WARW2500000091.1.18"
+        },
+        "considered": [
+          {
+            "lemma": "모습",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_top",
+              "mecab"
+            ]
+          },
+          {
+            "lemma": "습",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "method": "m9-local-context-review-v1",
+        "author": {
+          "kind": "agent-self-check",
+          "agent": "claude"
+        },
+        "independent": false,
+        "human_reviewed": false,
+        "outcome": "context_confirmed",
+        "lemma": "모습",
+        "pos": "noun",
+        "reason_code": "context_supports_reading",
+        "source_digest": "d48b866bcf88b442c7db0a3ca7c9d593f7d232701728b9fae9d17abff64b2b8c",
+        "decision_sha256": "c4e5865dad3c67cab20a51b3ff25c43bf82585bb4aba9ab3764739d01f26ff51"
+      }
+    ],
+    "decisions_sha256": "2107d7fd16759316e106d680690ea364c131728e5a5904891507c4d7b1b414a1"
+  }
+}

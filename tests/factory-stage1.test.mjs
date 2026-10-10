@@ -195,7 +195,7 @@ test('analysis without a reliable lemma/POS is preserved for verification, never
   assert.deepEqual(manifest.unresolved_observations, [{ surface: '낯선', evidence: { kind: 'corpus-paragraph', ref: 'd5#p1' }, holds: ['analysis_unsupported'] }]);
   assert.equal(summary.metrics.unique_lemmas, 1);
   assert.equal(summary.metrics.unresolved_observations, 1);
-  await assert.rejects(() => produce(evidenceDoc([cand('낯설다', 'adjective', [hit('d5', 'p1', '낯선')])])), /no unprocessed lemmas/);
+  await assert.rejects(() => produce(evidenceDoc([cand('낯설다', 'adjective', [hit('d5', 'p1', '낯선')])])), /source exhausted/);
 });
 
 test('a candidate without a located paragraph is held on its surface observation', async () => {
@@ -310,8 +310,8 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
   await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
   const writeEvidence = (candidates) => writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(candidates)));
   await writeEvidence([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])]);
-  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
-  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, selectPage: async () => evidenceDoc([], { selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) };
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1', '--max-candidates', '1'];
 
   const dry = await runStage1([...args, '--dry-run'], deps);
   await assert.rejects(() => readdir(path.join(root, 'data/candidates')), { code: 'ENOENT' });
@@ -320,18 +320,18 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
   assert.equal(first.manifest.batch_id, 'C000001');
   assert.equal(first.candidatesText, dry.candidatesText);
   assert.deepEqual((await readdir(path.join(root, 'data/candidates/C000001'))).sort(), ['candidates.jsonl', 'manifest.json']);
-  assert.deepEqual(await readdir(path.join(root, 'data')).then((names) => names.sort()), ['candidates', 'canonical']);
+  assert.deepEqual(await readdir(path.join(root, 'data')).then((names) => names.sort()), ['candidate-history', 'candidates', 'canonical']);
   assert.equal(await readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'utf8'), first.candidatesText);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
   // Same evidence again: its lemma is already produced, so nothing is regenerated.
-  await assert.rejects(() => runStage1(args, deps), /no unprocessed lemmas/);
+  await assert.rejects(() => runStage1(args, deps), /source exhausted/);
   assert.deepEqual((await readdir(path.join(root, 'data/candidates'))).sort(), ['C000001']);
   // New evidence adds one more lemma and more evidence for a produced one: only the new headword is produced.
   await writeEvidence([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한'), hit('d1', 'p2', '짠해서')]), cand('걸음', 'noun', [hit('d3', 'p1', '걸음')])]);
   const next = await runStage1(args, deps);
   assert.equal(next.manifest.batch_id, 'C000002');
   assert.deepEqual(next.rows.map((row) => [row.candidate_id, row.input]), [['C000002-0001', '걸음']]);
-  assert.equal(next.summary.skippedProducedLemmas, 1);
+  assert.equal(next.summary.skippedProducedLemmas, 0); // excluded before analysis
   assert.deepEqual(await validateFactoryRepository({ root }), []);
 });
 
@@ -347,8 +347,8 @@ test('Stage 1 consumes real-shape cached selections, rejects malformed rows, and
     candidates: [{ proposed_lemma: '짠하다', proposed_pos: 'adjective', coverage_normalized_key: '짠하다' }],
   };
   const sourceOptions = { repositoryDirectory: root, cachePaths: cache.cachePaths };
-  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
-  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, selectPage: async () => evidenceDoc([], { selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) };
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1', '--max-candidates', '1'];
   const writeBoundEvidence = async (manifest) => {
     await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify(manifest));
     await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([candidate], {
@@ -379,7 +379,7 @@ test('Stage 1 consumes real-shape cached selections, rejects malformed rows, and
   assert.deepEqual(manifest.lemmas, ['짠하다']);
   assert.deepEqual(manifest.source_artifacts.map(({ path: source }) => source), ['runs/T000001/candidate-selection.json']);
   await writeBoundEvidence(manifest);
-  await assert.rejects(() => runStage1(args, deps), /no unprocessed lemmas/u);
+  await assert.rejects(() => runStage1(args, deps), /source exhausted/u);
 });
 
 test('Stage 1 consumer rejects a digest-valid nonempty exclusion manifest without source artifacts', async () => {
@@ -407,7 +407,7 @@ test('Stage 1 consumer rejects a digest-valid nonempty exclusion manifest withou
     },
     orchestration: { exclusion_manifest_sha256: exclusionSha256 },
   })));
-  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, selectPage: async () => evidenceDoc([], { selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) };
   await assert.rejects(() => runStage1([
     '--evidence', cache.evidenceArgument,
     '--task-id', 'T000001',
@@ -426,9 +426,9 @@ test('post-write validation is base-aware like CI: merged reviews are compared t
   git('init', '-q');
   git('add', 'data/canonical');
   git('commit', '-q', '-m', 'base');
-  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--policy', 'provider-resolution-v1'];
+  const args = ['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--policy', 'provider-resolution-v1', '--max-candidates', '1'];
   const seen = [];
-  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, validate: async (options) => { seen.push(options.base); return validateFactoryRepository(options); } };
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, selectPage: async () => evidenceDoc([], { selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }), validate: async (options) => { seen.push(options.base); return validateFactoryRepository(options); } };
   const generated = await runStage1([...args, '--base-ref', 'HEAD'], deps);
   assert.equal(generated.manifest.producer_revision, git('rev-parse', 'HEAD').toString().trim());
   assert.equal(seen.length, 1);
@@ -462,7 +462,7 @@ test('Git-backed Stage 1 refuses an unresolved HEAD even when base-ref is none',
     await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
     await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('짠하다', 'adjective', [hit('d1', 'p1', '짠한')])])));
     execFileSync('git', ['init', '-q'], { cwd: root, stdio: 'pipe' });
-    const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
+    const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, selectPage: async () => evidenceDoc([], { selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) };
     await assert.rejects(() => runStage1([
       '--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1',
     ], deps), /Git-backed Stage 1 checkout has no resolvable HEAD/u);
@@ -475,8 +475,8 @@ test('Git-backed Stage 1 refuses an unresolved HEAD even when base-ref is none',
 test('CLI fails closed without permission, outside data/reference, on bad arguments and on a missing evidence file', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-'));
   const cache = await taskCacheFor(root);
-  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {} };
-  const base = ['--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1'];
+  const deps = { root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {}, selectPage: async () => evidenceDoc([], { selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) };
+  const base = ['--task-id', 'T000001', '--base-ref', 'none', '--policy', 'provider-resolution-v1', '--max-candidates', '1'];
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/x.json', ...base], { ...deps, permission: async () => { throw new Error('Corpus use is not authorized'); } }), /not authorized/);
   await assert.rejects(() => runStage1(['--evidence', path.join(root, 'elsewhere.json'), ...base], deps), /must be inside/u);
   await assert.rejects(() => runStage1(['--evidence', 'data/reference/missing.json', ...base], deps), /cannot read evidence/);

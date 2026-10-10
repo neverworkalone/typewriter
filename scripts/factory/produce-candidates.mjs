@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { execFileSync, spawn } from 'node:child_process';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,9 @@ import { createMecabProvider } from './mecab-provider.mjs';
 import { assertCorpusPermission } from '../reference/corpus-index.mjs';
 import { parseJsonl, sha256Hex } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
+import { publishArtifacts, recoverArtifacts } from './artifact-transaction.mjs';
+import { refillCandidateBatch } from './refill.mjs';
+import { COMPACT_CONTRACT, HISTORY_DIRECTORY, loadTrash, failedProposalLemmas, mergeUnresolved, compactManifest, TRASH_DIRECTORY, chunkText, jsonText, digest } from './permanent-trash.mjs';
 import { validateFactoryRepository, loadBaseManifests, loadCanonicalEntries } from './validate.mjs';
 import {
   assertWithinDirectory,
@@ -84,6 +87,7 @@ export function parseArguments(argv) {
   }
   if (!options.evidence) throw new Stage1Error(['--evidence <cache runs/<run>/candidate-evidence.json> is required']);
   if (!options.taskId) throw new Stage1Error(['--task-id T000000 is required']);
+  if (!Number.isSafeInteger(options.maxCandidates) || options.maxCandidates < 1 || options.maxCandidates > 500) throw new Stage1Error(['--max-candidates must be an integer from 1 to 500; production defaults to 500 final valid lemmas']);
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/u.test(options.taskId) || options.taskId === '.' || options.taskId === '..') {
     throw new Stage1Error(['--task-id must be a simple path-safe identifier']);
   }
@@ -308,7 +312,7 @@ async function buildContextReviewPack({ queue, contextSource }) {
 
 export async function runStage1(argv, {
   root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource, contextDatabasePath,
-  validate = validateFactoryRepository, cachePaths = resolveTypewriterCachePaths(),
+  validate = validateFactoryRepository, cachePaths = resolveTypewriterCachePaths(), selectPage,
 } = {}) {
   const options = parseArguments(argv);
   let evidencePath;
@@ -333,6 +337,9 @@ export async function runStage1(argv, {
     throw new Stage1Error([`${error.message}. Use the shared ~/.cache/typewriter/runs/<run-id>/ path.`]);
   }
   const taskRunDirectory = path.join(cachePaths.runs, options.taskId);
+  for (const [key, flag] of [['ensembleTrace', '--ensemble-trace'], ['attemptLog', '--attempt-log'], ['contextReviewPack', '--context-review-pack']]) {
+    if (options[key]) taskArtifactPath(options[key], flag, taskRunDirectory, cachePaths);
+  }
   await permission();
   let evidence;
   try {
@@ -342,10 +349,31 @@ export async function runStage1(argv, {
   }
   const sourceExcludedLemmas = await evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths });
   const canonicalEntries = await loadCanonicalEntries(root);
+  const producerRevision = producerRevisionFor(root);
+  if (!options.dryRun) {
+    const recovered = await recoverArtifacts({ root, journalDirectory: path.join(taskRunDirectory, 'stage1-publish'),
+      validate: async () => {
+        const journal = JSON.parse(await readFile(path.join(taskRunDirectory, 'stage1-publish/transaction.json'), 'utf8'));
+        const artifact = journal.entries.find((entry) => /^data\/candidates\/C\d{6}\/manifest.json$/.test(entry.path));
+        const manifest = artifact && JSON.parse(artifact.after);
+        if (!manifest || manifest.task_id !== options.taskId || manifest.production?.initial_evidence_sha256 !== digest(JSON.stringify(evidence))
+          || manifest.production.target !== options.maxCandidates || manifest.producer_revision !== (producerRevision ?? undefined)) return ['publication recovery inputs differ from the original run'];
+        return validate({ root, base: options.baseRef === 'none' ? null : loadBaseManifests(options.baseRef, root), canonicalEntries });
+      } });
+    if (recovered) {
+      const entry = [...recovered].find(([file]) => /^data\/candidates\/C\d{6}\/manifest.json$/.test(file));
+      const manifest = JSON.parse(entry[1]);
+      await rm(path.join(taskRunDirectory, 'stage1-refill-checkpoint.json'), { force: true });
+      log(JSON.stringify({ batch_id: manifest.batch_id, recovered: true }));
+      return { manifest, candidatesText: recovered.get(`data/candidates/${manifest.batch_id}/candidates.jsonl`) };
+    }
+  }
   const batchId = allocateBatchId(await knownBatchIds(root, options.baseRef));
   const producedLemmaKeys = await producedLemmas(root, options.baseRef);
-  const producerRevision = producerRevisionFor(root);
-  for (const lemma of sourceExcludedLemmas) producedLemmaKeys.add(lemma);
+  const trash = await loadTrash(root);
+  const failedProposals = failedProposalLemmas(trash);
+  const proposalExclusions = new Set([...producedLemmaKeys, ...failedProposals, ...sourceExcludedLemmas]);
+  for (const lemma of sourceExcludedLemmas) if (!failedProposals.has(lemma)) producedLemmaKeys.add(lemma);
   let source = contextSource;
   const ownSource = !source && (options.contextProposals || options.contextReviewPack);
   if (ownSource) {
@@ -380,7 +408,13 @@ export async function runStage1(argv, {
       try { assertWithinDirectory(root, filePath, { label: '--context-replay repository input' }); }
       catch (error) { throw new Stage1Error([error.message]); }
     }
-    const file = await readJson(filePath, 'context replay record');
+    let file = await readJson(filePath, 'context replay record');
+    if (file.contract === COMPACT_CONTRACT) {
+      if (file.archive?.path !== `${HISTORY_DIRECTORY}/${file.batch_id}.json`) throw new Stage1Error(['invalid compact context replay reference']);
+      const historyText = await readFile(path.join(root, file.archive.path), 'utf8');
+      if (digest(historyText) !== file.archive.sha256) throw new Stage1Error(['compact context replay history digest mismatch']);
+      file = JSON.parse(historyText);
+    }
     contextReplay = Array.isArray(file) ? file : file.context_fallback?.decisions;
     if (!Array.isArray(contextReplay)) throw new Stage1Error(['context replay record must be a manifest or a decisions array']);
   }
@@ -406,7 +440,41 @@ export async function runStage1(argv, {
   };
   let produced;
   try {
-    produced = await produceCandidateBatch(produceArguments);
+    if (options.dryRun || options.contextReviewPack) produced = await produceCandidateBatch({ ...produceArguments,
+      evidence: { ...evidence, candidates: evidence.candidates.filter((row) => !proposalExclusions.has(row.proposed_lemma)) } });
+    else {
+      const selector = selectPage ?? (async ({ exclusions, page, binding }) => {
+        const exclusionPath = path.join(taskRunDirectory, `refill-exclusions-${batchId}-${page}.json`);
+        const payload = { lemmas: [...exclusions].sort(), schema_version: 'm9-reviewed-lemma-exclusions-v1',
+          source_artifacts: [{ path: 'refill-checkpoint', sha256: binding }] };
+        await mkdir(taskRunDirectory, { recursive: true });
+        await writeFile(exclusionPath, jsonText({ ...payload, exclusion_sha256: digest(JSON.stringify(payload)) }), 'utf8');
+        const output = path.join(taskRunDirectory, `refill-${batchId}-${String(page).padStart(6, '0')}`);
+        const outputEvidence = path.join(output, 'candidate-evidence.json');
+        // An interruption after page creation reuses that bound page. The refill
+        // loop verifies snapshot/proposal progress before accepting it.
+        try { return JSON.parse(await readFile(outputEvidence, 'utf8')); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+        // This page belongs exclusively to the bound task/batch checkpoint. A
+        // failed selector may leave partial local output; regenerate that page
+        // rather than treating an incomplete directory as exhaustion.
+        await rm(output, { recursive: true, force: true });
+        const command = [path.join(root, 'scripts/reference/run-corpus-lemma-pilot.mjs'),
+          '--candidate-limit', String(options.maxCandidates), '--include-canonical-lemmas',
+          '--reuse-analysis-from', path.dirname(evidencePath), '--output-directory', output,
+          '--batch-id', options.taskId, '--exclude-lemma-source', exclusionPath,
+          ...(options.python ? ['--python', options.python] : [])];
+        await new Promise((resolve, reject) => {
+          const child = spawn(process.execPath, command, { cwd: root, stdio: 'inherit' });
+          child.on('error', reject);
+          child.on('close', (code) => code === 0 ? resolve() : reject(new Stage1Error([`refill selector failed with exit ${code}; no partial batch published`])));
+        });
+        return JSON.parse(await readFile(outputEvidence, 'utf8'));
+      });
+      produced = await refillCandidateBatch({ initialEvidence: evidence, arguments: produceArguments, exclusions: proposalExclusions,
+        checkpointPath: path.join(taskRunDirectory, 'stage1-refill-checkpoint.json'), selectPage: selector,
+        progress: (message) => log(JSON.stringify({ phase: 'refill', ...message })) });
+    }
     if (options.contextReviewPack) {
       const pack = await buildContextReviewPack({ queue: produced.manifest.unresolved_observations, contextSource: source });
       const outputPath = taskArtifactPath(options.contextReviewPack, '--context-review-pack', taskRunDirectory, cachePaths);
@@ -432,23 +500,19 @@ export async function runStage1(argv, {
   }
   const target = path.join(root, 'data/candidates', batchId);
   if (!options.dryRun) {
-    await mkdir(path.join(root, 'data/candidates'), { recursive: true });
-    const staging = await mkdtemp(path.join(root, 'data/candidates', '.stage1-'));
-    try {
-      await writeFile(path.join(staging, 'candidates.jsonl'), produced.candidatesText, 'utf8');
-      await writeFile(path.join(staging, 'manifest.json'), `${JSON.stringify(produced.manifest, null, 2)}\n`, 'utf8');
-      await rename(staging, target); // fails when the batch directory already exists: batches are immutable
-    } catch (error) {
-      await rm(staging, { recursive: true, force: true });
-      throw error;
-    }
+    const merged = mergeUnresolved(trash, [produced.manifest]);
+    const compact = compactManifest(produced.manifest, merged.references.get(batchId));
+    compact.manifest.production = produced.production;
+    const files = new Map([...merged.changed].map((file) => [`${TRASH_DIRECTORY}/${file}`, chunkText(merged.chunks.get(file))]));
+    files.set(compact.manifest.archive.path, compact.historyText);
+    files.set(`data/candidates/${batchId}/candidates.jsonl`, produced.candidatesText);
+    files.set(`data/candidates/${batchId}/manifest.json`, jsonText(compact.manifest));
     // Same base comparison as the CI validator, so already-merged reviews are not re-validated as new work.
     const base = options.baseRef === 'none' ? null : loadBaseManifests(options.baseRef, root);
-    const errors = await validate({ root, base, canonicalEntries });
-    if (errors.length) {
-      await rm(target, { recursive: true, force: true });
-      throw new Stage1Error(errors);
-    }
+    await publishArtifacts({ root, files, journalDirectory: path.join(taskRunDirectory, 'stage1-publish'),
+      validate: () => validate({ root, base, canonicalEntries }) });
+    await rm(path.join(taskRunDirectory, 'stage1-refill-checkpoint.json'), { force: true });
+    produced.manifest = compact.manifest;
   }
   let comparison;
   if (options.compareKiwiOnly) {
