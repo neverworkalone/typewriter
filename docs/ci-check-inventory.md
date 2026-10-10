@@ -106,7 +106,7 @@ checks**; the scale benchmark is skipped. This removes 8 selected checks,
 including the release-scale benchmark, while leaving Normal unchanged.
 
 The representative local `ci:normal` run on the 12,312-record checkout
-measured **140.677 seconds**, with one current-revision SQLite build and no
+measured **140.304 seconds**, with one current-revision SQLite build and no
 child builds. This is a local measurement, while the baseline is a
 GitHub-hosted run that had not finished at the recorded snapshot. The two
 elapsed values are not a controlled wall-time comparison, so no percentage
