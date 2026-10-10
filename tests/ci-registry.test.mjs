@@ -640,6 +640,14 @@ test('Deep gate separates validated data from affected contracts and fails close
   }
 
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs'])), [benchmarkId]);
+  for (const pathValue of [
+    'src/runtime/dictionary-contract.js',
+    'src/runtime/sqlite-query.js',
+    'src/runtime/search-query.js',
+    'src/runtime/dictionary-validation.js',
+  ]) {
+    assert.deepEqual(deepCheckIds(classifyDeepGatePaths([pathValue])), [benchmarkId], pathValue);
+  }
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['config/ci-level-evidence.json'])), [benchmarkId]);
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['tests/target-inventory.test.mjs'])), [targetInventoryId]);
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['tests/m5-12a.test.mjs'])), [m512aId]);

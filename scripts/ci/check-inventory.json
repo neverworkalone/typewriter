@@ -3301,6 +3301,10 @@
         "scripts/benchmark",
         "scripts/build",
         "scripts/normalize",
+        "src/runtime/dictionary-contract.js",
+        "src/runtime/dictionary-validation.js",
+        "src/runtime/search-query.js",
+        "src/runtime/sqlite-query.js",
         "schema",
         "config/ci-level-evidence.json",
         "tests/scale-benchmark.test.mjs"

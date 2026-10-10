@@ -4,11 +4,55 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { CI_CATEGORIES, registerCheck } from '../scripts/ci/registry.mjs';
 import { classifyDeepGateDiff } from '../scripts/ci/deep-gate.mjs';
 import { materializeHistoricalInputs, runChecks, runCli, runLevel } from '../scripts/ci/run-category.mjs';
 import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
+
+const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+
+function workflowStepRun(workflow, stepName, { changesOutcome, deepMode, runLevel, runDeep }) {
+  const step = workflow.split(`      - name: ${stepName}\n`)[1]
+    ?.split('\n      - name: ')[0];
+  assert.ok(step, `workflow must define ${stepName}`);
+  const condition = step.match(/^\s+if: \$\{\{ (.+) \}\}$/mu)?.[1];
+  const run = step.match(/^\s+run: (.+)$/mu)?.[1];
+  assert.ok(condition, `${stepName} must have an explicit gate condition`);
+  assert.ok(run, `${stepName} must run a concrete command`);
+
+  const selectiveCondition = "steps.changes.outcome == 'success' && steps.changes.outputs.deep_mode == 'selective'";
+  const fullCondition = "steps.changes.outcome != 'success' || steps.changes.outputs.deep_mode == 'full'";
+  const normalCondition = "steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'normal' && steps.changes.outputs.run_deep != 'true'";
+  if (stepName === 'Normal validation (fast checkpoint + continuation)') {
+    assert.equal(condition, normalCondition);
+    return changesOutcome === 'success' && runLevel === 'normal' && runDeep !== 'true' ? run : undefined;
+  }
+  if (stepName === 'Selective Deep validation (Normal + affected current Deep)') {
+    assert.equal(condition, selectiveCondition);
+    return changesOutcome === 'success' && deepMode === 'selective' ? run : undefined;
+  }
+  if (stepName === 'Full Deep validation (Normal + all current Deep)') {
+    assert.equal(condition, fullCondition);
+    return changesOutcome !== 'success' || deepMode === 'full' ? run : undefined;
+  }
+  assert.fail(`unexpected workflow gate step: ${stepName}`);
+}
+
+function workflowCommandArgv(command, { baseSha, headSha }) {
+  const match = command.match(/^pnpm run (ci:[\w-]+)(?: (.*))?$/u);
+  assert.ok(match, `workflow gate must invoke a registered pnpm CI command: ${command}`);
+  const args = (match[2]?.match(/"[^"]*"|'[^']*'|\S+/gu) ?? []).map((argument) => {
+    const unquoted = argument.replace(/^(?:"([^"]*)"|'([^']*)')$/u, (_whole, doubleQuoted, singleQuoted) => (
+      doubleQuoted ?? singleQuoted
+    ));
+    if (unquoted === '$BASE_SHA') return baseSha;
+    if (unquoted === '$HEAD_SHA') return headSha;
+    return unquoted;
+  });
+  return [match[1].slice('ci:'.length), ...args];
+}
 
 test('runner stops at the first failed check regardless of check kind', async () => {
   const executed = [];
@@ -413,11 +457,9 @@ test('ci:all completes Normal before Deep checks in the same domain and preserve
   }
 });
 
-test('ci:pr CLI recomputes exact-head impact and runs Normal before only the selected Deep check', async (t) => {
+test('PR workflow routes an affected exact-head Deep gate into ci:pr and only its selected check', async (t) => {
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-pr-selection-'));
   t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
-  const ledgerPath = path.join(temporaryDirectory, 'ledger.jsonl');
-  await writeFile(ledgerPath, '', 'utf8');
   const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
   const canonicalRevision = 'synthetic-pr-current-revision';
   const normalCheck = registerCheck({
@@ -434,66 +476,172 @@ test('ci:pr CLI recomputes exact-head impact and runs Normal before only the sel
     canonical: { label: 'Synthetic canonical gates', checks: [normalCheck, selectedDeep, unrelatedDeep] },
   };
   const executed = [];
-
-  await runCli(['pr', '--', '--base', 'a'.repeat(40), '--head', 'b'.repeat(40)], {
-    getCurrentHead: () => 'b'.repeat(40),
-    classify: (base, head) => {
-      assert.equal(base, 'a'.repeat(40));
-      assert.equal(head, 'b'.repeat(40));
-      return classifyDeepGateDiff(base, head, {
-        runGit: (args) => {
-          assert.equal(args[0], 'diff');
-          assert.ok(args.includes('--name-only'));
-          return Buffer.from('scripts/benchmark/sqlite-runtime.mjs\0');
-        },
-      });
-    },
-    categories,
-    levels: { fast: ['canonical'], pr: ['canonical'] },
-    createSession: async () => ({
-      canonicalContext: {
-        contractVersion: 'synthetic-context-v1',
-        canonicalDirectory,
-        canonicalRevision,
-        fileCount: 1,
-        recordCount: 1,
-        senseCount: 1,
-        relationCount: 0,
-        candidateCount: 1,
-        startCount: 1,
-        referenceOnlyCount: 0,
-        expressionCount: 0,
-        searchFormCount: 1,
-        statistics: {},
-        metrics: { sqlite_build_count: 0 },
+  const baseSha = 'a'.repeat(40);
+  const headSha = 'b'.repeat(40);
+  const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
+  for (const changedPath of [
+    'scripts/benchmark/sqlite-runtime.mjs',
+    'src/runtime/dictionary-contract.js',
+    'src/runtime/sqlite-query.js',
+    'src/runtime/search-query.js',
+    'src/runtime/dictionary-validation.js',
+  ]) {
+    const scenarioDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-pr-scenario-'));
+    t.after(() => rm(scenarioDirectory, { recursive: true, force: true }));
+    const ledgerPath = path.join(scenarioDirectory, 'ledger.jsonl');
+    await writeFile(ledgerPath, '', 'utf8');
+    executed.length = 0;
+    const impact = classifyDeepGateDiff(baseSha, headSha, {
+      runGit: (args) => {
+        assert.equal(args[0], 'diff');
+        assert.ok(args.includes('--name-only'));
+        return Buffer.from(`${changedPath}\0`);
       },
-      completedChecks: new Set(),
-      temporaryDirectory,
-      processMetrics: { path: ledgerPath },
-      phase: 'normal',
-    }),
-    log: () => {},
-    execute: async (command, context, check) => {
-      executed.push(`${context.phase}:${check.label}`);
-      if (check === normalCheck) {
-        await appendFile(ledgerPath, `${JSON.stringify({
-          type: 'sqlite-build',
-          pid: process.pid,
-          count: 1,
-          canonical_revision: canonicalRevision,
-          canonical_directory: canonicalDirectory,
-          phase: 'normal',
-        })}\n`);
-        context.canonicalContext.metrics.sqlite_build_count += 1;
+    });
+    assert.equal(impact.deepMode, 'selective', changedPath);
+    const workflowRun = workflowStepRun(
+      workflow,
+      'Selective Deep validation (Normal + affected current Deep)',
+      { changesOutcome: 'success', deepMode: impact.deepMode },
+    );
+    assert.equal(workflowStepRun(
+      workflow,
+      'Full Deep validation (Normal + all current Deep)',
+      { changesOutcome: 'success', deepMode: impact.deepMode },
+    ), undefined);
+    const runnerArgv = workflowCommandArgv(workflowRun, { baseSha, headSha });
+    assert.deepEqual(runnerArgv, ['pr', '--', '--base', baseSha, '--head', headSha]);
+
+    await runCli(runnerArgv, {
+      getCurrentHead: () => headSha,
+      classify: (base, head) => {
+        assert.equal(base, baseSha);
+        assert.equal(head, headSha);
+        return impact;
+      },
+      categories,
+      levels: { fast: ['canonical'], pr: ['canonical'] },
+      createSession: async () => ({
+        canonicalContext: {
+          contractVersion: 'synthetic-context-v1',
+          canonicalDirectory,
+          canonicalRevision,
+          fileCount: 1,
+          recordCount: 1,
+          senseCount: 1,
+          relationCount: 0,
+          candidateCount: 1,
+          startCount: 1,
+          referenceOnlyCount: 0,
+          expressionCount: 0,
+          searchFormCount: 1,
+          statistics: {},
+          metrics: { sqlite_build_count: 0 },
+        },
+        completedChecks: new Set(),
+        temporaryDirectory: scenarioDirectory,
+        processMetrics: { path: ledgerPath },
+        phase: 'normal',
+      }),
+      log: () => {},
+      execute: async (command, context, check) => {
+        executed.push(`${context.phase}:${check.label}`);
+        if (check === normalCheck) {
+          await appendFile(ledgerPath, `${JSON.stringify({
+            type: 'sqlite-build',
+            pid: process.pid,
+            count: 1,
+            canonical_revision: canonicalRevision,
+            canonical_directory: canonicalDirectory,
+            phase: 'normal',
+          })}\n`);
+          context.canonicalContext.metrics.sqlite_build_count += 1;
+        }
+        assert.ok(command.args.length > 0);
+      },
+    });
+
+    assert.deepEqual(executed, [
+      'normal:synthetic Normal completeness gate',
+      `deep:${selectedDeep.label}`,
+    ], changedPath);
+  }
+
+  const canonicalPath = 'data/canonical/pilot.jsonl';
+  const canonicalFile = await readFile(path.resolve(TEST_DIRECTORY, '../', canonicalPath), 'utf8');
+  const originalRecord = JSON.parse(canonicalFile.split('\n')[0]);
+  const changedRecord = { ...originalRecord, lemma: `${originalRecord.lemma}확인` };
+  const packetPath = 'data/relation-backfill/R999999.json';
+  const packet = JSON.parse(await readFile(
+    path.resolve(TEST_DIRECTORY, '../data/relation-backfill/R000004.json'),
+    'utf8',
+  ));
+  packet.packet_id = 'R999999';
+  const relationRepairPaths = [
+    canonicalPath,
+    packetPath,
+    'data/inventory/issue-210-recovery-inventory.json',
+    'data/validation/canonical-semantic-decision-source.json',
+    'data/validation/issue-512-relation-repair-report.json',
+    'docs/relation-pilot-repair-issue-507.md',
+  ];
+  const relationRepairValues = new Map([
+    [packetPath, packet],
+    ['data/inventory/issue-210-recovery-inventory.json', { records: [] }],
+    ['data/validation/canonical-semantic-decision-source.json', { contract_version: 'fixture' }],
+    ['data/validation/issue-512-relation-repair-report.json', { outcome: 'fixture' }],
+  ]);
+  const relationRepairImpact = classifyDeepGateDiff(baseSha, headSha, {
+    runGit: (args) => {
+      if (args[0] === 'diff' && args.includes('--name-only')) {
+        return Buffer.from(`${relationRepairPaths.join('\0')}\0`);
       }
-      assert.ok(command.args.length > 0);
+      if (args[0] === 'diff' && args.includes('--unified=0')) {
+        return Buffer.from(`--- a/${canonicalPath}\n+++ b/${canonicalPath}\n@@ -1 +1 @@\n-${JSON.stringify(originalRecord)}\n+${JSON.stringify(changedRecord)}\n`);
+      }
+      if (args[0] === 'show') {
+        const filePath = args[1].split(':').slice(1).join(':');
+        if (!relationRepairValues.has(filePath)) throw new Error(`unexpected HEAD data path: ${filePath}`);
+        return Buffer.from(JSON.stringify(relationRepairValues.get(filePath)));
+      }
+      throw new Error(`unexpected git command: ${args.join(' ')}`);
     },
   });
+  const searchBarImpact = classifyDeepGateDiff(baseSha, headSha, {
+    runGit: (args) => {
+      assert.equal(args[0], 'diff');
+      return Buffer.from('src/components/SearchBar.vue\0');
+    },
+  });
+  for (const [changeLabel, impact] of [
+    ['relation-only correction', relationRepairImpact],
+    ['unrelated SearchBar UI', searchBarImpact],
+  ]) {
+    assert.equal(impact.deepMode, 'none', changeLabel);
+    const normalRun = workflowStepRun(
+      workflow,
+      'Normal validation (fast checkpoint + continuation)',
+      {
+        changesOutcome: 'success',
+        deepMode: impact.deepMode,
+        runLevel: 'normal',
+        runDeep: String(impact.runDeep),
+      },
+    );
+    assert.equal(normalRun, 'pnpm run ci:normal', changeLabel);
+    assert.equal(workflowStepRun(
+      workflow,
+      'Selective Deep validation (Normal + affected current Deep)',
+      { changesOutcome: 'success', deepMode: impact.deepMode },
+    ), undefined, changeLabel);
+    assert.equal(workflowStepRun(
+      workflow,
+      'Full Deep validation (Normal + all current Deep)',
+      { changesOutcome: 'success', deepMode: impact.deepMode },
+    ), undefined, changeLabel);
+    assert.deepEqual(workflowCommandArgv(normalRun, { baseSha, headSha }), ['normal'], changeLabel);
+  }
 
-  assert.deepEqual(executed, [
-    'normal:synthetic Normal completeness gate',
-    `deep:${selectedDeep.label}`,
-  ]);
   await assert.rejects(
     runCli(['pr', '--base', 'a'.repeat(40), '--head', 'b'.repeat(40)], {
       getCurrentHead: () => 'c'.repeat(40),
