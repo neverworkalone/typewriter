@@ -49,9 +49,12 @@ const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const CI_DEEP_PHASE_CATEGORIES = new Set(CI_DEEP_CATEGORY_ORDER);
 
 const HISTORICAL_INPUT_SOURCES = Object.freeze({
-  waveA2Reviewed: 'data/canonical/m5-10a-wave-a2.jsonl',
+  // Reuse the immutable M5-11 checkpoint copies. The live canonical shards may
+  // receive later relation-only enrichment and no longer match the reviewed
+  // historical staging bytes.
+  waveA2Reviewed: 'data/batches/m5-11-base-canonical/m5-10a-wave-a2.jsonl',
   waveA2SemanticAudit: 'data/validation/m5-10a-wave-a2-semantic-audit.json',
-  waveBReviewed: 'data/canonical/m5-10-wave-b.jsonl',
+  waveBReviewed: 'data/batches/m5-11-base-canonical/m5-10-wave-b.jsonl',
   waveBSemanticAudit: 'data/validation/m5-10-wave-b-semantic-audit.json',
 });
 const HISTORICAL_INPUT_SCOPES = Object.freeze({

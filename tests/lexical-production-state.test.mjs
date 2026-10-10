@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   LEXICAL_PRODUCTION_STAGE_IDS,
+  assertAdmissionInputsBoundToProducer,
   createLexicalProductionPayload,
   createLexicalProductionRun,
   createLexicalProductionState,
@@ -12,6 +13,7 @@ import {
   productionValueSha256,
   validateLexicalProductionState,
 } from '../scripts/batch/lexical-production-state.mjs';
+import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
 
 function payloadFor(stageId, batchId, input, output, inputKind, outputKind, details) {
   return {
@@ -279,16 +281,19 @@ test('shared producer binds selected and prospective values to their exact prede
   const changedSelected = typedRecord(`${batchId}:selected`, 'changed-selected');
   const changedBaseB = typedRecord(`${batchId}:base-b`, 'changed-base-b');
   const unselectedExtra = typedRecord(`${batchId}:extra`, 'unselected-extra');
-  const prospectiveSpec = (output) => ({
+  const prospectiveSpec = (
+    output,
+    { baseRecords = [baseA, baseB], selectedRecords = [selected] } = {},
+  ) => ({
     stageId: 'prospective_canonical',
     batchId,
-    input: { selected_records: [selected] },
+    input: { selected_records: selectedRecords },
     output,
     inputKind: 'selected-records',
     outputKind: 'prospective-canonical',
     details: {
-      base_records: [baseA, baseB],
-      base_records_sha256: productionValueSha256([baseA, baseB]),
+      base_records: baseRecords,
+      base_records_sha256: productionValueSha256(baseRecords),
       prospective_records_sha256: productionValueSha256(output),
     },
   });
@@ -306,6 +311,116 @@ test('shared producer binds selected and prospective values to their exact prede
       ].includes(error.code),
     );
   }
+
+  const withReviewedRelation = (record, target) => ({
+    ...record,
+    senses: record.senses.map((sense) => ({
+      ...sense,
+      relations: [{
+        target,
+        target_sense: `${target}-s1`,
+        type: 'near',
+        note: `Reviewed link from ${record.id}.`,
+      }],
+    })),
+  });
+  const baseWithRelation = withReviewedRelation(baseA, 'w901');
+  const selectedWithRelation = withReviewedRelation(selected, 'w902');
+  const appendEnrichment = (record, target) => ({
+    ...record,
+    senses: record.senses.map((sense) => ({
+      ...sense,
+      relations: [
+        { ...sense.relations[0], relevance: 5 },
+        {
+          target,
+          target_sense: `${target}-s1`,
+          type: 'association',
+          note: `Later relation enrichment for ${record.id}.`,
+        },
+      ],
+    })),
+  });
+  const relationEnrichedBaseOutput = [
+    appendEnrichment(baseWithRelation, 'w903'),
+    baseB,
+    selectedWithRelation,
+  ];
+  const relationEnrichedSelectedOutput = [
+    baseWithRelation,
+    baseB,
+    appendEnrichment(selectedWithRelation, 'w904'),
+  ];
+  const relationBoundSpec = (output) => prospectiveSpec(output, {
+    baseRecords: [baseWithRelation, baseB],
+    selectedRecords: [selectedWithRelation],
+  });
+  const exactReviewedOutput = [baseWithRelation, baseB, selectedWithRelation];
+  assert.doesNotThrow(() => createLexicalProductionPayload(
+    relationBoundSpec(exactReviewedOutput),
+  ));
+  assert.throws(
+    () => createLexicalProductionPayload(relationBoundSpec(relationEnrichedBaseOutput)),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+    'live producer output rejects an unreviewed relation appended to a base record',
+  );
+  assert.throws(
+    () => createLexicalProductionPayload(relationBoundSpec(relationEnrichedSelectedOutput)),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+    'live producer output rejects an unreviewed relation appended to a selected record',
+  );
+  const changedOriginalRelation = structuredClone(exactReviewedOutput);
+  changedOriginalRelation[0].senses[0].relations[0].target = 'w999';
+  assert.throws(
+    () => createLexicalProductionPayload(relationBoundSpec(changedOriginalRelation)),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+});
+
+test('admission inputs reject prospective relation additions absent from producer review', () => {
+  const batchId = 'future-batch-unreviewed-relation';
+  const { payloads } = emitThroughAudit(batchId);
+  const reviewedRecord = payloads.selection.output.selected_records[0];
+  const prospectiveRecords = payloads.prospective_canonical.output;
+  const admissionInputs = {
+    candidateRecords: payloads.candidate_intake.output,
+    baseRecords: [],
+    reviewedRecordInfos: [{ record: reviewedRecord, decision: 'included' }],
+    prospectiveRecords,
+    semanticAudit: { semantic_audit: batchId },
+  };
+
+  assert.doesNotThrow(() => assertAdmissionInputsBoundToProducer(payloads, admissionInputs));
+
+  const enrichedWithoutReview = structuredClone(prospectiveRecords);
+  enrichedWithoutReview[0].senses[0].relations = [{
+    target: 'w999',
+    target_sense: 'w999-s1',
+    type: 'association',
+    note: 'Unreviewed prospective relation.',
+  }];
+  assert.throws(
+    () => assertAdmissionInputsBoundToProducer(payloads, {
+      ...admissionInputs,
+      prospectiveRecords: enrichedWithoutReview,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+});
+
+test('historical relation enrichment requires an explicit historical replay', () => {
+  assert.throws(
+    () => validateLexicalProduction({ allowHistoricalRelationEnrichment: true }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED',
+  );
+  assert.throws(
+    () => validateLexicalProduction({
+      allowReplay: true,
+      historicalReplay: false,
+      allowHistoricalRelationEnrichment: true,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED',
+  );
 });
 
 test('post-hoc descriptors and fabricated pre-admission admission fail closed', () => {

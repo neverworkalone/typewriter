@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { deepFreezeJson, memoizedDigest } from '../validate/immutable-digest.mjs';
+import { preservesReviewedRecord } from '../validate/relevance-projection.mjs';
 
 export const LEXICAL_PRODUCTION_STATE_CONTRACT_VERSION = 'lexical-production-state-v2';
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
@@ -421,6 +422,7 @@ export function assertProspectiveRecordsDerivedFromBaseRecords(
   selectedRecords,
   prospectiveRecords,
   label,
+  { allowHistoricalRelationEnrichment = false } = {},
 ) {
   const expectedProspectiveRecords = deriveProspectiveRecords(baseRecords, selectedRecords, label);
   const prospectiveById = new Map();
@@ -441,7 +443,10 @@ export function assertProspectiveRecordsDerivedFromBaseRecords(
   }
   for (const expectedRecord of expectedProspectiveRecords) {
     const prospectiveRecord = prospectiveById.get(expectedRecord.id);
-    if (!prospectiveRecord || JSON.stringify(prospectiveRecord) !== JSON.stringify(expectedRecord)) {
+    const preservesExpectedRecord = allowHistoricalRelationEnrichment
+      ? preservesReviewedRecord(expectedRecord, prospectiveRecord)
+      : JSON.stringify(prospectiveRecord) === JSON.stringify(expectedRecord);
+    if (!prospectiveRecord || !preservesExpectedRecord) {
       fail(
         `${label}.output must equal the base dataset transformed only by selected/reviewed records; record ${expectedRecord.id} drifted`,
         'LEXICAL_PRODUCTION_STATE_BINDING',
@@ -460,6 +465,7 @@ export function assertAdmissionInputsBoundToProducer(
     prospectiveRecords,
     semanticAudit,
     requireAudit = false,
+    allowHistoricalRelationEnrichment = false,
   } = {},
   label = 'lexical admission',
 ) {
@@ -518,7 +524,12 @@ export function assertAdmissionInputsBoundToProducer(
       'LEXICAL_PRODUCTION_STATE_BINDING',
     );
   }
-  if (JSON.stringify(prospectiveRecords) !== JSON.stringify(prospectiveOutput)) {
+  const prospectiveRecordsMatch = allowHistoricalRelationEnrichment
+    ? Array.isArray(prospectiveRecords)
+      && prospectiveRecords.length === prospectiveOutput.length
+      && prospectiveOutput.every((record, index) => preservesReviewedRecord(record, prospectiveRecords[index]))
+    : JSON.stringify(prospectiveRecords) === JSON.stringify(prospectiveOutput);
+  if (!prospectiveRecordsMatch) {
     fail(
       `${label}.prospective_records must equal the producer-owned prospective output`,
       'LEXICAL_PRODUCTION_STATE_BINDING',
@@ -641,7 +652,9 @@ function assertTypedReviewRows(value, label) {
   return rows;
 }
 
-function assertPayloadOutputDetails(stageId, input, output, details) {
+function assertPayloadOutputDetails(stageId, input, output, details, {
+  allowHistoricalRelationEnrichment = false,
+} = {}) {
   const label = labelForPayload(stageId);
   requirePayloadValue(output, `${label}.output`);
   requireObject(details, `${label}.details`);
@@ -782,6 +795,7 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
       selectedRecords,
       prospectiveRecords,
       label,
+      { allowHistoricalRelationEnrichment },
     );
     assertPayloadDigest(
       details.prospective_records_sha256,
@@ -829,6 +843,7 @@ function validateLivePayload(stageId, payload, {
   predecessorPayloadOutputSha256,
   input,
   output,
+  allowHistoricalRelationEnrichment = false,
 } = {}) {
   requireObject(payload, `production stage ${stageId}.payload`);
   if (payload.contract_version !== LEXICAL_PRODUCTION_PAYLOAD_CONTRACT_VERSION) {
@@ -900,7 +915,9 @@ function validateLivePayload(stageId, payload, {
       fail(`production stage ${stageId}.payload.details.${key} must be a non-negative integer`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
     }
   }
-  assertPayloadOutputDetails(stageId, payload.input, payload.output, details);
+  assertPayloadOutputDetails(stageId, payload.input, payload.output, details, {
+    allowHistoricalRelationEnrichment,
+  });
   return { inputSha256, outputSha256 };
 }
 
@@ -916,6 +933,7 @@ export function createLexicalProductionPayload({
   inputKind,
   outputKind,
   details,
+  allowHistoricalRelationEnrichment = false,
 } = {}) {
   if (!LEXICAL_PRODUCTION_STAGE_IDS.includes(stageId)) {
     fail(`unknown lexical production stage ${stageId}`, 'LEXICAL_PRODUCTION_STATE_TRANSITION');
@@ -943,6 +961,7 @@ export function createLexicalProductionPayload({
     predecessorPayloadOutputSha256: payload.input_sha256 === null ? undefined : payload.input_sha256,
     input,
     output,
+    allowHistoricalRelationEnrichment,
   });
   return Object.freeze(payload);
 }
@@ -1440,7 +1459,7 @@ function validateStage(
   state,
   seenSources,
   seenPayloads,
-  { allowReplay = false, expectedPayload } = {},
+  { allowReplay = false, expectedPayload, allowHistoricalRelationEnrichment = false } = {},
 ) {
   const label = stageLabel(stageId);
   requireObject(stage, label);
@@ -1493,6 +1512,7 @@ function validateStage(
       predecessorPayloadOutputSha256: stageIndexFor(stageId) === 0
         ? undefined
         : state.stages[stageIndexFor(stageId) - 1].payload_output_sha256,
+      allowHistoricalRelationEnrichment,
     });
     if (livePayload.inputSha256 !== payloadInputSha256 || livePayload.outputSha256 !== payloadOutputSha256) {
       fail(`${label} typed payload lineage does not match the persisted producer output`, 'LEXICAL_PRODUCTION_STATE_BINDING');
@@ -1560,6 +1580,7 @@ export function validateLexicalProductionState(
     sourceBytesByStage,
     expectedPayloads,
     allowReplay = false,
+    allowHistoricalRelationEnrichment = false,
     label = 'production_state',
   } = {},
 ) {
@@ -1575,6 +1596,9 @@ export function validateLexicalProductionState(
   }
   if (state.producer_mode === 'replay' && !allowReplay) {
     fail(`${label} replay output is not accepted by the live admission validator`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
+  }
+  if (allowHistoricalRelationEnrichment && !allowReplay) {
+    fail(`${label} historical relation enrichment requires explicit replay authorization`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
   }
   if (state.producer_mode === 'live' && expectedPayloads === undefined) {
     fail(`${label} live output requires the exact typed payloads checked by the pipeline`, 'LEXICAL_PRODUCTION_STATE_BINDING');
@@ -1597,6 +1621,7 @@ export function validateLexicalProductionState(
     validateStage(stages[index], stageId, sourceBytesByStage, state, seenSources, seenPayloads, {
       allowReplay,
       expectedPayload: expectedPayloads?.[stageId],
+      allowHistoricalRelationEnrichment,
     });
   }
   return {
@@ -1617,6 +1642,7 @@ export function validateLexicalProductionPreAdmissionState(
     sourceBytesByStage,
     expectedPayloads,
     allowReplay = false,
+    allowHistoricalRelationEnrichment = false,
     label = 'production_pre_admission',
   } = {},
 ) {
@@ -1630,6 +1656,9 @@ export function validateLexicalProductionPreAdmissionState(
   }
   if (state.producer_mode === 'replay' && !allowReplay) {
     fail(`${label} replay output is not accepted by the live admission validator`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
+  }
+  if (allowHistoricalRelationEnrichment && !allowReplay) {
+    fail(`${label} historical relation enrichment requires explicit replay authorization`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
   }
   requireString(state.batch_id, `${label}.batch_id`);
   if (batchId !== undefined && state.batch_id !== batchId) {
@@ -1649,6 +1678,7 @@ export function validateLexicalProductionPreAdmissionState(
     validateStage(stages[index], stageId, sourceBytesByStage, fullState, seenSources, seenPayloads, {
       allowReplay,
       expectedPayload: expectedPayloads?.[stageId],
+      allowHistoricalRelationEnrichment,
     });
   }
   return {
@@ -1669,6 +1699,7 @@ export function validateLexicalProductionPreAuditState(
     sourceBytesByStage,
     expectedPayloads,
     allowReplay = false,
+    allowHistoricalRelationEnrichment = false,
     label = 'production_pre_audit',
   } = {},
 ) {
@@ -1682,6 +1713,9 @@ export function validateLexicalProductionPreAuditState(
   }
   if (state.producer_mode === 'replay' && !allowReplay) {
     fail(`${label} replay output is not accepted by the live admission validator`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
+  }
+  if (allowHistoricalRelationEnrichment && !allowReplay) {
+    fail(`${label} historical relation enrichment requires explicit replay authorization`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
   }
   requireString(state.batch_id, `${label}.batch_id`);
   if (batchId !== undefined && state.batch_id !== batchId) {
@@ -1704,6 +1738,7 @@ export function validateLexicalProductionPreAuditState(
     validateStage(stages[index], stageId, sourceBytesByStage, fullState, seenSources, seenPayloads, {
       allowReplay,
       expectedPayload: expectedPayloads?.[stageId],
+      allowHistoricalRelationEnrichment,
     });
   }
   return {
