@@ -1168,6 +1168,15 @@ test('production CLI refills valid lemmas, skips trash proposals before analysis
   await writeFile(trashPath, 'malformed\n');
   assert.match((await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) })).join(), /JSONL|Unexpected token/);
   await writeFile(trashPath, originalTrash);
+  // Valid JSON may spell a key with a Unicode escape. Decode IDs rather than
+  // scanning the serialized spelling of the key in unchanged baseline chunks.
+  const encodedTrash = originalTrash.replaceAll('"observation_id"', '"observ\\u0061tion_id"');
+  assert.notEqual(encodedTrash, originalTrash);
+  assert.deepEqual(validateTrashChunk(encodedTrash), []);
+  await writeFile(trashPath, encodedTrash);
+  git('add', 'data/candidate-trash/T000001.jsonl');
+  git('commit', '-q', '-m', 'Escaped JSON key baseline');
+  assert.deepEqual(await validateFactoryRepository({ root, base: loadBaseManifests('HEAD', root) }), []);
   // The common validator rejects cross-chunk duplicates against an unchanged
   // baseline, while a distinct observation passes the same production path.
   const extraPath = path.join(root, 'data/candidate-trash/T000002.jsonl');

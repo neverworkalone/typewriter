@@ -525,12 +525,13 @@ async function validateChangedArchive(root, base, report) {
       }
     }
   }
-  // Only when IDs change, scan existing row IDs. Do not parse or validate past
+  // Only when IDs change, scan existing row IDs. Do not validate past
   // analyses, occurrences or relationships, and do not create another index.
   if (changedIds.size) for (const name of unchangedNames) {
     const text = await readFile(path.join(root, TRASH_DIRECTORY, name), 'utf8');
     for (const line of text.split('\n')) {
-      const id = /"observation_id"\s*:\s*"([a-f0-9]{64})"/u.exec(line)?.[1];
+      if (!line.trim()) continue;
+      const id = JSON.parse(line).observation_id;
       if (changedIds.has(id)) errors.push(`${changedIds.get(id)}: duplicate archive identity ${id} also in ${name}`);
     }
   }
