@@ -531,11 +531,11 @@ test('interactive primary-context hand-offs return a result PR and same-branch f
     const authorEvent = await readEvent(0);
     assert.equal(authorEvent.event, 'AUTHOR_STAGE2_RESULT');
     assert.ok(authorEvent.instructions.some((line) => line.includes('relation:candidates') && line.includes('no-relations')));
-    assert.ok(authorEvent.instructions.some((line) => line.includes('hypernym/hyponym') && line.includes('never near')), 'near is reserved for close meanings, not is-a links');
-    assert.ok(authorEvent.instructions.some((line) => line.includes('actual bound target sense gloss') && line.includes('reverse link')), 'near is judged on the actual target sense and already-authored reverse links are checked');
-    assert.ok(authorEvent.instructions.some((line) => line.includes('same-root or same-event rationale alone does not make near') && line.includes('a noun names an event, state or quality') && line.includes('derivational relationship')), 'shared roots and named events alone do not make nominalized or derived forms near substitutes');
-    assert.ok(authorEvent.instructions.some((line) => line.includes('different root does not rescue') && line.includes('attempt versus an achieved result') && line.includes('미온 to 미지근함') && line.includes('향내 to 향기')), 'predicate, result and scope shifts are association even with different roots, with source-bound negative and positive examples');
-    assert.ok(authorEvent.instructions.some((line) => line.includes('same-source-sense consistency pass') && line.includes('소아 to 아이') && line.includes('선서 to 서약') && line.includes('기쁨 to 웃다')), 'sibling targets of one source are compared and direction-specific types are preserved');
+    assert.ok(authorEvent.instructions.some((line) => line.includes('dictionary-grade lexical accuracy') && line.includes('do NOT need interchangeability in every sentence')), 'lexical synonymy is not universal substitutability');
+    assert.ok(authorEvent.instructions.some((line) => line.includes('enrich writer-facing nuance') && line.includes('do not reflexively veto')), 'creative links are preserve-first rather than a word-substitution gate');
+    assert.ok(authorEvent.instructions.some((line) => line.includes('relevance 1..9') && line.includes('SAME SOURCE SENSE') && line.includes('already-authored canonical')), 'relevance is a relative same-source/group priority');
+    assert.ok(authorEvent.instructions.some((line) => line.includes('습지→원숭이') && line.includes('lower-priority tropical-context association')), 'plausible context-dependent imagery remains available');
+    assert.ok(authorEvent.instructions.some((line) => line.includes('reverse links') && line.includes('no required symmetry')), 'prior reverse links are preserved without forced symmetry');
     input.write(JSON.stringify({ action: 'created', pr_number: 501 }) + '\n');
     const pullRequest = await createdPromise;
     assert.equal(pullRequest.number, 501);
