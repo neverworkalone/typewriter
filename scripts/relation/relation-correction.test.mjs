@@ -369,3 +369,33 @@ test('a correction is bound to the reviewed target meaning at first apply and at
     }
   }
 });
+
+// A removal is settled only when the relation is really gone. The same target kept under another type (or with another
+// note) means the reviewed tuple was changed, not removed: the producer and the planner share that judgment.
+test('a removal of a relation that was retyped meanwhile is stale at first apply and in the planner, while a real removal replays as a no-op', async () => {
+  const root = await scratchRoot();
+  try {
+    const original = await readRecords(root);
+    const picked = pick(original);
+    const removal = { ...retype(picked), relation: null };
+    // Positive control: the reviewed tuple is still there, so the removal applies.
+    // Negative: another review already retyped the same target relation, then a stale removal of the old tuple arrives.
+    assert.equal((await applyRelationCorrections({ root, proposals: [retype(picked)], refreshReports: false })).status, 'applied');
+    const events = (await readAuthority(root)).factory_admissions.length;
+    const retyped = await readRecords(root);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [removal], refreshReports: false }), /no longer the reviewed/u);
+    assert.equal((await readAuthority(root)).factory_admissions.length, events, 'nothing is recorded');
+    assert.deepEqual(await readRecords(root), retyped, 'canonical is untouched');
+
+    // The planner (packet resume) reaches the same conclusion from a packet item built before the retype.
+    const items = correctionItemsFor(original, [removal]);
+    assert.throws(() => planRelationCorrections({ packetId: 'R999998', corrections: items, canonicalRecords: retyped, recordPathById: new Map() }), /no longer holds the relation it corrects/u);
+
+    // Removing the retyped tuple really removes it; replaying that removal is then an idempotent no-op.
+    const current = { ...removal, previous_relation: retyped.flatMap((record) => record.senses).find((sense) => sense.id === picked.sense.id).relations[picked.at] };
+    assert.equal((await applyRelationCorrections({ root, proposals: [current], refreshReports: false })).status, 'applied');
+    assert.equal((await applyRelationCorrections({ root, proposals: [current], refreshReports: false })).status, 'nothing-to-apply');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

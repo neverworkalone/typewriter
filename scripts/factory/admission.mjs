@@ -2,7 +2,7 @@ import { validateDecisionHandoff } from './handoff.mjs';
 import { sha256Hex } from './contract.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { AMENDMENT_FIELD } from './relation-amendments.mjs';
-import { canonicalTuple } from './relation-corrections.mjs';
+import { canonicalTuple, correctionSettled } from './relation-corrections.mjs';
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -270,10 +270,7 @@ export function planRelationCorrections({ packetId, corrections, canonicalRecord
       rationale_sha256: canonicalRecordSha256(item.rationale),
     };
     if (position < 0 || JSON.stringify(canonicalTuple(relations[position])) !== JSON.stringify(previous) || position !== item.position) {
-      const settled = replacement === null
-        ? position < 0
-        : relations.some((candidate) => JSON.stringify(canonicalTuple(candidate)) === JSON.stringify(replacement));
-      if (!settled) lexical(`${at} no longer holds the relation it corrects (${previous.type} to ${previous.target_sense}); the correction is stale and needs re-review`, 'STAGE3_RELATION_CORRECTION_STALE');
+      if (!correctionSettled(relations, previous, replacement)) lexical(`${at} no longer holds the relation it corrects (${previous.type} to ${previous.target_sense}); the correction is stale and needs re-review`, 'STAGE3_RELATION_CORRECTION_STALE');
       audit.push({ ...entry, position: null, outcome: 'already_applied' });
       continue;
     }

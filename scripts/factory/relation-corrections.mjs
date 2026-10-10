@@ -22,6 +22,17 @@ export const canonicalTuple = ({ target, target_sense: targetSense, type, note, 
 });
 export const sameTuple = (left, right) => JSON.stringify(canonicalTuple(left)) === JSON.stringify(canonicalTuple(right));
 
+/**
+ * Whether a correction whose previous tuple is no longer on the sense is already in effect. A retype is settled only when
+ * the exact replacement is present. A removal is settled only when no relation to that target sense remains at all: the
+ * same target kept under another type means the reviewed tuple was changed, not removed, so it is stale and needs
+ * re-review. The producer and the planner share this single judgment.
+ */
+export function correctionSettled(relations, previous, replacement) {
+  if (replacement === null) return !relations.some((relation) => relation.target === previous.target && relation.target_sense === previous.target_sense);
+  return relations.some((relation) => sameTuple(relation, replacement));
+}
+
 export function relationCorrectionErrors(row, at) {
   const list = row?.[CORRECTION_FIELD];
   if (list === undefined) return [];

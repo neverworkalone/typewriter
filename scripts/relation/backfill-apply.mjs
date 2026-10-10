@@ -4,7 +4,7 @@ import path from 'node:path';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { canonicalRecordSha256, planRelationBackfill, planRelationCorrections, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
 import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
-import { CORRECTION_FIELD, canonicalTuple, relationCorrectionErrors, revertRelationCorrections, sameTuple } from '../factory/relation-corrections.mjs';
+import { CORRECTION_FIELD, canonicalTuple, correctionSettled, relationCorrectionErrors, revertRelationCorrections, sameTuple } from '../factory/relation-corrections.mjs';
 import { sha256Hex } from '../factory/contract.mjs';
 import { buildStage3SemanticAuthority, AUTHORITY_PATH } from '../factory/semantic-authority.mjs';
 import { refreshStage3ReportCheckpoints } from '../factory/stage3-worker.mjs';
@@ -215,10 +215,7 @@ export function correctionItemsFor(records, proposals) {
     const position = relations.findIndex((relation) => sameTuple(relation, proposal.previous_relation));
     const replacement = proposal.relation === null ? null : canonicalTuple(proposal.relation);
     if (position < 0) {
-      const settled = replacement === null
-        ? !relations.some((relation) => relation.target_sense === proposal.previous_relation.target_sense && relation.type === proposal.previous_relation.type)
-        : relations.some((relation) => sameTuple(relation, replacement));
-      if (!settled) throw new Error(`${sense.id}: the relation to ${proposal.previous_relation.target_sense} is no longer the reviewed ${proposal.previous_relation.type} tuple; re-review the correction`);
+      if (!correctionSettled(relations, proposal.previous_relation, replacement)) throw new Error(`${sense.id}: the relation to ${proposal.previous_relation.target_sense} is no longer the reviewed ${proposal.previous_relation.type} tuple; re-review the correction`);
       continue;
     }
     // The reviewer's digest of the target meaning must still describe the target, or the judgment was made on other words.
