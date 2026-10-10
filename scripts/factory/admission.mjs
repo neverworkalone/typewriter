@@ -2,6 +2,7 @@ import { validateDecisionHandoff } from './handoff.mjs';
 import { sha256Hex } from './contract.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { AMENDMENT_FIELD } from './relation-amendments.mjs';
+import { canonicalTuple, correctionSettled } from './relation-corrections.mjs';
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -124,10 +125,6 @@ function remapRelations(sense, { aliases, knownRecordIds, knownSenseIds, sourceC
   });
 }
 
-// Canonical tuple key order (target, target_sense, type, note, relevance), independent of authoring order.
-const canonicalTuple = ({ target, target_sense: targetSense, type, note, relevance }) => ({
-  target, ...(targetSense === undefined ? {} : { target_sense: targetSense }), type, note, ...(relevance === undefined ? {} : { relevance }),
-});
 const tupleLocator = (relation) => JSON.stringify([relation.target, relation.target_sense ?? null, relation.type]);
 
 /**
@@ -223,6 +220,94 @@ export function planRelationBackfill({ packetId, amendments, canonicalRecords, r
   const decisions = [{ disposition: 'included', source_candidate_id: packetId, [AMENDMENT_FIELD]: amendments }];
   const result = planRelationAmendments({ decisions, byId, planned: new Map(), aliases, allRecordIds, allSenseIds, recordPathById });
   return { batchId: packetId, attempt: 1, decisions: [], entries: [], records: result.records, changes: relationChangeRows(result), relationAmendments: result.audit };
+}
+
+/**
+ * Relation corrections (#501): retype, renote, re-rank or remove one already-authored relation of an existing canonical
+ * sense. The source sense is bound by its gloss digest and the replaced relation by its exact previous tuple; the
+ * replacement keeps the relation's position (a removal records the position it left) and the target never changes.
+ * A correction whose previous tuple is gone is stale unless the replacement is already exactly in place, which is an
+ * idempotent `already_applied` outcome with no canonical change.
+ */
+/** Digest of `[lemma, gloss]` of a canonical sense: what a reviewer saw of a relation target (null when it is gone). */
+export function targetMeaningSha256(byId, senseId) {
+  const record = byId.get(/^([wr]\d+)-s\d+$/u.exec(senseId ?? '')?.[1]);
+  const sense = record?.senses?.find(({ id }) => id === senseId);
+  return sense ? canonicalRecordSha256([record.lemma, sense.gloss]) : null;
+}
+
+export function planRelationCorrections({ packetId, corrections, canonicalRecords, recordPathById }) {
+  if (!BACKFILL_ID.test(packetId ?? '')) systemic('backfill packet id must look like R000001', 'STAGE3_BACKFILL_ID');
+  const byId = new Map(canonicalRecords.map((record) => [record.id, record]));
+  const working = new Map();
+  const audit = [];
+  for (const item of corrections) {
+    const at = `${packetId}: relation correction on ${item.source_record_id} ${item.source_sense_id}`;
+    const base = byId.get(item.source_record_id);
+    const baseSense = base?.senses?.find(({ id }) => id === item.source_sense_id);
+    if (!baseSense) lexical(`${at} no longer exists on latest master; the correction is stale and needs re-review`, 'STAGE3_STALE_RELATION_SOURCE');
+    if (canonicalRecordSha256(baseSense.gloss) !== item.source_gloss_sha256) {
+      lexical(`${at} changed meaning since it was reviewed; the correction is stale and needs re-review`, 'STAGE3_STALE_RELATION_SOURCE');
+    }
+    const previous = canonicalTuple(item.previous_relation);
+    const targetMeaning = targetMeaningSha256(byId, previous.target_sense);
+    const replacement = item.relation === null ? null : canonicalTuple(item.relation);
+    const record = working.get(item.source_record_id) ?? { ...base, senses: base.senses.map((sense) => ({ ...sense })) };
+    working.set(item.source_record_id, record);
+    const sense = record.senses.find(({ id }) => id === item.source_sense_id);
+    const relations = [...(sense.relations ?? [])];
+    const position = relations.findIndex((candidate) => tupleLocator(candidate) === tupleLocator(previous));
+    const entry = {
+      source_candidate_id: packetId,
+      source_record_id: item.source_record_id,
+      source_sense_id: item.source_sense_id,
+      source_gloss_sha256: item.source_gloss_sha256,
+      target_meaning_sha256: item.target_meaning_sha256,
+      previous_relation_id: reviewedRelationId(item.source_sense_id, previous),
+      previous_relation: previous,
+      relation_id: replacement === null ? null : reviewedRelationId(item.source_sense_id, replacement),
+      relation: replacement,
+      rationale_sha256: canonicalRecordSha256(item.rationale),
+    };
+    if (position < 0 || JSON.stringify(canonicalTuple(relations[position])) !== JSON.stringify(previous) || position !== item.position) {
+      if (!correctionSettled(relations, previous, replacement)) lexical(`${at} no longer holds the relation it corrects (${previous.type} to ${previous.target_sense}); the correction is stale and needs re-review`, 'STAGE3_RELATION_CORRECTION_STALE');
+      audit.push({ ...entry, position: null, outcome: 'already_applied' });
+      continue;
+    }
+    // The type and note were judged against the target as the reviewer saw it; a changed target meaning is stale.
+    if (targetMeaning !== item.target_meaning_sha256) {
+      lexical(`${at} target ${previous.target_sense} changed meaning since it was reviewed; the correction is stale and needs re-review`, 'STAGE3_STALE_RELATION_TARGET');
+    }
+    // The ledger keeps the replaced tuple byte-for-byte as canonical stored it, so a rewind restores the exact record.
+    entry.previous_relation = structuredClone(relations[position]);
+    if (replacement === null) relations.splice(position, 1);
+    else {
+      if (relations.some((candidate, at2) => at2 !== position && tupleLocator(candidate) === tupleLocator(replacement))) {
+        lexical(`${at} would duplicate another ${replacement.type} relation to ${replacement.target_sense}`, 'STAGE3_RELATION_CONFLICT');
+      }
+      relations[position] = replacement;
+    }
+    if (relations.length) sense.relations = relations;
+    else delete sense.relations;
+    audit.push({ ...entry, position, outcome: 'amended' });
+  }
+  const records = new Map();
+  for (const [id, record] of working) {
+    if (!audit.some((entry) => entry.source_record_id === id && entry.outcome === 'amended')) continue;
+    const file = recordPathById?.get(id);
+    if (!file) systemic(`canonical source path is unknown for ${id}`, 'STAGE3_CANONICAL_PATH');
+    records.set(id, { record, file, before: byId.get(id) });
+  }
+  const changes = [...records].map(([entryId, update]) => ({
+    entry_id: entryId,
+    operation: 'amend_relations',
+    path: update.file,
+    source_candidate_ids: [packetId],
+    amended_relation_ids: audit.filter((entry) => entry.source_record_id === entryId && entry.outcome === 'amended').map((entry) => entry.previous_relation_id),
+    before_sha256: canonicalRecordSha256(update.before),
+    after_sha256: canonicalRecordSha256(update.record),
+  }));
+  return { batchId: packetId, attempt: 1, decisions: [], entries: [], records, changes, relationAmendments: [], relationCorrections: audit };
 }
 
 function decisionSenses(row, idStart, aliases, knownRecordIds, knownSenseIds) {

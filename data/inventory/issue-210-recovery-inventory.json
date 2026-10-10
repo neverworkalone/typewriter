@@ -4,17 +4,17 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "5421ea90789215309f839ab471946133c11d2248ea4388f397f1c07f3df980f6",
+    "current_canonical_revision": "09aef583650b4c56e58c07c882ec99c0218edcdb8f09fe5f5178c72dfe5bec0e",
     "source_manifest": [
       {
         "path": "AGENTS.md",
-        "sha256": "8335fcff780489530dd3214244a3eeccc2e245852ed9ad9a166600aa90ee5ac5",
-        "byte_count": 25242
+        "sha256": "09e3d0d213d85881951eca6e964f0385ead45cb1706ebc559943e5977806bcfc",
+        "byte_count": 25381
       },
       {
         "path": "config/artifact-policy.json",
-        "sha256": "2c8f3311ccec959869500601b5daa4c378693ec9f3358fe010f62f1aaf2ec83c",
-        "byte_count": 157523
+        "sha256": "f45e2a573328339c1a17f9735fe6c1b8ff4646282100ea0f7d1b31aa50851a7f",
+        "byte_count": 158981
       },
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -688,8 +688,8 @@
       },
       {
         "path": "data/canonical/m5-10a-wave-a2.jsonl",
-        "sha256": "7b8bf14249044e9d62d30484b3f24158606bce60fdf60a29b9978d6877db39e9",
-        "byte_count": 14794
+        "sha256": "5a6a68b09a9abcc2a67a88787b17a2192b10f46e6000b3acb623bde75d783f27",
+        "byte_count": 14845
       },
       {
         "path": "data/canonical/m5-11-expansion.jsonl",
@@ -753,18 +753,18 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "ea172bf9373f5f232afe398d036a5adc29c0a7dbdb95d025e98ed5d2f6552858",
-        "byte_count": 12736419
+        "sha256": "5178e9d1f817b6a26a6ac5385ca3050de9e0c94f3225d13f34fd250ca26ce193",
+        "byte_count": 12741303
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "dc0fad01f52a5a30a29d6f5338fb412d76c6800e06e7787f1934162ed7bb7442",
+        "sha256": "a7a77b917e776c49a8b6df9c708bf882cc4d55c737604ac60771eb0ae4a186f9",
         "byte_count": 11356
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "ee6a64fcf35cf53dac7307dd4a46425be3ee5a1e0e67ad87c1c8330cbfee29a2",
-        "byte_count": 29642
+        "sha256": "2f158e146580c9fef3c90b934f277ff8b9acd8b66c3af9b2e036476386a94345",
+        "byte_count": 29643
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
@@ -778,8 +778,8 @@
       },
       {
         "path": "docs/editorial-model.md",
-        "sha256": "54dbd7d576887d232e5010a0745f35e57f5796fd1e63809f4cd70fd05ff99f8e",
-        "byte_count": 105096
+        "sha256": "94b936d0ce1cce168bcfab4dbfce7a536ed0f5955bb09294dc2d9b909ba3d479",
+        "byte_count": 105902
       },
       {
         "path": "docs/external-material-review-customs-terminology.md",
@@ -803,8 +803,8 @@
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "26a6681a4fb78415888e14ca4f9134db707e34fd4f67035c02d5df529a48011a",
-        "byte_count": 8778
+        "sha256": "dc35f5e0794334781bd6c105e94627ba71b12c2634aadc0e7184e1673dc8d972",
+        "byte_count": 8780
       },
       {
         "path": "docs/m3-handoff.md",
@@ -858,8 +858,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "a30bb22d5557c11e84b229b4a9bcf35f0488f6bec4ccdcc05357a2828016ebdc",
-        "byte_count": 12895
+        "sha256": "4a40d9b81df95639cc5fd06e7e3d8abc56305011c24be212bef85433431c841a",
+        "byte_count": 12960
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -923,8 +923,8 @@
       },
       {
         "path": "scripts/ci/registry.mjs",
-        "sha256": "55205e78a224561c1963bcd7cb3816c20762e414edaddd303b507ca803555950",
-        "byte_count": 33761
+        "sha256": "1bd4d0b1464f4ce1342716ef2b08bdfc7e8750be649cc3be4b372d940681866a",
+        "byte_count": 33810
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
@@ -968,8 +968,8 @@
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
-        "sha256": "713e7ce286d05d0bbb087be515807453c64c7cce843f252977a60f1b3044a7e3",
-        "byte_count": 135773
+        "sha256": "d6eaeeae486ee3ff1e48aee0322e13c8324aeb18996351ffd7f14681ac59342a",
+        "byte_count": 142954
       },
       {
         "path": "scripts/validate/semantic-decision-row.mjs",

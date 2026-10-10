@@ -457,6 +457,22 @@ Rules carried over unchanged:
   relevance), rationale digest and `appended`/`already_present` outcome; the amended
   record's semantic review keeps its preserved evidence and rebinds only the amended
   sense's relation outcome.
+- **Relation corrections (#501).** The relation-only backfill (`R######` packets) can also
+  retype, renote, re-rank or remove one already-authored canonical relation:
+  `pnpm run relation:correct <proposals.json>` with `{corrections: [{source_sense_id,
+  previous_relation, relation | null, rationale}]}`. The reviewer names the exact tuple they
+  saw and its replacement (`null` removes it); the target never changes, and gloss, POS and
+  sense ids are out of scope. The CLI derives the source record, the source gloss digest and
+  the tuple's position, and the committed packet (`relation_corrections`) is the intent record
+  that is written first. The operation is `amend_relations`: the replacement takes the old
+  tuple's position (a removal drops the key of a sense left without relations), and the
+  semantic-authority event keeps `relation_corrections` with the replaced tuple byte-for-byte,
+  its position and the rationale digest, so every history walker rewinds to the exact record
+  before the packet. A previous tuple that is gone is stale (re-review) unless the replacement
+  is already in place, which is an idempotent no-op. It is the one non-additive ledger
+  operation and exists only on backfill packets. No reverse edge is synthesized and no
+  validator forces symmetry; deciding that an opposite direction is wrong stays an editorial
+  judgment recorded in the rationale (AI self-check, not independent review).
 - Stage 2 may not introduce a weaker parallel rule set. A rule discovered here
   becomes a shared rule, not a Stage 2 exception (AGENTS.md, *Generalize lexical
   validation*).

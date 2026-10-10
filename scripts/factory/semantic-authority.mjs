@@ -385,6 +385,36 @@ function buildReviewForRelationAmendment({ record, beforeReview, amendments, bat
   return compactSemanticReviewRecord(full);
 }
 
+// Relation correction (#501): same preservation as an amendment; the amended senses' relation rationale records which
+// relation was retyped or removed. A sense left without relations is reviewed as `no-relations` with that rationale.
+function buildReviewForRelationCorrection({ record, beforeReview, corrections, batchId, attempt }) {
+  if (!beforeReview) failSystemic(`${record.id}: relation correction has no preserved semantic review`, 'STAGE3_BASE_SEMANTIC_COVERAGE');
+  const full = structuredClone(beforeReview);
+  delete full.authored_batch_decision;
+  full.record_sha256 = canonicalRecordSha256(record);
+  for (const correction of corrections) {
+    const sense = record.senses.find(({ id }) => id === correction.source_sense_id);
+    const review = full.sense_reviews?.find(({ sense_id: id }) => id === correction.source_sense_id);
+    if (!sense || !review) failSystemic(`${record.id}: prior semantic review omitted ${correction.source_sense_id}`, 'STAGE3_BASE_SEMANTIC_COVERAGE');
+    const change = correction.relation === null
+      ? `removed ${correction.previous_relation.type} relation ${correction.previous_relation_id} to ${correction.previous_relation.target}`
+      : `changed ${correction.previous_relation.type} relation ${correction.previous_relation_id} to ${correction.relation.type} ${correction.relation_id} for ${correction.previous_relation.target}`;
+    const text = boundText(record, sense, correction.source_candidate_id,
+      `Stage 3 attempt ${batchId}-a${attempt} ${change}; rationale digest ${correction.rationale_sha256.slice(0, 12)}.`);
+    const previous = review.relation_rationale ?? review.relation?.rationale ?? review.no_relation_rationale ?? review.relation?.no_relation_rationale;
+    const kept = (sense.relations ?? []).length > 0;
+    const joined = previous ? `${previous} ${text}` : text;
+    review.relation_decision = kept ? 'relations-reviewed' : 'no-relations';
+    if (kept) { review.relation_rationale = joined; delete review.no_relation_rationale; } else { review.no_relation_rationale = joined; delete review.relation_rationale; }
+    if (review.relation) {
+      review.relation.decision = review.relation_decision;
+      if (kept) { review.relation.rationale = joined; delete review.relation.no_relation_rationale; } else { review.relation.no_relation_rationale = joined; delete review.relation.rationale; }
+    }
+    review.sense_sha256 = canonicalRecordSha256(sense);
+  }
+  return compactSemanticReviewRecord(full);
+}
+
 /**
  * Extend the complete-canonical semantic source only from already source-bound
  * Stage 2 decisions. Existing authored review rows are materialized and
@@ -439,6 +469,22 @@ export async function buildStage3SemanticAuthority({
       });
       continue;
     }
+    if (change.operation === 'amend_relations') {
+      const record = afterById.get(change.entry_id);
+      const beforeRecord = baseById.get(change.entry_id);
+      const corrections = (plan.relationCorrections ?? []).filter((item) => item.source_record_id === change.entry_id && item.outcome === 'amended');
+      const reviewed = buildReviewForRelationCorrection({ record, beforeReview: reviewById.get(change.entry_id), corrections, batchId: plan.batchId, attempt: plan.attempt });
+      const previous = oldCompactById.get(change.entry_id);
+      outputRows.set(change.entry_id, reviewed);
+      changes.push({
+        ...change,
+        previous_semantic_review_sha256: sha256Json(previous),
+        previous_semantic_review: structuredClone(previous),
+        previous_record: structuredClone(beforeRecord),
+        semantic_review_sha256: sha256Json(reviewed),
+      });
+      continue;
+    }
     const mappings = [...mappingBySource.entries()].filter(([, entry]) => entry.record_id === change.entry_id);
     const associated = mappings.map(([sourceCandidateId, mapping]) => ({
       sourceCandidateId, mapping, decision: decisionBySource.get(sourceCandidateId),
@@ -471,6 +517,7 @@ export async function buildStage3SemanticAuthority({
     semantic_decisions_sha256: plan.reviewManifest.semantic_decisions_sha256,
     entries: structuredClone(plan.entries),
     ...(plan.relationAmendments?.length ? { relation_amendments: structuredClone(plan.relationAmendments) } : {}),
+    ...(plan.relationCorrections?.length ? { relation_corrections: structuredClone(plan.relationCorrections) } : {}),
     changes,
   };
   event.sha256 = sha256Json(event);

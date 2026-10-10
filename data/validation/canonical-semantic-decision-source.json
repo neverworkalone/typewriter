@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "450e01458a2e261a219a2f0b6ee66308e683a5030e006b5f16ca9296e3aa2d53"
+    "canonical_records_sha256": "c848c4902b03286e4e0fbd4be15fdd4174323729fd97251a11c5a47b1f1516b3"
   },
-  "authored_review_sha256": "5654d13224e2e45996062e2a065315552ab1695b62df3a0b9d882b568231c5a5",
+  "authored_review_sha256": "a170ea2e90362a08a27f4f2f0c7f414a28e81feec3a92548578b531bd0321cfd",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "450e01458a2e261a219a2f0b6ee66308e683a5030e006b5f16ca9296e3aa2d53"
+      "canonical_records_sha256": "c848c4902b03286e4e0fbd4be15fdd4174323729fd97251a11c5a47b1f1516b3"
     },
     "records": [
       {
@@ -19864,7 +19864,7 @@
       },
       {
         "record_id": "w587",
-        "record_sha256": "6032efb70229a196ecee556aec55bad99d93469bd344c11d587d8f0f875769b1",
+        "record_sha256": "9cf75f6b7217e446c8946117f7b9e0839d5988f927bba64318729c8dff48e819",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w587:boundary",
           "decision": "retain",
@@ -19872,18 +19872,18 @@
           "evidence": [
             {
               "sense_id": "w587-s1",
-              "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
-              "rationale_code": "reason-60e22e03a63a9d7b"
+              "evidence_basis": "gloss content and writer domain axes: affective",
+              "rationale": "w587 w587-s1 was separately reviewed against gloss e61ca24bc5bb and writer-facing usage evidence."
             }
           ],
           "pairwise": [],
-          "rationale_code": "reason-f40834b546915e0f"
+          "rationale": "w587 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
         },
         "sense_reviews": [
           {
             "sense_id": "w587-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale_code": "reason-6dc1a297c687efa8"
+            "relation_rationale": "w587 w587-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w587 w587-s1 e61ca24bc5bb [R000004]: Stage 3 attempt R000004-a1 changed near relation rel-014576fde7b8490703b002fe to association rel-4d5152973dce1720b5bfaac1 for w306; rationale digest b7e0d19db476."
           }
         ]
       },
@@ -239807,6 +239807,109 @@
         }
       ],
       "sha256": "860c51358475fab192d10e27f99303f98b2cb02ce1201107c03e98fa49781d7f"
+    },
+    {
+      "batch_id": "R000004",
+      "attempt": 1,
+      "semantic_decisions_sha256": "c7dd732e942a706cf35b1586e17ced47ef1b1537eab8a15f99e4322ff2ac86b2",
+      "entries": [],
+      "relation_corrections": [
+        {
+          "source_candidate_id": "R000004",
+          "source_record_id": "w587",
+          "source_sense_id": "w587-s1",
+          "source_gloss_sha256": "e61ca24bc5bb2ade47677b423cedc58d460f4863b4bf1406424382c1ec796524",
+          "target_meaning_sha256": "d1bd7c4d286c36255331c5ec74ee20ce01a83d4fd1c336d5eb0999a3e427693a",
+          "previous_relation_id": "rel-014576fde7b8490703b002fe",
+          "previous_relation": {
+            "target": "w306",
+            "target_sense": "w306-s1",
+            "type": "near",
+            "note": "자책은 스스로를 책망하는 내적 행위에 가깝고 죄책감은 잘못으로 남에게 해를 끼쳤다고 느끼는 감정이어서 가까우나 중심이 다르다.",
+            "relevance": 3
+          },
+          "relation_id": "rel-4d5152973dce1720b5bfaac1",
+          "relation": {
+            "target": "w306",
+            "target_sense": "w306-s1",
+            "type": "association",
+            "note": "자책은 스스로를 책망하는 내적 행위이고 죄책감은 해를 끼쳤다고 느끼는 감정이라 바꿔 쓸 수는 없지만, 자책의 바탕에 흔히 깔린 마음이어서 연이어 떠올릴 수 있다.",
+            "relevance": 3
+          },
+          "rationale_sha256": "b7e0d19db476301e5539ed26c1ba960ef2994581ae2eae789dd41e97ad6d2338",
+          "position": 0,
+          "outcome": "amended"
+        }
+      ],
+      "changes": [
+        {
+          "entry_id": "w587",
+          "operation": "amend_relations",
+          "path": "data/canonical/m5-10a-wave-a2.jsonl",
+          "source_candidate_ids": [
+            "R000004"
+          ],
+          "amended_relation_ids": [
+            "rel-014576fde7b8490703b002fe"
+          ],
+          "before_sha256": "6032efb70229a196ecee556aec55bad99d93469bd344c11d587d8f0f875769b1",
+          "after_sha256": "9cf75f6b7217e446c8946117f7b9e0839d5988f927bba64318729c8dff48e819",
+          "previous_semantic_review_sha256": "880d5b2f70456623b2c15cf823ade7fe6177b6637cb659a89c2e72a702b00b09",
+          "previous_semantic_review": {
+            "record_id": "w587",
+            "record_sha256": "6032efb70229a196ecee556aec55bad99d93469bd344c11d587d8f0f875769b1",
+            "boundary_review": {
+              "review_id": "canonical-semantic-review:w587:boundary",
+              "decision": "retain",
+              "classification": "atomic",
+              "evidence": [
+                {
+                  "sense_id": "w587-s1",
+                  "evidence_basis_code": "reason-4dcf3dfd26a1df0c",
+                  "rationale_code": "reason-60e22e03a63a9d7b"
+                }
+              ],
+              "pairwise": [],
+              "rationale_code": "reason-f40834b546915e0f"
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "w587-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale_code": "reason-6dc1a297c687efa8"
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "w587",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w587",
+            "lemma": "자책",
+            "search_forms": [
+              "자책"
+            ],
+            "senses": [
+              {
+                "id": "w587-s1",
+                "pos": "noun",
+                "gloss": "자신의 행동을 탓하며 스스로를 책망하는 마음",
+                "relations": [
+                  {
+                    "target": "w306",
+                    "target_sense": "w306-s1",
+                    "type": "near",
+                    "note": "자책은 스스로를 책망하는 내적 행위에 가깝고 죄책감은 잘못으로 남에게 해를 끼쳤다고 느끼는 감정이어서 가까우나 중심이 다르다.",
+                    "relevance": 3
+                  }
+                ]
+              }
+            ]
+          },
+          "semantic_review_sha256": "82fde0979e9adbac090c9f331e23167f8672d84f7dda442ec65592f210c455d1"
+        }
+      ],
+      "sha256": "e152a87b38e6e659a7dc174fe1367f7fac74206d74e1fe0886264cebdc80848b"
     }
   ]
 }
