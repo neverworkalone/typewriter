@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "a7891a86aa62d123ca7f09ab8d6cbade117bca79f8e6c06b42e4ed878bd428eb"
+    "canonical_records_sha256": "aa383313257c19b6daa9005ae1c12d291371a1e56d17b50899b79cd5fb3edd01"
   },
-  "authored_review_sha256": "b498c13fdb7cd759c6a07eec2472adb10ea1e783727a636a859d097f205aa1e5",
+  "authored_review_sha256": "f26804650b68c7c6b089bcca3c4bcf2bff7d5fb34ab81f3ae9f8d9d6c78685bb",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "a7891a86aa62d123ca7f09ab8d6cbade117bca79f8e6c06b42e4ed878bd428eb"
+      "canonical_records_sha256": "aa383313257c19b6daa9005ae1c12d291371a1e56d17b50899b79cd5fb3edd01"
     },
     "records": [
       {
@@ -4963,7 +4963,7 @@
       },
       {
         "record_id": "w099",
-        "record_sha256": "64a60160c8d2fe32a9236fcb54a32a942d535eba39d756f2fe0d1b5a170e836f",
+        "record_sha256": "c3a6bc334756751ac6731055228bda981a22bb472f9edb699132fcd42337a368",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w099:boundary",
           "decision": "retain",
@@ -4982,13 +4982,13 @@
           {
             "sense_id": "w099-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w099 w099-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-a0235a33a49c8486b3ec93ad to w681; rationale digest 8d61b4d2bf00. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-cd2342693953ec93919f2091 to w935; rationale digest 1c567a38eadb. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-9357046b7bb49585a3b30703 to w3235; rationale digest 16cdeb70c0fe. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-af4d90237b02c92a3f40a36c to w7146; rationale digest 2a75ec7b6d9a. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-6e46738b489994ae4f82385c to w4363; rationale digest f693e8a1a2bb. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-a45d80817534ba2cdd0b0432 to w100; rationale digest 07e55ee3277b."
+            "relation_rationale": "w099 w099-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-a0235a33a49c8486b3ec93ad to w681; rationale digest 8d61b4d2bf00. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-cd2342693953ec93919f2091 to w935; rationale digest 1c567a38eadb. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-9357046b7bb49585a3b30703 to w3235; rationale digest 16cdeb70c0fe. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-af4d90237b02c92a3f40a36c to w7146; rationale digest 2a75ec7b6d9a. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-6e46738b489994ae4f82385c to w4363; rationale digest f693e8a1a2bb. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-a45d80817534ba2cdd0b0432 to w100; rationale digest 07e55ee3277b. w099 w099-s1 b6bea8a655f4 [R000008]: Stage 3 attempt R000008-a1 changed direct relation rel-cd2342693953ec93919f2091 to near rel-9ba180e30b9ffd956f233008 for w935; rationale digest 64cf348ba29f."
           }
         ]
       },
       {
         "record_id": "w100",
-        "record_sha256": "0ea5980337dc677b2e1e829d074e48323bad396fb2915c47f530741b810f04fe",
+        "record_sha256": "20b1973c6cec2a00551437abc2d6ac324281b58b9db7658ab7138f85b9111d57",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w100:boundary",
           "decision": "retain",
@@ -5007,7 +5007,7 @@
           {
             "sense_id": "w100-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-b0a8b98991d1666cdb9a8343 to w327; rationale digest 195c9512600c. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-31c3831cd46a7804334b2242 to w462; rationale digest ea2ac4f2785e. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-6e6f7ec2f977d7649de9b477 to w4335; rationale digest 4f456dcf3213. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-e947947f99c662444a7ec1a8 to w2442; rationale digest 0ceb7711adc3. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-2aa69206190909458c2e9cd9 to w237; rationale digest 71a26478ce7b. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-d8d3e7315ef1e603ec15aa59 to w099; rationale digest feb118806284."
+            "relation_rationale": "w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-b0a8b98991d1666cdb9a8343 to w327; rationale digest 195c9512600c. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-31c3831cd46a7804334b2242 to w462; rationale digest ea2ac4f2785e. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-6e6f7ec2f977d7649de9b477 to w4335; rationale digest 4f456dcf3213. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-e947947f99c662444a7ec1a8 to w2442; rationale digest 0ceb7711adc3. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-2aa69206190909458c2e9cd9 to w237; rationale digest 71a26478ce7b. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-d8d3e7315ef1e603ec15aa59 to w099; rationale digest feb118806284. w100 w100-s1 de39a33ddc43 [R000008]: Stage 3 attempt R000008-a1 changed direct relation rel-31c3831cd46a7804334b2242 to near rel-bc4aaa687e6df38b45b9472d for w462; rationale digest 4c754cb93e3e. w100 w100-s1 de39a33ddc43 [R000008]: Stage 3 attempt R000008-a1 changed direct relation rel-2aa69206190909458c2e9cd9 to near rel-c94a02bb5a6c499523e3a9c6 for w237; rationale digest 7dc50733f7b9."
           }
         ]
       },
@@ -38962,7 +38962,7 @@
       },
       {
         "record_id": "w1225",
-        "record_sha256": "6ab90b9989bb9591d7dd48aa7f1be9e7b28b2f66d789250c89ac15f5ba620c3f",
+        "record_sha256": "144fbad77e75f86448f2f29f12460a83e3eb03e7f495b0cfc938a3edf846817e",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w1225:boundary",
           "decision": "split",
@@ -38996,7 +38996,7 @@
           {
             "sense_id": "w1225-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-3b532f453e8e69c6d6efc57e to w079; rationale digest d5ab00de25f3. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-73fa896d88461d02dea33983 to r002; rationale digest 470045055066. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-4f909d581a90f6298a708fad to w5904; rationale digest f8f43b91b43d. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-89adc2ce5cea9f12ef0151f1 to w5566; rationale digest 15ee9181c4e3. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8a37e9dcd21d0c11381ec708 to w046; rationale digest 48ed53147525. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-6a3b85cb77b4675b979ddf5b to w047; rationale digest 6b72293c0e92. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-7411fbac0b17c67b667607d6 to w10086; rationale digest 79cd2fe21375."
+            "relation_rationale": "w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-3b532f453e8e69c6d6efc57e to w079; rationale digest d5ab00de25f3. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-73fa896d88461d02dea33983 to r002; rationale digest 470045055066. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-4f909d581a90f6298a708fad to w5904; rationale digest f8f43b91b43d. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-89adc2ce5cea9f12ef0151f1 to w5566; rationale digest 15ee9181c4e3. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8a37e9dcd21d0c11381ec708 to w046; rationale digest 48ed53147525. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-6a3b85cb77b4675b979ddf5b to w047; rationale digest 6b72293c0e92. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-7411fbac0b17c67b667607d6 to w10086; rationale digest 79cd2fe21375. w1225 w1225-s1 09c01c8d5f76 [R000008]: Stage 3 attempt R000008-a1 changed antonym relation rel-7411fbac0b17c67b667607d6 to association rel-ae49f5d6f6d92184aab87261 for w10086; rationale digest d96e8c8a402a."
           },
           {
             "sense_id": "w1225-s2",
@@ -197231,7 +197231,7 @@
       },
       {
         "record_id": "w11287",
-        "record_sha256": "e3b6b3afee38fa14c7a0b3ad0b6581149937529c0f880b8e6da48846b7bc4ff4",
+        "record_sha256": "f2e874d28ec59d36effeab1b87be07e258adc82c544a697ceaa5a6e50ef3df0d",
         "boundary_review": {
           "review_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1:canonical:w11287:boundary",
           "decision": "retain",
@@ -197250,7 +197250,7 @@
           {
             "sense_id": "w11287-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-b80671ca74c919a1189b6192 to w077; rationale digest 7b6a996c0349. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-9726ef9f33fa6be957d39dad to w2417; rationale digest c7c66e7d7ba9. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-f2b8776fe6114d86023b6abc to w078; rationale digest 2bd39b90d94f. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-04510e0406f00a13cb81a7cf to w085; rationale digest 5ffbea4ffe1f. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-c7443873c600194ed7477f76 to w4872; rationale digest 1d046a3b5071. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8ce927e891757cfdce6eaf53 to w6960; rationale digest 6c4803475202. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8a2c738d3a6b1fe48bb8268d to w9206; rationale digest 4b32003df231."
+            "relation_rationale": "w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-b80671ca74c919a1189b6192 to w077; rationale digest 7b6a996c0349. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-9726ef9f33fa6be957d39dad to w2417; rationale digest c7c66e7d7ba9. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-f2b8776fe6114d86023b6abc to w078; rationale digest 2bd39b90d94f. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-04510e0406f00a13cb81a7cf to w085; rationale digest 5ffbea4ffe1f. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-c7443873c600194ed7477f76 to w4872; rationale digest 1d046a3b5071. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8ce927e891757cfdce6eaf53 to w6960; rationale digest 6c4803475202. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8a2c738d3a6b1fe48bb8268d to w9206; rationale digest 4b32003df231. w11287 w11287-s1 f38133e97043 [R000008]: Stage 3 attempt R000008-a1 changed antonym relation rel-f2b8776fe6114d86023b6abc to association rel-a03251e639f8960b2e237b69 for w078; rationale digest 32b212e29e71. w11287 w11287-s1 f38133e97043 [R000008]: Stage 3 attempt R000008-a1 changed antonym relation rel-04510e0406f00a13cb81a7cf to association rel-38f102636533e56d11bec7a7 for w085; rationale digest 0c635f3c68f6."
           }
         ]
       },
@@ -321788,6 +321788,613 @@
         }
       ],
       "sha256": "f5c656cd647a324a0636f70fb9ce1d83c70af3a9e855c0e7ca8df4ba20e0dc8a"
+    },
+    {
+      "batch_id": "R000008",
+      "attempt": 1,
+      "semantic_decisions_sha256": "e72ff60054ee2b25631e3a22393b62774e86d18c3d41e65afe9def1f09badb47",
+      "entries": [],
+      "relation_corrections": [
+        {
+          "source_candidate_id": "R000008",
+          "source_record_id": "w099",
+          "source_sense_id": "w099-s1",
+          "source_gloss_sha256": "b6bea8a655f4e76a3bc5c93df61319cf15d203bdd8d330a1fa351604e2ce59e6",
+          "target_meaning_sha256": "ac3dc42eb7e031d42368c16dbcfb461de3bf7a907ee235a0e6dbd24c110e561f",
+          "previous_relation_id": "rel-cd2342693953ec93919f2091",
+          "previous_relation": {
+            "target": "w935",
+            "target_sense": "w935-s1",
+            "type": "direct",
+            "note": "달다는 설탕처럼 단맛이 느껴지는 상태로 단맛의 형용 표현이다."
+          },
+          "relation_id": "rel-9ba180e30b9ffd956f233008",
+          "relation": {
+            "target": "w935",
+            "target_sense": "w935-s1",
+            "type": "near",
+            "note": "달다는 단맛이 느껴지는 상태를 서술해 단맛과 가까운 감각의 말결을 이룬다.",
+            "relevance": 5
+          },
+          "rationale_sha256": "64cf348ba29f8aad067be1eb23cf96525eec33175b92819a3c0375c19857123c",
+          "position": 2,
+          "outcome": "amended"
+        },
+        {
+          "source_candidate_id": "R000008",
+          "source_record_id": "w100",
+          "source_sense_id": "w100-s1",
+          "source_gloss_sha256": "de39a33ddc43d6ecf5629e7fe31dd6747179ab66321935329a407f0d3759927b",
+          "target_meaning_sha256": "4fe470f9ab81c41cd6857b5adb184a6d89884fdc1636f6ab300213eae01b4ef2",
+          "previous_relation_id": "rel-31c3831cd46a7804334b2242",
+          "previous_relation": {
+            "target": "w462",
+            "target_sense": "w462-s1",
+            "type": "direct",
+            "note": "씁쓸하다는 입안에 쓴맛이 느껴지는 상태로 쓴맛을 직접 표현한다."
+          },
+          "relation_id": "rel-bc4aaa687e6df38b45b9472d",
+          "relation": {
+            "target": "w462",
+            "target_sense": "w462-s1",
+            "type": "near",
+            "note": "씁쓸하다는 입안에 쓴맛이 느껴지는 상태를 서술해 쓴맛과 가까운 감각의 말결을 이룬다.",
+            "relevance": 5
+          },
+          "rationale_sha256": "4c754cb93e3e2f19fdaa4424190aa65f3d0939445f0aa236e5f39a637809c25d",
+          "position": 1,
+          "outcome": "amended"
+        },
+        {
+          "source_candidate_id": "R000008",
+          "source_record_id": "w100",
+          "source_sense_id": "w100-s1",
+          "source_gloss_sha256": "de39a33ddc43d6ecf5629e7fe31dd6747179ab66321935329a407f0d3759927b",
+          "target_meaning_sha256": "951b3dcba4c7ce15d157494828c5ebae1eebcab838af6e84c993e22a6ccfbc59",
+          "previous_relation_id": "rel-2aa69206190909458c2e9cd9",
+          "previous_relation": {
+            "target": "w237",
+            "target_sense": "w237-s4",
+            "type": "direct",
+            "note": "쓰다 sense 4는 맛이 혀에 불쾌하고 자극적으로 느껴지는 상태로 쓴맛을 직접 나타낸다."
+          },
+          "relation_id": "rel-c94a02bb5a6c499523e3a9c6",
+          "relation": {
+            "target": "w237",
+            "target_sense": "w237-s4",
+            "type": "near",
+            "note": "쓰다 sense 4는 혀에 쓴맛이 느껴지는 상태를 서술해 쓴맛과 가까운 감각의 말결을 이룬다.",
+            "relevance": 5
+          },
+          "rationale_sha256": "7dc50733f7b99892a1f046c227ee193811d4277c6f8a10d82abf211c59efef7e",
+          "position": 4,
+          "outcome": "amended"
+        },
+        {
+          "source_candidate_id": "R000008",
+          "source_record_id": "w11287",
+          "source_sense_id": "w11287-s1",
+          "source_gloss_sha256": "f38133e970434e5525fcfb59de77f8d47e1dbbd99868f52899bc13885315603e",
+          "target_meaning_sha256": "64871c4ace132edc56952028c326591897608326e128acc23595f8969cb915c6",
+          "previous_relation_id": "rel-f2b8776fe6114d86023b6abc",
+          "previous_relation": {
+            "target": "w078",
+            "target_sense": "w078-s1",
+            "type": "antonym",
+            "note": "건조는 수분이 적어 마른 상태로 물기를 가진 수분과 반대다."
+          },
+          "relation_id": "rel-a03251e639f8960b2e237b69",
+          "relation": {
+            "target": "w078",
+            "target_sense": "w078-s1",
+            "type": "association",
+            "note": "건조는 수분 자체가 아니라 수분이 적어 나타나는 마른 상태로, 수분과 대비해 탐색할 수 있다.",
+            "relevance": 4
+          },
+          "rationale_sha256": "32b212e29e718b51cdc7fcd806dafabd87209edacf107072427cd6bf9b66d74a",
+          "position": 2,
+          "outcome": "amended"
+        },
+        {
+          "source_candidate_id": "R000008",
+          "source_record_id": "w11287",
+          "source_sense_id": "w11287-s1",
+          "source_gloss_sha256": "f38133e970434e5525fcfb59de77f8d47e1dbbd99868f52899bc13885315603e",
+          "target_meaning_sha256": "2dfb020128a9527318e97c01e0427dc466b1e135154b7dbb192df5059f2ed148",
+          "previous_relation_id": "rel-04510e0406f00a13cb81a7cf",
+          "previous_relation": {
+            "target": "w085",
+            "target_sense": "w085-s1",
+            "type": "antonym",
+            "note": "메마름은 수분이나 생기가 빠져 바싹 마른 상태다."
+          },
+          "relation_id": "rel-38f102636533e56d11bec7a7",
+          "relation": {
+            "target": "w085",
+            "target_sense": "w085-s1",
+            "type": "association",
+            "note": "메마름은 수분이나 생기가 빠져 나타나는 상태로 수분 자체와 대비해 탐색할 수 있다.",
+            "relevance": 4
+          },
+          "rationale_sha256": "0c635f3c68f6fe47598606be840310149fa669ca2180d807ff841052f821ba24",
+          "position": 3,
+          "outcome": "amended"
+        },
+        {
+          "source_candidate_id": "R000008",
+          "source_record_id": "w1225",
+          "source_sense_id": "w1225-s1",
+          "source_gloss_sha256": "09c01c8d5f762d143a2e5b21c4df4e043129d71ed1971597d8aba8e45ef3537b",
+          "target_meaning_sha256": "13f81b985ac257ba451956a23d28047dad773eb28da7f88f0f1a878aad0420ec",
+          "previous_relation_id": "rel-7411fbac0b17c67b667607d6",
+          "previous_relation": {
+            "target": "w10086",
+            "target_sense": "w10086-s1",
+            "type": "antonym",
+            "note": "마취는 감각을 일시적으로 잃게 하는 상태로 감각을 느끼는 능력의 일시적 부재를 만든다."
+          },
+          "relation_id": "rel-ae49f5d6f6d92184aab87261",
+          "relation": {
+            "target": "w10086",
+            "target_sense": "w10086-s1",
+            "type": "association",
+            "note": "마취는 약물 처치로 감각을 일시적으로 잃게 하므로 감각 능력과 처치·결과의 관계로 함께 살필 수 있다.",
+            "relevance": 4
+          },
+          "rationale_sha256": "d96e8c8a402a909bd3a3f0e670720bba51431f29ebdf0b130d6474831758b3b0",
+          "position": 6,
+          "outcome": "amended"
+        }
+      ],
+      "changes": [
+        {
+          "entry_id": "w099",
+          "operation": "amend_relations",
+          "path": "data/canonical/pilot.jsonl",
+          "source_candidate_ids": [
+            "R000008"
+          ],
+          "amended_relation_ids": [
+            "rel-cd2342693953ec93919f2091"
+          ],
+          "before_sha256": "64a60160c8d2fe32a9236fcb54a32a942d535eba39d756f2fe0d1b5a170e836f",
+          "after_sha256": "c3a6bc334756751ac6731055228bda981a22bb472f9edb699132fcd42337a368",
+          "previous_semantic_review_sha256": "c68845dfaf9f708ed03a75b21b68faf8f79692baf2cf55113ae5e86db393decf",
+          "previous_semantic_review": {
+            "record_id": "w099",
+            "record_sha256": "64a60160c8d2fe32a9236fcb54a32a942d535eba39d756f2fe0d1b5a170e836f",
+            "boundary_review": {
+              "review_id": "canonical-semantic-review:w099:boundary",
+              "decision": "retain",
+              "classification": "atomic",
+              "evidence": [
+                {
+                  "sense_id": "w099-s1",
+                  "evidence_basis": "gloss content and writer domain axes: taste",
+                  "rationale": "w099 w099-s1 was separately reviewed against gloss b6bea8a655f4 and writer-facing usage evidence."
+                }
+              ],
+              "pairwise": [],
+              "rationale": "w099 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "w099-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale": "w099 w099-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-a0235a33a49c8486b3ec93ad to w681; rationale digest 8d61b4d2bf00. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-cd2342693953ec93919f2091 to w935; rationale digest 1c567a38eadb. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-9357046b7bb49585a3b30703 to w3235; rationale digest 16cdeb70c0fe. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-af4d90237b02c92a3f40a36c to w7146; rationale digest 2a75ec7b6d9a. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-6e46738b489994ae4f82385c to w4363; rationale digest f693e8a1a2bb. w099 w099-s1 b6bea8a655f4 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-a45d80817534ba2cdd0b0432 to w100; rationale digest 07e55ee3277b."
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "w099",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w099",
+            "lemma": "단맛",
+            "search_forms": [
+              "단맛"
+            ],
+            "senses": [
+              {
+                "id": "w099-s1",
+                "pos": "noun",
+                "gloss": "혀에서 달게 느껴지는 맛",
+                "relations": [
+                  {
+                    "target": "r004",
+                    "target_sense": "r004-s1",
+                    "type": "direct",
+                    "note": "이 과일의 단맛이 강하게 느껴진다 / 이 과일의 달콤함이 강하게 느껴진다. 같은 명사 주어 자리에서 직접 바꿔 넣을 수 있다."
+                  },
+                  {
+                    "target": "w681",
+                    "target_sense": "w681-s1",
+                    "type": "near",
+                    "note": "달큰하다는 단맛이 은근하고 부드럽게 느껴지는 맛의 결이다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w935",
+                    "target_sense": "w935-s1",
+                    "type": "direct",
+                    "note": "달다는 설탕처럼 단맛이 느껴지는 상태로 단맛의 형용 표현이다."
+                  },
+                  {
+                    "target": "w3235",
+                    "target_sense": "w3235-s1",
+                    "type": "near",
+                    "note": "달큼함은 지나치게 강하지 않고 은근히 퍼지는 단맛의 느낌이다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w7146",
+                    "target_sense": "w7146-s1",
+                    "type": "association",
+                    "note": "설탕은 단맛을 내는 대표적인 재료다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w4363",
+                    "target_sense": "w4363-s1",
+                    "type": "sensory",
+                    "note": "입안에 단맛이 번지는 표현은 혀에서 시작한 맛이 퍼지는 감각을 구체화한다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w100",
+                    "target_sense": "w100-s1",
+                    "type": "sensory",
+                    "note": "쓴맛은 단맛과 다른 맛의 결을 이루어 음식 맛을 대비해 표현할 때 함께 살필 수 있다.",
+                    "relevance": 3
+                  }
+                ]
+              }
+            ]
+          },
+          "semantic_review_sha256": "33158e2413fadd505ef06af8d7ae88ad51bbae9897e6f61af484780399d77839"
+        },
+        {
+          "entry_id": "w100",
+          "operation": "amend_relations",
+          "path": "data/canonical/pilot.jsonl",
+          "source_candidate_ids": [
+            "R000008"
+          ],
+          "amended_relation_ids": [
+            "rel-31c3831cd46a7804334b2242",
+            "rel-2aa69206190909458c2e9cd9"
+          ],
+          "before_sha256": "0ea5980337dc677b2e1e829d074e48323bad396fb2915c47f530741b810f04fe",
+          "after_sha256": "20b1973c6cec2a00551437abc2d6ac324281b58b9db7658ab7138f85b9111d57",
+          "previous_semantic_review_sha256": "e6f1fb24809ff5fe73d6312fd3cf9bdc445a5d5ab274263323dd3e9272b4a96a",
+          "previous_semantic_review": {
+            "record_id": "w100",
+            "record_sha256": "0ea5980337dc677b2e1e829d074e48323bad396fb2915c47f530741b810f04fe",
+            "boundary_review": {
+              "review_id": "canonical-semantic-review:w100:boundary",
+              "decision": "retain",
+              "classification": "atomic",
+              "evidence": [
+                {
+                  "sense_id": "w100-s1",
+                  "evidence_basis": "gloss content and writer domain axes: taste",
+                  "rationale": "w100 w100-s1 was separately reviewed against gloss de39a33ddc43 and writer-facing usage evidence."
+                }
+              ],
+              "pairwise": [],
+              "rationale": "w100 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "w100-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale": "w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-b0a8b98991d1666cdb9a8343 to w327; rationale digest 195c9512600c. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-31c3831cd46a7804334b2242 to w462; rationale digest ea2ac4f2785e. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-6e6f7ec2f977d7649de9b477 to w4335; rationale digest 4f456dcf3213. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-e947947f99c662444a7ec1a8 to w2442; rationale digest 0ceb7711adc3. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended direct relation rel-2aa69206190909458c2e9cd9 to w237; rationale digest 71a26478ce7b. w100 w100-s1 de39a33ddc43 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-d8d3e7315ef1e603ec15aa59 to w099; rationale digest feb118806284."
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "w100",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w100",
+            "lemma": "쓴맛",
+            "search_forms": [
+              "쓴맛"
+            ],
+            "senses": [
+              {
+                "id": "w100-s1",
+                "pos": "noun",
+                "gloss": "혀에서 쓰게 느껴지는 맛",
+                "relations": [
+                  {
+                    "target": "w327",
+                    "target_sense": "w327-s1",
+                    "type": "near",
+                    "note": "쌉싸름하다는 쓴맛이 조금 남으면서 부드럽고 은근한 맛으로 쓴맛의 약한 결이다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w462",
+                    "target_sense": "w462-s1",
+                    "type": "direct",
+                    "note": "씁쓸하다는 입안에 쓴맛이 느껴지는 상태로 쓴맛을 직접 표현한다."
+                  },
+                  {
+                    "target": "w4335",
+                    "target_sense": "w4335-s1",
+                    "type": "sensory",
+                    "note": "삼킨 뒤에도 혀에 쓴맛이 남는 표현은 쓴맛의 지속되는 감각을 나타낸다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w2442",
+                    "target_sense": "w2442-s1",
+                    "type": "near",
+                    "note": "씁쓸함은 쓴맛이 가볍게 남아 입안에 여운을 주는 느낌이다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w237",
+                    "target_sense": "w237-s4",
+                    "type": "direct",
+                    "note": "쓰다 sense 4는 맛이 혀에 불쾌하고 자극적으로 느껴지는 상태로 쓴맛을 직접 나타낸다."
+                  },
+                  {
+                    "target": "w099",
+                    "target_sense": "w099-s1",
+                    "type": "sensory",
+                    "note": "단맛은 쓴맛과 다른 맛의 결을 이루어 음식 맛의 대비를 표현한다.",
+                    "relevance": 3
+                  }
+                ]
+              }
+            ]
+          },
+          "semantic_review_sha256": "b330fef2bb46faf7e2f5916f53da6e473e4fe0b70867dc7092e54d638ed712ba"
+        },
+        {
+          "entry_id": "w11287",
+          "operation": "amend_relations",
+          "path": "data/canonical/issue-223-m9-e-corpus-batch-12.jsonl",
+          "source_candidate_ids": [
+            "R000008"
+          ],
+          "amended_relation_ids": [
+            "rel-f2b8776fe6114d86023b6abc",
+            "rel-04510e0406f00a13cb81a7cf"
+          ],
+          "before_sha256": "e3b6b3afee38fa14c7a0b3ad0b6581149937529c0f880b8e6da48846b7bc4ff4",
+          "after_sha256": "f2e874d28ec59d36effeab1b87be07e258adc82c544a697ceaa5a6e50ef3df0d",
+          "previous_semantic_review_sha256": "ac495c88168c37322eebbbf08e899b4cd7285b333636546a8f2cf332ca86d86b",
+          "previous_semantic_review": {
+            "record_id": "w11287",
+            "record_sha256": "e3b6b3afee38fa14c7a0b3ad0b6581149937529c0f880b8e6da48846b7bc4ff4",
+            "boundary_review": {
+              "review_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1:canonical:w11287:boundary",
+              "decision": "retain",
+              "classification": "atomic",
+              "evidence": [
+                {
+                  "sense_id": "w11287-s1",
+                  "evidence_basis": "w11287 w11287-s1: 수분: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 수분을 보충하다, 수분이 많다처럼 습기와 함유량을 말한다.",
+                  "rationale": "m5-16721 w11287 w11287-s1: 수분: 문맥 0의 지나친 수분 공급, 문맥 1의 수분이 많고, 문맥 2의 수분을 머금고가 모두 물질에 들어 있는 물기를 가리킨다. Reviewed gloss SHA-256 f38133e970434e5525fcfb59de77f8d47e1dbbd99868f52899bc13885315603e."
+                }
+              ],
+              "pairwise": [],
+              "rationale": "m5-16721 w11287 w11287-s1: 수분: 문맥 0의 지나친 수분 공급, 문맥 1의 수분이 많고, 문맥 2의 수분을 머금고가 모두 물질에 들어 있는 물기를 가리킨다. Reviewed gloss SHA-256 f38133e970434e5525fcfb59de77f8d47e1dbbd99868f52899bc13885315603e."
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "w11287-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale": "w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-b80671ca74c919a1189b6192 to w077; rationale digest 7b6a996c0349. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-9726ef9f33fa6be957d39dad to w2417; rationale digest c7c66e7d7ba9. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-f2b8776fe6114d86023b6abc to w078; rationale digest 2bd39b90d94f. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-04510e0406f00a13cb81a7cf to w085; rationale digest 5ffbea4ffe1f. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-c7443873c600194ed7477f76 to w4872; rationale digest 1d046a3b5071. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8ce927e891757cfdce6eaf53 to w6960; rationale digest 6c4803475202. w11287 w11287-s1 f38133e97043 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8a2c738d3a6b1fe48bb8268d to w9206; rationale digest 4b32003df231."
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "w11287",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w11287",
+            "lemma": "수분",
+            "search_forms": [
+              "수분"
+            ],
+            "senses": [
+              {
+                "id": "w11287-s1",
+                "pos": "noun",
+                "gloss": "물질에 들어 있는 물기.",
+                "relations": [
+                  {
+                    "target": "w077",
+                    "target_sense": "w077-s1",
+                    "type": "near",
+                    "note": "습기는 공기나 물체에 포함되어 눅눅하게 느껴지는 수분으로 수분과 가깝다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w2417",
+                    "target_sense": "w2417-s1",
+                    "type": "near",
+                    "note": "물기는 물이나 습기가 표면에 조금 남아 있는 상태로 물질 속 수분이 드러난 경우다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w078",
+                    "target_sense": "w078-s1",
+                    "type": "antonym",
+                    "note": "건조는 수분이 적어 마른 상태로 물기를 가진 수분과 반대다."
+                  },
+                  {
+                    "target": "w085",
+                    "target_sense": "w085-s1",
+                    "type": "antonym",
+                    "note": "메마름은 수분이나 생기가 빠져 바싹 마른 상태다."
+                  },
+                  {
+                    "target": "w4872",
+                    "target_sense": "w4872-s1",
+                    "type": "action",
+                    "note": "축이다는 마른 것을 물이나 수분으로 적셔 촉촉하게 하는 행동이다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w6960",
+                    "target_sense": "w6960-s1",
+                    "type": "association",
+                    "note": "식물이 수분을 잃으면 시들어 생기가 줄어드는 변화가 나타난다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w9206",
+                    "target_sense": "w9206-s1",
+                    "type": "association",
+                    "note": "오이는 수분이 많은 채소로 물질 속 수분의 친숙한 예다.",
+                    "relevance": 3
+                  }
+                ]
+              }
+            ]
+          },
+          "semantic_review_sha256": "8f34370d1aa7ca9feeed56b4cdfedca561233d046f8ce1104e958a20dcd72b17"
+        },
+        {
+          "entry_id": "w1225",
+          "operation": "amend_relations",
+          "path": "data/canonical/m5-11-expansion.jsonl",
+          "source_candidate_ids": [
+            "R000008"
+          ],
+          "amended_relation_ids": [
+            "rel-7411fbac0b17c67b667607d6"
+          ],
+          "before_sha256": "6ab90b9989bb9591d7dd48aa7f1be9e7b28b2f66d789250c89ac15f5ba620c3f",
+          "after_sha256": "144fbad77e75f86448f2f29f12460a83e3eb03e7f495b0cfc938a3edf846817e",
+          "previous_semantic_review_sha256": "1002d9d36f773e023a95deff18b6a1d7f5eaed0179c296a14ef4d438dbbe0652",
+          "previous_semantic_review": {
+            "record_id": "w1225",
+            "record_sha256": "6ab90b9989bb9591d7dd48aa7f1be9e7b28b2f66d789250c89ac15f5ba620c3f",
+            "boundary_review": {
+              "review_id": "canonical-semantic-review:w1225:boundary",
+              "decision": "split",
+              "classification": "coordinated",
+              "evidence": [
+                {
+                  "sense_id": "w1225-s1",
+                  "evidence_basis": "gloss content and writer domain axes: body",
+                  "rationale": "w1225 w1225-s1 was separately reviewed against gloss 09c01c8d5f76 and writer-facing usage evidence."
+                },
+                {
+                  "sense_id": "w1225-s2",
+                  "evidence_basis": "gloss content and writer domain axes: affective",
+                  "rationale": "w1225 w1225-s2 was separately reviewed against gloss 130a85dd35c3 and writer-facing usage evidence."
+                }
+              ],
+              "pairwise": [
+                {
+                  "left_sense_id": "w1225-s1",
+                  "right_sense_id": "w1225-s2",
+                  "relationship": "usage-variant",
+                  "decision": "retain",
+                  "evidence_basis": "independent comparison found distinct physical, figurative, or contextual writer uses",
+                  "distinguishing_feature": "physical and abstract/contextual uses have different writer-facing conditions",
+                  "rationale": "w1225 w1225-s1 w1225-s2 pair was separately reviewed with glosses 09c01c8d5f76 and 130a85dd35c3."
+                }
+              ],
+              "rationale": "w1225 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "w1225-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale": "w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-3b532f453e8e69c6d6efc57e to w079; rationale digest d5ab00de25f3. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-73fa896d88461d02dea33983 to r002; rationale digest 470045055066. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-4f909d581a90f6298a708fad to w5904; rationale digest f8f43b91b43d. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-89adc2ce5cea9f12ef0151f1 to w5566; rationale digest 15ee9181c4e3. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-8a37e9dcd21d0c11381ec708 to w046; rationale digest 48ed53147525. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended association relation rel-6a3b85cb77b4675b979ddf5b to w047; rationale digest 6b72293c0e92. w1225 w1225-s1 09c01c8d5f76 [R000006]: Stage 3 attempt R000006-a1 appended antonym relation rel-7411fbac0b17c67b667607d6 to w10086; rationale digest 79cd2fe21375."
+              },
+              {
+                "sense_id": "w1225-s2",
+                "relation_decision": "no-relations",
+                "relation_rationale": "w1225 w1225-s2: separately authored relation decision no-relations after reviewing the complete relation tuple set.",
+                "no_relation_rationale": "w1225 w1225-s2: separately authored review found no writer-useful relation tuple to retain."
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "w1225",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w1225",
+            "lemma": "감각",
+            "search_forms": [
+              "감각"
+            ],
+            "senses": [
+              {
+                "id": "w1225-s1",
+                "pos": "noun",
+                "gloss": "몸으로 느끼고 알아차리는 능력",
+                "relations": [
+                  {
+                    "target": "w079",
+                    "target_sense": "w079-s1",
+                    "type": "near",
+                    "note": "촉감은 피부에 닿을 때 느끼는 감각으로 감각 능력의 한 부분이다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "r002",
+                    "target_sense": "r002-s1",
+                    "type": "near",
+                    "note": "감촉은 피부에 닿아 느껴지는 감각으로 몸의 감각 중 촉각에 가까운 표현이다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w5904",
+                    "target_sense": "w5904-s1",
+                    "type": "action",
+                    "note": "알아차리는 것은 주변 상황이나 사실을 감각으로 포착해 아는 행동이다.",
+                    "relevance": 5
+                  },
+                  {
+                    "target": "w5566",
+                    "target_sense": "w5566-s1",
+                    "type": "near",
+                    "note": "눈치는 주변 상황이나 상대 마음을 재빨리 알아차리는 감각으로 감각의 인지적 면을 나타낸다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w046",
+                    "target_sense": "w046-s2",
+                    "type": "association",
+                    "note": "날카로움은 감각이나 반응이 예민하고 빠른 성질로 감각의 민감도를 나타낸다.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w047",
+                    "target_sense": "w047-s2",
+                    "type": "association",
+                    "note": "둔함은 감각이나 반응이 느리고 예민하지 않은 성질로 감각 민감도의 차이를 나타낸다.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w10086",
+                    "target_sense": "w10086-s1",
+                    "type": "antonym",
+                    "note": "마취는 감각을 일시적으로 잃게 하는 상태로 감각을 느끼는 능력의 일시적 부재를 만든다."
+                  }
+                ]
+              },
+              {
+                "id": "w1225-s2",
+                "pos": "noun",
+                "gloss": "마음으로 느끼고 알아차리는 능력"
+              }
+            ]
+          },
+          "semantic_review_sha256": "1df88a18c8b86f5efdd6e11ecfd10e2544947a7f1a74a86cdb821c63fd7e448f"
+        }
+      ],
+      "sha256": "11742709f1e90a65e3603202ff1d5a3668f902182ca914bd21e7e33b68701ccb"
     }
   ]
 }
