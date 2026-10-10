@@ -1,5 +1,17 @@
 # Typewriter Editorial Model v1 — M1 pilot (#17–#23)
 
+## Current relation policy (owner decision, 2026-10-10)
+
+**[Relation editorial and review policy](relation-editorial-policy.md) is
+the authoritative current rule** for dictionary-grade 유의어/반의어 and
+writer-facing 말의 결/연상. Its preserve-first exploratory review and
+same-source/group relative relevance 1–9 replace all contrary historical
+M1/v1 or later-added strict substitution, identical gloss breadth,
+hypernym exclusion and near-to-association demotion examples below.
+Those examples document past editorial decisions only; **do not apply
+their restrictive tests to new Stage 2 production or Stage D backfill**.
+Historical pilot ledger data is unchanged.
+
 ## Current searchable-start policy (Issue #208, 2026-09-28)
 
 This section is the current product contract. The M1 counts, ledgers, and role
@@ -76,7 +88,7 @@ plausible exploratory route under the current policy.
 Apply dictionary-grade precision to glosses, `direct`, and `antonym`:
 
 - A gloss must accurately describe the reviewed lexical sense.
-- A `direct` relation must be substitutable in the relevant sense and frame.
+- A `direct` relation must be a defensible dictionary synonym of the bound sense; universal sentence substitution is not required.
 - An `antonym` must oppose the same meaningful axis and sense.
 - Hold ambiguous or unsupported claims until their identity and evidence are
   resolved.
@@ -92,8 +104,7 @@ and `association`:
   need not suit every writer or be universally useful.
 - Subjectivity, distance, or a reviewer preferring another word is not by
   itself a reason to hold or reject a plausible relation.
-- Prefer an honest broader type over deleting a plausible route that cannot
-  qualify as `direct`.
+- Preserve plausible exploration with appropriate relevance instead of deleting it for subjective distance; dictionary synonyms belong to `direct` even when usage breadth differs.
 - Exclude a relation when it is materially incoherent, bound to the wrong
   sense, or presented as a stronger type than its support allows.
 
@@ -891,6 +902,9 @@ JSON Schema 파일 자체를 고정하는 것은 아니다.
 작은 편집 결정이다.
 
 ## Editorial Model v1 — 관계 유형과 UI projection
+
+> **Historical pilot projection and decisions.** The current owner policy
+> linked above supersedes restrictive direct/near boundary examples below.
 
 관계 유형은 source sense와 target sense 사이의 **정직한 거리**를 표시한다.
 평면적인 synonym 목록으로 합치지 않는다.
