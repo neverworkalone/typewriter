@@ -30,7 +30,7 @@ import { refillCandidateBatch } from '../scripts/factory/refill.mjs';
 import { publishArtifacts, recoverArtifacts } from '../scripts/factory/artifact-transaction.mjs';
 import { planHistoryMigration } from '../scripts/factory/migrate-candidate-history.mjs';
 import { eligibleBatches } from '../scripts/factory/stage2-worker.mjs';
-import { buildExclusionManifest } from '../scripts/reference/run-corpus-lemma-pilot.mjs';
+import { buildExclusionManifest, parseArguments as parseCorpusArguments } from '../scripts/reference/run-corpus-lemma-pilot.mjs';
 
 // Synthetic providers (labeled synthetic: no native runtime runs here; the real-runtime smoke lives in
 // tests/factory-ensemble-native-smoke.test.mjs and is skipped with a reason when a runtime is absent).
@@ -1215,6 +1215,55 @@ test('production CLI refills valid lemmas, skips trash proposals before analysis
     root, cachePaths: secondCache.cachePaths, providers: rejectingProviders, permission: async () => {}, log: () => {},
     selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }),
   }), /source exhausted/);
+});
+
+test('default refill selector derives a corpus-safe batch id from a T-prefixed task id', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-selector-id-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cache = await cacheForTask(root);
+  const initial = evidenceDoc([cand('가다', 'verb', [h('d1', '가는')])]);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(initial));
+  const table = { 가는: GADA.가는, 걸음: [p('걸음', 'noun')] };
+  let selectorCalls = 0;
+  const spawnSelector = (_executable, command, spawnOptions) => {
+    selectorCalls += 1;
+    assert.equal(spawnOptions.cwd, root);
+    const selector = parseCorpusArguments(command.slice(1), { repositoryDirectory: root, cachePaths: cache.cachePaths });
+    assert.match(selector.batchId, /^t000001-[0-9a-f]{12}$/u);
+    assert.equal(selector.candidateLimit, 2);
+    assert.equal(selector.includeCanonicalLemmas, true);
+    assert.equal(selector.reuseAnalysisFrom, cache.taskDirectory);
+    assert.equal(selector.outputDirectory, path.join(cache.taskDirectory, 'refill-C000001-000001'));
+    assert.equal(selector.exclusionLemmaSources.length, 1);
+
+    const listeners = new Map();
+    const child = { on(event, listener) { listeners.set(event, listener); return child; } };
+    queueMicrotask(async () => {
+      try {
+        await mkdir(selector.outputDirectory, { recursive: true });
+        const nextPage = {
+          ...evidenceDoc([cand('걸음', 'noun', [h('d2', '걸음')])]),
+          selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } },
+        };
+        await writeFile(path.join(selector.outputDirectory, 'candidate-evidence.json'), JSON.stringify(nextPage));
+        listeners.get('close')?.(0);
+      } catch (error) {
+        listeners.get('error')?.(error);
+      }
+    });
+    return child;
+  };
+
+  const result = await runStage1([
+    '--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '2',
+  ], {
+    root, cachePaths: cache.cachePaths, providers: triple({ k: table, h: table, m: table }),
+    permission: async () => {}, log: () => {}, spawnSelector,
+  });
+  assert.equal(selectorCalls, 1);
+  assert.equal(result.rows.length, 2);
+  assert.equal(result.manifest.production.target, 2);
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
 });
 
 test('refill resumes identical inputs, fails closed on runtime errors and records true exhaustion', async (t) => {
