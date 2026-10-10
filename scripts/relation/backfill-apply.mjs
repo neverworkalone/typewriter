@@ -8,7 +8,7 @@ import { CORRECTION_FIELD, canonicalTuple, correctionSettled, relationCorrection
 import { sha256Hex } from '../factory/contract.mjs';
 import { buildStage3SemanticAuthority, AUTHORITY_PATH } from '../factory/semantic-authority.mjs';
 import { refreshStage3ReportCheckpoints } from '../factory/stage3-worker.mjs';
-import { sha256Json } from '../validate/semantic-audit.mjs';
+import { canonicalRecordsSha256, sha256Json } from '../validate/semantic-audit.mjs';
 import { backfillPacketErrors } from '../factory/validate.mjs';
 import { approvalsStillHold } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
@@ -116,12 +116,23 @@ async function writeAtomic(target, text) {
 const withoutCorrections = (records, corrections) => records.map((record) => revertRelationCorrections(record,
   corrections.map((item) => ({ ...item, outcome: 'amended' }))));
 
+// Resuming a correction packet rebuilds "the canonical before this packet" from the packet itself. That rebuild is only
+// sound when it lands exactly on the canonical the semantic authority recorded before the packet: any other result (for
+// example the same target relation retyped by someone else since, which the rebuild would paper over by re-inserting the
+// old tuple) is a change the packet never reviewed, so it fails closed instead of being corrected.
+function assertRebuiltBaseIsRecorded(base, source, packetId) {
+  if (canonicalRecordsSha256(base.map((record) => ({ record }))) !== source.source?.canonical_records_sha256) {
+    throw new Error(`packet ${packetId}: canonical changed after the packet was written (the pre-packet state it rebuilds is not the recorded one); remove the unwritten packet and re-review`);
+  }
+}
+
 async function applyPacket({ root, records, recordPathById, packetId, amendments, corrections, packetText }) {
   const base = corrections ? withoutCorrections(records, corrections) : withoutTuples(records, amendments);
   const plan = corrections
     ? planRelationCorrections({ packetId, corrections, canonicalRecords: base, recordPathById })
     : planRelationBackfill({ packetId, amendments, canonicalRecords: base, recordPathById });
   plan.reviewManifest = { semantic_decisions_sha256: sha256Hex(packetText), admission: {} };
+  if (corrections) assertRebuiltBaseIsRecorded(base, await readAuthority(root), packetId);
   const authority = await buildStage3SemanticAuthority({ root, baseCanonicalRecords: base, plan });
   await mkdir(path.join(root, BACKFILL_PACKET_DIR), { recursive: true });
   await writeAtomic(path.join(root, BACKFILL_PACKET_DIR, `${packetId}.json`), packetText);

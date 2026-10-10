@@ -399,3 +399,46 @@ test('a removal of a relation that was retyped meanwhile is stale at first apply
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// Resuming a stored correction packet rebuilds the pre-packet canonical from the packet, so a record that is neither
+// the pre-packet nor the post-packet state (the same target relation changed in the meantime) must fail closed instead
+// of being "restored" and then corrected. This goes through the on-disk intent packet and the real resume path.
+const rewriteRelation = async (root, senseId, at, change) => {
+  const dir = path.join(root, 'data/canonical');
+  for (const name of await readdir(dir)) {
+    const text = await readFile(path.join(dir, name), 'utf8');
+    const next = text.split('\n').map((line) => {
+      if (!line) return line;
+      const record = JSON.parse(line);
+      if (!record.senses.some((sense) => sense.id === senseId)) return line;
+      return JSON.stringify({ ...record, senses: record.senses.map((sense) => (sense.id !== senseId ? sense
+        : { ...sense, relations: sense.relations.map((relation, i) => (i === at ? { ...relation, ...change } : relation)) })) });
+    }).join('\n');
+    if (next !== text) await writeFile(path.join(dir, name), next);
+  }
+};
+
+test('resuming a stored correction packet fails closed when the same target relation changed since it was written', async () => {
+  for (const removal of [true, false]) {
+    for (const change of [{ type: 'mood', note: '다른 검토가 바꾼 설명이다.', relevance: 6 }, { note: '같은 유형의 다른 설명이다.' }]) {
+      const root = await scratchRoot();
+      try {
+        const records = await readRecords(root);
+        const picked = pick(records);
+        const proposal = removal ? { ...retype(picked), relation: null } : retype(picked);
+        const items = correctionItemsFor(records, [proposal]);
+        const id = nextPacketId((await readAuthority(root)).factory_admissions);
+        await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
+        await writeFile(path.join(root, `data/relation-backfill/${id}.json`), `${JSON.stringify({ packet_id: id, relation_corrections: items }, null, 1)}\n`);
+        await rewriteRelation(root, picked.sense.id, picked.at, change);
+        const changed = await readRecords(root);
+        const events = (await readAuthority(root)).factory_admissions.length;
+        await assert.rejects(applyRelationCorrections({ root, proposals: [proposal], refreshReports: false }), /canonical changed after the packet was written|no longer (holds|the reviewed)/u);
+        assert.deepEqual(await readRecords(root), changed, 'canonical is untouched');
+        assert.equal((await readAuthority(root)).factory_admissions.length, events, 'nothing is recorded');
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    }
+  }
+});
