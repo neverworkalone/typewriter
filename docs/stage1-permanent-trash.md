@@ -64,6 +64,13 @@ provider configuration and progress; restart may reuse only identical inputs.
 Candidates and trash are published as one recoverable transaction. Stage 2/3
 editorial behavior and canonical data remain outside this change.
 
+If a genuinely exhausted source produced zero new lemmas but did produce new
+observations, publish a zero-row compact result with terminal Stage 1 status
+`exhausted`. Its observation/analysis history still goes to permanent trash (or
+the normal excluded ledger). Existing Stage 2 selection accepts only `created`
+results, so this terminal result is not claimable. Exhaustion with no new source
+observations publishes nothing.
+
 ## Operator commands and recovery
 
 ```bash

@@ -18,11 +18,13 @@ const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const CANDIDATE_TRANSITIONS = Object.freeze({
   created: ['created', 'complete'],
   complete: ['complete'],
+  exhausted: ['exhausted'],
 });
 
 export function validateCandidateTransition(before, after) {
   if (before === null || before === undefined) {
-    const errors = after?.status === 'created' ? [] : [`new candidate manifest must start as created, got ${after?.status}`];
+    const errors = after?.status === 'created' || after?.contract === COMPACT_CONTRACT && after?.status === 'exhausted'
+      ? [] : [`new candidate manifest must start as created (or a compact exhausted result), got ${after?.status}`];
     if (after?.contract === COMPACT_CONTRACT && !after.production) errors.push('new compact candidate manifest requires final-target production evidence');
     return errors;
   }

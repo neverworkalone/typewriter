@@ -37,7 +37,8 @@ import {
 // Since issue #275 the bound (`--max-candidates`, default 500) counts distinct citation-form lemmas.
 //   pnpm run factory:stage1 --evidence runs/T000001/candidate-evidence.json --task-id T000001
 // Input is the text-free output of `pnpm run reference:corpus:candidates`. Output is
-// data/candidates/C…/{manifest.json,candidates.jsonl} with status `created`; nothing else is written.
+// Compact candidate artifacts, permanent observation trash and batch history are
+// published together. A zero-yield exhausted source is a terminal Stage 1 result.
 
 // Providers selectable by `--providers`; adding one is a registry entry (docs/lexical-factory-contracts.md).
 // Unknown ids fail closed. Local-only: no provider may send candidates or corpus text to a network.
@@ -412,7 +413,7 @@ export async function runStage1(argv, {
     }
     let file = await readJson(filePath, 'context replay record');
     if (file.contract === COMPACT_CONTRACT) {
-      if (file.archive?.path !== `${HISTORY_DIRECTORY}/${file.batch_id}.json`) throw new Stage1Error(['invalid compact context replay reference']);
+      if (!/^C\d{6}$/.test(file.batch_id) || file.archive?.path !== `${HISTORY_DIRECTORY}/${file.batch_id}.json`) throw new Stage1Error(['invalid compact context replay reference']);
       const historyText = await readFile(path.join(root, file.archive.path), 'utf8');
       if (digest(historyText) !== file.archive.sha256) throw new Stage1Error(['compact context replay history digest mismatch']);
       file = JSON.parse(historyText);
@@ -505,6 +506,7 @@ export async function runStage1(argv, {
     const merged = mergeUnresolved(trash, [produced.manifest]);
     const compact = compactManifest(produced.manifest, merged.references.get(batchId));
     compact.manifest.production = produced.production;
+    if (!produced.rows.length) compact.manifest.status = 'exhausted';
     const files = new Map([...merged.changed].map((file) => [`${TRASH_DIRECTORY}/${file}`, chunkText(merged.chunks.get(file))]));
     files.set(compact.manifest.archive.path, compact.historyText);
     files.set(`data/candidates/${batchId}/candidates.jsonl`, produced.candidatesText);
@@ -525,7 +527,8 @@ export async function runStage1(argv, {
       ensembleProviders: resolvedProviders, context: contextProposals || contextReplay ? { contextProposals, contextReplay, contextSource: source, contextAgent, snapshot: evidenceSource.source_snapshot } : null,
     });
   }
-  log(JSON.stringify({ batch_id: batchId, dry_run: options.dryRun, directory: path.relative(root, target), ...produced.summary, ...(comparison ? { comparison } : {}) }));
+  log(JSON.stringify({ batch_id: batchId, status: produced.manifest.status, dry_run: options.dryRun, directory: path.relative(root, target),
+    ...produced.summary, ...(produced.production ? { production: produced.production } : {}), ...(comparison ? { comparison } : {}) }));
   return produced;
 }
 

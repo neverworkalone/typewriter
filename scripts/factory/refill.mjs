@@ -65,10 +65,11 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
     const count = produced?.rows.length ?? 0;
     progress({ pages: state.pages.length, candidates: count, visited_proposals: visited.size });
     if (count >= args.maxCandidates || state.exhausted) {
-      if (!count) {
+      if (!count && !combined.candidates.length) {
         await rm(checkpointPath, { force: true });
         throw new Stage1Error(['source exhausted with no valid new candidates; no batch published']);
       }
+      if (!count) produced = await produceCandidateBatch({ ...args, evidence: combined, providers, refill: true, finalizeEmpty: true });
       produced.production = { contract: 'lexical-factory-refill-v1', target: args.maxCandidates, pages: state.pages.length,
         visited_proposal_count: visited.size, exhausted: state.exhausted, source_snapshot: snapshotOf(initialEvidence),
         initial_evidence_sha256: digest(JSON.stringify(initialEvidence)), checkpoint_binding: binding,

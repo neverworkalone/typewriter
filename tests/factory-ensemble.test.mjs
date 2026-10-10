@@ -28,6 +28,8 @@ import { mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkTex
 import { refillCandidateBatch } from '../scripts/factory/refill.mjs';
 import { publishArtifacts, recoverArtifacts } from '../scripts/factory/artifact-transaction.mjs';
 import { planHistoryMigration } from '../scripts/factory/migrate-candidate-history.mjs';
+import { eligibleBatches } from '../scripts/factory/stage2-worker.mjs';
+import { buildExclusionManifest } from '../scripts/reference/run-corpus-lemma-pilot.mjs';
 
 // Synthetic providers (labeled synthetic: no native runtime runs here; the real-runtime smoke lives in
 // tests/factory-ensemble-native-smoke.test.mjs and is skipped with a reason when a runtime is absent).
@@ -574,6 +576,9 @@ test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without wo
   const fresh = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-replay-'));
   const freshCache = await cacheForTask(fresh);
   await writeFile(path.join(freshCache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc(fallbackEvidence)));
+  await writeFile(path.join(freshCache.taskDirectory, 'bad-replay.json'), JSON.stringify({ contract: 'lexical-factory-candidate-manifest-v3', batch_id: '../../outside', archive: { path: 'data/candidate-history/../../outside.json', sha256: HEX } }));
+  await assert.rejects(() => runStage1([...args, '--dry-run', '--context-replay', 'runs/T000001/bad-replay.json'],
+    { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK) }), /invalid compact context replay reference/);
   await mkdir(path.join(fresh, 'data/validation'), { recursive: true });
   await copyFile(path.join(root, produced.manifest.archive.path), path.join(fresh, 'data/validation/context-replay.json'));
   const replayed = await runStage1([...args, '--dry-run', '--context-replay', 'data/validation/context-replay.json'],
@@ -1247,4 +1252,27 @@ test('the 500 final-lemma target refills a short page and preserves overflow as 
   assert.equal(result.manifest.selection.deferred_lemma_count, 1);
   assert.equal(result.manifest.excluded_observations[0].disposition, 'deferred_lemma');
   assert.equal(result.manifest.unresolved_observations.length, 0);
+});
+
+test('zero-yield true exhaustion persists unresolved observations in a terminal Stage 1 result', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-zero-exhaustion-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cache = await cacheForTask(root);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('없다', 'adjective', [h('d1', '없는')])])));
+  const result = await runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'], {
+    root, cachePaths: cache.cachePaths, providers: triple({}), permission: async () => {}, log: () => {},
+    selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }),
+  });
+  assert.equal(result.manifest.status, 'exhausted');
+  assert.equal(result.manifest.candidate_count, 0);
+  assert.equal(result.manifest.archive.unresolved_count, 1);
+  assert.equal(trashIndex(await loadTrash(root)).size, 1);
+  const exclusions = await buildExclusionManifest([path.join(root, 'data/candidates/C000001/candidates.jsonl')], { repositoryDirectory: root, cachePaths: cache.cachePaths });
+  assert.deepEqual(exclusions.lemmas, []);
+  assert.equal(exclusions.source_artifacts.length, 2, 'an exhausted zero-row source stays bound and adds no guessed lemma');
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
+  assert.deepEqual(eligibleBatches({ validated: true, candidates: [{ batchId: result.manifest.batch_id, manifest: result.manifest, rows: [] }], reviews: [] }), []);
+  const invalid = structuredClone(result.manifest);
+  invalid.production.exhausted = false;
+  assert.match(validateCandidateBatch({ manifest: invalid, candidatesText: result.candidatesText }).join(), /exhaustion/);
 });

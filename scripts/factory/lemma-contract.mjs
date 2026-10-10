@@ -218,7 +218,7 @@ export function validateUnresolved(list, ensemble, limit = MAX_UNRESOLVED_OBSERV
   return errors;
 }
 
-export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnresolved }) {
+export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnresolved, allowEmpty = false }) {
   const errors = [];
   const compact = manifest.contract === COMPACT_CONTRACT;
   const required = ['contract', 'lemma_policy', 'task_id', 'batch_id', 'candidate_count', 'observation_count', 'selection',
@@ -233,7 +233,7 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
   }
   if (manifest.lemma_policy !== LEMMA_POLICY) errors.push(`candidate manifest: lemma_policy must be ${LEMMA_POLICY}`);
   if (!isBatchId(manifest.batch_id)) errors.push('candidate manifest: batch_id must match C000000');
-  if (!CANDIDATE_STATUSES.includes(manifest.status)) errors.push(`candidate manifest: status must be one of ${CANDIDATE_STATUSES.join(', ')}`);
+  if (!(compact ? [...CANDIDATE_STATUSES, 'exhausted'] : CANDIDATE_STATUSES).includes(manifest.status)) errors.push(`candidate manifest: invalid status ${manifest.status}`);
   for (const key of ['candidates_sha256', 'canonical_snapshot_digest', 'source_evidence_sha256']) {
     if (!isSha256(manifest[key])) errors.push(`candidate manifest: ${key} must be sha256 hex`);
   }
@@ -247,8 +247,11 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
     if (typeof manifest[key] !== 'string' || manifest[key].length === 0) errors.push(`candidate manifest: ${key} must be a non-empty string`);
   }
   for (const key of ['candidate_count', 'observation_count']) {
-    if (!Number.isInteger(manifest[key]) || manifest[key] < 1) errors.push(`candidate manifest: ${key} must be a positive integer`);
+    const minimum = (compact && manifest.status === 'exhausted') || allowEmpty ? 0 : 1;
+    if (!Number.isInteger(manifest[key]) || manifest[key] < minimum) errors.push(`candidate manifest: ${key} must be ${minimum ? 'a positive' : 'a nonnegative'} integer`);
   }
+  if (compact && manifest.status === 'exhausted' && (manifest.candidate_count !== 0 || manifest.observation_count !== 0
+    || manifest.production?.exhausted !== true)) errors.push('exhausted Stage 1 results require zero candidates/observations and proven source exhaustion');
   const selection = manifest.selection;
   if (!isPlainObject(selection) || Object.keys(selection).sort().join() !== 'bound,deferred_lemma_count,eligible_lemma_count'
     || !Number.isInteger(selection.bound) || selection.bound < 1
@@ -306,6 +309,7 @@ function validateCompactMetadata(manifest, ensemble) {
       || production.target !== manifest.selection?.bound || !Number.isSafeInteger(production.pages) || production.pages < 1
       || !Number.isSafeInteger(production.visited_proposal_count) || production.visited_proposal_count < 1
       || typeof production.exhausted !== 'boolean' || !isSha256(production.checkpoint_binding)
+      || !isSha256(production.initial_evidence_sha256) || `corpus:${production.source_snapshot}` !== manifest.source_snapshot
       || (manifest.candidate_count < production.target && (!production.exhausted
         || production.exhaustion?.contract !== 'corpus-selector-exhaustion-v1' || production.exhaustion.remaining_lemma_count !== 0))) errors.push('candidate manifest: partial production requires explicit source exhaustion, never a runtime limit');
   }

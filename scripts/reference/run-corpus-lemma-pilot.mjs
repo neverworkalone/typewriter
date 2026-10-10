@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildDictionary } from '../build/dictionary.mjs';
 import { isSurfaceToken } from '../factory/lemma-contract.mjs';
-import { TRASH_DIRECTORY } from '../factory/permanent-trash.mjs';
+import { COMPACT_CONTRACT, TRASH_DIRECTORY } from '../factory/permanent-trash.mjs';
 import { assertWithinDirectory, isWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 import { resolveManagedPython } from '../python/env.mjs';
 import {
@@ -252,6 +252,16 @@ export async function buildExclusionManifest(sourcePaths, {
     if (path.basename(relativePath) === 'candidates.jsonl') {
       try {
         const rows = sourceBytes.toString('utf8').split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
+        if (!rows.length) {
+          const manifestPath = path.join(path.dirname(sourcePath), 'manifest.json');
+          const manifestBytes = await readFile(manifestPath);
+          const manifest = JSON.parse(manifestBytes.toString('utf8'));
+          if (manifest.contract !== COMPACT_CONTRACT || manifest.status !== 'exhausted' || manifest.candidate_count !== 0
+            || manifest.production?.exhausted !== true || manifest.candidates_sha256 !== hashFileContents(sourceBytes)) throw new Error('empty candidate source requires a bound exhausted Stage 1 result');
+          sourceArtifacts.push({ path: relativePath, sha256: hashFileContents(sourceBytes) },
+            { path: relativeExclusionSourcePath(manifestPath, { repositoryDirectory, cachePaths }), sha256: hashFileContents(manifestBytes) });
+          continue;
+        }
         artifact = { candidate_records: rows.map((row) => ({ lemma: row?.input })) };
       } catch (error) {
         throw new Error(`Could not parse candidate JSONL exclusion source ${relativePath}: ${error.message}`);
