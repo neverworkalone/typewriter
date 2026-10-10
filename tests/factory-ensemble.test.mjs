@@ -8,12 +8,13 @@ import test from 'node:test';
 
 import { providerDescriptor } from '../scripts/factory/analyzer-providers.mjs';
 import { expectedAnalyzerDigest, sha256Hex, validateCandidateBatch } from '../scripts/factory/contract.mjs';
-import { alignedInContext, alignedOffset, contextSourceDigest, decisionSha256, verifyDecisionsAgainstSource } from '../scripts/factory/context-fallback.mjs';
+import { alignedInContext, alignedOffset, contextSourceDigest, decisionSha256, contextDecisionsSha256, verifyDecisionsAgainstSource } from '../scripts/factory/context-fallback.mjs';
 import {
   ENSEMBLE_POLICY,
   classifyObservation,
   ENSEMBLE_PROVIDER_ORDER,
   ensembleTraceSha256,
+  reviewSummary,
   verifyEnsembleTraces,
 } from '../scripts/factory/ensemble-resolver.mjs';
 import { CONTEXT_PARAGRAPH_LOOKUP_SQL, createCorpusContextSource } from '../scripts/factory/corpus-context-source.mjs';
@@ -1320,4 +1321,96 @@ test('zero-yield true exhaustion persists unresolved observations in a terminal 
   const invalid = structuredClone(result.manifest);
   invalid.production.exhausted = false;
   assert.match(validateCandidateBatch({ manifest: invalid, candidatesText: result.candidatesText }).join(), /exhaustion/);
+});
+
+
+test('compact batches retain source-bound candidate and excluded context bindings in the common validators', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-compact-bindings-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const providers = triple(Object.fromEntries(Object.entries(FALLBACK).map(([id, table]) => [id, { ...table, 걸음: [p('걸음', 'noun')] }])));
+  const evidence = [cand('가다', 'verb', [h('d1', '가는'), h('d3', '갈'), h('d4', '갈')]),
+    cand('걸음', 'noun', [h('d6', '걸음')]), cand('없다', 'adjective', [h('d5', '없는')])];
+  const first = await produce(evidence, providers);
+  const contextProposals = queueOf(first).filter((entry) => entry.surface === '갈').map((entry) =>
+    proposal(entry, { outcome: 'context_confirmed', lemma: '가다', pos: 'verb' }));
+  const options = { contextProposals, contextAgent: 'codex', contextSource: source({ ...SOURCE, 'd4#p1': { status: 'ok', text: '지금 갈 방향을 정했다.' } }) };
+  const retained = await produce(evidence, providers, options);
+  assert.equal(retained.manifest.unresolved_observations.length, 1, 'the fixture requires current binding checks even with historical queue payloads removed');
+  const makeBatch = (result) => {
+    const merged = mergeUnresolved(new Map(), [result.manifest]);
+    const compact = compactManifest(result.manifest, merged.references.get(result.manifest.batch_id));
+    return { manifest: compact.manifest, candidatesText: result.candidatesText, stage1DecisionsText: compact.stage1DecisionsText, chunks: merged.chunks };
+  };
+  const restampRows = (batch, mutate) => {
+    const rows = batch.candidatesText.trim().split('\n').map(JSON.parse);
+    mutate(rows);
+    for (const row of rows) row.review = reviewSummary(row.observations);
+    batch.candidatesText = rows.map(JSON.stringify).join('\n') + '\n';
+    batch.manifest.candidates_sha256 = sha256Hex(batch.candidatesText);
+  };
+  const restampDecisions = (batch, mutate) => {
+    const details = JSON.parse(batch.stage1DecisionsText);
+    mutate(details);
+    details.context_fallback.decisions_sha256 = contextDecisionsSha256(details.context_fallback.decisions);
+    batch.manifest.context_fallback.decisions_sha256 = details.context_fallback.decisions_sha256;
+    batch.manifest.context_fallback.decision_count = details.context_fallback.decisions.length;
+    batch.manifest.archive.context_decision_count = details.context_fallback.decisions.length;
+    batch.stage1DecisionsText = JSON.stringify(details) + '\n';
+    batch.manifest.stage1_decisions.sha256 = sha256Hex(batch.stage1DecisionsText);
+  };
+  const checkBoth = async (batch, expected = null) => {
+    const directory = path.join(root, 'data/candidates', batch.manifest.batch_id);
+    await mkdir(directory, { recursive: true });
+    await mkdir(path.join(root, 'data/candidate-trash'), { recursive: true });
+    await writeFile(path.join(directory, 'manifest.json'), JSON.stringify(batch.manifest));
+    await writeFile(path.join(directory, 'candidates.jsonl'), batch.candidatesText);
+    await writeFile(path.join(directory, 'stage1-decisions.json'), batch.stage1DecisionsText);
+    for (const [name, rows] of batch.chunks) await writeFile(path.join(root, 'data/candidate-trash', name), chunkText(rows));
+    const direct = validateCandidateBatch(batch);
+    const repository = await validateFactoryRepository({ root });
+    if (expected) { assert.match(direct.join(), expected); assert.match(repository.join(), expected); }
+    else { assert.deepEqual(direct, []); assert.deepEqual(repository, []); }
+  };
+  const good = makeBatch(retained);
+  await checkBoth(good);
+  const swapped = structuredClone(good);
+  restampRows(swapped, (rows) => {
+    const observations = rows.flatMap((row) => row.observations).filter((entry) => entry.ensemble.resolution === 'context');
+    assert.equal(observations.length, 2);
+    [observations[0].ensemble.context_decision, observations[1].ensemble.context_decision] = [observations[1].ensemble.context_decision, observations[0].ensemble.context_decision];
+  });
+  assert.match(validateCandidateBatch({ manifest: { ...retained.manifest, candidates_sha256: swapped.manifest.candidates_sha256 }, candidatesText: swapped.candidatesText }).join(), /does not match its context decision/);
+  await checkBoth(swapped, /does not match its context decision/);
+  const unused = structuredClone(good);
+  restampDecisions(unused, (details) => {
+    const entry = structuredClone(details.context_fallback.decisions[0]);
+    entry.decision_id = 'D0003'; entry.observation_digest = 'f'.repeat(64); entry.evidence.ref += '-unused';
+    entry.decision_sha256 = decisionSha256(entry);
+    details.context_fallback.decisions.push(entry);
+  });
+  await checkBoth(unused, /resolves no retained observation/);
+  const excludedResult = await produce(evidence, providers, { ...options, producedLemmas: new Set(['가다']) });
+  const excludedGood = makeBatch(excludedResult);
+  await checkBoth(excludedGood);
+  for (const [field, value] of [['lemma', '걷다'], ['pos', 'noun'], ['surface', '갈까'], ['evidence', { kind: 'corpus-paragraph', ref: 'foreign#p1' }]]) {
+    const bad = structuredClone(excludedGood);
+    restampDecisions(bad, (details) => {
+      details.excluded_observations.find((entry) => entry.ensemble.resolution === 'context')[field] = value;
+      details.excluded_observations.sort((a, b) => `${a.disposition}\0${a.lemma}\0${a.observation_digest}`.localeCompare(`${b.disposition}\0${b.lemma}\0${b.observation_digest}`));
+    });
+    await checkBoth(bad, /does not match its context decision/);
+  }
+  const wrongTrace = structuredClone(excludedGood);
+  restampDecisions(wrongTrace, (details) => { details.excluded_observations.find((entry) => entry.ensemble.resolution === 'context').ensemble.trace_digest = 'f'.repeat(64); });
+  await checkBoth(wrongTrace, /does not match its context decision/);
+  const wrongCategories = structuredClone(good);
+  wrongCategories.manifest.ensemble.counts.categories.concordant -= 1;
+  wrongCategories.manifest.ensemble.counts.categories.unsupported_or_unknown += 1;
+  await checkBoth(wrongCategories, /counts.categories/);
+  const noQueue = makeBatch(await produce(evidence.filter((entry) => entry.proposed_lemma !== '없다'), providers, options));
+  await checkBoth(noQueue);
+  const wrongAggregate = structuredClone(noQueue);
+  wrongAggregate.manifest.ensemble.trace_sha256 = 'f'.repeat(64);
+  await checkBoth(wrongAggregate, /ensemble.trace_sha256 does not bind/);
+  await checkBoth(good);
 });

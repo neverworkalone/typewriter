@@ -52,7 +52,16 @@ Historical CI. Git retains the original manifest revision for rollback.
 Normal validation checks current candidates and compact metadata. It validates
 basic shape, IDs, bounds and provenance of new/modified trash files through the
 existing factory validator. It does not replay all historical analysis records
-or reconstruct old manifests on each batch. When trash files change, the common validator compares their IDs with existing
+or reconstruct old manifests on each batch. Current candidates and excluded
+observations still pass the shared source-bound context-decision checks: lemma,
+POS, surface, evidence, observation identity and trace must match, resolving
+decisions must be used when the batch retains all candidate observations, and
+retained dispositions must not overlap. Current
+row trace summaries remain validated. With no unresolved queue, the original
+full trace/category aggregate is also reproducible and checked. With a queue,
+known candidate/excluded category counts cannot exceed the recorded totals;
+queue-dependent aggregate and truth-unknown links remain part of the one-time
+historical audit and the producer's full pre-compaction check. When trash files change, the common validator compares their IDs with existing
 row IDs to reject cross-file duplicates. JSON keys are decoded before comparison,
 including Unicode escapes; past analysis relationships are not revalidated. Unchanged runs skip all trash reads. The writer also enforces
 global uniqueness, with a complete one-time migration proof.

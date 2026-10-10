@@ -297,7 +297,9 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
     observations += Number.isInteger(row.observation_total) ? row.observation_total : 0;
   });
   if (observations !== manifest.observation_count) errors.push(`candidate manifest: observation_count ${manifest.observation_count} differs from the rows' observation_total ${observations}`);
-  if (ensemble && !compact && errors.length === 0) errors.push(...validateEnsembleBindings(manifest, rows));
+  if (ensemble && errors.length === 0) errors.push(...validateEnsembleBindings(compact
+    ? { ...manifest, context_fallback: details.context_fallback, excluded_observations: details.excluded_observations, unresolved_observations: [] }
+    : manifest, rows, { compact }));
   return errors;
 }
 
@@ -425,7 +427,7 @@ function validateExcludedObservations(manifest, decisionIds) {
 // Cross-checks that need the rows: observation counts by category, the trace digest over every
 // provider identity, row trace and decision, and the two-way link between context decisions, the
 // recovered observations and the still-unresolved queue.
-function validateEnsembleBindings(manifest, rows) {
+function validateEnsembleBindings(manifest, rows, { compact = false } = {}) {
   const errors = [];
   const decisions = manifest.context_fallback.decisions;
   const providers = manifest.analyzer_providers;
@@ -438,7 +440,11 @@ function validateEnsembleBindings(manifest, rows) {
   const queueDigests = isCurrent ? manifest.unresolved_observations.map((entry) => JSON.stringify([entry.observation_digest, entry.trace_digest]))
     : manifest.unresolved_observations.map((entry) => entry.trace_digest);
   const excludedDigests = excluded.map((entry) => JSON.stringify([entry.observation_digest, entry.ensemble.trace_digest]));
-  if (ensembleTraceSha256({ contract: manifest.ensemble.contract, providers, observationTraceDigests: observationDigests,
+  // The full aggregate includes removed queue payloads. With no queue it is
+  // still reproducible; otherwise current row traces and decision bindings are
+  // checked below without reconstructing permanent historical trash.
+  const complete = !compact || manifest.archive.unresolved_count === 0;
+  if (complete && ensembleTraceSha256({ contract: manifest.ensemble.contract, providers, observationTraceDigests: observationDigests,
     queueTraceDigests: queueDigests, ...(isCurrent ? { excludedTraceDigests: excludedDigests } : {}),
     contextDecisionsSha256: manifest.context_fallback.decisions_sha256 }) !== manifest.ensemble.trace_sha256) {
     errors.push('candidate manifest: ensemble.trace_sha256 does not bind the providers, every disposition trace and context decisions');
@@ -450,13 +456,13 @@ function validateEnsembleBindings(manifest, rows) {
   for (const entry of manifest.unresolved_observations) recomputed[entry.category] += 1;
   for (const entry of excluded) recomputed[entry.ensemble.category] += 1;
   const counts = manifest.ensemble.counts;
-  if (!isPlainObject(counts) || counts.queue !== manifest.unresolved_observations.length) errors.push('candidate manifest: ensemble.counts.queue must equal the unresolved queue length');
-  else if (counts.observations !== manifest.observation_count + manifest.unresolved_observations.length + excluded.length
+  if (!isPlainObject(counts) || counts.queue !== (compact ? manifest.archive.unresolved_count : manifest.unresolved_observations.length)) errors.push('candidate manifest: ensemble.counts.queue must equal the unresolved queue length');
+  else if (counts.observations !== manifest.observation_count + (compact ? manifest.archive.unresolved_count : manifest.unresolved_observations.length) + excluded.length
     || (isCurrent && counts.input_observations !== counts.observations)
     || (isCurrent && counts.excluded !== excluded.length)
     || JSON.stringify(counts.categories) !== JSON.stringify(Object.fromEntries(CATEGORIES.map((category) => [category, counts.categories?.[category]])))) {
     errors.push('candidate manifest: ensemble.counts does not match the independent input observation count and disposition accounting');
-  } else if (CATEGORIES.some((category) => recomputed[category] !== counts.categories[category])) {
+  } else if (CATEGORIES.some((category) => complete ? recomputed[category] !== counts.categories[category] : recomputed[category] > counts.categories[category])) {
     errors.push('candidate manifest: ensemble.counts.categories does not match the candidate, queue and excluded dispositions');
   }
   if (isCurrent) {
@@ -481,7 +487,8 @@ function validateEnsembleBindings(manifest, rows) {
       if (!decision || !RESOLVING_OUTCOMES.includes(decision.outcome)) { errors.push(`${row.candidate_id}: ${observation.observation_id} names no resolving context decision`); continue; }
       linked.add(decision.decision_id);
       if (decision.lemma !== row.input || decision.pos !== observation.pos || decision.surface !== form?.surface
-        || JSON.stringify(decision.evidence) !== JSON.stringify(observation.evidence) || decision.trace_digest !== observation.ensemble.trace_digest) {
+        || JSON.stringify(decision.evidence) !== JSON.stringify(observation.evidence)
+        || (isCurrent && decision.observation_digest !== observation.observation_digest) || decision.trace_digest !== observation.ensemble.trace_digest) {
         errors.push(`${row.candidate_id}: ${observation.observation_id} does not match its context decision ${decision.decision_id}`);
       }
       if (!observation.holds.includes('analysis_ambiguous')) errors.push(`${row.candidate_id}: ${observation.observation_id} was recovered by an AI self-check and must keep a reviewable analysis_ambiguous hold`);
@@ -499,11 +506,12 @@ function validateEnsembleBindings(manifest, rows) {
     }
     if (!entry.holds.includes('analysis_ambiguous')) errors.push(`candidate manifest: excluded observation ${entry.observation_digest} was recovered by contextual self-check and must keep analysis_ambiguous`);
   }
+  if (compact && decisions.filter((decision) => !RESOLVING_OUTCOMES.includes(decision.outcome)).length > manifest.archive.unresolved_count) errors.push('candidate manifest: truth_unknown decisions exceed the unresolved count');
   const unknownLinked = new Set(manifest.unresolved_observations.filter((entry) => entry.verification.state === 'truth_unknown').map((entry) => entry.verification.decision_id));
   for (const decision of decisions) {
     const resolving = RESOLVING_OUTCOMES.includes(decision.outcome);
     if (resolving && !linked.has(decision.decision_id) && retained === manifest.observation_count) errors.push(`candidate manifest: ${decision.decision_id} resolves no retained observation`);
-    if (!resolving && !unknownLinked.has(decision.decision_id)) errors.push(`candidate manifest: ${decision.decision_id} (truth_unknown) is not recorded on a queue entry`);
+    if (complete && !resolving && !unknownLinked.has(decision.decision_id)) errors.push(`candidate manifest: ${decision.decision_id} (truth_unknown) is not recorded on a queue entry`);
   }
   for (const entry of manifest.unresolved_observations) {
     if (entry.verification.state !== 'truth_unknown') continue;
