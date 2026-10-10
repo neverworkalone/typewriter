@@ -1294,6 +1294,55 @@ test('production CLI refills valid lemmas, skips trash proposals before analysis
   }), /source exhausted/);
 });
 
+test('production excludes archived failed lemmas resolved from different proposals on initial and refill pages', async (t) => {
+  for (const target of [2, 3]) await t.test(`target ${target}`, async (t) => {
+    const root = await mkdtemp(path.join(tmpdir(), 'factory-archived-alternative-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const cache = await cacheForTask(root);
+    const table = {
+      걸음: [p('걸음', 'noun')], 가는: GADA.가는,
+      갈까: GADA.가는, 바람: [p('바람', 'noun')], 노을: [p('노을', 'noun')],
+    };
+    const deps = { root, cachePaths: cache.cachePaths, providers: triple({ k: table, h: table, m: table }), permission: async () => {}, log: () => {} };
+    // Establish the archive through the real producer/publication path, with a
+    // failed proposal that has no resolved candidate in the prior batch.
+    await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([
+      cand('걸음', 'noun', [h('old', '걸음')]), cand('가다', 'verb', [h('old', '갈')]),
+    ])));
+    await runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '1'], deps);
+    assert.deepEqual([...failedProposalLemmas(await loadTrash(root))], ['가다']);
+    const next = await cacheForTask(root, 'T000002');
+    await writeFile(path.join(next.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([
+      cand('다른제안', 'verb', [h('new', '가는')]), cand('바람', 'noun', [h('new', '바람')]),
+    ])));
+    const args = ['--evidence', next.evidenceArgument, '--task-id', 'T000002', '--base-ref', 'none', '--max-candidates', String(target)];
+    const dry = await runStage1([...args, '--dry-run'], deps);
+    assert.deepEqual(dry.rows.map((row) => row.input), ['바람']);
+    let pages = 0;
+    const result = await runStage1(args, { ...deps, selectPage: async ({ exclusions }) => {
+      assert.ok(exclusions.has('가다'), 'archive lemma stays excluded in every selector page');
+      assert.ok(exclusions.has('걸음'), 'previous candidate stays excluded too');
+      pages += 1;
+      return {
+        ...evidenceDoc(pages === 1
+          ? [cand('또다른제안', 'verb', [h('refill', '갈까')])]
+          : [cand('노을', 'noun', [h('refill', '노을')])]),
+        selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: pages === 1 ? 1 : 0 } },
+      };
+    } });
+    assert.equal(pages, 2, 'excluded analyzer outputs do not fill the target');
+    assert.deepEqual(new Set(result.rows.map((row) => row.input)), new Set(['바람', '노을']));
+    assert.equal(result.manifest.production.exhausted, true);
+    assert.equal(result.manifest.production.target, target);
+    assert.equal(result.manifest.production.visited_proposal_count, 4);
+    const decisions = JSON.parse(await readFile(path.join(root, result.manifest.stage1_decisions.path), 'utf8'));
+    assert.equal(decisions.excluded_observations.length, 2);
+    assert.ok(decisions.excluded_observations.every((row) => row.lemma === '가다' && row.disposition === 'prior_produced_lemma'));
+    assert.equal(result.manifest.ensemble.counts.observations, 4);
+    assert.deepEqual(await validateFactoryRepository({ root }), [], 'real compact batch/archive artifacts pass the shared validator');
+  });
+});
+
 test('default refill selector derives a corpus-safe batch id from a T-prefixed task id', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-selector-id-'));
   t.after(() => rm(root, { recursive: true, force: true }));
