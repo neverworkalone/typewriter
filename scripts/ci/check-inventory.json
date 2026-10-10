@@ -45,7 +45,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -64,7 +65,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -83,7 +85,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -102,7 +105,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -123,7 +127,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -144,7 +149,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -165,7 +171,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -186,7 +193,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -207,7 +215,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -228,7 +237,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -247,7 +257,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -257,11 +268,11 @@
         "tests/target-inventory.test.mjs"
       ],
       "selected_tier": "deep",
-      "schedule": "always",
-      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
-      "decision": "moved-to-deep",
-      "rationale": "Moved to Deep because this is the exhaustive tamper and mutation regression suite; Normal still runs the real validateTargetInventory function inside the complete global canonical audit.",
-      "consumer": "ci:deep and ci:all",
+      "schedule": "affected",
+      "trigger": "A registered dependency path selects this exact-head Deep check in ci:pr; ci:all still runs every current-system Deep check.",
+      "decision": "retained-deep-affected",
+      "rationale": "Retained in Deep because it protects Test target inventory. The PR classifier selects it only when a registered contract dependency changes; data inputs alone do not trigger it.",
+      "consumer": "ci:pr (affected exact-head Deep) + ci:all (full current Deep)",
       "estimated_duration_ms": 25470,
       "duration_estimate_source": {
         "run_id": 37877241218,
@@ -273,6 +284,11 @@
         "data/canonical/",
         "data/inventory/",
         "data/validation/canonical-semantic-decision-source.json"
+      ],
+      "dependency_paths": [
+        "scripts/validate/target-inventory.mjs",
+        "scripts/inventory/generate-target-inventory.mjs",
+        "tests/target-inventory.test.mjs"
       ]
     },
     {
@@ -292,7 +308,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -313,7 +330,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -334,7 +352,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -355,7 +374,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "canonical",
@@ -376,7 +396,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -395,7 +416,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -416,7 +438,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -437,7 +460,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -458,7 +482,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -479,7 +504,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -500,7 +526,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -521,7 +548,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -542,7 +570,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -563,7 +592,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -584,7 +614,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -605,7 +636,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -626,7 +658,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -647,7 +680,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -668,7 +702,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -689,7 +724,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -710,7 +746,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -729,7 +766,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -748,7 +786,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -769,7 +808,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -790,7 +830,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -811,7 +852,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -832,7 +874,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -853,7 +896,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -874,7 +918,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -895,7 +940,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -916,7 +962,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -937,7 +984,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -958,7 +1006,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -979,7 +1028,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -1000,7 +1050,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "lexical",
@@ -1021,7 +1072,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1040,7 +1092,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1059,7 +1112,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1080,7 +1134,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1099,7 +1154,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1118,7 +1174,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1137,7 +1194,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1156,7 +1214,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1177,7 +1236,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1198,7 +1258,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1219,7 +1280,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "toolchain",
@@ -1240,7 +1302,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1261,7 +1324,8 @@
       },
       "historical_scopes": [
         "m5-8"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1282,7 +1346,8 @@
       },
       "historical_scopes": [
         "m5-9a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1303,7 +1368,8 @@
       },
       "historical_scopes": [
         "m5-10a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1324,7 +1390,8 @@
       },
       "historical_scopes": [
         "m5-10a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1345,7 +1412,8 @@
       },
       "historical_scopes": [
         "m5-10a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1368,7 +1436,8 @@
       },
       "historical_scopes": [
         "m5-10c"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1389,7 +1458,8 @@
       },
       "historical_scopes": [
         "m5-10c"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1412,7 +1482,8 @@
       },
       "historical_scopes": [
         "m5-10d"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1433,7 +1504,8 @@
       },
       "historical_scopes": [
         "m5-10d"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1454,7 +1526,8 @@
       },
       "historical_scopes": [
         "m5-10d"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1475,7 +1548,8 @@
       },
       "historical_scopes": [
         "m5-10d"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1496,7 +1570,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1519,7 +1594,8 @@
       },
       "historical_scopes": [
         "m5-8"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1542,7 +1618,8 @@
       },
       "historical_scopes": [
         "m5-9a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1565,7 +1642,8 @@
       },
       "historical_scopes": [
         "m5-9a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1588,7 +1666,8 @@
       },
       "historical_scopes": [
         "m5-calibration"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1611,7 +1690,8 @@
       },
       "historical_scopes": [
         "m5-calibration"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1634,7 +1714,8 @@
       },
       "historical_scopes": [
         "m5-10a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1657,7 +1738,8 @@
       },
       "historical_scopes": [
         "m5-calibration"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1680,7 +1762,8 @@
       },
       "historical_scopes": [
         "m5-production"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1703,7 +1786,8 @@
       },
       "historical_scopes": [
         "m5-production"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1726,7 +1810,8 @@
       },
       "historical_scopes": [
         "m5-11"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1749,7 +1834,8 @@
       },
       "historical_scopes": [
         "m5-11"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1772,7 +1858,8 @@
       },
       "historical_scopes": [
         "m5-12"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1795,7 +1882,8 @@
       },
       "historical_scopes": [
         "issue-204"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1816,7 +1904,8 @@
       },
       "historical_scopes": [
         "issue-204"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1837,7 +1926,8 @@
       },
       "historical_scopes": [
         "issue-211"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1860,7 +1950,8 @@
       },
       "historical_scopes": [
         "issue-219"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1881,7 +1972,8 @@
       },
       "historical_scopes": [
         "issue-219"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1902,7 +1994,8 @@
       },
       "historical_scopes": [
         "issue-220"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1921,7 +2014,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1942,7 +2036,8 @@
       },
       "historical_scopes": [
         "m9-candidate-reviews"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1963,7 +2058,8 @@
       },
       "historical_scopes": [
         "m9-candidate-reviews"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -1982,7 +2078,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2001,7 +2098,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2020,7 +2118,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2039,7 +2138,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2047,11 +2147,11 @@
       "protected_contract": "Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply",
       "test_files": [],
       "selected_tier": "deep",
-      "schedule": "always",
-      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
-      "decision": "moved-to-deep",
-      "rationale": "Moved to Deep because this exercises the full relation backfill queue, resume, review, and apply scenarios; Normal retains relation admission and complete current-canonical integrity checks.",
-      "consumer": "ci:deep and ci:all",
+      "schedule": "affected",
+      "trigger": "A registered dependency path selects this exact-head Deep check in ci:pr; ci:all still runs every current-system Deep check.",
+      "decision": "retained-deep-affected",
+      "rationale": "Retained in Deep because it protects Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply. The PR classifier selects it only when a registered contract dependency changes; data inputs alone do not trigger it.",
+      "consumer": "ci:pr (affected exact-head Deep) + ci:all (full current Deep)",
       "estimated_duration_ms": 38328,
       "duration_estimate_source": {
         "run_id": 37877241218,
@@ -2065,6 +2165,19 @@
         "data/relation-backfill/",
         "data/reviews/C000003/",
         "data/validation/canonical-semantic-decision-source.json"
+      ],
+      "dependency_paths": [
+        "scripts/relation",
+        "scripts/factory/relation-amendments.mjs",
+        "scripts/factory/relation-corrections.mjs",
+        "scripts/factory/semantic-authority.mjs",
+        "scripts/factory/validate.mjs",
+        "scripts/validate/semantic-audit.mjs",
+        "scripts/relation/pilot.test.mjs",
+        "scripts/relation/backfill-queue.test.mjs",
+        "scripts/relation/backfill-queue-cli.test.mjs",
+        "scripts/relation/backfill-apply.test.mjs",
+        "scripts/relation/relation-correction.test.mjs"
       ]
     },
     {
@@ -2084,7 +2197,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2105,7 +2219,8 @@
       },
       "historical_scopes": [
         "issue-223"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2126,7 +2241,8 @@
       },
       "historical_scopes": [
         "issue-223"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2147,7 +2263,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2168,7 +2285,8 @@
       },
       "historical_scopes": [
         "issue-223"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2189,7 +2307,8 @@
       },
       "historical_scopes": [
         "issue-223"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2212,7 +2331,8 @@
       },
       "historical_scopes": [
         "issue-222"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2233,7 +2353,8 @@
       },
       "historical_scopes": [
         "issue-222"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2254,7 +2375,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2273,7 +2395,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2292,7 +2415,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "batch",
@@ -2315,7 +2439,8 @@
       },
       "historical_scopes": [
         "m5-15"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2336,7 +2461,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2357,7 +2483,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2378,7 +2505,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2399,7 +2527,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2420,7 +2549,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2441,7 +2571,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2462,7 +2593,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2483,7 +2615,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2504,7 +2637,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2525,7 +2659,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2546,7 +2681,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2565,7 +2701,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2584,7 +2721,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2603,7 +2741,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "product",
@@ -2622,7 +2761,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "artifacts",
@@ -2632,11 +2772,11 @@
         "tests/artifact-policy.test.mjs"
       ],
       "selected_tier": "deep",
-      "schedule": "always",
-      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
-      "decision": "moved-to-deep",
-      "rationale": "Moved to Deep because this is the exhaustive generated-artifact allow/deny matrix; Normal still runs artifact-policy --clean against the current checkout and keeps package output checks.",
-      "consumer": "ci:deep and ci:all",
+      "schedule": "affected",
+      "trigger": "A registered dependency path selects this exact-head Deep check in ci:pr; ci:all still runs every current-system Deep check.",
+      "decision": "retained-deep-affected",
+      "rationale": "Retained in Deep because it protects Test artifact policy. The PR classifier selects it only when a registered contract dependency changes; data inputs alone do not trigger it.",
+      "consumer": "ci:pr (affected exact-head Deep) + ci:all (full current Deep)",
       "estimated_duration_ms": 26954,
       "duration_estimate_source": {
         "run_id": 37877241218,
@@ -2647,6 +2787,11 @@
       "deep_input_paths": [
         "data/batches/m5-12a-semantic-decisions.json",
         "data/validation/canonical-semantic-decision-source.json"
+      ],
+      "dependency_paths": [
+        "scripts/validate/artifact-policy.mjs",
+        "config/artifact-policy.json",
+        "tests/artifact-policy.test.mjs"
       ]
     },
     {
@@ -2668,7 +2813,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "artifacts",
@@ -2689,7 +2835,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "artifacts",
@@ -2708,7 +2855,8 @@
         "url": "https://github.com/neverworkalone/typewriter/actions/runs/37877241218",
         "method": "measured check duration in PR #460 normal workflow"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "factory",
@@ -2726,7 +2874,8 @@
         "run_id": null,
         "description": "Local command measurement (Node 24.19.0); GitHub runner remeasures the gate"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "factory",
@@ -2744,7 +2893,8 @@
         "run_id": null,
         "description": "Local command measurement (Node 24.19.0); GitHub runner remeasures the gate"
       },
-      "historical_scopes": []
+      "historical_scopes": [],
+      "dependency_paths": []
     },
     {
       "owner": "historical",
@@ -2765,7 +2915,8 @@
       },
       "historical_scopes": [
         "m5-10a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "historical",
@@ -2786,7 +2937,8 @@
       },
       "historical_scopes": [
         "m5-10b"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "historical",
@@ -2810,7 +2962,8 @@
       "historical_scopes": [
         "m5-10a",
         "m5-10b"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "historical",
@@ -2833,7 +2986,8 @@
       },
       "historical_scopes": [
         "m5-10a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "historical",
@@ -2856,7 +3010,8 @@
       },
       "historical_scopes": [
         "m5-10a"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "historical",
@@ -2879,7 +3034,8 @@
       },
       "historical_scopes": [
         "m5-10b"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "historical",
@@ -2902,7 +3058,8 @@
       },
       "historical_scopes": [
         "m5-10b"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "deep",
@@ -2910,11 +3067,11 @@
       "protected_contract": "Run single-pass global canonical audit",
       "test_files": [],
       "selected_tier": "deep",
-      "schedule": "always",
-      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
-      "decision": "retained-deep",
-      "rationale": "Retained in Deep as an exhaustive current-system regression that complements the live Normal contract without repeating historical batch replay.",
-      "consumer": "ci:deep and ci:all",
+      "schedule": "affected",
+      "trigger": "A registered dependency path selects this exact-head Deep check in ci:pr; ci:all still runs every current-system Deep check.",
+      "decision": "retained-deep-affected",
+      "rationale": "Retained in Deep because it protects Run single-pass global canonical audit. The PR classifier selects it only when a registered contract dependency changes; data inputs alone do not trigger it.",
+      "consumer": "ci:pr (affected exact-head Deep) + ci:all (full current Deep)",
       "estimated_duration_ms": 0,
       "duration_estimate_source": {
         "run_id": 37884785791,
@@ -2926,6 +3083,17 @@
         "data/canonical/",
         "data/inventory/",
         "data/validation/canonical-semantic-decision-source.json"
+      ],
+      "dependency_paths": [
+        "scripts/ci/global-canonical-audit.mjs",
+        "scripts/validate/canonical-context.mjs",
+        "scripts/validate/canonical-jsonl.mjs",
+        "scripts/validate/dataset-integrity.mjs",
+        "scripts/validate/lexical-quality.mjs",
+        "scripts/validate/semantic-audit.mjs",
+        "scripts/validate/surface-form-projection.mjs",
+        "scripts/validate/target-inventory.mjs",
+        "schema/canonical-record.schema.json"
       ]
     },
     {
@@ -2936,11 +3104,11 @@
         "tests/m5-12a.test.mjs"
       ],
       "selected_tier": "deep",
-      "schedule": "always",
-      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
-      "decision": "retained-deep",
-      "rationale": "Retained in Deep as an adversarial admission and promotion regression; current Stage 3 worker and global canonical admission protections remain in Normal.",
-      "consumer": "ci:deep and ci:all",
+      "schedule": "affected",
+      "trigger": "A registered dependency path selects this exact-head Deep check in ci:pr; ci:all still runs every current-system Deep check.",
+      "decision": "retained-deep-affected",
+      "rationale": "Retained in Deep because it protects Test M5-12A admission and promotion contract. The PR classifier selects it only when a registered contract dependency changes; data inputs alone do not trigger it.",
+      "consumer": "ci:pr (affected exact-head Deep) + ci:all (full current Deep)",
       "estimated_duration_ms": 65145,
       "duration_estimate_source": {
         "run_id": 37884785791,
@@ -2954,6 +3122,11 @@
         "data/batches/m5-12-base-inventory.json",
         "data/batches/m5-12-base-seed.json",
         "data/inventory/"
+      ],
+      "dependency_paths": [
+        "scripts/batch/m5-12a-",
+        "scripts/batch/authored-semantic-decision-source.mjs",
+        "tests/m5-12a.test.mjs"
       ]
     },
     {
@@ -2962,11 +3135,11 @@
       "protected_contract": "Run current-revision SQLite reproducibility audit",
       "test_files": [],
       "selected_tier": "deep",
-      "schedule": "always",
-      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
-      "decision": "retained-deep",
-      "rationale": "Retained in Deep because it independently rebuilds the current canonical revision to prove reproducibility beyond the one required Normal build.",
-      "consumer": "ci:deep and ci:all",
+      "schedule": "affected",
+      "trigger": "A registered dependency path selects this exact-head Deep check in ci:pr; ci:all still runs every current-system Deep check.",
+      "decision": "retained-deep-affected",
+      "rationale": "Retained in Deep because it protects Run current-revision SQLite reproducibility audit. The PR classifier selects it only when a registered contract dependency changes; data inputs alone do not trigger it.",
+      "consumer": "ci:pr (affected exact-head Deep) + ci:all (full current Deep)",
       "estimated_duration_ms": 954,
       "duration_estimate_source": {
         "run_id": 37884785791,
@@ -2976,6 +3149,13 @@
       "historical_scopes": [],
       "deep_input_paths": [
         "data/canonical/"
+      ],
+      "dependency_paths": [
+        "scripts/verify/m2-pipeline.mjs",
+        "scripts/build",
+        "scripts/normalize",
+        "schema",
+        "scripts/validate/canonical-jsonl.mjs"
       ]
     },
     {
@@ -2986,11 +3166,11 @@
         "tests/reproducibility.test.mjs"
       ],
       "selected_tier": "deep",
-      "schedule": "always",
-      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
-      "decision": "retained-deep",
-      "rationale": "Retained in Deep because it exercises independent build reproducibility while Normal retains one current-revision build and direct-search checks.",
-      "consumer": "ci:deep and ci:all",
+      "schedule": "affected",
+      "trigger": "A registered dependency path selects this exact-head Deep check in ci:pr; ci:all still runs every current-system Deep check.",
+      "decision": "retained-deep-affected",
+      "rationale": "Retained in Deep because it protects Test reproducible dictionary builds. The PR classifier selects it only when a registered contract dependency changes; data inputs alone do not trigger it.",
+      "consumer": "ci:pr (affected exact-head Deep) + ci:all (full current Deep)",
       "estimated_duration_ms": 345,
       "duration_estimate_source": {
         "run_id": 37884785791,
@@ -3000,6 +3180,12 @@
       "historical_scopes": [],
       "deep_input_paths": [
         "data/batches/m5-10a-wave-a-base-canonical/"
+      ],
+      "dependency_paths": [
+        "scripts/build",
+        "scripts/normalize",
+        "schema",
+        "tests/reproducibility.test.mjs"
       ]
     },
     {
@@ -3021,7 +3207,8 @@
       },
       "historical_scopes": [
         "issue-219"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "deep",
@@ -3042,7 +3229,8 @@
       },
       "historical_scopes": [
         "issue-220"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "deep",
@@ -3063,7 +3251,8 @@
       },
       "historical_scopes": [
         "issue-222"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "deep",
@@ -3084,7 +3273,8 @@
       },
       "historical_scopes": [
         "issue-223"
-      ]
+      ],
+      "dependency_paths": []
     },
     {
       "owner": "deep",
@@ -3092,11 +3282,11 @@
       "protected_contract": "Run 100K/500K/1M release-shaped performance and scale benchmark",
       "test_files": [],
       "selected_tier": "deep",
-      "schedule": "always",
-      "trigger": "Scheduled/manual ci:all or explicit ci:deep; PR 3 adds the exact-HEAD merge gate when required.",
-      "decision": "retained-deep",
-      "rationale": "Retained in Deep because release-shaped scale benchmarking measures current-system capacity and is too expensive for every ordinary PR.",
-      "consumer": "ci:deep and ci:all",
+      "schedule": "affected",
+      "trigger": "A registered dependency path selects this exact-head Deep check in ci:pr; ci:all still runs every current-system Deep check.",
+      "decision": "retained-deep-affected",
+      "rationale": "Retained in Deep because it protects Run 100K/500K/1M release-shaped performance and scale benchmark. The PR classifier selects it only when a registered contract dependency changes; data inputs alone do not trigger it.",
+      "consumer": "ci:pr (affected exact-head Deep) + ci:all (full current Deep)",
       "estimated_duration_ms": 293042,
       "duration_estimate_source": {
         "run_id": 37884785791,
@@ -3106,6 +3296,18 @@
       "historical_scopes": [],
       "deep_input_paths": [
         "data/canonical/"
+      ],
+      "dependency_paths": [
+        "scripts/benchmark",
+        "scripts/build",
+        "scripts/normalize",
+        "src/runtime/dictionary-contract.js",
+        "src/runtime/dictionary-validation.js",
+        "src/runtime/search-query.js",
+        "src/runtime/sqlite-query.js",
+        "schema",
+        "config/ci-level-evidence.json",
+        "tests/scale-benchmark.test.mjs"
       ]
     }
   ],

@@ -72,16 +72,19 @@ jobs:
 
           echo "run_level=$run_level" >> "$GITHUB_OUTPUT"
           echo "Changed-path classification: $run_level." >> "$GITHUB_STEP_SUMMARY"
-          # The Deep path decision stays inside this PR check; it is not a separate check run.
-          if ! node scripts/ci/deep-gate.mjs "$BASE_SHA" "$HEAD_SHA"; then
+          # Deep impact and exact-check selection stay inside this PR check.
+          if ! TYPEWRITER_CI_RUN_LEVEL="$run_level" node scripts/ci/deep-gate.mjs "$BASE_SHA" "$HEAD_SHA"; then
             echo "Deep path classification failed; running ci:all fail-closed." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
           run_deep="$(sed -n 's/^run_deep=//p' "$GITHUB_OUTPUT" | tail -n 1)"
-          if [[ "$run_deep" == true ]]; then
-            echo "Running exact-head ci:all (Normal + current Deep) inside this PR check." >> "$GITHUB_STEP_SUMMARY"
+          deep_mode="$(sed -n 's/^deep_mode=//p' "$GITHUB_OUTPUT" | tail -n 1)"
+          if [[ "$deep_mode" == full ]]; then
+            echo "Running exact-head ci:all (Normal + all current Deep) inside this PR check." >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$deep_mode" == selective ]]; then
+            echo "Running exact-head ci:pr (Normal + affected Deep checks) inside this PR check." >> "$GITHUB_STEP_SUMMARY"
           elif [[ "$run_level" == none ]]; then
-            echo "Documentation-only PR: ci:normal skipped; no Deep input changed." >> "$GITHUB_STEP_SUMMARY"
+            echo "Documentation-only PR: ci:normal skipped; no Deep contract dependency changed." >> "$GITHUB_STEP_SUMMARY"
           elif [[ "$run_level" == candidates ]]; then
             echo "Pure Stage 1 candidate artifacts: running ci:candidates." >> "$GITHUB_STEP_SUMMARY"
           else
@@ -93,13 +96,49 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Candidate validation (Stage 1 artifacts only)
-        if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'candidates' && steps.changes.outputs.run_deep != 'true' }}
+        id: candidates
+        if: ${{ steps.changes.outputs.run_level == 'candidates' }}
         run: pnpm run ci:candidates
 
       - name: Normal validation (fast checkpoint + continuation)
+        id: normal
         if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'normal' && steps.changes.outputs.run_deep != 'true' }}
         run: pnpm run ci:normal
 
-      - name: Deep validation (Normal + current Deep)
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_deep == 'true' }}
+      - name: Selective Deep validation (Normal + affected current Deep)
+        id: selective
+        if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.deep_mode == 'selective' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: pnpm run ci:pr -- --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      - name: Full Deep validation (Normal + all current Deep)
+        id: full_deep
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.deep_mode == 'full' }}
         run: pnpm run ci:all
+
+      - name: Record executed CI gate
+        if: always()
+        env:
+          CLASSIFIER_OUTCOME: ${{ steps.changes.outcome }}
+          RUN_LEVEL: ${{ steps.changes.outputs.run_level }}
+          DEEP_MODE: ${{ steps.changes.outputs.deep_mode }}
+          CANDIDATE_OUTCOME: ${{ steps.candidates.outcome }}
+          NORMAL_OUTCOME: ${{ steps.normal.outcome }}
+          SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
+          FULL_DEEP_OUTCOME: ${{ steps.full_deep.outcome }}
+          FINAL_GATE: ${{ job.status }}
+        shell: bash
+        run: |
+          {
+            echo "## Executed PR CI gate"
+            echo "- Classifier: ${CLASSIFIER_OUTCOME:-unknown}"
+            echo "- Base gate class: ${RUN_LEVEL:-unknown}"
+            echo "- Deep selection mode: ${DEEP_MODE:-full fallback}"
+            echo "- Candidate gate outcome: ${CANDIDATE_OUTCOME:-skipped}"
+            echo "- Normal-only gate outcome: ${NORMAL_OUTCOME:-skipped}"
+            echo "- Selective Deep gate outcome: ${SELECTIVE_OUTCOME:-skipped}"
+            echo "- Full Deep gate outcome: ${FULL_DEEP_OUTCOME:-skipped}"
+            echo "- Final gate result: ${FINAL_GATE:-unknown}"
+          } >> "$GITHUB_STEP_SUMMARY"

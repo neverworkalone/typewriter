@@ -7,15 +7,28 @@ estimate, tier, schedule, trigger, consumer, and keep/move reason.
 that the inventory has exactly one row for every live registration and that its
 owner, contract, tier, and schedule stay in sync with the runner.
 
-Deep data dependencies are recorded as `deep_input_paths` on their owning
-registry rows. The Deep Gate derives these paths from the registry. Non-Deep
-documentation and product files are an exact allowlist in
+Deep data dependencies are recorded as `deep_input_paths`; they describe
+check inputs but do not by themselves trigger a PR Deep run. Contract
+dependencies are recorded separately as `dependency_paths` and select only
+their owning check(s). Non-Deep product files are an exact allowlist in
 [`scripts/ci/deep-gate-known-non-deep-paths.json`](../scripts/ci/deep-gate-known-non-deep-paths.json);
 pure Stage 1 candidate skips are limited to `manifest.json` and `candidates.jsonl`
-at the candidate directory root when no Deep check registers that input. Any
-unlisted path runs Deep. The Deep decision and any resulting `ci:all` run live
-inside the existing `Validate and test Typewriter` PR check; classification
-does not publish a separate status check.
+at the candidate directory root. Routine canonical, relation-backfill,
+inventory, reviewed-candidate, and report data must pass changed-row/schema or
+JSON shape validation before classification can send the PR through Normal.
+The existing Normal validators continue to enforce semantic authority,
+provenance, integrity, freshness and product behavior.
+
+The existing `Validate and test Typewriter` PR check runs `ci:normal` for
+ordinary changes, `ci:pr --base <sha> --head <sha>` for Normal plus affected
+Deep checks, or `ci:all` for full current-system Deep coverage. CI runner,
+workflow, registry and classifier changes; unknown paths; and invalid data
+evidence fail closed to `ci:all`. Docs-only changes retain the exact-HEAD
+Normal skip, and pure Stage 1 artifacts retain `ci:candidates`. The check
+summary records exact revisions, change class, matched dependencies, selected
+and skipped checks, and the chosen gate. A final step records the gates that
+actually ran and the job result. Classification remains within this single PR
+status check.
 
 ## Classification
 
@@ -74,3 +87,28 @@ historical checks that #1091 did not run use completed GitHub CI runs
 and [#37635308613](https://github.com/neverworkalone/typewriter/actions/runs/37635308613).
 Candidate check durations are local measurements and are explicitly labeled as
 such in the inventory.
+
+## Issue #512 PR selection measurement
+
+The baseline is PR [#511](https://github.com/neverworkalone/typewriter/pull/511)
+at `7d7144d9d35711f7fc2af8712530f35f2ccce61e` against
+`f927e2811cad31bc10e08fc5c6e88f4f834e0bda`. Its original workflow selected
+full `ci:all`: **87 Normal + 8 Deep = 95 registered checks**, including one
+100K/500K/1M scale benchmark. The exact-head GitHub run
+[#38018640211](https://github.com/neverworkalone/typewriter/actions/runs/38018640211)
+was still in progress at 2026-10-10 03:42 UTC, **48m 10s after start**; that is
+an elapsed lower bound, not a completed wall time.
+
+Replaying the new classifier against the exact #511 file list, patches, and
+revision contents classified all 15 changed paths as routine data/docs after
+validating 11 data files. The resulting gate is **87 Normal + 0 Deep = 87
+checks**; the scale benchmark is skipped. This removes 8 selected checks,
+including the release-scale benchmark, while leaving Normal unchanged.
+
+The representative local `ci:normal` run on the 12,312-record checkout
+measured **140.304 seconds**, with one current-revision SQLite build and no
+child builds. This is a local measurement, while the baseline is a
+GitHub-hosted run that had not finished at the recorded snapshot. The two
+elapsed values are not a controlled wall-time comparison, so no percentage
+speedup is claimed; the check-count reduction and benchmark selection are
+directly verified.

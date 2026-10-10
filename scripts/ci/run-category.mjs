@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import { tmpdir } from 'node:os';
@@ -32,6 +32,7 @@ import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 import { validateM515 } from '../batch/validate-m5-15.mjs';
 import { validateFrozenM6QualityAuditSnapshot } from '../validate/m6-4-quality-audit.mjs';
+import { classifyDeepGateDiff } from './deep-gate.mjs';
 import {
   assertBuildEventsMatchPhase,
   assertChildEvidenceAdvanced,
@@ -121,7 +122,7 @@ function processMemorySummary(summary) {
 // whole fast prefix (fast, normal, all). Single-category and deep-only runs are
 // diagnostic and are not normal merge gates.
 function enforcesNormalBuildInvariant(requestedCategory) {
-  return ['fast', 'normal', 'all'].includes(requestedCategory);
+  return ['fast', 'normal', 'all', 'pr'].includes(requestedCategory);
 }
 
 function assertNormalBuildInvariant(session, stage) {
@@ -306,6 +307,7 @@ export function selectChecksForPolicy(checks, {
   includeManual = false,
   changedPaths,
   historicalScopes,
+  selectedDeepCheckIds,
 } = {}) {
   if (!Array.isArray(tiers) || tiers.some((tier) => !CI_EXECUTION_TIERS.includes(tier))) {
     throw new TypeError('CI execution policy contains an unknown tier.');
@@ -322,6 +324,16 @@ export function selectChecksForPolicy(checks, {
   const selectedHistoricalScopes = tiers.includes('historical')
     ? new Set(requireHistoricalScopeList(historicalScopes))
     : undefined;
+  if (selectedDeepCheckIds !== undefined && (
+    !Array.isArray(selectedDeepCheckIds)
+    || selectedDeepCheckIds.some((id) => typeof id !== 'string' || id.length === 0)
+    || new Set(selectedDeepCheckIds).size !== selectedDeepCheckIds.length
+  )) {
+    throw new TypeError('Selective Deep policy must provide unique check IDs.');
+  }
+  const selectedDeepCheckSet = selectedDeepCheckIds === undefined
+    ? undefined
+    : new Set(selectedDeepCheckIds);
   for (const check of checks) {
     if (!check.tier || !check.schedule || !check.owner || !check.protectedContract) {
       throw new TypeError(`CI check ${check.label ?? '<unlabeled>'} has incomplete registration metadata.`);
@@ -347,7 +359,9 @@ export function selectChecksForPolicy(checks, {
   const changedPathIsMapped = (changedPath) => activeAffectedChecks.some((check) => (
     check.paths.some((dependencyPath) => (
       changedPath === dependencyPath
-      || changedPath.startsWith(`${dependencyPath}/`)
+      || (dependencyPath.endsWith('-')
+        ? changedPath.startsWith(dependencyPath)
+        : changedPath.startsWith(`${dependencyPath}/`))
     ))
   ));
   const failClosedAffectedSelection = activeAffectedChecks.length > 0
@@ -357,6 +371,11 @@ export function selectChecksForPolicy(checks, {
 
   return checks.filter((check) => {
     if (!tiers.includes(check.tier)) return false;
+    if (
+      check.tier === 'deep'
+      && selectedDeepCheckSet
+      && !selectedDeepCheckSet.has(`${check.owner}/${check.label}`)
+    ) return false;
     if (check.tier === 'historical' && !check.historicalScopes.some((scope) => (
       selectedHistoricalScopes.has(scope)
     ))) return false;
@@ -366,7 +385,9 @@ export function selectChecksForPolicy(checks, {
     return classifiedChangedPaths.some((changedPath) => (
       check.paths.some((dependencyPath) => (
         changedPath === dependencyPath
-        || changedPath.startsWith(`${dependencyPath}/`)
+        || (dependencyPath.endsWith('-')
+          ? changedPath.startsWith(dependencyPath)
+          : changedPath.startsWith(`${dependencyPath}/`))
       ))
     ));
   });
@@ -811,7 +832,7 @@ export async function runLevel(requestedCategory, {
     ...(requestedCategory === 'historical' ? { historicalScopes } : {}),
   } : undefined;
   const enforceNormalInvariant = enforcesNormalBuildInvariant(requestedCategory);
-  const splitNormalAndDeep = requestedCategory === 'all'
+  const splitNormalAndDeep = ['all', 'pr'].includes(requestedCategory)
     && runPolicy?.tiers.includes('normal')
     && runPolicy.tiers.some((tier) => tier !== 'normal');
   const tierPasses = splitNormalAndDeep
@@ -823,7 +844,7 @@ export async function runLevel(requestedCategory, {
   const startedAt = performance.now();
   const session = await createSession();
   try {
-    let fastCheckpointPrinted = !['normal', 'all'].includes(requestedCategory);
+    let fastCheckpointPrinted = !['normal', 'all', 'pr'].includes(requestedCategory);
     const executedCategoryNames = [];
     for (const [passIndex, passPolicy] of tierPasses.entries()) {
       const passCategoryNames = passPolicy
@@ -884,6 +905,53 @@ export async function runLevel(requestedCategory, {
   }
 }
 
+export async function runPrLevel({
+  baseSha,
+  headSha,
+  classify = classifyDeepGateDiff,
+  getCurrentHead = () => execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: REPOSITORY_DIRECTORY,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim(),
+  categories = CI_CATEGORIES,
+  levels = CI_LEVEL_CATEGORY_ORDER,
+  createSession = createCanonicalSession,
+  execute,
+  log,
+} = {}) {
+  if (getCurrentHead() !== headSha) {
+    throw new Error('ci:pr checkout HEAD does not match the requested exact PR HEAD.');
+  }
+  const classification = classify(baseSha, headSha);
+  if (classification.deepMode !== 'selective'
+      || !Array.isArray(classification.selectedDeepChecks)
+      || classification.selectedDeepChecks.length === 0) {
+    throw new Error(`ci:pr requires a selectively classified Deep change; got ${classification.deepMode ?? 'unknown'} (${classification.reason ?? 'no reason'})`);
+  }
+  const availableChecks = categories === CI_CATEGORIES
+    ? CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => CI_CATEGORIES[categoryName].checks)
+    : Object.values(categories).flatMap((category) => category.checks ?? []);
+  const registeredDeepCheckIds = new Set(availableChecks
+    .filter((check) => check.tier === 'deep')
+    .map((check) => `${check.owner}/${check.label}`));
+  if (classification.selectedDeepChecks.some((id) => !registeredDeepCheckIds.has(id))) {
+    throw new Error('ci:pr received a selected Deep check that is not registered in this runner.');
+  }
+  return runLevel('pr', {
+    categories,
+    levels,
+    createSession,
+    executionPolicy: {
+      ...CI_LEVEL_EXECUTION_POLICY.pr,
+      selectedDeepCheckIds: classification.selectedDeepChecks,
+    },
+    changedPaths: classification.changedPaths,
+    execute,
+    log,
+  });
+}
+
 export async function runCli(argv, options = {}) {
   const {
     categories = CI_CATEGORIES,
@@ -911,6 +979,27 @@ export async function runCli(argv, options = {}) {
       ...options,
       historicalScopes: parseHistoricalScopeArguments(requestedArguments),
     });
+    return;
+  }
+
+  if (requestedCategory === 'pr') {
+    const args = requestedArguments.filter((argument) => argument !== '--');
+    const values = new Map();
+    for (let index = 0; index < args.length; index += 1) {
+      const key = args[index];
+      const value = args[index + 1];
+      if (!['--base', '--head'].includes(key) || !value || values.has(key)) {
+        throw new Error('ci:pr accepts exactly --base <sha> and --head <sha>.');
+      }
+      values.set(key, value);
+      index += 1;
+    }
+    const baseSha = values.get('--base');
+    const headSha = values.get('--head');
+    if (!/^[0-9a-f]{40}$/u.test(baseSha ?? '') || !/^[0-9a-f]{40}$/u.test(headSha ?? '')) {
+      throw new Error('ci:pr requires full lowercase 40-character base and head SHAs.');
+    }
+    await runPrLevel({ baseSha, headSha, ...options });
     return;
   }
 

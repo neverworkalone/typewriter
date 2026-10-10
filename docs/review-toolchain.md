@@ -80,17 +80,30 @@ checkpoint, without repeating global audit or SQLite generation. Historical
 replay and Deep are separately owned; neither replaces an applicable Normal
 gate.
 
-When Deep workflow/Deep contracts change, require **successful exact-HEAD
-Deep** evidence; a scheduled run on another SHA, a skipped Deep gate or
-ordinary green Normal cannot substitute. At this document's #469 baseline,
-#464 rollout PR #470 adds scoped `ci:historical` and exact-HEAD Deep selection.
-The existing `Validate and test Typewriter` PR check performs the path
-classification; when Deep is required, that same check runs `ci:all`. The
-classifier does not publish a separate PR check. Deep data inputs come from
-Deep check registry metadata. The classifier skips only exact known non-Deep
-files and recognized Stage 1 artifacts without Deep consumers; unknown or
-unclassifiable paths trigger `ci:all`, and a classifier failure also runs
-validation. No new CI gates are invented by this review policy.
+When a Deep-owned implementation or contract changes, require successful
+**exact-HEAD evidence for each affected Deep check**. The existing
+`Validate and test Typewriter` PR check runs Normal and then only those checks
+selected by the registry through `ci:pr`; CI classifier, registry, workflow,
+or runner changes and unclassifiable paths fail closed to full `ci:all`.
+Scheduled/manual `ci:all` still runs every current-system Deep check, and
+`ci:deep` still selects all current-system Deep checks across scopes. Neither
+redefines scoped `ci:historical`.
+
+`deep_input_paths` describe data consumed by a check; they do not by themselves
+mean that every byte change invalidates its independent performance or
+reproducibility contract. `dependency_paths` identify implementation,
+contract, test, or narrowly scoped evidence changes that do affect that check.
+The classifier validates changed canonical JSONL rows against the current
+record schema and validates the shape of recognized JSON data before allowing
+routine data-only changes to take the Normal path. Source-bound relation
+packets still pass the existing Normal factory and semantic-authority checks.
+Malformed data, unknown files, missing/empty diff evidence, and unregistered
+test paths fail closed. Docs-only changes keep the exact-HEAD Normal skip, and
+pure root-level Stage 1 candidate artifacts keep `ci:candidates`. The
+classifier records exact base/HEAD, change class, matched dependencies,
+selected Deep checks, skipped checks and the selected gate in the existing PR
+check summary, followed by a final step outcome record for the gates actually
+run and the job result; it does not publish another status check.
 
 ## Canonical and CI architecture changes
 
