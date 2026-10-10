@@ -160,6 +160,53 @@ export function validateTrashChunk(text) {
   return errors;
 }
 
+// Validate the complete unresolved queue of one newly produced compact batch
+// using only the rows of chunks created or modified by this transaction.
+// A new batch cannot be referenced by an unchanged chunk: appending its
+// occurrence necessarily changes the owning chunk.
+export function validateArchivedUnresolved(manifest, entries) {
+  const at = 'candidate ' + manifest.batch_id + ': ';
+  const errors = [];
+  const count = manifest.archive?.unresolved_count;
+  if (!Number.isSafeInteger(count) || count < 0) return [at + 'invalid unresolved archive count'];
+  const byQueue = new Map();
+  for (const { row, variant, occurrence } of entries) {
+    if (occurrence.batch_id !== manifest.batch_id) continue;
+    const queueId = occurrence.queue_id;
+    const match = typeof queueId === 'string' && /^U([1-9]\d*)$/u.exec(queueId.replace(/^U0+/u, 'U'));
+    const index = match ? Number(match[1]) : 0;
+    if (!Number.isSafeInteger(index) || index < 1 || index > count
+      || queueId !== 'U' + String(index).padStart(4, '0')) {
+      errors.push(at + 'invalid or out-of-range archive queue_id ' + String(queueId));
+      continue;
+    }
+    if (row.identity[0] !== manifest.source_snapshot) {
+      errors.push(at + 'archive source snapshot differs for ' + queueId);
+    }
+    if (byQueue.has(queueId)) {
+      errors.push(at + 'duplicate archive queue_id ' + queueId);
+      continue;
+    }
+    byQueue.set(queueId, { queue_id: queueId, ...variant.observation });
+  }
+  if (byQueue.size !== count) {
+    errors.push(at + 'archive unresolved occurrence count ' + byQueue.size + ' differs from manifest ' + count);
+  }
+  const unresolved = [];
+  for (let ordinal = 1; ordinal <= count; ordinal += 1) {
+    const id = 'U' + String(ordinal).padStart(4, '0');
+    if (!byQueue.has(id)) {
+      errors.push(at + 'missing archive occurrence ' + id);
+      continue;
+    }
+    unresolved.push(byQueue.get(id));
+  }
+  if (unresolved.length === count && digest(json(unresolved)) !== manifest.archive?.unresolved_sha256) {
+    errors.push(at + 'archive unresolved observations digest differs from manifest');
+  }
+  return errors;
+}
+
 export function failedProposalLemmas(chunks) {
   return new Set([...chunks.values()].flatMap((rows) => rows.flatMap((row) => row.identity[4] ? [row.identity[4]] : [])));
 }
