@@ -80,6 +80,47 @@ checkpoint, without repeating global audit or SQLite generation. Historical
 replay and Deep are separately owned; neither replaces an applicable Normal
 gate.
 
+### Extending CI change coverage (applies to every future PR)
+
+An unclassified path is a **missing verification responsibility**, not evidence
+that every independent Deep check is relevant. Before accepting the full Deep
+fallback as routine, trace the change to its protected contract and existing
+always-on Normal tests and affected Deep checks:
+
+1. If an already registered, always-on Normal regression protects the changed
+   behavior, add an **exact path** binding with the protected contract and
+   registered test file(s) in `scripts/ci/deep-gate-coverage.json`. The
+   classifier checks test registration, Deep ownership precedence, uniqueness,
+   exact-path validity and the additive-only change against the PR base.
+   A verified binding-only addition plus ordinary source changes selects Normal
+   without unrelated Deep checks. A fabricated or unregistered test cannot
+   authorize a skip.
+2. If an existing affected Deep check protects the changed contract, register
+   its actual dependency path in that Deep check and use `ci:pr` for Normal plus
+   **the union of all affected Deep checks**. Never exempt a file from a Deep
+   dependency merely because it also has Normal tests.
+3. If a required invariant is not tested, first add a **shared old-fails /
+   new-passes regression**. Put merge-critical contracts in Normal; put
+   independent reproducibility, performance or genuinely expensive integration
+   proofs in an affected Deep check, with its exact dependencies. No batch-ID
+   fixture, unused test, or unrelated whole-Deep execution counts as a fix.
+4. If proof of ownership or impact is still missing, **do not relabel a path as
+   non-Deep** to make CI green. Leave it unclassified and fail closed. A full
+   `ci:all` is an emergency verification fallback, not a substitute for
+   registering the missing coverage. Fix the classifier coverage before the
+   same omission can recur in routine batch production.
+
+Coverage registration is **append-only in the narrow path manifest**: an
+existing record cannot be silently removed, reassigned, or weakened.
+The required Normal CI runs the binding's tests on the **exact PR HEAD**;
+`tests/ci-registry.test.mjs` exercises positive routing, unregistered paths,
+Deep precedence and registration tampering. Source files not explicitly
+registered remain fail closed. Registry/runner/classifier implementation
+changes remain the existing conservative full-Deep case until an independent
+non-self-certifying proof of changed check selection is available. This avoids
+letting a newly edited classifier certify its own reduction in coverage.
+The separate candidate-only and documentation-only gates are unaffected.
+
 When a Deep-owned implementation or contract changes, require successful
 **exact-HEAD evidence for each affected Deep check**. The existing
 `Validate and test Typewriter` PR check runs Normal and then only those checks
