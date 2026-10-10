@@ -13,6 +13,7 @@ import { validateCanonicalRecord } from '../validate/canonical-jsonl.mjs';
 import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
 import { relationCorrectionErrors } from '../factory/relation-corrections.mjs';
 import KNOWN_NON_DEEP_PATHS from './deep-gate-known-non-deep-paths.json' with { type: 'json' };
+import NORMAL_COVERAGE from './deep-gate-coverage.json' with { type: 'json' };
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
@@ -59,6 +60,62 @@ if (knownNonDeepPaths.some((knownPath) => !validRepositoryPath(knownPath))) {
   throw new TypeError('Deep Gate known non-Deep paths must be normalized repository-relative files.');
 }
 const KNOWN_NON_DEEP_PATH_SET = new Set(knownNonDeepPaths);
+const NORMAL_COVERAGE_PATH = 'scripts/ci/deep-gate-coverage.json';
+
+// This is an exact-file allowlist, not a directory wildcard or a claim that
+// a changed producer is safe without regression coverage. Normal owns every
+// listed test on every PR; Deep dependency matches take precedence.
+export function validateNormalCoverage(manifest = NORMAL_COVERAGE, {
+  categories = CI_CATEGORIES,
+  deepChecks = registeredDeepChecks(),
+} = {}) {
+  if (manifest?.version !== 1 || !Array.isArray(manifest.bindings)) {
+    throw new TypeError('Normal coverage registry has an unsupported shape.');
+  }
+  const bindings = new Map();
+  for (const binding of manifest.bindings) {
+    const tests = binding?.normal_tests;
+    if (
+      !validRepositoryPath(binding?.path)
+      || typeof binding?.protected_contract !== 'string'
+      || !binding.protected_contract.trim()
+      || !Array.isArray(tests) || tests.length === 0
+      || tests.some((test) => !/^(?:tests|scripts)\\/.+\\.test\\.mjs$/u.test(test))
+      || new Set(tests).size !== tests.length
+      || bindings.has(binding.path)
+      || FULL_DEEP_PATHS.some((rule) => matchesPath(binding.path, rule))
+      || deepChecks.some((check) => deepPathMatches(binding.path, check))
+      || binding.path === NORMAL_COVERAGE_PATH
+    ) {
+      throw new TypeError('Unsafe or duplicate Normal coverage binding: ' + JSON.stringify(binding));
+    }
+    for (const test of tests) {
+      const covered = Object.values(categories).some((category) => category.checks.some((check) => (
+        check.tier === 'normal'
+        && check.schedule === 'always'
+        && (check.testFiles ?? []).includes(test)
+      )));
+      if (!covered) throw new TypeError('Normal coverage test is not always-on in Normal CI: ' + test);
+    }
+    bindings.set(binding.path, binding);
+  }
+  return bindings;
+}
+
+// Extend coverage without silently narrowing a previous accepted mapping.
+// Replacing/removing a binding is a genuine CI contract change and falls
+// back to the full Deep gate. A test can be added or replaced only in a new
+// explicitly registered binding for a new path.
+export function validateAdditiveNormalCoverage(previous, next, options) {
+  const before = validateNormalCoverage(previous, options);
+  const after = validateNormalCoverage(next, options);
+  for (const [pathValue, binding] of before) {
+    if (JSON.stringify(after.get(pathValue)) !== JSON.stringify(binding)) {
+      throw new Error('Normal coverage change removes or alters existing protection: ' + pathValue);
+    }
+  }
+  return after;
+}
 const STAGE1_CANDIDATE_ARTIFACT_PATH = /^data\/candidates\/C\d{6}\/(?:manifest\.json|candidates\.jsonl|stage1-decisions\.json)$/u;
 const REVIEW_ARTIFACT_PATH = /^data\/reviews\/C\d{6}\/(?:manifest\.json|decisions\.jsonl|semantic-decisions\.json|intake-handoff\.json)$/u;
 const RELATION_BACKFILL_PATH = /^data\/relation-backfill\/(R\d{6})\.json$/u;
@@ -258,6 +315,8 @@ export function classifyDeepGatePaths(changedPaths, {
   testTiers = registeredTestTiers(),
   deepChecks = deepCheckMap(registeredDeepChecks()),
   validatedDataPaths = new Set(),
+  coverage = validateNormalCoverage(),
+  coverageChangeValidated = false,
 } = {}) {
   if (!Array.isArray(changedPaths) || changedPaths.length === 0) {
     return { runDeep: true, deepMode: 'full', reason: 'missing-or-empty-path-evidence', changeClass: 'unclassifiable' };
@@ -331,9 +390,14 @@ export function classifyDeepGatePaths(changedPaths, {
       continue;
     }
 
+    if (changedPath === NORMAL_COVERAGE_PATH && !coverageChangeValidated) {
+      return { runDeep: true, deepMode: 'full', reason: 'unvalidated-normal-coverage-change', changeClass: 'ci-contract', path: changedPath };
+    }
     if (
       changedPath.startsWith('docs/')
       || KNOWN_NON_DEEP_PATH_SET.has(changedPath)
+      || coverage.has(changedPath)
+      || (changedPath === NORMAL_COVERAGE_PATH && coverageChangeValidated)
       || STAGE1_CANDIDATE_ARTIFACT_PATH.test(changedPath)
     ) {
       knownNonDeepPaths.push(changedPath);
@@ -392,6 +456,26 @@ export function classifyDeepGateDiff(baseSha, headSha, {
     const result = runGit(['diff', '--no-renames', '--name-only', '-z', `${baseSha}...${headSha}`]);
     const changedPaths = Buffer.from(result).toString('utf8').split('\0').filter(Boolean);
     const validatedDataPaths = new Set();
+    let coverageChangeValidated = false;
+    if (changedPaths.includes(NORMAL_COVERAGE_PATH)) {
+      try {
+        const base = decodeUtf8(runGit(['show', baseSha + ':' + NORMAL_COVERAGE_PATH]), NORMAL_COVERAGE_PATH);
+        const head = decodeUtf8(runGit(['show', headSha + ':' + NORMAL_COVERAGE_PATH]), NORMAL_COVERAGE_PATH);
+        validateAdditiveNormalCoverage(JSON.parse(base), JSON.parse(head));
+        coverageChangeValidated = true;
+      } catch (error) {
+        return {
+          runDeep: true,
+          deepMode: 'full',
+          reason: 'normal-coverage-registration-unverified',
+          changeClass: 'ci-contract',
+          path: NORMAL_COVERAGE_PATH,
+          detail: error.message,
+          changedPaths,
+          selectedDeepChecks: deepCheckMap(registeredDeepChecks()).map(checkId),
+        };
+      }
+    }
     for (const changedPath of changedPaths) {
       const kind = normalDataKind(changedPath);
       if (!kind) continue;
@@ -412,7 +496,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
       validatedDataPaths.add(changedPath);
     }
     return {
-      ...classifyDeepGatePaths(changedPaths, { validatedDataPaths }),
+      ...classifyDeepGatePaths(changedPaths, { validatedDataPaths, coverageChangeValidated }),
       changedPaths,
     };
   } catch {
