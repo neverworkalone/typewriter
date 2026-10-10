@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "bindings": [
+    {
+      "path": "scripts/factory/produce-candidates.mjs",
+      "normal_tests": [
+        "tests/factory-ensemble.test.mjs"
+      ],
+      "protected_contract": "Stage 1 production, refill selector arguments, task-bound recovery and candidate publication"
+    }
+  ]
+}
