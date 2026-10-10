@@ -1795,10 +1795,11 @@
    "relation": {
     "target": "w2116",
     "target_sense": "w2116-s1",
-    "type": "antonym",
-    "note": "관심은 사람이나 일에 마음을 두고 살피려는 마음이라 무심하다와 반대다."
+    "type": "association",
+    "note": "무심하다는 관심이나 감정을 겉으로 드러내지 않고 지나친다는 뜻이고, 관심은 사람이나 일에 마음을 두고 살피려는 태도라 겉으로 드러내는 방식과 마음을 두는 정도가 같은 축이 아니다. 맞서는 짝이 아니라, 겉으로 드러내지 않고 지나치는 무심하다에서 마음을 두는 태도 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w025-s1: 후보 검토에서 w2116-s1를 antonym 관계로 판단했다."
+   "rationale": "w025-s1 w2116-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w025",
@@ -2433,10 +2434,11 @@
    "relation": {
     "target": "w12292",
     "target_sense": "w12292-s1",
-    "type": "antonym",
-    "note": "모나다는 모서리가 있어 둥글지 않다는 뜻이라 모서리가 뾰족하지 않은 둔함과 반대다."
+    "type": "association",
+    "note": "둔함의 이 뜻은 끝이나 모서리가 뾰족하지 않아 잘 베이지 않는 성질이고, 모나다는 모서리가 있어 둥글지 않다는 뜻이다. 앞은 날카롭게 베이는 정도, 뒤는 둥근 정도를 말해 축이 달라 반의가 아니므로, 뾰족하지 않은 성질에서 모서리가 있는 모양 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w047-s1: 후보 검토에서 w12292-s1를 antonym 관계로 판단했다."
+   "rationale": "w047-s1 w12292-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w047",
@@ -2496,10 +2498,11 @@
    "relation": {
     "target": "w5993",
     "target_sense": "w5993-s1",
-    "type": "antonym",
-    "note": "부담은 맡은 일이나 비용 때문에 마음에 지워지는 무게라 가벼움과 반대다."
+    "type": "association",
+    "note": "가벼움의 이 뜻은 일이나 마음의 부담이 크지 않은 상태이고, 부담은 맡은 일이나 비용 때문에 마음에 지워지는 무게 자체다. 정도가 낮은 상태와 그 무게 자체라 서로 맞서는 짝이 아니므로, 부담이 크지 않은 상태에서 부담 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w048-s2: 후보 검토에서 w5993-s1를 antonym 관계로 판단했다."
+   "rationale": "w048-s2 w5993-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w049",
@@ -2725,10 +2728,11 @@
    "relation": {
     "target": "w359",
     "target_sense": "w359-s1",
-    "type": "antonym",
-    "note": "야무지다는 생각이나 일을 빈틈없이 알차게 해낸다는 뜻이라 빈틈과 반대되는 쪽이다."
+    "type": "association",
+    "note": "빈틈의 이 뜻은 막혀 있지 않고 비어 있는 작은 공간이고, 야무지다는 생각이나 일을 빈틈없이 알차게 해내는 모양이다. 물리적인 공간의 틈과 일을 해내는 모양은 같은 축이 아니라서 반의가 아니므로, 비어 있는 공간에서 빈틈없는 일처리 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w054-s1: 후보 검토에서 w359-s1를 antonym 관계로 판단했다."
+   "rationale": "w054-s1 w359-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w054",
@@ -2750,10 +2754,11 @@
    "relation": {
     "target": "w359",
     "target_sense": "w359-s1",
-    "type": "antonym",
-    "note": "야무지다는 생각이나 일을 빈틈없이 알차게 해낸다는 뜻이라 빈틈과 반대되는 쪽이다."
+    "type": "association",
+    "note": "빈틈의 이 뜻은 주의나 방어가 충분하지 않아 약해진 부분이고, 야무지다는 생각이나 일을 빈틈없이 알차게 해내는 모양이다. 약해진 부분이라는 대상과 일을 해내는 모양은 맞서는 짝으로 확인되지 않아, 약해진 부분에서 빈틈없이 해내는 모양 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w054-s2: 후보 검토에서 w359-s1를 antonym 관계로 판단했다."
+   "rationale": "w054-s2 w359-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w054",
@@ -3194,10 +3199,11 @@
    "relation": {
     "target": "w001",
     "target_sense": "w001-s1",
-    "type": "antonym",
-    "note": "고요는 소리가 잦아들어 잠잠한 상태라, 소리가 있음의 반대 장면을 찾게 한다."
+    "type": "association",
+    "note": "소리는 물체의 움직임이나 목소리에서 귀로 느끼는 울림 자체이고, 고요는 소리와 움직임이 잦아들어 잠잠한 상태다. 현상과 그것이 잦아든 상태라 같은 축의 반의로 보기 어려워, 귀로 느끼는 울림에서 잠잠해진 상태 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w086-s1: 후보 검토에서 w001-s1를 antonym 관계로 판단했다."
+   "rationale": "w086-s1 w001-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w086",
@@ -8894,10 +8900,11 @@
    "relation": {
     "target": "w2116",
     "target_sense": "w2116-s1",
-    "type": "antonym",
-    "note": "관심은 사람이나 일에 마음을 두고 살피려는 마음이라 냉담함과 반대다."
+    "type": "association",
+    "note": "냉담함은 따뜻한 관심을 보이지 않고 차갑게 대하는 태도로 대하는 방식을 가리키고, 관심은 사람이나 일에 마음을 두고 살피려는 태도라 같은 축에서 맞서는 짝으로 보기 어렵다. 차갑게 대하는 냉담함에서 마음을 두는 태도 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w2148-s1: 후보 검토에서 w2116-s1를 antonym 관계로 판단했다."
+   "rationale": "w2148-s1 w2116-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w2148",
@@ -9264,10 +9271,11 @@
    "relation": {
     "target": "w8348",
     "target_sense": "w8348-s1",
-    "type": "antonym",
-    "note": "끈기는 쉽게 포기하지 않고 견디는 힘이라 포기하다와 반대되는 성질이다."
+    "type": "association",
+    "note": "포기하다는 하려던 일을 더 이상 이어 가지 않기로 하는 행위이고, 끈기는 쉽게 포기하지 않고 견디는 힘이다. 행위와 그것을 막는 힘이라 같은 품사 축에서 맞서지 않으므로, 이어 가지 않기로 하는 행위에서 견디는 힘 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w227-s1: 후보 검토에서 w8348-s1를 antonym 관계로 판단했다."
+   "rationale": "w227-s1 w8348-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w227",
@@ -11743,10 +11751,11 @@
    "relation": {
     "target": "w186",
     "target_sense": "w186-s1",
-    "type": "antonym",
-    "note": "떠나다는 있던 곳을 벗어나 다른 곳으로 간다는 뜻이라 발이 묶여 떠나지 못함과 반대다."
+    "type": "association",
+    "note": "발이 묶이다는 발을 움직일 수 없어 그 자리를 떠나지 못하는 상태이고, 떠나다는 있던 곳을 벗어나 다른 곳으로 가는 동작이다. 상태와 동작이라 맞서는 짝으로 확인되지 않아, 떠나지 못하는 상태에서 벗어나 가는 동작 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w291-s1: 후보 검토에서 w186-s1를 antonym 관계로 판단했다."
+   "rationale": "w291-s1 w186-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w2915",
@@ -13734,10 +13743,11 @@
    "relation": {
     "target": "w021",
     "target_sense": "w021-s1",
-    "type": "antonym",
-    "note": "희망은 바라는 일이 이루어질 가능성을 믿는 마음이라 막막함과 반대다."
+    "type": "association",
+    "note": "막막함은 앞으로 무엇을 해야 할지 보이지 않아 답답한 마음이고, 희망은 바라는 일이 이루어질 가능성을 믿는 마음이다. 앞은 방향이 보이지 않는 답답함, 뒤는 가능성을 믿는 마음이라 같은 축이 아니므로, 답답한 마음에서 가능성을 믿는 마음 쪽으로 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w354-s1: 후보 검토에서 w021-s1를 antonym 관계로 판단했다."
+   "rationale": "w354-s1 w021-s1: 두 bound gloss가 같은 의미축에서 정반대를 이루는지 확인되지 않아 antonym이 아니라 association으로 정리했다. 이미 쓰인 역방향은 바꾸지 않았다."
   },
   {
    "source_record_id": "w357",
@@ -19563,7 +19573,7 @@
   "rel-fd2539736cb90765b64aa57e": "7cf81dcc95c895d418721d457d1272130b0bfe90778d605a569e390e22562a37",
   "rel-c76a2a959850baa28d0af85c": "2a88d417ca08f8f21255d25dddb8c04a2f180491813e3e44766eb6fc88182024",
   "rel-d2ee14f5dcabcceb8199178e": "9783d95a613349e6cbff77cc3bd203794f9ae0d754ca57e017001d2c5f12b979",
-  "rel-2e47ef706af6c658d0c752c6": "219b6b1301b5a748bf462db9320e745298311e8e9d626116fbc723e53a6c773f",
+  "rel-8783c03cd02311d53f2761c2": "219b6b1301b5a748bf462db9320e745298311e8e9d626116fbc723e53a6c773f",
   "rel-ebd57aa7b0299a41807a7386": "be39c77a90915e1c6af010fa5a17af28bc4a04a35d5bf33ee2d37308b3f8ede2",
   "rel-56f4e1a91d6f59ab5d64415e": "093d717bb2edb51d9688aab441826e94fc68db5139a89e214f13ba4632197f98",
   "rel-c97a7b7164af297d2efd8a8f": "fee052fa83e583c34992b5d666767416b799c828d6b5bbe7b5a65fb366102a60",
@@ -19613,12 +19623,12 @@
   "rel-483e444513d4af57eacb37aa": "bdafc180e4adc27e1c485438440e7fc13b95a05696da490d09e6db40ea8b5e5d",
   "rel-5d930fcbc2e3e81035464a02": "a5406ad1fe2a8fbd4e139ab5d49df8a6b171b5b1dc23d1c41ee50545356d7111",
   "rel-fe9ec42affbfea5723896da5": "097a464dca7c8bf12ba81dd6a48fe974a030116cbaa649b6c2259b01bf3bb33c",
-  "rel-bcfb6ba01126a4a427f2bfa2": "1710046f0c9d6a462cc9f2639f5bb797766a24da71e9ef6f776add9a16a9fc94",
+  "rel-58acc7bc08abacd890e9767f": "1710046f0c9d6a462cc9f2639f5bb797766a24da71e9ef6f776add9a16a9fc94",
   "rel-efee76269da99e8d87ea435d": "7f4d1026636bebc54b2f1fe16eb6db81e9ac4472fb3ca6bf8713b4683f4b0943",
   "rel-08e2ec0b85c9d008cc45105b": "558e0b1c6ba1e14bbbbe1bca352b10c936a7b88bbd1afd7bbb30dabda85c7577",
   "rel-a8c459cbf0200e3804f349d7": "213f9c6628e38c6931e98d2fb6bca641248a0b11e1ef50c1fa7b60bf1d24f413",
   "rel-2c258e119f7925ccce425f1a": "2a55a31f1c5879b7f27f68706daf9060648677addc36b9d440c37787e3278265",
-  "rel-a486a5f07b19a9f0d9f2e1ed": "97f52d33c8fe022e1877cca0b2787039fc59ff4f75419f231eec41ae8c6f4fcf",
+  "rel-30d160961e12b28aab9cc9eb": "97f52d33c8fe022e1877cca0b2787039fc59ff4f75419f231eec41ae8c6f4fcf",
   "rel-eb013b3db68eb5b218d685d0": "2a55a31f1c5879b7f27f68706daf9060648677addc36b9d440c37787e3278265",
   "rel-d81f1e3187a0cd42128f53a1": "a8f2c55273cacc0d42a4d51d8d9bab2830d1523c8682a130b1837f0879a5822b",
   "rel-61b0c663923cb60813214f24": "97f52d33c8fe022e1877cca0b2787039fc59ff4f75419f231eec41ae8c6f4fcf",
@@ -19636,9 +19646,9 @@
   "rel-74eb64d057f237aa3761ceed": "b5443a26a77593797fc3e54e3fc42af68c2b6429bc2f6966f9c4ba6b0a0c91f4",
   "rel-386315d3172e0afc8d79ca67": "cd51cd2431ded74438a71fbda8caeb7f1f14ea617c09ca09204eee1522efe08e",
   "rel-d5769b0ad994a26728243287": "a0096428a8f7a488ae0fabaa615ec7cb40de138f301c12eccd9e81e702dd94d2",
-  "rel-7627499f4fdf637df27417bd": "105c23b621cb788f69db500bec84cf0cf5a39d7b36f32610fe7706966f226fa1",
+  "rel-a60649b8f6dee73b7ca4c6f6": "105c23b621cb788f69db500bec84cf0cf5a39d7b36f32610fe7706966f226fa1",
   "rel-fb3b689693717140a6de6626": "a0096428a8f7a488ae0fabaa615ec7cb40de138f301c12eccd9e81e702dd94d2",
-  "rel-86214886015a1d459f6e7aa8": "105c23b621cb788f69db500bec84cf0cf5a39d7b36f32610fe7706966f226fa1",
+  "rel-0add2ad5af810e84c0acd35b": "105c23b621cb788f69db500bec84cf0cf5a39d7b36f32610fe7706966f226fa1",
   "rel-9746057ff690a3efb5f1b0da": "987dfed686676e1f96052749d1e704bdf566742f545a4267fb2327a4e93e4afe",
   "rel-1e5c494333ee1c5dd2b6d595": "6c88fc044bd6b0cf6b0605405559d4b21b9da0944983cadc7d8d35f43cc65b1e",
   "rel-d736a8d3fa94100eb6c66858": "2065eaebaa0968949dbd3e269ec80b21147e26b0ad3928ac84d6f622bf0b8131",
@@ -19673,7 +19683,7 @@
   "rel-739c826e57f5de27330e91a9": "95a7f64a6085fb16b83a29ecba524c75aa9e2f6ec03fb21a1c367200f9d8c589",
   "rel-dcd73cd3f1b015d5b07db54e": "e132d86701eb5df0ad7e959862666eacbb578ff6d34cc07bede9009670b638fb",
   "rel-6ce3c5937be8d43e2a477b2e": "9b2dc8c034f721237fc3465814450d88f8470e693c40d4df9a05a2f5a7621d45",
-  "rel-13978530c64ece4545efab7f": "6c88fc044bd6b0cf6b0605405559d4b21b9da0944983cadc7d8d35f43cc65b1e",
+  "rel-1ddf11ae040950a85fa872ab": "6c88fc044bd6b0cf6b0605405559d4b21b9da0944983cadc7d8d35f43cc65b1e",
   "rel-9c5ec53a9f04792a4a34d5b7": "2949fbdb9618687c7ba8be0e9c35d7cbd738c40f9b7f9ea2d0cb56ed8b4b6d34",
   "rel-d4ab89d972acda8c0e235b4f": "0a32b02e1ca015722a6b2b69ea4929c2e52e0aec0afb3c5da3f89880712e250b",
   "rel-dfa8c177cace68974809da73": "eb713b1ede3cf660cea105d3a045d2c380ea39a60376311f1bb3f212e68c9715",
@@ -20114,7 +20124,7 @@
   "rel-d4e2cb97b89a762998150c1b": "7c85dec6046778ed146d799de980cf655a1906496ee334668d579117580feb63",
   "rel-662da0ca8e6641802041cd8f": "cb16df463a3a278767cf49acf4c9025a98b6f7905489c80990923e9c3b9e6189",
   "rel-f9f7ad0c35a7661db0bfa5e4": "531cb5c5a5df65dd8e43f1f0d1fb96940f26089f044a8f283cd1311abde9ab35",
-  "rel-45d316bbbd6f681bf5f8c153": "219b6b1301b5a748bf462db9320e745298311e8e9d626116fbc723e53a6c773f",
+  "rel-eea3960b2652795a1c8af7b1": "219b6b1301b5a748bf462db9320e745298311e8e9d626116fbc723e53a6c773f",
   "rel-6cfdabbe072382db9f77d649": "5f064ddcd8354e581e7cf9700c9e1504d2885d26e9e25110a026fbbb6d50b315",
   "rel-fc5c96885cb2b00f68611499": "3a3eaba4f321bbfd831c13a2e621afe349d6646fa37fa9630d227b591bb9b63b",
   "rel-7333809f9acf3e07e8e91308": "f6c9f1d29aff429a810aa2ea16934dec55dd334ca1d2d19fc0a40820d8980bf9",
@@ -20143,7 +20153,7 @@
   "rel-cb0a68b6ee559a00185f61ad": "9534636b232efeb6a2b0b5245bc15100f57b354f04c2efaedb4cd69d5e6538e3",
   "rel-c920ad5f75b952d480b739b3": "591b02cb4aab994b7c642baf1d309322ecf54d3c222fc0151a4dd4422cecdc68",
   "rel-2c8e526bd5d940d516fbd74e": "468530bc01953fa114660bc59ff66bb86b2fabfdafff5f5228df82df0490524b",
-  "rel-2ef9ba182812183a85443354": "5823ee7e49efac117c01b8e1790b8b969ecb7f9ecfda95b5c4646f0c68710a04",
+  "rel-6576b5ebdc7976b685ff3e76": "5823ee7e49efac117c01b8e1790b8b969ecb7f9ecfda95b5c4646f0c68710a04",
   "rel-7fb70f428c2c0caa0a9b094c": "485e1be99c7fdf73d8f4945659768b17498dea8d94bc12b2e7851c1a95de65f4",
   "rel-b8ab290fe1063f10aff49a2e": "9744e4bbb60136d8928438e3ec78d50049e8b3526df88731c1b1e2f3f3277cd2",
   "rel-79d332c1fa47c8378756887b": "3bd4462a978905ff3e820b4e75fafb4dd425dbdd7eafb14ec68925f64109ddc1",
@@ -20335,7 +20345,7 @@
   "rel-49cd774562ccde583e8df121": "c501e9755d8c3e2cdf22f84a6971a715676e14965c5af77ea10a384a6ab2a93c",
   "rel-f7a07b510e1b9ab45faeab3e": "318c5f75e727d866f29564cd4cc061667f276bab092765fca9d09a3031cb2c33",
   "rel-1cdfc0294430220c747e776d": "47b8f3250dc546ef3dfcf7080f9c157de6adaca052dacf8ea1a81da220a4c6cc",
-  "rel-82913e9f0ad1e1cac88c9910": "06549d26f3de44500a2213e4df1f089aa5fe0ba4c6e8ce2df8095b8b5cf27bc7",
+  "rel-fb9caccca7434eee1eb716f6": "06549d26f3de44500a2213e4df1f089aa5fe0ba4c6e8ce2df8095b8b5cf27bc7",
   "rel-757a3630abdae5b6b59da608": "9e26e241359f65eee1354927254794f203404f990f9668ceeec09224f1c7bfb4",
   "rel-65b232ccffa23b62af1fe3c4": "5171bcc313583779db18546b9ecb2299ca9b07b3aef33418c170c332672eb762",
   "rel-f5722ae86e24f476f7c5bb86": "3e3bf8d6e8827b53319250392bc15eb0ea4e0cb717ac7536eeff9b0696c3d846",
@@ -20489,7 +20499,7 @@
   "rel-ad0c1ebe861e20d74f3c42e1": "e9e1d7af2679ae242c94a4d90b1c773c61ec08086788787acab4e60d3ed71886",
   "rel-926dc9d2cab4c944751decfa": "47f6c3a4355175511b106e1dbbe410688608487dedafbd83bc8fe5db85fe3bb1",
   "rel-f5bb1d4bd3c7692893bf1fec": "8f4bf61c6a10d4a3bdbf7729b364149136ee90f59a6d51f8f1fef2e73cae9350",
-  "rel-9b5525a0f975769423c8a52b": "5a92f11c00bd813abb32cb11a720a6906ddb34d2b6d106056887579205c3328e",
+  "rel-4c58f670ee3cecb14577c1cf": "5a92f11c00bd813abb32cb11a720a6906ddb34d2b6d106056887579205c3328e",
   "rel-4de6905ae1885ddee3a81a9b": "be9542dc1bbda7506f6aff357cd88c1887c13348362bd5a51de86a1183057111",
   "rel-76f69311aa3b4501d7df27d5": "c501e9755d8c3e2cdf22f84a6971a715676e14965c5af77ea10a384a6ab2a93c",
   "rel-66778976c65b081889a1fecf": "9ac4fb0560bb2a65b5a08efcc368a27227be514eea764268ed954234468a9227",
