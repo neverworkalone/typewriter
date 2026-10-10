@@ -118,6 +118,15 @@ const STAGE1_SOURCE_PATHS = Object.freeze([
   'scripts/python/env.mjs',
 ]);
 
+function refillSelectorBatchId(taskId) {
+  const slug = taskId.toLowerCase()
+    .replace(/[^a-z0-9-]+/gu, '-')
+    .replace(/-+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    .slice(0, 51);
+  return `${slug || 'stage1'}-${digest(taskId).slice(0, 12)}`;
+}
+
 // Bind generated manifests to the committed producer tree. Synthetic test roots without Git
 // remain supported; a real checkout must not run Stage 1 from modified factory source.
 function producerRevisionFor(root) {
@@ -313,7 +322,7 @@ async function buildContextReviewPack({ queue, contextSource }) {
 
 export async function runStage1(argv, {
   root = REPOSITORY_DIRECTORY, analyzer, providers, permission = assertCorpusPermission, log = console.log, contextSource, contextDatabasePath,
-  validate = validateFactoryRepository, cachePaths = resolveTypewriterCachePaths(), selectPage,
+  validate = validateFactoryRepository, cachePaths = resolveTypewriterCachePaths(), selectPage, spawnSelector = spawn,
 } = {}) {
   const options = parseArguments(argv);
   let evidencePath;
@@ -465,10 +474,10 @@ export async function runStage1(argv, {
         const command = [path.join(root, 'scripts/reference/run-corpus-lemma-pilot.mjs'),
           '--candidate-limit', String(options.maxCandidates), '--include-canonical-lemmas',
           '--reuse-analysis-from', path.dirname(evidencePath), '--output-directory', output,
-          '--batch-id', options.taskId, '--exclude-lemma-source', exclusionPath,
+          '--batch-id', refillSelectorBatchId(options.taskId), '--exclude-lemma-source', exclusionPath,
           ...(options.python ? ['--python', options.python] : [])];
         await new Promise((resolve, reject) => {
-          const child = spawn(process.execPath, command, { cwd: root, stdio: 'inherit' });
+          const child = spawnSelector(process.execPath, command, { cwd: root, stdio: 'inherit' });
           child.on('error', reject);
           child.on('close', (code) => code === 0 ? resolve() : reject(new Stage1Error([`refill selector failed with exit ${code}; no partial batch published`])));
         });
