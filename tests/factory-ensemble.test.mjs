@@ -25,7 +25,7 @@ import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
 import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import { HEX, hit, item, khaiii, kiwi, stub } from './support/khaiii-fixtures.mjs';
-import { mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkText, validateTrashChunk, failedProposalLemmas, loadTrash } from '../scripts/factory/permanent-trash.mjs';
+import { mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkText, validateTrashChunk, validateArchivedUnresolved, failedProposalLemmas, loadTrash } from '../scripts/factory/permanent-trash.mjs';
 import { refillCandidateBatch } from '../scripts/factory/refill.mjs';
 import { publishArtifacts, recoverArtifacts } from '../scripts/factory/artifact-transaction.mjs';
 import { planHistoryMigration } from '../scripts/factory/migrate-candidate-history.mjs';
@@ -1134,6 +1134,83 @@ test('permanent trash merges observation histories, preserves partial candidates
   assert.deepEqual([...split.chunks.values()].map((rows) => rows.length), [500, 1]);
   assert.deepEqual(validateTrashChunk(chunkText(split.chunks.get('T000001.jsonl'))), []);
   assert.match(validateTrashChunk(chunkText([record, record])).join(), /duplicate/);
+});
+
+test('Normal factory rejects missing or substituted valid archived observations for every new production batch', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'archive-completeness-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cache = await cacheForTask(root);
+  const table = { 가는: GADA.가는 };
+  const initial = evidenceDoc([cand('가다', 'verb', [
+    h('d1', '가는'), h('d1', '갈', 'p2'), h('d2', '갈', 'p3'),
+  ])]);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(initial));
+  const produced = await runStage1([
+    '--evidence', cache.evidenceArgument, '--task-id', 'T000001',
+    '--base-ref', 'none', '--max-candidates', '1',
+  ], {
+    root, cachePaths: cache.cachePaths, providers: triple({ k: table, h: table, m: table }),
+    permission: async () => {}, log: () => {},
+  });
+  assert.equal(produced.manifest.contract, 'lexical-factory-candidate-manifest-v3');
+  assert.equal(produced.manifest.archive.unresolved_count, 2, 'two different source hits remain unresolved');
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
+
+  const manifestPath = path.join(root, 'data/candidates/C000001/manifest.json');
+  const originalManifestText = await readFile(manifestPath, 'utf8');
+  const oversizedManifest = JSON.parse(originalManifestText);
+  oversizedManifest.archive.unresolved_count = Number.MAX_SAFE_INTEGER;
+  await writeFile(manifestPath, JSON.stringify(oversizedManifest) + '\n');
+  const validateScriptUrl = new URL('../scripts/factory/validate.mjs', import.meta.url).href;
+  const validationSource = `import { validateFactoryRepository } from ${JSON.stringify(validateScriptUrl)};\n`
+    + 'process.stdout.write(JSON.stringify(await validateFactoryRepository({ root: process.argv[1] })));';
+  const oversizedErrors = execFileSync(process.execPath,
+    ['--input-type=module', '-e', validationSource, root], { encoding: 'utf8', timeout: 5000 });
+  assert.match(JSON.parse(oversizedErrors).join('\n'),
+    /archive unresolved occurrence count 2 differs from manifest 9007199254740991/u,
+    'the shared Normal validator rejects an oversized count without iterating to it');
+  await writeFile(manifestPath, originalManifestText);
+
+  const archivePath = path.join(root, 'data/candidate-trash/T000001.jsonl');
+  const original = await readFile(archivePath, 'utf8');
+  const rows = original.trimEnd().split('\n').map(JSON.parse);
+  assert.equal(rows.length, 2);
+  await writeFile(archivePath, chunkText(rows.slice(1)));
+  assert.match((await validateFactoryRepository({ root })).join('\n'),
+    /archive unresolved occurrence count|missing archive occurrence/u,
+    'deleting a wholly valid row must fail the shared merge-critical Normal gate');
+
+  const substitute = structuredClone(rows[0]);
+  const ref = substitute.variants[0].observation.evidence.ref + '-unrelated';
+  const alternative = structuredClone(substitute.variants[0].observation);
+  alternative.evidence.ref = ref;
+  const source = mergeUnresolved(new Map(), [{
+    batch_id: produced.manifest.batch_id,
+    source_snapshot: produced.manifest.source_snapshot,
+    unresolved_observations: [{ queue_id: 'U0001', ...alternative }],
+  }]).chunks.get('T000001.jsonl')[0];
+  assert.deepEqual(validateTrashChunk(chunkText([source])), []);
+  await writeFile(archivePath, chunkText([source, rows[1]]));
+  assert.match((await validateFactoryRepository({ root })).join('\n'),
+    /archive unresolved observations digest differs/u,
+    'substituting another individually valid observation must fail manifest digest binding');
+  await writeFile(archivePath, original);
+  assert.deepEqual(await validateFactoryRepository({ root }), [], 'the valid complete batch still passes');
+  const oldChunks = new Map([['T000001.jsonl', rows]]);
+  const second = {
+    batch_id: 'C654321',
+    source_snapshot: produced.manifest.source_snapshot,
+    unresolved_observations: [{ queue_id: 'U0001', ...rows[0].variants[0].observation }],
+  };
+  const reused = mergeUnresolved(oldChunks, [second]);
+  assert.deepEqual([...reused.changed], ['T000001.jsonl'], 'reuse appends an occurrence to the old chunk');
+  const nextCompact = compactManifest(second, reused.references.get(second.batch_id)).manifest;
+  const changedOccurrences = [...reused.chunks.values()].flatMap((chunk) => chunk.flatMap((row) =>
+    row.variants.flatMap((variant) => variant.occurrences
+      .filter((occurrence) => occurrence.batch_id === second.batch_id)
+      .map((occurrence) => ({ row, variant, occurrence })))));
+  assert.deepEqual(validateArchivedUnresolved(nextCompact, changedOccurrences), [],
+    'a new batch may reuse a valid observation by modifying an existing archive chunk');
 });
 
 test('production CLI refills valid lemmas, skips trash proposals before analysis and publishes compact artifacts', async (t) => {

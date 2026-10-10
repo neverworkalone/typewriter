@@ -38,6 +38,7 @@ import {
   validateAdditiveNormalCoverage,
 } from '../scripts/ci/deep-gate.mjs';
 import NORMAL_COVERAGE from '../scripts/ci/deep-gate-coverage.json' with { type: 'json' };
+import { chunkText, mergeUnresolved, validateTrashChunk } from '../scripts/factory/permanent-trash.mjs';
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
 test('every root Node test file has exactly one CI category owner', async () => {
@@ -677,6 +678,74 @@ test('Normal coverage additions bind actual always-on tests without weakening ex
   ) });
   assert.equal(invalid.deepMode, 'full', 'removed binding cannot silently skip independent Deep');
   assert.equal(invalid.reason, 'normal-coverage-registration-unverified');
+});
+
+test('any valid Stage 1 trash chunk takes Normal while tampering and unknown paths fail closed', () => {
+  const unresolved = {
+    surface: '나무',
+    evidence: { kind: 'corpus-paragraph', ref: 'synthetic-ref#1' },
+    holds: ['analysis_missing'],
+  };
+  // Use the real archive producer, not a one-batch or hard-coded archive fixture.
+  const chunks = mergeUnresolved(new Map(), [{
+    batch_id: 'C654321',
+    source_snapshot: 'synthetic-snapshot',
+    unresolved_observations: [unresolved],
+  }]).chunks;
+  const text = chunkText(chunks.get('T000001.jsonl'));
+  assert.deepEqual(validateTrashChunk(text), []);
+  const archivePath = 'data/candidate-trash/T654321.jsonl';
+  const candidatePath = 'data/candidates/C654321';
+  const fixture = new Map([
+    [archivePath, text],
+    [candidatePath + '/manifest.json', '{}\n'],
+    [candidatePath + '/candidates.jsonl', '{}\n'],
+    [candidatePath + '/stage1-decisions.json', '{}\n'],
+  ]);
+  const classify = (paths, replacement = fixture) => classifyDeepGateDiff('base', 'head', {
+    runGit: (args) => {
+      if (args[0] === 'diff' && args.includes('--name-only')) return Buffer.from(paths.join('\0') + '\0');
+      if (args[0] === 'show') {
+        const [revision, ...rest] = args[1].split(':');
+        assert.equal(revision, 'head');
+        const value = replacement.get(rest.join(':'));
+        if (value === undefined) throw new Error('unexpected file at HEAD');
+        return Buffer.from(value);
+      }
+      throw new Error('unexpected Git command: ' + args.join(' '));
+    },
+  });
+
+  assert.equal(classify([archivePath]).deepMode, 'none');
+  const combined = classify([...fixture.keys()]);
+  assert.equal(combined.deepMode, 'none', 'Stage 1 candidates + decisions + trash use Normal only');
+  assert.equal(combined.changeClass, 'routine-data');
+  assert.deepEqual(combined.selectedDeepChecks, []);
+  assert.ok(combined.normalDataPaths.includes(archivePath));
+  assert.equal(classifyDeepGatePaths([archivePath]).reason, 'routine-data-shape-unverified');
+
+  for (const pathValue of [
+    'data/candidate-trash/T65432.jsonl',
+    'data/candidate-trash/T654321.json',
+    'data/candidate-trash/T654321/nested.jsonl',
+    'data/candidate-trash/new-schema.jsonl',
+  ]) assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'full', pathValue);
+
+  const corrupt = (value) => classify([archivePath], new Map([[archivePath, value]]));
+  const observation = chunks.get('T000001.jsonl')[0];
+  for (const invalid of [
+    'broken jsonl\n',
+    text + '\n',
+    '{}\n',
+    chunkText([{ ...observation, observation_id: '0'.repeat(64) }]),
+    text + text,
+    Array.from({ length: 501 }, () => text.trimEnd()).join('\n') + '\n',
+  ]) {
+    const result = corrupt(invalid);
+    assert.equal(result.deepMode, 'full', result.reason);
+    assert.equal(result.reason, 'routine-data-validation-failed');
+    assert.equal(result.path, archivePath);
+  }
 });
 
 test('Deep gate separates validated data from affected contracts and fails closed', async () => {
