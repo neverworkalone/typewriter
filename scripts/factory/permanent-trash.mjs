@@ -191,17 +191,16 @@ export function validateArchivedUnresolved(manifest, entries) {
   }
   if (byQueue.size !== count) {
     errors.push(at + 'archive unresolved occurrence count ' + byQueue.size + ' differs from manifest ' + count);
+    return errors;
   }
-  const unresolved = [];
-  const missing = [];
-  for (let ordinal = 1; ordinal <= count; ordinal += 1) {
-    const id = 'U' + String(ordinal).padStart(4, '0');
-    if (!byQueue.has(id)) { missing.push(id); continue; }
-    unresolved.push(byQueue.get(id));
-  }
-  if (missing.length) errors.push(at + 'missing archive occurrences: '
-    + missing.slice(0, 5).join(', ') + ' (' + missing.length + ' missing total)');
-  if (unresolved.length === count && digest(json(unresolved)) !== manifest.archive?.unresolved_sha256) {
+
+  // Every accepted queue ID is unique and in 1..count. If there are `count`
+  // such IDs, that bounded set is necessarily contiguous; sort only observed
+  // keys to restore the producer's original queue order for the digest.
+  const unresolved = [...byQueue.entries()]
+    .sort(([left], [right]) => Number(left.slice(1)) - Number(right.slice(1)))
+    .map(([, observation]) => observation);
+  if (digest(json(unresolved)) !== manifest.archive?.unresolved_sha256) {
     errors.push(at + 'archive unresolved observations digest differs from manifest');
   }
   return errors;

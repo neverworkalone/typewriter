@@ -1156,6 +1156,21 @@ test('Normal factory rejects missing or substituted valid archived observations 
   assert.equal(produced.manifest.archive.unresolved_count, 2, 'two different source hits remain unresolved');
   assert.deepEqual(await validateFactoryRepository({ root }), []);
 
+  const manifestPath = path.join(root, 'data/candidates/C000001/manifest.json');
+  const originalManifestText = await readFile(manifestPath, 'utf8');
+  const oversizedManifest = JSON.parse(originalManifestText);
+  oversizedManifest.archive.unresolved_count = Number.MAX_SAFE_INTEGER;
+  await writeFile(manifestPath, JSON.stringify(oversizedManifest) + '\n');
+  const validateScriptUrl = new URL('../scripts/factory/validate.mjs', import.meta.url).href;
+  const validationSource = `import { validateFactoryRepository } from ${JSON.stringify(validateScriptUrl)};\n`
+    + 'process.stdout.write(JSON.stringify(await validateFactoryRepository({ root: process.argv[1] })));';
+  const oversizedErrors = execFileSync(process.execPath,
+    ['--input-type=module', '-e', validationSource, root], { encoding: 'utf8', timeout: 5000 });
+  assert.match(JSON.parse(oversizedErrors).join('\n'),
+    /archive unresolved occurrence count 2 differs from manifest 9007199254740991/u,
+    'the shared Normal validator rejects an oversized count without iterating to it');
+  await writeFile(manifestPath, originalManifestText);
+
   const archivePath = path.join(root, 'data/candidate-trash/T000001.jsonl');
   const original = await readFile(archivePath, 'utf8');
   const rows = original.trimEnd().split('\n').map(JSON.parse);
