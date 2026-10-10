@@ -193,14 +193,14 @@ export function validateArchivedUnresolved(manifest, entries) {
     errors.push(at + 'archive unresolved occurrence count ' + byQueue.size + ' differs from manifest ' + count);
   }
   const unresolved = [];
+  const missing = [];
   for (let ordinal = 1; ordinal <= count; ordinal += 1) {
     const id = 'U' + String(ordinal).padStart(4, '0');
-    if (!byQueue.has(id)) {
-      errors.push(at + 'missing archive occurrence ' + id);
-      continue;
-    }
+    if (!byQueue.has(id)) { missing.push(id); continue; }
     unresolved.push(byQueue.get(id));
   }
+  if (missing.length) errors.push(at + 'missing archive occurrences: '
+    + missing.slice(0, 5).join(', ') + ' (' + missing.length + ' missing total)');
   if (unresolved.length === count && digest(json(unresolved)) !== manifest.archive?.unresolved_sha256) {
     errors.push(at + 'archive unresolved observations digest differs from manifest');
   }
