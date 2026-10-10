@@ -1,0 +1,81 @@
+{
+  "contract": "lexical-factory-candidate-manifest-v3",
+  "lemma_policy": "distinct-citation-lemma-v1",
+  "task_id": "T534063",
+  "batch_id": "C000063",
+  "candidate_count": 500,
+  "observation_count": 500,
+  "selection": {
+    "bound": 500,
+    "eligible_lemma_count": 500,
+    "deferred_lemma_count": 0
+  },
+  "source_adapter": "corpus-adapter",
+  "source_snapshot": "corpus:50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211:c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
+  "canonical_snapshot_digest": "3915fcd9e01adbf92658c5f4d61607c24aee71347472e93539b164ac581c53fd",
+  "producer_revision": "2d3be3eeeba922435eb92d65d8e2f163a8a3de3b",
+  "extractor_version": "2",
+  "analyzer_version": "kiwipiepy==0.24.0",
+  "analyzer_digest": "d39df7c9b0fc175ee2871640a312f38a2de4d356b36df593178c9597924f03cd",
+  "proposal_contract": "derivation-root-v1",
+  "analyzer_providers": [
+    {
+      "provider_id": "kiwi",
+      "identity_digest": "655340ffd83d67e26d42ffa79ece1c7f44abf7b583033bacebd75c8540542e53"
+    },
+    {
+      "provider_id": "khaiii",
+      "identity_digest": "984fda88211e537e13417ea7efbf27e9756b90dd3b0d1ec783946c2d885c7b3f"
+    },
+    {
+      "provider_id": "mecab",
+      "identity_digest": "ed15ab1342855c3c20de08243e27c6542a290f210212a4237039ae600c9d5ed9"
+    }
+  ],
+  "resolution_policy": "provider-resolution-v2-ensemble",
+  "ensemble": {
+    "contract": "ensemble-resolution-v3",
+    "counts": {
+      "input_observations": 6990,
+      "observations": 6990,
+      "categories": {
+        "concordant": 439,
+        "supported_alternative": 91,
+        "conflicted": 1952,
+        "unsupported_or_unknown": 4508
+      },
+      "queue": 6460,
+      "excluded": 30
+    },
+    "trace_sha256": "2201d6d1a08751db6ea5a4127c1f6d5c7e681e522ace3b72f3b1584c0160d9b3"
+  },
+  "source_evidence_sha256": "b4e5a6c6c6084ea851e8f789064736659a6026cf9f7401e060527c5b6a4baca2",
+  "candidates_sha256": "801b45acc022045f48ca6cc117e537c88c081eb19fd6fc7b290115a215e18476",
+  "status": "created",
+  "archive": {
+    "contract": "lexical-factory-permanent-trash-v1",
+    "unresolved_count": 6460,
+    "unresolved_sha256": "4a11fbba4eefca6e24e4ca8f6f8b2bd105e7e9423731ff8c604035307e8b2eb9",
+    "excluded_count": 30,
+    "context_decision_count": 0
+  },
+  "stage1_decisions": {
+    "path": "data/candidates/C000063/stage1-decisions.json",
+    "sha256": "0d22e613396b810925aefc1356eaca02a566bf52966ac25ad75e9872cb96ccd6"
+  },
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
+    "decision_count": 0
+  },
+  "production": {
+    "contract": "lexical-factory-refill-v1",
+    "target": 500,
+    "pages": 14,
+    "visited_proposal_count": 7000,
+    "exhausted": false,
+    "source_snapshot": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211:c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
+    "initial_evidence_sha256": "cf9bba768dc0cf27b144741409ceff4913c723f5e19debbb641e6ad19109a935",
+    "checkpoint_binding": "aacf0248031903b7f4bd370f2166b6331af8e460d0d47074ef3a460e9dc969ee"
+  }
+}
