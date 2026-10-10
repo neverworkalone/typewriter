@@ -667,6 +667,7 @@ test('Deep gate separates validated data from affected contracts and fails close
     'docs/new-deep-gate-contract.md',
     'data/candidates/C000001/candidates.jsonl',
     'data/candidates/C000001/manifest.json',
+    'data/candidates/C000001/stage1-decisions.json',
     'src/components/SearchBar.vue',
     'web/src/App.vue',
     'public/favicon.ico',
@@ -914,9 +915,11 @@ test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate g
   }, 'none');
   await scenario('stage1-candidates', () => addCandidate(), 'candidates');
   await scenario('stage1-manifest', () => addCandidate('manifest.json'), 'candidates');
+  await scenario('stage1-decisions', () => addCandidate('stage1-decisions.json'), 'candidates');
   await scenario('stage1-complete-batch', async () => {
     await addCandidate();
     await addCandidate('manifest.json');
+    await addCandidate('stage1-decisions.json');
   }, 'candidates');
   await scenario('stage1-mixed-docs', async () => {
     await addCandidate();

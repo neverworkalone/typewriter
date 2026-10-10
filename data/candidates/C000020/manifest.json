@@ -57,9 +57,13 @@
     "excluded_count": 0,
     "context_decision_count": 0
   },
+  "stage1_decisions": {
+    "path": "data/candidates/C000020/stage1-decisions.json",
+    "sha256": "00397ec2e4dd851f0742ee006354ff11426f47ef025b5fc7a8fe50936d2fc615"
+  },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions": [],
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
+    "decision_count": 0
   }
 }

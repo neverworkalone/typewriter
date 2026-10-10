@@ -103,14 +103,16 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   }
   for (const batch of candidateBatches) {
     const files = await candidateDirectoryFiles(path.join(root, 'data/candidates', batch));
-    if (JSON.stringify(files) !== JSON.stringify(CANDIDATE_FILES)) errors.push(`${batch}: candidate directory must hold exactly ${CANDIDATE_FILES.join(' and ')}, found ${files.join(', ') || 'nothing'}`);
     const directory = path.join(root, 'data/candidates', batch);
     const manifestText = await readOptional(path.join(directory, 'manifest.json'));
     if (manifestText === undefined) { errors.push(`${batch}: candidates manifest.json missing`); continue; }
     const manifest = JSON.parse(manifestText);
+    const expectedFiles = manifest.contract === COMPACT_CONTRACT ? [...CANDIDATE_FILES, 'stage1-decisions.json'] : CANDIDATE_FILES;
+    if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) errors.push(`${batch}: candidate directory must hold exactly ${expectedFiles.join(' and ')}, found ${files.join(', ') || 'nothing'}`);
+    const stage1DecisionsText = manifest.contract === COMPACT_CONTRACT ? await readOptional(path.join(directory, 'stage1-decisions.json')) : undefined;
     if (manifest.batch_id !== batch) errors.push(`${batch}: batch_id ${manifest.batch_id} does not match its directory`);
     const candidatesText = await readOptional(path.join(directory, 'candidates.jsonl'));
-    errors.push(...validateCandidateBatch({ manifest, candidatesText }).map((error) => `${batch}: ${error}`));
+    errors.push(...validateCandidateBatch({ manifest, candidatesText, stage1DecisionsText }).map((error) => `${batch}: ${error}`));
     candidates.set(batch, { manifest, candidatesText });
   }
   const seenIds = new Set();

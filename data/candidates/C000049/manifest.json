@@ -59,125 +59,13 @@
     "excluded_count": 4,
     "context_decision_count": 0
   },
-  "excluded_observations": [
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "시곗줄",
-      "pos": "noun",
-      "surface": "시곗줄이",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500010340.1#WARW2500010340.1.23"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "775d20dce35a1b75948642fb8a205e384a218387b3c17a4a4e146ca0f92a1be7"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "537e02f456ca44c40919865ab828904a466f617071d97c698829ce804fe42675",
-      "ensemble": {
-        "category": "concordant",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "three_way_agreement"
-        ],
-        "trace_digest": "5f42ae56b6b39818394e51de5f366a2ac71c3cb5e12f8c0678ac8786bc89bbab",
-        "alternatives": [],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "시곗줄",
-      "pos": "noun",
-      "surface": "시곗줄에",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500010870.1#WARW2500010870.1.3748"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "35f57c891a4cabc6c07a8f8c048bfbf01c48bbd167ca2680d361082d43f7d546"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "ffdee99eef92d70835dbb05794ef90008eb8a86bca19dd151b2b81d5995c03d5",
-      "ensemble": {
-        "category": "concordant",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "three_way_agreement"
-        ],
-        "trace_digest": "fa3b17ed553dcc3894947c31fce870aeb8bb069f5842d2af7f5850083cbfc0c4",
-        "alternatives": [],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "쓸데없다",
-      "pos": "adjective",
-      "surface": "쓸데없는",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000101.1#WARW2500000101.1.334"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "6647aa3bf3bad91c3a72eb9fed9dfcd86a67eebd13f67f6a678365665dd21ac7"
-      },
-      "holds": [
-        "lemma_mismatch"
-      ],
-      "observation_digest": "9d9c701409e54f7628a3ab7fe30f6c5a44a70907bb8d8ff592dac0ded56103b1",
-      "ensemble": {
-        "category": "concordant",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "three_way_agreement"
-        ],
-        "trace_digest": "b6ceb6a8ecc2894ecad86ebf978b1152ad4c04b0de362e0dbfff3541135a12bb",
-        "alternatives": [],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "언더그라운드",
-      "pos": "noun",
-      "surface": "언더그라운드에",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500019301.1#WARW2500019301.1.789"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "091cf9935ae6d204d4616f128d8d08bd47e0f0818c7e5c2c690c0406ab3527bb"
-      },
-      "holds": [
-        "lemma_mismatch"
-      ],
-      "observation_digest": "d8a11871afc7f51505acc259d3d415c1772d3184a83b5401250b44956400c708",
-      "ensemble": {
-        "category": "concordant",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "three_way_agreement"
-        ],
-        "trace_digest": "35a89dfc75dfa1a079da1fa89267ab0f709b4250c62629b84c764a77700798ad",
-        "alternatives": [],
-        "resolution": "ensemble"
-      }
-    }
-  ],
+  "stage1_decisions": {
+    "path": "data/candidates/C000049/stage1-decisions.json",
+    "sha256": "0797d1560d57aad9e96a04d1fce350a0407ca025ef807294ac5b10b9f6aba3f1"
+  },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions": [],
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
+    "decision_count": 0
   }
 }

@@ -59,106 +59,13 @@
     "excluded_count": 3,
     "context_decision_count": 0
   },
-  "excluded_observations": [
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "근친상간",
-      "pos": "noun",
-      "surface": "근친상간은",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500009530.1#WARW2500009530.1.197"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "2fe1e778ea37fde4203de5372fa85067cb981b337c904450c9df172861be53c2"
-      },
-      "holds": [
-        "lemma_mismatch"
-      ],
-      "observation_digest": "71863ab162f6a1c8fd351adec4b5331f53b2f502cf046be1d64ef52a2f5925aa",
-      "ensemble": {
-        "category": "concordant",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "three_way_agreement"
-        ],
-        "trace_digest": "c8e0ea5160da226d83b3293a202698917d6028e81f42f717cd0660dcb3a2c60f",
-        "alternatives": [],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "글",
-      "pos": "noun",
-      "surface": "글",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.1929"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "f77a9ef73a92993883d42f60d8c7076a0b4a219a99e5b2501489babd2ccb2418"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "8fea847534f33ed4d25aece6153835e491dd24407a4786ef0553bf4f92998788",
-      "ensemble": {
-        "category": "concordant",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "three_way_agreement"
-        ],
-        "trace_digest": "6ad7be43de07d400198c932e05c49c09f6788cd876b36569d66ef4caa68c72ab",
-        "alternatives": [],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "폐",
-      "pos": "noun",
-      "surface": "폐가",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.2654"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "a3e50b7b69998eb9bd7c7e71a70c77128fdaaf0fd7d65f80e8cc9a4d4d28fda4"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "b6a7db9e404a0221433947eb6efe25aa856976cb784e061cf5fbebadebce7f8e",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "93795bf14225bab42ca5cf24f93de774a8edaec90965f03fb861b72b36948297",
-        "alternatives": [
-          {
-            "lemma": "폐가",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_alt",
-              "mecab"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    }
-  ],
+  "stage1_decisions": {
+    "path": "data/candidates/C000035/stage1-decisions.json",
+    "sha256": "14284e23390e7c070a65abb5eb82d94fcb8a4642ffd2e61b9ab32e062266e5c0"
+  },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions": [],
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
+    "decision_count": 0
   }
 }

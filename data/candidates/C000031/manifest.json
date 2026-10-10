@@ -59,93 +59,13 @@
     "excluded_count": 2,
     "context_decision_count": 0
   },
-  "excluded_observations": [
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "매기다",
-      "pos": "verb",
-      "surface": "매기는",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500003830.1#WARW2500003830.1.400"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "f03698d9a254d8bc1985557ef1b1adb34e845b8c7620fbf1e9f336d7bbec207f"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "68d8e6d3eaf058069e745461c6c8a97de9e5a6ea1e8faf70efbfcc86f848e140",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "5abaabab248ad41f5d6c393ba2a06769df02067ed71580b087b221c13cd532ef",
-        "alternatives": [
-          {
-            "lemma": "매기",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_top"
-            ]
-          },
-          {
-            "lemma": "매다",
-            "pos": "verb",
-            "supporters": [
-              "kiwi_alt"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "집",
-      "pos": "noun",
-      "surface": "집도",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500000091.1#WARW2500000091.1.508"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "18da67033f94cfb9d0dcb0b0a58402c27c5d6cec78fa1e29d4a1ba0e551844ce"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "10a3a95adcf9a309e81223bc4db69882271d542b66c19aff465b28dd0d58ca50",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "63515e2180bf0c91687dee2af1afbc3ead559db8b7982312f6bd4a56d7f3b35f",
-        "alternatives": [
-          {
-            "lemma": "집도",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_alt",
-              "mecab"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    }
-  ],
+  "stage1_decisions": {
+    "path": "data/candidates/C000031/stage1-decisions.json",
+    "sha256": "d488b4880ee5b8a5b5fcf0eb52ad26cc5d7802508f21a01180167fb39de6a6e7"
+  },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions": [],
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
+    "decision_count": 0
   }
 }

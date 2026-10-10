@@ -368,7 +368,7 @@ export async function runStage1(argv, {
       const manifest = JSON.parse(entry[1]);
       await rm(path.join(taskRunDirectory, 'stage1-refill-checkpoint.json'), { force: true });
       log(JSON.stringify({ batch_id: manifest.batch_id, recovered: true }));
-      return { manifest, candidatesText: recovered.get(`data/candidates/${manifest.batch_id}/candidates.jsonl`) };
+      return { manifest, candidatesText: recovered.get(`data/candidates/${manifest.batch_id}/candidates.jsonl`), stage1DecisionsText: recovered.get(`data/candidates/${manifest.batch_id}/stage1-decisions.json`) };
     }
   }
   const batchId = allocateBatchId(await knownBatchIds(root, options.baseRef));
@@ -412,7 +412,12 @@ export async function runStage1(argv, {
       catch (error) { throw new Stage1Error([error.message]); }
     }
     let file = await readJson(filePath, 'context replay record');
-    if (file.contract === COMPACT_CONTRACT && !/^C\d{6}$/.test(file.batch_id)) throw new Stage1Error(['invalid compact context replay reference']);
+    if (file.contract === COMPACT_CONTRACT) {
+      if (!/^C\d{6}$/.test(file.batch_id) || file.stage1_decisions?.path !== `data/candidates/${file.batch_id}/stage1-decisions.json`) throw new Stage1Error(['invalid compact context replay reference']);
+      const decisionsText = await readFile(path.join(root, file.stage1_decisions.path), 'utf8');
+      if (digest(decisionsText) !== file.stage1_decisions.sha256) throw new Stage1Error(['compact context replay decisions digest mismatch']);
+      file = JSON.parse(decisionsText);
+    }
     contextReplay = Array.isArray(file) ? file : file.context_fallback?.decisions;
     if (!Array.isArray(contextReplay)) throw new Stage1Error(['context replay record must be a manifest or a decisions array']);
   }
@@ -503,6 +508,7 @@ export async function runStage1(argv, {
     compact.manifest.production = produced.production;
     if (!produced.rows.length) compact.manifest.status = 'exhausted';
     const files = new Map([...merged.changed].map((file) => [`${TRASH_DIRECTORY}/${file}`, chunkText(merged.chunks.get(file))]));
+    files.set(compact.manifest.stage1_decisions.path, compact.stage1DecisionsText);
     files.set(`data/candidates/${batchId}/candidates.jsonl`, produced.candidatesText);
     files.set(`data/candidates/${batchId}/manifest.json`, jsonText(compact.manifest));
     // Same base comparison as the CI validator, so already-merged reviews are not re-validated as new work.
@@ -511,6 +517,7 @@ export async function runStage1(argv, {
       validate: () => validate({ root, base, canonicalEntries }) });
     await rm(path.join(taskRunDirectory, 'stage1-refill-checkpoint.json'), { force: true });
     produced.manifest = compact.manifest;
+    produced.stage1DecisionsText = compact.stage1DecisionsText;
   }
   let comparison;
   if (options.compareKiwiOnly) {

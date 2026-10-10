@@ -94,19 +94,22 @@ export function compactManifest(manifest, references) {
   const history = { batch_id: manifest.batch_id, unresolved: references,
     ...(excluded === undefined ? {} : { excluded_observations: excluded }),
     ...(fallback === undefined ? {} : { context_fallback: fallback }) };
-  // Only unresolved payloads leave the manifest. Batch dispositions and context
-  // decisions stay in their original location; history is temporary audit input.
+  const decisions = { contract: 'lexical-factory-stage1-decisions-v1', batch_id: manifest.batch_id,
+    ...(excluded === undefined ? {} : { excluded_observations: excluded }),
+    ...(fallback === undefined ? {} : { context_fallback: fallback }) };
+  const stage1DecisionsText = jsonText(decisions);
   const compact = { ...metadata, contract: COMPACT_CONTRACT,
     archive: { contract: TRASH_CONTRACT, unresolved_count: unresolved.length,
       unresolved_sha256: digest(json(unresolved)), excluded_count: excluded?.length ?? 0,
       context_decision_count: fallback?.decisions.length ?? 0 },
-    ...(excluded === undefined ? {} : { excluded_observations: excluded }),
-    ...(fallback === undefined ? {} : { context_fallback: fallback }) };
-  return { manifest: compact, history };
+    stage1_decisions: { path: `data/candidates/${manifest.batch_id}/stage1-decisions.json`, sha256: digest(stage1DecisionsText) },
+    ...(fallback === undefined ? {} : { context_fallback: { contract: fallback.contract,
+      decisions_sha256: fallback.decisions_sha256, decision_count: fallback.decisions.length } }) };
+  return { manifest: compact, history, stage1DecisionsText };
 }
 
 export function restoreManifest(compact, history, index) {
-  const { archive, context_fallback: _fallback, ...metadata } = compact;
+  const { archive, stage1_decisions: _decisions, context_fallback: _fallback, ...metadata } = compact;
   const unresolved = history.unresolved.map((ref) => {
     const row = index.get(ref.observation_id)?.row;
     const variant = row?.variants.find((item) => item.analysis_sha256 === ref.analysis_sha256);

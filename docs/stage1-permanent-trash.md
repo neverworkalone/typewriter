@@ -31,10 +31,13 @@ manifest. No corpus sentences or paragraphs are introduced.
 ## Compact manifests and historical audit
 
 Candidate manifest v3 preserves candidate bytes and all source/producer metadata.
-Only unresolved observation payloads move to permanent trash. The manifest
-holds their count and original-array digest; trash occurrences retain their
-batch and queue IDs. Excluded dispositions and full context decisions stay in
-the manifest. There is no separate batch-history folder or file dependency.
+Unresolved observation payloads live only in permanent trash. Its occurrences
+retain batch and queue IDs. Every existing and new batch keeps normal excluded
+dispositions and full context decisions in its own
+`data/candidates/C*/stage1-decisions.json`, without unresolved payloads or a
+second copy of trash references. The compact manifest contains only counts,
+digests and the decision file reference. Its context block has no decision array
+or list of decision IDs. There is no separate candidate-history directory.
 Review/admission `candidates_sha256` continues to bind **candidates.jsonl** bytes.
 It is distinct from the manifest file SHA. The migration report records both
 old and new manifest file SHA for every batch.
@@ -50,8 +53,8 @@ Normal validation checks current candidates and compact metadata. It validates
 basic shape, IDs, bounds and provenance of new/modified trash files through the
 existing factory validator. It does not replay all historical analysis records
 or reconstruct old manifests on each batch. When trash files change, the common validator compares their IDs with existing
-row IDs to reject cross-file duplicates; it does not parse or revalidate past
-analysis payloads. Unchanged runs skip all trash reads. The writer also enforces
+row IDs to reject cross-file duplicates. JSON keys are decoded before comparison,
+including Unicode escapes; past analysis relationships are not revalidated. Unchanged runs skip all trash reads. The writer also enforces
 global uniqueness, with a complete one-time migration proof.
 
 ## Production target
@@ -105,9 +108,11 @@ provider leaves no partial candidate/trash publication.
 Migration proof: 57 batches, 50,662 unresolved appearances, 46,480 unique
 observations, 46,498 distinct analysis variants and all 50,662 batch occurrences
 preserved in 93 chunks. Normal excluded dispositions (96) and context decisions
-(2,493) remain in their original manifests. Candidate bytes and existing review bindings are
+(2,493) are preserved in their own candidate batch decision files. Candidate bytes and existing review bindings are
 unchanged; the report maps every old/new manifest SHA independently.
 
-Stage 2/3 snapshots continue to load candidate manifests and rows through their
-existing paths. Trash payloads are outside those snapshots. Current candidates,
-review bindings and admission contracts use the existing common validator.
+Stage 2/3 snapshots load each batch's manifest, candidates and decision artifact
+through the existing snapshot loader and common validator. They fail closed
+on missing or altered decision files. Trash payloads and their historical
+observation relationships remain outside those snapshots. No new CI check or
+validation layer is introduced.

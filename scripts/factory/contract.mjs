@@ -155,11 +155,11 @@ export function validateCandidateRecord(record, { batchId, ordinal }) {
   return errors;
 }
 
-export function validateCandidateBatch({ manifest, candidatesText, maxUnresolved, allowEmpty }) {
+export function validateCandidateBatch({ manifest, candidatesText, maxUnresolved, allowEmpty, stage1DecisionsText }) {
   const errors = [];
   if (!isPlainObject(manifest)) return ['candidate manifest must be an object'];
   // v2 (lemma-centered, issue #275) batches; the per-usage v1 contract below stays valid for merged history.
-  if ([LEMMA_CANDIDATE_MANIFEST_CONTRACT, COMPACT_CONTRACT].includes(manifest.contract)) return validateLemmaCandidateBatch({ manifest, candidatesText, maxUnresolved, allowEmpty });
+  if ([LEMMA_CANDIDATE_MANIFEST_CONTRACT, COMPACT_CONTRACT].includes(manifest.contract)) return validateLemmaCandidateBatch({ manifest, candidatesText, maxUnresolved, allowEmpty, stage1DecisionsText });
   const required = ['contract', 'task_id', 'batch_id', 'candidate_count', 'source_adapter', 'source_snapshot',
     'canonical_snapshot_digest', 'extractor_version', 'analyzer_version', 'analyzer_digest', 'proposal_contract',
     'source_evidence_sha256', 'candidates_sha256', 'status'];

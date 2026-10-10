@@ -319,7 +319,7 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
   const first = await runStage1(args, deps);
   assert.equal(first.manifest.batch_id, 'C000001');
   assert.equal(first.candidatesText, dry.candidatesText);
-  assert.deepEqual((await readdir(path.join(root, 'data/candidates/C000001'))).sort(), ['candidates.jsonl', 'manifest.json']);
+  assert.deepEqual((await readdir(path.join(root, 'data/candidates/C000001'))).sort(), ['candidates.jsonl', 'manifest.json', 'stage1-decisions.json']);
   assert.deepEqual(await readdir(path.join(root, 'data')).then((names) => names.sort()), ['candidates', 'canonical']);
   assert.equal(await readFile(path.join(root, 'data/candidates/C000001/candidates.jsonl'), 'utf8'), first.candidatesText);
   assert.deepEqual(await validateFactoryRepository({ root }), []);

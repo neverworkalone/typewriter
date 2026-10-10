@@ -59,86 +59,13 @@
     "excluded_count": 2,
     "context_decision_count": 0
   },
-  "excluded_observations": [
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "경영학",
-      "pos": "noun",
-      "surface": "경영학과",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500001090.1#WARW2500001090.1.753"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "87a184c37dde025aac2e9bdae36a02de9876fc1e366c15bd89cedd344a8847a9"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "f3a669267362a71ddac0100fd8d4c9a77720172a41949aa6da9ff29b51a790a1",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "8ff3f4d4ee5f36337f1c7761af7957e1f32fcbdc689adfe677fc22c136e7920f",
-        "alternatives": [
-          {
-            "lemma": "경영학과",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_top"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "치다",
-      "pos": "verb",
-      "surface": "치어",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500002690.1#WARW2500002690.1.461"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "e5c280a718db240a14b49c0e9fa54925514e3b29636f962730c7541477a650f3"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "3878df8664918f4a071d175c03ec7856c8277778b0f1e2f8ec227c25e5a4df1a",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "6f9e968092a69187e774c956215b2e53f0e341f7c6b1061cef603ba038f381c3",
-        "alternatives": [
-          {
-            "lemma": "치어",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_alt",
-              "mecab"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    }
-  ],
+  "stage1_decisions": {
+    "path": "data/candidates/C000053/stage1-decisions.json",
+    "sha256": "c9657d1f21322ff7babfda431c8d4a5bff545b3a216f2e704d2f9a8519c81c26"
+  },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions": [],
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
+    "decision_count": 0
   }
 }

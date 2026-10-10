@@ -1,0 +1,48 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000037",
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "정확",
+      "pos": "noun",
+      "surface": "정확도",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005130.1#WARW2500005130.1.888"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "4bc2837208bcb72f2c061ec76d2e1724bb3808c18e028009b2ba4f230159a723"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "f00179298a721279685cd38988bffdd97439eb3fe4ab743356465ff1293e2584",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "30603e8f16de5347992dc0510846133fd9df3817bbff16ebe791d311addf32b7",
+        "alternatives": [
+          {
+            "lemma": "정확도",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+  }
+}

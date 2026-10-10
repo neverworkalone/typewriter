@@ -1,0 +1,238 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000056",
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "구릿빛",
+      "pos": "noun",
+      "surface": "구릿빛을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010310.1#WARW2500010310.1.3"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "88cd1cb97b61d9678d2fc2b2b0b995d519467c5da4cf46486b233f12280fbf0a"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "ea46e2c52c7eba5908a40be20a814e3d3361bbf81be565a1ea1d2304b062e655",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "20a53822e807888f9cae5a84a021558067787a931dc0b7d682806ed2927146d5",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "대갈마치",
+      "pos": "noun",
+      "surface": "대갈마치",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500078240.1#WARW2500078240.1.481"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "2f11b386236c32c942b1639541cf81cebae71b906af58e6c148e89d95171d8d6"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "b163ea6dd2befceaf1b7abeb58ac10dca048f4b53c6f9d034623c5590e80e9e2",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "3f03fe0ef1ea2aa455fac019801880b37c3f9731d023c3aaf1b25ca6ac976df9",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "더플백",
+      "pos": "noun",
+      "surface": "더플백을",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005090.1#WARW2500005090.1.693"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "b20804b74473b04608413e9801bc753277a5aefabc52c3f95a8a99f47cb82b1d"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "4aca5c0499dc4d07fa1191961066a813572a3e37e1f68d76d9b9ea95a02db190",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "3e67b262e647935ce30251b740751c58d7951eba4d0cb1653ffcbd335a87f68f",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "더플백",
+      "pos": "noun",
+      "surface": "더플백에서",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005090.1#WARW2500005090.1.1427"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "662d2550912203e015f1f96753e9d66757f7a4068e4bee962675fa127c4ed292"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "8224bb1249f28a58ceb69954ba463b6ec01263f210f09e5af5cbda13e22a050f",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "1b430e35bfd0295a9078dc1e5aa147709aff71aae87350d62ac711664292a27e",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "동날",
+      "pos": "noun",
+      "surface": "동날",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500010730.1#WARW2500010730.1.1267"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "20576c56365d4cdaaec724faf22a61f9bc3c25b5fcb2955d6020887976a31642"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "9a4acf76311447ab92e16f5068a8ecb3f23211885274b3dd2d6534080a9776ed",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "944dc483e656fd3c86aaa23333de32a98ce44ed17a70e01108d32cb4723ff8cb",
+        "alternatives": [
+          {
+            "lemma": "날",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_top"
+            ]
+          },
+          {
+            "lemma": "동나다",
+            "pos": "verb",
+            "supporters": [
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "되다",
+      "pos": "verb",
+      "surface": "됩니다",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500000091.1#WARW2500000091.1.138"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "d5bd67992682ed3f7e8df8a66016eeb4f5cbaaf32cdfc99338cd129ebdc9f743"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "08ca1426d1bb9cca86827cff61b429e60ca68a5bf5f4fb7ce7562676fc9dc021",
+      "ensemble": {
+        "category": "concordant",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "three_way_agreement"
+        ],
+        "trace_digest": "a3f2b2f3df14446f6f79be06c7b19039088fd65d9ae27a0cc2b48f9ab4d8dcfa",
+        "alternatives": [],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "뛰다",
+      "pos": "verb",
+      "surface": "뛰기를",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005280.1#WARW2500005280.1.2557"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "2f57df488d96b4942af44ecf2d93cca0b80b6106145dbe9b17456a6961df1399"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "0c1a907182d75771a3e8a21679d747ec853b316326b5bc0e820b290baacc0b26",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "e403de3b6b461730d16aade5dd59c0cd33b525e14cf5d2b7eb36470f001d2208",
+        "alternatives": [
+          {
+            "lemma": "뛰기",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+  }
+}

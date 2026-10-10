@@ -38,14 +38,20 @@ export async function planHistoryMigration(root) {
   const mapping = [];
   for (const { manifest, text, candidatesText } of batches) {
     const compact = compactManifest(manifest, references.get(manifest.batch_id));
-    assert.deepStrictEqual(restoreManifest(compact.manifest, compact.history, index), manifest);
+    assert.equal(compact.manifest.unresolved_observations, undefined);
+    assert.equal(compact.manifest.excluded_observations, undefined);
+    assert.equal(compact.manifest.context_fallback?.decisions, undefined);
+    const decisions = JSON.parse(compact.stage1DecisionsText);
+    assert.equal(decisions.unresolved, undefined);
+    assert.deepStrictEqual(restoreManifest(compact.manifest, { ...compact.history, ...decisions }, index), manifest);
     assert.equal(digest(candidatesText), compact.manifest.candidates_sha256);
-    const errors = validateCandidateBatch({ manifest: compact.manifest, candidatesText });
+    const errors = validateCandidateBatch({ manifest: compact.manifest, candidatesText, stage1DecisionsText: compact.stage1DecisionsText });
     if (errors.length) throw new Error(`${manifest.batch_id}: ${errors.join('\n')}`);
     const nextText = jsonText(compact.manifest);
+    files.set(compact.manifest.stage1_decisions.path, compact.stage1DecisionsText);
     files.set(`data/candidates/${manifest.batch_id}/manifest.json`, nextText);
     mapping.push({ batch_id: manifest.batch_id, before_manifest_sha256: digest(text), after_manifest_sha256: digest(nextText),
-      candidates_sha256: digest(candidatesText),
+      candidates_sha256: digest(candidatesText), stage1_decisions_sha256: digest(compact.stage1DecisionsText),
       unresolved_count: manifest.unresolved_observations.length, excluded_count: manifest.excluded_observations?.length ?? 0,
       context_decision_count: manifest.context_fallback?.decisions.length ?? 0 });
   }

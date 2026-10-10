@@ -53,7 +53,7 @@ jobs:
               *) docs_only=false ;;
             esac
             case "$file" in
-              data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/manifest.json|data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/candidates.jsonl) ;;
+              data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/manifest.json|data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/candidates.jsonl|data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/stage1-decisions.json) ;;
               *) stage1_only=false ;;
             esac
           done < "$paths_file"

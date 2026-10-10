@@ -59,124 +59,13 @@
     "excluded_count": 3,
     "context_decision_count": 0
   },
-  "excluded_observations": [
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "꼬다",
-      "pos": "verb",
-      "surface": "꼬기요",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500085710.1#WARW2500085710.1.6"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "b43d56c66c004c340f40e2445db3d421dc13e2915bd5bebf8fff065928572a75"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "a7ed4398e8af5016f182574e2f664daaceb0cd5ee5ecb52076607f7170fd3b3a",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "befb1390e87c3271eda65616e8619db81cafcc563c8ace09e7029eda27716057",
-        "alternatives": [
-          {
-            "lemma": "꼬기",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_top"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "대리",
-      "pos": "noun",
-      "surface": "대리는",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500005180.1#WARW2500005180.1.3236"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "42850fb56df91045e6e70efd1e361002f3f21e2cfa24b046513c456670d3c33c"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "1861496d5608a2331e77c3cff15a14de248f6196665b174548b15046b4a25c93",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "dcf464b399714f6c8cc05ba3d0e54f8ad05b1358fedb90529fdaf08c8121bf96",
-        "alternatives": [
-          {
-            "lemma": "대리다",
-            "pos": "verb",
-            "supporters": [
-              "kiwi_alt",
-              "mecab"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    },
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "소리",
-      "pos": "noun",
-      "surface": "소린",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500005050.1#WARW2500005050.1.2949"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "bc6b3deb10db9e737c7add8cb63922ed3f2b24293defe5cb2a90438b2bab92df"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "683f4dab8d4fe8d1a5818169e7839bb19b3c493235faf948d404a5929a8ddf5f",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "92c9cc4df539c0cd01fe41d4039a0554d7927e59d25c171b497a91b7661e8280",
-        "alternatives": [
-          {
-            "lemma": "소린",
-            "pos": "noun",
-            "supporters": [
-              "kiwi_alt",
-              "mecab"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    }
-  ],
+  "stage1_decisions": {
+    "path": "data/candidates/C000052/stage1-decisions.json",
+    "sha256": "e0a330dcf567e2b62a95e0e0421a3c985a64293245d9090ddfdaf96466b52e70"
+  },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions": [],
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
+    "decision_count": 0
   }
 }

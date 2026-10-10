@@ -1,0 +1,125 @@
+{
+  "contract": "lexical-factory-stage1-decisions-v1",
+  "batch_id": "C000051",
+  "excluded_observations": [
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "동학",
+      "pos": "noun",
+      "surface": "동학도",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500029920.1#WARW2500029920.1.1288"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "94c784ea7b9510b78e6323f6828f9b445a838d95a1141bb9c625c76f6e7d4d7f"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "918296d795cecef183ccac416fa8c2b569dda840e5886b72d2a3d1c7c615ded7",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "cbd1565ba9bc5879777fe0126b6f186a3fc0374eae747e96946b3e41adf2aaf6",
+        "alternatives": [
+          {
+            "lemma": "동학도",
+            "pos": "noun",
+            "supporters": [
+              "kiwi_alt",
+              "mecab"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "보안",
+      "pos": "noun",
+      "surface": "보안과",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500006140.1#WARW2500006140.1.501"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "dd2f6a4f15b7ff5cb08738e576aae97ea0f586af0f9798bbf22155fa0ce4d9f8"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "a3411e29487036f2401badcd71894cfbad1ca9bb94958cb7bb21310f736b1360",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "733fa5d601cc9d58acb735ae493e5dc66f6022e582e30a13e48d8de2365d9801",
+        "alternatives": [
+          {
+            "lemma": "보안과",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    },
+    {
+      "disposition": "prior_produced_lemma",
+      "lemma": "총",
+      "pos": "noun",
+      "surface": "총도",
+      "evidence": {
+        "kind": "corpus-paragraph",
+        "ref": "WARW2500005060.1#WARW2500005060.1.16"
+      },
+      "analysis": {
+        "status": "ok",
+        "input_digest": "ab31bd9da01b266a58fe0f49489c9d239c82cd7a77b7e69ff0cf83f8d45d35a8"
+      },
+      "holds": [
+        "analysis_ambiguous",
+        "lemma_mismatch"
+      ],
+      "observation_digest": "79c37002a79cb3038f58cbc046aade262bd3f1e23924d89a0a7aad96e1518548",
+      "ensemble": {
+        "category": "supported_alternative",
+        "reasons": [
+          "extractor_hint_mismatch",
+          "kiwi_alternative_supported"
+        ],
+        "trace_digest": "1713a871904dd1b60d93f045c8de0074760d8110bb6f5259b6b1320024f5868e",
+        "alternatives": [
+          {
+            "lemma": "총도",
+            "pos": "noun",
+            "supporters": [
+              "khaiii",
+              "kiwi_alt"
+            ]
+          }
+        ],
+        "resolution": "ensemble"
+      }
+    }
+  ],
+  "context_fallback": {
+    "contract": "context-fallback-decisions-v1",
+    "decisions": [],
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+  }
+}

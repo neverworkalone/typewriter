@@ -59,55 +59,13 @@
     "excluded_count": 1,
     "context_decision_count": 0
   },
-  "excluded_observations": [
-    {
-      "disposition": "prior_produced_lemma",
-      "lemma": "보신",
-      "pos": "noun",
-      "surface": "보신",
-      "evidence": {
-        "kind": "corpus-paragraph",
-        "ref": "WARW2500001090.1#WARW2500001090.1.677"
-      },
-      "analysis": {
-        "status": "ok",
-        "input_digest": "cb24f5f4b61d3fe2e63b092fa98cc32200622d2a6e1307eb8f0feba9e6d4e68b"
-      },
-      "holds": [
-        "analysis_ambiguous",
-        "lemma_mismatch"
-      ],
-      "observation_digest": "15cc82f649675528c269b391474f7738edcaf9ef28ee7bc936c040525c50e9a2",
-      "ensemble": {
-        "category": "supported_alternative",
-        "reasons": [
-          "extractor_hint_mismatch",
-          "kiwi_alternative_supported"
-        ],
-        "trace_digest": "1cb6eee2021f8c977f5613e659baa5a5566d25e663c2839ff250e6fca45873cc",
-        "alternatives": [
-          {
-            "lemma": "보다",
-            "pos": "verb",
-            "supporters": [
-              "kiwi_top"
-            ]
-          },
-          {
-            "lemma": "보시다",
-            "pos": "verb",
-            "supporters": [
-              "kiwi_alt"
-            ]
-          }
-        ],
-        "resolution": "ensemble"
-      }
-    }
-  ],
+  "stage1_decisions": {
+    "path": "data/candidates/C000046/stage1-decisions.json",
+    "sha256": "382c824cd25dd6a71f3f5020c260ee3cd1445ef47070e6a1c265bdba04a5e6ac"
+  },
   "context_fallback": {
     "contract": "context-fallback-decisions-v1",
-    "decisions": [],
-    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0"
+    "decisions_sha256": "6b7f500764da83f0b12f3c1191111dabb5b26fe15962636a9b99aecb5d0d12a0",
+    "decision_count": 0
   }
 }

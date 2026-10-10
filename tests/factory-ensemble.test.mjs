@@ -580,7 +580,7 @@ test('CLI end to end: Stage 1 reads and writes shared-cache artifacts without wo
   await assert.rejects(() => runStage1([...args, '--dry-run', '--context-replay', 'runs/T000001/bad-replay.json'],
     { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK) }), /invalid compact context replay reference/);
   await mkdir(path.join(fresh, 'data/validation'), { recursive: true });
-  await writeFile(path.join(fresh, 'data/validation/context-replay.json'), JSON.stringify(produced.manifest));
+  await writeFile(path.join(fresh, 'data/validation/context-replay.json'), produced.stage1DecisionsText);
   const replayed = await runStage1([...args, '--dry-run', '--context-replay', 'data/validation/context-replay.json'],
     { ...deps, root: fresh, cachePaths: freshCache.cachePaths, providers: triple(FALLBACK), contextSource: undefined });
   assert.equal(replayed.candidatesText, produced.candidatesText);
@@ -634,8 +634,7 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
         variant.occurrences.filter((item) => item.batch_id === compactResult.manifest.batch_id).map((item) => ({
           observation_id: row.observation_id, analysis_sha256: variant.analysis_sha256, queue_id: item.queue_id,
         }))))).sort((a, b) => a.queue_id.localeCompare(b.queue_id)),
-      excluded_observations: compactResult.manifest.excluded_observations,
-      context_fallback: compactResult.manifest.context_fallback };
+      ...JSON.parse(compactResult.stage1DecisionsText) };
     const result = { ...compactResult, manifest: restoreManifest(compactResult.manifest, history, trashIndex(archive)) };
     assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
     assert.equal(result.summary.skippedProducedLemmas, 1);
@@ -1117,8 +1116,11 @@ test('permanent trash merges observation histories, preserves partial candidates
   assert.deepEqual([...failedProposalLemmas(chunks)], ['가다']);
   const compact = compactManifest(result.manifest, references.get(result.manifest.batch_id));
   assert.equal(compact.manifest.unresolved_observations, undefined);
+  assert.equal(compact.manifest.excluded_observations, undefined);
+  assert.equal(compact.manifest.context_fallback.decisions, undefined);
+  assert.equal(JSON.parse(compact.stage1DecisionsText).unresolved, undefined);
   assert.deepEqual(restoreManifest(compact.manifest, compact.history, trashIndex(chunks)), result.manifest);
-  assert.deepEqual(validateCandidateBatch({ manifest: compact.manifest, candidatesText: result.candidatesText }), []);
+  assert.deepEqual(validateCandidateBatch({ manifest: compact.manifest, candidatesText: result.candidatesText, stage1DecisionsText: compact.stage1DecisionsText }), []);
   assert.deepEqual(validateTrashChunk(chunkText([record])), []);
   const repeated = mergeUnresolved(chunks, [result.manifest]);
   assert.equal(trashIndex(repeated.chunks).size, 1);
@@ -1156,6 +1158,16 @@ test('production CLI refills valid lemmas, skips trash proposals before analysis
   assert.equal(produced.manifest.production.target, 2);
   assert.equal(produced.manifest.archive.unresolved_count, 1);
   assert.deepEqual(await validateFactoryRepository({ root }), []);
+  const decisionsPath = path.join(root, produced.manifest.stage1_decisions.path);
+  const decisionsText = await readFile(decisionsPath, 'utf8');
+  assert.equal(produced.manifest.excluded_observations, undefined);
+  assert.equal(produced.manifest.context_fallback.decisions, undefined);
+  assert.equal(JSON.parse(decisionsText).unresolved, undefined);
+  await rm(decisionsPath);
+  assert.match((await validateFactoryRepository({ root })).join(), /missing or altered stage1-decisions/);
+  await writeFile(decisionsPath, decisionsText + ' ');
+  assert.match((await validateFactoryRepository({ root })).join(), /missing or altered stage1-decisions/);
+  await writeFile(decisionsPath, decisionsText);
   const trash = await loadTrash(root);
   assert.deepEqual([...failedProposalLemmas(trash)], ['가다']);
   const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd: root, stdio: 'pipe' });
