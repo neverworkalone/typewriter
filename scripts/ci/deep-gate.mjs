@@ -587,9 +587,7 @@ function main() {
   const [baseSha, headSha] = process.argv.slice(2);
   const result = routePrDeepGate(classifyDeepGateDiff(baseSha, headSha));
   const deepChecks = deepCheckMap(registeredDeepChecks());
-  const selectedLabels = result.deepMode === 'full'
-    ? deepChecks.map(checkId)
-    : (result.selectedDeepChecks ?? []);
+  const selectedLabels = result.selectedDeepChecks ?? [];
   const selected = new Set(selectedLabels);
   const skippedLabels = deepChecks.map(checkId).filter((id) => !selected.has(id));
   const runLevel = process.env.TYPEWRITER_CI_RUN_LEVEL ?? 'normal';
@@ -601,7 +599,7 @@ function main() {
       `\`${changedPath}\` -> ${checks.map((id) => `\`${id}\``).join(', ')}`
     )).join('; ')
     : result.path
-      ? `\`${result.path}\` -> full Deep fallback (${result.reason})`
+      ? `\`${result.path}\` -> PR Normal fallback (${result.prFallbackReason ?? result.reason})`
       : `none (${result.reason})`;
   const output = [
     `run_deep=${result.runDeep}`,
@@ -624,7 +622,7 @@ function main() {
     `- Matched contract triggers: ${triggerEvidence}`,
     `- Deep checks selected (${selectedLabels.length}/${deepChecks.length}): ${selectedLabels.length > 0 ? selectedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}`,
     `- Deep checks skipped: ${skippedLabels.length > 0 ? skippedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}${skippedLabels.length > 0 ? ` (reason: no registered dependency matched this change; classifier: ${result.reason})` : ''}`,
-    `- PR command: \`${result.deepMode === 'full' ? 'ci:all' : result.deepMode === 'selective' ? 'ci:pr' : 'ci:normal or ci:candidates'}\``,
+    `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : 'ci:normal or ci:candidates'}\``,
   ].join('\n') + '\n';
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary, 'utf8');
   process.stdout.write(`${JSON.stringify({ ...result, base_sha: baseSha ?? null, head_sha: headSha ?? null })}\n`);
