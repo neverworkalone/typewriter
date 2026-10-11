@@ -308,7 +308,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       {
         ...commandCheck(
           'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
-          ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs', 'scripts/relation/relation-correction.test.mjs'],
+          ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs', 'scripts/relation/backfill-historical-validators.test.mjs', 'scripts/relation/relation-correction.test.mjs'],
         ),
         schedule: 'affected',
         paths: [
@@ -318,10 +318,13 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/factory/semantic-authority.mjs',
           'scripts/factory/validate.mjs',
           'scripts/validate/semantic-audit.mjs',
+          'scripts/batch/validate-issue-211.mjs',
+          'scripts/batch/validate-issue-220.mjs',
           'scripts/relation/pilot.test.mjs',
           'scripts/relation/backfill-queue.test.mjs',
           'scripts/relation/backfill-queue-cli.test.mjs',
           'scripts/relation/backfill-apply.test.mjs',
+          'scripts/relation/backfill-historical-validators.test.mjs',
           'scripts/relation/relation-correction.test.mjs',
         ],
         deepInputs: [
