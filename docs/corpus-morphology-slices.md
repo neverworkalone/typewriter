@@ -20,8 +20,11 @@ pnpm reference:corpus:morphology run-next \
   --legacy-analysis ~/.cache/typewriter/runs/issue-201-pilot/candidate-analysis.sqlite \
   --reanalyse-slice-zero
 
-# Read-only verification and JSON status; does not tokenize any paragraphs.
+# Incremental verification and JSON status; does not tokenize any paragraphs.
 pnpm reference:corpus:morphology status
+
+# Explicit full input/store audit, including interrupted commit/seal recovery.
+pnpm reference:corpus:morphology audit
 
 # #549: run the next slice, or resume the same incomplete slice, then EXIT.
 pnpm reference:corpus:morphology run-next
@@ -74,6 +77,8 @@ Default directory: `~/.cache/typewriter/runs/written-corpus-morphology-v1/`.
 | `slices` | Actual expected counts, completion bitmap, new and cumulative distinct lemma counts, publication checksum. |
 | `chunks` | Transactional checkpoint ranges/counts, fact row counts, all-token/eligible/accepted/rejected counts (lemma shape and span separately), elapsed analysis time and checksums. |
 | `facts` | Slice/chunk/document contributions for lemma/POS (`kind=0`), morpheme surface (`1`) and punctuation-trimmed eojeol (`2`), with token/OOV/paragraph-hit counts. No paragraph text or token-position archive. |
+| `lemmas`, `slice_summaries` | Indexed first-seen lemma catalogue and atomic completed-slice summaries; ordinary progress/status does not scan previous completed facts or chunks. |
+| `seal.json` | Fsynced external mutation witness for the analysis DB device/inode/size/mtime/ctime, with its own checksum. |
 | `initializing.sqlite` | Unpublished initial routing DB; safely rebuilt after interrupted initialization. |
 | `writer.lock` | OS-managed single-writer lock; a leftover file is harmless after process death. |
 | `error.json` | Last failed attempt and recovery instruction; cleared only after a successful resume. A full disk may prevent this file being written; stderr and nonzero exit remain authoritative. |
@@ -125,14 +130,23 @@ committed analysis chunks, not initialization, verification or lost crash work.
 
 ## Integrity, restart and resource bounds
 
-Initialization scans identities once to build routing. Each slice visits its
-covering route index and probes the original paragraph primary key, preserving
-the pilot's document-local residue 0 membership across irregular boundaries.
-It does not scan all corpus paragraphs to select each new slice. Every invocation
-does stream the index byte digest and verify index/cache integrity: these read-only
-checks cost I/O, but never repeat completed morphology analysis. The source index
-is held under a shared SQLite read lock for the run; live WAL/journal inputs are
-rejected. Do not modify the index while the runner is active.
+Initialization performs the full index byte hash, integrity/count checks and
+routing audit once. Each subsequent invocation checks the bound input file's
+device/inode/size/mtime/ctime, permission and tool/model identity without reading
+all index paragraphs or bytes again. A covering route index selects only the
+current residue and paragraph primary-key probes fetch its texts. Resume validates
+only that incomplete slice's committed checkpoints; publication validates only
+the new slice. Previously verified contributions are reused. An indexed lemma
+catalogue and persisted slice summaries avoid rescanning earlier facts/chunks to
+produce completion/status counts. Full cumulative view queries are explicit
+consumer reads, outside the slice-generation path.
+
+The source index stays under a shared SQLite read lock until publication. All
+initialization connections close before acquiring that lock: on Linux, closing
+another descriptor for the same inode releases process-wide POSIX locks. The
+analysis writer retains an exclusive SQLite lock across its checkpoints. Live
+source WAL/journals and a changed source file stamp stop progress. Do not modify
+the index while the runner is active.
 
 Memory streams one paragraph at a time and holds only that paragraph's token
 counters. SQLite page cache is 8 MiB; sorts spill into the local store.
@@ -150,13 +164,35 @@ cumulative visibility switch atomically in the same DB transaction. Initializati
 publication uses rename plus directory fsync. Status uses a read snapshot; another
 writer cannot race publication into its persisted-data checks.
 
-On resume/status, schema, manifest, routing, completion ordering, checkpoint
-checksums/ranges, accounting and unique lemma counts are validated. Missing or
-modified source/index/tool/model identities, malformed metadata, corrupt DBs,
-misbound checkpoints or incomplete publications stop progress with an actionable
-error. Restore the original compatible input/store or use a fresh cache directory;
-never edit manifests to bypass identity checks. No automatic destructive repair or
-historical DB overwrite is performed.
+Ordinary resume/status checks the external mutation witness before trusting
+previous publications, then validates schema/manifest/identity and current
+checkpoint checksums/ranges/accounting. Any ordinary write, replacement or
+truncation of the analysis DB changes its stamp and blocks progress, including
+modifications to previous completed facts/routing. A current checkpoint checksum
+is also checked independently of the witness. The witness is renewed with fsync
+only after the runner's own initialization, committed checkpoint, publication or
+completed rollback; it does not authorize changed data.
+
+`audit` explicitly rehashes the source, checks the entire schema/manifest/routing,
+all checkpoint contributions, publication ordering/counts, lemma catalogue and
+persisted summaries. Only a successful audit renews a stale witness. It never
+rewrites contributions, stored checksums, or manifests. Source identity changes
+remain blocked. Treat the cache and its witness as one local integrity unit;
+do not edit either to bypass verification. Filesystem stamps detect filesystem
+mutations, while a full audit detects silent storage corruption that does not
+update those stamps; such corruption of the current slice is also detected by
+ordinary checkpoint validation.
+
+Ctrl-C and ordinary exceptions roll back and resume from the last committed
+checkpoint. Hard termination before DB writes, or after a sealed commit, also
+resumes directly. Power loss/process death during a write or between the SQLite
+commit and witness fsync may leave a hot journal or a stale witness. Progress then
+fails closed with an explicit `audit` instruction. Run `audit` to let SQLite
+recover its transaction and verify all preserved contributions, then invoke
+`run-next` to resume the same incomplete slice. A failed audit leaves progress
+blocked; restore the original compatible backup rather than editing the witness.
+There is no automatic full rescan in ordinary `run-next`, including its failure
+path, and no destructive repair or historical DB overwrite.
 
 ## Implementation validation
 
@@ -172,7 +208,11 @@ single-pass union statistics (including surface/POS ambiguities), historical
 reanalysis, checkpoint and publication failures, actual process death, disk-full
 errors, bad identities/schema/checkpoints, single-writer exclusion, status and
 20 successive separate invocations followed by idempotent no-op. It proves that
-each invocation touches at most one slice and an interrupted invocation resumes
+each invocation touches at most one slice. SQL/digest instrumentation over 20
+separate calls proves that input/routing audits occur once and no earlier
+completed facts are scanned for ordinary progress. Corrupt partial checkpoints
+block both incremental execution and explicit audit. A forced process exit in
+the commit/witness gap proves fail-closed recovery through `audit`. An interrupted invocation resumes
 its current slice without starting another. It neither opens the real corpus
 nor requires model execution. Real full-corpus timings and disk totals belong to
 #549 and are not inferred from these fixtures.

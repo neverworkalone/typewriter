@@ -169,6 +169,128 @@ class MorphologyTests(unittest.TestCase):
         self.assertEqual(sum(s["percent_of_index"] for s in result["slices"]), 100)
         self.assertTrue(all(s["elapsed_seconds"] >= 0 for s in result["slices"]))
 
+    def test_separate_calls_do_not_rescan_input_completed_routes_or_facts(self):
+        original_chunk = m.chunk_digest
+        original_connect = m.connect
+        queries = []
+        def traced_connect(*args, **kwargs):
+            db = original_connect(*args, **kwargs)
+            db.set_trace_callback(queries.append)
+            return db
+        with patch.object(m, "source_identity", wraps=m.source_identity) as source_audit, \
+             patch.object(m, "route_digest", wraps=m.route_digest) as routing_audit, \
+             patch.object(m, "connect", side_effect=traced_connect):
+            for slice_id in range(20):
+                queries.clear()
+                checked_slices = []
+                def check_chunk(db, row):
+                    checked_slices.append(row[0])
+                    return original_chunk(db, row)
+                with patch.object(m, "chunk_digest", side_effect=check_chunk):
+                    self.run_store()
+                self.assertTrue(all(s == slice_id for s in checked_slices))
+                self.assertEqual(source_audit.call_count, 1)
+                self.assertEqual(routing_audit.call_count, 1)
+                if slice_id:
+                    self.assertFalse(any("quick_check" in q or "foreign_key_check" in q for q in queries))
+                    self.assertFalse(any("completed_facts" in q for q in queries))
+                    fact_reads = [q for q in queries if "FROM facts" in q]
+                    self.assertTrue(all(f"slice={slice_id}" in q for q in fact_reads), fact_reads)
+                    # A WHERE clause alone is insufficient: SQLite can choose the
+                    # global kind/form index and visit every old slice's facts.
+                    with closing(original_connect(self.store / "analysis.sqlite", readonly=True)) as db:
+                        for query in fact_reads:
+                            plans = [row[3] for row in db.execute("EXPLAIN QUERY PLAN " + query)]
+                            fact_plans = [plan for plan in plans if "SEARCH facts" in plan or "SEARCH f " in plan]
+                            self.assertTrue(fact_plans, plans)
+                            self.assertTrue(all("PRIMARY KEY (slice=?" in plan for plan in fact_plans), plans)
+            queries.clear()
+            self.run_store()
+            self.assertFalse(any("FROM facts" in q or "FROM route" in q for q in queries))
+        self.assert_union(range(20))
+
+    def test_missing_published_database_cannot_silently_restart(self):
+        self.run_store()
+        (self.store / "analysis.sqlite").unlink()
+        with self.assertRaisesRegex(RuntimeError, "Store DB missing"):
+            self.run_store()
+        self.assertFalse((self.store / "analysis.sqlite").exists())
+
+    def test_sqlite_work_does_not_grow_with_previous_completed_facts(self):
+        original_connect = m.connect
+        work = []
+        for extra_documents in (0, 4000):
+            index = self.root / f"indexes/work-{extra_documents}.sqlite"
+            fixture(index)
+            with closing(sqlite3.connect(index)) as db:
+                for document in range(6, 6 + extra_documents):
+                    db.execute("INSERT INTO documents VALUES (?, 'a', ?, ?)", (document, f"d{document}", document))
+                    db.execute("INSERT INTO paragraphs(document_rowid,paragraph_id,ordinal,form) VALUES (?,?,0,'나무')", (document, f"p{document}"))
+                db.execute("UPDATE index_metadata SET value=? WHERE key='document_count'", (str(5 + extra_documents),))
+                db.execute("UPDATE index_metadata SET value=? WHERE key='paragraph_count'", (str(89 + extra_documents),))
+                db.commit()
+            options = self.options | {"index_path": index, "directory": self.root / f"runs/work-{extra_documents}", "checkpoint":4096}
+            m.run_next(**options)  # The extra singleton documents belong only to slice 0.
+            operations = [0]
+            def traced_connect(*args, **kwargs):
+                db = original_connect(*args, **kwargs)
+                def count():
+                    operations[0] += 100
+                    return 0
+                db.set_progress_handler(count, 100)
+                return db
+            with patch.object(m, "connect", side_effect=traced_connect):
+                result = m.run_next(**options)
+            self.assertEqual(result["completed_slice"], 1)
+            work.append(operations[0])
+        # The same next slice must not pay for 12,000 extra old fact rows.
+        # Allow B-tree depth differences and small statement rounding overhead.
+        self.assertLessEqual(work[1], 2 * work[0] + 1000, work)
+
+    def test_partial_checkpoint_corruption_and_stale_seal_require_valid_audit(self):
+        self.run_store()
+        def stop(event):
+            if event == "after-checkpoint-commit":
+                raise RuntimeError("stop")
+        with self.assertRaises(RuntimeError):
+            self.run_store(hook=stop)
+        target = self.store / "analysis.sqlite"
+        with closing(sqlite3.connect(target)) as db:
+            db.execute("UPDATE facts SET tokens=tokens+1 WHERE slice=1")
+            db.commit()
+        with self.assertRaisesRegex(RuntimeError, "seal mismatch"):
+            self.run_store()
+        with self.assertRaisesRegex(RuntimeError, "checksum mismatch"):
+            m.inspect(index_path=self.index,directory=self.store,runtime=self.options["runtime"],audit=True)
+        # Even a recreated mutation witness cannot hide corrupt current facts.
+        m.seal_store(self.store)
+        with self.assertRaisesRegex(RuntimeError, "checksum mismatch"):
+            self.run_store()
+
+    def test_commit_seal_gap_requires_explicit_audit_and_resumes_same_slice(self):
+        self.run_store()
+        script = """
+import os,sys
+from pathlib import Path
+sys.path.insert(0,'scripts/reference')
+import corpus_morphology as m
+from importlib.machinery import SourceFileLoader
+t=SourceFileLoader('fixture_tests','scripts/reference/test-corpus-morphology.py').load_module()
+m.seal_store=lambda directory: os._exit(77)
+m.run_next(index_path=Path(sys.argv[1]),directory=Path(sys.argv[2]),analyzer=t.Analyzer(),runtime={'synthetic':'deterministic-v1'},checkpoint=2)
+"""
+        result = subprocess.run([sys.executable,"-c",script,str(self.index),str(self.store)],
+                                cwd=Path(__file__).parents[2],capture_output=True,text=True)
+        self.assertEqual(result.returncode,77,result.stderr)
+        with self.assertRaisesRegex(RuntimeError,"seal mismatch"):
+            self.run_store()
+        state=m.inspect(index_path=self.index,directory=self.store,runtime=self.options["runtime"],audit=True)
+        self.assertEqual(state["current_slice"],1)
+        self.assertEqual(state["validation"],"full-audit-passed")
+        self.run_store()
+        self.assertEqual(self.last_summary["completed_slice"],1)
+        self.assert_union([0,1])
+
     def test_safe_identified_legacy_reanalysis_never_sums_aggregates(self):
         legacy = self.root / "runs/pilot/candidate-analysis.sqlite"
         legacy.parent.mkdir(parents=True)
