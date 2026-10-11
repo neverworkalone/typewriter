@@ -137,6 +137,14 @@ A lexical synonym need not substitute in every sentence. Apply this to
 Relation enrichment remains independent of lexical admission. Current
 contract: [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md).
 
+Before committing each new Stage 2 or Stage D `direct`/`antonym`, critically
+compare the **actual bound source and target meanings** (gloss, sense, POS):
+confirm lexical synonymy or opposition on the same meaning axis, not merely
+topical similarity, a contrasting situation, action, or result. Treat POS/scope
+differences as reasons to inspect, never automatic vetoes. Keep useful but
+non-dictionary links in a fitting exploratory type, or record no relation;
+never invent dictionary relations to fill a quota.
+
 #### No external model delegation for lexical QA — Codex and Claude (owner directive, 2026-10-02)
 
 **Applies to all implementation agents, including Codex and Claude, and to M9
