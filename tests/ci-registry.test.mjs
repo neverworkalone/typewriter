@@ -1083,10 +1083,10 @@ test('Deep gate separates validated data from affected contracts and fails close
   assert.match(workflow, /continue-on-error: true/u);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
   assert.match(workflow, /run: pnpm run ci:pr -- --base/u);
-  assert.match(workflow, /run: pnpm run ci:all/u);
+  assert.doesNotMatch(workflow, /run: pnpm run ci:all/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success'/u);
   assert.match(workflow, /steps\.changes\.outputs\.deep_mode == 'selective'/u);
-  assert.match(workflow, /steps\.changes\.outputs\.deep_mode == 'full'/u);
+  assert.doesNotMatch(workflow, /steps\.changes\.outputs\.deep_mode == 'full'/u);
   assert.match(workflow, /name: Record executed CI gate/u);
   assert.match(workflow, /- Final gate result: \$\{FINAL_GATE:-unknown\}/u);
   assert.doesNotMatch(workflow, /name: Classify Deep coverage/u);
@@ -1106,8 +1106,8 @@ test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate g
     ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u, 'Deep classification must run inside the existing classifier step');
-  assert.match(workflow, /if: \$\{\{ steps\.changes\.outputs\.run_level == 'candidates' \}\}/u);
-  assert.match(workflow, /if: \$\{\{ steps\.changes\.outcome == 'success' && steps\.changes\.outputs\.run_level == 'normal'/u);
+  assert.match(workflow, /steps\.changes\.outputs\.run_level == 'candidates' && steps\.changes\.outputs\.deep_mode == 'none'/u);
+  assert.match(workflow, /steps\.changes\.outcome != 'success' \|\| \(steps\.changes\.outputs\.run_level == 'normal'/u);
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -1251,12 +1251,12 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.equal((workflow.match(/run: pnpm run ci:normal/gu) ?? []).length, 1);
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u);
   assert.match(workflow, /name: Selective Deep validation \(Normal \+ affected current Deep\)/u);
-  assert.match(workflow, /name: Full Deep validation \(Normal \+ all current Deep\)/u);
-  assert.match(workflow, /run: pnpm run ci:all/u);
+  assert.doesNotMatch(workflow, /name: Full Deep validation \(Normal \+ all current Deep\)/u);
+  assert.doesNotMatch(workflow, /run: pnpm run ci:all/u);
   assert.match(workflow, /run: pnpm run ci:pr -- --base/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success'/u);
   assert.match(workflow, /steps\.changes\.outputs\.deep_mode == 'selective'/u);
-  assert.match(workflow, /steps\.changes\.outputs\.deep_mode == 'full'/u);
+  assert.doesNotMatch(workflow, /steps\.changes\.outputs\.deep_mode == 'full'/u);
   assert.match(workflow, /name: Record executed CI gate/u);
   assert.match(workflow, /FINAL_GATE: \$\{\{ job\.status \}\}/u);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
@@ -1274,7 +1274,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.equal(packageJson.scripts['ci:candidates'], 'node scripts/ci/run-category.mjs candidates');
   assert.equal(packageJson.scripts['ci:pr'], 'node scripts/ci/run-category.mjs pr');
   assert.equal(packageJson.scripts['ci:historical'], 'node scripts/ci/run-category.mjs historical');
-  assert.equal((workflow.match(/run: pnpm run ci:all/gu) ?? []).length, 1);
+  assert.equal((workflow.match(/run: pnpm run ci:all/gu) ?? []).length, 0);
 
   assert.match(deepWorkflow, /^name: Deep CI$/mu);
   assert.match(deepWorkflow, /schedule:\n\s+- cron: '0 22 \* \* 0'/u);
