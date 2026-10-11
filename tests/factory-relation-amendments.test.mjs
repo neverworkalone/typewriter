@@ -14,7 +14,7 @@ import { buildStage3SemanticAuthority } from '../scripts/factory/semantic-author
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import {
   buildSemanticAuditFromDecisionSource, canonicalRecordsBeforeFactoryAdmissions, inspectSenseBoundaryPairs,
-  attachFactoryAdmissions, factoryAdmissionsOf, restoreFactoryAdmissions, validateSemanticAuditCoverage, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, factoryHistoryReachesCorrection, sha256Json,
+  attachFactoryAdmissions, factoryAdmissionsOf, restoreFactoryAdmissions, validateSemanticAuditCoverage, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, factoryHistoryReachesCorrection, sha256Json, continuesPreviousChange,
 } from '../scripts/validate/semantic-audit.mjs';
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
 import { createCanonicalContext, readCanonicalContext, writeCanonicalContext } from '../scripts/validate/canonical-context.mjs';
@@ -522,4 +522,46 @@ test('the validated factory ledger travels with a review in memory only', () => 
   assert.equal(JSON.stringify(review), '{"review_pass":{}}', 'the ledger is never serialized');
   assert.deepEqual(factoryAdmissionsOf({ review_pass: {} }), []);
   assert.deepEqual(factoryAdmissionsOf(attachFactoryAdmissions({}, [])), []);
+});
+
+// A later amendment continues the previous recorded change of its record, including when #396 added `relevance`
+// to the record's exploratory relations after that change, and nothing else may differ.
+test('a ledger change continues the previous change exactly or through a relevance-only drift, and no other rewrite', () => {
+  const withRelevance = {
+    id: 'w00009', lemma: '떨다',
+    senses: [{ id: 'w00009-s1', pos: 'verb', gloss: '작게 빠르게 흔들리다.', relations: [
+      { target: 'w00001', target_sense: 'w00001-s1', type: 'near', note: '흔들림과 가깝다.', relevance: 4 },
+      { target: 'w00002', target_sense: 'w00002-s1', type: 'antonym', note: '반대다.' },
+    ] }],
+  };
+  const withoutRelevance = structuredClone(withRelevance);
+  delete withoutRelevance.senses[0].relations[0].relevance;
+  const reviewOf = (record) => ({ record_id: record.id, record_sha256: sha256Json(record), boundary_review: 'ok', sense_reviews: ['kept'] });
+  // The previous change was recorded before relevance existed: it binds the record and review without it.
+  const previous = { after_sha256: sha256Json(withoutRelevance), semantic_review_sha256: sha256Json(reviewOf(withoutRelevance)) };
+  const next = (record, overrides = {}) => ({
+    operation: 'append_relations', before_sha256: sha256Json(record), previous_record: record,
+    previous_semantic_review: reviewOf(record), previous_semantic_review_sha256: sha256Json(reviewOf(record)), ...overrides,
+  });
+  // Exact continuation: the record has not changed since.
+  const exact = next(withoutRelevance);
+  assert.equal(continuesPreviousChange(exact, previous), true);
+  // Relevance-only drift: the preserved record gained relevance and the review follows its record digest.
+  assert.equal(continuesPreviousChange(next(withRelevance), previous), true);
+  // Any other field difference since the previous change is a rewrite.
+  const rewritten = structuredClone(withRelevance);
+  rewritten.senses[0].gloss = '크게 흔들리다.';
+  assert.equal(continuesPreviousChange(next(rewritten), previous), false);
+  const retyped = structuredClone(withRelevance);
+  retyped.senses[0].relations[0].type = 'association';
+  assert.equal(continuesPreviousChange(next(retyped), previous), false);
+  // A changed review is a rewrite even when the record only gained relevance.
+  const tamperedReview = { ...reviewOf(withRelevance), sense_reviews: ['rewritten'] };
+  assert.equal(continuesPreviousChange(next(withRelevance, { previous_semantic_review: tamperedReview, previous_semantic_review_sha256: sha256Json(tamperedReview) }), previous), false);
+  // The same record with a different review is not a continuation either.
+  assert.equal(continuesPreviousChange(next(withoutRelevance, { previous_semantic_review_sha256: digest }), previous), false);
+  // Without the preserved record and review, only the exact digests can continue.
+  const { previous_record: omittedRecord, previous_semantic_review: omittedReview, ...bare } = next(withRelevance);
+  assert.equal(continuesPreviousChange(bare, previous), false);
+  assert.equal(continuesPreviousChange({ ...bare, before_sha256: previous.after_sha256, previous_semantic_review_sha256: previous.semantic_review_sha256 }, previous), true);
 });
