@@ -142,9 +142,10 @@ schema. The factory is a work-organization layer around the existing contracts.
   `selection.exclusion_source_artifacts`, the Stage 1 CLI reads the sibling
   `reviewed-lemma-exclusions.json` in the same cache run directory and verifies
   its content digest and source-artifact bindings against that evidence. Its
-  normalized lemmas are combined with prior candidate-file lemmas before final
-  row selection, so a provider alternative or contextual fallback cannot
-  reintroduce an excluded lemma. Keep this sidecar in the cache beside
+  normalized lemmas are combined with prior candidate-file lemmas and archived
+  failed proposal lemmas. The same set excludes original proposals, resolved
+  lemmas at final row selection, and refill pages, so a provider alternative or
+  contextual fallback cannot reintroduce an excluded lemma. Keep this sidecar in the cache beside
   `candidate-evidence.json`; it contains no corpus text.
 - Candidate and evidence content follows the existing source discipline: bounded
   text-free provenance only; never copyrighted paragraph text or a corpus
