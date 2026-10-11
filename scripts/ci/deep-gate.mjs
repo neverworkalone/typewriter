@@ -18,6 +18,43 @@ import NORMAL_COVERAGE from './deep-gate-coverage.json' with { type: 'json' };
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
+// Production inventories already exceed Node's 1 MiB default. Allow room for
+// complete inventories/authority files and multi-file canonical patches while
+// keeping each subprocess output bounded. Exceeding this limit still fails closed.
+const GIT_MAX_BUFFER = 64 * 1024 * 1024;
+
+class SafeDiagnosticError extends Error {}
+
+function failureDetail(error, stage) {
+  // Only diagnostics constructed here from allowlisted metadata are public.
+  // Parser/schema/packet validators may quote input in arbitrary error messages.
+  return `${stage}: ${error instanceof SafeDiagnosticError ? error.message : 'validation-failed'}`;
+}
+
+function validateWithDiagnostic(validate, pathValue, kind) {
+  try {
+    return validate();
+  } catch {
+    throw new SafeDiagnosticError(`${pathValue}: ${kind}`);
+  }
+}
+
+function readGit(args, runGit) {
+  try {
+    return runGit(args);
+  } catch (error) {
+    // execFileSync's message may include arbitrary stdout/stderr. Report only
+    // command and process metadata, never the failed file's contents.
+    const metadata = [];
+    if (['ENOBUFS', 'ENOENT', 'EACCES', 'EPERM', 'EIO', 'EINVAL', 'E2BIG', 'ENOMEM'].includes(error?.code)) metadata.push(`code=${error.code}`);
+    for (const key of ['errno', 'status']) {
+      if (Number.isSafeInteger(error?.[key])) metadata.push(`${key}=${error[key]}`);
+    }
+    if (['SIGTERM', 'SIGKILL', 'SIGABRT', 'SIGSEGV', 'SIGINT'].includes(error?.signal)) metadata.push(`signal=${error.signal}`);
+    throw new SafeDiagnosticError(`git-command-failed: git ${args.map((arg) => JSON.stringify(arg)).join(' ')} failed (${metadata.join(', ') || 'process-failure'}; maxBuffer=${GIT_MAX_BUFFER})`);
+  }
+}
+
 // These paths affect the classifier or the mechanism that selects checks. The
 // only safe response is the complete current-system Deep suite.
 const FULL_DEEP_PATHS = Object.freeze([
@@ -204,7 +241,7 @@ function decodeUtf8(bytes, label) {
   try {
     return decoder.decode(bytes);
   } catch (error) {
-    throw new Error(`${label}: invalid UTF-8 (${error.message})`);
+    throw new SafeDiagnosticError(`${label}: invalid UTF-8`);
   }
 }
 
@@ -212,17 +249,17 @@ function parseJsonlRecords(text, filePath) {
   const rows = text.split('\n');
   if (rows.at(-1) === '') rows.pop();
   if (rows.length === 0 || rows.some((row) => row.trim().length === 0)) {
-    throw new Error(`${filePath}: empty or blank JSONL row`);
+    throw new SafeDiagnosticError(`${filePath}: jsonl-empty-or-blank-row`);
   }
   return rows.map((row, index) => {
     let value;
     try {
       value = JSON.parse(row);
     } catch (error) {
-      throw new Error(`${filePath}:${index + 1}: invalid JSON (${error.message})`);
+      throw new SafeDiagnosticError(`${filePath}:${index + 1}: invalid JSON`);
     }
     if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error(`${filePath}:${index + 1}: row must be a JSON object`);
+      throw new SafeDiagnosticError(`${filePath}:${index + 1}: jsonl-row-not-object`);
     }
     return value;
   });
@@ -242,12 +279,12 @@ function validateCanonicalPatch(pathValue, baseSha, headSha, runGit) {
     try {
       record = JSON.parse(jsonLine);
     } catch (error) {
-      throw new Error(`${pathValue}: changed canonical row is invalid JSON (${error.message})`);
+      throw new SafeDiagnosticError(`${pathValue}: changed canonical row is invalid JSON`);
     }
-    validateCanonicalRecord(record, pathValue, 1);
+    validateWithDiagnostic(() => validateCanonicalRecord(record, pathValue, 1), pathValue, 'canonical-record-validation-failed');
     changedRowCount += 1;
   }
-  if (changedRowCount === 0) throw new Error(`${pathValue}: no changed canonical JSONL rows were validated`);
+  if (changedRowCount === 0) throw new SafeDiagnosticError(`${pathValue}: canonical-patch-no-changed-records`);
 }
 
 function readFileAtRevision(pathValue, baseSha, headSha, runGit) {
@@ -263,10 +300,10 @@ function readFileAtRevision(pathValue, baseSha, headSha, runGit) {
       ]);
       deletedAtHead = Buffer.from(deletedPaths).toString('utf8').split('\0').includes(pathValue);
     } catch (diffError) {
-      throw new Error(`${pathValue}: could not verify whether the unreadable HEAD file was deleted (${diffError.message})`);
+      throw new SafeDiagnosticError(`${pathValue}: deletion-check: ${failureDetail(diffError, 'git-read')}`);
     }
     if (!deletedAtHead) {
-      throw new Error(`${pathValue}: could not read the changed file at HEAD (${headError.message})`);
+      throw new SafeDiagnosticError(`${pathValue}: HEAD-read: ${failureDetail(headError, 'git-read')}`);
     }
     bytes = runGit(['show', `${baseSha}:${pathValue}`]);
   }
@@ -287,8 +324,8 @@ function validateRoutineDataFile(pathValue, kind, baseSha, headSha, runGit) {
       // Reuse the real Factory contract (identity hashes, variants, occurrences,
       // bounded chunk size and text-free evidence); Normal additionally checks
       // new chunks against all changed and historic archive IDs.
-      const errors = validateTrashChunk(text);
-      if (errors.length > 0) throw new Error(`${pathValue}: ${errors.join('; ')}`);
+      const errors = validateWithDiagnostic(() => validateTrashChunk(text), pathValue, 'trash-chunk-validation-failed');
+      if (errors.length > 0) throw new SafeDiagnosticError(`${pathValue}: trash-chunk-validation-failed`);
     }
     return;
   }
@@ -297,18 +334,18 @@ function validateRoutineDataFile(pathValue, kind, baseSha, headSha, runGit) {
   try {
     value = JSON.parse(text);
   } catch (error) {
-    throw new Error(`${pathValue}: invalid JSON (${error.message})`);
+    throw new SafeDiagnosticError(`${pathValue}: invalid JSON`);
   }
   if (kind === 'relation-backfill') {
     const [, packetId] = pathValue.match(RELATION_BACKFILL_PATH) ?? [];
-    if (value?.packet_id !== packetId) throw new Error(`${pathValue}: packet_id does not match its filename`);
-    const errors = [
+    if (value?.packet_id !== packetId) throw new SafeDiagnosticError(`${pathValue}: relation-packet-id-mismatch`);
+    const errors = validateWithDiagnostic(() => [
       ...relationAmendmentErrors(value, pathValue),
       ...relationCorrectionErrors(value, pathValue),
-    ];
-    if (errors.length > 0) throw new Error(errors.join('; '));
+    ], pathValue, 'relation-packet-validation-failed');
+    if (errors.length > 0) throw new SafeDiagnosticError(`${pathValue}: relation-packet-validation-failed`);
     if (!Array.isArray(value.relation_amendments) && !Array.isArray(value.relation_corrections)) {
-      throw new Error(`${pathValue}: no recognized relation backfill contract`);
+      throw new SafeDiagnosticError(`${pathValue}: relation-packet-contract-missing`);
     }
   }
 }
@@ -454,12 +491,15 @@ export function classifyDeepGatePaths(changedPaths, {
 }
 
 export function classifyDeepGateDiff(baseSha, headSha, {
-  runGit = (args) => execFileSync('git', args, {
-    cwd: REPOSITORY_DIRECTORY,
+  cwd = REPOSITORY_DIRECTORY,
+  runGit: executeGit = (args) => execFileSync('git', args, {
+    cwd,
     encoding: 'buffer',
+    maxBuffer: GIT_MAX_BUFFER,
     stdio: ['ignore', 'pipe', 'pipe'],
   }),
 } = {}) {
+  const runGit = (args) => readGit(args, executeGit);
   if (typeof baseSha !== 'string' || !baseSha || typeof headSha !== 'string' || !headSha) {
     return { runDeep: true, deepMode: 'full', reason: 'missing-revision-evidence', changeClass: 'unclassifiable' };
   }
@@ -472,7 +512,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
       try {
         const base = decodeUtf8(runGit(['show', baseSha + ':' + NORMAL_COVERAGE_PATH]), NORMAL_COVERAGE_PATH);
         const head = decodeUtf8(runGit(['show', headSha + ':' + NORMAL_COVERAGE_PATH]), NORMAL_COVERAGE_PATH);
-        validateAdditiveNormalCoverage(JSON.parse(base), JSON.parse(head));
+        validateWithDiagnostic(() => validateAdditiveNormalCoverage(JSON.parse(base), JSON.parse(head)), NORMAL_COVERAGE_PATH, 'coverage-registration-validation-failed');
         coverageChangeValidated = true;
       } catch (error) {
         return {
@@ -481,7 +521,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
           reason: 'normal-coverage-registration-unverified',
           changeClass: 'ci-contract',
           path: NORMAL_COVERAGE_PATH,
-          detail: error.message,
+          detail: failureDetail(error, 'normal-coverage-validation'),
           changedPaths,
           selectedDeepChecks: deepCheckMap(registeredDeepChecks()).map(checkId),
         };
@@ -499,7 +539,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
           reason: 'routine-data-validation-failed',
           changeClass: 'unclassifiable',
           path: changedPath,
-          detail: error.message,
+          detail: failureDetail(error, 'routine-data-validation'),
           changedPaths,
           selectedDeepChecks: deepCheckMap(registeredDeepChecks()).map(checkId),
         };
@@ -510,8 +550,8 @@ export function classifyDeepGateDiff(baseSha, headSha, {
       ...classifyDeepGatePaths(changedPaths, { validatedDataPaths, coverageChangeValidated }),
       changedPaths,
     };
-  } catch {
-    return { runDeep: true, deepMode: 'full', reason: 'diff-command-failed', changeClass: 'unclassifiable' };
+  } catch (error) {
+    return { runDeep: true, deepMode: 'full', reason: 'diff-command-failed', changeClass: 'unclassifiable', detail: failureDetail(error, 'diff-classification') };
   }
 }
 
@@ -550,6 +590,7 @@ function main() {
     `- Change class: \`${result.changeClass ?? 'unclassifiable'}\``,
     `- Base PR gate: \`${baseGate}\``,
     `- Classification: \`${result.deepMode}\` (${result.reason})`,
+    ...(result.detail ? [`- Failure detail: ${result.detail}`] : []),
     `- Changed paths: ${(result.changedPaths ?? []).length > 0 ? result.changedPaths.map((value) => `\`${value}\``).join(', ') : 'unavailable'}`,
     `- Matched contract triggers: ${triggerEvidence}`,
     `- Deep checks selected (${selectedLabels.length}/${deepChecks.length}): ${selectedLabels.length > 0 ? selectedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}`,

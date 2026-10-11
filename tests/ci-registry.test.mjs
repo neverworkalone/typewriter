@@ -41,6 +41,134 @@ import NORMAL_COVERAGE from '../scripts/ci/deep-gate-coverage.json' with { type:
 import { chunkText, mergeUnresolved, validateTrashChunk } from '../scripts/factory/permanent-trash.mjs';
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
+test('real Git classification reads large routine files and preserves fail-closed routing', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-large-ci-diff-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const git = (args) => execFileSync('git', args, { cwd: root, stdio: 'pipe', encoding: 'utf8' }).trim();
+  const commit = (message) => {
+    git(['add', '-A']);
+    git(['-c', 'commit.gpgsign=false', '-c', 'user.name=CI Test', '-c', 'user.email=ci@example.invalid', 'commit', '-qm', message]);
+    return git(['rev-parse', 'HEAD']);
+  };
+  const put = async (file, bytes) => {
+    await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    await writeFile(path.join(root, file), bytes);
+  };
+  git(['init', '-q']);
+  await put('README.md', 'fixture\n');
+  await put('scripts/ci/deep-gate-coverage.json', JSON.stringify(NORMAL_COVERAGE));
+  const base = commit('base');
+  const inventoryPath = 'data/inventory/large-fixture.json';
+  const largeJson = JSON.stringify({ observations: ['x'.repeat(2 * 1024 * 1024)] });
+  const packetPath = 'data/relation-backfill/R999999.json';
+  const packet = JSON.parse(await readFile(path.resolve(TEST_DIRECTORY, '../data/relation-backfill/R000004.json'), 'utf8'));
+  packet.packet_id = 'R999999';
+  const canonicalPath = 'data/canonical/large-fixture.jsonl';
+  const record = (await readFile(path.resolve(TEST_DIRECTORY, '../data/canonical/pilot.jsonl'), 'utf8')).split('\n')[0];
+  const canonical = `${record}\n`.repeat(Math.ceil(2 * 1024 * 1024 / Buffer.byteLength(record)));
+  let scenarioCount = 0;
+  const classify = async (files) => {
+    git(['checkout', '-q', '-B', `scenario-${++scenarioCount}`, base]);
+    for (const [file, bytes] of files) await put(file, bytes);
+    const head = commit('scenario');
+    return { head, result: classifyDeepGateDiff(base, head, { cwd: root }) };
+  };
+
+  const routineFiles = [
+    [inventoryPath, largeJson],
+    [canonicalPath, canonical],
+    [packetPath, ' '.repeat(2 * 1024 * 1024) + JSON.stringify(packet)],
+    ['data/validation/canonical-semantic-decision-source.json', largeJson],
+    ['data/validation/issue-999-checkpoint-report.json', largeJson],
+  ];
+  const valid = await classify(routineFiles);
+  // Both the complete file and canonical patch exceed the old subprocess limit.
+  for (const args of [
+    ['show', `${valid.head}:${inventoryPath}`],
+    ['diff', '--unified=0', `${base}...${valid.head}`, '--', canonicalPath],
+  ]) {
+    assert.throws(() => execFileSync('git', args, { cwd: root, stdio: 'pipe' }), { code: 'ENOBUFS' });
+  }
+  const oldBoundary = classifyDeepGateDiff(base, valid.head, {
+    runGit: (args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' }),
+  });
+  assert.equal(oldBoundary.deepMode, 'full');
+  assert.match(oldBoundary.detail, /ENOBUFS/u);
+  assert.equal(valid.result.deepMode, 'none');
+  assert.equal(valid.result.reason, 'validated-routine-data');
+  assert.equal(valid.result.normalDataPaths.length, routineFiles.length);
+  assert.deepEqual(valid.result.selectedDeepChecks, []);
+
+  for (const [file, bytes, detail] of [
+    [inventoryPath, largeJson.slice(0, -1), /invalid JSON/u],
+    [inventoryPath, Buffer.concat([Buffer.from(largeJson), Buffer.from([0xff])]), /invalid UTF-8/u],
+    [packetPath, ' '.repeat(2 * 1024 * 1024) + JSON.stringify({ packet_id: 'R999999' }), /relation-packet-contract-missing/u],
+    [canonicalPath, canonical + JSON.stringify({ lemma: 'invalid' }) + '\n', /./u],
+  ]) {
+    const { result } = await classify([[file, bytes]]);
+    assert.equal(result.deepMode, 'full');
+    assert.equal(result.reason, 'routine-data-validation-failed');
+    assert.equal(result.path, file);
+    assert.match(result.detail, detail);
+  }
+
+  const oversized = await classify([[inventoryPath, JSON.stringify({ padding: 'x'.repeat(64 * 1024 * 1024) })]]);
+  assert.equal(oversized.result.deepMode, 'full');
+  assert.equal(oversized.result.path, inventoryPath);
+  assert.match(oversized.result.detail, /git "show" .*code=ENOBUFS/u);
+  assert.ok(oversized.result.detail.length < 1000, 'buffer failure diagnostics must not contain file output');
+
+  const mixed = await classify([[inventoryPath, largeJson], ['scripts/benchmark/sqlite-runtime.mjs', '// fixture\n']]);
+  assert.equal(mixed.result.deepMode, 'selective');
+  assert.ok(mixed.result.selectedDeepChecks.length > 0);
+  const classifier = await classify([[inventoryPath, largeJson], ['scripts/ci/deep-gate.mjs', '// fixture\n']]);
+  assert.equal(classifier.result.deepMode, 'full');
+  const unknown = await classify([['unclassified.bin', 'fixture']]);
+  assert.equal(unknown.result.reason, 'unclassified-path');
+  assert.equal(unknown.result.deepMode, 'full');
+  for (const [revision, cwd] of [['missing-revision', root], [base, path.join(root, 'missing-directory')]]) {
+    const result = classifyDeepGateDiff(revision, unknown.head, { cwd });
+    assert.equal(result.deepMode, 'full');
+    assert.equal(result.reason, 'diff-command-failed');
+    assert.match(result.detail, /git "diff" .*failed/u);
+    assert.match(result.detail, /status=128|code=ENOENT/u);
+    assert.ok(result.detail.length < 1000);
+  }
+
+  const secret = 'REDACT_ME_PRIVATE_TOKEN_MUST_NEVER_APPEAR';
+  for (const [file, bytes, kind] of [
+    [inventoryPath, secret + ' invalid JSON', 'invalid JSON'],
+    ['data/inventory/large-fixture.jsonl', JSON.stringify({ ok: true }) + '\n' + secret, 'invalid JSON'],
+    [canonicalPath, secret + '\n', 'invalid JSON'],
+    ['data/inventory/large-fixture.jsonl', JSON.stringify(secret) + '\n', 'jsonl-row-not-object'],
+    ['data/inventory/large-fixture.jsonl', JSON.stringify({ secret }) + '\n\n', 'jsonl-empty-or-blank-row'],
+    [canonicalPath, JSON.stringify({ ...JSON.parse(record), [secret]: true }) + '\n', 'canonical-record-validation-failed'],
+    [packetPath, JSON.stringify({ ...packet, packet_id: secret }), 'relation-packet-id-mismatch'],
+    [packetPath, JSON.stringify({ ...packet, relation_amendments: [{ secret }] }), 'relation-packet-validation-failed'],
+    ['scripts/ci/deep-gate-coverage.json', JSON.stringify({ version: 1, bindings: [{ path: secret }] }), 'coverage-registration-validation-failed'],
+  ]) {
+    const { head } = await classify([[file, bytes]]);
+    // Exercise the actual CLI and Git subprocesses, including public JSON output
+    // and the exact summary artifact GitHub publishes. No mocked validators.
+    const summaryPath = path.join(root, '.git', 'failure-summary.md');
+    await rm(summaryPath, { force: true });
+    const stdout = execFileSync(process.execPath, [path.resolve(TEST_DIRECTORY, '../scripts/ci/deep-gate.mjs'), base, head], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, GIT_DIR: path.join(root, '.git'), GIT_WORK_TREE: root, GITHUB_STEP_SUMMARY: summaryPath, GITHUB_OUTPUT: path.join(root, '.git', 'outputs') },
+    });
+    const result = JSON.parse(stdout);
+    const summary = await readFile(summaryPath, 'utf8');
+    assert.equal(result.deepMode, 'full');
+    assert.equal(result.path, file);
+    for (const output of [stdout, summary]) {
+      assert.ok(!output.includes('REDACT_ME'), 'parser and validator input must not leak into public diagnostics');
+      assert.ok(output.includes(file), 'failure path remains visible');
+      assert.ok(output.includes(kind), `${file}: safe error kind remains visible`);
+    }
+  }
+});
+
 test('every root Node test file has exactly one CI category owner', async () => {
   const expectedFiles = (await readdir(TEST_DIRECTORY, { withFileTypes: true }))
     .filter((entry) => entry.isFile() && entry.name.endsWith('.test.mjs'))
