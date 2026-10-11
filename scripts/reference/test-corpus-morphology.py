@@ -400,6 +400,20 @@ m.run_next(index_path=Path(sys.argv[1]),directory=Path(sys.argv[2]),analyzer=t.A
             self.assertEqual(db.execute("SELECT SUM(complete) FROM slices").fetchone()[0],0)
             self.assertEqual(db.execute("SELECT COUNT(*) FROM facts").fetchone()[0],0)
 
+    def test_incremental_identity_never_reopens_a_held_source_inode(self):
+        identity=m.source_identity(self.index,m.DEFAULT_PERMISSION_RECORD_PATH,self.options["runtime"])
+        original_open=Path.open
+        def forbid_source_reopen(path,*args,**kwargs):
+            if path == self.index:
+                raise AssertionError("Closing another source inode descriptor releases Linux POSIX locks")
+            return original_open(path,*args,**kwargs)
+        with closing(m.open_readonly_database(self.index)) as source:
+            source.execute("BEGIN")
+            source.execute("SELECT value FROM index_metadata LIMIT 1").fetchone()
+            with patch.object(Path,"open",forbid_source_reopen), \
+                 patch.object(m,"open_readonly_database",side_effect=AssertionError("must retain held connection")):
+                self.assertEqual(m.fast_identity(self.index,m.DEFAULT_PERMISSION_RECORD_PATH,self.options["runtime"],identity,source),identity)
+
     def test_index_read_lock_prevents_change_between_identity_and_publication(self):
         def attempt_write(event):
             if event == "mid-checkpoint":

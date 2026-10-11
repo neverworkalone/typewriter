@@ -165,8 +165,8 @@ def check_seal(directory):
 
 
 def fast_identity(index_path, permission_path, runtime, recorded, source=None):
-    require_rollback_header(index_path)
     if source is None:
+        require_rollback_header(index_path)
         with closing(open_readonly_database(index_path)) as checked_source:
             require_rollback_source(checked_source)
     else:
