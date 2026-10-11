@@ -1497,27 +1497,16 @@
   },
   {
    "source_record_id": "w054",
-   "source_sense_id": "w054-s1",
-   "source_gloss_sha256": "517d5795e0fae4e6d2d24be5a78c141ab55ee8a13b79e80363b9736a4a9e509e",
-   "relation": {
-    "target": "w359",
-    "target_sense": "w359-s1",
-    "type": "antonym",
-    "note": "야무지다는 생각이나 일을 빈틈없이 알차게 해낸다는 뜻이라 빈틈과 반대되는 쪽이다."
-   },
-   "rationale": "w054-s1: 후보 검토에서 w359-s1를 antonym 관계로 판단했다."
-  },
-  {
-   "source_record_id": "w054",
    "source_sense_id": "w054-s2",
    "source_gloss_sha256": "fe7ff371fd64339b06757b29ce0d9bae8f6b3e061567ca13567d8f5fe24fff02",
    "relation": {
     "target": "w359",
     "target_sense": "w359-s1",
-    "type": "antonym",
-    "note": "야무지다는 생각이나 일을 빈틈없이 알차게 해낸다는 뜻이라 빈틈과 반대되는 쪽이다."
+    "type": "association",
+    "note": "주의나 방어의 약한 부분에서, 일을 알차게 해내어 그런 빈틈을 줄이는 성질을 이어 찾게 한다.",
+    "relevance": 5
    },
-   "rationale": "w054-s2: 후보 검토에서 w359-s1를 antonym 관계로 판단했다."
+   "rationale": "w054-s2 빈틈(주의나 방어가 충분하지 않아 약해진 부분) → w359-s1 야무지다(생각이나 일을 빈틈없이 알차게 해내는 모양): 약한 부분과 일하는 성질은 사전적 반의 축이 아니다. 빈틈을 줄이는 일의 성질로 탐색하는 연상이며, 같은 source 연상 그룹의 주의(4)보다 간접적이고 위험(6)보다 대처 방향이 구체적이므로 relevance 5로 둔다."
   },
   {
    "source_record_id": "w054",
@@ -9572,8 +9561,7 @@
   "rel-43b1e88abd3c1037b7677710": "c2763e35b4145e17ac88f09a35951c2848dd0c6d0c1edeab7e5a11fcb6260b39",
   "rel-1a40ab321718347ef1435ed9": "db98cf2021710ee9541092fc1423169f8f8e7ae74e7fd2432479e3e9d9f03368",
   "rel-74eb64d057f237aa3761ceed": "b5443a26a77593797fc3e54e3fc42af68c2b6429bc2f6966f9c4ba6b0a0c91f4",
-  "rel-7627499f4fdf637df27417bd": "105c23b621cb788f69db500bec84cf0cf5a39d7b36f32610fe7706966f226fa1",
-  "rel-86214886015a1d459f6e7aa8": "105c23b621cb788f69db500bec84cf0cf5a39d7b36f32610fe7706966f226fa1",
+  "rel-425c0826e1fd84b2f60ebe16": "105c23b621cb788f69db500bec84cf0cf5a39d7b36f32610fe7706966f226fa1",
   "rel-9746057ff690a3efb5f1b0da": "987dfed686676e1f96052749d1e704bdf566742f545a4267fb2327a4e93e4afe",
   "rel-98528f75896e2b7b7c81c10c": "b488d6f7d2a46014fba8bc49797317f3efdb63e68446dc2556b3d06dd4c2fe2a",
   "rel-f5fc899cf6b0c4a425b96e15": "74b5e41d67b305962778e3e3ae0fdd28f6b827d087c1d907d7d2b510cf76d0a7",
