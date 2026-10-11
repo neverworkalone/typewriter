@@ -255,6 +255,21 @@ export function withoutRelevance(sense, historicalSense) {
   };
 }
 
+/**
+ * A change continues the previous recorded change of its record when it was made against exactly the record and review
+ * that change left. #396 gave exploratory relations `relevance` afterwards, so a change recorded before it binds the
+ * record (and its review's record digest) without that field; its successor then preserves the record as it stands. That
+ * is still a continuation when the preserved record differs only by `relevance` and the preserved review is the previous
+ * review with its record digest advanced, the same rewind the latest-change binding applies. Any other difference is not.
+ */
+export function continuesPreviousChange(change, previous) {
+  if (change.before_sha256 === previous.after_sha256) return change.previous_semantic_review_sha256 === previous.semantic_review_sha256;
+  const { previous_record: record, previous_semantic_review: review } = change;
+  if (record === null || typeof record !== 'object' || review === null || typeof review !== 'object') return false;
+  return preRelevanceRecordSha256(record) === previous.after_sha256
+    && sha256Json({ ...review, record_sha256: previous.after_sha256 }) === previous.semantic_review_sha256;
+}
+
 function matchesHistoricalRecordDigest(record, digest, hashCache) {
   return cachedSha256Json(record, hashCache) === digest
     || preRelevanceRecordSha256(record) === digest;
@@ -2584,8 +2599,7 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
         fail(`${changeLabel}.source_candidate_ids do not bind the Stage 3 entries`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       const previous = latestChangeByRecord.get(change.entry_id);
-      if (previous && (change.operation === 'create' || change.before_sha256 !== previous.after_sha256
-        || change.previous_semantic_review_sha256 !== previous.semantic_review_sha256)) {
+      if (previous && (change.operation === 'create' || !continuesPreviousChange(change, previous))) {
         fail(`${changeLabel} does not continue the previous Stage 3 record and semantic review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       latestChangeByRecord.set(change.entry_id, change);

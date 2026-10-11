@@ -140,6 +140,34 @@ test('a backfill onto a Stage 3-created record still passes the real factory his
   }
 });
 
+// A record whose latest ledger change predates #396 (it binds the record and review without `relevance`) and that
+// gained relevance since: amending it again must continue that history instead of failing the ledger's continuity.
+test('a backfill onto a record whose earlier ledger entry predates relevance continues the real ledger', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const authority = JSON.parse(await readFile(path.join(REPO, AUTHORITY), 'utf8'));
+  const latest = new Map();
+  for (const event of authority.factory_admissions) for (const change of event.changes ?? []) latest.set(change.entry_id, change);
+  const current = new Map(canonical.records.map(({ record }) => [record.id, record]));
+  const drifted = [...latest].find(([id, change]) => current.has(id) && sha256Json(current.get(id)) !== change.after_sha256);
+  assert.ok(drifted, 'the real ledger holds a record whose latest change no longer equals its full digest');
+  const source = index.senses.find((sense) => sense.record_id === drifted[0]);
+  const target = index.senses.find((sense) => sense.record_id !== source.record_id && !source.relations.some((relation) => relation.target_sense === sense.sense_id));
+  const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
+  const state = newQueueState(canonical.canonicalRevision);
+  state.done[source.sense_id] = approvedEntry(index, source.sense_id, relation, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
+  const root = await scratchRoot();
+  try {
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
+    const after = await readRecords(root);
+    const written = JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8'));
+    assert.equal(written.factory_admissions.at(-1).changes.at(0).entry_id, source.record_id);
+    assert.doesNotThrow(() => validateFactoryAdmissionLedger(written, after.map((record) => ({ record })), 'relevance drift test'));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 function oneApproval(canonical, index) {
   const { source, target } = pickPair(index);
   const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
