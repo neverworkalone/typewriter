@@ -13,7 +13,6 @@ import { buildDictionary } from '../build/dictionary.mjs';
 import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
-  getSenseRelations,
 } from '../build/query.mjs';
 import { materializeLexicalUnitCandidates, validateLexicalProduction } from './lexical-production.mjs';
 import {
@@ -450,10 +449,8 @@ export async function validateExactSearch({
         field: 'lemma',
         value: record.lemma,
       }], `${batchLabel}: ${record.lemma} exact precedence`);
-      const relationCount = record.senses.reduce(
-        (count, sense) => count + getSenseRelations(currentDatabase, sense.id).length,
-        0,
-      );
+      // The admission itself carries no relations; later relation-only enrichment may add some to the live database.
+      const relationCount = record.senses.reduce((count, sense) => count + (sense.relations?.length ?? 0), 0);
       assert.equal(relationCount, 0, `${batchLabel}: ${record.lemma} relation-empty admission`);
       resultByLemma.set(record.lemma, {
         record_id: record.id,
@@ -473,7 +470,7 @@ export async function validateExactSearch({
         field: match.field,
         value: match.value,
       })), [{ id: record.id, kind: 'exact-lemma', field: 'lemma', value: lemma }], `${lemma} direct writer workflow`);
-      assert.equal(record.senses.reduce((count, sense) => count + getSenseRelations(currentDatabase, sense.id).length, 0), 0);
+      assert.equal(record.senses.reduce((count, sense) => count + (sense.relations?.length ?? 0), 0), 0);
     }
     return Object.fromEntries(resultByLemma);
   } finally {
