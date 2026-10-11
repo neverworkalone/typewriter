@@ -41,7 +41,13 @@ async function scratchRepository() {
   return root;
 }
 
-const firstRecord = async (root, issue) => JSON.parse((await readFile(path.join(root, IMPORTS[issue]), 'utf8')).split('\n').find(Boolean));
+// A record of the import to enrich: the first one that still has no relation, so the fixture stays valid once earlier
+// Stage D batches have enriched some admitted records (any record works if every one already has relations).
+const enrichable = async (root, issue) => {
+  const records = (await readFile(path.join(root, IMPORTS[issue]), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  return records.find((record) => record.senses.every((sense) => (sense.relations ?? []).length === 0)) ?? records[0];
+};
+const recordOf = async (root, issue, id) => (await readFile(path.join(root, IMPORTS[issue]), 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line)).find((record) => record.id === id);
 
 // The validators check the committed reports against the current canonical, so each run rewrites them in the scratch copy.
 // The scratch canonical is another revision than a CI run's shared SQLite artifact, so the child builds its own database.
@@ -65,18 +71,17 @@ test('relation-only backfills of admitted Issue #211 and #220 records pass the h
     const state = newQueueState(canonical.canonicalRevision);
     const admitted = [];
     for (const issue of [211, 220]) {
-      const record = await firstRecord(root, issue);
-      assert.deepEqual(record.senses.flatMap((sense) => sense.relations ?? []), [], `the Issue #${issue} admission carries no relations`);
-      const source = index.senses.find((sense) => sense.record_id === record.id);
+      const record = await enrichable(root, issue);
+      const source = index.senses.find((sense) => sense.record_id === record.id && sense.sense_id === record.senses[0].id);
       const target = index.senses.find((sense) => sense.record_id !== record.id && !source.relations.some((relation) => relation.target_sense === sense.sense_id));
       state.done[source.sense_id] = approval(index, source, target);
       admitted.push({ issue, record });
     }
     assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
     for (const { issue, record } of admitted) {
-      const enriched = await firstRecord(root, issue);
-      assert.equal(enriched.id, record.id);
-      assert.ok(enriched.senses.some((sense) => (sense.relations ?? []).length > 0), `the backfill reached the Issue #${issue} import`);
+      const enriched = await recordOf(root, issue, record.id);
+      const count = (item) => item.senses.reduce((sum, sense) => sum + (sense.relations ?? []).length, 0);
+      assert.equal(count(enriched), count(record) + 1, `the backfill reached the Issue #${issue} import`);
       await validate(root, issue);
     }
 
