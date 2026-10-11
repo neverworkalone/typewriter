@@ -1,10 +1,18 @@
 import assert from 'node:assert/strict';
-import { readFile, rm } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+
+import { buildDictionary } from '../scripts/build/dictionary.mjs';
+import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
+import { sha256Json, validateCanonicalSemanticAudit } from '../scripts/validate/semantic-audit.mjs';
+import { reviewedRelationId } from '../scripts/batch/authored-semantic-decision-source.mjs';
+import { applyBackfill } from '../scripts/relation/backfill-apply.mjs';
+import { buildRelationIndex } from '../scripts/relation/candidate-retrieval.mjs';
+import { newQueueState } from '../scripts/relation/backfill-queue.mjs';
 
 import { openCurrentRevisionDatabasePath } from '../scripts/ci/current-revision-database.mjs';
 import {
@@ -101,8 +109,25 @@ async function issue211DecisionFixture() {
   };
 }
 
-test('Issue #211 admissions resolve exact writer queries without relations', async () => {
+function assertCanonicalSenseRelations(database, sense, recordsById) {
+  const expected = (sense.relations ?? []).map((relation, position) => {
+    const target = recordsById.get(relation.target);
+    const targetSense = target.senses.find(({ id }) => id === relation.target_sense);
+    return {
+      position, target: relation.target, target_sense: relation.target_sense ?? null,
+      type: relation.type, note: relation.note ?? null, relevance: relation.relevance ?? null,
+      target_lemma: target.lemma, target_pos: targetSense?.pos ?? null,
+      target_gloss: targetSense?.gloss ?? null,
+    };
+  });
+  assert.deepEqual(getSenseRelations(database, sense.id), expected,
+    `${sense.id} exposes exactly the current authored canonical relations`);
+}
+
+test('Issue #211 admissions resolve exact writer queries with current authored relations', async () => {
   const admittedRecords = parseJsonl(await readFile(admittedRecordsPath));
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const recordsById = new Map(canonical.records.map(({ record }) => [record.id, record]));
   const opened = await openDictionary();
   try {
     assert.equal(admittedRecords.length, 24);
@@ -124,7 +149,7 @@ test('Issue #211 admissions resolve exact writer queries without relations', asy
         value: record.lemma,
       }], `${record.lemma} exact precedence`);
       for (const sense of record.senses) {
-        assert.deepEqual(getSenseRelations(opened.database, sense.id), [], `${record.lemma}/${sense.id} has no invented relation`);
+        assertCanonicalSenseRelations(opened.database, sense, recordsById);
       }
     }
 
@@ -138,7 +163,7 @@ test('Issue #211 admissions resolve exact writer queries without relations', asy
         field: match.field,
         value: match.value,
       })), [{ id: record.id, kind: 'exact-lemma', field: 'lemma', value: lemma }]);
-      assert.deepEqual(record.senses.flatMap(({ id }) => getSenseRelations(opened.database, id)), []);
+      for (const sense of record.senses) assertCanonicalSenseRelations(opened.database, sense, recordsById);
     }
 
     assert.deepEqual(findRecordsByExactTerm(opened.database, '내다'), [], 'the unresolved-sense candidate remains held');
@@ -178,5 +203,76 @@ test('Issue #211 shared decision admission rejects policy-only dispositions', as
       (error) => error.code === 'ISSUE_211_DECISION_SOURCE_REJECTION_BASIS',
       `${basis} cannot be the sole rejection reason`,
     );
+  }
+});
+
+
+test('Issue #211 original admission evidence has no authored relations', async () => {
+  const source = JSON.parse(await readFile(semanticSourcePath, 'utf8'));
+  for (const decision of source.decisions.filter(({ decision }) => ['included', 'corrected'].includes(decision))) {
+    const record = source.candidate_records.find(({ id }) => id === decision.candidate_record_id);
+    assert.ok(record);
+    for (const sense of record.senses) assert.deepEqual(sense.relations ?? [], []);
+    for (const review of decision.sense_reviews) {
+      assert.equal(review.relation_decision, 'no-relations');
+      assert.equal(review.relation_count, 0);
+      assert.deepEqual(review.relation_ids, []);
+    }
+  }
+});
+
+test('source-bound backfill survives the real SQLite query path without accepting tuple drift', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const imported = parseJsonl(await readFile(admittedRecordsPath));
+  const importedIds = new Set(imported.map(({ id }) => id));
+  const source = index.senses.find((sense) => importedIds.has(sense.record_id) && sense.pos === 'noun');
+  assert.ok(source, 'the imported lexical entries include a noun sense');
+  const related = new Set(source.relations.map(({ target_sense }) => target_sense));
+  const target = index.senses.find((sense) => sense.pos === 'noun' && sense.record_id !== source.record_id && !related.has(sense.sense_id));
+  assert.ok(target);
+  const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '합성 검색 회귀용 관계.', relevance: 4 };
+  const state = newQueueState(canonical.canonicalRevision);
+  state.done[source.sense_id] = {
+    outcome: 'relations-reviewed', gloss_sha256: sha256Json(source.gloss), relation_count: 1,
+    rationale: `${source.sense_id}: 합성 검색 회귀용 승인.`,
+    approved_relations: [{ relation_id: reviewedRelationId(source.sense_id, relation), relation,
+      rationale: `${source.record_id} ${source.sense_id}: 합성 검색 회귀용 근거.` }],
+    reviewed_candidates: [{ id: target.sense_id, meaning_sha256: sha256Json([target.lemma, target.gloss]) }],
+  };
+  const root = await mkdtemp(path.join(os.tmpdir(), 'issue-211-backfill-query-'));
+  const authorityPath = 'data/validation/canonical-semantic-decision-source.json';
+  let database;
+  try {
+    await mkdir(path.join(root, 'data/validation'), { recursive: true });
+    await cp(path.join(repositoryDirectory, 'data/canonical'), path.join(root, 'data/canonical'), { recursive: true });
+    await cp(path.join(repositoryDirectory, authorityPath), path.join(root, authorityPath));
+    for (const directory of ['data/candidates', 'data/reviews']) {
+      await symlink(path.join(repositoryDirectory, directory), path.join(root, directory));
+    }
+    await cp(path.join(repositoryDirectory, 'data/relation-backfill'), path.join(root, 'data/relation-backfill'), { recursive: true });
+    const result = await applyBackfill({ root, state, index, refreshReports: false });
+    assert.equal(result.status, 'applied');
+    assert.equal(result.relations_appended, 1);
+    const inputDirectory = path.join(root, 'data/canonical');
+    await validateCanonicalSemanticAudit(inputDirectory, undefined, path.join(root, authorityPath));
+    const after = await readCanonicalRecords(inputDirectory);
+    const recordsById = new Map(after.records.map(({ record }) => [record.id, record]));
+    const sense = recordsById.get(source.record_id).senses.find(({ id }) => id === source.sense_id);
+    assert.deepEqual(sense.relations, [...source.relations, relation]);
+    const outputPath = path.join(root, 'dictionary.sqlite');
+    await buildDictionary({ inputDirectory, outputPath, repositoryDirectory, allowDirty: true });
+    database = new DatabaseSync(outputPath, { readOnly: true });
+    assert.deepEqual(findRecordsByExactTerm(database, source.lemma).map(({ id }) => id), [source.record_id]);
+    assertCanonicalSenseRelations(database, sense, recordsById);
+    // The comparison still rejects omission, invented rows and tuple metadata drift.
+    for (const changed of [
+      { ...sense, relations: sense.relations.slice(0, -1) },
+      { ...sense, relations: [...sense.relations, relation] },
+      { ...sense, relations: sense.relations.map((row, position) => position === sense.relations.length - 1 ? { ...row, note: '변조', relevance: 9 } : row) },
+    ]) assert.throws(() => assertCanonicalSenseRelations(database, changed, recordsById), { code: 'ERR_ASSERTION' });
+  } finally {
+    database?.close();
+    await rm(root, { recursive: true, force: true });
   }
 });
