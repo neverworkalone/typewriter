@@ -68,7 +68,7 @@ stale or incorrectly skipped CI also blocks merge.
 3. **Everything else:** code, schema, canonical, Stage 2 results, source
    policy, non-allowlisted paths or mixtures of any above classes require a
    successful exact-HEAD `ci:normal` result.
-4. **Fail-closed classification:** an empty diff, unclassifiable/unknown
+4. **Conservative classification:** an empty diff, unclassifiable/unknown
    path, or changed file outside the narrow allowlist must take Normal.
    Compare rename **source and destination** paths; a moved source cannot
    become documentation-only. Do not allow an incidental documentation file
@@ -105,28 +105,27 @@ always-on Normal tests and affected Deep checks:
    proofs in an affected Deep check, with its exact dependencies. No batch-ID
    fixture, unused test, or unrelated whole-Deep execution counts as a fix.
 4. If proof of ownership or impact is still missing, **do not relabel a path as
-   non-Deep** to make CI green. Leave it unclassified and fail closed. A full
-   `ci:all` is an emergency verification fallback, not a substitute for
-   registering the missing coverage. Fix the classifier coverage before the
-   same omission can recur in routine batch production.
+   non-Deep** to make CI green. Keep the diagnostic, run Normal on the PR and
+   register the missing protected regression/dependency. Full `ci:all` is a
+   separate weekly/manual audit, not a PR classification fallback.
 
 Coverage registration is **append-only in the narrow path manifest**: an
 existing record cannot be silently removed, reassigned, or weakened.
 The required Normal CI runs the binding's tests on the **exact PR HEAD**;
 `tests/ci-registry.test.mjs` exercises positive routing, unregistered paths,
 Deep precedence and registration tampering. Source files not explicitly
-registered remain fail closed. Registry/runner/classifier implementation
-changes remain the existing conservative full-Deep case until an independent
-non-self-certifying proof of changed check selection is available. This avoids
-letting a newly edited classifier certify its own reduction in coverage.
+registered remain visible as unclassified and require Normal. Registry/runner/
+classifier changes likewise run Normal; a directly affected registered Deep
+dependency still adds its exact check. Independent weekly Deep and Historical
+audits retain whole-system and retrospective coverage without blocking each PR.
 The separate candidate-only and documentation-only gates are unaffected.
 
 When a Deep-owned implementation or contract changes, require successful
 **exact-HEAD evidence for each affected Deep check**. The existing
 `Validate and test Typewriter` PR check runs Normal and then only those checks
 selected by the registry through `ci:pr`; CI classifier, registry, workflow,
-or runner changes and unclassifiable paths fail closed to full `ci:all`.
-Scheduled/manual `ci:all` still runs every current-system Deep check, and
+or runner changes and unclassifiable paths take Normal, with any independently
+matched affected Deep checks. Full `ci:all` runs only weekly or manually, and
 `ci:deep` still selects all current-system Deep checks across scopes. Neither
 redefines scoped `ci:historical`.
 
@@ -167,7 +166,8 @@ eligible for the narrow candidate-only gate. This pattern applies to all
 future valid chunk numbers, not a specific production batch.
 
 Malformed data, unknown files, missing/empty diff evidence, and unregistered
-test paths fail closed. Docs-only changes keep the exact-HEAD Normal skip, and
+test paths keep Normal and the diagnostic; required regressions and data
+validation must still be enforced. Docs-only changes keep the exact-HEAD Normal skip, and
 pure root-level Stage 1 candidate artifacts keep `ci:candidates`. The
 classifier records exact base/HEAD, change class, matched dependencies,
 selected Deep checks, skipped checks and the selected gate in the existing PR
@@ -177,8 +177,8 @@ run and the job result; it does not publish another status check.
 Git reads in this classifier have a **64 MiB per-output buffer limit** rather
 than Node's default 1 MiB. This leaves production headroom for complete
 inventories, semantic-authority/checkpoint files, relation packets and canonical
-patches without an unbounded subprocess read. An output above the limit still
-fails closed to full Deep. Failure diagnostics identify the Git command (and
+patches without an unbounded subprocess read. An output above the limit keeps Normal as the PR fallback and reports
+the bounded Git-read diagnostic; it does not trigger Full Deep. Failure diagnostics identify the Git command (and
 file path for file reads), error code/errno, exit status and signal when present;
 they omit subprocess stdout/stderr so large files or sensitive output are not
 printed. Public JSON output and the GitHub summary accept only diagnostics
@@ -205,8 +205,8 @@ Issue #557 reproduced PR #553 at base
 originally reported generic `diff-command-failed`). With the bounded buffer,
 the same 44-path diff selects `validated-routine-data` / `deepMode: none`, hence
 the existing Normal gate. This is classification evidence, not a claim that
-Normal or Deep CI executed for that historical revision. The classifier fix
-itself still selects full `ci:all` and requires exact-HEAD PR CI.
+Normal or Deep CI executed for that historical revision. Under the new PR policy, the classifier fix
+itself takes exact-HEAD Normal rather than full `ci:all`.
 
 ## Canonical and CI architecture changes
 
@@ -223,8 +223,8 @@ protected contract, one tier (`candidate`, `normal`, `deep`, or `historical`),
 and one schedule (`always`, `affected`, or `manual`). New checks default to
 Deep. Normal registration requires a concrete same-PR merge invariant.
 `affected` checks must list normalized repository-relative dependency paths;
-missing or unclassifiable changed-path evidence fails closed to the full
-applicable gate. Each test file has exactly one registry owner.
+missing or unclassifiable changed-path evidence retains the Normal
+PR gate and visible diagnostic, not unrelated Full Deep. Each test file has exactly one registry owner.
 
 The **scope/domain** is distinct from the **tier**. Normal protects the
 current canonical revision, required admission/factory freshness and current

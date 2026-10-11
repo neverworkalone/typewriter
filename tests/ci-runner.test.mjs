@@ -23,19 +23,14 @@ function workflowStepRun(workflow, stepName, { changesOutcome, deepMode, runLeve
   assert.ok(run, `${stepName} must run a concrete command`);
 
   const selectiveCondition = "steps.changes.outcome == 'success' && steps.changes.outputs.deep_mode == 'selective'";
-  const fullCondition = "steps.changes.outcome != 'success' || steps.changes.outputs.deep_mode == 'full'";
-  const normalCondition = "steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'normal' && steps.changes.outputs.run_deep != 'true'";
+  const normalCondition = "steps.changes.outcome != 'success' || (steps.changes.outputs.run_level == 'normal' && steps.changes.outputs.deep_mode != 'selective')";
   if (stepName === 'Normal validation (fast checkpoint + continuation)') {
     assert.equal(condition, normalCondition);
-    return changesOutcome === 'success' && runLevel === 'normal' && runDeep !== 'true' ? run : undefined;
+    return changesOutcome !== 'success' || (runLevel === 'normal' && deepMode !== 'selective') ? run : undefined;
   }
   if (stepName === 'Selective Deep validation (Normal + affected current Deep)') {
     assert.equal(condition, selectiveCondition);
     return changesOutcome === 'success' && deepMode === 'selective' ? run : undefined;
-  }
-  if (stepName === 'Full Deep validation (Normal + all current Deep)') {
-    assert.equal(condition, fullCondition);
-    return changesOutcome !== 'success' || deepMode === 'full' ? run : undefined;
   }
   assert.fail(`unexpected workflow gate step: ${stepName}`);
 }
@@ -506,8 +501,8 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
     );
     assert.equal(workflowStepRun(
       workflow,
-      'Full Deep validation (Normal + all current Deep)',
-      { changesOutcome: 'success', deepMode: impact.deepMode },
+      'Normal validation (fast checkpoint + continuation)',
+      { changesOutcome: 'success', runLevel: 'normal', deepMode: impact.deepMode },
     ), undefined);
     const runnerArgv = workflowCommandArgv(workflowRun, { baseSha, headSha });
     assert.deepEqual(runnerArgv, ['pr', '--', '--base', baseSha, '--head', headSha]);
@@ -634,11 +629,6 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
       'Selective Deep validation (Normal + affected current Deep)',
       { changesOutcome: 'success', deepMode: impact.deepMode },
     ), undefined, changeLabel);
-    assert.equal(workflowStepRun(
-      workflow,
-      'Full Deep validation (Normal + all current Deep)',
-      { changesOutcome: 'success', deepMode: impact.deepMode },
-    ), undefined, changeLabel);
     assert.deepEqual(workflowCommandArgv(normalRun, { baseSha, headSha }), ['normal'], changeLabel);
   }
 
@@ -729,4 +719,27 @@ test('M5-15 consumes the existing canonical session without another canonical pa
   }, { log: () => {} });
 
   assert.deepEqual(canonicalContext.metrics, metricsBefore);
+});
+
+
+test('PR workflow uses Normal for classifier fallback and never executes Full Deep', async () => {
+  const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
+  assert.doesNotMatch(workflow, /pnpm run ci:all|Full Deep validation/u);
+  const name = 'Normal validation (fast checkpoint + continuation)';
+  for (const [changesOutcome, runLevel, deepMode] of [
+    ['success', 'normal', 'none'],
+    ['failure', 'normal', undefined],
+    ['failure', 'none', undefined],
+  ]) {
+    assert.equal(workflowStepRun(workflow, name, { changesOutcome, runLevel, deepMode }), 'pnpm run ci:normal');
+  }
+  assert.equal(workflowStepRun(workflow, name, {
+    changesOutcome: 'success', runLevel: 'none', deepMode: 'none',
+  }), undefined);
+  assert.equal(workflowStepRun(workflow, name, {
+    changesOutcome: 'success', runLevel: 'candidates', deepMode: 'none',
+  }), undefined);
+  assert.equal(workflowStepRun(workflow, name, {
+    changesOutcome: 'success', runLevel: 'normal', deepMode: 'selective',
+  }), undefined);
 });

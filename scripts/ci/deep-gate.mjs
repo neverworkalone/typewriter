@@ -555,13 +555,39 @@ export function classifyDeepGateDiff(baseSha, headSha, {
   }
 }
 
+// Full Deep is a scheduled/manual audit, never a PR merge gate. Preserve the
+// raw classifier's diagnostic (including unverified or unclassified paths), but
+// run Normal on PRs and retain only genuinely affected Deep checks in mixed diffs.
+export function routePrDeepGate(classification, { deepChecks = deepCheckMap(registeredDeepChecks()) } = {}) {
+  if (classification.deepMode !== 'full') return classification;
+
+  const changedPaths = classification.changedPaths ?? (classification.path ? [classification.path] : []);
+  const selected = new Set();
+  const matchedTriggers = [];
+  for (const changedPath of changedPaths) {
+    if (!validRepositoryPath(changedPath)) continue;
+    const checks = deepChecks.filter((check) => deepPathMatches(changedPath, check)).map(checkId);
+    if (checks.length === 0) continue;
+    for (const id of checks) selected.add(id);
+    matchedTriggers.push({ path: changedPath, checks });
+  }
+  const selectedDeepChecks = [...selected].sort();
+  return {
+    ...classification,
+    runDeep: selectedDeepChecks.length > 0,
+    deepMode: selectedDeepChecks.length > 0 ? 'selective' : 'none',
+    reason: 'pr-normal-fallback',
+    prFallbackReason: classification.reason,
+    selectedDeepChecks,
+    matchedTriggers,
+  };
+}
+
 function main() {
   const [baseSha, headSha] = process.argv.slice(2);
-  const result = classifyDeepGateDiff(baseSha, headSha);
+  const result = routePrDeepGate(classifyDeepGateDiff(baseSha, headSha));
   const deepChecks = deepCheckMap(registeredDeepChecks());
-  const selectedLabels = result.deepMode === 'full'
-    ? deepChecks.map(checkId)
-    : (result.selectedDeepChecks ?? []);
+  const selectedLabels = result.selectedDeepChecks ?? [];
   const selected = new Set(selectedLabels);
   const skippedLabels = deepChecks.map(checkId).filter((id) => !selected.has(id));
   const runLevel = process.env.TYPEWRITER_CI_RUN_LEVEL ?? 'normal';
@@ -573,7 +599,7 @@ function main() {
       `\`${changedPath}\` -> ${checks.map((id) => `\`${id}\``).join(', ')}`
     )).join('; ')
     : result.path
-      ? `\`${result.path}\` -> full Deep fallback (${result.reason})`
+      ? `\`${result.path}\` -> PR Normal fallback (${result.prFallbackReason ?? result.reason})`
       : `none (${result.reason})`;
   const output = [
     `run_deep=${result.runDeep}`,
@@ -590,12 +616,13 @@ function main() {
     `- Change class: \`${result.changeClass ?? 'unclassifiable'}\``,
     `- Base PR gate: \`${baseGate}\``,
     `- Classification: \`${result.deepMode}\` (${result.reason})`,
+    ...(result.prFallbackReason ? [`- Original classifier finding: ${result.prFallbackReason} (weekly Full Deep only; PR uses Normal/affected Deep)`] : []),
     ...(result.detail ? [`- Failure detail: ${result.detail}`] : []),
     `- Changed paths: ${(result.changedPaths ?? []).length > 0 ? result.changedPaths.map((value) => `\`${value}\``).join(', ') : 'unavailable'}`,
     `- Matched contract triggers: ${triggerEvidence}`,
     `- Deep checks selected (${selectedLabels.length}/${deepChecks.length}): ${selectedLabels.length > 0 ? selectedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}`,
     `- Deep checks skipped: ${skippedLabels.length > 0 ? skippedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}${skippedLabels.length > 0 ? ` (reason: no registered dependency matched this change; classifier: ${result.reason})` : ''}`,
-    `- PR command: \`${result.deepMode === 'full' ? 'ci:all' : result.deepMode === 'selective' ? 'ci:pr' : 'ci:normal or ci:candidates'}\``,
+    `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : 'ci:normal or ci:candidates'}\``,
   ].join('\n') + '\n';
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary, 'utf8');
   process.stdout.write(`${JSON.stringify({ ...result, base_sha: baseSha ?? null, head_sha: headSha ?? null })}\n`);
