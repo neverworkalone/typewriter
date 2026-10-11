@@ -174,6 +174,29 @@ selected Deep checks, skipped checks and the selected gate in the existing PR
 check summary, followed by a final step outcome record for the gates actually
 run and the job result; it does not publish another status check.
 
+Git reads in this classifier have a **64 MiB per-output buffer limit** rather
+than Node's default 1 MiB. This leaves production headroom for complete
+inventories, semantic-authority/checkpoint files, relation packets and canonical
+patches without an unbounded subprocess read. An output above the limit still
+fails closed to full Deep. Failure diagnostics identify the Git command (and
+file path for file reads), error code/errno, exit status and signal when present;
+they omit subprocess stdout/stderr so large files or sensitive output are not
+printed. Data parsing and all existing validation remain required before Normal
+is selected. `tests/ci-registry.test.mjs` exercises real Git reads of large valid
+files, malformed/invalid bytes, the upper bound and mixed Deep dependencies.
+
+Issue #557 reproduced PR #553 at base
+`a5f09519f09f6484d8d29ea20de243b3ef5eb8a2` and HEAD
+`d3b5e3e191c16e16f56f85a7153e82a1387b953e`: the failing command was
+`git show <head>:data/inventory/issue-210-recovery-inventory.json`
+(1,738,993 bytes). With the default buffer the current classifier reports
+`routine-data-validation-failed` with `ENOBUFS` and full Deep (rather than the
+originally reported generic `diff-command-failed`). With the bounded buffer,
+the same 44-path diff selects `validated-routine-data` / `deepMode: none`, hence
+the existing Normal gate. This is classification evidence, not a claim that
+Normal or Deep CI executed for that historical revision. The classifier fix
+itself still selects full `ci:all` and requires exact-HEAD PR CI.
+
 ## Canonical and CI architecture changes
 
 When these paths change, verify the complete canonical revision feeds a shared

@@ -18,6 +18,29 @@ import NORMAL_COVERAGE from './deep-gate-coverage.json' with { type: 'json' };
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
+// Production inventories already exceed Node's 1 MiB default. Allow room for
+// complete inventories/authority files and multi-file canonical patches while
+// keeping each subprocess output bounded. Exceeding this limit still fails closed.
+const GIT_MAX_BUFFER = 64 * 1024 * 1024;
+
+function readGit(args, cwd) {
+  try {
+    return execFileSync('git', args, {
+      cwd,
+      encoding: 'buffer',
+      maxBuffer: GIT_MAX_BUFFER,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    // execFileSync's message may include arbitrary stdout/stderr. Report only
+    // command and process metadata, never the failed file's contents.
+    const reason = ['code', 'errno', 'syscall', 'status', 'signal']
+      .filter((key) => error[key] !== undefined && error[key] !== null)
+      .map((key) => `${key}=${error[key]}`).join(', ');
+    throw new Error(`git ${args.map((arg) => JSON.stringify(arg)).join(' ')} failed (${reason || error.name}; maxBuffer=${GIT_MAX_BUFFER})`);
+  }
+}
+
 // These paths affect the classifier or the mechanism that selects checks. The
 // only safe response is the complete current-system Deep suite.
 const FULL_DEEP_PATHS = Object.freeze([
@@ -454,11 +477,8 @@ export function classifyDeepGatePaths(changedPaths, {
 }
 
 export function classifyDeepGateDiff(baseSha, headSha, {
-  runGit = (args) => execFileSync('git', args, {
-    cwd: REPOSITORY_DIRECTORY,
-    encoding: 'buffer',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  }),
+  cwd = REPOSITORY_DIRECTORY,
+  runGit = (args) => readGit(args, cwd),
 } = {}) {
   if (typeof baseSha !== 'string' || !baseSha || typeof headSha !== 'string' || !headSha) {
     return { runDeep: true, deepMode: 'full', reason: 'missing-revision-evidence', changeClass: 'unclassifiable' };
@@ -510,8 +530,8 @@ export function classifyDeepGateDiff(baseSha, headSha, {
       ...classifyDeepGatePaths(changedPaths, { validatedDataPaths, coverageChangeValidated }),
       changedPaths,
     };
-  } catch {
-    return { runDeep: true, deepMode: 'full', reason: 'diff-command-failed', changeClass: 'unclassifiable' };
+  } catch (error) {
+    return { runDeep: true, deepMode: 'full', reason: 'diff-command-failed', changeClass: 'unclassifiable', detail: error.message };
   }
 }
 
@@ -550,6 +570,7 @@ function main() {
     `- Change class: \`${result.changeClass ?? 'unclassifiable'}\``,
     `- Base PR gate: \`${baseGate}\``,
     `- Classification: \`${result.deepMode}\` (${result.reason})`,
+    ...(result.detail ? [`- Failure detail: ${result.detail}`] : []),
     `- Changed paths: ${(result.changedPaths ?? []).length > 0 ? result.changedPaths.map((value) => `\`${value}\``).join(', ') : 'unavailable'}`,
     `- Matched contract triggers: ${triggerEvidence}`,
     `- Deep checks selected (${selectedLabels.length}/${deepChecks.length}): ${selectedLabels.length > 0 ? selectedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}`,
