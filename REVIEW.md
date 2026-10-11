@@ -27,6 +27,15 @@ PR descriptions and issue progress comments are not authoritative review evidenc
 4. **Never inspect, retrieve or wait for CI status/logs.** Pending, failed, missing or running CI must never delay a code-clean `+1`; incidentally visible CI must not affect the judgment. CI claims do not belong in Stage 1 evidence.
 5. Submit `-1` for any confirmed new or unfixed earlier blocker (cause, impact, safer fix, shared regression); otherwise submit substantive `+1` immediately and flag uncertain risks for Stage 2. `+1` asserts only that this focused code/fix gate passed, **not CI or merge readiness**. Never merge.
 
+**Risk-first relation sampling:** In Stage 1 reviews of relation data, inspect
+suspicious new `direct`/`antonym` pairs **before easy positive examples**.
+Compare both bound senses/glosses/POS; probe sense mismatches, topical or
+broader/narrower links mislabeled `direct`, and situational/causal contrasts
+mislabeled `antonym`. These are risk signals, not automatic rejections.
+Preserve plausible `near`/`mood`/`scene`/`sensory`/`action`/`association`;
+check relevance against the same source/UI group. Expand only around a proven
+defect pattern, and report actual sampling scope rather than implying a census.
+
 ## 3. Stage 2 — independent comprehensive technical gate
 
 Stage 2 owns the **entire material approach and affected risk surface**, previous blocker closure and at least one adversarial challenge; it does not inspect CI or merge.
