@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "dd70d7aeb0263a7451ac23c135ff77c7a03015d1558a4d24555cce1d95835fc2"
+    "canonical_records_sha256": "4b9741e88c0b3b47889a0388b22719dcc4dd9f62ba8d92f1c46bb215119e7320"
   },
-  "authored_review_sha256": "9372c8594b252d753d7f7fffd73c22dc6ac22734feb85ecc3f1c5a97b22a088e",
+  "authored_review_sha256": "72e11e78e72f58bfca3b7dbcf905a3bea4875862067d45a20d857d43b08418ed",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "dd70d7aeb0263a7451ac23c135ff77c7a03015d1558a4d24555cce1d95835fc2"
+      "canonical_records_sha256": "4b9741e88c0b3b47889a0388b22719dcc4dd9f62ba8d92f1c46bb215119e7320"
     },
     "records": [
       {
@@ -229034,7 +229034,7 @@
       },
       {
         "record_id": "w12628",
-        "record_sha256": "3b37b9486f6600322e4daf924a534b0cd061b9e7801a6efd62addf8b7fda0cc7",
+        "record_sha256": "7cfd31fac80ad792a692d19e74b5e91056211fd58b42c2da1ae3b0b62bb411bc",
         "boundary_review": {
           "review_id": "factory-stage3:C000003-a1:w12628:boundary",
           "decision": "retain",
@@ -229053,7 +229053,7 @@
           {
             "sense_id": "w12628-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended direct relation rel-17cf8c0fe3b8db4997def76d to w11135; rationale digest 76b732662385. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended antonym relation rel-37b88190ffc6df73667b96ae to w11358; rationale digest 37b173259286. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended antonym relation rel-6a1daf00e24f173e7d3c3dc9 to w5731; rationale digest d0b6ac67b1fc. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended near relation rel-7d7fef34f17c14403b6e4286 to w8356; rationale digest 75816734c2a6. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-17e7428b653a4989f89e0ccb to w1222; rationale digest 7e3d9acadcc5. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-c65390409fac2281b0576502 to w5365; rationale digest 5b68743f51dc. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended mood relation rel-597992d2c3bda18575e50837 to w805; rationale digest c10fcb621fc1. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-46594e0edb8a9d6215e0e3b6 to w11979; rationale digest 7497aae92b03."
+            "relation_rationale": "w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended direct relation rel-17cf8c0fe3b8db4997def76d to w11135; rationale digest 76b732662385. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended antonym relation rel-37b88190ffc6df73667b96ae to w11358; rationale digest 37b173259286. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended antonym relation rel-6a1daf00e24f173e7d3c3dc9 to w5731; rationale digest d0b6ac67b1fc. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended near relation rel-7d7fef34f17c14403b6e4286 to w8356; rationale digest 75816734c2a6. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-17e7428b653a4989f89e0ccb to w1222; rationale digest 7e3d9acadcc5. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-c65390409fac2281b0576502 to w5365; rationale digest 5b68743f51dc. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended mood relation rel-597992d2c3bda18575e50837 to w805; rationale digest c10fcb621fc1. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-46594e0edb8a9d6215e0e3b6 to w11979; rationale digest 7497aae92b03. w12628 w12628-s1 5af7c7496ebf [R000013]: Stage 3 attempt R000013-a1 changed antonym relation rel-37b88190ffc6df73667b96ae to association rel-4ce0057b3d24cd56cfb06e97 for w11358; rationale digest 0ab51ed6f19e. w12628 w12628-s1 5af7c7496ebf [R000013]: Stage 3 attempt R000013-a1 changed antonym relation rel-6a1daf00e24f173e7d3c3dc9 to association rel-0dc8b63b38cc7abb22a5d435 for w5731; rationale digest 432647842334."
           }
         ]
       },
@@ -591842,6 +591842,180 @@
         }
       ],
       "sha256": "4bb407cd438ab645456e43be3cd74457ef74a08a3e80caa18d352764e7da5ff2"
+    },
+    {
+      "batch_id": "R000013",
+      "attempt": 1,
+      "semantic_decisions_sha256": "40b8738e35e19317b4fe7703bdac95645820f267ddf8e53714fcb5f81655a8d2",
+      "entries": [],
+      "relation_corrections": [
+        {
+          "source_candidate_id": "R000013",
+          "source_record_id": "w12628",
+          "source_sense_id": "w12628-s1",
+          "source_gloss_sha256": "5af7c7496ebfd8b4db69886f936e0d1ba54cdb2af96da7f277f70b53efeeb994",
+          "target_meaning_sha256": "8d8c98e19d1b96686f9010df3d3e9aafd34ca0c07ef8af329f5ea044ea2e3fdf",
+          "previous_relation_id": "rel-37b88190ffc6df73667b96ae",
+          "previous_relation": {
+            "target": "w11358",
+            "target_sense": "w11358-s1",
+            "type": "antonym",
+            "note": "귀하고 중요하게 여김과 중요하지 않게 뒤로 미뤄지는 뒷전의 대비."
+          },
+          "relation_id": "rel-4ce0057b3d24cd56cfb06e97",
+          "relation": {
+            "target": "w11358",
+            "target_sense": "w11358-s1",
+            "type": "association",
+            "note": "대상이 중요하게 다뤄지지 않아 밀려나는 자리인 뒷전.",
+            "relevance": 5
+          },
+          "rationale_sha256": "0ab51ed6f19ec482a4ea793cedbf68514c72f9373f6664ae1f3e59a3632a51f5",
+          "position": 1,
+          "outcome": "amended"
+        },
+        {
+          "source_candidate_id": "R000013",
+          "source_record_id": "w12628",
+          "source_sense_id": "w12628-s1",
+          "source_gloss_sha256": "5af7c7496ebfd8b4db69886f936e0d1ba54cdb2af96da7f277f70b53efeeb994",
+          "target_meaning_sha256": "3affb618ade36040100ee107f668800ca512a7255307a65bb88577415d97269c",
+          "previous_relation_id": "rel-6a1daf00e24f173e7d3c3dc9",
+          "previous_relation": {
+            "target": "w5731",
+            "target_sense": "w5731-s1",
+            "type": "antonym",
+            "note": "대상을 귀하게 여기는 태도와 중요하게 여기지 않는 무시의 대비."
+          },
+          "relation_id": "rel-0dc8b63b38cc7abb22a5d435",
+          "relation": {
+            "target": "w5731",
+            "target_sense": "w5731-s1",
+            "type": "association",
+            "note": "대상을 중요하게 여기지 않고 가볍게 대하는 무시.",
+            "relevance": 5
+          },
+          "rationale_sha256": "43264784233418a13ae6e3390f1ba981a4e5d8e66f7491f9aaeccb09e46bcec2",
+          "position": 2,
+          "outcome": "amended"
+        }
+      ],
+      "changes": [
+        {
+          "entry_id": "w12628",
+          "operation": "amend_relations",
+          "path": "data/canonical/factory-C000003-a1.jsonl",
+          "source_candidate_ids": [
+            "R000013"
+          ],
+          "amended_relation_ids": [
+            "rel-37b88190ffc6df73667b96ae",
+            "rel-6a1daf00e24f173e7d3c3dc9"
+          ],
+          "before_sha256": "3b37b9486f6600322e4daf924a534b0cd061b9e7801a6efd62addf8b7fda0cc7",
+          "after_sha256": "7cfd31fac80ad792a692d19e74b5e91056211fd58b42c2da1ae3b0b62bb411bc",
+          "previous_semantic_review_sha256": "02a57db5bcb49e9ca98b3d45ae84a62651d617c75d436cdca66e193a4d713036",
+          "previous_semantic_review": {
+            "record_id": "w12628",
+            "record_sha256": "3b37b9486f6600322e4daf924a534b0cd061b9e7801a6efd62addf8b7fda0cc7",
+            "boundary_review": {
+              "review_id": "factory-stage3:C000003-a1:w12628:boundary",
+              "decision": "retain",
+              "classification": "atomic",
+              "evidence": [
+                {
+                  "sense_id": "w12628-s1",
+                  "evidence_basis": "w12628 w12628-s1 5af7c7496ebf [C000003-0332]: C000003-0332: o01은 설립자가 누구였는지가 필요하지 않다는 뜻의 형용사 부정형이다.",
+                  "rationale": "w12628 w12628-s1 5af7c7496ebf [C000003-0332]: C000003-0332: o01은 설립자가 누구였는지가 필요하지 않다는 뜻의 형용사 부정형이다."
+                }
+              ],
+              "pairwise": [],
+              "rationale": "w12628: source-bound Stage 3 admission combines the preserved canonical review with C000003-0332 Stage 2 evidence."
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "w12628-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale": "w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended direct relation rel-17cf8c0fe3b8db4997def76d to w11135; rationale digest 76b732662385. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended antonym relation rel-37b88190ffc6df73667b96ae to w11358; rationale digest 37b173259286. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended antonym relation rel-6a1daf00e24f173e7d3c3dc9 to w5731; rationale digest d0b6ac67b1fc. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended near relation rel-7d7fef34f17c14403b6e4286 to w8356; rationale digest 75816734c2a6. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-17e7428b653a4989f89e0ccb to w1222; rationale digest 7e3d9acadcc5. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-c65390409fac2281b0576502 to w5365; rationale digest 5b68743f51dc. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended mood relation rel-597992d2c3bda18575e50837 to w805; rationale digest c10fcb621fc1. w12628 w12628-s1 5af7c7496ebf [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-46594e0edb8a9d6215e0e3b6 to w11979; rationale digest 7497aae92b03."
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "w12628",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w12628",
+            "lemma": "중요하다",
+            "search_forms": [
+              "중요하다"
+            ],
+            "senses": [
+              {
+                "id": "w12628-s1",
+                "pos": "adjective",
+                "gloss": "아주 귀하거나 꼭 필요하다.",
+                "relations": [
+                  {
+                    "target": "w11135",
+                    "target_sense": "w11135-s1",
+                    "type": "direct",
+                    "note": "매우 귀하고 중요하게 여기는 소중하다."
+                  },
+                  {
+                    "target": "w11358",
+                    "target_sense": "w11358-s1",
+                    "type": "antonym",
+                    "note": "귀하고 중요하게 여김과 중요하지 않게 뒤로 미뤄지는 뒷전의 대비."
+                  },
+                  {
+                    "target": "w5731",
+                    "target_sense": "w5731-s1",
+                    "type": "antonym",
+                    "note": "대상을 귀하게 여기는 태도와 중요하게 여기지 않는 무시의 대비."
+                  },
+                  {
+                    "target": "w8356",
+                    "target_sense": "w8356-s1",
+                    "type": "near",
+                    "note": "중요하게 여겨 마음을 두고 살피는 중시의 결.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w1222",
+                    "target_sense": "w1222-s1",
+                    "type": "association",
+                    "note": "대상이 지닌 중요성과 쓸모의 정도인 가치.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w5365",
+                    "target_sense": "w5365-s1",
+                    "type": "association",
+                    "note": "목표를 이루는 데 꼭 요구되는 필요.",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w805",
+                    "target_sense": "w805-s1",
+                    "type": "mood",
+                    "note": "꼭 필요하다고 느껴 간절해지는 절실함.",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w11979",
+                    "target_sense": "w11979-s1",
+                    "type": "association",
+                    "note": "살아가는 데 꼭 필요한 생필품.",
+                    "relevance": 4
+                  }
+                ]
+              }
+            ]
+          },
+          "semantic_review_sha256": "0c3395db980ce856b60cafb2a34ea81dc1f08d1fd2909f69127e68f3713dc95c"
+        }
+      ],
+      "sha256": "08a698923998478b20d8a97d8c24d7de75660a80ba3a20be74b7cda487136688"
     }
   ]
 }

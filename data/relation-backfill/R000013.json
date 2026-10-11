@@ -1,0 +1,47 @@
+{
+ "packet_id": "R000013",
+ "relation_corrections": [
+  {
+   "source_record_id": "w12628",
+   "source_sense_id": "w12628-s1",
+   "source_gloss_sha256": "5af7c7496ebfd8b4db69886f936e0d1ba54cdb2af96da7f277f70b53efeeb994",
+   "target_meaning_sha256": "8d8c98e19d1b96686f9010df3d3e9aafd34ca0c07ef8af329f5ea044ea2e3fdf",
+   "previous_relation": {
+    "target": "w11358",
+    "target_sense": "w11358-s1",
+    "type": "antonym",
+    "note": "귀하고 중요하게 여김과 중요하지 않게 뒤로 미뤄지는 뒷전의 대비."
+   },
+   "relation": {
+    "target": "w11358",
+    "target_sense": "w11358-s1",
+    "type": "association",
+    "note": "대상이 중요하게 다뤄지지 않아 밀려나는 자리인 뒷전.",
+    "relevance": 5
+   },
+   "position": 1,
+   "rationale": "w12628-s1의 뜻은 아주 귀하거나 꼭 필요한 상태이고, w11358-s1은 중요하지 않게 밀려난 자리다. 이는 반대 성질을 나타내는 어휘쌍이 아니라 중요성이 낮게 취급되는 결과 장면이므로 antonym은 부정확하다. 그 장면은 중요성의 우선순위를 떠올리는 writer-facing association으로 보존한다. 같은 source의 association 동료 가치·필요(@3)는 중요성의 핵심 개념이고 생필품(@4)은 구체적 대상이므로, 결과 장면인 뒷전은 그보다 낮은 우선순위 @5로 둔다."
+  },
+  {
+   "source_record_id": "w12628",
+   "source_sense_id": "w12628-s1",
+   "source_gloss_sha256": "5af7c7496ebfd8b4db69886f936e0d1ba54cdb2af96da7f277f70b53efeeb994",
+   "target_meaning_sha256": "3affb618ade36040100ee107f668800ca512a7255307a65bb88577415d97269c",
+   "previous_relation": {
+    "target": "w5731",
+    "target_sense": "w5731-s1",
+    "type": "antonym",
+    "note": "대상을 귀하게 여기는 태도와 중요하게 여기지 않는 무시의 대비."
+   },
+   "relation": {
+    "target": "w5731",
+    "target_sense": "w5731-s1",
+    "type": "association",
+    "note": "대상을 중요하게 여기지 않고 가볍게 대하는 무시.",
+    "relevance": 5
+   },
+   "position": 2,
+   "rationale": "w12628-s1의 뜻은 아주 귀하거나 꼭 필요한 상태이고, w5731-s1은 상대나 대상을 가볍게 대하는 태도다. 무시는 반대 성질의 형용사가 아니라 중요성을 인정하지 않는 취급 방식이므로 antonym은 부정확하다. 대상의 중요성을 알아보거나 외면하는 경로를 여는 writer-facing association으로 보존한다. 같은 source의 association 동료 가치·필요(@3), 생필품(@4)보다 간접적인 태도 경로이므로 @5로 둔다."
+  }
+ ]
+}
