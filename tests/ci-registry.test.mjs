@@ -1376,7 +1376,7 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   const registry = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
       assert.equal(args[0], 'diff');
-      return Buffer.from('scripts/ci/registry.mjs\\0');
+      return Buffer.from('scripts/ci/registry.mjs\0');
     },
   }));
   assert.equal(registry.deepMode, 'none');
@@ -1393,7 +1393,7 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   const mixed = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
       assert.equal(args[0], 'diff');
-      return Buffer.from('scripts/ci/registry.mjs\\0scripts/benchmark/sqlite-runtime.mjs\\0');
+      return Buffer.from('scripts/ci/registry.mjs\0scripts/benchmark/sqlite-runtime.mjs\0');
     },
   }));
   assert.equal(mixed.deepMode, 'selective');
@@ -1405,7 +1405,7 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   assert.deepEqual(direct.selectedDeepChecks, [benchmark]);
 
   const unknownWithDeep = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
-    runGit: () => Buffer.from('unclassified.file\\0scripts/benchmark/sqlite-runtime.mjs\\0'),
+    runGit: () => Buffer.from('unclassified.file\0scripts/benchmark/sqlite-runtime.mjs\0'),
   }));
   assert.equal(unknownWithDeep.deepMode, 'selective');
   assert.deepEqual(unknownWithDeep.selectedDeepChecks, [benchmark]);
@@ -1422,7 +1422,7 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   const weeklyHistorical = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/historical.yml'), 'utf8');
   assert.doesNotMatch(workflow, /pnpm run ci:all|Full Deep validation/u);
   assert.match(weeklyDeep, /pnpm run ci:all/u);
-  assert.match(weeklyDeep, /cron: '0 22 \\* \\* 0'/u);
+  assert.match(weeklyDeep, /cron: '0 22 \* \* 0'/u);
   assert.match(weeklyHistorical, /pnpm run ci:historical --scope/u);
-  assert.match(weeklyHistorical, /cron: '0 22 \\* \\* 1'/u);
+  assert.match(weeklyHistorical, /cron: '0 22 \* \* 1'/u);
 });
