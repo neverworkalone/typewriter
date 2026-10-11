@@ -465,6 +465,13 @@ changes do not require CFT merely for additional confidence.
 Do not add or run browser automation when existing deterministic tests can
 validate the affected behavior.
 
+## PR label inheritance
+
+Immediately before opening a PR, read the linked Issue's current labels
+(`gh issue view <number> --json labels`) and copy them to the PR.
+Explicit PR label instructions replace conflicting inherited labels (e.g.,
+`urgent` instead of `batch`); retain unrelated labels.
+Verify the PR's labels after creation. Never rely on labels remembered at issue start.
 ## Monitoring after PR creation
 
 After creating and pushing the implementation PR, automatically begin monitoring that PR every 5 minutes when the execution environment supports it.
