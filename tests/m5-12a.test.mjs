@@ -838,8 +838,39 @@ test('M5-12A historical replay binds its import before later relation backfills,
     const options = { currentCanonicalDirectory: path.join(root, 'data/canonical'), canonicalAuthorityPath: path.join(root, authorityPath) };
     await assert.doesNotReject(() => validateM512AFinal(options));
 
-    // Without the bound admission ledger the amendment is unexplained drift, never silently accepted.
-    await assert.rejects(() => validateM512AFinal({ ...options, canonicalAuthorityPath: authorityPath }), { code: 'FINAL_COUNT_MISMATCH' });
+    // A source already tracked by the original ledger fails its binding check before the
+    // historical count check. Both paths must reject; select the exact expected gate from
+    // the real authority rather than assuming the live import has never been backfilled.
+    const originalAuthority = JSON.parse(await readFile(authorityPath, 'utf8'));
+    const alreadyBound = (originalAuthority.factory_admissions ?? []).some((event) =>
+      event.changes.some((change) => change.entry_id === source.record_id));
+    await assert.rejects(() => validateM512AFinal({ ...options, canonicalAuthorityPath: authorityPath }), {
+      code: alreadyBound ? 'SEMANTIC_AUDIT_FACTORY_ADMISSION' : 'FINAL_COUNT_MISMATCH',
+    });
+
+    // Guarantee coverage of the ledger-first path even when the checked-out canonical
+    // has no prior backfill for this source. Apply a second real amendment, then verify
+    // that the first amendment's otherwise valid authority is now stale.
+    const firstAuthorityPath = path.join(root, 'first-backfill-authority.json');
+    await cp(path.join(root, authorityPath), firstAuthorityPath);
+    const firstCanonical = await loadCanonicalContext({ directory: path.join(root, 'data/canonical') });
+    const firstIndex = buildRelationIndex(firstCanonical);
+    const nextTarget = firstIndex.senses.find((sense) => sense.record_id !== source.record_id
+      && sense.sense_id !== target.sense_id && !related.has(sense.sense_id));
+    assert.ok(nextTarget, 'the real canonical has another distinct amendment target');
+    const nextRelation = { ...relation, target: nextTarget.record_id, target_sense: nextTarget.sense_id };
+    const nextState = newQueueState(firstCanonical.canonicalRevision);
+    nextState.done[source.sense_id] = {
+      ...state.done[source.sense_id],
+      approved_relations: [{ relation_id: reviewedRelationId(source.sense_id, nextRelation), relation: nextRelation,
+        rationale: `${source.record_id} ${source.sense_id}: 두 번째 회귀 시험용 근거.` }],
+      reviewed_candidates: [{ id: nextTarget.sense_id, meaning_sha256: sha256Json([nextTarget.lemma, nextTarget.gloss]) }],
+    };
+    assert.equal((await applyBackfill({ root, state: nextState, index: firstIndex, refreshReports: false })).status, 'applied');
+    await assert.doesNotReject(() => validateM512AFinal(options));
+    await assert.rejects(() => validateM512AFinal({ ...options, canonicalAuthorityPath: firstAuthorityPath }), {
+      code: 'SEMANTIC_AUDIT_FACTORY_ADMISSION',
+    });
 
     // A non-relation change to the import is still rejected.
     const records = (await readFile(importPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
