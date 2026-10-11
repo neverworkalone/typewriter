@@ -11,6 +11,8 @@ This root `REVIEW.md` is the **authoritative gate policy**. Read it from the **l
 
 A new commit makes earlier PASS markers **stale**, not previously verified reasoning: Stage 1 must review the new HEAD before Stage 2. Bare markers or evidence-free reviews do not count. The same GitHub account may perform stages only in **separate runs/contexts**; never submit `+1` and `+2` together.
 
+PR descriptions and issue progress comments are not authoritative review evidence; the latest HEAD's code and artifacts are. Stale or inconsistent coordination metadata alone must not block a technical PASS.
+
 ## 2. Stage 1 — quick independent code/fix review
 
 **Aim for 1–3 minutes on routine PRs, not a deadline.** Do not duplicate the exhaustive Stage 2 assessment, conceal a confirmed blocker or claim an unverified fix.
