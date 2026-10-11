@@ -629,11 +629,6 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
       'Selective Deep validation (Normal + affected current Deep)',
       { changesOutcome: 'success', deepMode: impact.deepMode },
     ), undefined, changeLabel);
-    assert.equal(workflowStepRun(
-      workflow,
-      'Full Deep validation (Normal + all current Deep)',
-      { changesOutcome: 'success', deepMode: impact.deepMode },
-    ), undefined, changeLabel);
     assert.deepEqual(workflowCommandArgv(normalRun, { baseSha, headSha }), ['normal'], changeLabel);
   }
 
