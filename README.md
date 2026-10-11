@@ -76,6 +76,8 @@ See the [editorial model](docs/editorial-model.md), [lexical quality pipeline](d
 [lexical production factory design](docs/lexical-production-factory.md),
 [data policy](docs/data-policy.md), [repository structure](docs/repository-structure.md),
 and the [shared local reference cache](docs/local-reference-cache.md).
+The independent [resumable corpus morphology runner](docs/corpus-morphology-slices.md)
+stores verified analysis locally in 20 slices; its real corpus operation is tracked separately in #549.
 
 ## Development
 

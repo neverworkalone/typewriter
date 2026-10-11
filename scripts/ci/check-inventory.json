@@ -21,7 +21,7 @@
   "counts_by_tier": {
     "candidate": 2,
     "normal": 87,
-    "deep": 8,
+    "deep": 9,
     "historical": 49
   },
   "normal_check_duration_estimate_ms": 128156,
@@ -3309,6 +3309,32 @@
         "config/ci-level-evidence.json",
         "tests/scale-benchmark.test.mjs"
       ]
+    },
+    {
+      "owner": "lexical",
+      "check": "Test resumable corpus morphology partitions and exact cumulative statistics",
+      "protected_contract": "Test resumable corpus morphology partitions and exact cumulative statistics",
+      "test_files": [
+        "tests/corpus-morphology-python.test.mjs"
+      ],
+      "selected_tier": "deep",
+      "schedule": "affected",
+      "trigger": "Affected morphology runner, rules, cache or environment paths; full Deep on classifier/registry changes.",
+      "decision": "new-deep",
+      "rationale": "Independent local analysis contract; synthetic exact aggregation and restart tests do not protect canonical admission.",
+      "consumer": "ci:pr affected Deep; ci:deep; ci:all",
+      "estimated_duration_ms": 2000,
+      "duration_estimate_source": "Observed local synthetic integration suite about 1.7 seconds",
+      "dependency_paths": [
+        "scripts/reference/corpus_morphology.py",
+        "scripts/reference/test-corpus-morphology.py",
+        "scripts/reference/corpus_lemma_pilot.py",
+        "scripts/python/local_cache.py",
+        "scripts/python/requirements.txt",
+        "tests/corpus-morphology-python.test.mjs"
+      ],
+      "historical_scopes": [],
+      "deep_input_paths": []
     }
   ],
   "candidate_gate_local_check_duration_ms": 2569,
