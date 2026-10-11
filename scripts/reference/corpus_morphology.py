@@ -74,13 +74,32 @@ def runtime_identity():
             "tokenize_options": "kiwipiepy-0.24.0 defaults"}
 
 
+def require_rollback_header(index_path):
+    # Read-only SQLite may be unable to open sidecar-free WAL on some hosts.
+    # The persisted read/write version bytes identify WAL without creating files.
+    with index_path.open("rb") as stream:
+        header = stream.read(20)
+    if header[:16] == b"SQLite format 3\0" and 2 in header[18:20]:
+        raise RuntimeError("WAL corpus index is unsupported; stop its writer and use a verified rollback-mode index")
+
+
+def require_rollback_source(source):
+    mode = source.execute("PRAGMA journal_mode").fetchone()[0].lower()
+    if mode == "wal":
+        raise RuntimeError("WAL corpus index is unsupported; stop its writer and use a verified rollback-mode index")
+    if mode not in {"delete", "truncate", "persist", "off", "memory"}:
+        raise RuntimeError("Unsupported corpus index journal mode")
+
+
 def source_identity(index_path, permission_path, runtime):
     permission = read_permission_record(permission_path)
+    require_rollback_header(index_path)
     # Physical digest detects changes to text or metadata even if the producer metadata is stale.
     # A read transaction plus before/after file stamps rejects concurrent index modification.
     before = index_path.stat()
     with closing(open_readonly_database(index_path)) as index:
         index.execute("BEGIN")
+        require_rollback_source(index)
         if index.execute("PRAGMA quick_check").fetchone() != ("ok",):
             raise RuntimeError("Corrupted corpus index; restore the verified index")
         if index.execute("PRAGMA foreign_key_check").fetchone():
@@ -145,7 +164,15 @@ def check_seal(directory):
         raise RuntimeError("Store mutation seal mismatch; run explicit audit before resuming") from error
 
 
-def fast_identity(index_path, permission_path, runtime, recorded):
+def fast_identity(index_path, permission_path, runtime, recorded, source=None):
+    require_rollback_header(index_path)
+    if source is None:
+        with closing(open_readonly_database(index_path)) as checked_source:
+            require_rollback_source(checked_source)
+    else:
+        # Use the actual held connection; do not close another source descriptor
+        # and thereby release process-wide POSIX locks on Linux.
+        require_rollback_source(source)
     if file_stamp(index_path) != recorded["index_stamp"]:
         raise RuntimeError("Index identity mismatch; preserve the original immutable index")
     for suffix in ("-wal", "-journal"):
@@ -583,8 +610,10 @@ def run_next(*, index_path, directory, analyzer, runtime, permission_path=DEFAUL
             check_seal(directory)
             # Do not close a second connection to this inode while holding the lock:
             # on Linux POSIX locks are process-wide and such a close releases them.
+            require_rollback_header(index_path)
             with closing(open_readonly_database(index_path)) as source_lock:
                 source_lock.execute("BEGIN")
+                require_rollback_source(source_lock)
                 source_lock.execute("SELECT value FROM index_metadata LIMIT 1").fetchone()
                 with closing(connect(target)) as db:
                     db.execute("PRAGMA locking_mode=EXCLUSIVE")
@@ -592,7 +621,7 @@ def run_next(*, index_path, directory, analyzer, runtime, permission_path=DEFAUL
                     db.commit()  # Exclusive mode retains the lock across checkpoints.
                     check_seal(directory)
                     recorded = json.loads(db.execute("SELECT payload FROM manifest").fetchone()[0])["identity"]
-                    identity = fast_identity(index_path, permission_path, runtime, recorded)
+                    identity = fast_identity(index_path, permission_path, runtime, recorded, source_lock)
                     verify(db, identity, current_only=True)
                     if legacy_path:
                         recorded = json.loads(db.execute("SELECT payload FROM manifest").fetchone()[0])["legacy"]

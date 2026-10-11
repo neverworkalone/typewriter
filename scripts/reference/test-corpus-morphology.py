@@ -334,6 +334,72 @@ m.run_next(index_path=Path(sys.argv[1]),directory=Path(sys.argv[2]),analyzer=t.A
         self.assertTrue(all(s["expected_paragraphs"] == 0 for s in result["slices"][1:]))
         self.assert_union(range(20))
 
+    def test_sidecar_free_wal_input_cannot_reach_concurrent_writer_publication(self):
+        with closing(sqlite3.connect(self.index)) as db:
+            self.assertEqual(db.execute("PRAGMA journal_mode=WAL").fetchone()[0], "wal")
+        self.assertFalse(Path(str(self.index) + "-wal").exists())
+        writer_called = []
+        def concurrent_commit(event):
+            if event == "after-checkpoint-commit" and not writer_called:
+                writer_called.append(True)
+                stamp = m.file_stamp(self.index)
+                script = "import sqlite3,sys; db=sqlite3.connect(sys.argv[1],timeout=0); db.execute(\"UPDATE paragraphs SET form='변경' WHERE paragraph_rowid=(SELECT MAX(paragraph_rowid) FROM paragraphs WHERE ordinal%20=0)\"); db.commit()"
+                result = subprocess.run([sys.executable,"-c",script,str(self.index)],capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stderr)
+                self.assertEqual(m.file_stamp(self.index),stamp)  # WAL commit bypasses main-file stamp.
+        with self.assertRaisesRegex(RuntimeError,"WAL corpus index"):
+            self.run_store(hook=concurrent_commit)
+        self.assertFalse(writer_called)  # Fixed preflight rejects before tokenizing.
+        self.assertFalse((self.store / "analysis.sqlite").exists())
+
+    def test_actual_held_source_connection_rejects_wal(self):
+        identity=m.source_identity(self.index,m.DEFAULT_PERMISSION_RECORD_PATH,self.options["runtime"])
+        with closing(sqlite3.connect(self.index)) as owner:
+            owner.execute("PRAGMA journal_mode=WAL")
+            owner.execute("SELECT value FROM index_metadata LIMIT 1").fetchone()
+            with closing(m.open_readonly_database(self.index)) as source:
+                source.execute("BEGIN")
+                source.execute("SELECT value FROM index_metadata LIMIT 1").fetchone()
+                with patch.object(m,"require_rollback_header",return_value=None), \
+                     patch.object(m,"open_readonly_database",side_effect=AssertionError("must use held source")):
+                    with self.assertRaisesRegex(RuntimeError,"WAL corpus index"):
+                        m.fast_identity(self.index,m.DEFAULT_PERMISSION_RECORD_PATH,self.options["runtime"],identity,source)
+
+    def test_wal_commit_changes_attached_snapshot_without_main_stamp_change(self):
+        with closing(sqlite3.connect(self.index)) as owner:
+            owner.execute("PRAGMA journal_mode=WAL")
+            owner.execute("SELECT value FROM index_metadata LIMIT 1").fetchone()
+            self.assertEqual(Path(str(self.index)+"-wal").stat().st_size,0)
+            with closing(m.open_readonly_database(self.index)) as source, \
+                 closing(sqlite3.connect(":memory:")) as attached:
+                source.execute("BEGIN")
+                source.execute("SELECT value FROM index_metadata LIMIT 1").fetchone()
+                attached.execute("ATTACH DATABASE ? AS corpus", (self.index.as_uri()+"?mode=ro",))
+                query="SELECT form FROM paragraphs WHERE paragraph_rowid=89"
+                before=source.execute(query).fetchone()
+                self.assertEqual(attached.execute(query.replace("paragraphs","corpus.paragraphs")).fetchone(),before)
+                stamp=m.file_stamp(self.index)
+                script="import sqlite3,sys; db=sqlite3.connect(sys.argv[1],timeout=0); db.execute(\"UPDATE paragraphs SET form='변경' WHERE paragraph_rowid=89\"); db.commit()"
+                result=subprocess.run([sys.executable,"-c",script,str(self.index)],capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stderr)
+                self.assertEqual(m.file_stamp(self.index),stamp)
+                self.assertEqual(source.execute(query).fetchone(),before)
+                self.assertEqual(attached.execute(query.replace("paragraphs","corpus.paragraphs")).fetchone(),('변경',))
+            with self.assertRaisesRegex(RuntimeError,"WAL corpus index"):
+                self.run_store()
+            self.assertFalse((self.store / "analysis.sqlite").exists())
+
+    def test_wal_mode_change_before_held_source_prevents_publication(self):
+        def switch_mode(event):
+            if event == "after-initial-publication":
+                with closing(sqlite3.connect(self.index)) as source:
+                    source.execute("PRAGMA journal_mode=WAL")
+        with self.assertRaisesRegex(RuntimeError,"WAL corpus index"):
+            self.run_store(hook=switch_mode)
+        with closing(m.connect(self.store / "analysis.sqlite",readonly=True)) as db:
+            self.assertEqual(db.execute("SELECT SUM(complete) FROM slices").fetchone()[0],0)
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM facts").fetchone()[0],0)
+
     def test_index_read_lock_prevents_change_between_identity_and_publication(self):
         def attempt_write(event):
             if event == "mid-checkpoint":

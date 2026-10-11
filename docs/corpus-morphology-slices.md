@@ -145,7 +145,13 @@ The source index stays under a shared SQLite read lock until publication. All
 initialization connections close before acquiring that lock: on Linux, closing
 another descriptor for the same inode releases process-wide POSIX locks. The
 analysis writer retains an exclusive SQLite lock across its checkpoints. Live
-source WAL/journals and a changed source file stamp stop progress. Do not modify
+source WAL journal mode (even without sidecars), live WAL/journals and a changed
+source file stamp stop progress. The common full/incremental input gate checks
+the persisted SQLite WAL header before opening the index, then
+`PRAGMA journal_mode`, including on the actual held source connection. The header
+guard also works when read-only SQLite cannot create missing WAL sidecars. A rollback
+read lock prevents a writer from switching modes during the run; WAL is rejected
+before initialization or paragraph processing. Do not modify
 the index while the runner is active.
 
 Memory streams one paragraph at a time and holds only that paragraph's token
