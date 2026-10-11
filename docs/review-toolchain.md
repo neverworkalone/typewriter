@@ -188,6 +188,10 @@ validator messages are never copied into these outputs: they may quote private
 input. Real CLI regressions put recognizable secret markers in malformed JSON,
 JSONL, canonical rows, packets and coverage registration and check both output
 surfaces for absence of the markers while retaining path and error kind.
+Safe kinds distinguish JSONL blank/non-object rows, canonical record validation,
+relation packet identity/contract validation, trash chunk validation and coverage
+registration validation. Their validators still run normally; only public error
+rendering is translated at the common boundary.
 Data parsing and all existing validation remain required before Normal
 is selected. `tests/ci-registry.test.mjs` exercises real Git reads of large valid
 files, malformed/invalid bytes, the upper bound and mixed Deep dependencies.

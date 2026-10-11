@@ -102,7 +102,7 @@ test('real Git classification reads large routine files and preserves fail-close
   for (const [file, bytes, detail] of [
     [inventoryPath, largeJson.slice(0, -1), /invalid JSON/u],
     [inventoryPath, Buffer.concat([Buffer.from(largeJson), Buffer.from([0xff])]), /invalid UTF-8/u],
-    [packetPath, ' '.repeat(2 * 1024 * 1024) + JSON.stringify({ packet_id: 'R999999' }), /validation-failed/u],
+    [packetPath, ' '.repeat(2 * 1024 * 1024) + JSON.stringify({ packet_id: 'R999999' }), /relation-packet-contract-missing/u],
     [canonicalPath, canonical + JSON.stringify({ lemma: 'invalid' }) + '\n', /./u],
   ]) {
     const { result } = await classify([[file, bytes]]);
@@ -140,9 +140,12 @@ test('real Git classification reads large routine files and preserves fail-close
     [inventoryPath, secret + ' invalid JSON', 'invalid JSON'],
     ['data/inventory/large-fixture.jsonl', JSON.stringify({ ok: true }) + '\n' + secret, 'invalid JSON'],
     [canonicalPath, secret + '\n', 'invalid JSON'],
-    [canonicalPath, JSON.stringify({ ...JSON.parse(record), [secret]: true }) + '\n', 'validation-failed'],
-    [packetPath, JSON.stringify({ ...packet, packet_id: secret }), 'validation-failed'],
-    ['scripts/ci/deep-gate-coverage.json', JSON.stringify({ version: 1, bindings: [{ path: secret }] }), 'validation-failed'],
+    ['data/inventory/large-fixture.jsonl', JSON.stringify(secret) + '\n', 'jsonl-row-not-object'],
+    ['data/inventory/large-fixture.jsonl', JSON.stringify({ secret }) + '\n\n', 'jsonl-empty-or-blank-row'],
+    [canonicalPath, JSON.stringify({ ...JSON.parse(record), [secret]: true }) + '\n', 'canonical-record-validation-failed'],
+    [packetPath, JSON.stringify({ ...packet, packet_id: secret }), 'relation-packet-id-mismatch'],
+    [packetPath, JSON.stringify({ ...packet, relation_amendments: [{ secret }] }), 'relation-packet-validation-failed'],
+    ['scripts/ci/deep-gate-coverage.json', JSON.stringify({ version: 1, bindings: [{ path: secret }] }), 'coverage-registration-validation-failed'],
   ]) {
     const { head } = await classify([[file, bytes]]);
     // Exercise the actual CLI and Git subprocesses, including public JSON output

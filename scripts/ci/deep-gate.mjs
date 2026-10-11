@@ -31,6 +31,14 @@ function failureDetail(error, stage) {
   return `${stage}: ${error instanceof SafeDiagnosticError ? error.message : 'validation-failed'}`;
 }
 
+function validateWithDiagnostic(validate, pathValue, kind) {
+  try {
+    return validate();
+  } catch {
+    throw new SafeDiagnosticError(`${pathValue}: ${kind}`);
+  }
+}
+
 function readGit(args, runGit) {
   try {
     return runGit(args);
@@ -241,7 +249,7 @@ function parseJsonlRecords(text, filePath) {
   const rows = text.split('\n');
   if (rows.at(-1) === '') rows.pop();
   if (rows.length === 0 || rows.some((row) => row.trim().length === 0)) {
-    throw new Error(`${filePath}: empty or blank JSONL row`);
+    throw new SafeDiagnosticError(`${filePath}: jsonl-empty-or-blank-row`);
   }
   return rows.map((row, index) => {
     let value;
@@ -251,7 +259,7 @@ function parseJsonlRecords(text, filePath) {
       throw new SafeDiagnosticError(`${filePath}:${index + 1}: invalid JSON`);
     }
     if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error(`${filePath}:${index + 1}: row must be a JSON object`);
+      throw new SafeDiagnosticError(`${filePath}:${index + 1}: jsonl-row-not-object`);
     }
     return value;
   });
@@ -273,10 +281,10 @@ function validateCanonicalPatch(pathValue, baseSha, headSha, runGit) {
     } catch (error) {
       throw new SafeDiagnosticError(`${pathValue}: changed canonical row is invalid JSON`);
     }
-    validateCanonicalRecord(record, pathValue, 1);
+    validateWithDiagnostic(() => validateCanonicalRecord(record, pathValue, 1), pathValue, 'canonical-record-validation-failed');
     changedRowCount += 1;
   }
-  if (changedRowCount === 0) throw new Error(`${pathValue}: no changed canonical JSONL rows were validated`);
+  if (changedRowCount === 0) throw new SafeDiagnosticError(`${pathValue}: canonical-patch-no-changed-records`);
 }
 
 function readFileAtRevision(pathValue, baseSha, headSha, runGit) {
@@ -316,8 +324,8 @@ function validateRoutineDataFile(pathValue, kind, baseSha, headSha, runGit) {
       // Reuse the real Factory contract (identity hashes, variants, occurrences,
       // bounded chunk size and text-free evidence); Normal additionally checks
       // new chunks against all changed and historic archive IDs.
-      const errors = validateTrashChunk(text);
-      if (errors.length > 0) throw new Error(`${pathValue}: ${errors.join('; ')}`);
+      const errors = validateWithDiagnostic(() => validateTrashChunk(text), pathValue, 'trash-chunk-validation-failed');
+      if (errors.length > 0) throw new SafeDiagnosticError(`${pathValue}: trash-chunk-validation-failed`);
     }
     return;
   }
@@ -330,14 +338,14 @@ function validateRoutineDataFile(pathValue, kind, baseSha, headSha, runGit) {
   }
   if (kind === 'relation-backfill') {
     const [, packetId] = pathValue.match(RELATION_BACKFILL_PATH) ?? [];
-    if (value?.packet_id !== packetId) throw new Error(`${pathValue}: packet_id does not match its filename`);
-    const errors = [
+    if (value?.packet_id !== packetId) throw new SafeDiagnosticError(`${pathValue}: relation-packet-id-mismatch`);
+    const errors = validateWithDiagnostic(() => [
       ...relationAmendmentErrors(value, pathValue),
       ...relationCorrectionErrors(value, pathValue),
-    ];
-    if (errors.length > 0) throw new Error(errors.join('; '));
+    ], pathValue, 'relation-packet-validation-failed');
+    if (errors.length > 0) throw new SafeDiagnosticError(`${pathValue}: relation-packet-validation-failed`);
     if (!Array.isArray(value.relation_amendments) && !Array.isArray(value.relation_corrections)) {
-      throw new Error(`${pathValue}: no recognized relation backfill contract`);
+      throw new SafeDiagnosticError(`${pathValue}: relation-packet-contract-missing`);
     }
   }
 }
@@ -504,7 +512,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
       try {
         const base = decodeUtf8(runGit(['show', baseSha + ':' + NORMAL_COVERAGE_PATH]), NORMAL_COVERAGE_PATH);
         const head = decodeUtf8(runGit(['show', headSha + ':' + NORMAL_COVERAGE_PATH]), NORMAL_COVERAGE_PATH);
-        validateAdditiveNormalCoverage(JSON.parse(base), JSON.parse(head));
+        validateWithDiagnostic(() => validateAdditiveNormalCoverage(JSON.parse(base), JSON.parse(head)), NORMAL_COVERAGE_PATH, 'coverage-registration-validation-failed');
         coverageChangeValidated = true;
       } catch (error) {
         return {
