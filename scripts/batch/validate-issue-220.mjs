@@ -1,6 +1,7 @@
-import { withoutRelevance } from '../validate/relevance-projection.mjs';
+import { preservesReviewedRecord, withoutRelevance } from '../validate/relevance-projection.mjs';
 import { historicalAdmissionContext } from './historical-canonical.mjs';
 import { loadCanonicalBeforeFactoryAdmissions } from '../validate/semantic-audit.mjs';
+import { readImportBytesBeforeFactoryAdmissions } from '../validate/historical-import.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -640,7 +641,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
     const [candidateSourceBytes, semanticSourceBytes, importBytes] = await Promise.all([
       readFile(batch.candidatePath),
       readFile(batch.semanticPath),
-      readFile(batch.importPath),
+      readImportBytesBeforeFactoryAdmissions(batch.importPath),
     ]);
     const candidateSource = JSON.parse(candidateSourceBytes.toString('utf8'));
     const semanticSource = JSON.parse(semanticSourceBytes.toString('utf8'));
@@ -713,12 +714,16 @@ export async function validateIssue220({ writeReport = false } = {}) {
   const currentIssue220Additions = currentAdditions
     .filter(({ id }) => importedIds.has(id))
     .sort((left, right) => left.id.localeCompare(right.id));
+  // Later relation-only enrichment may append relations to an admitted import (and #396 relevance); nothing else may change.
+  const expectedIssue220Additions = [...allImports].sort((left, right) => left.id.localeCompare(right.id));
   assert.deepEqual(
-    currentIssue220Additions,
-    [...allImports].sort((left, right) => left.id.localeCompare(right.id)),
+    currentIssue220Additions.map(({ id }) => id),
+    expectedIssue220Additions.map(({ id }) => id),
     'current canonical data preserves both complete Issue #220 admitted imports alongside later batches',
   );
-  for (const record of allImports) assert.deepEqual(withoutRelevance(currentById.get(record.id)), record, `${record.id} live canonical admission`);
+  for (const [index, record] of currentIssue220Additions.entries()) {
+    assert.equal(preservesReviewedRecord(expectedIssue220Additions[index], record), true, `${record.id} live canonical preserves its Issue #220 admission`);
+  }
 
   const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(CURRENT_ROOT_SOURCE_PATH);
   const currentDigest = canonicalRecordsSha256(currentCanonical.records);

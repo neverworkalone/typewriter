@@ -450,11 +450,14 @@ export async function validateExactSearch({
         field: 'lemma',
         value: record.lemma,
       }], `${batchLabel}: ${record.lemma} exact precedence`);
-      const relationCount = record.senses.reduce(
+      // The admission itself carries no relations. Later relation-only enrichment may add some, so the current
+      // database must hold at least the admitted ones (none) rather than exactly none.
+      const relationCount = record.senses.reduce((count, sense) => count + (sense.relations?.length ?? 0), 0);
+      assert.equal(relationCount, 0, `${batchLabel}: ${record.lemma} relation-empty admission`);
+      assert.ok(record.senses.reduce(
         (count, sense) => count + getSenseRelations(currentDatabase, sense.id).length,
         0,
-      );
-      assert.equal(relationCount, 0, `${batchLabel}: ${record.lemma} relation-empty admission`);
+      ) >= relationCount, `${batchLabel}: ${record.lemma} keeps its admitted relations`);
       resultByLemma.set(record.lemma, {
         record_id: record.id,
         baseline_result_ids: baselineResultIdsByLemma.get(record.lemma) ?? [],
@@ -473,7 +476,7 @@ export async function validateExactSearch({
         field: match.field,
         value: match.value,
       })), [{ id: record.id, kind: 'exact-lemma', field: 'lemma', value: lemma }], `${lemma} direct writer workflow`);
-      assert.equal(record.senses.reduce((count, sense) => count + getSenseRelations(currentDatabase, sense.id).length, 0), 0);
+      assert.equal(record.senses.reduce((count, sense) => count + (sense.relations?.length ?? 0), 0), 0);
     }
     return Object.fromEntries(resultByLemma);
   } finally {
