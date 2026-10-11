@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "f92a1533b4bf786001430c3926cd3bb3b9befe62bfd1cc13a3bb286359a49350"
+    "canonical_records_sha256": "824d248d4bab3227426a693c8b4832a149e18d68db246c7d002c8268015611a0"
   },
-  "authored_review_sha256": "d7d387ea54f1d5010bd4963eeb5fd841611e9a47beb4631adf14f3e9a4f51aaf",
+  "authored_review_sha256": "e42e55b395959e8d4e927f3ba35d4fbf461db61b2ac9a48ff1926de7b40cd030",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "f92a1533b4bf786001430c3926cd3bb3b9befe62bfd1cc13a3bb286359a49350"
+      "canonical_records_sha256": "824d248d4bab3227426a693c8b4832a149e18d68db246c7d002c8268015611a0"
     },
     "records": [
       {
@@ -14829,7 +14829,7 @@
       },
       {
         "record_id": "w427",
-        "record_sha256": "da7d9baa85ec865faed1350cdb70f7447293b6f458a238c227a006416c3dc5ad",
+        "record_sha256": "98c726f9e68d33cf6ed76a17cc62a1e293ac94e3cfa7e83363d6b57553ddeac5",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w427:boundary",
           "decision": "retain",
@@ -14848,7 +14848,7 @@
           {
             "sense_id": "w427-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-a6647567473301878910b5ff to w039; rationale digest 95255e7c0009. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-dd9f825e67933c319d7d1d23 to w7578; rationale digest 5f5092dfd4fb. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-8e989e9c3e4fd18dce64cafd to w3132; rationale digest 9fd980cafa1a. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-0da72c6f2f64d4976bbf5ab2 to w5606; rationale digest 91a717f93038. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended direct relation rel-7fc52e890cb5cb6a4b8c584f to w9097; rationale digest e5bbf7b28adc. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-e299b106a3f43dcdea5c6116 to w2371; rationale digest 409f7ede3c0a. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-480e6b7d2ff422b49dac7f4d to w2170; rationale digest 1d909d6da89a. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-a339b02e7d0f3e3712a17894 to w8489; rationale digest 04c64b326ef2. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-09c3d1d129544131212d5b39 to w3745; rationale digest f3394ede8770. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-6d39d7631b5fc812d90883fb to w9038; rationale digest 8810a60719c4. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-27fbfbf946983a87233c8200 to w6262; rationale digest 85773f1cfe8b. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-b7e07d548a992d9302820f73 to w8008; rationale digest 85561336fc9a. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-ecce7221d29dab048ae6e314 to w2384; rationale digest 8cc96042ed8c. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended sensory relation rel-b2b64ab2cdbe60b7b5580b35 to w11390; rationale digest cb3265747dfe. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-ad90694f840d7853dce4d974 to w2171; rationale digest 2e61f166d216. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-5f95064a68dd250ead2fa131 to w038; rationale digest 62f9045c6b95. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-c0eb4316f2fa4d7c4f3a29d0 to w10713; rationale digest d4074b45b5d9."
+            "relation_rationale": "w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-a6647567473301878910b5ff to w039; rationale digest 20b2055788d3. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-dd9f825e67933c319d7d1d23 to w7578; rationale digest 9ea188210999. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-8e989e9c3e4fd18dce64cafd to w3132; rationale digest 241e97c04807. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-0da72c6f2f64d4976bbf5ab2 to w5606; rationale digest f3b1c856d16b. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended direct relation rel-7fc52e890cb5cb6a4b8c584f to w9097; rationale digest 62675b9577ba. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-e299b106a3f43dcdea5c6116 to w2371; rationale digest a95f3598dd2a. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-480e6b7d2ff422b49dac7f4d to w2170; rationale digest 996564881f7e. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-a339b02e7d0f3e3712a17894 to w8489; rationale digest fe77df6a6e8d. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-09c3d1d129544131212d5b39 to w3745; rationale digest 51d9ae09ac1e. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-6d39d7631b5fc812d90883fb to w9038; rationale digest e5d4c8fdb43c. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-27fbfbf946983a87233c8200 to w6262; rationale digest 0b638892b4da. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-b7e07d548a992d9302820f73 to w8008; rationale digest 3761c03bd60e. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-75b34fb502722da65600a432 to w2384; rationale digest 9dd355adb7ef. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended sensory relation rel-b2b64ab2cdbe60b7b5580b35 to w11390; rationale digest 1d483d69628f. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-ad90694f840d7853dce4d974 to w2171; rationale digest 5f8394f4b319. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-5f95064a68dd250ead2fa131 to w038; rationale digest fe74fee8b5ca. w427 w427-s1 c062f5293f2e [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-c0eb4316f2fa4d7c4f3a29d0 to w10713; rationale digest 3d93e59498a8."
           }
         ]
       },
@@ -99895,7 +99895,7 @@
       },
       {
         "record_id": "w4858",
-        "record_sha256": "e85ae638f75c6501c6b1b57bdabcacfaff20c121dc2cfafe7bbaa7493b356f7f",
+        "record_sha256": "e25e63578718820c8710f4de44ae5cef0eb4dd1f5d17c11154324e0b99fff25f",
         "boundary_review": {
           "review_id": "m5-15-agent-semantic-review-20260923-r1:canonical:w4858:boundary",
           "decision": "retain",
@@ -99914,7 +99914,7 @@
           {
             "sense_id": "w4858-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-fb168a35f97fed9c2e2b083f to w5520; rationale digest 56a812ddf171. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended mood relation rel-f9a3dc6e02b2cb24ca679dcc to w2212; rationale digest dd8654d520b1. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-7c6903606d45a9feffbbb17f to w3110; rationale digest f0ef1feecaeb. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-8c322e9d7340680dd6faf921 to w3054; rationale digest 7ee9ba2b60ae. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended direct relation rel-749f3a7ef9944f9f06eb4878 to w6594; rationale digest 16df358603a9. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-13b6398cd440bcc1f2bbf0d7 to w6686; rationale digest f59acc30af37. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-3c461e98546268e2e5bcfe49 to w8175; rationale digest 55098941b65c. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-e2235ba17b0e04a3fc1af85f to w10296; rationale digest 2bb56cbb56a4. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-80b0b7a0980a73e63605b4e3 to w6920; rationale digest 69312e8f2fb1. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-c8321051f8da444d1a939003 to w9551; rationale digest 2283af14dc35. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-33db5bc585b28acf90e169f3 to w10298; rationale digest 6ee5009db886. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-9a44b4768b86385d8bfe56ae to w8714; rationale digest 03e1fd550525. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-65b2346fdbf7ab0c74b18535 to w6103; rationale digest cf75ffc5d9b7. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-6e45ad7f9c8a5e138dedefb9 to w8527; rationale digest 3a7729bb3dc6. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-bbe425a3d6b4ab4021e07eb4 to w8076; rationale digest 952455bdf1f5. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended direct relation rel-fb08c288d296b2fdd1d444a4 to w6499; rationale digest 99156e5cfd7b."
+            "relation_rationale": "w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended antonym relation rel-fb168a35f97fed9c2e2b083f to w5520; rationale digest 37d88b805bb2. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended mood relation rel-f9a3dc6e02b2cb24ca679dcc to w2212; rationale digest a61d6f4bf674. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-7c6903606d45a9feffbbb17f to w3110; rationale digest 82f2042faeba. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-8c322e9d7340680dd6faf921 to w3054; rationale digest 655df8503210. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended direct relation rel-749f3a7ef9944f9f06eb4878 to w6594; rationale digest ade75f856621. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-13b6398cd440bcc1f2bbf0d7 to w6686; rationale digest 04d309f50a06. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-3c461e98546268e2e5bcfe49 to w8175; rationale digest 4ad14b3f5ca2. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-e2235ba17b0e04a3fc1af85f to w10296; rationale digest f6096fc75f42. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-80b0b7a0980a73e63605b4e3 to w6920; rationale digest 032d9a6b1768. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-c8321051f8da444d1a939003 to w9551; rationale digest 77778481ba51. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-33db5bc585b28acf90e169f3 to w10298; rationale digest 55e9bbf7327c. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-9a44b4768b86385d8bfe56ae to w8714; rationale digest 9b5c60d387bd. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-65b2346fdbf7ab0c74b18535 to w6103; rationale digest d4f831c87a20. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended association relation rel-6e45ad7f9c8a5e138dedefb9 to w8527; rationale digest e5c66934ca56. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-bbe425a3d6b4ab4021e07eb4 to w8076; rationale digest 35bdec3b726a. w4858 w4858-s1 f662390de459 [R000014]: Stage 3 attempt R000014-a1 appended near relation rel-6629f891bbbb5c1504788900 to w6499; rationale digest 8dcf8958d884."
           }
         ]
       },
@@ -595235,7 +595235,7 @@
     {
       "batch_id": "R000014",
       "attempt": 1,
-      "semantic_decisions_sha256": "76ab526d2d007d8d840e4d7e30cfa8bdda7b5048392f4f6faab52520b5dde32d",
+      "semantic_decisions_sha256": "64c9771bb18a8d06a7cee73ea4cbffc0fc6cefbbfeb6a80eef3f9aba473a1b03",
       "entries": [],
       "relation_amendments": [
         {
@@ -643478,7 +643478,7 @@
             "note": "익숙함은 반복된 접함의 더 넓은 결과인 익숙하고 편한 상태다.",
             "relevance": 8
           },
-          "rationale_sha256": "95255e7c0009bf11e4c84d42c2e6fbcabc0c3101744b52ce6390ad1f88feb7ee",
+          "rationale_sha256": "20b2055788d3c228ba06f0186803846719cb1fc2b3a8a58dc3cc6a7519407ff9",
           "outcome": "appended"
         },
         {
@@ -643495,7 +643495,7 @@
             "note": "낯익다는 앞서 접한 뒤 익숙한 느낌이 가깝지만 듣는 것에 한정되지 않는다.",
             "relevance": 8
           },
-          "rationale_sha256": "5f5092dfd4fbf1040452c8ffe6e6334865ae7bae739e0f35c8525ed1cf5ed84a",
+          "rationale_sha256": "9ea188210999c76c691847a9cd60537dddbf04afb02e162fc0ebea9839b2b95c",
           "outcome": "appended"
         },
         {
@@ -643512,7 +643512,7 @@
             "note": "몸에 배다는 청각을 벗어난 반복된 버릇이 자연스러워지는 관련된 익숙함의 경로다.",
             "relevance": 6
           },
-          "rationale_sha256": "9fd980cafa1afb1e50e5b152dd616e7bfe8dd9efaf96649838d3d5e3e5d340e9",
+          "rationale_sha256": "241e97c04807e2b3c9f4d5fe7727b96c7cbb19b5d2394f362d79e1f9d999a2cb",
           "outcome": "appended"
         },
         {
@@ -643528,7 +643528,7 @@
             "type": "antonym",
             "note": "낯설다는 익숙하지 않아 새롭고 어색하게 느껴 익숙함의 축에서 반대된다."
           },
-          "rationale_sha256": "91a717f93038bf4f9a458ca927246c572d531e84763895b42f11b811954c64a1",
+          "rationale_sha256": "f3b1c856d16be54cc1316b6c8967c4cc6b5077e7fb2e9046d81764f8bf2f75a9",
           "outcome": "appended"
         },
         {
@@ -643544,7 +643544,7 @@
             "type": "direct",
             "note": "두 말 모두 거듭되거나 오랜 경험으로 더는 낯설지 않다는 뜻이다."
           },
-          "rationale_sha256": "e5bbf7b28adce7a99b96937f04673e17fb173f92a481b4e9a2d4e00c97b52914",
+          "rationale_sha256": "62675b9577baaf8d5dfdae0bdc09ae973ed6b49131a4cdc7b0b1f0aa39589719",
           "outcome": "appended"
         },
         {
@@ -643561,7 +643561,7 @@
             "note": "반복은 청각적 익숙함의 흔한 원인이다.",
             "relevance": 7
           },
-          "rationale_sha256": "409f7ede3c0a19331e9715d4451650cdf2a237d6a5cb8324cef0c4f370f10619",
+          "rationale_sha256": "a95f3598dd2a44f627a5bdffac753630e4454c064edebc7a89ade943d86e595e",
           "outcome": "appended"
         },
         {
@@ -643577,7 +643577,7 @@
             "type": "antonym",
             "note": "생경함은 익숙하지 않고 어색한 성질로 이 표현의 익숙함과 반대다."
           },
-          "rationale_sha256": "1d909d6da89aa4bb5a67cd0690135f54b089a19c57c28f595702145e834521fc",
+          "rationale_sha256": "996564881f7e88c25ba2d923bb9fce53a601bd7b82ee3255b68ae6a98f2ef359",
           "outcome": "appended"
         },
         {
@@ -643594,7 +643594,7 @@
             "note": "길들이다는 거듭해서 익숙하게 만드는 익숙함에 이르게 하는 사동의 경로다.",
             "relevance": 5
           },
-          "rationale_sha256": "04c64b326ef2c04f277d8ea5235d1281a92bd36dc68de6dd832ec4cb025a2382",
+          "rationale_sha256": "fe77df6a6e8d704322d959cdaf8fed42c625921ab1071ef68b7c5d9312d7173f",
           "outcome": "appended"
         },
         {
@@ -643611,7 +643611,7 @@
             "note": "손에 익다는 일이 손에 익숙해지는 숙련에 바탕을 둔 비슷한 익숙함이다.",
             "relevance": 6
           },
-          "rationale_sha256": "f3394ede87703c06b6753e93848710a25727ef9211503f809584bae7230dc41a",
+          "rationale_sha256": "51d9ae09ac1ec17b96d604b3cd4ecb4ca6b18faafa71c2b787040c4d5027f43f",
           "outcome": "appended"
         },
         {
@@ -643628,7 +643628,7 @@
             "note": "능하다는 솜씨가 좋다는 뜻으로 일의 익숙함과 관련되지만 능숙함이 더해진다.",
             "relevance": 5
           },
-          "rationale_sha256": "8810a60719c460a5a0de35934e589481666107f7025cef867f596645980e2d99",
+          "rationale_sha256": "e5d4c8fdb43ccd89be57932a38c11f20f7e28ec185aeda7584a6f378788b865f",
           "outcome": "appended"
         },
         {
@@ -643645,7 +643645,7 @@
             "note": "익히다는 기술이나 지식을 배워 익숙하게 만들 수 있다.",
             "relevance": 5
           },
-          "rationale_sha256": "85773f1cfe8bc1fddd1f2490df802ac7e05c65b51d2d5d599fff0b55c739ef2e",
+          "rationale_sha256": "0b638892b4da148a0b30852f00b4ebfb833c3527bb49a551486762458887f262",
           "outcome": "appended"
         },
         {
@@ -643662,7 +643662,7 @@
             "note": "수련은 거듭 연습해 익숙함을 쌓는다.",
             "relevance": 4
           },
-          "rationale_sha256": "85561336fc9a7dc9ed740186bcfca062768ff6817f82f8e0c5c144478575549c",
+          "rationale_sha256": "3761c03bd60eeacc15e5e4c34fd976f71a10ed912bd3ae6f9cd42f51be0b9093",
           "outcome": "appended"
         },
         {
@@ -643670,15 +643670,16 @@
           "source_record_id": "w427",
           "source_sense_id": "w427-s1",
           "source_gloss_sha256": "c062f5293f2e783a3c6ab1f91c8ce92ffd7f10b07d946e089d6123d6f4fab1bf",
-          "authored_relation_id": "rel-ecce7221d29dab048ae6e314",
-          "relation_id": "rel-ecce7221d29dab048ae6e314",
+          "authored_relation_id": "rel-75b34fb502722da65600a432",
+          "relation_id": "rel-75b34fb502722da65600a432",
           "relation": {
             "target": "w2384",
             "target_sense": "w2384-s1",
-            "type": "antonym",
-            "note": "새로움은 낯설어서 신선하게 느끼는 성질로 익숙함과 반대된다."
+            "type": "association",
+            "note": "새로움은 신선함을 느끼게 하는 성질로, 귀에 익은 것과 대비되는 연상이지만 서로 배타적이지는 않다.",
+            "relevance": 4
           },
-          "rationale_sha256": "8cc96042ed8c7c3cef6322ae18c6fb6f411a0f91ef76cfb1c20cf154be953149",
+          "rationale_sha256": "9dd355adb7ef7dadb9b19930f07963ea1d9119f788f955f6ef1ed7add3878e3f",
           "outcome": "appended"
         },
         {
@@ -643695,7 +643696,7 @@
             "note": "들리다는 이 표현이 익숙해지는 감각의 통로다.",
             "relevance": 4
           },
-          "rationale_sha256": "cb3265747dfec0b6c26204429068beffaf398073f98c89450ea9704603e0032c",
+          "rationale_sha256": "1d483d69628f02f5bfb731a71768d20cf9524df3f0976a40f6bbcbbf2276ebc9",
           "outcome": "appended"
         },
         {
@@ -643712,7 +643713,7 @@
             "note": "친숙함은 익숙하고 가깝게 느끼는 아주 가까운 상태다.",
             "relevance": 8
           },
-          "rationale_sha256": "2e61f166d216eba7cbdaaf208cb49c42fa7cde153b4e897d27777886c9fb0191",
+          "rationale_sha256": "5f8394f4b31934711486a70ff486601b8e07de8a431c18874e6bec3de3479002",
           "outcome": "appended"
         },
         {
@@ -643728,7 +643729,7 @@
             "type": "antonym",
             "note": "낯섦은 익숙하지 않고 멀게 느끼는 것으로 이 표현의 청각적 익숙함과 반대된다."
           },
-          "rationale_sha256": "62f9045c6b955e19f0f5bd29a5138453f94f500d8e96047a0c4500ed353ac791",
+          "rationale_sha256": "fe74fee8b5cab0bd70aef5d748ab77715ba24f2f4be4e3cfeb35f101397fc17c",
           "outcome": "appended"
         },
         {
@@ -643745,7 +643746,7 @@
             "note": "숙련은 거듭된 접함의 결과로 연습해 얻은 솜씨다.",
             "relevance": 5
           },
-          "rationale_sha256": "d4074b45b5d914be308ee4bf99926340ecdfb486f300939b13e4334392933920",
+          "rationale_sha256": "3d93e59498a8bf8334aa8c796fe17b5ed4e2edeb75e0331b559c179907e1a295",
           "outcome": "appended"
         },
         {
@@ -651997,7 +651998,7 @@
             "type": "antonym",
             "note": "끊김 없이 이어지거나 이어진 채 있는 것은 같은 연속의 축에서 이 낱말의 갈라짐과 반대된다."
           },
-          "rationale_sha256": "56a812ddf171be0c24b848efd142b8ad5c22eda1df5882f937bb50301a2fc5eb",
+          "rationale_sha256": "37d88b805bb2fe3a44e2751d7587947ba11880717d9956539a459e28ee52f8b0",
           "outcome": "appended"
         },
         {
@@ -652014,7 +652015,7 @@
             "note": "단절감은 갈라진 뒤에 따를 수 있는 끊어진 느낌이다.",
             "relevance": 5
           },
-          "rationale_sha256": "dd8654d520b1f212a534d9ebbeeb5ebf349cee25b0943a9747621d0c6c286e09",
+          "rationale_sha256": "a61d6f4bf674c94b1cf849566e25b47b89ae663a3c80c3998b35c74ed6e80d9a",
           "outcome": "appended"
         },
         {
@@ -652031,7 +652032,7 @@
             "note": "손길을 거두다는 접촉을 끝내는 관련되지만 다른 동작이다.",
             "relevance": 4
           },
-          "rationale_sha256": "f0ef1feecaebacf6b7e8014d8591beadc34a57ea7f31f5c97ed27b7a65e29343",
+          "rationale_sha256": "82f2042faebab6617197dc21e01cb94c319d0a773a404a989ca300ff54a61ba1",
           "outcome": "appended"
         },
         {
@@ -652048,7 +652049,7 @@
             "note": "비가 그치다는 관련된 멈춤의 일로 들어오는 near 관계와 맞춘다.",
             "relevance": 5
           },
-          "rationale_sha256": "7ee9ba2b60aec20aa4c7c938e53f74796c8daf31d465f475cc656ebdc03caea2",
+          "rationale_sha256": "655df8503210aa0e90dbb71f2ffc3495df67e1a35480bb6092b13b4679b53bd9",
           "outcome": "appended"
         },
         {
@@ -652064,7 +652065,7 @@
             "type": "direct",
             "note": "두 말 모두 이어져 있거나 계속되던 것이 갈라져 더는 이어지지 않음을 뜻한다."
           },
-          "rationale_sha256": "16df358603a9dcf8c0fd2b164f2391533bf354a75897209d16e98ffac26236ea",
+          "rationale_sha256": "ade75f856621a45138d5e93367e66dacf3ef79b42829ac23a2fd9eeea22f8a23",
           "outcome": "appended"
         },
         {
@@ -652081,7 +652082,7 @@
             "note": "잘리다는 이어진 것이 끊어지는 구체적인 방식의 하나로 부분이 잘려 나가는 일이다.",
             "relevance": 7
           },
-          "rationale_sha256": "f59acc30af37c53fd320b31b794be9432aa14c1d9c00e95cb6d29579db68c905",
+          "rationale_sha256": "04d309f50a06ecc48dbda4ba911be69f04f5109190176ab3f4fbe052672e0a07",
           "outcome": "appended"
         },
         {
@@ -652098,7 +652099,7 @@
             "note": "끊이다는 이어지던 일이 멈추는 가까운 뜻이지만 갈라져 떨어지는 것은 아니다.",
             "relevance": 8
           },
-          "rationale_sha256": "55098941b65c7c8d6882779fe359dd85dcf7c84632f473d50ac3e435a10fa2b0",
+          "rationale_sha256": "4ad14b3f5ca28d7f148670316c5ba7196fe986d11ef425efdb6e758068c18e82",
           "outcome": "appended"
         },
         {
@@ -652115,7 +652116,7 @@
             "note": "없어지다는 이어졌던 것이 갈라지는 것보다 넓은 사라짐이다.",
             "relevance": 6
           },
-          "rationale_sha256": "2bb56cbb56a4317da101a39968f1b9ae92bda3aaa49a5ee26baba9e885dee99d",
+          "rationale_sha256": "f6096fc75f42de4438c0a952bd33e167d85c2dd1f0ee15b828cda13236e94cd4",
           "outcome": "appended"
         },
         {
@@ -652132,7 +652133,7 @@
             "note": "노출은 덮개가 떨어진 뒤 드러난 것이 나타날 수 있다.",
             "relevance": 4
           },
-          "rationale_sha256": "69312e8f2fb1583d1b90d0a808e526d29533718b29854f0f41eef7ff254d77c8",
+          "rationale_sha256": "032d9a6b1768195976d30ce7a5c2576e5b4e470bf6af1d3e6611645a538c7193",
           "outcome": "appended"
         },
         {
@@ -652149,7 +652150,7 @@
             "note": "접히다는 모양을 바꾸지만 이음을 끊는 것은 아니다.",
             "relevance": 4
           },
-          "rationale_sha256": "2283af14dc357163f2cc2ee26defe5b451059e70e5196d02bd1ff31dac9b60dd",
+          "rationale_sha256": "77778481ba51dff28778bb168653411f2977d7423f489535b037e9e7e298f33d",
           "outcome": "appended"
         },
         {
@@ -652166,7 +652167,7 @@
             "note": "바닥나다는 공급이 끊기는 관련된 형태로 다 떨어지는 일이다.",
             "relevance": 4
           },
-          "rationale_sha256": "6ee5009db886053e67a82ce8f696ec05e14acc732718f077d36b23048232ebe9",
+          "rationale_sha256": "55e9bbf7327ce6dd8c943a2433015d44ead040722431a986b0c5d265576d1ec1",
           "outcome": "appended"
         },
         {
@@ -652183,7 +652184,7 @@
             "note": "손실은 무언가가 떨어져 나가거나 없어져서 생길 수 있다.",
             "relevance": 4
           },
-          "rationale_sha256": "03e1fd550525ca0238c47586c0388adafec922ed3ae4c18024ccd99d7959d151",
+          "rationale_sha256": "9b5c60d387bd7c4b2b451c3e1940df2d4520f2b38cd0020502b3ddf5197183f0",
           "outcome": "appended"
         },
         {
@@ -652200,7 +652201,7 @@
             "note": "분야는 더 넓은 영역을 나누어 생긴 영역이다.",
             "relevance": 4
           },
-          "rationale_sha256": "cf75ffc5d9b745fda88bc1b222540fd55230043b060e8ec450bd42a164a6a7e6",
+          "rationale_sha256": "d4f831c87a2094ea43ebceadcaf32113f04dd6970b271d31b1d5d18dc19814bb",
           "outcome": "appended"
         },
         {
@@ -652217,7 +652218,7 @@
             "note": "걷히다는 덮은 것이 사라지는 이웃한 변화이지 갈라짐은 아니다.",
             "relevance": 4
           },
-          "rationale_sha256": "3a7729bb3dc6196c67b0f7b1ed593d003b8fc0fd2801534e9e3bc64b16f5e95e",
+          "rationale_sha256": "e5c66934ca56ae2b2efaf40a21a6954c73d182b2eaafc9827660ddd4f1757cc9",
           "outcome": "appended"
         },
         {
@@ -652234,7 +652235,7 @@
             "note": "분열은 무리나 상태가 쪼개지는 가까운 추상적인 예다.",
             "relevance": 7
           },
-          "rationale_sha256": "952455bdf1f5615abbfa5958dd77be19dfbd32ffd86e4d097bd6430c37864f0c",
+          "rationale_sha256": "35bdec3b726ad50bf6dda4403dd76fe4e17303081fb131cb86a785e268875eb0",
           "outcome": "appended"
         },
         {
@@ -652242,15 +652243,16 @@
           "source_record_id": "w4858",
           "source_sense_id": "w4858-s1",
           "source_gloss_sha256": "f662390de4592716b6fc87a5aabd29ff971428e30006615483e0d82b1f9388b8",
-          "authored_relation_id": "rel-fb08c288d296b2fdd1d444a4",
-          "relation_id": "rel-fb08c288d296b2fdd1d444a4",
+          "authored_relation_id": "rel-6629f891bbbb5c1504788900",
+          "relation_id": "rel-6629f891bbbb5c1504788900",
           "relation": {
             "target": "w6499",
             "target_sense": "w6499-s1",
-            "type": "direct",
-            "note": "두 말 모두 붙어 있거나 함께 있던 것을 떼어 놓음을 뜻한다."
+            "type": "near",
+            "note": "분리는 붙어 있던 것을 갈라 놓는 행위로, 끊어지는 결과와 가깝지만 사동 행위라 같은 뜻은 아니다.",
+            "relevance": 6
           },
-          "rationale_sha256": "99156e5cfd7be0d275972f0cc8b1c44e0c0a30a6e5f7c086b6a9956368339997",
+          "rationale_sha256": "8dcf8958d88480bd418e240c8d9896c37cef10d850332c4219243341374d2efc",
           "outcome": "appended"
         },
         {
@@ -711336,14 +711338,14 @@
             "rel-6d39d7631b5fc812d90883fb",
             "rel-27fbfbf946983a87233c8200",
             "rel-b7e07d548a992d9302820f73",
-            "rel-ecce7221d29dab048ae6e314",
+            "rel-75b34fb502722da65600a432",
             "rel-b2b64ab2cdbe60b7b5580b35",
             "rel-ad90694f840d7853dce4d974",
             "rel-5f95064a68dd250ead2fa131",
             "rel-c0eb4316f2fa4d7c4f3a29d0"
           ],
           "before_sha256": "79b4eb925c62de1e7b1e9bf203902b241eba4a2a5a6f06984045d2916c1d830f",
-          "after_sha256": "da7d9baa85ec865faed1350cdb70f7447293b6f458a238c227a006416c3dc5ad",
+          "after_sha256": "98c726f9e68d33cf6ed76a17cc62a1e293ac94e3cfa7e83363d6b57553ddeac5",
           "previous_semantic_review_sha256": "755e20bf304d77dbddb1335f7f5992603f3346234ae786f8d0406163738ced97",
           "previous_semantic_review": {
             "record_id": "w427",
@@ -711388,7 +711390,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "287a1d69b4c121d70107944b570b984ad25eaf5bf07dbccd9b3fc1d89e5e349d"
+          "semantic_review_sha256": "d27a20e50733e8148652bce8a659ad1c58a85e405b7defa207b954db6cd9a26b"
         },
         {
           "entry_id": "w4288",
@@ -714143,10 +714145,10 @@
             "rel-65b2346fdbf7ab0c74b18535",
             "rel-6e45ad7f9c8a5e138dedefb9",
             "rel-bbe425a3d6b4ab4021e07eb4",
-            "rel-fb08c288d296b2fdd1d444a4"
+            "rel-6629f891bbbb5c1504788900"
           ],
           "before_sha256": "16e65959c03a2316580d188fa84645b445f68bf703c3aa0c923c2c3fca16c32f",
-          "after_sha256": "e85ae638f75c6501c6b1b57bdabcacfaff20c121dc2cfafe7bbaa7493b356f7f",
+          "after_sha256": "e25e63578718820c8710f4de44ae5cef0eb4dd1f5d17c11154324e0b99fff25f",
           "previous_semantic_review_sha256": "5256dde92281ed8780bce19423ca32deb91138ba7cfde2126051124a43fcc003",
           "previous_semantic_review": {
             "record_id": "w4858",
@@ -714181,7 +714183,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "54a5d7cec86c6e4b5e108cec5e9b03429ae6d1eaafb48c87264526b6887fe7f4"
+          "semantic_review_sha256": "2d391e5f9208316d30bd02ac4568625396a8b5b6777221fe44f6c96af60826dc"
         },
         {
           "entry_id": "w4870",
@@ -727110,7 +727112,7 @@
           "semantic_review_sha256": "bf96fe0168dfa4003ae691e62f6416191c37362af1ec8ffa9822e994ba3f99dc"
         }
       ],
-      "sha256": "31d1e71e477f49f634106fdda1d415c2f144b8300d684e96cc933e8f049df400"
+      "sha256": "ef672c58da55dffaa1f98ef57d25faf92fd26e7ded638572bd3d757617545a4c"
     }
   ]
 }
