@@ -21,9 +21,10 @@ provenance, integrity, freshness and product behavior.
 
 The existing `Validate and test Typewriter` PR check runs `ci:normal` for
 ordinary changes, `ci:pr --base <sha> --head <sha>` for Normal plus affected
-Deep checks, or `ci:all` for full current-system Deep coverage. CI runner,
-workflow, registry and classifier changes; unknown paths; and invalid data
-evidence fail closed to `ci:all`. Docs-only changes retain the exact-HEAD
+Deep checks, while weekly/manual `ci:all` provides full current-system Deep coverage.
+CI runner, workflow, registry and classifier changes; unknown paths; and
+invalid data evidence retain PR Normal (plus genuinely affected Deep checks
+when independently matched). They do not trigger automatic Full Deep. Docs-only changes retain the exact-HEAD
 Normal skip, and pure Stage 1 artifacts retain `ci:candidates`. The check
 summary records exact revisions, change class, matched dependencies, selected
 and skipped checks, and the chosen gate. A final step records the gates that
