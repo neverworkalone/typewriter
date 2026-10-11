@@ -477,6 +477,10 @@ On each check:
 4. For accepted feedback, implement the appropriate fixes, run relevant validation, commit, and push to the same PR branch. Explain rejected or deferred feedback in the relevant thread.
 5. If there is no new actionable feedback, make no changes and post no repetitive status comments.
 
+**Resolve blocking reviews through dialogue:** respond to each new substantive `-1` in the PR conversation (or its relevant inline thread), not solely in a linked Issue or by silently editing PR metadata. Independently assess each finding against the current HEAD and requirements. If correct, fix it and point to the change/evidence; if incorrect or already resolved, explain the counterevidence and specifically ask for reconsideration through the ordinary PR discussion (do not invoke the reviewer yourself). A metadata-only correction may need no code change. Address the reviewer's next response in turn: acknowledge valid points, revise your own position where warranted, and narrow any remaining dispute to verifiable facts and an actionable next step. Neither blind compliance nor repeating the same rebuttal without engaging the reviewer's answer is sufficient.
+
+**Do not abandon a blocked line:** distinguish a legitimate unresolved defect from a disagreement about evidence or requirements. If further exchanges offer no substantive progress, report the agreed facts, competing arguments, outstanding risk and decision needed to the owner; keep the PR/Issue status truthful and do not silently abandon the batch, declare completion or start unrelated downstream work. No fixed number of exchanges limits a productive discussion. This obligation does not authorize the author to perform, trigger or merge its own review.
+
 Continue monitoring after each feedback batch until the PR is merged or closed, or the user asks you to stop.
 
 Monitoring does not authorize starting, requesting, repeating, or performing a PR review, posting `@codex review`, or merging the PR.
