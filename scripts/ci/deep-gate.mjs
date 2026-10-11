@@ -23,21 +23,27 @@ const SCRIPT_PATH = fileURLToPath(import.meta.url);
 // keeping each subprocess output bounded. Exceeding this limit still fails closed.
 const GIT_MAX_BUFFER = 64 * 1024 * 1024;
 
-function readGit(args, cwd) {
+class SafeDiagnosticError extends Error {}
+
+function failureDetail(error, stage) {
+  // Only diagnostics constructed here from allowlisted metadata are public.
+  // Parser/schema/packet validators may quote input in arbitrary error messages.
+  return `${stage}: ${error instanceof SafeDiagnosticError ? error.message : 'validation-failed'}`;
+}
+
+function readGit(args, runGit) {
   try {
-    return execFileSync('git', args, {
-      cwd,
-      encoding: 'buffer',
-      maxBuffer: GIT_MAX_BUFFER,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    return runGit(args);
   } catch (error) {
     // execFileSync's message may include arbitrary stdout/stderr. Report only
     // command and process metadata, never the failed file's contents.
-    const reason = ['code', 'errno', 'syscall', 'status', 'signal']
-      .filter((key) => error[key] !== undefined && error[key] !== null)
-      .map((key) => `${key}=${error[key]}`).join(', ');
-    throw new Error(`git ${args.map((arg) => JSON.stringify(arg)).join(' ')} failed (${reason || error.name}; maxBuffer=${GIT_MAX_BUFFER})`);
+    const metadata = [];
+    if (['ENOBUFS', 'ENOENT', 'EACCES', 'EPERM', 'EIO', 'EINVAL', 'E2BIG', 'ENOMEM'].includes(error?.code)) metadata.push(`code=${error.code}`);
+    for (const key of ['errno', 'status']) {
+      if (Number.isSafeInteger(error?.[key])) metadata.push(`${key}=${error[key]}`);
+    }
+    if (['SIGTERM', 'SIGKILL', 'SIGABRT', 'SIGSEGV', 'SIGINT'].includes(error?.signal)) metadata.push(`signal=${error.signal}`);
+    throw new SafeDiagnosticError(`git-command-failed: git ${args.map((arg) => JSON.stringify(arg)).join(' ')} failed (${metadata.join(', ') || 'process-failure'}; maxBuffer=${GIT_MAX_BUFFER})`);
   }
 }
 
@@ -227,7 +233,7 @@ function decodeUtf8(bytes, label) {
   try {
     return decoder.decode(bytes);
   } catch (error) {
-    throw new Error(`${label}: invalid UTF-8 (${error.message})`);
+    throw new SafeDiagnosticError(`${label}: invalid UTF-8`);
   }
 }
 
@@ -242,7 +248,7 @@ function parseJsonlRecords(text, filePath) {
     try {
       value = JSON.parse(row);
     } catch (error) {
-      throw new Error(`${filePath}:${index + 1}: invalid JSON (${error.message})`);
+      throw new SafeDiagnosticError(`${filePath}:${index + 1}: invalid JSON`);
     }
     if (value === null || typeof value !== 'object' || Array.isArray(value)) {
       throw new Error(`${filePath}:${index + 1}: row must be a JSON object`);
@@ -265,7 +271,7 @@ function validateCanonicalPatch(pathValue, baseSha, headSha, runGit) {
     try {
       record = JSON.parse(jsonLine);
     } catch (error) {
-      throw new Error(`${pathValue}: changed canonical row is invalid JSON (${error.message})`);
+      throw new SafeDiagnosticError(`${pathValue}: changed canonical row is invalid JSON`);
     }
     validateCanonicalRecord(record, pathValue, 1);
     changedRowCount += 1;
@@ -286,10 +292,10 @@ function readFileAtRevision(pathValue, baseSha, headSha, runGit) {
       ]);
       deletedAtHead = Buffer.from(deletedPaths).toString('utf8').split('\0').includes(pathValue);
     } catch (diffError) {
-      throw new Error(`${pathValue}: could not verify whether the unreadable HEAD file was deleted (${diffError.message})`);
+      throw new SafeDiagnosticError(`${pathValue}: deletion-check: ${failureDetail(diffError, 'git-read')}`);
     }
     if (!deletedAtHead) {
-      throw new Error(`${pathValue}: could not read the changed file at HEAD (${headError.message})`);
+      throw new SafeDiagnosticError(`${pathValue}: HEAD-read: ${failureDetail(headError, 'git-read')}`);
     }
     bytes = runGit(['show', `${baseSha}:${pathValue}`]);
   }
@@ -320,7 +326,7 @@ function validateRoutineDataFile(pathValue, kind, baseSha, headSha, runGit) {
   try {
     value = JSON.parse(text);
   } catch (error) {
-    throw new Error(`${pathValue}: invalid JSON (${error.message})`);
+    throw new SafeDiagnosticError(`${pathValue}: invalid JSON`);
   }
   if (kind === 'relation-backfill') {
     const [, packetId] = pathValue.match(RELATION_BACKFILL_PATH) ?? [];
@@ -478,8 +484,14 @@ export function classifyDeepGatePaths(changedPaths, {
 
 export function classifyDeepGateDiff(baseSha, headSha, {
   cwd = REPOSITORY_DIRECTORY,
-  runGit = (args) => readGit(args, cwd),
+  runGit: executeGit = (args) => execFileSync('git', args, {
+    cwd,
+    encoding: 'buffer',
+    maxBuffer: GIT_MAX_BUFFER,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }),
 } = {}) {
+  const runGit = (args) => readGit(args, executeGit);
   if (typeof baseSha !== 'string' || !baseSha || typeof headSha !== 'string' || !headSha) {
     return { runDeep: true, deepMode: 'full', reason: 'missing-revision-evidence', changeClass: 'unclassifiable' };
   }
@@ -501,7 +513,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
           reason: 'normal-coverage-registration-unverified',
           changeClass: 'ci-contract',
           path: NORMAL_COVERAGE_PATH,
-          detail: error.message,
+          detail: failureDetail(error, 'normal-coverage-validation'),
           changedPaths,
           selectedDeepChecks: deepCheckMap(registeredDeepChecks()).map(checkId),
         };
@@ -519,7 +531,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
           reason: 'routine-data-validation-failed',
           changeClass: 'unclassifiable',
           path: changedPath,
-          detail: error.message,
+          detail: failureDetail(error, 'routine-data-validation'),
           changedPaths,
           selectedDeepChecks: deepCheckMap(registeredDeepChecks()).map(checkId),
         };
@@ -531,7 +543,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
       changedPaths,
     };
   } catch (error) {
-    return { runDeep: true, deepMode: 'full', reason: 'diff-command-failed', changeClass: 'unclassifiable', detail: error.message };
+    return { runDeep: true, deepMode: 'full', reason: 'diff-command-failed', changeClass: 'unclassifiable', detail: failureDetail(error, 'diff-classification') };
   }
 }
 

@@ -56,6 +56,7 @@ test('real Git classification reads large routine files and preserves fail-close
   };
   git(['init', '-q']);
   await put('README.md', 'fixture\n');
+  await put('scripts/ci/deep-gate-coverage.json', JSON.stringify(NORMAL_COVERAGE));
   const base = commit('base');
   const inventoryPath = 'data/inventory/large-fixture.json';
   const largeJson = JSON.stringify({ observations: ['x'.repeat(2 * 1024 * 1024)] });
@@ -101,7 +102,7 @@ test('real Git classification reads large routine files and preserves fail-close
   for (const [file, bytes, detail] of [
     [inventoryPath, largeJson.slice(0, -1), /invalid JSON/u],
     [inventoryPath, Buffer.concat([Buffer.from(largeJson), Buffer.from([0xff])]), /invalid UTF-8/u],
-    [packetPath, ' '.repeat(2 * 1024 * 1024) + JSON.stringify({ packet_id: 'R999999' }), /no recognized relation backfill contract/u],
+    [packetPath, ' '.repeat(2 * 1024 * 1024) + JSON.stringify({ packet_id: 'R999999' }), /validation-failed/u],
     [canonicalPath, canonical + JSON.stringify({ lemma: 'invalid' }) + '\n', /./u],
   ]) {
     const { result } = await classify([[file, bytes]]);
@@ -132,6 +133,36 @@ test('real Git classification reads large routine files and preserves fail-close
     assert.match(result.detail, /git "diff" .*failed/u);
     assert.match(result.detail, /status=128|code=ENOENT/u);
     assert.ok(result.detail.length < 1000);
+  }
+
+  const secret = 'REDACT_ME_PRIVATE_TOKEN_MUST_NEVER_APPEAR';
+  for (const [file, bytes, kind] of [
+    [inventoryPath, secret + ' invalid JSON', 'invalid JSON'],
+    ['data/inventory/large-fixture.jsonl', JSON.stringify({ ok: true }) + '\n' + secret, 'invalid JSON'],
+    [canonicalPath, secret + '\n', 'invalid JSON'],
+    [canonicalPath, JSON.stringify({ ...JSON.parse(record), [secret]: true }) + '\n', 'validation-failed'],
+    [packetPath, JSON.stringify({ ...packet, packet_id: secret }), 'validation-failed'],
+    ['scripts/ci/deep-gate-coverage.json', JSON.stringify({ version: 1, bindings: [{ path: secret }] }), 'validation-failed'],
+  ]) {
+    const { head } = await classify([[file, bytes]]);
+    // Exercise the actual CLI and Git subprocesses, including public JSON output
+    // and the exact summary artifact GitHub publishes. No mocked validators.
+    const summaryPath = path.join(root, '.git', 'failure-summary.md');
+    await rm(summaryPath, { force: true });
+    const stdout = execFileSync(process.execPath, [path.resolve(TEST_DIRECTORY, '../scripts/ci/deep-gate.mjs'), base, head], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, GIT_DIR: path.join(root, '.git'), GIT_WORK_TREE: root, GITHUB_STEP_SUMMARY: summaryPath, GITHUB_OUTPUT: path.join(root, '.git', 'outputs') },
+    });
+    const result = JSON.parse(stdout);
+    const summary = await readFile(summaryPath, 'utf8');
+    assert.equal(result.deepMode, 'full');
+    assert.equal(result.path, file);
+    for (const output of [stdout, summary]) {
+      assert.ok(!output.includes('REDACT_ME'), 'parser and validator input must not leak into public diagnostics');
+      assert.ok(output.includes(file), 'failure path remains visible');
+      assert.ok(output.includes(kind), `${file}: safe error kind remains visible`);
+    }
   }
 });
 

@@ -181,7 +181,14 @@ patches without an unbounded subprocess read. An output above the limit still
 fails closed to full Deep. Failure diagnostics identify the Git command (and
 file path for file reads), error code/errno, exit status and signal when present;
 they omit subprocess stdout/stderr so large files or sensitive output are not
-printed. Data parsing and all existing validation remain required before Normal
+printed. Public JSON output and the GitHub summary accept only diagnostics
+constructed by the classifier from safe error kinds/stages and allowlisted Git
+process metadata. JSON parser messages and arbitrary schema/packet/coverage
+validator messages are never copied into these outputs: they may quote private
+input. Real CLI regressions put recognizable secret markers in malformed JSON,
+JSONL, canonical rows, packets and coverage registration and check both output
+surfaces for absence of the markers while retaining path and error kind.
+Data parsing and all existing validation remain required before Normal
 is selected. `tests/ci-registry.test.mjs` exercises real Git reads of large valid
 files, malformed/invalid bytes, the upper bound and mixed Deep dependencies.
 
