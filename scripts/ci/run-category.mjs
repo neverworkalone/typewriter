@@ -32,7 +32,7 @@ import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 import { validateM515 } from '../batch/validate-m5-15.mjs';
 import { validateFrozenM6QualityAuditSnapshot } from '../validate/m6-4-quality-audit.mjs';
-import { classifyDeepGateDiff } from './deep-gate.mjs';
+import { classifyDeepGateDiff, routePrDeepGate } from './deep-gate.mjs';
 import {
   assertBuildEventsMatchPhase,
   assertChildEvidenceAdvanced,
@@ -923,7 +923,7 @@ export async function runPrLevel({
   if (getCurrentHead() !== headSha) {
     throw new Error('ci:pr checkout HEAD does not match the requested exact PR HEAD.');
   }
-  const classification = classify(baseSha, headSha);
+  const classification = routePrDeepGate(classify(baseSha, headSha));
   if (classification.deepMode !== 'selective'
       || !Array.isArray(classification.selectedDeepChecks)
       || classification.selectedDeepChecks.length === 0) {
