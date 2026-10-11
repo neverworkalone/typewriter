@@ -13,7 +13,6 @@ import { buildDictionary } from '../build/dictionary.mjs';
 import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
-  getSenseRelations,
 } from '../build/query.mjs';
 import { materializeLexicalUnitCandidates, validateLexicalProduction } from './lexical-production.mjs';
 import {
@@ -450,14 +449,9 @@ export async function validateExactSearch({
         field: 'lemma',
         value: record.lemma,
       }], `${batchLabel}: ${record.lemma} exact precedence`);
-      // The admission itself carries no relations. Later relation-only enrichment may add some, so the current
-      // database must hold at least the admitted ones (none) rather than exactly none.
+      // The admission itself carries no relations; later relation-only enrichment may add some to the live database.
       const relationCount = record.senses.reduce((count, sense) => count + (sense.relations?.length ?? 0), 0);
       assert.equal(relationCount, 0, `${batchLabel}: ${record.lemma} relation-empty admission`);
-      assert.ok(record.senses.reduce(
-        (count, sense) => count + getSenseRelations(currentDatabase, sense.id).length,
-        0,
-      ) >= relationCount, `${batchLabel}: ${record.lemma} keeps its admitted relations`);
       resultByLemma.set(record.lemma, {
         record_id: record.id,
         baseline_result_ids: baselineResultIdsByLemma.get(record.lemma) ?? [],
