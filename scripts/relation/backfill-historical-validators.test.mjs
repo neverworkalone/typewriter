@@ -44,7 +44,9 @@ async function scratchRepository() {
 const firstRecord = async (root, issue) => JSON.parse((await readFile(path.join(root, IMPORTS[issue]), 'utf8')).split('\n').find(Boolean));
 
 // The validators check the committed reports against the current canonical, so each run rewrites them in the scratch copy.
-const validate = (root, issue) => run(process.execPath, [VALIDATORS[issue], '--write-report'], { cwd: root, maxBuffer: 1 << 26 });
+// The scratch canonical is another revision than a CI run's shared SQLite artifact, so the child builds its own database.
+const { TYPEWRITER_SHARED_DICTIONARY_PATH: sharedArtifact, ...ISOLATED_ENV } = process.env;
+const validate = (root, issue) => run(process.execPath, [VALIDATORS[issue], '--write-report'], { cwd: root, env: ISOLATED_ENV, maxBuffer: 1 << 26 });
 
 function approval(index, source, target) {
   const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
