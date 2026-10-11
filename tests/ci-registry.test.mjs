@@ -937,7 +937,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   ));
   assert.ok(normalSemanticAuthorityTest, 'Normal must retain semantic-authority regressions');
   const allDeep = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all).filter((check) => check.tier === 'deep');
-  assert.equal(allDeep.length, 8, 'scheduled/manual ci:all keeps all current-system Deep checks');
+  assert.equal(allDeep.length, 9, 'scheduled/manual ci:all keeps all current-system Deep checks');
   const affectedBenchmarkChecks = selectChecksForPolicy(allChecks, {
     tiers: ['deep'],
     changedPaths: ['scripts/benchmark/sqlite-runtime.mjs'],

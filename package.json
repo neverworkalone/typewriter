@@ -129,6 +129,7 @@
     "validate:release": "node scripts/validate-release.mjs",
     "reference:corpus:build": "node scripts/reference/build-corpus-index.mjs",
     "reference:corpus:candidates": "node scripts/reference/run-corpus-lemma-pilot.mjs",
+    "reference:corpus:morphology": "node scripts/python/run.mjs scripts/reference/corpus_morphology.py",
     "factory:stage1": "node scripts/factory/produce-candidates.mjs",
     "factory:stage2": "node scripts/factory/run-stage2-worker.mjs",
     "factory:stage3": "node scripts/factory/run-stage3-worker.mjs",
