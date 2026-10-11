@@ -370,7 +370,7 @@ check with one domain owner, one protected contract, one tier (`candidate`,
 it protects a current-revision, admission, or product invariant that must block
 the same PR. An `affected` check must list normalized repository-relative
 dependency paths. Missing path evidence, an empty/unclassifiable diff, or an
-unknown or renamed path must fail closed to the full applicable gate.
+unknown or renamed path must retain the Normal gate and a visible diagnostic; they do not justify Full Deep on a PR.
 Before relying on that fallback for a newly encountered source path, identify
 its protected contract and register the actual regression coverage. An existing
 always-on Normal test may be bound to the exact path in
@@ -379,9 +379,9 @@ that registry is append-only and independently checked against the PR base.
 If existing Deep contracts are affected, connect all affected Deep dependency
 paths; if a required check is missing, add a reusable old-fails/new-passes
 Normal or Deep regression, not an exemption or batch-specific fixture.
-Never remove/replace an earlier binding to lower the gate. Unresolved coverage
-still fails closed, and classifier/runner/check-registry implementation changes
-retain their conservative full-Deep gate until independently proven safe. A test
+Never remove/replace an earlier binding to lower the gate. Unresolved coverage must be corrected with actual regression ownership; it
+never selects unrelated Full Deep as a PR gate. Classifier/runner/registry changes
+still require Normal, plus any directly affected registered Deep checks. A test
 file has exactly one registry owner.
 
 The pull-request workflow routes only pure Stage 1 candidate artifacts to
@@ -402,7 +402,7 @@ individually. `ci:historical` still requires exactly one registered `--scope`
 and runs only checks tagged for that scope; it has no all-history CLI default. The existing `Validate and test Typewriter` PR check
 always runs the applicable Normal gate and uses `ci:pr` to run only affected
 Deep checks at the exact PR HEAD. `ci:all` retains full current-system Deep
-coverage for scheduled/manual runs and fail-closed classification. The path
+coverage for weekly scheduled/manual audits, never automatic PR classification. The path
 classifier is not a separate PR check.
 Deep data inputs belong in each check's `deepInputs` registry metadata;
 `dependency_paths` separately name changes that invalidate that check's
@@ -416,8 +416,9 @@ historic archive identities and immutability; candidate+trash changes are not
 candidate-only. New or malformed archive paths remain fail-closed. Docs-only
 changes retain the exact-head Normal skip, and pure root candidate artifacts
 retain `ci:candidates`. CI runner/registry/workflow/classifier edits, unresolved unknown
-paths, missing/empty diff evidence and malformed data fail closed to full
-Deep. Verified append-only `deep-gate-coverage.json` additions are not
+paths, missing/empty diff evidence and malformed data take Normal on PRs;
+any independently matched Deep dependency adds only its affected checks.
+Normal validators still reject invalid data. Verified append-only `deep-gate-coverage.json` additions are not
 classified as runner or registry implementation changes. A skipped Deep check must be listed with its reason; it never counts as
 completed Deep evidence.
 
