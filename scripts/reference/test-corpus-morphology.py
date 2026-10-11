@@ -25,7 +25,7 @@ class Analyzer:
             position = start + len(word)
             form, tag, length = {"밝아": ("밝", "VA", 1), "밝게": ("밝", "VV", 1),
                                  "뛰어": ("뛰", "VV", 1), "가": ("가", "NNG", 1),
-                                 "는": ("는", "JX", 1)}.get(word, (word.strip(".,"), "NNG", len(word.strip(".,"))))
+                                 "는": ("는", "JX", 1), "오류": ("오류", "NNG", 0)}.get(word, (word.strip(".,"), "NNG", len(word.strip(".,"))))
             tokens.append(SimpleNamespace(form=form, tag=tag, start=start + int(word.startswith(".")),
                                           len=length, oov=form == "흐름"))
         return tokens
@@ -44,7 +44,7 @@ def fixture(path):
     """)
     db.executemany("INSERT INTO source_files VALUES (?,?,?)", [("a", "a" * 64, '{}'), ("b", "b" * 64, '{}')])
     lengths = [1, 3, 21, 23, 41]
-    texts = ["나무 나무 흐름 는 가", "밝아 .나무,", "밝게 뛰어", "흐름 밝아 나무"]
+    texts = ["나무 나무 흐름 는 가 오류", "밝아 .나무,", "밝게 뛰어", "흐름 밝아 나무"]
     for doc, length in enumerate(lengths, 1):
         db.execute("INSERT INTO documents VALUES (?,?,?,?)", (doc, "a" if doc <= 3 else "b", f"d{doc}", doc))
         for ordinal in range(length):
@@ -107,7 +107,15 @@ class MorphologyTests(unittest.TestCase):
         self.temp.cleanup()
 
     def run_store(self, **kwargs):
-        return m.run(**(self.options | kwargs))
+        self.last_summary = m.run_next(**(self.options | kwargs))
+        return self.inspect()
+
+    def finish(self):
+        for _ in range(20):
+            result = self.run_store()
+            if result["current_slice"] is None:
+                return result
+        self.fail("20 separate invocations did not finish the 20-slice corpus")
 
     def inspect(self):
         return m.inspect(index_path=self.index, directory=self.store, runtime=self.options["runtime"])
@@ -140,15 +148,24 @@ class MorphologyTests(unittest.TestCase):
             self.assertEqual([p for p, s in routes if s == 0], [p for p, s in expected if s == 0])
             plan = store.execute("EXPLAIN QUERY PLAN SELECT paragraph FROM route WHERE slice=1 AND paragraph>0 ORDER BY paragraph LIMIT 2").fetchall()
             self.assertTrue(any("route_slice" in row[-1] for row in plan))
-        result = self.run_store(max_slices=20)
+        for slice_id in range(1, 20):
+            result = self.run_store()
+            self.assertEqual(self.last_summary["completed_slice"], slice_id)
+            self.assertEqual(result["completion_bitmap"], "1" * (slice_id + 1) + "0" * (19 - slice_id))
+            if slice_id < 19:
+                self.assertEqual(result["slices"][slice_id + 1]["processed_paragraphs"], 0)
         self.assertEqual(result["coverage_percent"], 100)
         self.assertEqual(result["completion_bitmap"], "1" * 20)
         self.assert_union(range(20))
         before = m.file_digest(self.store / "analysis.sqlite")
-        self.run_store(max_slices=20)
+        self.run_store()
+        self.assertEqual(self.last_summary["result"], "no-op")
+        self.assertIsNone(self.last_summary["completed_slice"])
         self.assertEqual(m.file_digest(self.store / "analysis.sqlite"), before)
         self.assertEqual(self.inspect()["current_slice"], None)
         self.assertEqual(sum(s["new_unique_lemmas"] for s in result["slices"]), result["cumulative_unique_lemmas"])
+        self.assertGreater(sum(s["rejected_lemma_shapes"] for s in result["slices"]), 0)
+        self.assertGreater(sum(s["rejected_spans"] for s in result["slices"]), 0)
         self.assertEqual(sum(s["percent_of_index"] for s in result["slices"]), 100)
         self.assertTrue(all(s["elapsed_seconds"] >= 0 for s in result["slices"]))
 
@@ -169,7 +186,7 @@ class MorphologyTests(unittest.TestCase):
         self.assertEqual(result["legacy"]["mode"], "identified-slice-zero-reanalysis")
         self.assertEqual(m.file_digest(legacy), before)
         self.assert_union([0])
-        self.run_store(max_slices=20)
+        self.finish()
         self.assert_union(range(20))
 
     def test_later_slice_updates_ambiguity_and_deduplicates_shared_documents(self):
@@ -189,7 +206,7 @@ class MorphologyTests(unittest.TestCase):
             db.execute("DELETE FROM paragraphs WHERE ordinal>0")
             db.execute("UPDATE index_metadata SET value='5' WHERE key='paragraph_count'")
             db.commit()
-        result = self.run_store(max_slices=20)
+        result = self.finish()
         self.assertEqual(result["completion_bitmap"], "1" * 20)
         self.assertEqual(result["verified_paragraphs"], 5)
         self.assertTrue(all(s["expected_paragraphs"] == 0 for s in result["slices"][1:]))
@@ -223,7 +240,7 @@ class MorphologyTests(unittest.TestCase):
                     status = self.inspect()
                     self.assertEqual(status["completion_bitmap"], ("1" if boundary == "after-publication" else "0") + "0" * 19)
                     self.assertIsNotNone(status["error"])
-                self.run_store(max_slices=20)
+                self.finish()
                 self.assert_union(range(20))
                 self.assertIsNone(self.inspect()["error"])
 
@@ -239,14 +256,14 @@ from importlib.machinery import SourceFileLoader
 t = SourceFileLoader('fixture_tests', 'scripts/reference/test-corpus-morphology.py').load_module()
 def hook(event):
     if event == sys.argv[3]: os._exit(77)
-m.run(index_path=Path(sys.argv[1]), directory=Path(sys.argv[2]), analyzer=t.Analyzer(),
+m.run_next(index_path=Path(sys.argv[1]), directory=Path(sys.argv[2]), analyzer=t.Analyzer(),
       runtime={'synthetic':'deterministic-v1'},checkpoint=2,hook=hook)
 """
             result = subprocess.run([sys.executable, "-c", script, str(self.index), str(self.store), boundary],
                                     cwd=Path(__file__).parents[2], capture_output=True, text=True)
             self.assertEqual(result.returncode, 77, result.stderr)
             self.assert_union([0])
-        self.run_store(max_slices=20)
+        self.finish()
         self.assert_union(range(20))
 
     def test_partial_next_slice_never_changes_cumulative_views(self):
@@ -258,7 +275,11 @@ m.run(index_path=Path(sys.argv[1]), directory=Path(sys.argv[2]), analyzer=t.Anal
             self.run_store(hook=fail)
         self.assert_union([0])
         self.assertGreater(self.inspect()["slices"][1]["processed_paragraphs"], 0)
-        self.run_store(max_slices=20)
+        result = self.run_store()
+        self.assertEqual(self.last_summary["completed_slice"], 1)
+        self.assertEqual(result["completion_bitmap"], "11" + "0" * 18)
+        self.assertEqual(result["slices"][2]["processed_paragraphs"], 0)
+        self.finish()
         self.assert_union(range(20))
 
     def test_corrupted_checkpoint_manifest_route_and_bitmap_fail_closed(self):
@@ -282,6 +303,67 @@ m.run(index_path=Path(sys.argv[1]), directory=Path(sys.argv[2]), analyzer=t.Anal
                 with self.assertRaises(RuntimeError):
                     self.run_store()
                 self.assertEqual(m.file_digest(self.store / "analysis.sqlite"), before)
+
+    def test_cli_emits_concise_comment_summary_and_rejects_multi_slice_option(self):
+        output = io.StringIO()
+        arguments = ["corpus_morphology.py", "run-next", "--index", str(self.index), "--store", str(self.store)]
+        with patch.object(sys, "argv", arguments), patch.object(sys, "stdout", output), \
+             patch.object(m, "runtime_identity", return_value=self.options["runtime"]), \
+             patch.dict(sys.modules, {"kiwipiepy": SimpleNamespace(Kiwi=lambda **_kwargs: Analyzer())}):
+            self.assertEqual(m.main(), 0)
+        summary = json.loads(output.getvalue())
+        status = self.inspect()
+        row = status["slices"][0]
+        self.assertEqual(summary["completed_slice"], 0)
+        self.assertEqual(summary["result"], "completed")
+        self.assertEqual(summary["validation"], "passed")
+        self.assertEqual(summary["coverage_percent"], status["coverage_percent"])
+        self.assertEqual(summary["cumulative_verified_paragraphs"], status["verified_paragraphs"])
+        self.assertEqual(summary["new_unique_lemmas"], row["new_unique_lemmas"])
+        self.assertEqual(summary["cumulative_unique_lemmas"], status["cumulative_unique_lemmas"])
+        self.assertEqual(summary["digest"], row["publication_sha256"])
+        self.assertEqual(summary["elapsed_seconds"], row["elapsed_seconds"])
+        self.assertEqual(summary["disk_bytes"], status["disk_bytes"])
+        self.assertEqual(summary["local_store"], str(self.store.resolve()))
+        self.assertNotIn("slices", summary)
+        before = m.file_digest(self.store / "analysis.sqlite")
+        with patch.object(sys, "argv", arguments + ["--max-slices", "20"]), \
+             patch.object(m, "runtime_identity", side_effect=AssertionError("must fail before loading models")):
+            with self.assertRaises(SystemExit) as failed:
+                m.main()
+        self.assertEqual(failed.exception.code, 2)
+        self.assertEqual(m.file_digest(self.store / "analysis.sqlite"), before)
+
+    def test_twenty_separate_cli_processes_and_twenty_first_noop(self):
+        script = """
+import sys
+sys.path.insert(0,'scripts/reference')
+import corpus_morphology as m
+from types import SimpleNamespace
+from importlib.machinery import SourceFileLoader
+t=SourceFileLoader('fixture_tests','scripts/reference/test-corpus-morphology.py').load_module()
+m.runtime_identity=lambda: {'synthetic':'deterministic-v1'}
+sys.modules['kiwipiepy']=SimpleNamespace(Kiwi=lambda **kwargs:t.Analyzer())
+sys.argv=['corpus_morphology.py','run-next','--index',sys.argv[1],'--store',sys.argv[2],'--checkpoint-paragraphs','2']
+raise SystemExit(m.main())
+"""
+        for slice_id in range(20):
+            result = subprocess.run([sys.executable, "-c", script, str(self.index), str(self.store)],
+                                    cwd=Path(__file__).parents[2], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            summary = json.loads(result.stdout)
+            self.assertEqual(summary["completed_slice"], slice_id)
+            self.assertEqual(summary["completion_bitmap"], "1" * (slice_id + 1) + "0" * (19 - slice_id))
+            state = self.inspect()
+            if slice_id < 19:
+                self.assertEqual(state["slices"][slice_id + 1]["processed_paragraphs"], 0)
+        self.assert_union(range(20))
+        before = m.file_digest(self.store / "analysis.sqlite")
+        result = subprocess.run([sys.executable, "-c", script, str(self.index), str(self.store)],
+                                cwd=Path(__file__).parents[2], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["result"], "no-op")
+        self.assertEqual(m.file_digest(self.store / "analysis.sqlite"), before)
 
     def test_modified_index_runtime_permission_or_algorithm_cannot_advance(self):
         self.run_store()
@@ -324,7 +406,7 @@ m.run(index_path=Path(sys.argv[1]), directory=Path(sys.argv[2]), analyzer=t.Anal
         with patch.object(m.shutil, "disk_usage", return_value=SimpleNamespace(free=0)):
             with self.assertRaisesRegex(RuntimeError, "free space"):
                 self.run_store()
-        self.run_store(max_slices=20)
+        self.finish()
         self.assert_union(range(20))
 
     def test_single_writer_and_cache_path_boundaries(self):

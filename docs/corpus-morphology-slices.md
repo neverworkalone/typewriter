@@ -16,22 +16,19 @@ before processing), and the runner uses POSIX `flock` on macOS/Linux.
 ```bash
 node scripts/python/run.mjs --print
 # #549: identify the historical aggregate; explicitly reanalyse original slice 0 once.
-pnpm reference:corpus:morphology run \
+pnpm reference:corpus:morphology run-next \
   --legacy-analysis ~/.cache/typewriter/runs/issue-201-pilot/candidate-analysis.sqlite \
   --reanalyse-slice-zero
 
 # Read-only verification and JSON status; does not tokenize any paragraphs.
 pnpm reference:corpus:morphology status
 
-# #549: resume the next unfinished slice only (the safe default).
-pnpm reference:corpus:morphology run
-
-# #549 ONLY: explicitly advance sequentially through all remaining slices.
-pnpm reference:corpus:morphology run --max-slices 20
+# #549: run the next slice, or resume the same incomplete slice, then EXIT.
+pnpm reference:corpus:morphology run-next
 ```
 
 If the historical DB is elsewhere in the shared runs cache, pass its actual
-path. If it is unavailable, a fresh `run` records that historical aggregates were
+path. If it is unavailable, a fresh `run-next` records that historical aggregates were
 not imported and reanalyses slice 0. Preserve the historical file. Once migration
 is recorded, omit the migration arguments when resuming; repeating them requires
 the exact same legacy digest and explicit acknowledgement.
@@ -41,9 +38,29 @@ the exact same legacy digest and explicit acknowledgement.
 the existing machine-local cache contract (synthetic tests use isolated temporary
 roots). Corpus-derived data, including SQLite sort files, stays exclusively in
 that cache. `--checkpoint-paragraphs 128` is the default and accepts 1–4096.
-`--max-slices` defaults to 1 and accepts 1–20. Interrupt with Ctrl-C and rerun the
-same command: only the current uncommitted chunk is repeated. An already completed
-20-slice run makes no new contributions or DB changes on rerun.
+Every `run-next` invocation processes at most one slice and exits; there is no
+multi-slice option. Interrupt with Ctrl-C and explicitly rerun `run-next`: the same
+incomplete slice resumes, only its current uncommitted chunk is repeated, and the
+runner exits after publishing that slice without starting another. After all 20
+slices are complete, `run-next` reports `no-op` and makes no new DB contributions.
+
+### Required #549 completion record
+
+Each successful `run-next` prints one concise JSON completion summary on stdout.
+Checkpoint progress goes to stderr. The summary includes `completed_slice`,
+actual slice paragraph count/percentage, cumulative verified paragraphs/coverage,
+new and cumulative unique lemmas, `validation: "passed"`, publication `digest`,
+analysis identity digest, committed analysis `elapsed_seconds`, local store path,
+disk bytes/free space and the completion bitmap. It reports `result: "no-op"`
+with a null completed slice/digest when no work remains.
+
+**The #549 operator must post one result comment for every verified completed
+slice before explicitly invoking the next slice.** Copy the completion JSON into
+that comment; no per-slice Git branch, commit or PR is needed. The runner has no
+GitHub integration or credentials and does not deliver comments itself. If stdout
+is lost or interruption happens just after publication, use `status` to recover
+the completed slice's persisted counts, lemma counts, publication digest and time
+before posting its comment. Do not report a partial slice as completed.
 
 ## Persisted contract
 
@@ -55,7 +72,7 @@ Default directory: `~/.cache/typewriter/runs/written-corpus-morphology-v1/`.
 | `sources`, `documents` | Original metadata with named fields and stable source/document identities, independently readable without product data. |
 | `route` | One paragraph ID → one document and residue `ordinal % 20`; covering `(slice, paragraph)` index. No paragraph text. |
 | `slices` | Actual expected counts, completion bitmap, new and cumulative distinct lemma counts, publication checksum. |
-| `chunks` | Transactional checkpoint ranges/counts, all-token/eligible/accepted/rejected counts, elapsed analysis time and checksums. |
+| `chunks` | Transactional checkpoint ranges/counts, fact row counts, all-token/eligible/accepted/rejected counts (lemma shape and span separately), elapsed analysis time and checksums. |
 | `facts` | Slice/chunk/document contributions for lemma/POS (`kind=0`), morpheme surface (`1`) and punctuation-trimmed eojeol (`2`), with token/OOV/paragraph-hit counts. No paragraph text or token-position archive. |
 | `initializing.sqlite` | Unpublished initial routing DB; safely rebuilt after interrupted initialization. |
 | `writer.lock` | OS-managed single-writer lock; a leftover file is harmless after process death. |
@@ -154,6 +171,8 @@ The stdlib-only synthetic suite covers irregular 20-way partitioning, exact
 single-pass union statistics (including surface/POS ambiguities), historical
 reanalysis, checkpoint and publication failures, actual process death, disk-full
 errors, bad identities/schema/checkpoints, single-writer exclusion, status and
-20-slice completion followed by idempotent no-op. It neither opens the real corpus
+20 successive separate invocations followed by idempotent no-op. It proves that
+each invocation touches at most one slice and an interrupted invocation resumes
+its current slice without starting another. It neither opens the real corpus
 nor requires model execution. Real full-corpus timings and disk totals belong to
 #549 and are not inferred from these fixtures.

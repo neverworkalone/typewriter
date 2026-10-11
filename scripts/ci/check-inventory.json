@@ -3323,8 +3323,8 @@
       "decision": "new-deep",
       "rationale": "Independent local analysis contract; synthetic exact aggregation and restart tests do not protect canonical admission.",
       "consumer": "ci:pr affected Deep; ci:deep; ci:all",
-      "estimated_duration_ms": 2000,
-      "duration_estimate_source": "Observed local synthetic integration suite about 1.7 seconds",
+      "estimated_duration_ms": 8000,
+      "duration_estimate_source": "Observed local synthetic suite including 20 separate CLI processes: about 7.1 seconds",
       "dependency_paths": [
         "scripts/reference/corpus_morphology.py",
         "scripts/reference/test-corpus-morphology.py",

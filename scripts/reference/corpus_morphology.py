@@ -17,6 +17,7 @@ import shutil
 import sqlite3
 import sys
 import time
+import unicodedata
 
 from corpus_lemma_pilot import (
     DEFAULT_PERMISSION_RECORD_PATH, ELIGIBLE_TAGS, KOREAN_LEMMA, candidate_from_token,
@@ -127,7 +128,7 @@ CREATE TABLE chunks (slice INTEGER NOT NULL REFERENCES slices(slice), chunk INTE
                      first_row INTEGER NOT NULL, last_row INTEGER NOT NULL,
                      paragraphs INTEGER NOT NULL CHECK(paragraphs>0), tokens INTEGER NOT NULL,
                      eligible INTEGER NOT NULL, accepted INTEGER NOT NULL, rejected INTEGER NOT NULL,
-                     elapsed REAL NOT NULL CHECK(elapsed>=0), sha256 TEXT NOT NULL,
+                     elapsed REAL NOT NULL CHECK(elapsed>=0), details TEXT NOT NULL, sha256 TEXT NOT NULL,
                      PRIMARY KEY(slice,chunk)) STRICT;
 CREATE TABLE facts (slice INTEGER NOT NULL, chunk INTEGER NOT NULL,
                     kind INTEGER NOT NULL CHECK(kind BETWEEN 0 AND 2), lemma TEXT NOT NULL,
@@ -312,13 +313,20 @@ def verify(db, identity):
         previous = 0
         count = 0
         for n, row in enumerate(db.execute("SELECT * FROM chunks WHERE slice=? ORDER BY chunk", (slice_id,))):
-            _, chunk, first, last, paragraphs, tokens, eligible, accepted, rejected, elapsed, checksum = row
+            _, chunk, first, last, paragraphs, tokens, eligible, accepted, rejected, elapsed, details_json, checksum = row
             span = db.execute("SELECT COUNT(*),MIN(paragraph),MAX(paragraph) FROM route WHERE slice=? AND paragraph>? AND paragraph<=?",
                               (slice_id, previous, last)).fetchone()
             if chunk != n or span != (paragraphs, first, last) or last <= previous:
                 raise RuntimeError("Mismatched checkpoint range; would skip or duplicate paragraphs")
             if chunk_digest(db, row) != checksum:
                 raise RuntimeError("Checkpoint checksum mismatch")
+            details = json.loads(details_json)
+            fact_rows = db.execute("SELECT COUNT(*) FROM facts WHERE slice=? AND chunk=?", (slice_id, chunk)).fetchone()[0]
+            if (set(details) != {"facts_rows", "rejected_lemma_shapes", "rejected_spans"}
+                    or any(type(v) is not int or v < 0 for v in details.values())
+                    or details["facts_rows"] != fact_rows
+                    or details["rejected_lemma_shapes"] + details["rejected_spans"] != rejected):
+                raise RuntimeError("Checkpoint row/rejection accounting mismatch")
             facts = db.execute("SELECT COALESCE(SUM(tokens),0) FROM facts WHERE slice=? AND chunk=? AND kind=0",
                                (slice_id, chunk)).fetchone()[0]
             if accepted != facts or eligible != accepted + rejected or not (tokens >= eligible >= accepted >= 0):
@@ -352,12 +360,18 @@ def verify(db, identity):
 def add_paragraph(db, slice_id, chunk, document, text, analyzer):
     counts = Counter()
     oovs = Counter()
-    tokens = eligible = accepted = 0
+    tokens = eligible = accepted = rejected_shape = rejected_span = 0
     for token in analyzer.tokenize(text):
         tokens += 1
         eligible += int(str(token.tag) in ELIGIBLE_TAGS)
         candidate = candidate_from_token(token, text)
         if candidate is None:
+            if str(token.tag) in ELIGIBLE_TAGS:
+                lemma = str(token.form) + "다" if str(token.tag) in {"VV", "VA"} else str(token.form)
+                if KOREAN_LEMMA.fullmatch(unicodedata.normalize("NFC", lemma)) is None:
+                    rejected_shape += 1
+                else:
+                    rejected_span += 1
             continue
         lemma, pos, _tag, eojeol, surface, oov = candidate
         accepted += 1
@@ -370,7 +384,7 @@ def add_paragraph(db, slice_id, chunk, document, text, analyzer):
           ON CONFLICT(slice,chunk,kind,lemma,pos,form,document) DO UPDATE SET
           tokens=tokens+excluded.tokens,oov=oov+excluded.oov,hits=hits+1""",
                    (slice_id, chunk, *key, document, count, oovs[key], 1))
-    return tokens, eligible, accepted, eligible - accepted
+    return tokens, eligible, accepted, rejected_shape, rejected_span
 
 
 def process_slice(db, index_path, slice_id, analyzer, checkpoint, hook):
@@ -389,7 +403,7 @@ def process_slice(db, index_path, slice_id, analyzer, checkpoint, hook):
             if first is None:
                 break
             started = time.monotonic()
-            totals = [0, 0, 0, 0]
+            totals = [0, 0, 0, 0, 0]
             row_count = 0
             with db:
                 for paragraph, document, text in chain((first,), rows):
@@ -398,10 +412,12 @@ def process_slice(db, index_path, slice_id, analyzer, checkpoint, hook):
                     row_count += 1
                     last = paragraph
                     hook("mid-checkpoint")
-                row = (slice_id, chunk, first[0], last, row_count, *totals,
-                       time.monotonic() - started, "")
+                details = {"facts_rows": db.execute("SELECT COUNT(*) FROM facts WHERE slice=? AND chunk=?", (slice_id, chunk)).fetchone()[0],
+                           "rejected_lemma_shapes": totals[3], "rejected_spans": totals[4]}
+                row = (slice_id, chunk, first[0], last, row_count, *totals[:3], totals[3] + totals[4],
+                       time.monotonic() - started, encoded(details).decode(), "")
                 checksum = chunk_digest(db, row)
-                db.execute("INSERT INTO chunks VALUES (?,?,?,?,?,?,?,?,?,?,?)", (*row[:-1], checksum))
+                db.execute("INSERT INTO chunks VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (*row[:-1], checksum))
                 hook("before-checkpoint-commit")
             chunk += 1
             hook("after-checkpoint-commit")
@@ -434,10 +450,14 @@ def status(db, directory):
     for slice_id, expected, complete, new, cumulative, checksum in db.execute("SELECT * FROM slices ORDER BY slice"):
         processed, elapsed, tokens, accepted = db.execute("""SELECT COALESCE(SUM(paragraphs),0),COALESCE(SUM(elapsed),0),
                 COALESCE(SUM(tokens),0),COALESCE(SUM(accepted),0) FROM chunks WHERE slice=?""", (slice_id,)).fetchone()
+        details = Counter()
+        for (value,) in db.execute("SELECT details FROM chunks WHERE slice=?", (slice_id,)):
+            details.update(json.loads(value))
         slices.append({"slice": slice_id, "expected_paragraphs": expected, "percent_of_index": 100 * expected / total if total else 0,
                        "processed_paragraphs": processed, "complete": bool(complete), "new_unique_lemmas": new,
                        "cumulative_unique_lemmas": cumulative, "elapsed_seconds": elapsed,
-                       "token_count": tokens, "accepted_morphemes": accepted, "publication_sha256": checksum})
+                       "token_count": tokens, "accepted_morphemes": accepted, "publication_sha256": checksum,
+                       **{key: details[key] for key in ("facts_rows", "rejected_lemma_shapes", "rejected_spans")}})
     completed = sum(s["expected_paragraphs"] for s in slices if s["complete"])
     error_path = directory / "error.json"
     return {"contract": CONTRACT, "identity": manifest["identity"], "legacy": manifest["legacy"],
@@ -466,10 +486,10 @@ def save_error(directory, error):
         pass
 
 
-def run(*, index_path, directory, analyzer, runtime, permission_path=DEFAULT_PERMISSION_RECORD_PATH,
-        max_slices=1, checkpoint=128, legacy_path=None, reanalyse=False, hook=lambda _event: None):
-    if not 1 <= max_slices <= SLICE_COUNT or not 1 <= checkpoint <= 4096:
-        raise ValueError("max_slices must be 1..20 and checkpoint must be 1..4096")
+def run_next(*, index_path, directory, analyzer, runtime, permission_path=DEFAULT_PERMISSION_RECORD_PATH,
+             checkpoint=128, legacy_path=None, reanalyse=False, hook=lambda _event: None):
+    if not 1 <= checkpoint <= 4096:
+        raise ValueError("checkpoint must be 1..4096")
     index_path = assert_cache_path(index_path, "indexes", "Corpus index")
     directory = assert_cache_path(directory, "runs", "Morphology store")
     if legacy_path:
@@ -493,16 +513,29 @@ def run(*, index_path, directory, analyzer, runtime, permission_path=DEFAULT_PER
                         recorded = json.loads(db.execute("SELECT payload FROM manifest").fetchone()[0])["legacy"]
                         if recorded != legacy_audit(legacy_path, reanalyse):
                             raise RuntimeError("Historical migration identity mismatch")
-                    for _ in range(max_slices):
-                        next_slice = db.execute("SELECT slice FROM slices WHERE complete=0 ORDER BY slice LIMIT 1").fetchone()
-                        if next_slice is None:
-                            break
+                    next_slice = db.execute("SELECT slice FROM slices WHERE complete=0 ORDER BY slice LIMIT 1").fetchone()
+                    if next_slice is not None:
                         if shutil.disk_usage(directory).free < 64 * 1024 * 1024:
                             raise RuntimeError("Insufficient free space (need at least 64 MiB headroom); free cache disk and resume")
                         process_slice(db, index_path, next_slice[0], analyzer, checkpoint, hook)
                     (directory / "error.json").unlink(missing_ok=True)
                     result = status(db, directory)
-            return result
+                    completed_slice = next_slice[0] if next_slice is not None else None
+                    row = result["slices"][completed_slice] if completed_slice is not None else None
+                    return {"contract": CONTRACT, "result": "completed" if row else "no-op",
+                            "completed_slice": completed_slice,
+                            "slice_paragraphs": row["expected_paragraphs"] if row else 0,
+                            "slice_percent_of_index": row["percent_of_index"] if row else 0,
+                            "cumulative_verified_paragraphs": result["verified_paragraphs"],
+                            "total_paragraphs": result["total_paragraphs"],
+                            "coverage_percent": result["coverage_percent"],
+                            "new_unique_lemmas": row["new_unique_lemmas"] if row else 0,
+                            "cumulative_unique_lemmas": result["cumulative_unique_lemmas"],
+                            "validation": "passed", "digest": row["publication_sha256"] if row else None,
+                            "analysis_identity_sha256": digest(identity),
+                            "elapsed_seconds": row["elapsed_seconds"] if row else 0,
+                            "disk_bytes": result["disk_bytes"], "disk_free_bytes": result["disk_free_bytes"],
+                            "completion_bitmap": result["completion_bitmap"], "local_store": str(directory)}
         except BaseException as error:
             save_error(directory, error)
             raise
@@ -523,10 +556,9 @@ def inspect(*, index_path, directory, runtime, permission_path=DEFAULT_PERMISSIO
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("run", "status"))
+    parser.add_argument("command", choices=("run-next", "status"))
     parser.add_argument("--index", type=Path, default=DEFAULT_INDEX)
     parser.add_argument("--store", type=Path, default=DEFAULT_STORE)
-    parser.add_argument("--max-slices", type=int, default=1, help="1 by default; 20 explicitly runs to completion")
     parser.add_argument("--checkpoint-paragraphs", type=int, default=128)
     parser.add_argument("--legacy-analysis", type=Path)
     parser.add_argument("--reanalyse-slice-zero", action="store_true")
@@ -538,7 +570,7 @@ def main():
             result = inspect(**options)
         else:
             from kiwipiepy import Kiwi
-            result = run(**options, analyzer=Kiwi(num_workers=1), max_slices=arguments.max_slices,
+            result = run_next(**options, analyzer=Kiwi(num_workers=1),
                          checkpoint=arguments.checkpoint_paragraphs, legacy_path=arguments.legacy_analysis,
                          reanalyse=arguments.reanalyse_slice_zero)
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
