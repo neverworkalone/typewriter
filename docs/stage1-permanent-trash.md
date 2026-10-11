@@ -3,8 +3,10 @@
 Issue #526 replaces repeated unresolved queues in candidate manifests. Trash is
 permanent source observation history, not a lexical rejection list or a source
 for automatic re-mining. Production excludes the **original extractor proposal**
-of a failed observation before analysis. An analyzer's speculative alternative
-lemma is never an exclusion. Resolved observations of a partly unresolved
+of a failed observation before analysis and reapplies that existing exclusion
+to final resolved lemmas on every refill page. A different proposal cannot
+reintroduce an archived failed proposal lemma through analyzer resolution.
+An analyzer's speculative alternative never adds a new exclusion. Resolved observations of a partly unresolved
 proposal remain eligible for the current batch.
 
 ## Identity and preservation
@@ -70,8 +72,9 @@ global uniqueness, with a complete one-time migration proof.
 
 The artifact cap and production target are different: 500 is the final valid
 distinct-lemma target; extraction pages are only bounded checkpoints. The
-selector excludes produced lemmas and failed original proposals before analysis,
-then continues through the pinned corpus order until the final target is met.
+selector excludes produced lemmas and failed original proposals before analysis.
+Final lemma selection uses the same exclusions, including digest-bound source
+exclusions, then continues through the pinned corpus order until the final target is met.
 Fewer than 500 may be finalized only with an explicit exhausted-source proof.
 Execution errors, interruption and time limits are not exhaustion and must not
 create trash or publish a partial batch. Checkpoints bind source, exclusions,

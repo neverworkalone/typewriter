@@ -385,7 +385,6 @@ export async function runStage1(argv, {
   const trash = await loadTrash(root);
   const failedProposals = failedProposalLemmas(trash);
   const proposalExclusions = new Set([...producedLemmaKeys, ...failedProposals, ...sourceExcludedLemmas]);
-  for (const lemma of sourceExcludedLemmas) if (!failedProposals.has(lemma)) producedLemmaKeys.add(lemma);
   let source = contextSource;
   const ownSource = !source && (options.contextProposals || options.contextReviewPack);
   if (ownSource) {
@@ -447,7 +446,9 @@ export async function runStage1(argv, {
     producerRevision,
     taskId: options.taskId,
     maxCandidates: options.maxCandidates,
-    producedLemmas: producedLemmaKeys,
+    // Reapply every active exclusion to resolved lemmas, including outputs of
+    // different proposals. Use the same set for initial selection and refill.
+    producedLemmas: proposalExclusions,
     searchFormSupport: await loadSearchFormSupport(canonicalEntries),
   };
   let produced;
