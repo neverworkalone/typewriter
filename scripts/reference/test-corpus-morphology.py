@@ -243,6 +243,98 @@ class MorphologyTests(unittest.TestCase):
         self.assertEqual(sorted(actual_surfaces), expected_surfaces)
         self.assertEqual(sorted(actual_eojeols), expected_eojeols)
 
+    def test_selector_path_audits_once_reuses_proof_and_fails_closed_on_source_drift(self):
+        runtime = {
+            "python": "Python 3.12.0 synthetic-selector-test",
+            "packages": {
+                "kiwipiepy": {"version": "0.24.0"},
+                "kiwipiepy_model": {"version": "0.24.0"},
+            },
+        }
+        self.options["runtime"] = runtime
+        completed = self.finish()
+        dictionary_path = self.root / "runs/selection/dictionary.sqlite"
+        dictionary_path.parent.mkdir(parents=True)
+        with closing(sqlite3.connect(dictionary_path)) as dictionary:
+            dictionary.executescript("""
+                CREATE TABLE records(id TEXT PRIMARY KEY, lemma TEXT NOT NULL);
+                CREATE TABLE search_forms(form TEXT NOT NULL, record_id TEXT NOT NULL);
+                CREATE TABLE senses(id TEXT PRIMARY KEY, record_id TEXT NOT NULL, pos TEXT NOT NULL);
+                CREATE TABLE generated_surface_forms(
+                    form TEXT NOT NULL, record_id TEXT NOT NULL, sense_id TEXT NOT NULL, rule_id TEXT NOT NULL
+                );
+                CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            """)
+            dictionary.executemany("INSERT INTO metadata(key,value) VALUES (?,?)", [
+                ("dictionary_version", "synthetic"), ("canonical_revision", "synthetic"),
+                ("record_count", "0"), ("search_form_count", "0"),
+                ("generated_surface_form_count", "0"),
+            ])
+            dictionary.commit()
+
+        def select(name, expected_snapshot=None):
+            return selector.select_from_morphology_store(
+                store_path=self.store,
+                dictionary_path=dictionary_path,
+                index_path=self.index,
+                candidate_output_path=self.root / "runs/selection" / f"{name}.json",
+                exclusion_manifest_path=None,
+                candidate_limit=1,
+                include_canonical_lemmas=True,
+                expected_source_snapshot=expected_snapshot,
+            )
+
+        build_projection = selector.build_projection
+        def build_synthetic_projection(**kwargs):
+            # The fixture intentionally has only 89 indexed paragraphs, so the
+            # production absolute lemma-count assertion does not apply.
+            kwargs["expected_lemmas"] = None
+            return build_projection(**kwargs)
+
+        with patch("corpus_morphology.runtime_identity", return_value=runtime), \
+             patch.object(selector, "EXPECTED_PARAGRAPHS", completed["verified_paragraphs"]), \
+             patch.object(selector, "EXPECTED_LEMMAS", completed["cumulative_unique_lemmas"]), \
+             patch.object(selector, "build_projection", side_effect=build_synthetic_projection), \
+             patch.object(selector.morphology_readonly, "inspect_readonly", wraps=readonly.inspect_readonly) as audit:
+            first = select("first")
+            snapshot = first["analysis_cache"]["source_snapshot_sha256"]
+            self.assertEqual(first["analysis_cache"]["validation"], "full-audit-passed-read-only")
+            self.assertEqual(audit.call_count, 1)
+
+            refill = select("refill", snapshot)
+            self.assertEqual(refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
+            self.assertEqual(audit.call_count, 1)
+
+            with self.assertRaisesRegex(RuntimeError, "source snapshot changed"):
+                select("stale-snapshot", "0" * 64)
+            self.assertEqual(audit.call_count, 1)
+
+            seal_path = self.store / "seal.json"
+            original_seal = seal_path.read_bytes()
+            tampered_seal = json.loads(original_seal)
+            tampered_seal["stamp"][3] += 1
+            seal_path.write_text(json.dumps(tampered_seal), encoding="utf-8")
+            try:
+                with self.assertRaisesRegex(RuntimeError, "Store mutation seal mismatch"):
+                    select("changed-seal", snapshot)
+            finally:
+                seal_path.write_bytes(original_seal)
+            self.assertEqual(audit.call_count, 1)
+
+            changed_permission = self.root / "permission-record.txt"
+            permission_bytes = Path(m.DEFAULT_PERMISSION_RECORD_PATH).read_bytes()
+            changed_permission.write_bytes(permission_bytes + b"\n")
+            with patch.object(m, "DEFAULT_PERMISSION_RECORD_PATH", changed_permission):
+                with self.assertRaisesRegex(RuntimeError, "Manifest/tool/index/source identity mismatch"):
+                    select("changed-permission", snapshot)
+            self.assertEqual(audit.call_count, 1)
+
+            index_stat = self.index.stat()
+            os.utime(self.index, ns=(index_stat.st_atime_ns, index_stat.st_mtime_ns + 1_000_000))
+            with self.assertRaisesRegex(RuntimeError, "Index identity mismatch"):
+                select("changed-index", snapshot)
+            self.assertEqual(audit.call_count, 1)
+
     def test_separate_calls_do_not_rescan_input_completed_routes_or_facts(self):
         original_chunk = m.chunk_digest
         original_connect = m.connect

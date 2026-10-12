@@ -121,7 +121,8 @@ def assert_complete_full_corpus(result: dict) -> None:
 
 
 def verify_store(*, store_path: Path, index_path: Path, scratch_path: Path, proof: dict | None = None,
-                 expected_snapshot: str | None = None, full_audit: bool = False) -> tuple[dict, dict]:
+                 expected_snapshot: str | None = None, full_audit: bool = False,
+                 audit_if_missing: bool = True) -> tuple[dict, dict]:
     """Verify current store state and reuse only a still-bound complete audit proof."""
     store_path = assert_cache_path(store_path, "runs", "Morphology store")
     index_path = assert_cache_path(index_path, "indexes", "Corpus index")
@@ -163,6 +164,10 @@ def verify_store(*, store_path: Path, index_path: Path, scratch_path: Path, proo
             and proof.get("source_snapshot_sha256") == snapshot_sha256
             and {key: value for key, value in proof.items() if key not in {"validation", "source_snapshot_sha256"}} == payload
         )
+        if not proof_is_current and not full_audit and not audit_if_missing:
+            current_snapshot = {**payload, "source_snapshot_sha256": snapshot_sha256,
+                                "validation": "current-store-verified-only"}
+            return current, current_snapshot
         if not proof_is_current:
             audited = morphology_readonly.inspect_readonly(
                 index_path=index_path,
@@ -450,13 +455,14 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
     scratch = root / "verification"
     scratch.mkdir(parents=True, exist_ok=True)
 
-    fast_result, fast_proof = verify_store(
+    _, current_snapshot = verify_store(
         store_path=store_path,
         index_path=index_path,
         scratch_path=scratch,
         expected_snapshot=expected_source_snapshot,
+        audit_if_missing=False,
     )
-    snapshot_sha = fast_proof["source_snapshot_sha256"]
+    snapshot_sha = current_snapshot["source_snapshot_sha256"]
     directory = assert_cache_path(root / snapshot_sha, "runs", "Morphology selection projection")
     existing_manifest = read_projection_manifest(directory, snapshot_sha) if directory.exists() else None
     proof = existing_manifest.get("audit_evidence") if existing_manifest else None
@@ -467,7 +473,7 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
             store_path=store_path,
             index_path=index_path,
             scratch_path=scratch,
-            expected_snapshot=expected_source_snapshot or snapshot_sha,
+            expected_snapshot=snapshot_sha,
             full_audit=True,
         )
     else:
@@ -476,7 +482,7 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
             index_path=index_path,
             scratch_path=scratch,
             proof=proof,
-            expected_snapshot=expected_source_snapshot,
+            expected_snapshot=snapshot_sha,
         )
     assert_complete_full_corpus(result)
 
