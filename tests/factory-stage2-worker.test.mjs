@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
+import { GIT_MAX_BUFFER } from '../scripts/factory/git-limits.mjs';
 import { createGitHubClient, repositoryFromRemote } from '../scripts/factory/github-client.mjs';
 import { CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, expectedAnalyzerDigest, sha256Hex } from '../scripts/factory/contract.mjs';
 import { isStage2TrackingIssue, trackingIssueBody, trackingIssueTitle } from '../scripts/factory/stage2-issue.mjs';
@@ -693,14 +694,18 @@ test('the production Git adapter and snapshot loader accept the committed relati
   await assert.rejects(loadFactorySnapshot({ git: alteredPacket, headSha: 'HEAD' }), /does not match its semantic authority event digest/u);
 });
 
-test('every git subprocess buffer that reads whole committed authority files has headroom beyond the largest production blob', () => {
-  // The semantic decision source grows with every relation backfill batch; a buffer that merely fits today fails the next batch.
-  const files = ['scripts/ci/deep-gate.mjs', 'scripts/factory/validate.mjs', 'scripts/factory/stage2-worker.mjs', 'scripts/factory/stage3-worker.mjs', 'scripts/factory/freshness.mjs'];
+test('every Git subprocess call that reads whole committed files passes the shared buffer limit, which exceeds the largest production blob', () => {
+  // The semantic decision source grows with every relation backfill batch; a limit that merely fits today fails the next batch.
   const largest = readFileSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url)).length;
+  assert.ok(GIT_MAX_BUFFER >= 4 * largest, 'shared Git buffer ' + GIT_MAX_BUFFER + ' needs at least 4x the ' + largest + '-byte semantic decision source');
+  const files = ['scripts/ci/deep-gate.mjs', 'scripts/factory/validate.mjs', 'scripts/factory/stage2-worker.mjs', 'scripts/factory/stage3-worker.mjs', 'scripts/factory/freshness.mjs'];
   for (const file of files) {
     const source = readFileSync(new URL('../' + file, import.meta.url), 'utf8');
-    const limits = [...source.matchAll(/(\d+) \* 1024 \* 1024/gu)].map((match) => Number(match[1]) * 1024 * 1024);
-    assert.ok(limits.length > 0, file + ' declares its git buffer limit');
-    for (const limit of limits) assert.ok(limit >= 4 * largest, file + ' buffer ' + limit + ' needs at least 4x the ' + largest + '-byte semantic decision source');
+    const calls = source.split("execFileSync('git'").slice(1);
+    assert.ok(calls.length > 0, file + ' runs Git through execFileSync');
+    for (const [index, call] of calls.entries()) {
+      assert.match(call.slice(0, 400), /maxBuffer: GIT_MAX_BUFFER/u, file + ' Git call #' + (index + 1) + ' must pass the shared maxBuffer');
+    }
+    assert.doesNotMatch(source, /maxBuffer: [^G]/u, file + ' must not hard-code a Git buffer');
   }
 });

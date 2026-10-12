@@ -174,7 +174,7 @@ selected Deep checks, skipped checks and the selected gate in the existing PR
 check summary, followed by a final step outcome record for the gates actually
 run and the job result; it does not publish another status check.
 
-Git reads in this classifier have a **64 MiB per-output buffer limit** rather
+Git reads in this classifier have a **512 MiB per-output buffer limit** (shared `GIT_MAX_BUFFER` in `scripts/factory/git-limits.mjs`) rather
 than Node's default 1 MiB. This leaves production headroom for complete
 inventories, semantic-authority/checkpoint files, relation packets and canonical
 patches without an unbounded subprocess read. An output above the limit keeps Normal as the PR fallback and reports

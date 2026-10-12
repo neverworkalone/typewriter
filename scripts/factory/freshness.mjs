@@ -5,6 +5,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { SHARED_FACTORY_CONTRACT_PATHS } from './contract.mjs';
+import { GIT_MAX_BUFFER } from './git-limits.mjs';
 
 // Concurrent Stage 2 result PRs each pass CI against the master they branched from. When one of
 // them changes a shared factory contract (validator, schema, producer) and merges first, a sibling
@@ -16,7 +17,7 @@ const REVIEWED_DATA = ['data/candidates/', 'data/reviews/'];
 const startsWithAny = (file, prefixes) => prefixes.some((prefix) => file.startsWith(prefix));
 
 const git = (args, root) => execFileSync('git', args, {
-  cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024,
+  cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: GIT_MAX_BUFFER,
 }).trim();
 
 const lines = (text) => text.split('\n').filter(Boolean);

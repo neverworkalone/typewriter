@@ -16,6 +16,7 @@ import { loadSearchFormSupport } from './search-form-support.mjs';
 import { validateReviewArtifacts } from './artifacts.mjs';
 import { parseJsonl, validateCandidateBatch, validateDecisionRows, validateReviewManifest } from './contract.mjs';
 import { COMPACT_CONTRACT } from './permanent-trash.mjs';
+import { GIT_MAX_BUFFER } from './git-limits.mjs';
 
 const MASTER = 'master';
 const CLAIM_PREFIX = 'refs/heads/stage3-claims/';
@@ -37,7 +38,7 @@ export class Stage3WorkerError extends Error {
 function gitRun(root, args, { allowFailure = false } = {}) {
   try {
     return execFileSync('git', args, {
-      cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024,
+      cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: GIT_MAX_BUFFER,
     }).trim();
   } catch (error) {
     if (allowFailure && [1, 128].includes(error.status)) return null;
@@ -57,7 +58,7 @@ export function createStage3GitRepository({ root = process.cwd() } = {}) {
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
     show(ref, file) {
-      return execFileSync('git', ['show', ref + ':' + file], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024 });
+      return execFileSync('git', ['show', ref + ':' + file], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: GIT_MAX_BUFFER });
     },
     createBranch(branchName, baseSha) {
       const status = gitRun(root, ['status', '--porcelain', '--untracked-files=all']);
