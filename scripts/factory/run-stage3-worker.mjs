@@ -4,7 +4,6 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
 import { createGitHubClient, githubToken, repositoryFromRemote } from './github-client.mjs';
-import { loadFactorySnapshot } from './stage2-worker.mjs';
 import {
   Stage3WorkerError,
   assertStage3ContractCurrent,
@@ -20,6 +19,8 @@ import {
   releaseStage3Claim,
   runStage3Session,
   waitForStage3PullRequest,
+  loadStage3AdmissionSnapshot,
+  loadStage3QueueSnapshot,
 } from './stage3-worker.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -102,7 +103,6 @@ function claimFromSnapshot(snapshot, {
     semanticDecisionsText: review.semanticDecisionsText,
     handoffText: review.handoffText,
     reviewFiles: review.files,
-    canonicalEntries: snapshot.canonicalEntries,
   };
 }
 
@@ -237,7 +237,8 @@ export function createInteractiveStage3Callbacks({ github, input = process.stdin
 export async function runStage3Cli(argv, {
   root = ROOT, env = process.env, log = console.log,
   makeGit = createStage3GitRepository, makeGithub = createGitHubClient,
-  loadSnapshot = loadFactorySnapshot, callbacks,
+  loadSnapshot, loadQueueSnapshot = loadStage3QueueSnapshot,
+  loadAdmissionSnapshot = loadStage3AdmissionSnapshot, callbacks,
   createDraft = createStage3Draft, processAttempt = processStage3Attempt,
 } = {}) {
   const options = parseArguments(argv);
@@ -245,10 +246,16 @@ export async function runStage3Cli(argv, {
   const git = makeGit({ root });
   const repositoryFullName = options.repositoryFullName || repositoryFromRemote(git.originRemote());
   const github = makeGithub({ repositoryFullName, token: githubToken({ env }) });
+  // Keep the existing injected snapshot hook for deterministic CLI tests; production
+  // uses manifest-only selection and hydrates just the exact attempt being resumed.
+  const queueLoader = loadSnapshot ?? loadQueueSnapshot;
+  const admissionLoader = loadSnapshot ?? loadAdmissionSnapshot;
   await git.fetchMaster();
   const headSha = await github.getBranchHead('master');
   if (git.resolveRef('origin/master') !== headSha) throw new Stage3WorkerError('local origin/master does not match GitHub master');
-  const snapshot = await loadSnapshot({ git, headSha });
+  const snapshot = options.resumeBatch !== undefined
+    ? await admissionLoader({ git, headSha, batchId: options.resumeBatch })
+    : null;
   if (options.supersedeRejectionPr !== undefined) {
     const retry = await supersedeStage3RejectionForRetry({
       github, git, snapshot, batchId: options.resumeBatch, attempt: options.resumeAttempt,
@@ -263,19 +270,27 @@ export async function runStage3Cli(argv, {
       : callbacks || createInteractiveStage3Callbacks({ github, input: process.stdin, output: process.stdout });
     try {
       return await resumeStage3Cli({
-        options, github, git, root, snapshot, loadSnapshot, interactive, log,
+        options, github, git, root, snapshot, loadSnapshot: queueLoader, interactive, log,
         createDraft, processAttempt,
       });
     } finally {
       interactive.close?.();
     }
   }
-  const [claimRefs, openPullRequests, activeLock] = await Promise.all([
-    github.listStage3ClaimRefs(), github.listPullRequests('open'), github.getStage3ActiveLock(),
-  ]);
-  const candidate = hasStage3Activity({ activeLock, claimRefs, openPullRequests })
-    ? null : eligibleStage3Batches(snapshot, claimRefs, openPullRequests)[0];
   if (options.dryRun) {
+    const queue = await queueLoader({ git, headSha });
+    const [claimRefs, openPullRequests, activeLock] = await Promise.all([
+      github.listStage3ClaimRefs(), github.listPullRequests('open'), github.getStage3ActiveLock(),
+    ]);
+    let candidate = null;
+    if (!hasStage3Activity({ activeLock, claimRefs, openPullRequests })) {
+      for (const queued of eligibleStage3Batches(queue, claimRefs, openPullRequests)) {
+        const admission = await admissionLoader({ git, headSha, batchId: queued.batchId });
+        candidate = eligibleStage3Batches(admission, claimRefs, openPullRequests)[0];
+        if (candidate) break;
+        log(`${queued.batchId}-a${queued.attempt} needs a contract repair before Stage 3 admission; leaving it unclaimed.`);
+      }
+    }
     const result = candidate
       ? { status: 'dry-run', batchId: candidate.batchId, attempt: candidate.attempt, baseSha: headSha }
       : { status: 'no-unclaimed-ready-reviews', baseSha: headSha };
@@ -285,10 +300,13 @@ export async function runStage3Cli(argv, {
   const interactive = callbacks || createInteractiveStage3Callbacks({ github, input: process.stdin, output: process.stdout });
   try {
     const completed = await runStage3Session({
-      claimNext: () => claimNextStage3Batch({ github, git, agent: options.agent, loadSnapshot, log }),
+      claimNext: () => claimNextStage3Batch({
+        github, git, agent: options.agent, loadSnapshot: queueLoader,
+        loadAdmissionSnapshot: admissionLoader, log,
+      }),
       processClaim: (claim) => processStage3Attempt({ github, git, root, claim, log }),
       waitForMerge: interactive.waitForMerge,
-      releaseClaim: (claim, pullRequest, outcome) => releaseStage3Claim({ github, git, claim, pullRequest, outcome, loadSnapshot }),
+      releaseClaim: (claim, pullRequest, outcome) => releaseStage3Claim({ github, git, claim, pullRequest, outcome, loadSnapshot: queueLoader }),
       report: log,
     });
     const result = { status: 'session-finished', resolvedAttemptCount: completed.length, completed };

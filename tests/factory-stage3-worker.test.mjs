@@ -11,6 +11,8 @@ import test from 'node:test';
 
 import { finalBoundary, buildStage3SemanticAuthority } from '../scripts/factory/semantic-authority.mjs';
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
+import { isLemmaRow } from '../scripts/factory/lemma-contract.mjs';
+import { sha256Hex } from '../scripts/factory/contract.mjs';
 import { reviewedRelationId } from '../scripts/batch/authored-semantic-decision-source.mjs';
 import {
   buildSemanticAuditFromDecisionSource, inspectSenseBoundaryPairs, readAuthoredBatchDecisionSources, sha256Json,
@@ -20,6 +22,8 @@ import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decisi
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
   createStage3GitRepository,
+  loadStage3AdmissionSnapshot,
+  loadStage3QueueSnapshot,
   applyStage3Admission,
   claimNextStage3Batch,
   createStage3Draft,
@@ -142,6 +146,150 @@ test('a ready review authored under an older shared contract is skipped, not rej
     reviews: ['C000001', 'C000002'].map((batchId) => ({ batchId, manifest: { status: 'ready', attempt: 1 } })),
   };
   assert.deepEqual(eligibleStage3Batches(snapshot).map((entry) => entry.batchId), ['C000002']);
+});
+
+test('Stage 3 hydrates only the selected ready review after manifest-only queue selection', async () => {
+  const root = new URL('..', import.meta.url).pathname;
+  const repository = createStage3GitRepository({ root });
+  const reads = [];
+  let selectedBatchId = null;
+  const git = {
+    ...repository,
+    show(ref, file) {
+      reads.push(file);
+      if (!file.endsWith('/manifest.json') && !file.includes(`/${selectedBatchId}/`)
+        && !file.startsWith('data/canonical/')) {
+        throw new Error(`historical factory payload was read: ${file}`);
+      }
+      return repository.show(ref, file);
+    },
+  };
+
+  const queue = await loadStage3QueueSnapshot({ git, headSha: 'HEAD' });
+  assert.equal(queue.selectionReady, true);
+  assert.equal(queue.validated, undefined);
+  assert.ok(reads.every((file) => file.endsWith('/manifest.json')));
+  const selected = queue.reviews.find((entry) => entry.manifest.status === 'ready');
+  if (!selected) return; // A fully admitted queue needs no batch payload hydration.
+  selectedBatchId = selected.batchId;
+
+  const admission = await loadStage3AdmissionSnapshot({ git, headSha: 'HEAD', batchId: selected.batchId });
+  assert.deepEqual(admission.candidates.map(({ batchId }) => batchId), [selected.batchId]);
+  assert.deepEqual(admission.reviews.map(({ batchId }) => batchId), [selected.batchId]);
+  assert.ok(reads.filter((file) => !file.endsWith('/manifest.json')).every((file) =>
+    file.startsWith(`data/candidates/${selected.batchId}/`)
+      || file.startsWith(`data/reviews/${selected.batchId}/`)
+      || file.startsWith('data/canonical/')));
+});
+
+test('Stage 3 still rejects malformed payloads in the selected ready review', async (t) => {
+  const root = new URL('..', import.meta.url).pathname;
+  const repository = createStage3GitRepository({ root });
+  const queue = await loadStage3QueueSnapshot({ git: repository, headSha: 'HEAD' });
+  const selected = queue.reviews.find((entry) => entry.manifest.status === 'ready');
+  if (!selected) return t.skip('current master has no ready review to validate');
+  const decisionsPath = `data/reviews/${selected.batchId}/decisions.jsonl`;
+  const git = {
+    ...repository,
+    show(ref, file) {
+      const content = repository.show(ref, file);
+      return file === decisionsPath ? `${content}\n` : content;
+    },
+  };
+  await assert.rejects(
+    loadStage3AdmissionSnapshot({ git, headSha: 'HEAD', batchId: selected.batchId }),
+    /invalid JSON/u,
+  );
+});
+
+test('Stage 3 rejects an invalid selected lemma group decision before lock, claim, or draft creation', async (t) => {
+  const root = new URL('..', import.meta.url).pathname;
+  const repository = createStage3GitRepository({ root });
+  const headSha = repository.resolveRef('origin/master');
+  const queue = await loadStage3QueueSnapshot({ git: repository, headSha });
+  const selected = queue.reviews.find((entry) => {
+    if (entry.manifest.status !== 'ready') return false;
+    const candidate = queue.candidates.find((item) => item.batchId === entry.batchId);
+    const rows = repository.show(headSha, candidate.files['candidates.jsonl'])
+      .trimEnd().split('\n').map((line) => JSON.parse(line));
+    return rows.some(isLemmaRow);
+  });
+  if (!selected) return t.skip('current master has no ready lemma review to validate');
+
+  const decisionsPath = `data/reviews/${selected.batchId}/decisions.jsonl`;
+  const manifestPath = `data/reviews/${selected.batchId}/manifest.json`;
+  const decisions = repository.show(headSha, decisionsPath).trimEnd().split('\n').map((line) => JSON.parse(line));
+  const included = decisions.flatMap((row) => row.group_decisions ?? [])
+    .find((entry) => entry.disposition === 'included');
+  assert.ok(included, 'the selected lemma review has an included group decision');
+  included.reason = '';
+  const decisionsText = `${decisions.map((row) => JSON.stringify(row)).join('\n')}\n`;
+  const manifest = JSON.parse(repository.show(headSha, manifestPath));
+  manifest.decisions_sha256 = sha256Hex(decisionsText);
+  const git = {
+    ...repository,
+    async fetchMaster() {},
+    show(ref, file) {
+      if (file === decisionsPath) return decisionsText;
+      if (file === manifestPath) return JSON.stringify(manifest);
+      return repository.show(ref, file);
+    },
+  };
+  const events = [];
+  const github = {
+    async getBranchHead() { return headSha; },
+    async listStage3ClaimRefs() { return []; },
+    async listPullRequests() { return []; },
+    async getStage3ActiveLock() { return null; },
+    async createStage3ActiveLock() { events.push('lock'); return { sha: 'unexpected' }; },
+    async createStage3ClaimRef() { events.push('claim'); return true; },
+    async createPullRequest() { events.push('draft'); return { number: 999 }; },
+  };
+
+  await assert.rejects(
+    claimNextStage3Batch({
+      github, git,
+      loadSnapshot: ({ headSha: selectedHead }) => loadStage3QueueSnapshot({ git, headSha: selectedHead }),
+      loadAdmissionSnapshot: ({ headSha: selectedHead, batchId }) => loadStage3AdmissionSnapshot({ git, headSha: selectedHead, batchId }),
+      log: () => {},
+    }),
+    /candidate-specific reason is required/u,
+  );
+  assert.deepEqual(events, []);
+});
+
+test('Stage 3 skips only the selected stale review and can claim the next current review', async () => {
+  const events = [];
+  const batchIds = ['C000001', 'C000002'];
+  const queue = {
+    selectionReady: true,
+    candidates: batchIds.map((batchId) => ({ batchId, manifest: { status: 'complete' } })),
+    reviews: batchIds.map((batchId) => ({ batchId, manifest: { status: 'ready', attempt: 1 } })),
+  };
+  const github = {
+    async getBranchHead() { return 'head'; },
+    async listStage3ClaimRefs() { return []; },
+    async listPullRequests() { return []; },
+    async getStage3ActiveLock() { return null; },
+    async createStage3ActiveLock(value) { events.push(`lock:${value.batchId}`); return { sha: 'lock-sha', ...value }; },
+    async createStage3ClaimRef(batchId) { events.push(`claim:${batchId}`); return true; },
+    async createPullRequest(payload) { assert.match(payload.body, /C000002-a1/u); return { number: 53, html_url: 'https://example.test/53' }; },
+  };
+  const git = {
+    async fetchMaster() {}, resolveRef() { return 'head'; },
+    createBranch() {}, async writeStarterAndPush() {},
+  };
+  const claim = await claimNextStage3Batch({
+    github, git, loadSnapshot: async () => queue,
+    loadAdmissionSnapshot: async ({ batchId }) => ({
+      selectionReady: true, staleContractBatches: batchId === 'C000001' ? [batchId] : [],
+      candidates: [{ batchId, manifest: { status: 'complete' }, rows: [], files: {} }],
+      reviews: [{ batchId, manifest: { status: 'ready', attempt: 1 }, decisions: [], files: {} }],
+    }),
+    log: () => {}, ownerToken: () => 'owner-token-0001',
+  });
+  assert.equal(claim.batchId, 'C000002');
+  assert.deepEqual(events, ['lock:C000002', 'claim:C000002']);
 });
 
 test('a batch claim conflict does not fall through to a different ready review', async () => {
@@ -616,10 +764,10 @@ test('successful admission removes the starter before commit and ready transitio
       github, git, root, claim, runGates: false,
       prepare: async () => ({ plan: {}, files: [] }),
       apply: async () => { await rm(marker, { force: true }); return { files: ['data/canonical/factory-C000001-a1.jsonl'] }; },
-      validate: async () => { assert.equal(await readFile(marker, 'utf8').then(() => true, () => false), false); events.push('validate'); },
       log: () => {},
     });
-    assert.deepEqual(events, ['commit-local', 'validate', 'push', 'ready']);
+    assert.equal(await readFile(marker, 'utf8').then(() => true, () => false), false);
+    assert.deepEqual(events, ['commit-local', 'push', 'ready']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -650,11 +798,11 @@ for (const localHead of ['pr-head', 'local-checkpoint']) test(`restart after adm
       github, git, root, claim, runGates: false,
       prepare: async () => { throw new Error('a committed admission must not be reapplied'); },
       apply: async () => { throw new Error('a committed admission must not be reapplied'); },
-      validate: async ({ prepared }) => { assert.equal(prepared.recoveredCompleteAdmission, true); events.push('validate'); },
       log: () => {},
     });
     assert.equal(result.prState, 'admission');
-    assert.deepEqual(events, localHead === 'pr-head' ? ['validate', 'ready'] : ['validate', 'push-local-checkpoint', 'ready']);
+    assert.equal(result.prepared.recoveredCompleteAdmission, true);
+    assert.deepEqual(events, localHead === 'pr-head' ? ['ready'] : ['push-local-checkpoint', 'ready']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

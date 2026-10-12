@@ -25,8 +25,11 @@ It validates the selected candidate's manifest, candidate rows, and compact
 Stage 1 decisions with the shared candidate contract before creating a claim.
 Previously merged candidate payloads, reviews, canonical data, and admission
 history are trusted from their merge-time CI; Stage 2 does not rerun the full
-factory audit to choose each batch. The explicit `node scripts/factory/validate.mjs`
-command and Stage 3 snapshot loader retain the full repository validation path.
+factory audit to choose each batch. Stage 3 uses the same manifest-only queue,
+then validates just the selected ready review before claiming it. Its admission
+still checks the current canonical state and runs exact-head `ci:normal` on the
+changed result. The explicit `node scripts/factory/validate.mjs` command retains
+the full repository audit path.
 For each batch it:
 
 1. selects rejected review batches in ascending batch ID order, followed by

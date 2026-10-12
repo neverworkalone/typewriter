@@ -8,9 +8,14 @@ import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } fro
 import { planSurfaceFormDispositions, writeSurfaceFormDispositions } from './surface-form-dispositions.mjs';
 import { stage3SurfaceFormJudgments } from './surface-form-judgments.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
-import { FACTORY_SNAPSHOT_PATHSPEC, loadFactorySnapshot } from './stage2-worker.mjs';
+import { FACTORY_SNAPSHOT_PATHSPEC, loadStage2QueueSnapshot } from './stage2-worker.mjs';
+import { buildCanonicalIndex } from './identity-adapter.mjs';
+import { isLemmaRow } from './lemma-contract.mjs';
+import { validateLemmaDecision } from './lemma-decisions.mjs';
+import { loadSearchFormSupport } from './search-form-support.mjs';
 import { validateReviewArtifacts } from './artifacts.mjs';
-import { validateFactoryRepository, loadBaseManifests } from './validate.mjs';
+import { parseJsonl, validateCandidateBatch, validateDecisionRows, validateReviewManifest } from './contract.mjs';
+import { COMPACT_CONTRACT } from './permanent-trash.mjs';
 
 const MASTER = 'master';
 const CLAIM_PREFIX = 'refs/heads/stage3-claims/';
@@ -47,8 +52,8 @@ export function createStage3GitRepository({ root = process.cwd() } = {}) {
     async fetchMaster() { gitRun(root, ['fetch', 'origin', 'master:refs/remotes/origin/master']); },
     resolveRef(ref) { return gitRun(root, ['rev-parse', ref + '^{commit}']); },
     branchBaseSha() { return gitRun(root, ['merge-base', 'HEAD', 'origin/master']); },
-    listFiles(ref) {
-      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', ...FACTORY_SNAPSHOT_PATHSPEC]);
+    listFiles(ref, pathspec = FACTORY_SNAPSHOT_PATHSPEC) {
+      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', ...pathspec]);
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
     show(ref, file) {
@@ -146,6 +151,110 @@ export function createStage3GitRepository({ root = process.cwd() } = {}) {
   };
 }
 
+// Stage 3 chooses work from the same merge-validated candidate/review status manifests
+// that Stage 2 uses. It does not need old batch payloads, canonical records, or relation
+// history to decide which ready attempt owns the singleton lock.
+export async function loadStage3QueueSnapshot({ git, headSha }) {
+  const snapshot = await loadStage2QueueSnapshot({ git, headSha });
+  return { ...snapshot, staleContractBatches: [] };
+}
+
+function parseStage3Jsonl(text, label) {
+  const errors = [];
+  const rows = parseJsonl(text, label, errors);
+  if (errors.length) throw new Stage3WorkerError(errors.join('\n'));
+  return rows;
+}
+
+function assertStage3Artifacts(batchId, label, errors) {
+  if (errors.length) throw new Stage3WorkerError(`${batchId} current ${label} failed validation:\n${errors.map((error) => `${batchId}: ${error}`).join('\n')}`, { batchId });
+}
+
+// Hydrate and validate only the ready review that Stage 3 may claim. Its candidate,
+// review manifest, semantic decisions, and hand-off are current admission inputs; all
+// other merged payloads remain protected by the exact-head PR CI that admitted them.
+export async function loadStage3AdmissionSnapshot({ git, headSha, batchId } = {}) {
+  if (!/^C\d{6}$/u.test(batchId ?? '')) throw new Stage3WorkerError('Stage 3 admission snapshot requires an exact C batch id');
+  const queue = await loadStage3QueueSnapshot({ git, headSha });
+  const candidate = queue.candidates.find((entry) => entry.batchId === batchId);
+  const review = queue.reviews.find((entry) => entry.batchId === batchId);
+  if (!candidate || !review || candidate.manifest.status !== 'complete') {
+    throw new Stage3WorkerError(`${batchId} has no complete candidate and current review manifest on master`, { batchId });
+  }
+  if (review.manifest.status !== 'ready') {
+    return { ...queue, candidates: [candidate], reviews: [review] };
+  }
+
+  const read = (file) => {
+    try { return git.show(headSha, file); }
+    catch (error) { throw new Stage3WorkerError(`${batchId} current admission input could not read ${file}: ${error.message}`, { batchId }); }
+  };
+  const candidatesText = read(candidate.files['candidates.jsonl']);
+  const stage1DecisionsText = candidate.manifest.contract === COMPACT_CONTRACT
+    ? read(candidate.files['stage1-decisions.json']) : undefined;
+  const candidateErrors = validateCandidateBatch({
+    manifest: candidate.manifest, candidatesText, stage1DecisionsText,
+  });
+  const candidates = parseStage3Jsonl(candidatesText, `${batchId}/candidates.jsonl`);
+  assertStage3Artifacts(batchId, 'candidate', candidateErrors);
+
+  const reviewFiles = Object.fromEntries(['manifest.json', 'decisions.jsonl', 'semantic-decisions.json', 'intake-handoff.json']
+    .map((name) => [name, `data/reviews/${batchId}/${name}`]));
+  const decisionsText = read(reviewFiles['decisions.jsonl']);
+  const semanticDecisionsText = read(reviewFiles['semantic-decisions.json']);
+  const handoffText = read(reviewFiles['intake-handoff.json']);
+  const decisions = parseStage3Jsonl(decisionsText, `${batchId}/decisions.jsonl`);
+  const errors = [
+    ...validateReviewManifest(review.manifest, {
+      candidateManifest: candidate.manifest, decisionsText, semanticDecisionsText, handoffText,
+    }),
+    ...validateDecisionRows(decisions, candidates.map((row) => row.candidate_id)),
+  ];
+  assertStage3Artifacts(batchId, 'review manifest and decision rows', errors);
+
+  const reviewArtifacts = {
+    batchId, adapterId: candidate.manifest.source_adapter, candidates, decisions,
+    semanticDecisionsText, handoffText,
+  };
+  const lenientErrors = validateReviewArtifacts({ ...reviewArtifacts, requireScopeDeclaration: false });
+  assertStage3Artifacts(batchId, 'review artifacts', lenientErrors);
+  const strictErrors = validateReviewArtifacts({
+    ...reviewArtifacts, requireScopeDeclaration: true,
+    requireSurfaceFormJudgments: false, requireExistingSensePairs: false,
+  });
+  const staleContractErrors = strictErrors.filter((error) => !lenientErrors.includes(error));
+  if (staleContractErrors.some((error) => !error.includes('scope_declaration is required'))) {
+    assertStage3Artifacts(batchId, 'current review contract', staleContractErrors);
+  }
+
+  const lemmaCandidates = new Map(candidates.filter(isLemmaRow).map((row) => [row.candidate_id, row]));
+  const lemmaDecisions = decisions.filter((decision) => lemmaCandidates.has(decision.source_candidate_id));
+  let lemmaProofs = {};
+  if (lemmaDecisions.some((decision) => (decision.group_decisions ?? [])
+    .some((entry) => ['covered', 'search_coverage'].includes(entry?.disposition)))) {
+    try {
+      const { rows: canonicalRecords } = canonicalRecordLocations(git, headSha);
+      lemmaProofs = {
+        canonicalIndex: buildCanonicalIndex(canonicalRecords),
+        support: await loadSearchFormSupport(canonicalRecords),
+      };
+    } catch (error) {
+      throw new Stage3WorkerError(`${batchId} current lemma canonical proof could not be built: ${error.message}`, { batchId });
+    }
+  }
+  const lemmaErrors = lemmaDecisions.flatMap((decision) => validateLemmaDecision(
+    decision, lemmaCandidates.get(decision.source_candidate_id), lemmaProofs,
+  ));
+  assertStage3Artifacts(batchId, 'lemma decisions', lemmaErrors);
+
+  return {
+    ...queue,
+    candidates: [{ ...candidate, candidatesText, stage1DecisionsText, rows: candidates }],
+    reviews: [{ ...review, decisions, decisionsText, semanticDecisionsText, handoffText, files: reviewFiles }],
+    staleContractBatches: staleContractErrors.length ? [batchId] : [],
+  };
+}
+
 function naturalOrder(left, right) { return left.batchId.localeCompare(right.batchId, 'en', { numeric: true }); }
 function branchNameFor(agent, batchId, attempt) {
   if (!['codex', 'claude'].includes(agent)) throw new Stage3WorkerError('agent must be codex or claude');
@@ -171,8 +280,9 @@ export function assertStage3ContractCurrent(claim, snapshot) {
 }
 
 export function eligibleStage3Batches(snapshot, claimRefs = [], openPullRequests = []) {
-  if (!snapshot?.validated || !Array.isArray(snapshot.reviews) || !Array.isArray(snapshot.candidates)) {
-    throw new Stage3WorkerError('validated latest-master factory snapshot is required');
+  if ((!snapshot?.selectionReady && !snapshot?.validated)
+    || !Array.isArray(snapshot.reviews) || !Array.isArray(snapshot.candidates)) {
+    throw new Stage3WorkerError('latest-master Stage 3 selection snapshot is required');
   }
   const claimed = new Set(claimRefs.map((value) => typeof value === 'string' ? value : value.ref).filter(Boolean));
   const open = openPullRequests.map((value) => value.pullRequest ?? value);
@@ -261,7 +371,9 @@ export async function createStage3Draft({ github, git, claim, existingStarter = 
 }
 
 export async function claimNextStage3Batch({
-  github, git, agent = 'codex', loadSnapshot = loadFactorySnapshot, log = () => {}, ownerToken = randomUUID,
+  github, git, agent = 'codex', loadSnapshot = loadStage3QueueSnapshot,
+  loadAdmissionSnapshot = loadSnapshot === loadStage3QueueSnapshot ? loadStage3AdmissionSnapshot : undefined,
+  log = () => {}, ownerToken = randomUUID,
 } = {}) {
   const { headSha, snapshot } = await currentMaster({ github, git, loadSnapshot });
   const [claimRefs, openPullRequests, activeLock] = await Promise.all([
@@ -274,7 +386,16 @@ export async function claimNextStage3Batch({
     return null;
   }
   const candidates = eligibleStage3Batches(snapshot, claimRefs, openPullRequests);
-  const candidate = candidates[0];
+  let candidate;
+  let admissionSnapshot;
+  for (const queued of candidates) {
+    admissionSnapshot = loadAdmissionSnapshot
+      ? await loadAdmissionSnapshot({ git, headSha, batchId: queued.batchId })
+      : snapshot;
+    candidate = eligibleStage3Batches(admissionSnapshot, claimRefs, openPullRequests)[0];
+    if (candidate) break;
+    log(`${queued.batchId}-a${queued.attempt} needs a contract repair before Stage 3 admission; leaving it unclaimed.`);
+  }
   if (!candidate) return null;
   const { batchId, attempt } = candidate;
   const claimRef = claimRefFor(batchId, attempt);
@@ -315,7 +436,6 @@ export async function claimNextStage3Batch({
     semanticDecisionsText: candidate.semanticDecisionsText,
     handoffText: candidate.handoffText,
     reviewFiles: candidate.files,
-    canonicalEntries: snapshot.canonicalEntries,
   };
   return createStage3Draft({ github, git, claim, log });
 }
@@ -395,12 +515,10 @@ export function runStage3PreflightCi(root, run = execFileSync) {
   run('pnpm', ['run', 'ci:normal'], { cwd: root, stdio: 'inherit' });
 }
 
-export async function validatePreparedStage3Admission({ root, git, claim, prepared, runGates = true } = {}) {
-  const base = loadBaseManifests('origin/master', root);
-  const errors = await validateFactoryRepository({ root, base });
-  if (errors.length) throw new Stage3WorkerError('Stage 3 factory and transition validation failed:\n' + errors.join('\n'), {
-    batchId: claim.batchId, attempt: claim.attempt, claimCreated: true, prNumber: claim.prNumber,
-  });
+export async function validatePreparedStage3Admission({ root, claim, prepared, runGates = true } = {}) {
+  // The selected review is validated before claiming, and the current canonical state is
+  // checked while planning/applying this admission. Do not recertify every historical
+  // candidate and review payload here, including when resuming a complete checkpoint.
   if (runGates) {
     try {
       runStage3PreflightCi(root);
@@ -477,8 +595,9 @@ export async function supersedeStage3RejectionForRetry({
   const [claimRefs, activeLock, allPullRequests, remoteMaster] = await Promise.all([
     github.listStage3ClaimRefs(), github.getStage3ActiveLock(), github.listPullRequests('all'), github.getBranchHead(MASTER),
   ]);
-  if (!snapshot?.validated || git.resolveRef('origin/master') !== remoteMaster || snapshot.headSha !== remoteMaster) {
-    throw new Stage3WorkerError('retry recovery requires the validated snapshot to match current GitHub master', { batchId, attempt, claimCreated: true });
+  if ((!snapshot?.selectionReady && !snapshot?.validated)
+    || git.resolveRef('origin/master') !== remoteMaster || snapshot.headSha !== remoteMaster) {
+    throw new Stage3WorkerError('retry recovery requires the current-master Stage 3 snapshot', { batchId, attempt, claimCreated: true });
   }
   const hasClaim = claimRefs.some((ref) => (typeof ref === 'string' ? ref : ref.ref) === claimRef);
   const otherClaims = claimRefs.filter((ref) => {
@@ -809,7 +928,7 @@ export async function recoverStage3Attempt({ github, git, agent = 'codex', batch
   return { status: 'restore-starter', batchId, attempt, claimRef, activeLock, claimMissing: !hasClaim, baseSha: activeLock.baseSha, branchName, prNumber: null, prState: 'starter' };
 }
 
-export async function releaseStage3Claim({ github, git, claim, pullRequest, outcome, loadSnapshot = loadFactorySnapshot } = {}) {
+export async function releaseStage3Claim({ github, git, claim, pullRequest, outcome, loadSnapshot = loadStage3QueueSnapshot } = {}) {
   const pr = await github.getPullRequest(pullRequest.number ?? claim.prNumber);
   if (!pr.merged && !pr.merged_at) return false;
   if (pr.base?.ref !== MASTER || pr.head?.ref !== claim.branchName) {
