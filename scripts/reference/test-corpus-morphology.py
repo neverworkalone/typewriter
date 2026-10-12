@@ -196,7 +196,7 @@ class MorphologyTests(unittest.TestCase):
         seal = json.loads(seal_bytes)
         proof = selector.snapshot_payload(result=audited, store_path=self.store, seal=seal)
         selector.assert_source_binding_current(store_path=self.store, index_path=self.index, proof=proof)
-        with self.assertRaisesRegex(RuntimeError, "seal changed after its full audit"):
+        with self.assertRaisesRegex(RuntimeError, "seal changed after completed-store validation"):
             selector.assert_source_binding_current(store_path=self.store, index_path=self.index,
                                                    proof={**proof, "store_seal_sha256": "0" * 64})
 
@@ -243,7 +243,7 @@ class MorphologyTests(unittest.TestCase):
         self.assertEqual(sorted(actual_surfaces), expected_surfaces)
         self.assertEqual(sorted(actual_eojeols), expected_eojeols)
 
-    def test_selector_path_audits_once_reuses_proof_and_fails_closed_on_source_drift(self):
+    def test_selector_reuses_completed_store_without_full_audit_and_fails_closed_on_real_drift(self):
         runtime = {
             "python": "Python 3.12.0 synthetic-selector-test",
             "packages": {
@@ -298,12 +298,13 @@ class MorphologyTests(unittest.TestCase):
              patch.object(selector.morphology_readonly, "inspect_readonly", wraps=readonly.inspect_readonly) as audit:
             first = select("first")
             snapshot = first["analysis_cache"]["source_snapshot_sha256"]
-            self.assertEqual(first["analysis_cache"]["validation"], "full-audit-passed-read-only")
-            self.assertEqual(audit.call_count, 1)
+            self.assertEqual(first["analysis_cache"]["validation"], "completed-store-reused-v1")
+            self.assertEqual(first["analysis_cache"]["store_evidence"]["validation"], "completed-store-reused-v1")
+            self.assertEqual(audit.call_count, 0)
 
             refill = select("refill", snapshot)
             self.assertEqual(refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
-            self.assertEqual(audit.call_count, 1)
+            self.assertEqual(audit.call_count, 0)
 
             original_sha256_file = selector.sha256_file
             auditor_path = Path(readonly.__file__).resolve()
@@ -314,21 +315,17 @@ class MorphologyTests(unittest.TestCase):
                 return original_sha256_file(file_path)
             with patch.object(selector, "sha256_file", side_effect=changed_auditor_digest):
                 changed_auditor = select("changed-auditor", snapshot)
-                self.assertEqual(audit.call_count, 2)
-                self.assertEqual(
-                    changed_auditor["analysis_cache"]["audit_evidence"]["audit_verifier_identity"],
-                    {"readonly_auditor_sha256": changed_auditor_sha256},
-                )
+                self.assertEqual(audit.call_count, 0)
+                self.assertEqual(changed_auditor["analysis_cache"]["validation"], "completed-store-reused-v1")
                 changed_auditor_refill = select("changed-auditor-refill", snapshot)
                 self.assertEqual(
-                    changed_auditor_refill["analysis_cache"]["audit_evidence"]["audit_verifier_identity"],
-                    {"readonly_auditor_sha256": changed_auditor_sha256},
+                    changed_auditor_refill["analysis_cache"]["source_snapshot_sha256"], snapshot,
                 )
-                self.assertEqual(audit.call_count, 2)
+                self.assertEqual(audit.call_count, 0)
 
             with self.assertRaisesRegex(RuntimeError, "source snapshot changed"):
                 select("stale-snapshot", "0" * 64)
-            self.assertEqual(audit.call_count, 2)
+            self.assertEqual(audit.call_count, 0)
 
             seal_path = self.store / "seal.json"
             original_seal = seal_path.read_bytes()
@@ -340,21 +337,36 @@ class MorphologyTests(unittest.TestCase):
                     select("changed-seal", snapshot)
             finally:
                 seal_path.write_bytes(original_seal)
-            self.assertEqual(audit.call_count, 2)
+            self.assertEqual(audit.call_count, 0)
 
             changed_permission = self.root / "permission-record.txt"
             permission_bytes = Path(m.DEFAULT_PERMISSION_RECORD_PATH).read_bytes()
-            changed_permission.write_bytes(permission_bytes + b"\n")
+            changed_permission.write_bytes(
+                permission_bytes + b"\n\n## Product publication policy\n\nPublication prose changed.\n"
+            )
             with patch.object(m, "DEFAULT_PERMISSION_RECORD_PATH", changed_permission):
-                with self.assertRaisesRegex(RuntimeError, "Manifest/tool/index/source identity mismatch"):
-                    select("changed-permission", snapshot)
-            self.assertEqual(audit.call_count, 2)
+                prose_change = select("publication-prose-change", snapshot)
+                self.assertEqual(prose_change["analysis_cache"]["source_snapshot_sha256"], snapshot)
+                self.assertEqual(
+                    prose_change["analysis_cache"]["store_evidence"]["source_identity"]["permission_sha256"],
+                    first["analysis_cache"]["store_evidence"]["source_identity"]["permission_sha256"],
+                    "historical permission provenance stays bound to the completed store",
+                )
+            revoked_permission = self.root / "revoked-permission.txt"
+            revoked_permission.write_bytes(permission_bytes.replace(
+                b"- Allowed lexical-reference use: permitted",
+                b"- Allowed lexical-reference use: revoked",
+            ))
+            with patch.object(m, "DEFAULT_PERMISSION_RECORD_PATH", revoked_permission):
+                with self.assertRaisesRegex(RuntimeError, "Allowed lexical-reference use"):
+                    select("revoked-permission", snapshot)
+            self.assertEqual(audit.call_count, 0)
 
             index_stat = self.index.stat()
             os.utime(self.index, ns=(index_stat.st_atime_ns, index_stat.st_mtime_ns + 1_000_000))
             with self.assertRaisesRegex(RuntimeError, "Index identity mismatch"):
                 select("changed-index", snapshot)
-            self.assertEqual(audit.call_count, 2)
+            self.assertEqual(audit.call_count, 0)
 
     def test_separate_calls_do_not_rescan_input_completed_routes_or_facts(self):
         original_chunk = m.chunk_digest

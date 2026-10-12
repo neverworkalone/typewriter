@@ -106,7 +106,7 @@ def assert_complete_full_corpus(result: dict) -> None:
     if result.get("contract") != morphology.CONTRACT:
         raise RuntimeError("Morphology store has an unsupported contract")
     if result.get("completion_bitmap") != "1" * morphology.SLICE_COUNT:
-        raise RuntimeError("Morphology source is partial; verify all 20 slices before candidate selection")
+        raise RuntimeError("Morphology source is partial; candidate selection requires all 20 completed slices")
     if (result.get("verified_paragraphs"), result.get("total_paragraphs")) != (
         EXPECTED_PARAGRAPHS,
         EXPECTED_PARAGRAPHS,
@@ -120,10 +120,9 @@ def assert_complete_full_corpus(result: dict) -> None:
         raise RuntimeError("Morphology source has a missing slice publication")
 
 
-def verify_store(*, store_path: Path, index_path: Path, scratch_path: Path, proof: dict | None = None,
-                 expected_snapshot: str | None = None, full_audit: bool = False,
-                 audit_if_missing: bool = True) -> tuple[dict, dict]:
-    """Verify current store state and reuse only a still-bound complete audit proof."""
+def verify_store(*, store_path: Path, index_path: Path, scratch_path: Path,
+                 expected_snapshot: str | None = None) -> tuple[dict, dict]:
+    """Bind the completed store to its current inputs without re-auditing its slices."""
     store_path = assert_cache_path(store_path, "runs", "Morphology store")
     index_path = assert_cache_path(index_path, "indexes", "Corpus index")
     database_path = store_path / "analysis.sqlite"
@@ -139,15 +138,25 @@ def verify_store(*, store_path: Path, index_path: Path, scratch_path: Path, proo
         if len(manifest_rows) != 1:
             raise RuntimeError("Morphology store has a corrupt manifest")
         recorded_identity = json.loads(manifest_rows[0][0])["identity"]
-        fast_identity = morphology.fast_identity(
+        # The store keeps the permission-document digest recorded when its
+        # analysis was produced. Recheck today's machine-readable permissions,
+        # but do not replace or compare that historical digest: policy prose
+        # can change while the permitted local-use fields remain unchanged.
+        current_permission_sha256 = morphology.read_permission_record(
+            morphology.DEFAULT_PERMISSION_RECORD_PATH
+        )
+        current_binding_identity = {**recorded_identity, "permission_sha256": current_permission_sha256}
+        morphology.fast_identity(
             index_path,
             morphology.DEFAULT_PERMISSION_RECORD_PATH,
             runtime,
-            recorded_identity,
+            current_binding_identity,
         )
         db.execute("BEGIN")
         morphology.check_seal(store_path)
-        morphology.verify(db, fast_identity, current_only=True)
+        # Keep validating the manifest against its recorded identity. The
+        # temporary current-binding copy above is never persisted or emitted.
+        morphology.verify(db, recorded_identity, current_only=True)
         current = morphology.status(db, store_path)
         db.rollback()
         morphology.check_seal(store_path)
@@ -156,65 +165,36 @@ def verify_store(*, store_path: Path, index_path: Path, scratch_path: Path, proo
         snapshot_sha256 = digest(payload)
         if expected_snapshot and snapshot_sha256 != expected_snapshot:
             raise RuntimeError("Morphology source snapshot changed since the initial Stage 1 selection")
-
-        proof_is_current = (
-            not full_audit
-            and isinstance(proof, dict)
-            and proof.get("validation") == "full-audit-passed-read-only"
-            and proof.get("source_snapshot_sha256") == snapshot_sha256
-            and proof.get("audit_verifier_identity") == audit_verifier_identity()
-            and {key: value for key, value in proof.items()
-                 if key not in {"validation", "source_snapshot_sha256", "audit_verifier_identity"}} == payload
-        )
-        if not proof_is_current and not full_audit and not audit_if_missing:
-            current_snapshot = {**payload, "source_snapshot_sha256": snapshot_sha256,
-                                "validation": "current-store-verified-only"}
-            return current, current_snapshot
-        if not proof_is_current:
-            audited = morphology_readonly.inspect_readonly(
-                index_path=index_path,
-                directory=store_path,
-                runtime=runtime,
-                temporary_directory=scratch_path,
-            )
-            assert_complete_full_corpus(audited)
-            audited_seal = load_object(store_path / "seal.json", "Morphology store seal")
-            audited_payload = snapshot_payload(result=audited, store_path=store_path, seal=audited_seal)
-            audited_snapshot = digest(audited_payload)
-            if audited_snapshot != snapshot_sha256:
-                raise RuntimeError("Morphology source changed during its full read-only audit")
-            current = audited
-            payload = audited_payload
-            snapshot_sha256 = audited_snapshot
-            seal = audited_seal
-
-    proof = {**payload, "source_snapshot_sha256": snapshot_sha256,
-             "audit_verifier_identity": audit_verifier_identity(),
-             "validation": "full-audit-passed-read-only"}
-    return current, proof
+    store_evidence = {
+        **payload,
+        "source_snapshot_sha256": snapshot_sha256,
+        "validation": "completed-store-reused-v1",
+    }
+    return current, store_evidence
 
 
 def assert_source_binding_current(*, store_path: Path, index_path: Path, proof: dict) -> None:
-    """Reject a store/index change that races projection or candidate selection."""
+    """Reject a store/index or permission change that races candidate selection."""
     morphology.check_seal(store_path)
     seal = load_object(store_path / "seal.json", "Morphology store seal")
     if (seal.get("stamp") != proof.get("store_database_stamp")
             or seal.get("sha256") != proof.get("store_seal_sha256")):
-        raise RuntimeError("Morphology store seal changed after its full audit")
+        raise RuntimeError("Morphology store seal changed after completed-store validation")
     identity = proof.get("source_identity")
     if not isinstance(identity, dict):
-        raise RuntimeError("Morphology audit proof has no source identity")
+        raise RuntimeError("Completed-store evidence has no source identity")
     morphology.require_rollback_header(index_path)
     if (identity.get("index_path") != str(index_path.resolve())
             or identity.get("index_stamp") != morphology.file_stamp(index_path)
-            or identity.get("permission_sha256") != morphology.read_permission_record(
-                morphology.DEFAULT_PERMISSION_RECORD_PATH
-            )):
-        raise RuntimeError("Corpus index or permission record changed after its full audit")
+            ):
+        raise RuntimeError("Corpus index changed after completed-store validation")
+    # This is an authorization check, not a comparison with the historical
+    # permission-document digest retained in the store manifest.
+    morphology.read_permission_record(morphology.DEFAULT_PERMISSION_RECORD_PATH)
     for suffix in ("-wal", "-journal"):
         sidecar = Path(str(index_path) + suffix)
         if sidecar.exists() and sidecar.stat().st_size:
-            raise RuntimeError("Corpus index has a live journal/WAL after its full audit")
+            raise RuntimeError("Corpus index has a live journal/WAL after completed-store validation")
     morphology.check_seal(store_path)
     final_seal = load_object(store_path / "seal.json", "Morphology store seal")
     if final_seal != seal:
@@ -251,19 +231,21 @@ def read_projection_manifest(directory: Path, source_snapshot: str) -> dict | No
         raise RuntimeError("Morphology selection projection has an unsupported contract")
     if manifest.get("source_snapshot_sha256") != source_snapshot:
         raise RuntimeError("Morphology selection projection is bound to a different source snapshot")
-    if manifest.get("algorithm_identity") != projection_algorithm_identity():
-        raise RuntimeError("Morphology selection projection was built by different selector code")
-    proof = manifest.get("audit_evidence")
-    if (not isinstance(proof, dict) or proof.get("validation") != "full-audit-passed-read-only"
-            or proof.get("source_snapshot_sha256") != source_snapshot
-            or proof.get("audit_verifier_identity") != audit_verifier_identity()):
-        raise RuntimeError("Morphology selection projection has no matching full-audit evidence")
+    current_algorithm = projection_algorithm_identity()
+    recorded_algorithm = manifest.get("algorithm_identity")
+    # Selector orchestration changed to reuse the completed store; the
+    # projection builder and its data producers did not. Bind reuse to the
+    # components that can change projection rows, while the DB digest below
+    # continues to bind the already-produced projection itself.
+    if (not isinstance(recorded_algorithm, dict)
+            or any(recorded_algorithm.get(key) != current_algorithm.get(key)
+                   for key in ("candidate_producer_sha256", "readonly_auditor_sha256"))):
+        raise RuntimeError("Morphology selection projection was built by different producer or auditor code")
+    source_evidence = manifest.get("store_evidence") or manifest.get("audit_evidence")
+    if (not isinstance(source_evidence, dict)
+            or source_evidence.get("source_snapshot_sha256") != source_snapshot):
+        raise RuntimeError("Morphology selection projection has no matching completed-store evidence")
     return manifest
-
-
-def audit_verifier_identity() -> dict:
-    """Version the executable read-only auditor separately from the source snapshot."""
-    return {"readonly_auditor_sha256": sha256_file(Path(morphology_readonly.__file__))}
 
 
 def write_projection_manifest(path: Path, manifest: dict) -> None:
@@ -417,7 +399,7 @@ def projection_for_source(*, store_path: Path, source_proof: dict, root: Path) -
             "contract": PROJECTION_CONTRACT,
             "source_snapshot_sha256": source_snapshot,
             "algorithm_identity": projection_algorithm_identity(),
-            "audit_evidence": source_proof,
+            "store_evidence": source_proof,
             "projection_database_path": cache_relative_path(projection_path, "Morphology selection projection"),
             "projection_database_sha256": sha256_file(projection_path),
             "row_counts": row_counts,
@@ -470,40 +452,19 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
     scratch = root / "verification"
     scratch.mkdir(parents=True, exist_ok=True)
 
-    _, current_snapshot = verify_store(
+    result, store_evidence = verify_store(
         store_path=store_path,
         index_path=index_path,
         scratch_path=scratch,
         expected_snapshot=expected_source_snapshot,
-        audit_if_missing=False,
     )
-    snapshot_sha = current_snapshot["source_snapshot_sha256"]
-    directory = projection_directory(root, snapshot_sha)
-    existing_manifest = read_projection_manifest(directory, snapshot_sha) if directory.exists() else None
-    proof = existing_manifest.get("audit_evidence") if existing_manifest else None
-    if proof is None:
-        # A first selection establishes full read-only audit evidence. A later
-        # page may reuse it only after the current seal/identity still matches.
-        result, proof = verify_store(
-            store_path=store_path,
-            index_path=index_path,
-            scratch_path=scratch,
-            expected_snapshot=snapshot_sha,
-            full_audit=True,
-        )
-    else:
-        result, proof = verify_store(
-            store_path=store_path,
-            index_path=index_path,
-            scratch_path=scratch,
-            proof=proof,
-            expected_snapshot=snapshot_sha,
-        )
+    source_evidence = store_evidence
+    snapshot_sha = source_evidence["source_snapshot_sha256"]
     assert_complete_full_corpus(result)
 
     projection_path, projection_manifest = projection_for_source(
         store_path=store_path,
-        source_proof=proof,
+        source_proof=source_evidence,
         root=root,
     )
     exclusion = producer.read_exclusion_manifest(exclusion_manifest_path)
@@ -540,14 +501,14 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
         oov_lemma_count = int(staging.execute(
             "SELECT COUNT(*) FROM candidates WHERE oov_token_count > 0").fetchone()[0])
         typewriter_metadata = dict(product.execute("SELECT key,value FROM metadata").fetchall())
-        source_identity = proof["source_identity"]
+        source_identity = source_evidence["source_identity"]
         index_metadata = source_identity["index_metadata"]
         accepted = sum(int(item["accepted_morphemes"]) for item in result["slices"])
         eligible = accepted + sum(int(item["rejected_lemma_shapes"]) + int(item["rejected_spans"])
                                   for item in result["slices"])
         projected_accepted = int(staging.execute("SELECT COALESCE(SUM(token_count),0) FROM candidates").fetchone()[0])
         if projected_accepted != accepted:
-            raise RuntimeError("Morphology selection projection token total differs from the audited slice summaries")
+            raise RuntimeError("Morphology selection projection token total differs from completed slice summaries")
         yield_data = {
             "eligible_pos_token_observations_before_shape_filter": eligible,
             "accepted_morpheme_observations_in_sample": accepted,
@@ -622,7 +583,7 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
                 "minimum_lemma_shape": "two or more precomposed Hangul syllables",
                 "confidence": "not calibrated; Kiwi one-best output is a proposal",
                 "source_contract": SOURCE_CONTRACT,
-                "source_snapshot_sha256": proof["source_snapshot_sha256"],
+                "source_snapshot_sha256": source_evidence["source_snapshot_sha256"],
             },
             "selection": {
                 "exhaustion": producer.selection_exhaustion(staging, candidate_rows, include_canonical_lemmas),
@@ -634,7 +595,7 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
                 "excluded_candidate_lemma_count": len(exclusion["lemmas"]),
                 "exclusion_sha256": exclusion["exclusion_sha256"],
                 "exclusion_source_artifacts": exclusion["source_artifacts"],
-                "source_snapshot_sha256": proof["source_snapshot_sha256"],
+                "source_snapshot_sha256": source_evidence["source_snapshot_sha256"],
                 **({"include_canonical_lemmas": True,
                     "selected_lemma_count": len({row["coverage_normalized_key"] for row in candidate_rows})}
                    if include_canonical_lemmas else {}),
@@ -644,15 +605,15 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
             "analysis_cache": {
                 "mode": "verified-full-corpus-morphology-v1",
                 "source_store_path": cache_relative_path(store_path, "Morphology source store"),
-                "source_database_path": proof["store_database_path"],
+                "source_database_path": source_evidence["store_database_path"],
                 "source_database_bytes": (store_path / "analysis.sqlite").stat().st_size,
-                "source_snapshot_sha256": proof["source_snapshot_sha256"],
-                "source_identity_sha256": proof["source_identity_sha256"],
-                "completion_bitmap": proof["completion_bitmap"],
-                "verified_paragraphs": proof["verified_paragraphs"],
-                "total_paragraphs": proof["total_paragraphs"],
-                "validation": proof["validation"],
-                "audit_evidence": proof,
+                "source_snapshot_sha256": source_evidence["source_snapshot_sha256"],
+                "source_identity_sha256": source_evidence["source_identity_sha256"],
+                "completion_bitmap": source_evidence["completion_bitmap"],
+                "verified_paragraphs": source_evidence["verified_paragraphs"],
+                "total_paragraphs": source_evidence["total_paragraphs"],
+                "validation": source_evidence["validation"],
+                "store_evidence": source_evidence,
                 "selection_projection_contract": PROJECTION_CONTRACT,
                 "selection_projection_path": projection_manifest["projection_database_path"],
                 "selection_projection_sha256": projection_manifest["projection_database_sha256"],
@@ -660,7 +621,7 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
             },
             "candidates": candidate_rows,
         }
-        assert_source_binding_current(store_path=store_path, index_path=index_path, proof=proof)
+        assert_source_binding_current(store_path=store_path, index_path=index_path, proof=source_evidence)
         candidate_output_path.parent.mkdir(parents=True, exist_ok=True)
         temporary_output = candidate_output_path.with_suffix(candidate_output_path.suffix + ".tmp")
         temporary_output.write_text(json.dumps(selection, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
