@@ -474,18 +474,6 @@
    "source_sense_id": "r030-s1",
    "source_gloss_sha256": "9b7a36dd44cff1e337123d2ca30dbd427e8914de65ecb0a054b092ff347ac6af",
    "relation": {
-    "target": "w6644",
-    "target_sense": "w6644-s1",
-    "type": "antonym",
-    "note": "모양이나 소리가 뚜렷한 상태와 정신이 흐릿해 또렷하지 않은 상태는 같은 축에서 서로 반대다"
-   },
-   "rationale": "r030-s1: 모양이나 소리가 뚜렷한 상태와 정신이 흐릿해 또렷하지 않은 상태는 같은 축에서 서로 반대다 AI self-check: 또렷하다는 모양이나 소리가 뚜렷하게 드러나는 상태라 같은 선명·분명 계열과 흐릿함·멍함의 대비를 탐색 연결로 잇고 선명하다·희미함 등은 이미 있다"
-  },
-  {
-   "source_record_id": "r030",
-   "source_sense_id": "r030-s1",
-   "source_gloss_sha256": "9b7a36dd44cff1e337123d2ca30dbd427e8914de65ecb0a054b092ff347ac6af",
-   "relation": {
     "target": "w2246",
     "target_sense": "w2246-s1",
     "type": "antonym",
@@ -3074,18 +3062,6 @@
     "relevance": 5
    },
    "rationale": "w070-s1: 빛깔이 변하는 변색이다 AI self-check: 빛바램은 색이나 빛이 시간이 지나 약해진 상태라 변색과 반대의 또렷함을 탐색 연결로 잇고 희미하다·선명하다 등은 이미 있다"
-  },
-  {
-   "source_record_id": "w070",
-   "source_sense_id": "w070-s1",
-   "source_gloss_sha256": "a0febe8985cecd3a3c1d441e8813f70bff09fcaf29c3011c573e648b70b18623",
-   "relation": {
-    "target": "r030",
-    "target_sense": "r030-s1",
-    "type": "antonym",
-    "note": "색이나 빛이 약해진 상태와 모양이나 소리가 또렷한 상태는 같은 축에서 서로 반대다"
-   },
-   "rationale": "w070-s1: 색이나 빛이 약해진 상태와 모양이나 소리가 또렷한 상태는 같은 축에서 서로 반대다 AI self-check: 빛바램은 색이나 빛이 시간이 지나 약해진 상태라 변색과 반대의 또렷함을 탐색 연결로 잇고 희미하다·선명하다 등은 이미 있다"
   },
   {
    "source_record_id": "w070",
@@ -15651,10 +15627,11 @@
    "relation": {
     "target": "w5639",
     "target_sense": "w5639-s1",
-    "type": "antonym",
-    "note": "마음이 편하지 않고 거북한 상태와 몸에 부담이 적어 편한 상태는 같은 축에서 서로 반대다"
+    "type": "association",
+    "note": "마음이 불편한 상태와 대비되는 몸이 편한 상태다",
+    "relevance": 4
    },
-   "rationale": "w12590-s1: 마음이 편하지 않고 거북한 상태와 몸에 부담이 적어 편한 상태는 같은 축에서 서로 반대다 AI self-check: 불편하다는 마음이 편하지 않고 거북한 상태라 같은 불편 계열과 반대 편안함과 몸의 불편을 탐색 연결로 잇는다"
+   "rationale": "w12590-s1: 마음이 불편한 상태와 대비되는 몸이 편한 상태다 AI self-check: 불편하다는 마음이 편하지 않고 거북한 상태라 같은 불편 계열과 반대 편안함과 몸의 불편을 탐색 연결로 잇는다"
   },
   {
    "source_record_id": "w12590",
@@ -40186,18 +40163,6 @@
    "source_sense_id": "w6644-s1",
    "source_gloss_sha256": "0fbaff9001bb0aba6b1412a1f113d1e49aa575ae12530cbb5d0286001243768f",
    "relation": {
-    "target": "r030",
-    "target_sense": "r030-s1",
-    "type": "antonym",
-    "note": "정신이 흐릿해 또렷하지 않은 상태와 모양이나 소리가 뚜렷한 상태는 같은 축에서 서로 반대다"
-   },
-   "rationale": "w6644-s1: 정신이 흐릿해 또렷하지 않은 상태와 모양이나 소리가 뚜렷한 상태는 같은 축에서 서로 반대다 AI self-check: 멍하다는 정신이 흐릿해 생각이나 반응이 또렷하지 않은 상태라 반대의 또렷함과 같은 흐릿한 상태를 탐색 연결로 잇는다"
-  },
-  {
-   "source_record_id": "w6644",
-   "source_sense_id": "w6644-s1",
-   "source_gloss_sha256": "0fbaff9001bb0aba6b1412a1f113d1e49aa575ae12530cbb5d0286001243768f",
-   "relation": {
     "target": "w109",
     "target_sense": "w109-s2",
     "type": "near",
@@ -51179,7 +51144,6 @@
   "rel-b132e819e57020d7f08f01e9": "cb99f6ff178118a07a45fd4939cff7050c74dfae71a32be4f119087c50d1d538",
   "rel-a89fea5c26c172d90002367f": "c65d6cc0fae962de1f56df25ff17a04c28b3b9e52a5de3f6be947fc9978c6f24",
   "rel-9827aabb7c48c551e6c0506d": "ef191707b54d350af70a30bffefbd65022c4c552de13805d537a6949a40db440",
-  "rel-16c99f86482174e3b2090a6a": "80dbf17188cd71a190cea4de6453b9f405a6334c9188cdf18f423442cd635ef9",
   "rel-8bd73c200d0e221d09ea0475": "d5fd1785104c6cf9dbbaac732bcd0d81f9ba85c6fdd20acc1c939f624dfbaec7",
   "rel-ec6ac4410ea2eeeb5e39eb70": "8c097059c4e73482414579addfff2fdd31be818ba24af3765a533c687162f472",
   "rel-2c4ea882bed3afb7ce137125": "8e4a6595cd64761efd711945a992364ff310f799f154ba00e5616c05b131fdc7",
@@ -51380,7 +51344,6 @@
   "rel-75f2a6fe7c250d684f66dc96": "0a32b02e1ca015722a6b2b69ea4929c2e52e0aec0afb3c5da3f89880712e250b",
   "rel-b7a5783dbf79cd0551b7008a": "15c1888b8c87d2081524836f62d63c12b8e30497a405f7e40794f6bb85507665",
   "rel-3379c72a0ed9044f909568e5": "b828cb0204b16e47a6bf7591390c62d3c19309ec646ef770f04bc161f6d687ff",
-  "rel-2d11b22979543fc78af08f81": "f9593276474f8ec646f82e731e50e1c02248ca96327595d7369c508d03aa2309",
   "rel-3ba8ed08f9a48b64b7b8486c": "176c722884a679f205341119d88871252c6651e9d4f9749e21ec75e91d41ab92",
   "rel-910b03ec620917afbad669eb": "86189b1241f7b6c74dcf343f2094c18eff7e511a6c9970649bb49adaeb7619d3",
   "rel-27d4563226a1ae9c887ee16c": "0e5d9ad003307fbfa30442f8d757bfff24dcde6f0d78ae531768ec332de0f464",
@@ -52347,7 +52310,7 @@
   "rel-2b020b8c9408c24009d2f476": "290f087d2b28e773cffb96a68c434868beac1e2a9da9327a8b3b33323c61f08b",
   "rel-7b5275d1e2ea3db9b382e1e9": "0ea199bc3de13ca077708ff8955a2e2cd9a132a2f058c9d3bdd9b92c7ebd697b",
   "rel-2bf16d244a7b4363f455a1ec": "189abd01c4bfa1f829d8a3ecc54697c03aabec2f35dbf5ed2640633748e6f181",
-  "rel-9b30b46f72051610b19ffba1": "91722082ea20d8aae1c74ec064ee5eaa491e3a2048edcfb08d1060094a9d990f",
+  "rel-ef8d29a0a39f1b88acd113f7": "91722082ea20d8aae1c74ec064ee5eaa491e3a2048edcfb08d1060094a9d990f",
   "rel-f413671d532b0a83e04619d1": "36190143f7255f3efa56cc1713fc677b257d5b77cd00e9117868b28364d52d3b",
   "rel-138a5881111eccfde3d56a8c": "e28ce9356ca4c9859e6c67f399745b31b0ffa3ddc862371689ca43ef9b692e83",
   "rel-6d6010f24e3c7791538af56c": "57c68cac27ab4cd2378e3f14f4b3b769f9e391a73ce293cf9da01893187d48bd",
@@ -54235,7 +54198,6 @@
   "rel-a5adc66011bf4fd1a4043876": "f4861a5b3ca51c63d2313bc5c01a14bbf95b1ae8425820b2c2c4a89c3f9f7686",
   "rel-12e370ede3baa503a8f290ec": "18b7fa51af711aa395967b73983ed8f319ed4653eb1190ebd8c0ca2f70442f1f",
   "rel-6892dbb77fd9a3a9d5dd77be": "e3b33283ff915f45cfb460aae2e41d2eb33dc2948ba7436fec1d820c9cdcfd8b",
-  "rel-cfd80bc18b677e0b2b2b8462": "f9593276474f8ec646f82e731e50e1c02248ca96327595d7369c508d03aa2309",
   "rel-3a2f37984e2d79f688897518": "488d97bb3455fb0042f7d24923aac3a832f229e6db6484c608d369bd3ebfd1e1",
   "rel-ab57204299efab27c161252c": "558e0b1c6ba1e14bbbbe1bca352b10c936a7b88bbd1afd7bbb30dabda85c7577",
   "rel-d3f890e1f16d391fc8707404": "5fa4ad6baf9584cfafd8b3f1ea1002969946b515e9f35d549bfd4af90d752d69",
