@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -11,7 +11,6 @@ import {
   CI_ALL_CATEGORY_ORDER,
   CI_DEEP_CATEGORY_ORDER,
   CI_EXECUTION_TIERS,
-  CI_HISTORICAL_SCOPE_IDS,
   CI_LEVEL_EXECUTION_POLICY,
   CI_LEVEL_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
@@ -30,7 +29,6 @@ import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
 import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
-import { validateM515 } from '../batch/validate-m5-15.mjs';
 import { validateFrozenM6QualityAuditSnapshot } from '../validate/m6-4-quality-audit.mjs';
 import { classifyDeepGateDiff, routePrDeepGate } from './deep-gate.mjs';
 import {
@@ -48,46 +46,6 @@ import {
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const CI_DEEP_PHASE_CATEGORIES = new Set(CI_DEEP_CATEGORY_ORDER);
-
-const HISTORICAL_INPUT_SOURCES = Object.freeze({
-  // Reuse the immutable M5-11 checkpoint copies. The live canonical shards may
-  // receive later relation-only enrichment and no longer match the reviewed
-  // historical staging bytes.
-  waveA2Reviewed: 'data/batches/m5-11-base-canonical/m5-10a-wave-a2.jsonl',
-  waveA2SemanticAudit: 'data/validation/m5-10a-wave-a2-semantic-audit.json',
-  waveBReviewed: 'data/batches/m5-11-base-canonical/m5-10-wave-b.jsonl',
-  waveBSemanticAudit: 'data/validation/m5-10-wave-b-semantic-audit.json',
-});
-const HISTORICAL_INPUT_SCOPES = Object.freeze({
-  waveA2Reviewed: 'm5-10a',
-  waveA2SemanticAudit: 'm5-10a',
-  waveBReviewed: 'm5-10b',
-  waveBSemanticAudit: 'm5-10b',
-});
-
-function requireHistoricalScopeList(scopes) {
-  if (!Array.isArray(scopes) || scopes.length !== 1) {
-    throw new Error('ci:historical requires exactly one explicit --scope <scope-id>.');
-  }
-  const [scope] = scopes;
-  if (!CI_HISTORICAL_SCOPE_IDS.includes(scope)) {
-    throw new Error(
-      `Unknown historical scope ${JSON.stringify(scope)}. Available scopes: ${CI_HISTORICAL_SCOPE_IDS.join(', ')}.`,
-    );
-  }
-  return scopes;
-}
-
-function parseHistoricalScopeArguments(args) {
-  const normalizedArgs = args[0] === '--' ? args.slice(1) : args;
-  if (normalizedArgs.length === 1 && normalizedArgs[0].startsWith('--scope=')) {
-    return requireHistoricalScopeList([normalizedArgs[0].slice('--scope='.length)]);
-  }
-  if (normalizedArgs.length === 2 && normalizedArgs[0] === '--scope') {
-    return requireHistoricalScopeList([normalizedArgs[1]]);
-  }
-  throw new Error('Usage: pnpm run ci:historical --scope <scope-id>');
-}
 
 function formatCommand({ executable, args }) {
   return [executable, ...args]
@@ -306,7 +264,6 @@ export function selectChecksForPolicy(checks, {
   tiers = CI_EXECUTION_TIERS,
   includeManual = false,
   changedPaths,
-  historicalScopes,
   selectedDeepCheckIds,
 } = {}) {
   if (!Array.isArray(tiers) || tiers.some((tier) => !CI_EXECUTION_TIERS.includes(tier))) {
@@ -321,9 +278,6 @@ export function selectChecksForPolicy(checks, {
       && !changedPath.split('/').some((part) => part === '' || part === '.' || part === '..')
     ));
   const classifiedChangedPaths = changedPathsAreClassifiable ? changedPaths : [];
-  const selectedHistoricalScopes = tiers.includes('historical')
-    ? new Set(requireHistoricalScopeList(historicalScopes))
-    : undefined;
   if (selectedDeepCheckIds !== undefined && (
     !Array.isArray(selectedDeepCheckIds)
     || selectedDeepCheckIds.some((id) => typeof id !== 'string' || id.length === 0)
@@ -340,9 +294,6 @@ export function selectChecksForPolicy(checks, {
     }
     if (!CI_EXECUTION_TIERS.includes(check.tier)) {
       throw new TypeError(`CI check ${check.label} has unknown tier ${check.tier}.`);
-    }
-    if (check.tier === 'historical' && (!Array.isArray(check.historicalScopes) || check.historicalScopes.length === 0)) {
-      throw new TypeError(`Historical CI check ${check.label} has no registered scope.`);
     }
     if (!['always', 'affected', 'manual'].includes(check.schedule)) {
       throw new TypeError(`CI check ${check.label} has unknown schedule ${check.schedule}.`);
@@ -376,9 +327,6 @@ export function selectChecksForPolicy(checks, {
       && selectedDeepCheckSet
       && !selectedDeepCheckSet.has(`${check.owner}/${check.label}`)
     ) return false;
-    if (check.tier === 'historical' && !check.historicalScopes.some((scope) => (
-      selectedHistoricalScopes.has(scope)
-    ))) return false;
     if (check.schedule === 'always') return true;
     if (check.schedule === 'manual') return includeManual;
     if (failClosedAffectedSelection) return true;
@@ -494,19 +442,6 @@ async function createTemporaryDirectory() {
   const root = requestedRoot ? path.resolve(requestedRoot) : tmpdir();
   await mkdir(root, { recursive: true });
   return mkdtemp(path.join(root, 'typewriter-ci-'));
-}
-
-export async function materializeHistoricalInputs(tempDirectory, historicalScopes) {
-  const selectedScopes = new Set(requireHistoricalScopeList(historicalScopes));
-  const historicalInputs = {};
-  for (const [name, relativeSource] of Object.entries(HISTORICAL_INPUT_SOURCES)) {
-    if (!selectedScopes.has(HISTORICAL_INPUT_SCOPES[name])) continue;
-    const target = path.join(tempDirectory, path.basename(relativeSource));
-    await copyFile(path.join(REPOSITORY_DIRECTORY, relativeSource), target);
-    historicalInputs[name] = target;
-    console.log(`Materialized ${relativeSource} -> ${target}`);
-  }
-  return historicalInputs;
 }
 
 async function prepareCurrentCanonicalContext() {
@@ -644,11 +579,6 @@ async function runInProcessCheck(name, context) {
     return;
   }
 
-  if (name === 'm5-15-pre-admission') {
-    console.log(JSON.stringify(await validateM515({ canonicalContext }), null, 2));
-    return;
-  }
-
   if (name === 'normalize-canonical') {
     context.normalizedModel = await normalizeCanonicalDirectory(
       canonicalContext.canonicalDirectory,
@@ -720,21 +650,11 @@ async function runInProcessCheck(name, context) {
   throw new Error(`Unknown in-process CI check ${name}`);
 }
 
-async function contextForCategory(categoryName, sharedCanonicalSession, historicalScopes) {
+async function contextForCategory(sharedCanonicalSession) {
   const session = sharedCanonicalSession ?? await createCanonicalSession();
   const context = {
     ...session,
-    historicalInputs: undefined,
-    historicalTemporaryDirectory: undefined,
   };
-
-  if (categoryName === 'historical') {
-    context.historicalTemporaryDirectory = await createTemporaryDirectory();
-    context.historicalInputs = await materializeHistoricalInputs(
-      context.historicalTemporaryDirectory,
-      historicalScopes,
-    );
-  }
 
   return {
     context,
@@ -753,7 +673,7 @@ async function runCategory(
   const {
     context,
     ownsCanonicalSession,
-  } = await contextForCategory(categoryName, sharedCanonicalSession, executionPolicy?.historicalScopes);
+  } = await contextForCategory(sharedCanonicalSession);
 
   const phase = CI_DEEP_PHASE_CATEGORIES.has(categoryName) ? DEEP_PHASE : NORMAL_PHASE;
   context.phase = phase;
@@ -768,9 +688,6 @@ async function runCategory(
       sharedCanonicalSession.sharedDictionaryPath = context.sharedDictionaryPath;
       sharedCanonicalSession.normalizedModel = context.normalizedModel;
     }
-    if (context.historicalTemporaryDirectory) {
-      await rm(context.historicalTemporaryDirectory, { recursive: true, force: true });
-    }
     if (ownsCanonicalSession && context.temporaryDirectory) {
       await rm(context.temporaryDirectory, { recursive: true, force: true });
     }
@@ -781,8 +698,6 @@ function printUsage() {
   console.error('Usage: node scripts/ci/run-category.mjs <level|category>');
   console.error(`Levels: ${Object.keys(CI_LEVEL_CATEGORY_ORDER).join(', ')}`);
   console.error(`Categories: ${CI_ALL_CATEGORY_ORDER.join(', ')}`);
-  console.error('Historical usage: ci:historical --scope <scope-id>');
-  console.error(`Historical scopes: ${CI_HISTORICAL_SCOPE_IDS.join(', ')}`);
 }
 
 export async function runLevel(requestedCategory, {
@@ -790,7 +705,6 @@ export async function runLevel(requestedCategory, {
   levels = CI_LEVEL_CATEGORY_ORDER,
   createSession = createCanonicalSession,
   changedPaths,
-  historicalScopes,
   executionPolicy,
   execute,
   log,
@@ -800,21 +714,6 @@ export async function runLevel(requestedCategory, {
     ?? (categories === CI_CATEGORIES && levels === CI_LEVEL_CATEGORY_ORDER
       ? CI_LEVEL_EXECUTION_POLICY[requestedCategory]
       : undefined);
-  if (requestedCategory === 'historical') {
-    requireHistoricalScopeList(historicalScopes);
-    if (!policy) throw new Error('ci:historical requires the registered Historical execution policy.');
-    const selectedHistoricalCheckCount = categoryNames.reduce((total, categoryName) => {
-      const category = categories[categoryName];
-      if (!category) throw new Error(`Historical CI policy refers to unknown scope ${categoryName}.`);
-      return total + selectChecksForPolicy(category.checks, {
-        ...policy,
-        historicalScopes,
-      }).length;
-    }, 0);
-    if (selectedHistoricalCheckCount === 0) {
-      throw new Error(`No registered Historical checks match scope ${historicalScopes[0]}.`);
-    }
-  }
   if (requestedCategory === 'candidates') {
     await runCandidateLevel({
       categories,
@@ -829,7 +728,6 @@ export async function runLevel(requestedCategory, {
   const runPolicy = policy ? {
     ...policy,
     changedPaths,
-    ...(requestedCategory === 'historical' ? { historicalScopes } : {}),
   } : undefined;
   const enforceNormalInvariant = enforcesNormalBuildInvariant(requestedCategory);
   const splitNormalAndDeep = ['all', 'pr'].includes(requestedCategory)
@@ -880,7 +778,7 @@ export async function runLevel(requestedCategory, {
         }
       }
       if (splitNormalAndDeep && passIndex === 0 && enforceNormalInvariant) {
-        // All Normal checks finish before any Deep/Historical check is entered,
+        // All Normal checks finish before any Deep check is entered,
         // even when both tiers share one domain scope.
         assertNormalBuildInvariant(session, 'normal phase completion');
       }
@@ -971,14 +869,6 @@ export async function runCli(argv, options = {}) {
   if (!requestedCategory) {
     printUsage();
     process.exitCode = 1;
-    return;
-  }
-
-  if (requestedCategory === 'historical') {
-    await runLevel(requestedCategory, {
-      ...options,
-      historicalScopes: parseHistoricalScopeArguments(requestedArguments),
-    });
     return;
   }
 

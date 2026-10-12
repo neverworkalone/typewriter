@@ -3,7 +3,6 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import LEGACY_CHECK_IDENTITIES from './legacy-check-identities.json' with { type: 'json' };
 import LEGACY_CHECK_TIERS from './legacy-check-tiers.json' with { type: 'json' };
-import LEGACY_CHECK_HISTORICAL_SCOPES from './legacy-check-history-scopes.json' with { type: 'json' };
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -57,12 +56,6 @@ function pnpmCheck(label, script, args = [], testFiles = []) {
   };
 }
 
-// Deep/manual phase only: the check builds the current revision independently
-// (the runner withholds the shared SQLite artifact) to prove reproducibility.
-function independentBuildProof(check) {
-  return { ...check, independentCurrentRevisionBuilds: true };
-}
-
 function testCheck(file, label = `Run ${file}`) {
   return commandCheck(label, ['--test', file], [file]);
 }
@@ -93,7 +86,7 @@ export const CI_NORMAL_CATEGORY_ORDER = Object.freeze([
     (categoryName) => !CI_FAST_CATEGORY_ORDER.includes(categoryName),
   ),
 ]);
-export const CI_DEEP_CATEGORY_ORDER = Object.freeze(['historical', 'deep']);
+export const CI_DEEP_CATEGORY_ORDER = Object.freeze(['deep']);
 export const CI_ALL_CATEGORY_ORDER = Object.freeze([
   ...CI_NORMAL_CATEGORY_ORDER,
   ...CI_DEEP_CATEGORY_ORDER,
@@ -106,14 +99,12 @@ export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
   pr: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
   candidates: CI_ALL_CATEGORY_ORDER,
-  historical: CI_ALL_CATEGORY_ORDER,
 });
 
 export const CI_EXECUTION_TIERS = Object.freeze([
   'candidate',
   'normal',
   'deep',
-  'historical',
 ]);
 
 export const CI_CHECK_SCHEDULES = Object.freeze([
@@ -122,7 +113,6 @@ export const CI_CHECK_SCHEDULES = Object.freeze([
   'manual',
 ]);
 
-export const CI_HISTORICAL_SCOPE_IDS = Object.freeze([...LEGACY_CHECK_HISTORICAL_SCOPES.scopes]);
 
 // Execution tier is intentionally separate from scope. These category values
 // describe the current registry while PR 2 moves individual checks out of the
@@ -131,10 +121,9 @@ export const CI_TIER_CATEGORY_ORDER = Object.freeze({
   candidate: CI_ALL_CATEGORY_ORDER,
   normal: CI_ALL_CATEGORY_ORDER,
   deep: CI_ALL_CATEGORY_ORDER,
-  historical: CI_ALL_CATEGORY_ORDER,
 });
 
-// `all` runs the current Normal and Deep tiers. Historical replay is separate;
+// `all` runs the current Normal and Deep tiers;
 // `deep` selects current-system Deep checks across every domain scope.
 export const CI_LEVEL_EXECUTION_POLICY = Object.freeze({
   fast: Object.freeze({ tiers: Object.freeze(['normal']), includeManual: false }),
@@ -143,7 +132,6 @@ export const CI_LEVEL_EXECUTION_POLICY = Object.freeze({
   pr: Object.freeze({ tiers: Object.freeze(['normal', 'deep']), includeManual: false }),
   deep: Object.freeze({ tiers: Object.freeze(['deep']), includeManual: false }),
   candidates: Object.freeze({ tiers: Object.freeze(['candidate']), includeManual: false }),
-  historical: Object.freeze({ tiers: Object.freeze(['historical']), includeManual: true }),
 });
 
 const RAW_CI_CATEGORIES = Object.freeze({
@@ -245,49 +233,13 @@ const RAW_CI_CATEGORIES = Object.freeze({
   batch: {
     label: 'Batch process, contract, recovery, and authorization validation',
     checks: [
-      pnpmCheck('Validate M5-8 process contract', 'batch:process:check'),
-      pnpmCheck('Validate M5-9A repair authorization', 'batch:repair:check'),
-      pnpmCheck('Validate M5-10A candidate-generation calibration', 'batch:m5-10a:calibration:check'),
-      pnpmCheck('Validate M5-10A process correction', 'batch:m5-10a:process:check'),
-      pnpmCheck('Validate M5-10A repair authorization', 'batch:m5-10a:repair:check'),
-      contractCheck(
-        'Run M5-10C recovery contract tests',
-        'batch:m5-10c:contract:check',
-        'tests/m5-10c-recovery.test.mjs',
-      ),
-      pnpmCheck('Validate M5-10C recovery and authorization contract', 'batch:m5-10c:recovery:contract:check'),
-      contractCheck(
-        'Run M5-10D workload contract tests',
-        'batch:m5-10d:contract:check',
-        'tests/m5-10d-workload.test.mjs',
-      ),
-      pnpmCheck('Validate M5-10D recovery and authorization contract', 'batch:m5-10d:recovery:contract:check'),
-      pnpmCheck('Validate committed M5-10D recovery artifact', 'batch:m5-10d:recovery:check'),
-      pnpmCheck('Validate committed M5-10D authorization artifact', 'batch:m5-10d:authorization:check'),
       testCheck('tests/batch-workflow.test.mjs', 'Test shared batch workflow'),
-      testCheck('tests/m5-8-process.test.mjs', 'Test M5-8 process contract'),
-      testCheck('tests/m5-9a-repair.test.mjs', 'Test M5-9A repair authorization'),
-      testCheck('tests/m5-9-expansion.test.mjs', 'Test M5-9 expansion'),
-      testCheck('tests/m5-calibration.test.mjs', 'Test M5 calibration'),
-      testCheck('tests/m5-recalibration.test.mjs', 'Test M5 recalibration'),
-      testCheck('tests/m5-10a-process.test.mjs', 'Test M5-10A process correction'),
-      testCheck('tests/batch-measurement.test.mjs', 'Test batch measurement'),
       testCheck('tests/lexical-production-candidates.test.mjs', 'Test lexical production candidates'),
       testCheck('tests/lexical-production-state.test.mjs', 'Test lexical production state'),
-      testCheck('tests/m5-11.test.mjs', 'Test M5-11 expansion'),
-      testCheck('tests/m5-11-admission.test.mjs', 'Test M5-11 admission'),
-      testCheck('tests/m5-12.test.mjs', 'Test M5-12 historical pre-admission boundary'),
-      testCheck('tests/issue-204-review-regressions.test.mjs', 'Test Issue #204 review evidence regressions'),
-      pnpmCheck('Validate Issue #204 corpus pilot admission', 'batch:issue-204:check'),
-      pnpmCheck('Validate Issue #211 bounded lexical recovery', 'batch:issue-211:check'),
-      testCheck('tests/issue-219-content-digest.test.mjs', 'Test Issue #219 portable logical-content digest'),
-      pnpmCheck('Validate Issue #219 M9 bounded lexical recovery', 'batch:issue-219:check'),
-      pnpmCheck('Validate Issue #220 M9 historical recovery checkpoint', 'batch:issue-220:check'),
       commandCheck(
         'Test shared Typewriter cache paths and explicit local-reference migration',
         ['--test', 'scripts/typewriter-cache.test.mjs', 'scripts/reference/migrate-local-reference.test.mjs', 'scripts/reference/run-corpus-lemma-pilot.test.mjs', 'scripts/batch/repository-source-digest.test.mjs', 'scripts/batch/issue-221-source-digests.test.mjs'],
       ),
-      pnpmCheck('Validate every tracked M9 corpus candidate review', 'validate:corpus-candidate-review'),
       commandCheck(
         'Test M9 corpus candidate-review disposition regressions',
         ['--test', 'scripts/reference/corpus-candidate-review.test.mjs'],
@@ -346,18 +298,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
         'Test Issue #223 reviewer run-record binding and raw-output derivation',
         ['--test', 'scripts/batch/reviewer-raw-outputs.test.mjs'],
       ),
-      commandCheck(
-        'Test Issue #223 committed-artifact cross-file regressions',
-        ['--test', 'scripts/batch/issue-223-tracked-artifacts.test.mjs'],
-      ),
       testCheck('tests/intake-batch-boundary.test.mjs', 'Test B16+ review-only, canonical-import review, intake artifact verification and a real builder run (no complete-canonical validator rerun)'),
-      pnpmCheck('Validate Issue #223 committed M9-E checkpoint artifacts', 'batch:issue-223:check'),
-      commandCheck(
-        'Test Issue #223 source-bound paragraph references',
-        ['--test', 'scripts/batch/build-issue-223-corpus-batch.test.mjs'],
-      ),
-      testCheck('tests/issue-222-report.test.mjs', 'Test Issue #222 checkpoint audit and M9-E handoff'),
-      pnpmCheck('Validate portable Issue #222 checkpoint regeneration', 'batch:issue-222:report:check'),
       testCheck('tests/m9-production-progress.test.mjs', 'Test M9 production checkpoint progress'),
       commandCheck(
         'Test M10 per-batch stage timing ledger',
@@ -367,41 +308,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
         'Test agent self-check semantic review contract and legacy review workflow',
         ['--test', 'scripts/batch/semantic-self-check.test.mjs', 'scripts/batch/review-workflow.test.mjs'],
       ),
-      inProcessCheck(
-        'Validate M5-15 pre-admission boundary',
-        'm5-15-pre-admission',
-        ['tests/m5-13.test.mjs'],
-      ),
-    ],
-  },
-
-  historical: {
-    label: 'Historical replay and staged batch validation',
-    checks: [
-      {
-        label: 'Validate M5-10A Wave A2 stage',
-        command: ({ historicalInputs }) => pnpmCommand('batch:m5-10a:wave-a2:check', [
-          `--staged=${historicalInputs.waveA2Reviewed}`,
-          `--semantic-audit=${historicalInputs.waveA2SemanticAudit}`,
-          '--canonical-dir=data/batches/m5-10-wave-b-base-canonical',
-          '--canonical-source-dir=data/canonical',
-        ]),
-        testFiles: [],
-      },
-      {
-        label: 'Validate M5-10 Wave B stage',
-        command: ({ historicalInputs }) => pnpmCommand('batch:m5-10:wave-b:check', [
-          `--staged=${historicalInputs.waveBReviewed}`,
-          `--semantic-audit=${historicalInputs.waveBSemanticAudit}`,
-          '--canonical-dir=data/batches/m5-11-base-canonical',
-        ]),
-        testFiles: [],
-      },
-      testCheck('tests/historical-replay-cli.test.mjs', 'Test historical replay CLIs'),
-      testCheck('tests/m5-10a-wave-a2.test.mjs', 'Test M5-10A Wave A2 replay'),
-      testCheck('tests/m5-10-wave-a.test.mjs', 'Test M5-10 Wave A replay'),
-      testCheck('tests/m5-10-wave-b-timing.test.mjs', 'Test M5-10 Wave B timing'),
-      testCheck('tests/m5-10-wave-b.test.mjs', 'Test M5-10 Wave B replay'),
     ],
   },
 
@@ -516,22 +422,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ],
       },
       {
-        ...testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
-        schedule: 'affected',
-        paths: [
-          'scripts/batch/m5-12a-',
-          'scripts/batch/authored-semantic-decision-source.mjs',
-          'tests/m5-12a.test.mjs',
-        ],
-        deepInputs: [
-          'data/batches/m5-12a-semantic-decisions.json',
-          'data/batches/m5-12-base-canonical/',
-          'data/batches/m5-12-base-inventory.json',
-          'data/batches/m5-12-base-seed.json',
-          'data/inventory/',
-        ],
-      },
-      {
         ...inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
         schedule: 'affected',
         paths: [
@@ -554,22 +444,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ],
         deepInputs: ['data/batches/m5-10a-wave-a-base-canonical/'],
       },
-      independentBuildProof(pnpmCheck(
-        'Prove independent two-build determinism for Issue #219 checkpoint',
-        'batch:issue-219:check',
-      )),
-      independentBuildProof(pnpmCheck(
-        'Prove independent two-build determinism for Issue #220 checkpoint',
-        'batch:issue-220:check',
-      )),
-      independentBuildProof(pnpmCheck(
-        'Prove independent two-build determinism for Issue #222 checkpoint report',
-        'batch:issue-222:report:check',
-      )),
-      independentBuildProof(pnpmCheck(
-        'Prove independent two-build determinism for Issue #223 checkpoint',
-        'batch:issue-223:check:deep',
-      )),
       {
         ...pnpmCheck(
           'Run 100K/500K/1M release-shaped performance and scale benchmark',
@@ -610,7 +484,6 @@ export function registerCheck(check, {
   paths = [],
   deepInputs = check?.deepInputs ?? [],
   protectedContract = check?.label,
-  historicalScopes = check?.historicalScopes ?? [],
 } = {}) {
   if (!check || typeof check !== 'object' || typeof check.command !== 'function') {
     throw new TypeError('A CI check must define a command function.');
@@ -663,24 +536,6 @@ export function registerCheck(check, {
   if (tier !== 'deep' && uniqueDeepInputs.length > 0) {
     throw new TypeError('Only Deep CI checks may declare Deep input paths.');
   }
-  if (!Array.isArray(historicalScopes)) {
-    throw new TypeError('CI check historical scopes must be an array.');
-  }
-  const uniqueHistoricalScopes = [...new Set(historicalScopes)];
-  if (uniqueHistoricalScopes.some((scope) => (
-    typeof scope !== 'string' || !CI_HISTORICAL_SCOPE_IDS.includes(scope)
-  ))) {
-    throw new TypeError('CI check historical scopes must name registered historical scopes.');
-  }
-  if (uniqueHistoricalScopes.length !== historicalScopes.length) {
-    throw new TypeError('CI check historical scopes must not contain duplicates.');
-  }
-  if (tier === 'historical' && uniqueHistoricalScopes.length === 0) {
-    throw new TypeError('Historical CI checks must declare an explicit bounded scope.');
-  }
-  if (tier !== 'historical' && uniqueHistoricalScopes.length > 0) {
-    throw new TypeError('Only Historical CI checks may declare historical scopes.');
-  }
   if (schedule === 'affected' && uniquePaths.length === 0) {
     throw new TypeError('Affected CI checks must declare at least one dependency path.');
   }
@@ -698,7 +553,6 @@ export function registerCheck(check, {
     schedule,
     paths: Object.freeze(uniquePaths),
     deepInputs: Object.freeze(uniqueDeepInputs),
-    historicalScopes: Object.freeze(uniqueHistoricalScopes),
     protectedContract: protectedContract.trim(),
     registration: 'explicit',
   });
@@ -707,11 +561,9 @@ export function registerCheck(check, {
 export function registerCategory(owner, category, {
   legacyIdentities = LEGACY_CHECK_IDENTITIES,
   legacyTiers = LEGACY_CHECK_TIERS,
-  legacyHistoricalScopes = LEGACY_CHECK_HISTORICAL_SCOPES.checks,
 } = {}) {
   const knownLegacyLabels = legacyIdentities[owner] ?? [];
   const legacyTierByLabel = legacyTiers[owner] ?? {};
-  const historicalScopeByLabel = legacyHistoricalScopes[owner] ?? {};
   const labels = category.checks.map((check) => check.label);
   const labelSet = new Set(labels);
   if (labelSet.size !== labels.length) {
@@ -724,27 +576,16 @@ export function registerCategory(owner, category, {
   const staleIdentities = knownLegacyLabels.filter((label) => !labelSet.has(label));
   const staleTierEntries = Object.keys(legacyTierByLabel).filter((label) => !labelSet.has(label));
   const unboundTierEntries = Object.keys(legacyTierByLabel).filter((label) => !knownLegacyLabelSet.has(label));
-  const staleHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => !labelSet.has(label));
-  const unboundHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => !knownLegacyLabelSet.has(label));
-  const nonHistoricalScopeEntries = Object.keys(historicalScopeByLabel).filter((label) => (
-    legacyTierByLabel[label] !== 'historical'
-  ));
   if (
     staleIdentities.length > 0
     || staleTierEntries.length > 0
     || unboundTierEntries.length > 0
-    || staleHistoricalScopeEntries.length > 0
-    || unboundHistoricalScopeEntries.length > 0
-    || nonHistoricalScopeEntries.length > 0
   ) {
     throw new TypeError(
       `CI scope ${owner} has stale legacy registrations: ${[
         ...staleIdentities,
         ...staleTierEntries,
         ...unboundTierEntries,
-        ...staleHistoricalScopeEntries,
-        ...unboundHistoricalScopeEntries,
-        ...nonHistoricalScopeEntries,
       ].join(', ')}`,
     );
   }
@@ -768,11 +609,10 @@ export function registerCategory(owner, category, {
       const registered = registerCheck(check, {
         owner,
         tier,
-        schedule: check.schedule ?? (tier === 'historical' ? 'manual' : 'always'),
+        schedule: check.schedule ?? 'always',
         paths: check.paths ?? [],
         deepInputs: check.deepInputs ?? [],
         protectedContract: check.protectedContract ?? check.label,
-        historicalScopes: check.historicalScopes ?? historicalScopeByLabel[check.label] ?? [],
       });
       return Object.freeze({
         ...registered,
@@ -792,7 +632,6 @@ export const CI_CATEGORIES = Object.freeze(Object.fromEntries(
 const staleLegacyOwners = [...new Set([
   ...Object.keys(LEGACY_CHECK_IDENTITIES),
   ...Object.keys(LEGACY_CHECK_TIERS),
-  ...Object.keys(LEGACY_CHECK_HISTORICAL_SCOPES.checks),
 ])].filter((owner) => !Object.hasOwn(RAW_CI_CATEGORIES, owner));
 if (staleLegacyOwners.length > 0) {
   throw new TypeError(`Legacy CI tier map has stale scopes: ${staleLegacyOwners.join(', ')}`);
@@ -806,7 +645,6 @@ export function collectCheckRegistrations() {
       schedule: check.schedule,
       paths: check.paths,
       deepInputs: check.deepInputs,
-      historicalScopes: check.historicalScopes,
       protectedContract: check.protectedContract,
       registration: check.registration,
       check: check.label,

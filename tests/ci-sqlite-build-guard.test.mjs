@@ -287,10 +287,9 @@ test('phase of a build event must match the phase the runner executes', () => {
   assert.throws(() => assertBuildEventsMatchPhase([{ ...event, phase: 'normal' }], 'deep', 'cmd'), /phase normal/u);
 });
 
-test('registry: deep owns the independent two-build proofs and normal never does', () => {
+test('registry: normal never carries independent two-build proofs', () => {
   const independent = (categoryName) => CI_CATEGORIES[categoryName].checks
     .filter((check) => check.independentCurrentRevisionBuilds);
-  assert.ok(independent('deep').length >= 4);
   for (const categoryName of CI_NORMAL_CATEGORY_ORDER) {
     assert.deepEqual(independent(categoryName), [], `${categoryName} must reuse the shared artifact`);
   }

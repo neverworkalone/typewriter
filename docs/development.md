@@ -284,7 +284,7 @@ checkpoint is not started as a second GitHub Actions workflow.
 
 `.github/workflows/deep.yml` owns scheduled and manual full validation. Manual
 dispatch validates the selected branch or commit. It runs `pnpm run ci:all`, which
-includes normal validation followed by historical replay, reproducibility, and the
+includes normal validation followed by reproducibility and the
 scale benchmark. Its weekly schedule is Sunday 22:00 UTC (Monday 07:00 KST). Deep
 CI does not run automatically for pull requests; use the manual dispatch when a PR
 needs the full validation path.
@@ -298,8 +298,20 @@ The normal category order is:
 5. `pnpm run ci:category product` — shared search, unit tests, and extension build;
 6. `pnpm run ci:category artifacts` — package/artifact tests and the final clean-checkout policy.
 
-The deep-only additions are `historical` replay and the `deep` category. To run the
+The deep-only addition is the `deep` category. To run the
 complete sequence locally, use `pnpm run ci:all`.
+
+### Manual one-off tests
+
+Completed-batch, checkpoint and one-time migration tests (M5-8 to M5-12A, M5-15
+pre-admission, Issue #204/#211/#219/#220/#222/#223 checkpoint artifacts and
+their two-build proofs, and the M5-10 wave replays) are not registered in any CI
+level or workflow. Their sources stay in place; run one directly, for example:
+
+```bash
+node --test tests/m5-11-admission.test.mjs
+pnpm run batch:issue-223:check
+```
 
 The M7-1 deep benchmark measures the real 5K release baseline and deterministic
 100K/500K/1M workloads. See the [recorded method and scale results](m7-1-scale-benchmark.md)

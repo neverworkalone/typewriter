@@ -167,18 +167,12 @@ function matchesPath(pathValue, rule) {
 
 function registeredTestTiers() {
   const tiersByFile = new Map();
-  const historicalInputs = {
-    waveA2Reviewed: 'synthetic-wave-a2-reviewed.jsonl',
-    waveA2SemanticAudit: 'synthetic-wave-a2-semantic-audit.json',
-    waveBReviewed: 'synthetic-wave-b-reviewed.jsonl',
-    waveBSemanticAudit: 'synthetic-wave-b-semantic-audit.json',
-  };
   for (const categoryName of CI_ALL_CATEGORY_ORDER) {
     for (const check of CI_CATEGORIES[categoryName].checks) {
       const files = new Set(check.testFiles ?? []);
       let command;
       try {
-        command = check.command({ historicalInputs });
+        command = check.command({});
       } catch {
         command = undefined;
       }

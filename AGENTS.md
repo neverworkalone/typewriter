@@ -365,7 +365,7 @@ Run the validation appropriate to the changed surface.
 CI scope identifies the domain a check protects; execution tier identifies when
 the check runs. Keep these separate in `scripts/ci/registry.mjs`. Register each
 check with one domain owner, one protected contract, one tier (`candidate`,
-`normal`, `deep`, or `historical`), and one schedule (`always`, `affected`, or
+`normal`, or `deep`), and one schedule (`always`, `affected`, or
 `manual`). New checks default to `deep`; promote a check into `normal` only when
 it protects a current-revision, admission, or product invariant that must block
 the same PR. An `affected` check must list normalized repository-relative
@@ -395,11 +395,9 @@ retain the complete current-canonical audit, active factory/admission
 protections, one current-revision SQLite build, direct-search and product
 output checks. A normal run may expose the fast checkpoint inside the same
 session. `ci:all` runs Normal then current-system Deep checks, and `ci:deep`
-selects Deep checks across every domain scope. Completed-batch replays stay out
-of both levels and the weekly **Deep** workflow. The separate **Historical**
-workflow runs weekly and via `workflow_dispatch`, selecting registered scopes
-individually. `ci:historical` still requires exactly one registered `--scope`
-and runs only checks tagged for that scope; it has no all-history CLI default. The existing `Validate and test Typewriter` PR check
+selects Deep checks across every domain scope. Completed-batch and one-off
+checkpoint tests are Manual: they stay in the repository, are registered in no
+CI level or workflow, and are run directly (`node --test <file>`). The existing `Validate and test Typewriter` PR check
 always runs the applicable Normal gate and uses `ci:pr` to run only affected
 Deep checks at the exact PR HEAD. `ci:all` retains full current-system Deep
 coverage for weekly scheduled/manual audits, never automatic PR classification. The path
