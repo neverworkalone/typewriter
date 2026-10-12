@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "2752c5d66afa277a58de04d96aa7d559a11037b686412307a9d42ab060815a74"
+    "canonical_records_sha256": "5116f95c0642be8490ff370b2339cb4d45bc26a29e779724264011a44cddf793"
   },
-  "authored_review_sha256": "bd18239a79906bcb5616eec6bc4f1ad2b74f26d07986c8c39eb562827627a837",
+  "authored_review_sha256": "51a9b10d4cba4d059110af2460ca15ce407e542c9ab72f83f43a39974a15d72d",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "2752c5d66afa277a58de04d96aa7d559a11037b686412307a9d42ab060815a74"
+      "canonical_records_sha256": "5116f95c0642be8490ff370b2339cb4d45bc26a29e779724264011a44cddf793"
     },
     "records": [
       {
@@ -102665,7 +102665,7 @@
       },
       {
         "record_id": "w4850",
-        "record_sha256": "3e9c90bb10ba273047b44e3cf89c17dea765153c0f4dd629dfa142a96caee70f",
+        "record_sha256": "40dfb41730bfa61d6b8b343b6dde063a06f389bf7f156aaa97e8583f88f6b8ea",
         "boundary_review": {
           "review_id": "m5-15-agent-semantic-review-20260923-r1:canonical:w4850:boundary",
           "decision": "retain",
@@ -102684,7 +102684,7 @@
           {
             "sense_id": "w4850-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-2b007739da5645a4244494c7 to w224; rationale digest 868b824d29a5. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-6d93e34cdcf10571c9c782fa to w5848; rationale digest 95d517854e41. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-39123d571672902838c8f6b2 to w1144; rationale digest 377f088980a8. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-fb7825af6350f9452e211a6e to w2730; rationale digest 5be7f6b499a8. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-4baabe27726fe80c8f74321b to w9764; rationale digest b2ea4b72f1dc. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-dfe7bbaa8ce7907b54550b72 to w5471; rationale digest 4c93a6ec7b89. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-9fc3e2fb345e37f7da785813 to w7667; rationale digest 53df70fb836a. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-3e89fdbd5a93010ff25472c1 to w4878; rationale digest 6b58a2115ae9. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-c07b9c408755032c9e066d50 to w3661; rationale digest c187a4384b98. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-f5f5100ccd337864746bdcb7 to w191; rationale digest f9be24bfe390. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-daa3fde7470ad9a85be5c06f to w10032; rationale digest 4287578ed7ef. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-232c96500b2a47e91806aec4 to w023; rationale digest 8927120f32ad. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-52b4b88aa2cf3ec92a0d1455 to w6818; rationale digest f8941a39c9a2. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-68fff6b58b38aa5651fc81f6 to w4865; rationale digest 53e1565ec5e2. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-25a6d03447bd85e3703362ed to w5749; rationale digest 2531c96d8137. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-9826a0a374f241cb7f445ba5 to w5996; rationale digest c2d9e05fb0df. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-9c1cdae22b4477a18d4b20d3 to w9093; rationale digest 728957cfcb69. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended action relation rel-cc1e59e75428818f0ce7ca95 to w3691; rationale digest e268d46ee61e. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended near relation rel-a7ee351f420896498cd23c37 to w7049; rationale digest 26e6945a0a89. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-b4a4b20203627b33fd692e1b to w7593; rationale digest a44e7e2aebbd. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-dfa5acb8828a66b2578347ab to w11046; rationale digest 6e2dd4f941d0. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-55e4651bf2708aa52f98412d to w10450; rationale digest cdab0ed07825. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-ab1d1c84823c4ccfe196a6a4 to w3927; rationale digest fd31abe29ed1."
+            "relation_rationale": "w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-2b007739da5645a4244494c7 to w224; rationale digest 868b824d29a5. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-6d93e34cdcf10571c9c782fa to w5848; rationale digest 95d517854e41. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-39123d571672902838c8f6b2 to w1144; rationale digest 377f088980a8. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-fb7825af6350f9452e211a6e to w2730; rationale digest 5be7f6b499a8. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-4baabe27726fe80c8f74321b to w9764; rationale digest b2ea4b72f1dc. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-dfe7bbaa8ce7907b54550b72 to w5471; rationale digest 4c93a6ec7b89. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-9fc3e2fb345e37f7da785813 to w7667; rationale digest 53df70fb836a. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-3e89fdbd5a93010ff25472c1 to w4878; rationale digest 6b58a2115ae9. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-c07b9c408755032c9e066d50 to w3661; rationale digest c187a4384b98. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-f5f5100ccd337864746bdcb7 to w191; rationale digest f9be24bfe390. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-daa3fde7470ad9a85be5c06f to w10032; rationale digest 4287578ed7ef. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-232c96500b2a47e91806aec4 to w023; rationale digest 8927120f32ad. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-52b4b88aa2cf3ec92a0d1455 to w6818; rationale digest f8941a39c9a2. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-68fff6b58b38aa5651fc81f6 to w4865; rationale digest 53e1565ec5e2. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-25a6d03447bd85e3703362ed to w5749; rationale digest 2531c96d8137. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-9826a0a374f241cb7f445ba5 to w5996; rationale digest c2d9e05fb0df. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-9c1cdae22b4477a18d4b20d3 to w9093; rationale digest 728957cfcb69. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended action relation rel-cc1e59e75428818f0ce7ca95 to w3691; rationale digest e268d46ee61e. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended near relation rel-a7ee351f420896498cd23c37 to w7049; rationale digest 26e6945a0a89. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-b4a4b20203627b33fd692e1b to w7593; rationale digest a44e7e2aebbd. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-dfa5acb8828a66b2578347ab to w11046; rationale digest 6e2dd4f941d0. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-55e4651bf2708aa52f98412d to w10450; rationale digest cdab0ed07825. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-ab1d1c84823c4ccfe196a6a4 to w3927; rationale digest fd31abe29ed1. w4850 w4850-s1 7c285aa5b04b [R000020]: Stage 3 attempt R000020-a1 changed near relation rel-2b007739da5645a4244494c7 to near rel-2cbd2425ab9b2d2313c6e29e for w224; rationale digest 434ed110a8dc."
           }
         ]
       },
@@ -1291488,6 +1291488,263 @@
         }
       ],
       "sha256": "aee53a8260027c32e1fae7d71cede9df0736dd18c2e4430011db62c56a743bd8"
+    },
+    {
+      "batch_id": "R000020",
+      "attempt": 1,
+      "semantic_decisions_sha256": "faaa456ae383442398e776e52c6a1d51a5d99ef50d3a6d6f2b9aa727ad6f0704",
+      "entries": [],
+      "relation_corrections": [
+        {
+          "source_candidate_id": "R000020",
+          "source_record_id": "w4850",
+          "source_sense_id": "w4850-s1",
+          "source_gloss_sha256": "7c285aa5b04b4839d19cf2216fda1c95d12dda3e00057cf0d14f4a862de98252",
+          "target_meaning_sha256": "bc08acfbb20b7fcda8135d362cdfcc276b6e8d5ab3bf6a07a901ed550bb5117f",
+          "previous_relation_id": "rel-2b007739da5645a4244494c7",
+          "previous_relation": {
+            "target": "w224",
+            "target_sense": "w224-s1",
+            "type": "near",
+            "note": "확인하기는 사실이나 상태를 살펴 틀림이 없는지 알아보는 행동이다.",
+            "relevance": 9
+          },
+          "relation_id": "rel-2cbd2425ab9b2d2313c6e29e",
+          "relation": {
+            "target": "w224",
+            "target_sense": "w224-s1",
+            "type": "near",
+            "note": "확인하기는 사실이나 상태를 살펴 틀림이 없는지 알아보는 행동이다.",
+            "relevance": 4
+          },
+          "rationale_sha256": "434ed110a8dc97e9f9d6a2a300727d33a9710ac0c2eae3d50cba94d5f9f2336f",
+          "position": 0,
+          "outcome": "amended"
+        }
+      ],
+      "changes": [
+        {
+          "entry_id": "w4850",
+          "operation": "amend_relations",
+          "path": "data/canonical/m5-15-expansion.jsonl",
+          "source_candidate_ids": [
+            "R000020"
+          ],
+          "amended_relation_ids": [
+            "rel-2b007739da5645a4244494c7"
+          ],
+          "before_sha256": "3e9c90bb10ba273047b44e3cf89c17dea765153c0f4dd629dfa142a96caee70f",
+          "after_sha256": "40dfb41730bfa61d6b8b343b6dde063a06f389bf7f156aaa97e8583f88f6b8ea",
+          "previous_semantic_review_sha256": "8763118225820cd6ccd97147de0858a9ec5e536a5981844a08e6e54dcc146257",
+          "previous_semantic_review": {
+            "record_id": "w4850",
+            "record_sha256": "3e9c90bb10ba273047b44e3cf89c17dea765153c0f4dd629dfa142a96caee70f",
+            "boundary_review": {
+              "review_id": "m5-15-agent-semantic-review-20260923-r1:canonical:w4850:boundary",
+              "decision": "retain",
+              "classification": "atomic",
+              "evidence": [
+                {
+                  "sense_id": "w4850-s1",
+                  "evidence_basis": "“살펴보다” denotes 대상이나 상황을 자세히 보고 확인하다.",
+                  "rationale": "m5-4770 w4850 w4850-s1 7c285aa5b04b: the source-bound gloss “대상이나 상황을 자세히 보고 확인하다.” states one bounded action meaning for “살펴보다”."
+                }
+              ],
+              "pairwise": [],
+              "rationale": "m5-4770 w4850 w4850-s1 7c285aa5b04b: the source-bound gloss “대상이나 상황을 자세히 보고 확인하다.” states one bounded action meaning for “살펴보다”."
+            },
+            "sense_reviews": [
+              {
+                "sense_id": "w4850-s1",
+                "relation_decision": "relations-reviewed",
+                "relation_rationale": "w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-2b007739da5645a4244494c7 to w224; rationale digest 868b824d29a5. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-6d93e34cdcf10571c9c782fa to w5848; rationale digest 95d517854e41. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-39123d571672902838c8f6b2 to w1144; rationale digest 377f088980a8. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-fb7825af6350f9452e211a6e to w2730; rationale digest 5be7f6b499a8. w4850 w4850-s1 7c285aa5b04b [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-4baabe27726fe80c8f74321b to w9764; rationale digest b2ea4b72f1dc. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-dfe7bbaa8ce7907b54550b72 to w5471; rationale digest 4c93a6ec7b89. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-9fc3e2fb345e37f7da785813 to w7667; rationale digest 53df70fb836a. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-3e89fdbd5a93010ff25472c1 to w4878; rationale digest 6b58a2115ae9. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-c07b9c408755032c9e066d50 to w3661; rationale digest c187a4384b98. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-f5f5100ccd337864746bdcb7 to w191; rationale digest f9be24bfe390. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-daa3fde7470ad9a85be5c06f to w10032; rationale digest 4287578ed7ef. w4850 w4850-s1 7c285aa5b04b [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-232c96500b2a47e91806aec4 to w023; rationale digest 8927120f32ad. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-52b4b88aa2cf3ec92a0d1455 to w6818; rationale digest f8941a39c9a2. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-68fff6b58b38aa5651fc81f6 to w4865; rationale digest 53e1565ec5e2. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-25a6d03447bd85e3703362ed to w5749; rationale digest 2531c96d8137. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-9826a0a374f241cb7f445ba5 to w5996; rationale digest c2d9e05fb0df. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-9c1cdae22b4477a18d4b20d3 to w9093; rationale digest 728957cfcb69. w4850 w4850-s1 7c285aa5b04b [R000017]: Stage 3 attempt R000017-a1 appended action relation rel-cc1e59e75428818f0ce7ca95 to w3691; rationale digest e268d46ee61e. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended near relation rel-a7ee351f420896498cd23c37 to w7049; rationale digest 26e6945a0a89. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-b4a4b20203627b33fd692e1b to w7593; rationale digest a44e7e2aebbd. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-dfa5acb8828a66b2578347ab to w11046; rationale digest 6e2dd4f941d0. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-55e4651bf2708aa52f98412d to w10450; rationale digest cdab0ed07825. w4850 w4850-s1 7c285aa5b04b [R000019]: Stage 3 attempt R000019-a1 appended association relation rel-ab1d1c84823c4ccfe196a6a4 to w3927; rationale digest fd31abe29ed1."
+              }
+            ]
+          },
+          "previous_record": {
+            "id": "w4850",
+            "record_type": "entry",
+            "role": "start",
+            "candidate_id": "w4850",
+            "lemma": "살펴보다",
+            "search_forms": [
+              "살펴보다"
+            ],
+            "senses": [
+              {
+                "id": "w4850-s1",
+                "pos": "verb",
+                "gloss": "대상이나 상황을 자세히 보고 확인하다.",
+                "relations": [
+                  {
+                    "target": "w224",
+                    "target_sense": "w224-s1",
+                    "type": "near",
+                    "note": "확인하기는 사실이나 상태를 살펴 틀림이 없는지 알아보는 행동이다.",
+                    "relevance": 9
+                  },
+                  {
+                    "target": "w5848",
+                    "target_sense": "w5848-s1",
+                    "type": "near",
+                    "note": "찾아보기는 필요한 정보나 대상을 찾으려고 살펴보는 행동이다.",
+                    "relevance": 8
+                  },
+                  {
+                    "target": "w1144",
+                    "target_sense": "w1144-s1",
+                    "type": "near",
+                    "note": "훑기는 빠짐없이 한 번 쭉 살펴보는 방법이다.",
+                    "relevance": 7
+                  },
+                  {
+                    "target": "w2730",
+                    "target_sense": "w2730-s1",
+                    "type": "near",
+                    "note": "들여다보기는 안쪽에 무엇이 있는지 가까이에서 살펴보는 동작이다.",
+                    "relevance": 8
+                  },
+                  {
+                    "target": "w9764",
+                    "target_sense": "w9764-s1",
+                    "type": "near",
+                    "note": "뜯어보기는 구석구석 꼼꼼히 살펴보는 더 세밀한 방식이다.",
+                    "relevance": 8
+                  },
+                  {
+                    "target": "w5471",
+                    "target_sense": "w5471-s1",
+                    "type": "near",
+                    "note": "사실이 맞는지 보는 확인이다",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w7667",
+                    "target_sense": "w7667-s1",
+                    "type": "near",
+                    "note": "빠진 것이 없는지 보는 체크다",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w4878",
+                    "target_sense": "w4878-s1",
+                    "type": "near",
+                    "note": "표면을 두드려 살피는 표현이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w3661",
+                    "target_sense": "w3661-s1",
+                    "type": "near",
+                    "note": "빛이나 그림자에 비쳐 보는 동작이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w191",
+                    "target_sense": "w191-s2",
+                    "type": "association",
+                    "note": "필요한 정보를 찾는 동작이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w10032",
+                    "target_sense": "w10032-s1",
+                    "type": "association",
+                    "note": "살펴보고 가지게 된 소견이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w023",
+                    "target_sense": "w023-s1",
+                    "type": "association",
+                    "note": "확인하려는 의심이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w6818",
+                    "target_sense": "w6818-s1",
+                    "type": "near",
+                    "note": "문제가 없는지 살피는 점검이다",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w4865",
+                    "target_sense": "w4865-s1",
+                    "type": "near",
+                    "note": "정체나 상태를 알아보는 ‘알아보다’이다",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w5749",
+                    "target_sense": "w5749-s1",
+                    "type": "near",
+                    "note": "살펴서 찾아내는 ‘찾아내다’이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w5996",
+                    "target_sense": "w5996-s1",
+                    "type": "near",
+                    "note": "살펴서 감춘 것을 알아내는 ‘알아내다’이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w9093",
+                    "target_sense": "w9093-s1",
+                    "type": "association",
+                    "note": "길을 찾으려는 모색이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w3691",
+                    "target_sense": "w3691-s1",
+                    "type": "action",
+                    "note": "시선을 옮겨 살피는 표현이다",
+                    "relevance": 3
+                  },
+                  {
+                    "target": "w7049",
+                    "target_sense": "w7049-s1",
+                    "type": "near",
+                    "note": "내용이나 조건을 자세히 살피는 검토이다",
+                    "relevance": 4
+                  },
+                  {
+                    "target": "w7593",
+                    "target_sense": "w7593-s1",
+                    "type": "association",
+                    "note": "대상을 자세히 살펴 원리를 밝히는 탐구이다",
+                    "relevance": 6
+                  },
+                  {
+                    "target": "w11046",
+                    "target_sense": "w11046-s1",
+                    "type": "association",
+                    "note": "어떤 곳에 직접 찾아가 살피는 답사이다",
+                    "relevance": 6
+                  },
+                  {
+                    "target": "w10450",
+                    "target_sense": "w10450-s1",
+                    "type": "association",
+                    "note": "상대의 속마음을 알아내려 살피는 일",
+                    "relevance": 6
+                  },
+                  {
+                    "target": "w3927",
+                    "target_sense": "w3927-s1",
+                    "type": "association",
+                    "note": "어깨 뒤에서 몰래 시선을 보내는 행동",
+                    "relevance": 6
+                  }
+                ]
+              }
+            ]
+          },
+          "semantic_review_sha256": "4928a73e34ac0674c91812394ed425ee9994ab8fb1186e2e33bd5f99444b8d6b"
+        }
+      ],
+      "sha256": "df01bf9e2df793477d4c68682a58a5773b88a31bf730d8aa53b8fa6173ec9a86"
     }
   ]
 }
