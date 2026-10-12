@@ -5,6 +5,21 @@
 - Audited source revision: `0c8a66cd7a85d1aaed30aaf977b45ceec9f03de8` (master after MO-1 / #150)
 - Repository visibility: private; this audit does not change it.
 
+## Superseding owner release decision (2026-10-12)
+
+The findings and recommendations below preserve the 2026-09-24 audit snapshot.
+On 2026-10-12, the owner authorized distribution of Typewriter's independently
+authored lexical output under the project data license, including the current
+canonical data and its generated products, to the extent Typewriter controls
+the rights. This supersedes the audit's blanket per-record clearance, corpus
+hold, and exhaustive historical-surface review as prerequisites for shipping
+that output. Keep raw NIKL corpus material and specifically identified copied
+or restricted third-party content out of public artifacts; remediate a concrete
+violation at the affected item. Follow the exact-revision, deterministic-build,
+package-content, license/notice, and applicable Store/Pages checks in the
+current `DATA-LICENSE.md` and `docs/publication-boundary.md`. Historical counts,
+digests, and audit outcomes below are unchanged.
+
 ## Status after MO-3 triage
 
 GitHub issue #152 is closed, but the current tree has no record-level clearance

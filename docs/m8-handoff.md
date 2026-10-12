@@ -6,7 +6,17 @@ Audit date: 2026-09-27
 > package digests below remain bound to that candidate. Its 5,000-start role
 > count is not the current search-eligibility denominator. Issue #212 records
 > the current role-independent coverage; this note does not change M8's
-> independent data-redistribution hold.
+> then-current independent data-redistribution hold.
+
+**Current release-policy addendum (2026-10-12):** the owner has since authorized
+distribution of Typewriter's independently authored lexical output under the
+project data license, including the current canonical data and generated
+products, to the extent Typewriter controls the rights. This supersedes M8's
+historical blanket hold as a current release prerequisite. Raw NIKL corpus
+material and specifically identified copied or restricted third-party content
+remain excluded. The exact M8 revision, package digests, and engineering results
+below remain historical evidence; current releases use the checks in
+`DATA-LICENSE.md` and `docs/publication-boundary.md`.
 
 ## Decision
 
@@ -158,10 +168,11 @@ Deep remains within its 600-second budget. Keep the 1M stress run out of normal 
 - Synthetic scale input remains temporary and was excluded from canonical and
   product artifacts; normal artifact policy reported zero generated projections
   and zero unclassified artifacts.
-- DATA-LICENSE.md has no record-level clearance allowlist for the current
-  canonical corpus. The package therefore remains a held, local RC even though
-  its engineering checks pass. M8 must keep redistribution closed until rights
-  evidence and publication approval are complete.
+- At the time of this 2026-09-27 handoff, DATA-LICENSE.md had no record-level
+  clearance allowlist and the package was treated as a held local RC. The
+  2026-10-12 owner release-policy addendum above supersedes that historical
+  distribution decision; it does not change the package or validation evidence
+  captured for this M8 revision.
 - If any source input changes, treat it as a new candidate: rerun the clean
   release command and carry forward its new source SHA, package SHA, database
   SHA, and CFT evidence together.

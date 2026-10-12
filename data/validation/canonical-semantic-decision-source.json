@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "f2efe5162fbd36c08be243a9fb05d7e69f138c3113dde4aa6a70296090109140"
+    "canonical_records_sha256": "5341bc1cbc05f15781fe5f87ce6cbf7428bcd15cd548192aefbe08b884d4059a"
   },
-  "authored_review_sha256": "e50b6befc9806a9b65e66be5b1385147fd3cd16b23f1d1ff62b082089ecde3c3",
+  "authored_review_sha256": "9d490ba3336565a0ac3e18ec88a3bfdd7c782df1da7904ca55811ac11ee654b7",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "f2efe5162fbd36c08be243a9fb05d7e69f138c3113dde4aa6a70296090109140"
+      "canonical_records_sha256": "5341bc1cbc05f15781fe5f87ce6cbf7428bcd15cd548192aefbe08b884d4059a"
     },
     "records": [
       {
@@ -3883,7 +3883,7 @@
       },
       {
         "record_id": "w063",
-        "record_sha256": "d081711f380cc0aa7331668660a3322c0e5b67606fc41efe7c0d75a1d2351bca",
+        "record_sha256": "5467b6e2327726dbbf44a803b1d1d0a6912523b14ee066a9a7d6096334e4c6c5",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w063:boundary",
           "decision": "retain",
@@ -3902,7 +3902,7 @@
           {
             "sense_id": "w063-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w063 w063-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-e7bf67c41c14f05c780f9560 to w324; rationale digest 08c5e821604c. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-54c74910c0bf402c81250c31 to w3242; rationale digest b250c2fcac31. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-2132e5f39661a4db427d89e0 to w983; rationale digest 26c91d7f4fb2. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-6133d40a122193070655037c to w11582; rationale digest cd71c8eeb63d. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-732a894378b327cf5a149579 to w4943; rationale digest 7ea0ec70c47d. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended antonym relation rel-ba74a01328df4cdf7f6ecf9d to w061; rationale digest 9a25d399183e. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended antonym relation rel-f8552e2772728ec20b48afef to w319; rationale digest 3211a6ae277a. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-78448bc5d2fcdf242ffad9d2 to w11650; rationale digest ad406426992c. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-574cb0d682a9f6ea0cffd03a to w4300; rationale digest 0fa120394183. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-eba377b68f3f68dfdf2adc61 to w2498; rationale digest f8a2ccb3a182. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-8141076cd69f51399f3f5e59 to w11188; rationale digest 0f40d43262f7. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-0a034b8d2e882821be6be4db to w974; rationale digest 9ce15cb502a5. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-6a222090803a7190a6d74551 to w098; rationale digest 595b23e5831d. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-f22e6c886f26fd48ca63b6d0 to w065; rationale digest 1da5de1ec805. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-65a40b9f7f4665ecf7c748fd to r001; rationale digest 2ab948356854. w063 w063-s1 72727abf1dce [R000017]: Stage 3 attempt R000017-a1 appended antonym relation rel-4f7a895769062198a82b4b34 to w065; rationale digest 1da5de1ec805."
+            "relation_rationale": "w063 w063-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-e7bf67c41c14f05c780f9560 to w324; rationale digest 08c5e821604c. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-54c74910c0bf402c81250c31 to w3242; rationale digest b250c2fcac31. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-2132e5f39661a4db427d89e0 to w983; rationale digest 26c91d7f4fb2. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-6133d40a122193070655037c to w11582; rationale digest cd71c8eeb63d. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-732a894378b327cf5a149579 to w4943; rationale digest 7ea0ec70c47d. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended antonym relation rel-ba74a01328df4cdf7f6ecf9d to w061; rationale digest 9a25d399183e. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended antonym relation rel-f8552e2772728ec20b48afef to w319; rationale digest 3211a6ae277a. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-78448bc5d2fcdf242ffad9d2 to w11650; rationale digest ad406426992c. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-574cb0d682a9f6ea0cffd03a to w4300; rationale digest 0fa120394183. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-eba377b68f3f68dfdf2adc61 to w2498; rationale digest f8a2ccb3a182. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-8141076cd69f51399f3f5e59 to w11188; rationale digest 0f40d43262f7. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-0a034b8d2e882821be6be4db to w974; rationale digest 9ce15cb502a5. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-6a222090803a7190a6d74551 to w098; rationale digest 595b23e5831d. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-f22e6c886f26fd48ca63b6d0 to w065; rationale digest 1da5de1ec805. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-65a40b9f7f4665ecf7c748fd to r001; rationale digest 2ab948356854."
           }
         ]
       },
@@ -3933,7 +3933,7 @@
       },
       {
         "record_id": "w065",
-        "record_sha256": "31821b1d6d94a81b97691214badc94ecb238ff01a53fb31751eccdafdbd59f36",
+        "record_sha256": "1ad7bbf25a5bfbbcdbfda82f1ae3436f637ca005c259405125a7d5083e60042e",
         "boundary_review": {
           "review_id": "canonical-semantic-review:w065:boundary",
           "decision": "retain",
@@ -3952,7 +3952,7 @@
           {
             "sense_id": "w065-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w065 w065-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w065 w065-s1 09be560acab1 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-a3a72b3f1831d4b39a4291b3 to r001; rationale digest d35ab30ab643. w065 w065-s1 09be560acab1 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-cdb027a5a89e7da85c3e82cb to r004; rationale digest e6f77b68b27b. w065 w065-s1 09be560acab1 [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-37e77b2655adef16da0a0608 to w061; rationale digest aad4a66c4d94. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-f06d885f25dfcac5a4993a86 to w682; rationale digest 1e1906de82d1. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-a53a44dfb327cd6a0949ee4a to w2498; rationale digest d0f23f4fa6b7. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-0ed59aaa7aae6e2e2adc9260 to w11650; rationale digest 34e196c1a264. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-4af983864af104382dd9c590 to w974; rationale digest 998dd13dd646. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-d2b1047b11fc48f37c763afe to w063; rationale digest 8486ba19f604. w065 w065-s1 09be560acab1 [R000017]: Stage 3 attempt R000017-a1 appended antonym relation rel-90f5b9a45acf0b477a2fd473 to w063; rationale digest 8486ba19f604."
+            "relation_rationale": "w065 w065-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w065 w065-s1 09be560acab1 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-a3a72b3f1831d4b39a4291b3 to r001; rationale digest d35ab30ab643. w065 w065-s1 09be560acab1 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-cdb027a5a89e7da85c3e82cb to r004; rationale digest e6f77b68b27b. w065 w065-s1 09be560acab1 [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-37e77b2655adef16da0a0608 to w061; rationale digest aad4a66c4d94. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-f06d885f25dfcac5a4993a86 to w682; rationale digest 1e1906de82d1. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-a53a44dfb327cd6a0949ee4a to w2498; rationale digest d0f23f4fa6b7. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-0ed59aaa7aae6e2e2adc9260 to w11650; rationale digest 34e196c1a264. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-4af983864af104382dd9c590 to w974; rationale digest 998dd13dd646. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-d2b1047b11fc48f37c763afe to w063; rationale digest 8486ba19f604."
           }
         ]
       },
@@ -48009,7 +48009,7 @@
       },
       {
         "record_id": "w1716",
-        "record_sha256": "2a29c7322a02e5a9afb987121f2b088e8fa7c8a7ec25929512c46a6f795dfc91",
+        "record_sha256": "2b6fb77955064254797debbd19e37a65232bd836e4e2fec136475e3b47a7fd7b",
         "boundary_review": {
           "review_id": "m5-12a-agent-semantic-review-20260920-r4:canonical:w1716:boundary",
           "decision": "retain",
@@ -48028,7 +48028,7 @@
           {
             "sense_id": "w1716-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-78a25b4c4424d2bea38d8340 to w1715; rationale digest 4bd7e875cb9a. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-41798f02d15c4976fbd228ab to w1718; rationale digest 84d036a6ef34. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-43ebb4ce587c0c96fc9100c6 to w1720; rationale digest 8ec18c4c5128. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-3071540d38e3d6cd72b796d2 to w1660; rationale digest f1dd359d10c3. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-44d71d69ba3f107f44b64aed to w1656; rationale digest 76f9fff27393. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-87cc367328f0945028806a2e to w1640; rationale digest 6ec5c3bba693. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended antonym relation rel-7779f2daae298af164a718b6 to w1648; rationale digest d6f7b4af4a49."
+            "relation_rationale": "w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-78a25b4c4424d2bea38d8340 to w1715; rationale digest 4bd7e875cb9a. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-41798f02d15c4976fbd228ab to w1718; rationale digest 84d036a6ef34. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-43ebb4ce587c0c96fc9100c6 to w1720; rationale digest 8ec18c4c5128. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-3071540d38e3d6cd72b796d2 to w1660; rationale digest f1dd359d10c3. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-44d71d69ba3f107f44b64aed to w1656; rationale digest 76f9fff27393. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-87cc367328f0945028806a2e to w1640; rationale digest 6ec5c3bba693. w1716 w1716-s1 934e9b987ce1 [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-7d023ba9d8e8bba9a9a5e2d8 to w1648; rationale digest d6f7b4af4a49."
           }
         ]
       },
@@ -953468,7 +953468,7 @@
     {
       "batch_id": "R000017",
       "attempt": 1,
-      "semantic_decisions_sha256": "f67f5bf1b23a74b9e0f9b991002c86f10541f1e9a2c51429b692b2c1244d74a3",
+      "semantic_decisions_sha256": "1c364701d4fd5c654ed027508b9ca8c4800df3dedfb367f54e2669931073befc",
       "entries": [],
       "relation_amendments": [
         {
@@ -957058,38 +957058,6 @@
             "relevance": 3
           },
           "rationale_sha256": "06b1f0b4b6f502d1a16f2bca2d9f155adc05e1102bf260b047bd75f3d4604182",
-          "outcome": "appended"
-        },
-        {
-          "source_candidate_id": "R000017",
-          "source_record_id": "w063",
-          "source_sense_id": "w063-s1",
-          "source_gloss_sha256": "72727abf1dce2dc6962011b941bfb760ca4dfeb2181a31e5c419175afafbedce",
-          "authored_relation_id": "rel-4f7a895769062198a82b4b34",
-          "relation_id": "rel-4f7a895769062198a82b4b34",
-          "relation": {
-            "target": "w065",
-            "target_sense": "w065-s1",
-            "type": "antonym",
-            "note": "달콤하게 느껴지는 단내다"
-          },
-          "rationale_sha256": "1da5de1ec80580585294369a99c2b12dbc02e40ab4e41113e6e8b372b21922c2",
-          "outcome": "appended"
-        },
-        {
-          "source_candidate_id": "R000017",
-          "source_record_id": "w065",
-          "source_sense_id": "w065-s1",
-          "source_gloss_sha256": "09be560acab165de17d6047fb2698f03fb7c6ec515259045efcca0059dfc5643",
-          "authored_relation_id": "rel-90f5b9a45acf0b477a2fd473",
-          "relation_id": "rel-90f5b9a45acf0b477a2fd473",
-          "relation": {
-            "target": "w063",
-            "target_sense": "w063-s1",
-            "type": "antonym",
-            "note": "불쾌하고 역한 악취다"
-          },
-          "rationale_sha256": "8486ba19f6040868f2be69fd1ca3b0f836ede5aa201211caad858b014e4f0a41",
           "outcome": "appended"
         },
         {
@@ -977958,13 +977926,14 @@
           "source_record_id": "w1716",
           "source_sense_id": "w1716-s1",
           "source_gloss_sha256": "934e9b987ce124811db44f6cf484d5ce9a83d9bcba3a497b18c92643d7cd7e4b",
-          "authored_relation_id": "rel-7779f2daae298af164a718b6",
-          "relation_id": "rel-7779f2daae298af164a718b6",
+          "authored_relation_id": "rel-7d023ba9d8e8bba9a9a5e2d8",
+          "relation_id": "rel-7d023ba9d8e8bba9a9a5e2d8",
           "relation": {
             "target": "w1648",
             "target_sense": "w1648-s1",
-            "type": "antonym",
-            "note": "낮의 기척이다"
+            "type": "association",
+            "note": "낮의 기척이다",
+            "relevance": 3
           },
           "rationale_sha256": "d6f7b4af4a499b9aecaad66c882f6519fb82699be08ba47909d3a5ea1363da89",
           "outcome": "appended"
@@ -1012201,311 +1012170,6 @@
           "semantic_review_sha256": "afaf1b32a209c2c91fa0a1ec13fb246e637b458b75085cb47773dd4d1b3c3699"
         },
         {
-          "entry_id": "w063",
-          "operation": "append_relations",
-          "path": "data/canonical/pilot.jsonl",
-          "source_candidate_ids": [
-            "R000017"
-          ],
-          "added_relation_ids": [
-            "rel-4f7a895769062198a82b4b34"
-          ],
-          "before_sha256": "5467b6e2327726dbbf44a803b1d1d0a6912523b14ee066a9a7d6096334e4c6c5",
-          "after_sha256": "d081711f380cc0aa7331668660a3322c0e5b67606fc41efe7c0d75a1d2351bca",
-          "previous_semantic_review_sha256": "0ac1bbc315cf5fe0ed8b274ba1fd2b132ee4ed80e5a947d3914d6f543ccf7d05",
-          "previous_semantic_review": {
-            "record_id": "w063",
-            "record_sha256": "5467b6e2327726dbbf44a803b1d1d0a6912523b14ee066a9a7d6096334e4c6c5",
-            "boundary_review": {
-              "review_id": "canonical-semantic-review:w063:boundary",
-              "decision": "retain",
-              "classification": "atomic",
-              "evidence": [
-                {
-                  "sense_id": "w063-s1",
-                  "evidence_basis": "gloss content and writer domain axes: smell",
-                  "rationale": "w063 w063-s1 was separately reviewed against gloss 72727abf1dce and writer-facing usage evidence."
-                }
-              ],
-              "pairwise": [],
-              "rationale": "w063 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
-            },
-            "sense_reviews": [
-              {
-                "sense_id": "w063-s1",
-                "relation_decision": "relations-reviewed",
-                "relation_rationale": "w063 w063-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-e7bf67c41c14f05c780f9560 to w324; rationale digest 08c5e821604c. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-54c74910c0bf402c81250c31 to w3242; rationale digest b250c2fcac31. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-2132e5f39661a4db427d89e0 to w983; rationale digest 26c91d7f4fb2. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-6133d40a122193070655037c to w11582; rationale digest cd71c8eeb63d. w063 w063-s1 72727abf1dce [R000006]: Stage 3 attempt R000006-a1 appended action relation rel-732a894378b327cf5a149579 to w4943; rationale digest 7ea0ec70c47d. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended antonym relation rel-ba74a01328df4cdf7f6ecf9d to w061; rationale digest 9a25d399183e. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended antonym relation rel-f8552e2772728ec20b48afef to w319; rationale digest 3211a6ae277a. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-78448bc5d2fcdf242ffad9d2 to w11650; rationale digest ad406426992c. w063 w063-s1 72727abf1dce [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-574cb0d682a9f6ea0cffd03a to w4300; rationale digest 0fa120394183. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-eba377b68f3f68dfdf2adc61 to w2498; rationale digest f8a2ccb3a182. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-8141076cd69f51399f3f5e59 to w11188; rationale digest 0f40d43262f7. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-0a034b8d2e882821be6be4db to w974; rationale digest 9ce15cb502a5. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-6a222090803a7190a6d74551 to w098; rationale digest 595b23e5831d. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-f22e6c886f26fd48ca63b6d0 to w065; rationale digest 1da5de1ec805. w063 w063-s1 72727abf1dce [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-65a40b9f7f4665ecf7c748fd to r001; rationale digest 2ab948356854."
-              }
-            ]
-          },
-          "previous_record": {
-            "id": "w063",
-            "record_type": "entry",
-            "role": "start",
-            "candidate_id": "w063",
-            "lemma": "악취",
-            "search_forms": [
-              "악취"
-            ],
-            "senses": [
-              {
-                "id": "w063-s1",
-                "pos": "noun",
-                "gloss": "불쾌하고 역하게 느껴지는 냄새",
-                "relations": [
-                  {
-                    "target": "w062",
-                    "target_sense": "w062-s1",
-                    "type": "near",
-                    "note": "악취는 냄새의 한 종류지만 불쾌하다는 평가가 포함되어 모든 냄새를 가리키지 않는다.",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w064",
-                    "target_sense": "w064-s1",
-                    "type": "near",
-                    "note": "비린내가 악취로 느껴질 수 있어도 비린내는 냄새의 원재료와 결을 더 구체적으로 가리킨다.",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w324",
-                    "target_sense": "w324-s1",
-                    "type": "near",
-                    "note": "비릿하다는 날것 같은 냄새가 조금 나 불쾌한 감각을 줄 수 있다.",
-                    "relevance": 5
-                  },
-                  {
-                    "target": "w3242",
-                    "target_sense": "w3242-s1",
-                    "type": "sensory",
-                    "note": "쇠내는 금속이나 피에서 나는 서늘하고 날카로운 냄새의 구체적인 결이다.",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w983",
-                    "target_sense": "w983-s1",
-                    "type": "sensory",
-                    "note": "물비린내는 물에서 나는 비릿한 냄새로 악취의 한 구체적 장면이 될 수 있다.",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w11582",
-                    "target_sense": "w11582-s1",
-                    "type": "action",
-                    "note": "냄새를 킁킁 맡는 동작은 악취를 알아차리는 후각 행동이다.",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w4943",
-                    "target_sense": "w4943-s1",
-                    "type": "action",
-                    "note": "콧등을 찡그리는 표정은 불쾌하거나 낯선 냄새에 대한 몸의 반응이다.",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w061",
-                    "target_sense": "w061-s1",
-                    "type": "antonym",
-                    "note": "향기는 기분 좋게 느껴지는 냄새라 악취와 반대다."
-                  },
-                  {
-                    "target": "w319",
-                    "target_sense": "w319-s1",
-                    "type": "antonym",
-                    "note": "향긋하다는 냄새가 은은하고 기분 좋다는 뜻이라 악취와 반대되는 서술이다."
-                  },
-                  {
-                    "target": "w11650",
-                    "target_sense": "w11650-s1",
-                    "type": "association",
-                    "note": "체취는 몸에서 나는 냄새라 악취가 되기도 하는 냄새의 한 갈래다.",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w4300",
-                    "target_sense": "w4300-s1",
-                    "type": "association",
-                    "note": "비릿내는 생선이나 젖은 금속에서 느껴지는 약간 날카로운 냄새라 악취보다 약한 불쾌한 냄새다.",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w2498",
-                    "target_sense": "w2498-s1",
-                    "type": "sensory",
-                    "note": "농도가 높은 짙은 향이다",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w11188",
-                    "target_sense": "w11188-s1",
-                    "type": "near",
-                    "note": "코로 맡는 내음이다",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w974",
-                    "target_sense": "w974-s1",
-                    "type": "association",
-                    "note": "냄새를 맡는 후각이다",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w098",
-                    "target_sense": "w098-s1",
-                    "type": "association",
-                    "note": "맛을 느끼는 입맛이다",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w065",
-                    "target_sense": "w065-s1",
-                    "type": "sensory",
-                    "note": "달콤하게 느껴지는 단내다",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "r001",
-                    "target_sense": "r001-s1",
-                    "type": "association",
-                    "note": "냄새로 느껴지는 향기인 향내다",
-                    "relevance": 3
-                  }
-                ]
-              }
-            ]
-          },
-          "semantic_review_sha256": "1ebc69828a8578d7534dcc31ea525edd2e676abdf77b83e97a85c803a5efa5dc"
-        },
-        {
-          "entry_id": "w065",
-          "operation": "append_relations",
-          "path": "data/canonical/pilot.jsonl",
-          "source_candidate_ids": [
-            "R000017"
-          ],
-          "added_relation_ids": [
-            "rel-90f5b9a45acf0b477a2fd473"
-          ],
-          "before_sha256": "1ad7bbf25a5bfbbcdbfda82f1ae3436f637ca005c259405125a7d5083e60042e",
-          "after_sha256": "31821b1d6d94a81b97691214badc94ecb238ff01a53fb31751eccdafdbd59f36",
-          "previous_semantic_review_sha256": "098b7fadeacf662656f9fc08bd08f040e9a130e2adfa4f0d6a1a2910a8647ad3",
-          "previous_semantic_review": {
-            "record_id": "w065",
-            "record_sha256": "1ad7bbf25a5bfbbcdbfda82f1ae3436f637ca005c259405125a7d5083e60042e",
-            "boundary_review": {
-              "review_id": "canonical-semantic-review:w065:boundary",
-              "decision": "retain",
-              "classification": "atomic",
-              "evidence": [
-                {
-                  "sense_id": "w065-s1",
-                  "evidence_basis": "gloss content and writer domain axes: smell",
-                  "rationale": "w065 w065-s1 was separately reviewed against gloss 09be560acab1 and writer-facing usage evidence."
-                }
-              ],
-              "pairwise": [],
-              "rationale": "w065 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
-            },
-            "sense_reviews": [
-              {
-                "sense_id": "w065-s1",
-                "relation_decision": "relations-reviewed",
-                "relation_rationale": "w065 w065-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w065 w065-s1 09be560acab1 [R000006]: Stage 3 attempt R000006-a1 appended near relation rel-a3a72b3f1831d4b39a4291b3 to r001; rationale digest d35ab30ab643. w065 w065-s1 09be560acab1 [R000006]: Stage 3 attempt R000006-a1 appended sensory relation rel-cdb027a5a89e7da85c3e82cb to r004; rationale digest e6f77b68b27b. w065 w065-s1 09be560acab1 [R000010]: Stage 3 attempt R000010-a1 appended association relation rel-37e77b2655adef16da0a0608 to w061; rationale digest aad4a66c4d94. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended near relation rel-f06d885f25dfcac5a4993a86 to w682; rationale digest 1e1906de82d1. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-a53a44dfb327cd6a0949ee4a to w2498; rationale digest d0f23f4fa6b7. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-0ed59aaa7aae6e2e2adc9260 to w11650; rationale digest 34e196c1a264. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended association relation rel-4af983864af104382dd9c590 to w974; rationale digest 998dd13dd646. w065 w065-s1 09be560acab1 [R000016]: Stage 3 attempt R000016-a1 appended sensory relation rel-d2b1047b11fc48f37c763afe to w063; rationale digest 8486ba19f604."
-              }
-            ]
-          },
-          "previous_record": {
-            "id": "w065",
-            "record_type": "entry",
-            "role": "start",
-            "candidate_id": "w065",
-            "lemma": "단내",
-            "search_forms": [
-              "단내"
-            ],
-            "senses": [
-              {
-                "id": "w065-s1",
-                "pos": "noun",
-                "gloss": "달콤하게 느껴지는 냄새",
-                "relations": [
-                  {
-                    "target": "w062",
-                    "target_sense": "w062-s1",
-                    "type": "near",
-                    "note": "단내는 냄새의 한 종류이며 단맛처럼 혀로 느끼는 맛과는 다른 감각이다.",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w099",
-                    "target_sense": "w099-s1",
-                    "type": "sensory",
-                    "note": "단내와 단맛은 달다는 인상을 공유하지만 코와 혀의 감각을 구분해 연결한다.",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "r001",
-                    "target_sense": "r001-s1",
-                    "type": "near",
-                    "note": "향내는 코로 맡는 향기나 냄새를 가리키는 가까운 표현이다.",
-                    "relevance": 5
-                  },
-                  {
-                    "target": "r004",
-                    "target_sense": "r004-s1",
-                    "type": "sensory",
-                    "note": "달콤함은 단내에서 연상되는 달고 부드러운 후각 인상을 맛의 감각어로 이어 준다.",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w061",
-                    "target_sense": "w061-s1",
-                    "type": "association",
-                    "note": "향기는 기분 좋게 느껴지는 냄새라 단내를 더 넓은 좋은 냄새로 이어 찾게 한다.",
-                    "relevance": 4
-                  },
-                  {
-                    "target": "w682",
-                    "target_sense": "w682-s1",
-                    "type": "near",
-                    "note": "좋은 냄새가 은은한 ‘향기롭다’이다",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w2498",
-                    "target_sense": "w2498-s1",
-                    "type": "sensory",
-                    "note": "농도가 높은 짙은 향이다",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w11650",
-                    "target_sense": "w11650-s1",
-                    "type": "sensory",
-                    "note": "몸에서 나는 체취다",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w974",
-                    "target_sense": "w974-s1",
-                    "type": "association",
-                    "note": "냄새를 맡는 후각이다",
-                    "relevance": 3
-                  },
-                  {
-                    "target": "w063",
-                    "target_sense": "w063-s1",
-                    "type": "sensory",
-                    "note": "불쾌하고 역한 악취다",
-                    "relevance": 3
-                  }
-                ]
-              }
-            ]
-          },
-          "semantic_review_sha256": "845246d6ba714555f7aa97c3d8e3b81615d1f9565fa99bfd1c26e75889665b32"
-        },
-        {
           "entry_id": "w066",
           "operation": "append_relations",
           "path": "data/canonical/pilot.jsonl",
@@ -1035859,10 +1035523,10 @@
             "rel-3071540d38e3d6cd72b796d2",
             "rel-44d71d69ba3f107f44b64aed",
             "rel-87cc367328f0945028806a2e",
-            "rel-7779f2daae298af164a718b6"
+            "rel-7d023ba9d8e8bba9a9a5e2d8"
           ],
           "before_sha256": "786cabd4b6432cbf5f506523f51c58125f62a839ce7378bc2a26d522bd6194c1",
-          "after_sha256": "2a29c7322a02e5a9afb987121f2b088e8fa7c8a7ec25929512c46a6f795dfc91",
+          "after_sha256": "2b6fb77955064254797debbd19e37a65232bd836e4e2fec136475e3b47a7fd7b",
           "previous_semantic_review_sha256": "e6d77e2ee47f098ddf5bb18d5bad15c26b6219fd21056699777a1672c9694aa6",
           "previous_semantic_review": {
             "record_id": "w1716",
@@ -1035897,7 +1035561,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "0e654d8beac1a28ef27c6c25ee641e5a9e7e2f12442424b1230ce3b4a301477a"
+          "semantic_review_sha256": "a5a013ba97f19a2de56faf9bde56c3e447d7aa58f173daa47234fed8b2d4f04d"
         },
         {
           "entry_id": "w1744",
@@ -1069491,7 +1069155,7 @@
           "semantic_review_sha256": "30892574ee98d27103c16189ff93e87c23509b1c1c695099ad8b085f49bf8974"
         }
       ],
-      "sha256": "5ea2129db1ed7334a7e1b45f1c8723e0f3c51024221a9139284ec3c9f9d99754"
+      "sha256": "3eb064562776391c9260fe5ee22847b1f97ac09bc6a7f6a506e9440e575ba756"
     }
   ]
 }

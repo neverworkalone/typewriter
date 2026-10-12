@@ -86,6 +86,14 @@ the shared lexical production/admission path and normal canonical/search
 validation after the owner confirms the publication gate. The pilot tooling
 and corpus-reference tests remain local/manual and outside normal CI.
 
+**Current release-status note (2026-10-12):** the owner has since confirmed NIKL
+result-publication approval and authorized distribution of independently
+authored Typewriter output under the project data license. This supersedes the
+historical publication hold above without changing the pilot's measurements or
+admitting any candidate row. Each candidate still requires the ordinary lexical
+production/admission and canonical/search validation. Raw corpus text, excerpts,
+and local indexes remain excluded; see `DATA-LICENSE.md`.
+
 ## Local outputs
 
 These local run artifacts now live under `~/.cache/typewriter/runs/issue-201-pilot/`:

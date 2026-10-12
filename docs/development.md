@@ -62,9 +62,11 @@ schema, and source versions. It runs Chrome for Testing only as part of this
 explicit release-candidate validation; ordinary CI does not run CFT. Only the
 bundled software's Apache and third-party license notices are included in the
 ZIP. The privacy policy source remains in `PRIVACY.md` for the Store disclosure
-flow, while repository policy documents stay out of the package. The current
-dictionary redistribution hold remains in force after this engineering validation;
-see `DATA-LICENSE.md`.
+flow, while repository policy documents stay out of the package. The owner-approved
+release scope permits Typewriter-authored dictionary data under the project data
+license after exact-revision and package-content checks; raw corpus material and
+specifically identified copied or restricted third-party content remain excluded.
+See `DATA-LICENSE.md`.
 
 When Chrome for Testing is available, verify both the unpacked build and the exact
 ZIP contents after extraction:

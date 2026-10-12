@@ -2743,30 +2743,6 @@
    "rationale": "w059-s1: 침묵과 대비되는 소리다 AI self-check: 침묵은 말이나 소리를 내지 않는 상태라 낮은 숨·음성·덤덤함·평안과 소리를 연결하고 적막·입을 다물다·고요·소란은 이미 있다"
   },
   {
-   "source_record_id": "w063",
-   "source_sense_id": "w063-s1",
-   "source_gloss_sha256": "72727abf1dce2dc6962011b941bfb760ca4dfeb2181a31e5c419175afafbedce",
-   "relation": {
-    "target": "w065",
-    "target_sense": "w065-s1",
-    "type": "antonym",
-    "note": "달콤하게 느껴지는 단내다"
-   },
-   "rationale": "w063-s1: 달콤하게 느껴지는 단내다 AI self-check: 악취는 불쾌하고 역하게 느껴지는 냄새라 단내·짙은 향·향내와 후각·입맛을 연결하고 냄새·비린내·쇠내 등은 이미 있다"
-  },
-  {
-   "source_record_id": "w065",
-   "source_sense_id": "w065-s1",
-   "source_gloss_sha256": "09be560acab165de17d6047fb2698f03fb7c6ec515259045efcca0059dfc5643",
-   "relation": {
-    "target": "w063",
-    "target_sense": "w063-s1",
-    "type": "antonym",
-    "note": "불쾌하고 역한 악취다"
-   },
-   "rationale": "w065-s1: 불쾌하고 역한 악취다 AI self-check: 단내는 달콤하게 느껴지는 냄새라 향기롭다·짙은 향·체취·후각과 반대 악취를 연결하고 냄새·단맛·향내·달콤함 등은 이미 있다"
-  },
-  {
    "source_record_id": "w066",
    "source_sense_id": "w066-s1",
    "source_gloss_sha256": "658a1d742c0314ec3dac78f08ed95726693a2862c2a4b8e8905f660e97c48bd3",
@@ -18718,8 +18694,9 @@
    "relation": {
     "target": "w1648",
     "target_sense": "w1648-s1",
-    "type": "antonym",
-    "note": "낮의 기척이다"
+    "type": "association",
+    "note": "낮의 기척이다",
+    "relevance": 3
    },
    "rationale": "w1716-s1: 낮의 기척이다 AI self-check: 달의 기척은 밤하늘의 달이 주는 분위기라 달의 가장자리·남은 시간과 별·한밤중·밤·새벽·아침·낮의 기척을 연결한다"
   },
@@ -39508,8 +39485,6 @@
   "rel-976afa63440f689828228c2b": "d73d8df97574a61b02f5e3954c63568d14d4ae2d2b630f3a9048fba67bf75859",
   "rel-55f6691ed5a8c7d9c64e55b8": "94caf69e3d0df7ca51aca0c627ef49b42da7458fe0daa895bb230b1c9f1a00f5",
   "rel-6e65f71e3e02c04b9308208f": "f9f40b909e179094fcce26a4c0a42013cb1cdb6643f0d810457e679ecb3093a4",
-  "rel-4f7a895769062198a82b4b34": "5ededb0446ceb2572e8f29b248bc2a43d9a24eff7a181bb29b38cb8a24140cfb",
-  "rel-90f5b9a45acf0b477a2fd473": "298e81f669eae74301f2913b746208b778ba188ac96729cec08afad46d318d53",
   "rel-ba9fa442f56be9d4f1c37ba5": "2ece6a8fa31849c7f60d90bd2ddc33b16fc0ff72e1a960624b99fe2752cdad11",
   "rel-5971ea014209880e0d598410": "4f904b1d9429a2bb368339aec65aa325a16b6d6ede80c54d49969c71b826d013",
   "rel-9fac538c081ba0218082b967": "3bfa73efdd95c18b35f09f10aae1bb4ed7a5cfe78aebacda34c903ffe7ad2b94",
@@ -40739,7 +40714,7 @@
   "rel-3071540d38e3d6cd72b796d2": "25573cf6535b0eb2f57172141cf285424c3e6ac4e8ee4223092a9c6afc8dfe93",
   "rel-44d71d69ba3f107f44b64aed": "22cbef89d926e6f274d23cf62f3369dcca61f9b5d5b9bf5ceeaeb1b32008f521",
   "rel-87cc367328f0945028806a2e": "10c9ec0143232ce7d59454bd60ed90e23603a1229d8f29cb04eec5bcd342f321",
-  "rel-7779f2daae298af164a718b6": "7448401df0cc5a1083ccc9cb4ec4f00b36f5f5eafc49bc1f4ea8efbee9f1d5e2",
+  "rel-7d023ba9d8e8bba9a9a5e2d8": "7448401df0cc5a1083ccc9cb4ec4f00b36f5f5eafc49bc1f4ea8efbee9f1d5e2",
   "rel-7cfb090e5ba99ecb28232195": "139684d579b29105944a41edb8b28ca037f9c645533c0754f9d0a90b0896774a",
   "rel-71c10d823a10e127f3842917": "79add07f9efa172e13ea19abe1ea756699462c9e2ae9a6860c0dfa6c5918719e",
   "rel-cc39bc9602962affa09e8af8": "3776554dbb574255f592948f52ae0d88e565b7926f6d1831cc7c1e67d68e811d",
