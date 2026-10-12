@@ -202,13 +202,47 @@ class MorphologyTests(unittest.TestCase):
 
         projection_path = self.root / "runs/projection/selection.sqlite"
         projection_path.parent.mkdir(parents=True)
-        counts = selector.build_projection(
-            source_path=database_path,
-            projection_path=projection_path,
-            temporary_directory=projection_path.parent,
-            source_snapshot="a" * 64,
-            expected_lemmas=expected_lemmas,
-        )
+        source_queries = []
+        with closing(m.connect(database_path, readonly=True)) as source:
+            legacy_plan = source.execute("""
+                EXPLAIN QUERY PLAN
+                SELECT lemma,pos,pos_interpretation_count,ambiguous_surface_count
+                FROM lemma_statistics WHERE kind=0
+                ORDER BY lemma COLLATE BINARY,pos COLLATE BINARY
+            """).fetchall()
+            self.assertTrue(any("CORRELATED SCALAR SUBQUERY" in row[-1] for row in legacy_plan))
+            for query in (selector.PROJECTION_SURFACE_AMBIGUITY_SQL,
+                          selector.PROJECTION_MORPHOLOGY_TOTALS_SQL):
+                plan = source.execute("EXPLAIN QUERY PLAN " + query).fetchall()
+                self.assertFalse(any("CORRELATED SCALAR SUBQUERY" in row[-1] for row in plan))
+            surface_plan = source.execute(
+                "EXPLAIN QUERY PLAN " + selector.PROJECTION_SURFACE_AMBIGUITY_SQL
+            ).fetchall()
+            self.assertTrue(any("facts_form" in row[-1] for row in surface_plan))
+            self.assertFalse(any("USE TEMP B-TREE" in row[-1] for row in surface_plan))
+
+        open_readonly_database = selector.producer.open_readonly_database
+        def trace_source_queries(path, *args, **kwargs):
+            db = open_readonly_database(path, *args, **kwargs)
+            if Path(path).resolve() == database_path.resolve():
+                db.set_trace_callback(source_queries.append)
+            return db
+        with patch.object(selector.producer, "open_readonly_database", side_effect=trace_source_queries):
+            counts = selector.build_projection(
+                source_path=database_path,
+                projection_path=projection_path,
+                temporary_directory=projection_path.parent,
+                source_snapshot="a" * 64,
+                expected_lemmas=expected_lemmas,
+            )
+        normalized_queries = [" ".join(query.upper().split()) for query in source_queries]
+        self.assertFalse(any("FROM LEMMA_STATISTICS" in query for query in normalized_queries))
+        self.assertEqual(sum("FROM MORPHOLOGY_TOTALS" in query for query in normalized_queries), 1)
+        self.assertEqual(sum(
+            "SELECT DISTINCT FORM,LEMMA,POS FROM FACTS" in query
+            and "SLICE IN (SELECT SLICE FROM SLICES WHERE COMPLETE=1)" in query
+            for query in normalized_queries
+        ), 1)
         self.assertEqual(counts["candidate_lemmas"], expected_lemmas)
 
         surface_interpretations = Counter(row[3] for row in oracle if row[0] == 1)
