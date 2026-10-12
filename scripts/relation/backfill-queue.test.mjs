@@ -74,6 +74,14 @@ test('outcomes obey the production relation contract, bound to the sense and its
   assert.match(bad({ rationale: '근거만 있다.' }), /rationale must cite the sense/u);
   assert.match(bad({ outcome: 'no-relations' }), /no-relations carries amendments/u);
   assert.match(bad({ relation_amendments: [] }), /needs amendments/u);
+  const opposite = (type, rationale) => ({ relation_amendments: [{ ...outcome(row).relation_amendments[0], rationale, relation: { ...targetOf(row), type, note: 'n', ...(type === 'antonym' ? {} : { relevance: 3 }) } }] });
+  assert.match(bad(opposite('association', `${row.sense_id}: 반대 뜻을 연결하고 있다`)), /claims an opposite/u, 'a non-antonym cannot be justified as an opposite');
+  assert.equal(bad(opposite('antonym', `${row.sense_id}: 같은 축에서 반대로 읽힌다`)), '', 'an antonym may be justified as an opposite');
+  assert.equal(bad(opposite('association', `${row.sense_id}: 연상으로 이어지는 연결이다`)), '', 'a non-antonym with ordinary wording is fine');
+  // Polarity is never inferred from free text: any opposite vocabulary in a non-antonym rationale is rejected, whatever the form.
+  for (const wording of ['반대라기보다 같은 장면에서 함께 떠오르는 연상이다', '반대가 아니라서 연상으로 분류한다', '반대가 아닐 수 없는 연결이다', '반대가 아니라고 하는 해석은 틀렸다', '길의 반대쪽에서 함께 떠오르는 연상이다', '두 의미는 반대 방향으로 읽힌다', '반대로, 같은 장면에서 떠오르는 연상이다', '서로 반대로 읽히는 뜻이다', '반의로 단정하지 않고 연상으로 둔다', '반대쪽 장면이지만 두 뜻은 반대말이다']) {
+    for (const type of ['association', 'near', 'sensory', 'scene']) assert.match(bad(opposite(type, `${row.sense_id}: ${wording}`)), /claims an opposite/u, `${type} rationale must avoid opposite wording: ${wording}`);
+  }
   const stale = { relation_amendments: [{ ...outcome(row).relation_amendments[0], source_gloss_sha256: 'f'.repeat(64) }] };
   assert.match(bad(stale), /current gloss digest/u);
   assert.match(record(state, packet, [{ ...outcome(row), sense_id: 'w99-s1' }]).errors.join('\n'), /not part of the supplied packet/u);

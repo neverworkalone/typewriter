@@ -81,12 +81,10 @@ export class ReviewContext extends Map {
   }
 }
 
-// `relation_neighbor_of_related` is derived from the relations of neighbouring senses, so it shifts whenever any
-// neighbour is enriched, including by applying this review's own approved relations (the target's neighbours become
-// new candidates). It is graph position, not evidence about the pair's meaning, so it never makes a review stale.
-// The same holds for an `incoming_relation` that exists only because another sense's relation to this one was approved
-// in this queue and applied: it is the queue's own write, not independent evidence. Without this, every applied packet
-// re-queues the reviews of the senses it points at.
+// Antonymy is expressed only by the structured `antonym` type. A free-text rationale for any other type is not parsed for
+// polarity (denials, positions and discourse uses cannot be told apart lexically), so it must not use the opposite vocabulary
+// at all; it describes the shared scene, sense or usage instead.
+const assertsOpposite = (rationale) => /반대|반의/u.test(rationale);
 const SECOND_ORDER_SIGNAL = 'relation_neighbor_of_related';
 const evidenceSignals = (candidate, explained) => candidate.signals.filter((signal) => signal !== SECOND_ORDER_SIGNAL && !(signal === 'incoming_relation' && explained.has(candidate.id)));
 const withoutGraphPosition = (explained) => (candidate) => ({ ...candidate, signals: evidenceSignals(candidate, explained) });
@@ -227,6 +225,11 @@ export function recordOutcomes(state, packet, outcomes, { candidates, index, sna
       if (!target) problems.push(`${outcome.sense_id}: relation target_sense ${relation?.target_sense} is not a canonical sense`);
       else if (target.record_id !== relation.target) problems.push(`${outcome.sense_id}: relation target ${relation.target} does not own target_sense ${relation.target_sense}`);
       if (!pool.has(relation?.target_sense)) problems.push(`${outcome.sense_id}: relation target_sense ${relation?.target_sense} was not among the reviewed candidates`);
+    }
+    // The recorded rationale is audit evidence, so it must not argue for a different relation type than the one it
+    // approves: only an antonym may be justified as an opposite (a downgraded antonym keeps no opposite wording).
+    for (const amendment of amendments) {
+      if (amendment.relation.type !== 'antonym' && assertsOpposite(amendment.rationale)) problems.push(`${outcome.sense_id}: ${amendment.relation.type} rationale for ${amendment.relation.target_sense} claims an opposite; only antonym may`);
     }
     if (problems.length) { errors.push(...problems); continue; }
     done[outcome.sense_id] = {
