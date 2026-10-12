@@ -99,6 +99,34 @@ imported**. Identified migration records its byte digest and aggregate row count
 imports zero rows, and performs one source-bound reanalysis of residue 0 in the
 new store. Restart reuses completed checkpoints, including those of slice 0.
 
+## Read-only Stage 1 consumer (#566)
+
+New Stage 1 selections use the completed morphology store by default. Before the
+first page, the selector verifies the existing seal and runs the complete audit
+against the current index, permission record, pinned runtime, analyzer/schema
+identity, all 20 publication checksums and exact corpus totals. This consumer
+does not take the writer lock, repair a journal, or renew the store seal. The
+Run `python scripts/reference/corpus_morphology_readonly.py` for the same check
+without selecting candidates.
+
+The selector stores only its bounded candidate projection under
+`~/.cache/typewriter/runs/written-corpus-morphology-selection-v1/<source-digest>/<auditor-sha256>/`:
+eligible lemma/POS counts and the top five observed surface and eojeol forms.
+The auditor SHA is a verifier version separate from the morphology source
+snapshot. The projection manifest binds the complete audit evidence, source
+snapshot, auditor identity and projection code identity. An auditor change
+selects a new cache directory and requires a fresh full audit; unchanged
+auditor bytes let refill pages reuse the proof after rechecking the store seal
+and current source identity. It reads the candidate aggregate as SQLite
+read-only, applies current canonical coverage and reviewed exclusions in
+temporary tables, and never copies the 12 GB morphology database per page.
+Candidate evidence remains text-free; representative corpus hits are collected
+through the existing bounded reader.
+
+`run-corpus-lemma-pilot.mjs` selects from this verified full-corpus source by
+default. `--reuse-analysis-from` remains an explicit historical cache mode, and
+`--scan-corpus` explicitly requests the earlier direct extraction path.
+
 ## Exact cumulative use
 
 Only completed slices enter `completed_facts`. `document_totals` first combines

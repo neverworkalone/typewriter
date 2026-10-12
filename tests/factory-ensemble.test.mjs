@@ -1408,6 +1408,40 @@ test('refill resumes identical inputs, fails closed on runtime errors and record
   const short = await refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'short.json'), selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) });
   assert.equal(short.rows.length, 1);
   assert.equal(short.production.exhausted, true);
+  const morphologySnapshot = 'a'.repeat(64);
+  const morphologyIdentity = {
+    contract: 'corpus-morphology-slices-v1', permission_sha256: 'c'.repeat(64),
+    algorithm_sha256: 'd'.repeat(64), schema_sha256: 'e'.repeat(64),
+    index_metadata: { input_manifest_sha256: HEX, logical_rows_sha256: 'b'.repeat(64) },
+  };
+  const morphologyAudit = {
+    source_snapshot_sha256: morphologySnapshot, source_identity_sha256: 'f'.repeat(64),
+    validation: 'full-audit-passed-read-only', store_database_path: 'runs/morphology/analysis.sqlite',
+    source_identity: morphologyIdentity, completion_bitmap: '1'.repeat(20),
+    verified_paragraphs: 4_988_970, total_paragraphs: 4_988_970, cumulative_unique_lemmas: 221_392,
+    slice_publications: Array.from({ length: 20 }, (_, slice) => ({
+      slice, complete: true, publication_sha256: '9'.repeat(64),
+    })),
+  };
+  const morphologyInitial = {
+    ...evidenceDoc([cand('가다', 'verb', [h('d1', '가는')])]),
+    permission_record_sha256: 'c'.repeat(64),
+    selection: { source_snapshot_sha256: morphologySnapshot },
+    analysis_cache: {
+      mode: 'verified-full-corpus-morphology-v1',
+      source_store_path: 'runs/morphology', source_database_path: morphologyAudit.store_database_path,
+      source_snapshot_sha256: morphologySnapshot, source_identity_sha256: morphologyAudit.source_identity_sha256,
+      completion_bitmap: '1'.repeat(20), verified_paragraphs: 4_988_970, total_paragraphs: 4_988_970,
+      validation: 'full-audit-passed-read-only', audit_evidence: morphologyAudit,
+    },
+  };
+  const morphologyCommon = { ...common, initialEvidence: morphologyInitial,
+    checkpointPath: path.join(root, 'morphology-changed.json') };
+  await assert.rejects(() => refillCandidateBatch({ ...morphologyCommon, selectPage: async () => ({
+    ...evidenceDoc([cand('걸음', 'noun', [h('d2', '걸음')])]),
+    analysis_cache: { ...morphologyInitial.analysis_cache, source_snapshot_sha256: 'b'.repeat(64) },
+    selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } },
+  }) }), /changed the verified morphology source snapshot/u);
   await assert.rejects(() => refillCandidateBatch({ ...common, arguments: { ...args, maxCandidates: 3 }, selectPage: async () => {} }), /binding differs/);
   await assert.rejects(() => refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'empty-not-exhausted.json'), selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 1 } } }) }), /not proof/);
   const broken = providers.map((provider) => ({ ...provider, analyze: async () => { throw new Error('runtime unavailable'); } }));

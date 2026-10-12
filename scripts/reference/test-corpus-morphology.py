@@ -14,6 +14,8 @@ import unittest
 from unittest.mock import patch
 
 import corpus_morphology as m
+import corpus_morphology_selector as selector
+import corpus_morphology_readonly as readonly
 
 
 class Analyzer:
@@ -48,8 +50,9 @@ def fixture(path):
     for doc, length in enumerate(lengths, 1):
         db.execute("INSERT INTO documents VALUES (?,?,?,?)", (doc, "a" if doc <= 3 else "b", f"d{doc}", doc))
         for ordinal in range(length):
+            form = "후속어" if ordinal == 19 else texts[(doc + ordinal) % len(texts)]
             db.execute("INSERT INTO paragraphs(document_rowid,paragraph_id,ordinal,form) VALUES (?,?,?,?)",
-                       (doc, f"p{doc}-{ordinal}", ordinal, texts[(doc + ordinal) % len(texts)]))
+                       (doc, f"p{doc}-{ordinal}", ordinal, form))
     metadata = {"schema_version": "1", "source_count": "2", "document_count": "5", "paragraph_count": "89",
                 "input_manifest_sha256": "c" * 64, "logical_rows_sha256": "d" * 64, "sqlite_version": sqlite3.sqlite_version}
     db.executemany("INSERT INTO index_metadata VALUES (?,?)", metadata.items())
@@ -168,6 +171,190 @@ class MorphologyTests(unittest.TestCase):
         self.assertGreater(sum(s["rejected_spans"] for s in result["slices"]), 0)
         self.assertEqual(sum(s["percent_of_index"] for s in result["slices"]), 100)
         self.assertTrue(all(s["elapsed_seconds"] >= 0 for s in result["slices"]))
+
+    def test_readonly_selector_projection_matches_the_full_union_and_keeps_late_slice_lemmas(self):
+        result = self.finish()
+        oracle, _, _, _ = union_oracle(self.index)
+        expected_lemmas = len({row[1] for row in oracle if row[0] == 0})
+        self.assertIn("후속어", {row[1] for row in oracle if row[0] == 0})
+        self.assertFalse(any(row[1] == "후속어" for row in union_oracle(self.index, [*range(19)])[0]))
+
+        database_path = self.store / "analysis.sqlite"
+        database_digest = m.file_digest(database_path)
+        seal_bytes = (self.store / "seal.json").read_bytes()
+        verification_temp = self.root / "runs/readonly-verification-temp"
+        verification_temp.mkdir(parents=True)
+        audited = readonly.inspect_readonly(
+            index_path=self.index,
+            directory=self.store,
+            runtime=self.options["runtime"],
+            temporary_directory=verification_temp,
+        )
+        self.assertEqual(audited["validation"], "full-audit-passed-read-only")
+        self.assertEqual(m.file_digest(database_path), database_digest)
+        self.assertEqual((self.store / "seal.json").read_bytes(), seal_bytes)
+        seal = json.loads(seal_bytes)
+        proof = selector.snapshot_payload(result=audited, store_path=self.store, seal=seal)
+        selector.assert_source_binding_current(store_path=self.store, index_path=self.index, proof=proof)
+        with self.assertRaisesRegex(RuntimeError, "seal changed after its full audit"):
+            selector.assert_source_binding_current(store_path=self.store, index_path=self.index,
+                                                   proof={**proof, "store_seal_sha256": "0" * 64})
+
+        projection_path = self.root / "runs/projection/selection.sqlite"
+        projection_path.parent.mkdir(parents=True)
+        counts = selector.build_projection(
+            source_path=database_path,
+            projection_path=projection_path,
+            temporary_directory=projection_path.parent,
+            source_snapshot="a" * 64,
+            expected_lemmas=expected_lemmas,
+        )
+        self.assertEqual(counts["candidate_lemmas"], expected_lemmas)
+
+        surface_interpretations = Counter(row[3] for row in oracle if row[0] == 1)
+        expected_candidates = {
+            (row[1], row[2]): row[4:10]
+            for row in oracle if row[0] == 0
+        }
+        expected_surfaces = sorted(
+            (row[1], row[2], row[3], row[4], row[6], row[7], row[8], row[9],
+             surface_interpretations[row[3]])
+            for row in oracle if row[0] == 1
+        )
+        expected_eojeols = sorted(
+            (row[1], row[2], row[3], row[4], row[6], row[7], row[8], row[9])
+            for row in oracle if row[0] == 2
+        )
+        with closing(selector.producer.open_readonly_database(projection_path)) as projection:
+            actual_candidates = {
+                (lemma, pos): (tokens, oov, hits, documents, sources, max_source)
+                for lemma, pos, tokens, oov, hits, documents, sources, max_source
+                in projection.execute("""SELECT lemma,pos,token_count,oov_token_count,paragraph_hits,
+                    document_count,source_count,max_source_token_count FROM candidates
+                    ORDER BY lemma COLLATE BINARY,pos COLLATE BINARY""")
+            }
+            actual_surfaces = projection.execute("""SELECT lemma,pos,surface,token_count,paragraph_hits,
+                document_count,source_count,max_source_token_count,interpretation_count FROM candidate_surfaces
+                ORDER BY lemma COLLATE BINARY,pos COLLATE BINARY,surface COLLATE BINARY""").fetchall()
+            actual_eojeols = projection.execute("""SELECT lemma,pos,form,token_count,paragraph_hits,
+                document_count,source_count,max_source_token_count FROM candidate_eojeol_forms
+                ORDER BY lemma COLLATE BINARY,pos COLLATE BINARY,form COLLATE BINARY""").fetchall()
+        self.assertEqual(actual_candidates, expected_candidates)
+        self.assertEqual(sorted(actual_surfaces), expected_surfaces)
+        self.assertEqual(sorted(actual_eojeols), expected_eojeols)
+
+    def test_selector_path_audits_once_reuses_proof_and_fails_closed_on_source_drift(self):
+        runtime = {
+            "python": "Python 3.12.0 synthetic-selector-test",
+            "packages": {
+                "kiwipiepy": {"version": "0.24.0"},
+                "kiwipiepy_model": {"version": "0.24.0"},
+            },
+        }
+        self.options["runtime"] = runtime
+        completed = self.finish()
+        dictionary_path = self.root / "runs/selection/dictionary.sqlite"
+        dictionary_path.parent.mkdir(parents=True)
+        with closing(sqlite3.connect(dictionary_path)) as dictionary:
+            dictionary.executescript("""
+                CREATE TABLE records(id TEXT PRIMARY KEY, lemma TEXT NOT NULL);
+                CREATE TABLE search_forms(form TEXT NOT NULL, record_id TEXT NOT NULL);
+                CREATE TABLE senses(id TEXT PRIMARY KEY, record_id TEXT NOT NULL, pos TEXT NOT NULL);
+                CREATE TABLE generated_surface_forms(
+                    form TEXT NOT NULL, record_id TEXT NOT NULL, sense_id TEXT NOT NULL, rule_id TEXT NOT NULL
+                );
+                CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            """)
+            dictionary.executemany("INSERT INTO metadata(key,value) VALUES (?,?)", [
+                ("dictionary_version", "synthetic"), ("canonical_revision", "synthetic"),
+                ("record_count", "0"), ("search_form_count", "0"),
+                ("generated_surface_form_count", "0"),
+            ])
+            dictionary.commit()
+
+        def select(name, expected_snapshot=None):
+            return selector.select_from_morphology_store(
+                store_path=self.store,
+                dictionary_path=dictionary_path,
+                index_path=self.index,
+                candidate_output_path=self.root / "runs/selection" / f"{name}.json",
+                exclusion_manifest_path=None,
+                candidate_limit=1,
+                include_canonical_lemmas=True,
+                expected_source_snapshot=expected_snapshot,
+            )
+
+        build_projection = selector.build_projection
+        def build_synthetic_projection(**kwargs):
+            # The fixture intentionally has only 89 indexed paragraphs, so the
+            # production absolute lemma-count assertion does not apply.
+            kwargs["expected_lemmas"] = None
+            return build_projection(**kwargs)
+
+        with patch("corpus_morphology.runtime_identity", return_value=runtime), \
+             patch.object(selector, "EXPECTED_PARAGRAPHS", completed["verified_paragraphs"]), \
+             patch.object(selector, "EXPECTED_LEMMAS", completed["cumulative_unique_lemmas"]), \
+             patch.object(selector, "build_projection", side_effect=build_synthetic_projection), \
+             patch.object(selector.morphology_readonly, "inspect_readonly", wraps=readonly.inspect_readonly) as audit:
+            first = select("first")
+            snapshot = first["analysis_cache"]["source_snapshot_sha256"]
+            self.assertEqual(first["analysis_cache"]["validation"], "full-audit-passed-read-only")
+            self.assertEqual(audit.call_count, 1)
+
+            refill = select("refill", snapshot)
+            self.assertEqual(refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
+            self.assertEqual(audit.call_count, 1)
+
+            original_sha256_file = selector.sha256_file
+            auditor_path = Path(readonly.__file__).resolve()
+            changed_auditor_sha256 = "f" * 64
+            def changed_auditor_digest(file_path):
+                if Path(file_path).resolve() == auditor_path:
+                    return changed_auditor_sha256
+                return original_sha256_file(file_path)
+            with patch.object(selector, "sha256_file", side_effect=changed_auditor_digest):
+                changed_auditor = select("changed-auditor", snapshot)
+                self.assertEqual(audit.call_count, 2)
+                self.assertEqual(
+                    changed_auditor["analysis_cache"]["audit_evidence"]["audit_verifier_identity"],
+                    {"readonly_auditor_sha256": changed_auditor_sha256},
+                )
+                changed_auditor_refill = select("changed-auditor-refill", snapshot)
+                self.assertEqual(
+                    changed_auditor_refill["analysis_cache"]["audit_evidence"]["audit_verifier_identity"],
+                    {"readonly_auditor_sha256": changed_auditor_sha256},
+                )
+                self.assertEqual(audit.call_count, 2)
+
+            with self.assertRaisesRegex(RuntimeError, "source snapshot changed"):
+                select("stale-snapshot", "0" * 64)
+            self.assertEqual(audit.call_count, 2)
+
+            seal_path = self.store / "seal.json"
+            original_seal = seal_path.read_bytes()
+            tampered_seal = json.loads(original_seal)
+            tampered_seal["stamp"][3] += 1
+            seal_path.write_text(json.dumps(tampered_seal), encoding="utf-8")
+            try:
+                with self.assertRaisesRegex(RuntimeError, "Store mutation seal mismatch"):
+                    select("changed-seal", snapshot)
+            finally:
+                seal_path.write_bytes(original_seal)
+            self.assertEqual(audit.call_count, 2)
+
+            changed_permission = self.root / "permission-record.txt"
+            permission_bytes = Path(m.DEFAULT_PERMISSION_RECORD_PATH).read_bytes()
+            changed_permission.write_bytes(permission_bytes + b"\n")
+            with patch.object(m, "DEFAULT_PERMISSION_RECORD_PATH", changed_permission):
+                with self.assertRaisesRegex(RuntimeError, "Manifest/tool/index/source identity mismatch"):
+                    select("changed-permission", snapshot)
+            self.assertEqual(audit.call_count, 2)
+
+            index_stat = self.index.stat()
+            os.utime(self.index, ns=(index_stat.st_atime_ns, index_stat.st_mtime_ns + 1_000_000))
+            with self.assertRaisesRegex(RuntimeError, "Index identity mismatch"):
+                select("changed-index", snapshot)
+            self.assertEqual(audit.call_count, 2)
 
     def test_separate_calls_do_not_rescan_input_completed_routes_or_facts(self):
         original_chunk = m.chunk_digest

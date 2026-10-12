@@ -440,7 +440,11 @@ test('post-write validation is base-aware like CI: merged reviews are compared t
   const failing = { ...deps, validate: async () => ['C000001: new batch error'] };
   await assert.rejects(() => runStage1([...args, '--base-ref', 'HEAD'], failing), /new batch error/);
   await assert.rejects(() => readdir(path.join(root, 'data/candidates/C000001')), { code: 'ENOENT' });
-  for (const sourcePath of ['scripts/factory/working-copy.mjs', 'scripts/intake/kiwi-client.mjs']) {
+  for (const sourcePath of [
+    'scripts/factory/working-copy.mjs',
+    'scripts/intake/kiwi-client.mjs',
+    'scripts/reference/corpus_morphology_readonly.py',
+  ]) {
     const absoluteSource = path.join(root, sourcePath);
     await mkdir(path.dirname(absoluteSource), { recursive: true });
     await writeFile(absoluteSource, 'export const dirty = true;\n');
