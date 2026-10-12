@@ -87,7 +87,10 @@ export class ReviewContext extends Map {
 // The same holds for an `incoming_relation` that exists only because another sense's relation to this one was approved
 // in this queue and applied: it is the queue's own write, not independent evidence. Without this, every applied packet
 // re-queues the reviews of the senses it points at.
-const OPPOSITE_WORDING = /반대|반의/u;
+// An explicit denial ("반대가 아니라 …", "반의로 단정하지 않는다") is a valid reason for a reclassification; only a remaining
+// opposite wording is an assertion of antonymy.
+const OPPOSITE_DENIAL = /(?:반대|반의)(?:어|말)?(?:가|는|로|의)?\s*(?:관계|뜻|축|말)?(?:가|는|이|로)?\s*(?:아니|아닌|아님|아닐|단정하지|보지\s*않|간주하지|여기지\s*않)/gu;
+const assertsOpposite = (rationale) => /반대|반의/u.test(rationale.replace(OPPOSITE_DENIAL, ''));
 const SECOND_ORDER_SIGNAL = 'relation_neighbor_of_related';
 const evidenceSignals = (candidate, explained) => candidate.signals.filter((signal) => signal !== SECOND_ORDER_SIGNAL && !(signal === 'incoming_relation' && explained.has(candidate.id)));
 const withoutGraphPosition = (explained) => (candidate) => ({ ...candidate, signals: evidenceSignals(candidate, explained) });
@@ -232,7 +235,7 @@ export function recordOutcomes(state, packet, outcomes, { candidates, index, sna
     // The recorded rationale is audit evidence, so it must not argue for a different relation type than the one it
     // approves: only an antonym may be justified as an opposite (a downgraded antonym keeps no opposite wording).
     for (const amendment of amendments) {
-      if (amendment.relation.type !== 'antonym' && OPPOSITE_WORDING.test(amendment.rationale)) problems.push(`${outcome.sense_id}: ${amendment.relation.type} rationale for ${amendment.relation.target_sense} claims an opposite; only antonym may`);
+      if (amendment.relation.type !== 'antonym' && assertsOpposite(amendment.rationale)) problems.push(`${outcome.sense_id}: ${amendment.relation.type} rationale for ${amendment.relation.target_sense} claims an opposite; only antonym may`);
     }
     if (problems.length) { errors.push(...problems); continue; }
     done[outcome.sense_id] = {
