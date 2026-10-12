@@ -26,7 +26,7 @@ export class Stage2WorkerError extends Error {
 function gitRun(root, args, { allowFailure = false } = {}) {
   try {
     return execFileSync('git', args, {
-      cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+      cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024,
     }).trim();
   } catch (error) {
     if (allowFailure && error.status === 1) return null;
@@ -53,7 +53,7 @@ export function createGitRepository({ root = process.cwd() } = {}) {
     },
     show(ref, file) {
       return execFileSync('git', ['show', ref + ':' + file], {
-        cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+        cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024,
       });
     },
     createBranch(branchName, baseSha) {

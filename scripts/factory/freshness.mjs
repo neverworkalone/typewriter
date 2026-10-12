@@ -16,7 +16,7 @@ const REVIEWED_DATA = ['data/candidates/', 'data/reviews/'];
 const startsWithAny = (file, prefixes) => prefixes.some((prefix) => file.startsWith(prefix));
 
 const git = (args, root) => execFileSync('git', args, {
-  cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+  cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024,
 }).trim();
 
 const lines = (text) => text.split('\n').filter(Boolean);

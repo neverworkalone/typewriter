@@ -564,7 +564,7 @@ async function validateChangedArchive(root, base, report, changedArchiveOccurren
 
 // Lemma-centered candidate manifests exceed the 1 MiB execFileSync default.
 const git = (args, root) => execFileSync('git', args, {
-  cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024,
+  cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 512 * 1024 * 1024,
 }).trim();
 
 // Manifests of the merge-base of `ref` and HEAD (the state this change builds on).

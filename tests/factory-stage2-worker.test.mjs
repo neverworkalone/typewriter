@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
@@ -690,4 +691,16 @@ test('the production Git adapter and snapshot loader accept the committed relati
 
   const alteredPacket = { ...git, show: (ref, file) => (file === packets[0] ? git.show(ref, file) + ' ' : git.show(ref, file)) };
   await assert.rejects(loadFactorySnapshot({ git: alteredPacket, headSha: 'HEAD' }), /does not match its semantic authority event digest/u);
+});
+
+test('every git subprocess buffer that reads whole committed authority files has headroom beyond the largest production blob', () => {
+  // The semantic decision source grows with every relation backfill batch; a buffer that merely fits today fails the next batch.
+  const files = ['scripts/ci/deep-gate.mjs', 'scripts/factory/validate.mjs', 'scripts/factory/stage2-worker.mjs', 'scripts/factory/stage3-worker.mjs', 'scripts/factory/freshness.mjs'];
+  const largest = readFileSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url)).length;
+  for (const file of files) {
+    const source = readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+    const limits = [...source.matchAll(/(\d+) \* 1024 \* 1024/gu)].map((match) => Number(match[1]) * 1024 * 1024);
+    assert.ok(limits.length > 0, file + ' declares its git buffer limit');
+    for (const limit of limits) assert.ok(limit >= 4 * largest, file + ' buffer ' + limit + ' needs at least 4x the ' + largest + '-byte semantic decision source');
+  }
 });
