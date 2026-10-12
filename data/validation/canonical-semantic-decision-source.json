@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "5341bc1cbc05f15781fe5f87ce6cbf7428bcd15cd548192aefbe08b884d4059a"
+    "canonical_records_sha256": "feb436b54d2fbbac7166b952bc02e29f1c63ed6aa2a451234fe98a22575c9a02"
   },
-  "authored_review_sha256": "9d490ba3336565a0ac3e18ec88a3bfdd7c782df1da7904ca55811ac11ee654b7",
+  "authored_review_sha256": "697f50e73b3fc6c893c81fd9727c85d62b71523de2bd8db6103d4d877a8b5ef8",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "5341bc1cbc05f15781fe5f87ce6cbf7428bcd15cd548192aefbe08b884d4059a"
+      "canonical_records_sha256": "feb436b54d2fbbac7166b952bc02e29f1c63ed6aa2a451234fe98a22575c9a02"
     },
     "records": [
       {
@@ -72289,7 +72289,7 @@
       },
       {
         "record_id": "w3068",
-        "record_sha256": "a57d6cd0e1275c5ad47a23e078c91e2e712be40569dac28f8412ddbb23125133",
+        "record_sha256": "a2897439795d4927844b35577c11b696af6c8d26b8b434fecac812543de8df25",
         "boundary_review": {
           "review_id": "m5-13-agent-semantic-review-20260923-r5:canonical:w3068:boundary",
           "decision": "retain",
@@ -72308,7 +72308,7 @@
           {
             "sense_id": "w3068-s1",
             "relation_decision": "relations-reviewed",
-            "relation_rationale": "w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-d4cf311f9bcd013a7c960bf6 to w2824; rationale digest 2190b5b56e2b. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-c7c25c6a4d2b19fa71ae003d to w2162; rationale digest eeb92dc96c30. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-96c5a5315292407b5ebc1234 to w040; rationale digest df76cdf007ae. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-1633ff38c1a2339d5001ec37 to w1262; rationale digest 8ad378a43cc3. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-994e2f0bd093f26eb5ffb4a9 to w5432; rationale digest 781139ea9f1b. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-87b6829972e19fe3f411748e to w5497; rationale digest c28acfe1a93d. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended near relation rel-0dbf48cee58982442f9221ad to w3136; rationale digest 6e66ddb034f0. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-a2f06d48581bbb380d78e4e4 to w12640; rationale digest 6793e6b15eb5. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-8b6ea2e029183b6574314d86 to w2874; rationale digest 3c72fab57bcd. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-1f4f26812dce0fee8b7a516a to w9036; rationale digest 05c307bc1014. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended near relation rel-4127b535fce0b47da5eeeb86 to w5938; rationale digest b0741af4f34c. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended sensory relation rel-c0383526a6450ff7bf12b7b3 to w135; rationale digest 1d412d5a5f3c. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-7035b8e6d0c0a442851bcefd to w4904; rationale digest 59ba01935a41. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended sensory relation rel-1f3ba726fe8f3164961c7e2b to w4319; rationale digest acc5367457fb. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-ed6658857242016eda63979b to w3067; rationale digest 0de7c009042c. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-942c05ae99b9930c993f049a to w2244; rationale digest 3af14c15e877. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-711b2710763cb1985c251b55 to w240; rationale digest 79973377e97c. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-8111534d7d47b5ae08d8a5db to w8109; rationale digest 45e6c39b5029. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-51ffe7317a1aae0402a3e83b to w352; rationale digest ddc883ebd9c0. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended antonym relation rel-3042a4743a0153bb5a764c95 to w2161; rationale digest fd9bcda223ce. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended antonym relation rel-6035aca04aef23cccd8e37e0 to w239; rationale digest b7535f7f6e29. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-fb09ab8e996882dbb5a0566c to w278; rationale digest 2731da1d42cb."
+            "relation_rationale": "w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-d4cf311f9bcd013a7c960bf6 to w2824; rationale digest 2190b5b56e2b. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-c7c25c6a4d2b19fa71ae003d to w2162; rationale digest eeb92dc96c30. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-96c5a5315292407b5ebc1234 to w040; rationale digest df76cdf007ae. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-1633ff38c1a2339d5001ec37 to w1262; rationale digest 8ad378a43cc3. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-994e2f0bd093f26eb5ffb4a9 to w5432; rationale digest 781139ea9f1b. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-87b6829972e19fe3f411748e to w5497; rationale digest c28acfe1a93d. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended near relation rel-0dbf48cee58982442f9221ad to w3136; rationale digest 6e66ddb034f0. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-a2f06d48581bbb380d78e4e4 to w12640; rationale digest 6793e6b15eb5. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-8b6ea2e029183b6574314d86 to w2874; rationale digest 3c72fab57bcd. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-1f4f26812dce0fee8b7a516a to w9036; rationale digest 05c307bc1014. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended near relation rel-4127b535fce0b47da5eeeb86 to w5938; rationale digest b0741af4f34c. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended sensory relation rel-c0383526a6450ff7bf12b7b3 to w135; rationale digest 1d412d5a5f3c. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-7035b8e6d0c0a442851bcefd to w4904; rationale digest 59ba01935a41. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended sensory relation rel-1f3ba726fe8f3164961c7e2b to w4319; rationale digest acc5367457fb. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-ed6658857242016eda63979b to w3067; rationale digest 0de7c009042c. w3068 w3068-s1 c1d0022f9a5d [R000012]: Stage 3 attempt R000012-a1 appended association relation rel-942c05ae99b9930c993f049a to w2244; rationale digest 3af14c15e877. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-711b2710763cb1985c251b55 to w240; rationale digest 79973377e97c. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended near relation rel-8111534d7d47b5ae08d8a5db to w8109; rationale digest 45e6c39b5029. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-51ffe7317a1aae0402a3e83b to w352; rationale digest ddc883ebd9c0. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended antonym relation rel-3042a4743a0153bb5a764c95 to w2161; rationale digest fd9bcda223ce. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-5c2db5ac5e8827e5d4018dd3 to w239; rationale digest b7535f7f6e29. w3068 w3068-s1 c1d0022f9a5d [R000017]: Stage 3 attempt R000017-a1 appended association relation rel-fb09ab8e996882dbb5a0566c to w278; rationale digest 2731da1d42cb."
           }
         ]
       },
@@ -953468,7 +953468,7 @@
     {
       "batch_id": "R000017",
       "attempt": 1,
-      "semantic_decisions_sha256": "1c364701d4fd5c654ed027508b9ca8c4800df3dedfb367f54e2669931073befc",
+      "semantic_decisions_sha256": "5815e3cd53212f2a5a2f2deae60af8a5045cc18a6172c5c5a06dd6d65b4f94d4",
       "entries": [],
       "relation_amendments": [
         {
@@ -989350,13 +989350,14 @@
           "source_record_id": "w3068",
           "source_sense_id": "w3068-s1",
           "source_gloss_sha256": "c1d0022f9a5d29ae901dc192c583ab37ea5c457261bde9c7cf1beb640545c741",
-          "authored_relation_id": "rel-6035aca04aef23cccd8e37e0",
-          "relation_id": "rel-6035aca04aef23cccd8e37e0",
+          "authored_relation_id": "rel-5c2db5ac5e8827e5d4018dd3",
+          "relation_id": "rel-5c2db5ac5e8827e5d4018dd3",
           "relation": {
             "target": "w239",
             "target_sense": "w239-s1",
-            "type": "antonym",
-            "note": "지난 일을 마음에 두는 ‘기억하다’이다"
+            "type": "association",
+            "note": "지난 일을 마음에 두는 ‘기억하다’이다",
+            "relevance": 3
           },
           "rationale_sha256": "b7535f7f6e291bec63896e88c7c1d740d96609f49bc365ad19c551bbbba61654",
           "outcome": "appended"
@@ -1049031,11 +1049032,11 @@
             "rel-8111534d7d47b5ae08d8a5db",
             "rel-51ffe7317a1aae0402a3e83b",
             "rel-3042a4743a0153bb5a764c95",
-            "rel-6035aca04aef23cccd8e37e0",
+            "rel-5c2db5ac5e8827e5d4018dd3",
             "rel-fb09ab8e996882dbb5a0566c"
           ],
           "before_sha256": "03bc6d9bee1263be30bdca6eea91d2e4a5d0fb5784e51f16d237863edd156d3b",
-          "after_sha256": "a57d6cd0e1275c5ad47a23e078c91e2e712be40569dac28f8412ddbb23125133",
+          "after_sha256": "a2897439795d4927844b35577c11b696af6c8d26b8b434fecac812543de8df25",
           "previous_semantic_review_sha256": "dce47cbec3c2b93a779fb3d0fa8187011485690d3855ef994c4b99bb27f1b2bd",
           "previous_semantic_review": {
             "record_id": "w3068",
@@ -1049193,7 +1049194,7 @@
               }
             ]
           },
-          "semantic_review_sha256": "d1f2eebea8dad76169147ab0de3271186b12954e28e4ab7257bdc44dde640e05"
+          "semantic_review_sha256": "fb86d939498799fccd25450f7631485d46d9c4c677b7d8209caac87da69a82c6"
         },
         {
           "entry_id": "w3072",
@@ -1069155,7 +1069156,7 @@
           "semantic_review_sha256": "30892574ee98d27103c16189ff93e87c23509b1c1c695099ad8b085f49bf8974"
         }
       ],
-      "sha256": "3eb064562776391c9260fe5ee22847b1f97ac09bc6a7f6a506e9440e575ba756"
+      "sha256": "8c223e658349dca24c78320280a3a20b608b470fccfd21a795d9f5d9acbe2812"
     }
   ]
 }

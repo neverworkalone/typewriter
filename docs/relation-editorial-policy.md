@@ -1,4 +1,4 @@
-# Current relation editorial and review policy (owner decision, 2026-10-10)
+# Current relation editorial and review policy (owner decisions, 2026-10-10 and 2026-10-12)
 
 This is the **authoritative current editorial contract** for relation authoring,
 Stage D backfill and PR review. It supersedes contrary M1 pilot-era
@@ -6,33 +6,57 @@ near/direct substitution, broad/narrow exclusion and historical example rules
 in editorial-model.md and other older guidance. The actual canonical graph is
 not rewritten by this policy change.
 
+The 2026-10-12 owner clarification applies a contextual, writer-facing standard
+to `direct` and `antonym`. A short canonical gloss anchors the bound sense; it
+does not exhaust every natural use. A recognizable, intelligible and recurring
+context can establish semantic similarity or opposition even when the words
+are not interchangeable in every sentence or their definitions are not
+logically exclusive. This clarification does not turn either relation into a
+general topic or scene association.
+
 ## Different goals, different review gates
 
 | UI group | Canonical types | Primary purpose | Reviewer gate |
 | --- | --- | --- | --- |
-| 유의어 | direct | Dictionary-grade lexical synonyms | Lexical accuracy at the bound senses |
-| 반의어 | antonym | Dictionary-grade semantic opposites | Accurate opposite axis at the bound senses |
+| 유의어 | direct | Writer-facing lexical similarity and close alternatives | Defensible semantic similarity between the bound senses in ordinary or contextual use |
+| 반의어 | antonym | Writer-facing semantic opposition | Meaningful opposition between the bound senses in a natural usage context |
 | 말의 결 | near, mood | Writer-facing nuance, tone and texture | Creative breadth and relative relevance |
 | 연상 | scene, sensory, action, association | Evocative scenes, senses, actions and ideas | Creative breadth and relative relevance |
 
-**Dictionary types:**
-- A direct relation requires a defensible **lexical synonym relationship**
-  between the actual bound senses; it does **not** demand substitution in
-  every sentence, identical gloss breadth, register, intensity or habitual
-  collocations. Do not demote or delete legitimate lexical synonyms merely
-  because their usages differ. 차분하다 ↔ 침착하다 and 늪 ↔ 습지 illustrate
-  dictionary-synonym candidates rather than mere creative associations.
-- Antonym requires genuinely opposed meanings along a meaningful matching
-  sense axis, not simply things found in contrasting scenes.
-- Do not infer either dictionary label from a topical link or a contrastive
-  rationale alone: a sensory property and its descriptor, a capability and a
-  treatment that suppresses it, or a substance and a resulting state may be
-  closely related without being lexical synonyms or opposites. Check the
-  bound meanings themselves. POS differences can prompt closer inspection,
-  but are not a mechanical rejection rule; retain useful non-dictionary
-  paths under a fitting exploratory type.
-- False sense bindings and false dictionary claims can block. These types
-  never carry relevance.
+**Lexical relationships (`direct` and `antonym`):**
+- `direct` claims meaningful semantic similarity between the actual bound
+  senses. Conventional synonymy is sufficient, as is a natural, intelligible,
+  recurring usage in which the words function as close writer-facing
+  alternatives. Check the bound lemma, POS, sense and gloss together with that
+  usage. It does **not** require substitution in every sentence, identical
+  gloss breadth, register, intensity or habitual collocations. Do not demote
+  a defensible contextual relation merely because the short glosses emphasize
+  different facets or scopes. 차분하다 ↔ 침착하다 and 늪 ↔ 습지 are positive
+  direct calibrations.
+- `antonym` claims meaningful semantic opposition between the bound senses in
+  a recognizable natural usage context. Ordinary, literary, figurative,
+  technical, domain-specific and culinary contexts can establish the contrast.
+  The definitions need not be logically exclusive, and the opposed qualities
+  may coexist in one object or scene. 편하다 ↔ 불편하다 (comfort/discomfort),
+  시큼함 ↔ 달다 (sour/sweet taste contrast in cooking), and 실감 ↔ 환각
+  (a literary realistic/hallucinatory contrast) are positive antonym
+  calibrations.
+- Before blocking a debatable pair, try to state the strongest plausible,
+  recurring context that supports the claimed similarity or opposition. If
+  that context makes the bound relation intelligible, preserve it; a stricter
+  gloss-only reading, possible co-existence, or disagreement over the best
+  wording is not by itself a blocker. These types never carry relevance.
+- Context alone is not enough when it supplies only a topic, co-occurrence,
+  causation, a side effect, or objects placed in contrasting scenes. A sensory
+  property and its descriptor, a capability and a treatment that suppresses
+  it, or a substance and a resulting state may be closely related without
+  expressing semantic similarity or opposition. A claimed lexical relation
+  must still connect the actual bound meanings; retain useful non-lexical
+  paths under a fitting exploratory type. POS differences prompt inspection,
+  but are not a mechanical rejection rule.
+- Block only a materially false sense binding or a relation that remains
+  demonstrably unsupported after considering plausible usage contexts and
+  relevant positive/negative controls.
 
 **Writer-facing exploratory types:**
 - near explores expressive neighboring nuance / a word's texture, mood

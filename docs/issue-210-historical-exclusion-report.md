@@ -283,7 +283,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-10a-wave-a2.jsonl` | `5fc1e59351b2c414e78b905c10905973ffb98a30c9c6d25e272594192d4d275d` |
 | `data/canonical/m5-11-expansion.jsonl` | `58051ea201210b54858008dec219961917a006f71e89c248ad6348eb11e2fa05` |
 | `data/canonical/m5-12a-expansion.jsonl` | `4239ebc416321fbc7bc4b81dc4f8e97321e2f171c5b336e324ac8c6df8418dcf` |
-| `data/canonical/m5-13-expansion.jsonl` | `a2625f22f611cefd8e3e3dce8be10d1f17551ef786ed0f86a1b175825e791fe1` |
+| `data/canonical/m5-13-expansion.jsonl` | `b631811b7e71334578a658709a954f411e15b5dd8ab6472e4684555c0369b09a` |
 | `data/canonical/m5-14-expansion.jsonl` | `48ffa5985dcd3cdee3b3d092f89a590caf278b74716dd2eec9a507059cfd3b30` |
 | `data/canonical/m5-15-expansion.jsonl` | `d95efe6bfd080ddc13ac50ead778ce8c21de836b32b791da37614e7a8dc5ff48` |
 | `data/canonical/m5-3-calibration.jsonl` | `cdd48e6019fb246ed1b8230f4d2dfc7973216e635fa5998d284d10a225e97c62` |
@@ -293,7 +293,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/pilot.jsonl` | `182d556915559991cf54877444aef66ab8c950e1b3f01b4f9b73ff1e03fed6b8` |
 | `data/inventory/m5-target-promotions.jsonl` | `07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `3df43d73fa5d924dc691a6bfb94f4f49094cbb211e976f9e2bd957afaa713eb5` |
+| `data/validation/canonical-semantic-decision-source.json` | `2776e1c37c3172c117c32ce89fb09257046940a53d6855ea14895cfe345c577b` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `4a05ce3484b5a35056456286eae2c6fbe68a489fe662874a5fc408870b9f5e01` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `60ec5620ad8593e1bc7ee1b55b388caa0021e00937d38b1e18869dac18dc1ca1` |
 | `data/validation/m6-2-inflection-exceptions.json` | `0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7` |
