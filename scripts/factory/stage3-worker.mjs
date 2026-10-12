@@ -9,6 +9,10 @@ import { planSurfaceFormDispositions, writeSurfaceFormDispositions } from './sur
 import { stage3SurfaceFormJudgments } from './surface-form-judgments.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
 import { FACTORY_SNAPSHOT_PATHSPEC, loadStage2QueueSnapshot } from './stage2-worker.mjs';
+import { buildCanonicalIndex } from './identity-adapter.mjs';
+import { isLemmaRow } from './lemma-contract.mjs';
+import { validateLemmaDecision } from './lemma-decisions.mjs';
+import { loadSearchFormSupport } from './search-form-support.mjs';
 import { validateReviewArtifacts } from './artifacts.mjs';
 import { parseJsonl, validateCandidateBatch, validateDecisionRows, validateReviewManifest } from './contract.mjs';
 import { COMPACT_CONTRACT } from './permanent-trash.mjs';
@@ -222,6 +226,26 @@ export async function loadStage3AdmissionSnapshot({ git, headSha, batchId } = {}
   if (staleContractErrors.some((error) => !error.includes('scope_declaration is required'))) {
     assertStage3Artifacts(batchId, 'current review contract', staleContractErrors);
   }
+
+  const lemmaCandidates = new Map(candidates.filter(isLemmaRow).map((row) => [row.candidate_id, row]));
+  const lemmaDecisions = decisions.filter((decision) => lemmaCandidates.has(decision.source_candidate_id));
+  let lemmaProofs = {};
+  if (lemmaDecisions.some((decision) => (decision.group_decisions ?? [])
+    .some((entry) => ['covered', 'search_coverage'].includes(entry?.disposition)))) {
+    try {
+      const { rows: canonicalRecords } = canonicalRecordLocations(git, headSha);
+      lemmaProofs = {
+        canonicalIndex: buildCanonicalIndex(canonicalRecords),
+        support: await loadSearchFormSupport(canonicalRecords),
+      };
+    } catch (error) {
+      throw new Stage3WorkerError(`${batchId} current lemma canonical proof could not be built: ${error.message}`, { batchId });
+    }
+  }
+  const lemmaErrors = lemmaDecisions.flatMap((decision) => validateLemmaDecision(
+    decision, lemmaCandidates.get(decision.source_candidate_id), lemmaProofs,
+  ));
+  assertStage3Artifacts(batchId, 'lemma decisions', lemmaErrors);
 
   return {
     ...queue,
