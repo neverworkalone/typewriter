@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import ast
 from contextlib import closing
 import hashlib
 import json
@@ -41,20 +40,12 @@ PROJECTION_MORPHOLOGY_TOTALS_SQL = """
 EXPECTED_PARAGRAPHS = 4_988_970
 EXPECTED_LEMMAS = 221_392
 POS_TAGS = {"noun": "NNG", "verb": "VV", "adjective": "VA"}
-PROJECTION_BUILDER_COMPONENTS = (
-    "PROJECTION_CONTRACT",
-    "PROJECTION_SURFACE_AMBIGUITY_SQL",
-    "PROJECTION_MORPHOLOGY_TOTALS_SQL",
-    "POS_TAGS",
-    "PROJECTION_BUILDER_COMPONENTS",
-    "projection_builder_sha256",
-    "projection_directory",
-    "_batched",
-    "configure_readonly_connection",
-    "surface_ambiguity_counts",
-    "build_projection",
-)
-
+# Increment this version whenever the projection schema, normalization, filtering,
+# aggregation, ranking, or selected forms change. Downstream coverage and output
+# handling do not change this cached intermediate result.
+PROJECTION_VERSION = "morphology-selection-v1"
+# Existing pre-version cache directory, retained only for the one-time handoff.
+LEGACY_PROJECTION_BUILDER_SHA256 = "3e212a079ba5c2d520ce6ddd9e66dc73fd8e10d2c58ab8fa5d523d5f349f1eb3"
 
 def json_bytes(value: object) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -232,49 +223,22 @@ def projection_manifest_path(directory: Path) -> Path:
     return directory / "projection-manifest.json"
 
 
-def projection_algorithm_identity() -> dict:
-    return {
-        "selector_script_sha256": sha256_file(Path(__file__)),
-        "projection_builder_sha256": projection_builder_sha256(),
-        "candidate_producer_sha256": sha256_file(Path(producer.__file__)),
-        "readonly_auditor_sha256": sha256_file(Path(morphology_readonly.__file__)),
-    }
-
-
-def projection_builder_sha256() -> str:
-    """Identify only code and constants that determine the selection projection."""
-    source = Path(__file__).read_text(encoding="utf-8")
-    module = ast.parse(source)
-    definitions = {}
-    for node in module.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            definitions[node.name] = node
-        elif isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    definitions[target.id] = node
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            definitions[node.target.id] = node
-
-    # Keep orchestration edits out of this identity so an existing projection
-    # remains reusable. Include the builder and its local inputs so changes to
-    # projection rows or their schema use a fresh cache directory automatically.
-    segments = {}
-    for name in PROJECTION_BUILDER_COMPONENTS:
-        node = definitions.get(name)
-        segment = ast.get_source_segment(source, node) if node is not None else None
-        if not segment:
-            raise RuntimeError(f"Morphology projection builder identity is missing {name}")
-        segments[name] = segment
-    return hashlib.sha256(json_bytes(segments)).hexdigest()
-
-
 def projection_directory(root: Path, source_snapshot: str) -> Path:
-    identity = projection_algorithm_identity()
     return assert_cache_path(
-        root / source_snapshot / identity["projection_builder_sha256"] / identity["candidate_producer_sha256"],
+        root / source_snapshot / PROJECTION_VERSION,
         "runs",
         "Morphology selection projection",
+    )
+
+
+def projection_database_path(manifest: dict) -> Path:
+    relative = manifest.get("projection_database_path")
+    if not isinstance(relative, str) or not relative:
+        raise RuntimeError("Morphology selection projection has no database path")
+    return assert_cache_path(
+        typewriter_cache_root() / relative,
+        "runs",
+        "Morphology selection projection database",
     )
 
 
@@ -291,19 +255,39 @@ def read_projection_manifest(directory: Path, source_snapshot: str) -> dict | No
         raise RuntimeError("Morphology selection projection has an unsupported contract")
     if manifest.get("source_snapshot_sha256") != source_snapshot:
         raise RuntimeError("Morphology selection projection is bound to a different source snapshot")
-    current_algorithm = projection_algorithm_identity()
-    recorded_algorithm = manifest.get("algorithm_identity")
-    # Selector orchestration and the read-only audit implementation do not
-    # determine projection rows. Bind reuse to the builder and its data
-    # producer, while the DB digest below binds the produced projection.
-    if (not isinstance(recorded_algorithm, dict)
-            or any(recorded_algorithm.get(key) != current_algorithm.get(key)
-                   for key in ("projection_builder_sha256", "candidate_producer_sha256"))):
-        raise RuntimeError("Morphology selection projection was built by different builder or producer code")
+    if manifest.get("projection_version") != PROJECTION_VERSION:
+        raise RuntimeError("Morphology selection projection version differs from the requested version")
     source_evidence = manifest.get("store_evidence") or manifest.get("audit_evidence")
     if (not isinstance(source_evidence, dict)
             or source_evidence.get("source_snapshot_sha256") != source_snapshot):
         raise RuntimeError("Morphology selection projection has no matching completed-store evidence")
+    projection_database_path(manifest)
+    return manifest
+
+
+def read_legacy_projection_manifest(directory: Path, source_snapshot: str) -> dict | None:
+    """Read the one pre-version cache shape eligible for the v1 handoff."""
+    path = projection_manifest_path(directory)
+    if not path.is_file():
+        return None
+    manifest = load_object(path, "Legacy morphology selection projection manifest")
+    recorded_digest = manifest.pop("manifest_sha256", None)
+    if recorded_digest != digest(manifest):
+        raise RuntimeError("Legacy morphology selection projection manifest digest mismatch")
+    manifest["manifest_sha256"] = recorded_digest
+    algorithm = manifest.get("algorithm_identity")
+    source_evidence = manifest.get("store_evidence") or manifest.get("audit_evidence")
+    expected_database = directory / "selection.sqlite"
+    if (manifest.get("contract") != PROJECTION_CONTRACT
+            or manifest.get("source_snapshot_sha256") != source_snapshot
+            or not isinstance(algorithm, dict)
+            or algorithm.get("projection_builder_sha256") != LEGACY_PROJECTION_BUILDER_SHA256
+            or not isinstance(source_evidence, dict)
+            or source_evidence.get("source_snapshot_sha256") != source_snapshot
+            or manifest.get("projection_database_path") != cache_relative_path(
+                expected_database, "Legacy morphology selection projection database"
+            )):
+        return None
     return manifest
 
 
@@ -423,15 +407,18 @@ def build_projection(*, source_path: Path, projection_path: Path, temporary_dire
     return counts
 
 
-def verify_projection(*, directory: Path, source_snapshot: str) -> dict:
-    manifest = read_projection_manifest(directory, source_snapshot)
+def verify_projection(*, directory: Path, source_snapshot: str,
+                      validate_database: bool = False, manifest: dict | None = None,
+                      persist_stamp: bool = True) -> dict:
+    if manifest is None:
+        manifest = read_projection_manifest(directory, source_snapshot)
     if manifest is None:
         return None
-    projection_path = directory / "selection.sqlite"
+    projection_path = projection_database_path(manifest)
     if not projection_path.is_file():
         raise RuntimeError("Morphology selection projection database digest mismatch")
     current_stamp = morphology.file_stamp(projection_path)
-    if manifest.get("projection_database_stamp") == current_stamp:
+    if manifest.get("projection_database_stamp") == current_stamp and not validate_database:
         # The builder performed the full integrity and count checks before
         # publishing this immutable local projection. A matching file stamp
         # lets subsequent batches reuse it without rescanning its contents.
@@ -450,9 +437,10 @@ def verify_projection(*, directory: Path, source_snapshot: str) -> dict:
         }
     if actual_counts != manifest.get("row_counts"):
         raise RuntimeError("Morphology selection projection row counts differ from its manifest")
-    # Older manifests, or a metadata-only file replacement, incur the full
-    # proof once. Persist the current stamp after the original digest, SQLite
-    # integrity and row-count evidence all pass.
+    if not persist_stamp:
+        return manifest
+    # A changed stamp or older manifest incurs a full proof once; later reuse
+    # takes the stat-only path above.
     updated_manifest = dict(manifest)
     updated_manifest.pop("manifest_sha256", None)
     updated_manifest["projection_database_stamp"] = current_stamp
@@ -461,35 +449,81 @@ def verify_projection(*, directory: Path, source_snapshot: str) -> dict:
     return updated_manifest
 
 
+def compatible_legacy_projection(*, root: Path, source_snapshot: str) -> tuple[Path, dict] | None:
+    if PROJECTION_VERSION != "morphology-selection-v1":
+        return None
+    legacy_builder_directory = root / source_snapshot / LEGACY_PROJECTION_BUILDER_SHA256
+    if not legacy_builder_directory.is_dir():
+        return None
+    matches = []
+    for directory in legacy_builder_directory.iterdir():
+        if not directory.is_dir():
+            continue
+        manifest = read_legacy_projection_manifest(directory, source_snapshot)
+        if manifest is not None:
+            matches.append((directory, manifest))
+    if len(matches) != 1:
+        return None
+    directory, manifest = matches[0]
+    manifest = verify_projection(
+        directory=directory,
+        source_snapshot=source_snapshot,
+        validate_database=True,
+        manifest=manifest,
+        persist_stamp=False,
+    )
+    return projection_database_path(manifest), manifest
+
+
 def projection_for_source(*, store_path: Path, source_proof: dict, root: Path) -> tuple[Path, dict]:
     source_snapshot = source_proof["source_snapshot_sha256"]
     assert_source_binding_current(store_path=store_path, index_path=Path(source_proof["source_identity"]["index_path"]),
                                   proof=source_proof)
     directory = projection_directory(root, source_snapshot)
-    directory.mkdir(parents=True, exist_ok=True)
-    projection_path = directory / "selection.sqlite"
     manifest = verify_projection(directory=directory, source_snapshot=source_snapshot)
     if manifest is None:
-        row_counts = build_projection(
-            source_path=store_path / "analysis.sqlite",
-            projection_path=projection_path,
-            temporary_directory=directory,
-            source_snapshot=source_snapshot,
-        )
-        manifest = {
-            "contract": PROJECTION_CONTRACT,
-            "source_snapshot_sha256": source_snapshot,
-            "algorithm_identity": projection_algorithm_identity(),
-            "store_evidence": source_proof,
-            "projection_database_path": cache_relative_path(projection_path, "Morphology selection projection"),
-            "projection_database_sha256": sha256_file(projection_path),
-            "projection_database_stamp": morphology.file_stamp(projection_path),
-            "row_counts": row_counts,
-        }
-        write_projection_manifest(projection_manifest_path(directory), manifest)
-        manifest["manifest_sha256"] = digest(manifest)
-    assert_source_binding_current(store_path=store_path,
-                                  index_path=Path(source_proof["source_identity"]["index_path"]),
+        legacy = compatible_legacy_projection(root=root, source_snapshot=source_snapshot)
+        if legacy is not None:
+            projection_path, legacy_manifest = legacy
+            manifest = {
+                "contract": PROJECTION_CONTRACT,
+                "projection_version": PROJECTION_VERSION,
+                "source_snapshot_sha256": source_snapshot,
+                "store_evidence": legacy_manifest.get("store_evidence") or legacy_manifest["audit_evidence"],
+                "projection_database_path": cache_relative_path(
+                    projection_path, "Morphology selection projection database"
+                ),
+                "projection_database_sha256": legacy_manifest["projection_database_sha256"],
+                "projection_database_stamp": morphology.file_stamp(projection_path),
+                "row_counts": legacy_manifest["row_counts"],
+            }
+            directory.mkdir(parents=True, exist_ok=True)
+            write_projection_manifest(projection_manifest_path(directory), manifest)
+            manifest["manifest_sha256"] = digest(manifest)
+        else:
+            directory.mkdir(parents=True, exist_ok=True)
+            projection_path = directory / "selection.sqlite"
+            row_counts = build_projection(
+                source_path=store_path / "analysis.sqlite",
+                projection_path=projection_path,
+                temporary_directory=directory,
+                source_snapshot=source_snapshot,
+            )
+            manifest = {
+                "contract": PROJECTION_CONTRACT,
+                "projection_version": PROJECTION_VERSION,
+                "source_snapshot_sha256": source_snapshot,
+                "store_evidence": source_proof,
+                "projection_database_path": cache_relative_path(projection_path, "Morphology selection projection"),
+                "projection_database_sha256": sha256_file(projection_path),
+                "projection_database_stamp": morphology.file_stamp(projection_path),
+                "row_counts": row_counts,
+            }
+            write_projection_manifest(projection_manifest_path(directory), manifest)
+            manifest["manifest_sha256"] = digest(manifest)
+    else:
+        projection_path = projection_database_path(manifest)
+    assert_source_binding_current(store_path=store_path, index_path=Path(source_proof["source_identity"]["index_path"]),
                                   proof=source_proof)
     return projection_path, manifest
 

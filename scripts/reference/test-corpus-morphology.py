@@ -282,6 +282,15 @@ class MorphologyTests(unittest.TestCase):
         self.assertEqual(sorted(actual_surfaces), expected_surfaces)
         self.assertEqual(sorted(actual_eojeols), expected_eojeols)
 
+    def test_projection_cache_identity_is_source_snapshot_and_explicit_version(self):
+        root = selector.cache_root()
+        snapshot = "a" * 64
+        current = selector.projection_directory(root, snapshot)
+        self.assertEqual(current, root / snapshot / selector.PROJECTION_VERSION)
+        with patch.object(selector, "PROJECTION_VERSION", "morphology-selection-v2"):
+            next_version = selector.projection_directory(root, snapshot)
+        self.assertNotEqual(next_version, current)
+
     def test_selector_reuses_completed_store_without_full_audit_and_fails_closed_on_real_drift(self):
         runtime = {
             "python": "Python 3.12.0 synthetic-selector-test",
@@ -342,17 +351,39 @@ class MorphologyTests(unittest.TestCase):
             self.assertEqual(audit.call_count, 0)
             self.assertEqual(projection_builder.call_count, 1)
 
-            refill = select("refill", snapshot)
-            self.assertEqual(refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
-            self.assertEqual(audit.call_count, 0)
-            self.assertEqual(projection_builder.call_count, 1)
-
             projection_path = selector.typewriter_cache_root() / first["analysis_cache"]["selection_projection_path"]
-            projection_directory = projection_path.parent
+            projection_version_directory = selector.projection_directory(selector.cache_root(), snapshot)
+            self.assertEqual(projection_path.parent, projection_version_directory)
+            original_inode = projection_path.stat().st_ino
+
+            # Recreate the pre-version manifest layout around this exact DB to
+            # exercise the one-time compatibility handoff without copying it.
+            legacy_directory = (
+                projection_version_directory.parent
+                / selector.LEGACY_PROJECTION_BUILDER_SHA256
+                / "legacy-producer-directory"
+            )
+            legacy_directory.parent.mkdir(parents=True)
+            os.replace(projection_version_directory, legacy_directory)
+            projection_path = legacy_directory / "selection.sqlite"
+            legacy_manifest_path = selector.projection_manifest_path(legacy_directory)
+            legacy_manifest = selector.load_object(legacy_manifest_path, "Synthetic legacy projection manifest")
+            legacy_manifest.pop("manifest_sha256")
+            legacy_manifest.pop("projection_version")
+            legacy_manifest["algorithm_identity"] = {
+                "projection_builder_sha256": selector.LEGACY_PROJECTION_BUILDER_SHA256,
+                "candidate_producer_sha256": "ignored",
+            }
+            legacy_manifest["projection_database_path"] = selector.cache_relative_path(
+                legacy_directory / "selection.sqlite", "Legacy morphology selection projection database"
+            )
+            selector.write_projection_manifest(legacy_manifest_path, legacy_manifest)
+
             projection_hashes = []
             projection_queries = []
             original_sha256_file = selector.sha256_file
             original_open_readonly = selector.producer.open_readonly_database
+            original_apply_product_coverage = selector.producer.apply_product_coverage
             def track_projection_hash(file_path):
                 if Path(file_path).resolve() == projection_path.resolve():
                     projection_hashes.append(Path(file_path))
@@ -363,65 +394,65 @@ class MorphologyTests(unittest.TestCase):
                     db.set_trace_callback(projection_queries.append)
                 return db
             with patch.object(selector, "sha256_file", side_effect=track_projection_hash), \
+                 patch.object(selector.producer, "open_readonly_database", side_effect=trace_projection_open), \
+                 patch.object(selector.producer, "apply_product_coverage", wraps=original_apply_product_coverage) as coverage:
+                refill = select("refill", snapshot)
+                self.assertEqual(coverage.call_count, 1)
+            self.assertEqual(refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
+            self.assertEqual(audit.call_count, 0)
+            self.assertEqual(projection_builder.call_count, 1)
+            self.assertEqual(projection_hashes, [projection_path])
+            self.assertTrue(any("PRAGMA quick_check" in query for query in projection_queries))
+            self.assertTrue(any("COUNT(" in query.upper() for query in projection_queries))
+            self.assertEqual(projection_path.stat().st_ino, original_inode)
+
+            migrated = selector.read_projection_manifest(projection_version_directory, snapshot)
+            self.assertEqual(migrated["projection_version"], selector.PROJECTION_VERSION)
+            self.assertEqual(selector.projection_database_path(migrated), projection_path)
+            self.assertEqual(
+                migrated["projection_database_sha256"], first["analysis_cache"]["selection_projection_sha256"],
+            )
+
+            projection_hashes.clear()
+            projection_queries.clear()
+            with patch.object(selector, "sha256_file", side_effect=track_projection_hash), \
                  patch.object(selector.producer, "open_readonly_database", side_effect=trace_projection_open):
-                fast_manifest = selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
+                fast_manifest = selector.verify_projection(
+                    directory=projection_version_directory, source_snapshot=snapshot,
+                )
                 self.assertEqual(fast_manifest["projection_database_stamp"], m.file_stamp(projection_path))
                 self.assertEqual(projection_hashes, [])
                 self.assertEqual(projection_queries, [])
 
-                # One-time validation upgrades a pre-stamp manifest; the next
-                # batch takes the stat-only path.
+                # A stamp change uses the existing full verification once, then
+                # later reuse returns to the stat-only path.
                 unstamped_manifest = dict(fast_manifest)
                 unstamped_manifest.pop("manifest_sha256")
                 unstamped_manifest.pop("projection_database_stamp")
                 selector.write_projection_manifest(
-                    selector.projection_manifest_path(projection_directory), unstamped_manifest,
+                    selector.projection_manifest_path(projection_version_directory), unstamped_manifest,
                 )
-                migrated_manifest = selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
-                self.assertEqual(migrated_manifest["projection_database_stamp"], m.file_stamp(projection_path))
+                checked_manifest = selector.verify_projection(
+                    directory=projection_version_directory, source_snapshot=snapshot,
+                )
+                self.assertEqual(checked_manifest["projection_database_stamp"], m.file_stamp(projection_path))
                 self.assertEqual(len(projection_hashes), 1)
                 self.assertTrue(any("PRAGMA quick_check" in query for query in projection_queries))
                 self.assertTrue(any("COUNT(" in query.upper() for query in projection_queries))
                 projection_hashes.clear()
                 projection_queries.clear()
-                selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
+                selector.verify_projection(directory=projection_version_directory, source_snapshot=snapshot)
                 self.assertEqual(projection_hashes, [])
                 self.assertEqual(projection_queries, [])
 
-            selector_path = Path(selector.__file__).resolve()
-            auditor_path = Path(readonly.__file__).resolve()
-            changed_selector_sha256 = "e" * 64
-            changed_auditor_sha256 = "f" * 64
-            def changed_orchestration_digest(file_path):
-                if Path(file_path).resolve() == selector_path:
-                    return changed_selector_sha256
-                if Path(file_path).resolve() == auditor_path:
-                    return changed_auditor_sha256
-                return original_sha256_file(file_path)
-            with patch.object(selector, "sha256_file", side_effect=changed_orchestration_digest):
-                changed_orchestration = select("changed-orchestration", snapshot)
-                self.assertEqual(audit.call_count, 0)
-                self.assertEqual(changed_orchestration["analysis_cache"]["validation"], "completed-store-reused-v1")
-                changed_orchestration_refill = select("changed-orchestration-refill", snapshot)
-                self.assertEqual(
-                    changed_orchestration_refill["analysis_cache"]["source_snapshot_sha256"], snapshot,
-                )
-                self.assertEqual(audit.call_count, 0)
-                self.assertEqual(projection_builder.call_count, 1)
-
-            original_algorithm_identity = selector.projection_algorithm_identity
-            def changed_projection_builder_identity():
-                identity = original_algorithm_identity()
-                identity["projection_builder_sha256"] = "a" * 64
-                return identity
-            with patch.object(
-                selector, "projection_algorithm_identity", side_effect=changed_projection_builder_identity,
-            ):
-                changed_builder = select("changed-projection-builder", snapshot)
-                self.assertEqual(changed_builder["analysis_cache"]["source_snapshot_sha256"], snapshot)
+            with patch.object(selector, "PROJECTION_VERSION", "morphology-selection-v2"):
+                changed_version = select("changed-projection-version", snapshot)
+                self.assertEqual(changed_version["analysis_cache"]["source_snapshot_sha256"], snapshot)
                 self.assertEqual(projection_builder.call_count, 2)
-                changed_builder_refill = select("changed-projection-builder-refill", snapshot)
-                self.assertEqual(changed_builder_refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
+                changed_version_refill = select("changed-projection-version-refill", snapshot)
+                self.assertEqual(
+                    changed_version_refill["analysis_cache"]["source_snapshot_sha256"], snapshot,
+                )
                 self.assertEqual(projection_builder.call_count, 2)
 
             with self.assertRaisesRegex(RuntimeError, "source snapshot changed"):
