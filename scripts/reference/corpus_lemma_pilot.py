@@ -243,6 +243,12 @@ def apply_product_coverage(
     product_matches: dict[str, list[dict]],
 ) -> dict[str, int]:
     """Cover exact lemmas and retain search/generated collisions as held candidates."""
+    # Coverage updates are keyed by normalized_lemma. The ranking index starts with
+    # `covered`, so it cannot serve these lookups without a separate lemma index.
+    staging.execute(
+        "CREATE INDEX IF NOT EXISTS idx_candidates_normalized_lemma "
+        "ON candidates(normalized_lemma)"
+    )
     match_kind_counts = {
         "canonical_lemma": 0,
         "curated_search_form": 0,
