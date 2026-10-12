@@ -813,22 +813,3 @@ export function collectCheckRegistrations() {
     }))
   ));
 }
-
-export function collectTestOwnership() {
-  return CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => (
-    CI_CATEGORIES[categoryName].checks.flatMap((check) => (
-      (check.testFiles ?? []).map((file) => ({
-        owner: check.owner,
-        tier: check.tier,
-        schedule: check.schedule,
-        paths: check.paths,
-        deepInputs: check.deepInputs,
-        historicalScopes: check.historicalScopes,
-        protectedContract: check.protectedContract,
-        registration: check.registration,
-        check: check.label,
-        file,
-      }))
-    ))
-  ));
-}
