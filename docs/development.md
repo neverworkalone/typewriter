@@ -317,13 +317,12 @@ The M7-1 deep benchmark measures the real 5K release baseline and deterministic
 100K/500K/1M workloads. See the [recorded method and scale results](m7-1-scale-benchmark.md)
 and the [machine-readable report](m7-1-scale-benchmark.json).
 
-The registry in `scripts/ci/registry.mjs` owns every root `tests/*.test.mjs` file
-exactly once. Each declared check is logged by name and has its own execution
-boundary; checks run sequentially and a failure stops the category before any later
-check starts. Historical runner inputs are copied to an external temporary directory by
-`scripts/ci/run-category.mjs`; the workflows do not need one YAML step per
-materialization. A representative future batch check should be added to the
-appropriate registry category rather than to a workflow file.
+The registry in `scripts/ci/registry.mjs` owns only the test files registered as CI
+checks; each registered test file has exactly one owner. Manual tests stay
+unregistered and are run directly. Each declared check is logged by name and has
+its own execution boundary; checks run sequentially and a failure stops the
+category before any later check starts. A new check belongs in the appropriate
+registry category rather than in a workflow file.
 
 Release ZIP creation (`pnpm run package` and `pnpm run package:minify`) and Chrome for
 Testing package verification (`pnpm run test:mv3:package`) are intentionally deferred
