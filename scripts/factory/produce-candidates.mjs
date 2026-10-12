@@ -114,6 +114,7 @@ const STAGE1_SOURCE_PATHS = Object.freeze([
   'scripts/reference/corpus-index.mjs',
   'scripts/reference/corpus_lemma_pilot.py',
   'scripts/reference/corpus_morphology.py',
+  'scripts/reference/corpus_morphology_readonly.py',
   'scripts/reference/corpus_morphology_selector.py',
   'scripts/reference/run-corpus-lemma-pilot.mjs',
   'scripts/reference/select-corpus-candidates-from-analysis.py',

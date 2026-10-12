@@ -305,9 +305,30 @@ class MorphologyTests(unittest.TestCase):
             self.assertEqual(refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
             self.assertEqual(audit.call_count, 1)
 
+            original_sha256_file = selector.sha256_file
+            auditor_path = Path(readonly.__file__).resolve()
+            changed_auditor_sha256 = "f" * 64
+            def changed_auditor_digest(file_path):
+                if Path(file_path).resolve() == auditor_path:
+                    return changed_auditor_sha256
+                return original_sha256_file(file_path)
+            with patch.object(selector, "sha256_file", side_effect=changed_auditor_digest):
+                changed_auditor = select("changed-auditor", snapshot)
+                self.assertEqual(audit.call_count, 2)
+                self.assertEqual(
+                    changed_auditor["analysis_cache"]["audit_evidence"]["audit_verifier_identity"],
+                    {"readonly_auditor_sha256": changed_auditor_sha256},
+                )
+                changed_auditor_refill = select("changed-auditor-refill", snapshot)
+                self.assertEqual(
+                    changed_auditor_refill["analysis_cache"]["audit_evidence"]["audit_verifier_identity"],
+                    {"readonly_auditor_sha256": changed_auditor_sha256},
+                )
+                self.assertEqual(audit.call_count, 2)
+
             with self.assertRaisesRegex(RuntimeError, "source snapshot changed"):
                 select("stale-snapshot", "0" * 64)
-            self.assertEqual(audit.call_count, 1)
+            self.assertEqual(audit.call_count, 2)
 
             seal_path = self.store / "seal.json"
             original_seal = seal_path.read_bytes()
@@ -319,7 +340,7 @@ class MorphologyTests(unittest.TestCase):
                     select("changed-seal", snapshot)
             finally:
                 seal_path.write_bytes(original_seal)
-            self.assertEqual(audit.call_count, 1)
+            self.assertEqual(audit.call_count, 2)
 
             changed_permission = self.root / "permission-record.txt"
             permission_bytes = Path(m.DEFAULT_PERMISSION_RECORD_PATH).read_bytes()
@@ -327,13 +348,13 @@ class MorphologyTests(unittest.TestCase):
             with patch.object(m, "DEFAULT_PERMISSION_RECORD_PATH", changed_permission):
                 with self.assertRaisesRegex(RuntimeError, "Manifest/tool/index/source identity mismatch"):
                     select("changed-permission", snapshot)
-            self.assertEqual(audit.call_count, 1)
+            self.assertEqual(audit.call_count, 2)
 
             index_stat = self.index.stat()
             os.utime(self.index, ns=(index_stat.st_atime_ns, index_stat.st_mtime_ns + 1_000_000))
             with self.assertRaisesRegex(RuntimeError, "Index identity mismatch"):
                 select("changed-index", snapshot)
-            self.assertEqual(audit.call_count, 1)
+            self.assertEqual(audit.call_count, 2)
 
     def test_separate_calls_do_not_rescan_input_completed_routes_or_facts(self):
         original_chunk = m.chunk_digest

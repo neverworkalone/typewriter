@@ -162,7 +162,9 @@ def verify_store(*, store_path: Path, index_path: Path, scratch_path: Path, proo
             and isinstance(proof, dict)
             and proof.get("validation") == "full-audit-passed-read-only"
             and proof.get("source_snapshot_sha256") == snapshot_sha256
-            and {key: value for key, value in proof.items() if key not in {"validation", "source_snapshot_sha256"}} == payload
+            and proof.get("audit_verifier_identity") == audit_verifier_identity()
+            and {key: value for key, value in proof.items()
+                 if key not in {"validation", "source_snapshot_sha256", "audit_verifier_identity"}} == payload
         )
         if not proof_is_current and not full_audit and not audit_if_missing:
             current_snapshot = {**payload, "source_snapshot_sha256": snapshot_sha256,
@@ -187,6 +189,7 @@ def verify_store(*, store_path: Path, index_path: Path, scratch_path: Path, proo
             seal = audited_seal
 
     proof = {**payload, "source_snapshot_sha256": snapshot_sha256,
+             "audit_verifier_identity": audit_verifier_identity(),
              "validation": "full-audit-passed-read-only"}
     return current, proof
 
@@ -226,7 +229,13 @@ def projection_algorithm_identity() -> dict:
     return {
         "selector_script_sha256": sha256_file(Path(__file__)),
         "candidate_producer_sha256": sha256_file(Path(producer.__file__)),
+        "readonly_auditor_sha256": sha256_file(Path(morphology_readonly.__file__)),
     }
+
+
+def projection_directory(root: Path, source_snapshot: str) -> Path:
+    verifier_sha256 = projection_algorithm_identity()["readonly_auditor_sha256"]
+    return assert_cache_path(root / source_snapshot / verifier_sha256, "runs", "Morphology selection projection")
 
 
 def read_projection_manifest(directory: Path, source_snapshot: str) -> dict | None:
@@ -246,9 +255,15 @@ def read_projection_manifest(directory: Path, source_snapshot: str) -> dict | No
         raise RuntimeError("Morphology selection projection was built by different selector code")
     proof = manifest.get("audit_evidence")
     if (not isinstance(proof, dict) or proof.get("validation") != "full-audit-passed-read-only"
-            or proof.get("source_snapshot_sha256") != source_snapshot):
+            or proof.get("source_snapshot_sha256") != source_snapshot
+            or proof.get("audit_verifier_identity") != audit_verifier_identity()):
         raise RuntimeError("Morphology selection projection has no matching full-audit evidence")
     return manifest
+
+
+def audit_verifier_identity() -> dict:
+    """Version the executable read-only auditor separately from the source snapshot."""
+    return {"readonly_auditor_sha256": sha256_file(Path(morphology_readonly.__file__))}
 
 
 def write_projection_manifest(path: Path, manifest: dict) -> None:
@@ -387,7 +402,7 @@ def projection_for_source(*, store_path: Path, source_proof: dict, root: Path) -
     source_snapshot = source_proof["source_snapshot_sha256"]
     assert_source_binding_current(store_path=store_path, index_path=Path(source_proof["source_identity"]["index_path"]),
                                   proof=source_proof)
-    directory = assert_cache_path(root / source_snapshot, "runs", "Morphology selection projection")
+    directory = projection_directory(root, source_snapshot)
     directory.mkdir(parents=True, exist_ok=True)
     projection_path = directory / "selection.sqlite"
     manifest = verify_projection(directory=directory, source_snapshot=source_snapshot)
@@ -463,7 +478,7 @@ def select_from_morphology_store(*, store_path: Path, dictionary_path: Path, ind
         audit_if_missing=False,
     )
     snapshot_sha = current_snapshot["source_snapshot_sha256"]
-    directory = assert_cache_path(root / snapshot_sha, "runs", "Morphology selection projection")
+    directory = projection_directory(root, snapshot_sha)
     existing_manifest = read_projection_manifest(directory, snapshot_sha) if directory.exists() else None
     proof = existing_manifest.get("audit_evidence") if existing_manifest else None
     if proof is None:
