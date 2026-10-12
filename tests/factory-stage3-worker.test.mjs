@@ -20,6 +20,8 @@ import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decisi
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
   createStage3GitRepository,
+  loadStage3AdmissionSnapshot,
+  loadStage3QueueSnapshot,
   applyStage3Admission,
   claimNextStage3Batch,
   createStage3Draft,
@@ -142,6 +144,71 @@ test('a ready review authored under an older shared contract is skipped, not rej
     reviews: ['C000001', 'C000002'].map((batchId) => ({ batchId, manifest: { status: 'ready', attempt: 1 } })),
   };
   assert.deepEqual(eligibleStage3Batches(snapshot).map((entry) => entry.batchId), ['C000002']);
+});
+
+test('Stage 3 hydrates only the selected ready review after manifest-only queue selection', async () => {
+  const root = new URL('..', import.meta.url).pathname;
+  const repository = createStage3GitRepository({ root });
+  const reads = [];
+  let selectedBatchId = null;
+  const git = {
+    ...repository,
+    show(ref, file) {
+      reads.push(file);
+      if (!file.endsWith('/manifest.json') && !file.includes(`/${selectedBatchId}/`)) {
+        throw new Error(`historical factory payload was read: ${file}`);
+      }
+      return repository.show(ref, file);
+    },
+  };
+
+  const queue = await loadStage3QueueSnapshot({ git, headSha: 'HEAD' });
+  assert.equal(queue.selectionReady, true);
+  assert.equal(queue.validated, undefined);
+  assert.ok(reads.every((file) => file.endsWith('/manifest.json')));
+  const selected = queue.reviews.find((entry) => entry.manifest.status === 'ready');
+  if (!selected) return; // A fully admitted queue needs no batch payload hydration.
+  selectedBatchId = selected.batchId;
+
+  const admission = await loadStage3AdmissionSnapshot({ git, headSha: 'HEAD', batchId: selected.batchId });
+  assert.deepEqual(admission.candidates.map(({ batchId }) => batchId), [selected.batchId]);
+  assert.deepEqual(admission.reviews.map(({ batchId }) => batchId), [selected.batchId]);
+  assert.ok(reads.filter((file) => !file.endsWith('/manifest.json')).every((file) =>
+    file.startsWith(`data/candidates/${selected.batchId}/`) || file.startsWith(`data/reviews/${selected.batchId}/`)));
+});
+
+test('Stage 3 skips only the selected stale review and can claim the next current review', async () => {
+  const events = [];
+  const batchIds = ['C000001', 'C000002'];
+  const queue = {
+    selectionReady: true,
+    candidates: batchIds.map((batchId) => ({ batchId, manifest: { status: 'complete' } })),
+    reviews: batchIds.map((batchId) => ({ batchId, manifest: { status: 'ready', attempt: 1 } })),
+  };
+  const github = {
+    async getBranchHead() { return 'head'; },
+    async listStage3ClaimRefs() { return []; },
+    async listPullRequests() { return []; },
+    async getStage3ActiveLock() { return null; },
+    async createStage3ActiveLock(value) { events.push(`lock:${value.batchId}`); return { sha: 'lock-sha', ...value }; },
+    async createStage3ClaimRef(batchId) { events.push(`claim:${batchId}`); return true; },
+    async createPullRequest(payload) { assert.match(payload.body, /C000002-a1/u); return { number: 53, html_url: 'https://example.test/53' }; },
+  };
+  const git = {
+    async fetchMaster() {}, resolveRef() { return 'head'; },
+    createBranch() {}, async writeStarterAndPush() {},
+  };
+  const claim = await claimNextStage3Batch({
+    github, git, loadSnapshot: async () => queue,
+    loadAdmissionSnapshot: async ({ batchId }) => ({
+      selectionReady: true, staleContractBatches: batchId === 'C000001' ? [batchId] : [],
+      candidates: [{ batchId, manifest: { status: 'complete' }, rows: [], files: {} }],
+      reviews: [{ batchId, manifest: { status: 'ready', attempt: 1 }, decisions: [], files: {} }],
+    }),
+    log: () => {}, ownerToken: () => 'owner-token-0001',
+  });
+  assert.equal(claim.batchId, 'C000002');
+  assert.deepEqual(events, ['lock:C000002', 'claim:C000002']);
 });
 
 test('a batch claim conflict does not fall through to a different ready review', async () => {
