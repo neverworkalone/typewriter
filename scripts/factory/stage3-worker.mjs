@@ -10,7 +10,6 @@ import { stage3SurfaceFormJudgments } from './surface-form-judgments.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
 import { FACTORY_SNAPSHOT_PATHSPEC, loadStage2QueueSnapshot } from './stage2-worker.mjs';
 import { validateReviewArtifacts } from './artifacts.mjs';
-import { validateFactoryRepository, loadBaseManifests } from './validate.mjs';
 import { parseJsonl, validateCandidateBatch, validateDecisionRows, validateReviewManifest } from './contract.mjs';
 import { COMPACT_CONTRACT } from './permanent-trash.mjs';
 
@@ -492,12 +491,10 @@ export function runStage3PreflightCi(root, run = execFileSync) {
   run('pnpm', ['run', 'ci:normal'], { cwd: root, stdio: 'inherit' });
 }
 
-export async function validatePreparedStage3Admission({ root, git, claim, prepared, runGates = true } = {}) {
-  const base = loadBaseManifests('origin/master', root);
-  const errors = await validateFactoryRepository({ root, base });
-  if (errors.length) throw new Stage3WorkerError('Stage 3 factory and transition validation failed:\n' + errors.join('\n'), {
-    batchId: claim.batchId, attempt: claim.attempt, claimCreated: true, prNumber: claim.prNumber,
-  });
+export async function validatePreparedStage3Admission({ root, claim, prepared, runGates = true } = {}) {
+  // The selected review is validated before claiming, and the current canonical state is
+  // checked while planning/applying this admission. Do not recertify every historical
+  // candidate and review payload here, including when resuming a complete checkpoint.
   if (runGates) {
     try {
       runStage3PreflightCi(root);

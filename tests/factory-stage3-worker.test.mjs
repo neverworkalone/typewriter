@@ -177,6 +177,26 @@ test('Stage 3 hydrates only the selected ready review after manifest-only queue 
     file.startsWith(`data/candidates/${selected.batchId}/`) || file.startsWith(`data/reviews/${selected.batchId}/`)));
 });
 
+test('Stage 3 still rejects malformed payloads in the selected ready review', async (t) => {
+  const root = new URL('..', import.meta.url).pathname;
+  const repository = createStage3GitRepository({ root });
+  const queue = await loadStage3QueueSnapshot({ git: repository, headSha: 'HEAD' });
+  const selected = queue.reviews.find((entry) => entry.manifest.status === 'ready');
+  if (!selected) return t.skip('current master has no ready review to validate');
+  const decisionsPath = `data/reviews/${selected.batchId}/decisions.jsonl`;
+  const git = {
+    ...repository,
+    show(ref, file) {
+      const content = repository.show(ref, file);
+      return file === decisionsPath ? `${content}\n` : content;
+    },
+  };
+  await assert.rejects(
+    loadStage3AdmissionSnapshot({ git, headSha: 'HEAD', batchId: selected.batchId }),
+    /invalid JSON/u,
+  );
+});
+
 test('Stage 3 skips only the selected stale review and can claim the next current review', async () => {
   const events = [];
   const batchIds = ['C000001', 'C000002'];
@@ -683,10 +703,10 @@ test('successful admission removes the starter before commit and ready transitio
       github, git, root, claim, runGates: false,
       prepare: async () => ({ plan: {}, files: [] }),
       apply: async () => { await rm(marker, { force: true }); return { files: ['data/canonical/factory-C000001-a1.jsonl'] }; },
-      validate: async () => { assert.equal(await readFile(marker, 'utf8').then(() => true, () => false), false); events.push('validate'); },
       log: () => {},
     });
-    assert.deepEqual(events, ['commit-local', 'validate', 'push', 'ready']);
+    assert.equal(await readFile(marker, 'utf8').then(() => true, () => false), false);
+    assert.deepEqual(events, ['commit-local', 'push', 'ready']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -717,11 +737,11 @@ for (const localHead of ['pr-head', 'local-checkpoint']) test(`restart after adm
       github, git, root, claim, runGates: false,
       prepare: async () => { throw new Error('a committed admission must not be reapplied'); },
       apply: async () => { throw new Error('a committed admission must not be reapplied'); },
-      validate: async ({ prepared }) => { assert.equal(prepared.recoveredCompleteAdmission, true); events.push('validate'); },
       log: () => {},
     });
     assert.equal(result.prState, 'admission');
-    assert.deepEqual(events, localHead === 'pr-head' ? ['validate', 'ready'] : ['validate', 'push-local-checkpoint', 'ready']);
+    assert.equal(result.prepared.recoveredCompleteAdmission, true);
+    assert.deepEqual(events, localHead === 'pr-head' ? ['ready'] : ['push-local-checkpoint', 'ready']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
