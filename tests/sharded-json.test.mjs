@@ -119,3 +119,41 @@ test('removing the last row of a shard plans its deletion with the other promoti
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('the correction promotion deletes an emptied shard with the manifest and restores both when a later write fails', async () => {
+  const { planDecisionSourceFiles, SEMANTIC_DECISION_SOURCE_ARRAYS } = await import('../scripts/lib/sharded-json-sources.mjs');
+  const { promoteFiles } = await import('../scripts/validate/apply-semantic-corrections.mjs');
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'sharded-json-promote-'));
+  try {
+    const manifestPath = path.join(directory, 'source.json');
+    const payload = 'x'.repeat(6 * 1024 * 1024);
+    const admission = (n) => ({ batch_id: `R${n}`, attempt: 1, payload });
+    const logical = { authored_review: { records: [] }, factory_admissions: [admission(1), admission(2)] };
+    await writeShardedJson(logical, manifestPath, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
+    const snapshot = async () => ({
+      manifest: await readFile(manifestPath, 'utf8'),
+      shards: await Promise.all(['001', '002'].map((n) => readFile(path.join(directory, `source.shards/factory-admissions-${n}.json`), 'utf8'))),
+    });
+    const before = await snapshot();
+
+    const next = { ...logical, factory_admissions: [admission(1)] };
+    const files = await planDecisionSourceFiles(Buffer.from(JSON.stringify(next)), manifestPath);
+
+    // A later write in the same promotion fails (its parent is a regular file): everything is restored.
+    const blocker = path.join(directory, 'blocker');
+    await writeFile(blocker, 'file');
+    const failing = new Map(files.map((file) => [file.path, file.bytes]));
+    failing.set(path.join(blocker, 'out.json'), Buffer.from('{}'));
+    await assert.rejects(promoteFiles(failing));
+    assert.deepEqual(await snapshot(), before);
+
+    // The successful promotion removes the emptied shard and leaves manifest and files consistent.
+    await promoteFiles(new Map(files.map((file) => [file.path, file.bytes])));
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    assert.deepEqual(manifest.factory_admissions.$shards.map(({ file }) => file), ['source.shards/factory-admissions-001.json']);
+    await assert.rejects(readFile(path.join(directory, 'source.shards/factory-admissions-002.json')), { code: 'ENOENT' });
+    assert.deepEqual((await readShardedJson(manifestPath)).factory_admissions.map((event) => event.batch_id), ['R1']);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

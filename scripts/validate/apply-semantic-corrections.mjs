@@ -782,7 +782,7 @@ function prepareBoundaryDecisions(boundaryDecisions, manifest, decisionSource) {
   return next;
 }
 
-async function promoteFiles(files) {
+export async function promoteFiles(files) {
   const entries = [...files.entries()];
   const originals = await Promise.all(entries.map(async ([filePath]) => {
     try {
