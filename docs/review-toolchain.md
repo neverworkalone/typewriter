@@ -224,7 +224,7 @@ and one schedule (`always`, `affected`, or `manual`). New checks default to
 Deep. Normal registration requires a concrete same-PR merge invariant.
 `affected` checks must list normalized repository-relative dependency paths;
 missing or unclassifiable changed-path evidence retains the Normal
-PR gate and visible diagnostic, not unrelated Full Deep. Each test file has exactly one registry owner.
+PR gate and visible diagnostic, not unrelated Full Deep. Each registered test file has exactly one registry owner; unregistered tests may be run directly.
 
 The **scope/domain** is distinct from the **tier**. Normal protects the
 current canonical revision, required admission/factory freshness and current

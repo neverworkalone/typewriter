@@ -381,8 +381,8 @@ paths; if a required check is missing, add a reusable old-fails/new-passes
 Normal or Deep regression, not an exemption or batch-specific fixture.
 Never remove/replace an earlier binding to lower the gate. Unresolved coverage must be corrected with actual regression ownership; it
 never selects unrelated Full Deep as a PR gate. Classifier/runner/registry changes
-still require Normal, plus any directly affected registered Deep checks. A test
-file has exactly one registry owner.
+still require Normal, plus any directly affected registered Deep checks. A registered
+test file has exactly one registry owner; unregistered tests may be run directly.
 
 The pull-request workflow routes only pure Stage 1 candidate artifacts to
 `ci:candidates`; mixed, unexpected, and unclassifiable changes run Normal.
