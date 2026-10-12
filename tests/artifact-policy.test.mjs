@@ -22,6 +22,8 @@ import {
 } from '../scripts/validate/artifact-policy.mjs';
 import { parseJsonWithUniqueKeys } from '../scripts/validate/unique-json.mjs';
 import { copyShardedAuthority, readShardedJson } from './helpers/sharded-authority.mjs';
+import { writeShardedJson } from '../scripts/lib/sharded-json.mjs';
+import { SEMANTIC_DECISION_SOURCE_ARRAYS } from '../scripts/lib/sharded-json-sources.mjs';
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -891,6 +893,29 @@ test('artifact policy rejects a markerless promotion-evidence JSONL envelope', a
     await assert.rejects(
       validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
       (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy validates sharded decision source rows and rejects duplicate keys inside a shard', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-sharded-source-policy-'));
+  const relativePath = 'data/validation/canonical-semantic-decision-source.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const source = await readShardedJson(path.resolve(relativePath));
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    const [, shardFile] = [await writeShardedJson(source, filePath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS }), source.authored_review.records && 'canonical-semantic-decision-source.shards/authored-review-records-001.json'];
+    const tracked = [relativePath];
+    await assert.doesNotReject(validateArtifactPolicy({ repositoryDirectory, tracked }));
+
+    const shardPath = path.join(path.dirname(filePath), shardFile);
+    const text = await readFile(shardPath, 'utf8');
+    await writeFile(shardPath, text.replace('"record_id":', '"record_id": "dup", "record_id":'), 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked }),
+      (error) => error.code === 'DUPLICATE_JSON_KEY',
     );
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });

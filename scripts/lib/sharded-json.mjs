@@ -30,10 +30,10 @@ function visit(node, onMarker) {
   }
 }
 
-function inflate(manifest, loadText) {
+function inflate(manifest, loadText, parse = JSON.parse) {
   if (isMarker(manifest)) throw new Error('a sharded manifest cannot itself be a shard marker');
   visit(manifest, (marker) => marker[MARKER].flatMap(({ file }) => {
-    const rows = JSON.parse(loadText(file));
+    const rows = parse(loadText(file));
     if (!Array.isArray(rows)) throw new Error(`shard ${file} is not a JSON array`);
     return rows;
   }));
@@ -54,8 +54,8 @@ export function readShardedJsonSync(manifestPath) {
 }
 
 /** Same as the file readers for text held elsewhere (for example `git show`). `loadText(relativeFile)` returns a shard's text. */
-export function inflateShardedJsonText(manifestText, loadText) {
-  return inflate(JSON.parse(manifestText), loadText);
+export function inflateShardedJsonText(manifestText, loadText, { parse = JSON.parse } = {}) {
+  return inflate(parse(manifestText), loadText, parse);
 }
 
 function itemBytes(item) {

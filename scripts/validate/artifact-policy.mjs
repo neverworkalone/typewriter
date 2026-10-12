@@ -656,7 +656,9 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       try {
         value = parseJsonWithUniqueKeys(bytes, filePath);
         if (bytes.includes('$shards')) {
-          value = inflateShardedJsonText(bytes.toString('utf8'), (file) => readFileSync(path.join(path.dirname(absolutePath), file), 'utf8'));
+          value = inflateShardedJsonText(bytes.toString('utf8'), (file) => readFileSync(path.join(path.dirname(absolutePath), file), 'utf8'), {
+            parse: (text) => parseJsonWithUniqueKeys(text, filePath),
+          });
         }
       } catch (error) {
         if (error.code === 'DUPLICATE_JSON_KEY') throw error;
