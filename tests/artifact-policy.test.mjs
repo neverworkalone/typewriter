@@ -899,24 +899,47 @@ test('artifact policy rejects a markerless promotion-evidence JSONL envelope', a
   }
 });
 
-test('artifact policy validates sharded decision source rows and rejects duplicate keys inside a shard', async () => {
+test('artifact policy validates sharded decision source rows and keeps shards bound to their manifest', async () => {
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-sharded-source-policy-'));
   const relativePath = 'data/validation/canonical-semantic-decision-source.json';
   const filePath = path.join(repositoryDirectory, relativePath);
+  const shardDirectory = 'data/validation/canonical-semantic-decision-source.shards';
   const source = await readShardedJson(path.resolve(relativePath));
+  const rejectsWith = (tracked, code) => assert.rejects(
+    validateArtifactPolicy({ repositoryDirectory, tracked }),
+    (error) => error.code === code,
+  );
   try {
     await mkdir(path.dirname(filePath), { recursive: true });
-    const [, shardFile] = [await writeShardedJson(source, filePath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS }), source.authored_review.records && 'canonical-semantic-decision-source.shards/authored-review-records-001.json'];
-    const tracked = [relativePath];
+    const written = await writeShardedJson(source, filePath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+    const shards = written.filter((file) => file.includes('.shards/')).map((file) => `data/validation/${file}`);
+    const tracked = [relativePath, ...shards];
     await assert.doesNotReject(validateArtifactPolicy({ repositoryDirectory, tracked }));
 
-    const shardPath = path.join(path.dirname(filePath), shardFile);
+    // A valid extra shard that the manifest references is a normal addition.
+    const manifestText = await readFile(filePath, 'utf8');
+    const manifest = JSON.parse(manifestText);
+    const extra = `${shardDirectory}/factory-admissions-999.json`;
+    await writeFile(path.join(repositoryDirectory, extra), '[]\n', 'utf8');
+    manifest.factory_admissions.$shards.push({ file: extra.replace('data/validation/', ''), count: 0 });
+    await writeFile(filePath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    await assert.doesNotReject(validateArtifactPolicy({ repositoryDirectory, tracked: [...tracked, extra] }));
+
+    // A valid JSON file in the shard directory that no manifest entry references is rejected.
+    await writeFile(filePath, manifestText, 'utf8');
+    await rejectsWith([...tracked, extra], 'UNREFERENCED_SHARD');
+
+    // A reference leaving the shard directory is rejected.
+    manifest.factory_admissions.$shards[manifest.factory_admissions.$shards.length - 1].file = '../m6-2-inflection-exceptions.json';
+    await writeFile(filePath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    await rejectsWith(tracked, 'SHARD_REFERENCE_PATH');
+
+    // A duplicate key inside a referenced shard is rejected.
+    await writeFile(filePath, manifestText, 'utf8');
+    const shardPath = path.join(repositoryDirectory, shards[0]);
     const text = await readFile(shardPath, 'utf8');
     await writeFile(shardPath, text.replace('"record_id":', '"record_id": "dup", "record_id":'), 'utf8');
-    await assert.rejects(
-      validateArtifactPolicy({ repositoryDirectory, tracked }),
-      (error) => error.code === 'DUPLICATE_JSON_KEY',
-    );
+    await rejectsWith(tracked, 'DUPLICATE_JSON_KEY');
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }
