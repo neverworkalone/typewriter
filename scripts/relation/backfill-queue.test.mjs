@@ -78,16 +78,10 @@ test('outcomes obey the production relation contract, bound to the sense and its
   assert.match(bad(opposite('association', `${row.sense_id}: 반대 뜻을 연결하고 있다`)), /claims an opposite/u, 'a non-antonym cannot be justified as an opposite');
   assert.equal(bad(opposite('antonym', `${row.sense_id}: 같은 축에서 반대로 읽힌다`)), '', 'an antonym may be justified as an opposite');
   assert.equal(bad(opposite('association', `${row.sense_id}: 연상으로 이어지는 연결이다`)), '', 'a non-antonym with ordinary wording is fine');
-  for (const denial of ['반대라기보다 같은 장면에서 함께 떠오르는 연상이다', '길의 반대쪽에서 함께 떠오르는 연상이다', '반대편 창가에 놓인 장면으로 이어진다', '반대 방향으로 움직이는 동작이 맞물린다', '반대로, 같은 장면에서 떠오르는 연상이다', '반대가 아니라서 연상으로 분류한다', '반대가 아니기 때문에 연상으로 둔다', '반대가 아니니까 연상으로 둔다', '반대가 아니므로 연상으로 본다', '반대라기 보다는 감각이 이어지는 연결이다', '반대가 아니라고 설명하고 연상으로 분류한다', '반대가 아니라고 판단해 연상으로 둔다', '반대가 아니라 같은 기억 영역의 연상이다', '반의로 단정하지 않고 연상으로 둔다', '서로 반대는 아니고 함께 쓰이는 말이다', '반대 관계가 아닌 감각의 연결이다']) {
-    assert.equal(bad(opposite('association', `${row.sense_id}: ${denial}`)), '', `an explicit denial is a valid rationale: ${denial}`);
+  // Polarity is never inferred from free text: any opposite vocabulary in a non-antonym rationale is rejected, whatever the form.
+  for (const wording of ['반대라기보다 같은 장면에서 함께 떠오르는 연상이다', '반대가 아니라서 연상으로 분류한다', '반대가 아닐 수 없는 연결이다', '반대가 아니라고 하는 해석은 틀렸다', '길의 반대쪽에서 함께 떠오르는 연상이다', '두 의미는 반대 방향으로 읽힌다', '반대로, 같은 장면에서 떠오르는 연상이다', '서로 반대로 읽히는 뜻이다', '반의로 단정하지 않고 연상으로 둔다', '반대쪽 장면이지만 두 뜻은 반대말이다']) {
+    for (const type of ['association', 'near', 'sensory', 'scene']) assert.match(bad(opposite(type, `${row.sense_id}: ${wording}`)), /claims an opposite/u, `${type} rationale must avoid opposite wording: ${wording}`);
   }
-  for (const doubled of ['반대가 아닐 수 없는 연결이다', '반대가 아니지 않다고 본다', '반의가 아닌 것은 아니다', '반대가 아니라고 하는 해석은 틀렸다', '반대가 아니라고들 하나 아니다', '반대가 아니라는 주장은 틀렸다', '반대가 아니라는 판단은 잘못되었다', '반대가 아니라는 것은 사실이 아니다', '반대가 아니란 주장은 틀렸다', '반대가 아닌 것이 아니라는 뜻이다']) {
-    assert.match(bad(opposite('association', `${row.sense_id}: ${doubled}`)), /claims an opposite/u, `a double negative asserts the opposite: ${doubled}`);
-  }
-  assert.match(bad(opposite('association', `${row.sense_id}: 서로 반대로 읽히는 뜻이다`)), /claims an opposite/u, 'a mid-sentence 반대로 still asserts an opposite');
-  assert.match(bad(opposite('association', `${row.sense_id}: 반대쪽 장면이지만 두 뜻은 반대말이다`)), /claims an opposite/u, 'a position word does not excuse a remaining opposite claim');
-  assert.match(bad(opposite('association', `${row.sense_id}: 반대라기보다 연상이라 하나 결국 반대 뜻을 잇는다`)), /claims an opposite/u, 'a remaining claim after 라기보다 is still rejected');
-  assert.match(bad(opposite('association', `${row.sense_id}: 반대가 아니라고 하나 사실상 반대 뜻을 잇는다`)), /claims an opposite/u, 'a denial does not excuse a remaining opposite claim');
   const stale = { relation_amendments: [{ ...outcome(row).relation_amendments[0], source_gloss_sha256: 'f'.repeat(64) }] };
   assert.match(bad(stale), /current gloss digest/u);
   assert.match(record(state, packet, [{ ...outcome(row), sense_id: 'w99-s1' }]).errors.join('\n'), /not part of the supplied packet/u);
