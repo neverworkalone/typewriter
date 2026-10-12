@@ -101,6 +101,9 @@ until the owner confirms the result-publication gate.
 instruction above record the pilot's historical status and are not rewritten.
 The owner has since confirmed NIKL approval for the 2026-09-27 result-publication
 application targeting the existing Chrome Web Store listing. That confirmation
-does not change this pilot's editorial measurements or provide record-level
-redistribution clearance; see `DATA-LICENSE.md` and
-`docs/publication-boundary.md` for the remaining release gates.
+and the owner's release decision permit independently authored Typewriter
+dictionary output under the project data license. The policy update does not
+change this pilot's editorial measurements or historical outcomes. Raw corpus
+text and specifically identified copied or restricted third-party content remain
+excluded; current releases follow the ordinary exact-revision and package checks
+in `DATA-LICENSE.md` and `docs/publication-boundary.md`.

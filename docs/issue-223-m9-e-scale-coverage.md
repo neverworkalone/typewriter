@@ -75,8 +75,11 @@ The Issue #223 validator checks source-bound candidate evidence, canonical impor
 The exact-head CI result is reported by GitHub checks; this checkpoint report does not reuse prior CI status. The canonical corpus holds 10,009 records, the ~10K count target. The retrospective audit now accounts for all 1,206 B01–B04 records under the owner-approved policy, without claiming human or independent review: 672 completed legacy outcomes are preserved and 534 uncovered rows received AI self-checks. The audit records 1,105 pass outcomes and 101 unresolved holds; it does not claim all 1,206 entries pass. Publication of the B05–B09 corpus-derived records is not authorized by this checkpoint: the B05–B09 candidate-review artifacts keep `publication_state` `local_reference_only_pending_owner_publication_confirmation`, the NIKL disclosure application is pending, and no record-level rights disposition is recorded (`DATA-LICENSE.md`, `docs/publication-boundary.md`, `docs/m9-corpus-production.md`).
 
 **Current-status note (2026-10-12):** the preceding paragraph preserves this
-checkpoint's then-current application status. The owner has since confirmed that
-the NIKL portal shows `승인` for the 2026-09-27 result-publication application.
-That approval does not change this checkpoint's counts or evidence, clear the
-unresolved record-level rights dispositions, or authorize distribution of the
-B05–B09 artifacts or corpus-informed product.
+checkpoint's then-current application status and counts. The owner has since
+confirmed NIKL approval for the 2026-09-27 result-publication application and
+authorized distribution of independently authored Typewriter output under the
+project data license. This supersedes the former blanket release hold without
+changing the checkpoint's evidence or unresolved semantic dispositions. The
+candidate `publication_state` values remain historical evidence metadata, not
+product permission flags. Raw corpus text, passages, and local indexes remain
+excluded; see `DATA-LICENSE.md` and `docs/publication-boundary.md`.

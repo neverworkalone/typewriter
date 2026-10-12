@@ -91,13 +91,14 @@ Do not add these files, corpus paragraphs, or evidence excerpts to Git. The
 tracked pilot report contains aggregate workflow measurements only. No
 corpus-derived canonical record is admitted or published by this tool. Any
 future admission must use the ordinary lexical production and canonical
-validation workflow. The owner confirmed on 2026-10-12 that the NIKL
-result-publication application for the submitted Chrome Web Store result was
-approved. This approval does not clear individual records for redistribution.
-Public repository development artifacts remain subject to issue #239's
-source-text-free workflow, and product packages remain held until record-level
-rights and the exact-revision, package, and hosted-surface release gates are
-complete (`DATA-LICENSE.md`, `docs/publication-boundary.md`).
+validation workflow. The owner confirmed on 2026-10-12 that NIKL approved the
+result-publication application for the submitted Chrome Web Store result and
+authorized distribution of independently authored Typewriter output under the
+project data license. This removes the former blanket publication hold; it does
+not admit a candidate or replace lexical validation, exact-revision, deterministic
+build, package-content, license/notice, or applicable Store/Pages checks. Raw
+corpus text and specifically identified copied or restricted third-party content
+remain excluded (`DATA-LICENSE.md`, `docs/publication-boundary.md`).
 
 Kiwi references: [project API and usage](https://github.com/bab2min/kiwipiepy),
 [release history](https://pypi.org/project/kiwipiepy/).

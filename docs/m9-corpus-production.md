@@ -4,7 +4,7 @@
 
 Corpus analysis is a local reference step. It may establish that a surface and analyzer proposal occur in the approved snapshot; it does not establish lexical admission, writer usefulness, sense boundaries, or relations. Every admitted record remains Typewriter-authored and passes the same source-bound semantic decision and shared lexical admission path used by historical recovery. Empty relation lists are valid.
 
-The local full-corpus index, analysis SQLite database, selection JSON, and paragraph-bearing inventory stay under `~/.cache/typewriter/`. The runner also writes a bounded `candidate-evidence.json` that retains morphology, aggregate counts, and at most three source/document/paragraph identifiers per candidate while omitting paragraph text. Only that text-free metadata and authored decisions may be considered for tracked review artifacts. Never copy contexts or paragraph forms into Git, product output, or a public report. The currently reviewed Written Corpus permission covers local reference use; publication or redistribution remains a separate owner decision.
+The local full-corpus index, analysis SQLite database, selection JSON, and paragraph-bearing inventory stay under `~/.cache/typewriter/`. The runner also writes a bounded `candidate-evidence.json` that retains morphology, aggregate counts, and at most three source/document/paragraph identifiers per candidate while omitting paragraph text. Only that text-free metadata and authored decisions may be considered for tracked review artifacts. Never copy contexts or paragraph forms into Git, product output, or a public report. The 2026-10-12 owner release decision permits independently authored Typewriter output under the project data license; raw corpus passages and local source indexes remain excluded from public artifacts.
 
 ## Produce a bounded batch
 
@@ -104,13 +104,16 @@ This statement records the owner's release plan. It is not an authorization to d
 
 Owner clarification (PR #235 conversation): authorization to use the corpus for research and development in this repository has already been obtained, so corpus-assisted development needs no further approval. The repository's public visibility is described as opening the research and development process, not as publishing a result. The result built with the corpus (the Chrome Extension) is under application for use and remains unreleased; Typewriter 0.1 was published without the corpus, and the corpus-based version is to be released only after approval. This is recorded as the owner's statement; it does not record an NIKL decision, and the `publication_state` of the B05–B09 artifacts is unchanged.
 
-**Current-status note (2026-10-12):** the owner now confirms that the NIKL portal
+**Current-status note (2026-10-12):** the owner confirms that the NIKL portal
 shows `승인` for the 2026-09-27 result-publication application for Typewriter,
 classified as `인공지능 모델/서비스/제품` and targeting the existing Chrome Web
-Store listing. This meets that NIKL approval condition. It does not change the
-historical PR #235 statement or the B05–B09 evidence, and it does not clear the
-record-level rights and exact-revision/package/hosted-surface release gates in
-`DATA-LICENSE.md` and `docs/publication-boundary.md`.
+Store listing. The owner also authorizes distribution of Typewriter's
+independently authored lexical output under the project data license. This
+supersedes the former blanket hold and exhaustive history audit as release
+prerequisites, without changing the historical PR #235 statement or B05–B09
+evidence. Follow the ordinary exact-revision and package checks; keep raw corpus
+text and specifically identified copied or restricted third-party content out.
+See `DATA-LICENSE.md` and `docs/publication-boundary.md`.
 
 Candidate inventory and review `publication_state` values are source-bound
 candidate-evidence metadata, not the NIKL product result-publication gate. In the
@@ -118,9 +121,11 @@ current tree, corpus-candidate producers emit the values and historical batch
 validators check them; the generic Stage 1 factory treats field presence as an
 evidence binding, not as release permission. No product release/package
 validator consumes these values as authorization. The existing local-only
-candidate status values and their validators are preserved; this approval does
-not authorize publication of raw text, local indexes, or every candidate and
-canonical record.
+candidate status values and their validators are preserved; they are evidence
+metadata, not product-release permission flags. The owner's release decision
+permits independently authored canonical output, while raw text, local indexes,
+and specifically identified copied or restricted third-party content remain
+excluded.
 
 ## Local context review as the Stage 1 v2 fallback (issue #285)
 
