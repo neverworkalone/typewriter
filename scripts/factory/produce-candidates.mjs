@@ -112,10 +112,17 @@ const STAGE1_SOURCE_PATHS = Object.freeze([
   'scripts/factory',
   'scripts/intake',
   'scripts/reference/corpus-index.mjs',
+  'scripts/reference/corpus_lemma_pilot.py',
+  'scripts/reference/corpus_morphology.py',
+  'scripts/reference/corpus_morphology_selector.py',
+  'scripts/reference/run-corpus-lemma-pilot.mjs',
+  'scripts/reference/select-corpus-candidates-from-analysis.py',
   'scripts/reference/short-query-counts.mjs',
   'scripts/reference/short-query-postings.mjs',
   'scripts/typewriter-cache.mjs',
+  'scripts/python/local_cache.py',
   'scripts/python/env.mjs',
+  'scripts/python/requirements.txt',
 ]);
 
 function refillSelectorBatchId(taskId) {
@@ -472,9 +479,16 @@ export async function runStage1(argv, {
         // failed selector may leave partial local output; regenerate that page
         // rather than treating an incomplete directory as exhaustion.
         await rm(output, { recursive: true, force: true });
+        const morphologySource = evidence.analysis_cache?.mode === 'verified-full-corpus-morphology-v1'
+          ? evidence.analysis_cache
+          : null;
+        const sourceArguments = morphologySource
+          ? ['--morphology-store', morphologySource.source_store_path,
+            '--morphology-source-snapshot', morphologySource.source_snapshot_sha256]
+          : ['--reuse-analysis-from', path.dirname(evidencePath)];
         const command = [path.join(root, 'scripts/reference/run-corpus-lemma-pilot.mjs'),
           '--candidate-limit', String(options.maxCandidates), '--include-canonical-lemmas',
-          '--reuse-analysis-from', path.dirname(evidencePath), '--output-directory', output,
+          ...sourceArguments, '--output-directory', output,
           '--batch-id', refillSelectorBatchId(options.taskId), '--exclude-lemma-source', exclusionPath,
           ...(options.python ? ['--python', options.python] : [])];
         await new Promise((resolve, reject) => {

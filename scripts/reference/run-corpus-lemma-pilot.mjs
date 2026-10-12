@@ -20,6 +20,7 @@ import {
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PYTHON_EXTRACTOR_PATH = path.join(SCRIPT_DIRECTORY, 'corpus_lemma_pilot.py');
 const PYTHON_CACHED_SELECTOR_PATH = path.join(SCRIPT_DIRECTORY, 'select-corpus-candidates-from-analysis.py');
+const PYTHON_MORPHOLOGY_SELECTOR_PATH = path.join(SCRIPT_DIRECTORY, 'corpus_morphology_selector.py');
 const CACHE_PATHS = resolveTypewriterCachePaths();
 const DEFAULT_PILOT_DIRECTORY = path.join(CACHE_PATHS.runs, 'issue-201-pilot');
 const ROW_RESULT_LIMIT = 3;
@@ -34,6 +35,9 @@ export function parseArguments(argumentsList, { repositoryDirectory = REPOSITORY
     candidateLimit: DEFAULT_CANDIDATE_LIMIT,
     outputDirectory: null,
     reuseAnalysisFrom: null,
+    morphologyStore: null,
+    morphologySourceSnapshot: null,
+    legacyFullCorpusScan: false,
     exclusionLemmaSources: [],
     includeCanonicalLemmas: false,
     batchId: 'issue-201-pilot',
@@ -72,6 +76,26 @@ export function parseArguments(argumentsList, { repositoryDirectory = REPOSITORY
       }
       options.reuseAnalysisFrom = value;
       index += 1;
+      continue;
+    }
+    if (argument === '--morphology-store') {
+      const value = argumentsList[index + 1];
+      if (!value || value.startsWith('--')) throw new Error('--morphology-store requires a verified shared-cache store directory.');
+      options.morphologyStore = value;
+      index += 1;
+      continue;
+    }
+    if (argument === '--morphology-source-snapshot') {
+      const value = argumentsList[index + 1];
+      if (!value || value.startsWith('--') || !/^[0-9a-f]{64}$/u.test(value)) {
+        throw new Error('--morphology-source-snapshot requires a SHA-256 source snapshot from initial evidence.');
+      }
+      options.morphologySourceSnapshot = value;
+      index += 1;
+      continue;
+    }
+    if (argument === '--scan-corpus') {
+      options.legacyFullCorpusScan = true;
       continue;
     }
     if (argument === '--include-canonical-lemmas') {
@@ -114,6 +138,26 @@ export function parseArguments(argumentsList, { repositoryDirectory = REPOSITORY
     });
     if (options.reuseAnalysisFrom === options.outputDirectory) {
       throw new Error('Cached candidate analysis source and output directories must differ.');
+    }
+  }
+  if (options.morphologyStore && (options.reuseAnalysisFrom || options.legacyFullCorpusScan)) {
+    throw new Error('--morphology-store, --reuse-analysis-from, and --scan-corpus are mutually exclusive.');
+  }
+  if (options.legacyFullCorpusScan && options.reuseAnalysisFrom) {
+    throw new Error('--reuse-analysis-from and --scan-corpus are mutually exclusive.');
+  }
+  if (options.morphologySourceSnapshot && !options.morphologyStore) {
+    throw new Error('--morphology-source-snapshot requires --morphology-store.');
+  }
+  if (!options.morphologyStore && !options.reuseAnalysisFrom && !options.legacyFullCorpusScan) {
+    options.morphologyStore = path.join(cachePaths.runs, 'written-corpus-morphology-v1');
+  }
+  if (options.morphologyStore) {
+    options.morphologyStore = resolveCacheArtifactPath(options.morphologyStore, {
+      paths: cachePaths, areas: ['runs'], label: '--morphology-store',
+    });
+    if (options.morphologyStore === options.outputDirectory) {
+      throw new Error('Morphology store and candidate selection output directories must differ.');
     }
   }
   return options;
@@ -399,6 +443,57 @@ function runPythonCachedSelector({
         resolve(JSON.parse(finalLine));
       } catch (error) {
         reject(new Error('Could not read the cached candidate selection summary: ' + error.message));
+      }
+    });
+  });
+}
+
+function runPythonMorphologySelector({
+  python,
+  morphologyStore,
+  morphologySourceSnapshot,
+  dictionaryPath,
+  candidateSelectionPath,
+  candidateLimit,
+  exclusionManifestPath,
+  includeCanonicalLemmas,
+}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(python, [
+      PYTHON_MORPHOLOGY_SELECTOR_PATH,
+      '--store', morphologyStore,
+      '--dictionary', dictionaryPath,
+      '--candidate-json', candidateSelectionPath,
+      '--candidate-limit', String(candidateLimit),
+      '--exclusion-manifest', exclusionManifestPath,
+      ...(includeCanonicalLemmas ? ['--include-canonical-lemmas'] : []),
+      ...(morphologySourceSnapshot ? ['--expected-source-snapshot', morphologySourceSnapshot] : []),
+    ], {
+      cwd: REPOSITORY_DIRECTORY,
+      env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let outputTooLarge = false;
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString('utf8');
+      if (stdout.length > 100_000) outputTooLarge = true;
+    });
+    child.stderr.on('data', (chunk) => process.stderr.write(chunk));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error('Verified full-corpus morphology selection failed with exit code ' + code + '.'));
+        return;
+      }
+      if (outputTooLarge) {
+        reject(new Error('Morphology selector wrote unexpected large standard output.'));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout.trim().split(/\r?\n/u).at(-1)));
+      } catch (error) {
+        reject(new Error('Could not read the full-corpus morphology selection summary: ' + error.message));
       }
     });
   });
@@ -722,10 +817,11 @@ async function main() {
   if (options.help) {
     console.log(
       'Usage: node scripts/reference/run-corpus-lemma-pilot.mjs [--python <venv-python>]\n'
-        + 'Runs local/manual bounded candidate production using the shared Typewriter Python environment by default. Options: --candidate-limit 1-500 (default 200), '
+        + 'Selects from the verified 100% corpus morphology store by default. Options: --candidate-limit 1-500 (default 200), '
         + '--batch-id <id>, --output-directory ~/.cache/typewriter/runs/<run-id>, repeated '
-        + '--exclude-lemma-source <repository-json-or-jsonl-or-shared-cache-artifact>, --reuse-analysis-from <prior cache run directory>. '
-        + 'Requires the shared full-corpus index '
+        + '--exclude-lemma-source <repository-json-or-jsonl-or-shared-cache-artifact>, --morphology-store <shared store directory>. '
+        + 'Historical compatibility modes: --reuse-analysis-from <prior cache run directory> or --scan-corpus. '
+        + 'Requires the complete audited morphology store, shared corpus index '
         + 'and kiwipiepy==0.24.0 installed in the selected Python environment.',
     );
     return;
@@ -757,7 +853,7 @@ async function main() {
   await writeFile(exclusionManifestPath, JSON.stringify(exclusionManifest, null, 2) + '\n', 'utf8');
 
   const temporaryDirectory = await mkdtemp(
-    path.join(os.tmpdir(), 'typewriter-corpus-candidate-dictionary-'),
+    path.join(outputDirectory, '.canonical-dictionary-'),
   );
   const dictionaryPath = path.join(temporaryDirectory, 'dictionary.sqlite');
   try {
@@ -776,7 +872,18 @@ async function main() {
       }) + '\n',
     );
 
-    const extractorSummary = options.reuseAnalysisFrom
+    const extractorSummary = options.morphologyStore
+      ? await runPythonMorphologySelector({
+        python,
+        morphologyStore: options.morphologyStore,
+        morphologySourceSnapshot: options.morphologySourceSnapshot,
+        dictionaryPath,
+        candidateSelectionPath,
+        candidateLimit: options.candidateLimit,
+        exclusionManifestPath,
+        includeCanonicalLemmas: options.includeCanonicalLemmas,
+      })
+      : options.reuseAnalysisFrom
       ? await runPythonCachedSelector({
         python,
         analysisDirectory: options.reuseAnalysisFrom,
@@ -801,11 +908,13 @@ async function main() {
       || selection.selection?.selected_candidate_count !== selection.candidates.length) {
       throw new Error('Candidate extraction exceeded or misreported the requested batch bound.');
     }
-    const analysisCache = await recordAnalysisCache({
-      selection,
-      stagingDatabasePath,
-      mode: options.reuseAnalysisFrom ? 'reused-candidate-analysis' : 'full-corpus-scan',
-    });
+    const analysisCache = options.morphologyStore
+      ? selection.analysis_cache
+      : await recordAnalysisCache({
+        selection,
+        stagingDatabasePath,
+        mode: options.reuseAnalysisFrom ? 'reused-candidate-analysis' : 'full-corpus-scan',
+      });
     const selectionBytes = await readFile(candidateSelectionPath);
     const evidenceInventory = await addBoundedCorpusEvidence(selection, options.candidateLimit);
     evidenceInventory.orchestration = {

@@ -10,11 +10,15 @@ async function save(file, value) {
   await rename(`${file}.tmp`, file);
 }
 const snapshotOf = (evidence) => `${evidence.index?.input_manifest_sha256}:${evidence.index?.logical_rows_sha256}`;
+const morphologySnapshotOf = (evidence) => evidence.analysis_cache?.mode === 'verified-full-corpus-morphology-v1'
+  ? evidence.analysis_cache.source_snapshot_sha256
+  : null;
 
 // Pages remain local. No partial batch/trash is published from this loop. The
 // checkpoint caches source-bound analyzer answers, never a separate AI judgment.
 export async function refillCandidateBatch({ initialEvidence, arguments: args, exclusions, checkpointPath, selectPage, progress = () => {} }) {
   const binding = digest(JSON.stringify({ evidence: initialEvidence, exclusions: [...exclusions].sort(),
+    morphology_source_snapshot_sha256: morphologySnapshotOf(initialEvidence),
     batch: args.batchId, task: args.taskId, target: args.maxCandidates, canonical: args.canonicalDigest,
     revision: args.producerRevision, policy: args.policy, providers: args.providers.map(providerDescriptor),
     contextProposals: args.contextProposals, contextReplay: args.contextReplay, contextAgent: args.contextAgent }));
@@ -30,6 +34,9 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
   function append(page) {
     if (snapshotOf(page) !== snapshotOf(initialEvidence)
       || JSON.stringify(page.extractor) !== JSON.stringify(initialEvidence.extractor)) throw new Stage1Error(['refill page changed corpus snapshot or extractor']);
+    if (morphologySnapshotOf(page) !== morphologySnapshotOf(initialEvidence)) {
+      throw new Stage1Error(['refill page changed the verified morphology source snapshot']);
+    }
     const proposals = new Set(page.candidates.map((row) => row.proposed_lemma));
     for (const lemma of proposals) if (visited.has(lemma)) throw new Stage1Error([`refill selector repeated proposal ${lemma}`]);
     for (const lemma of proposals) visited.add(lemma);

@@ -524,31 +524,33 @@ def select_candidate_rows(
     candidate_limit: int,
     excluded_lemmas: list[str] | None = None,
     include_canonical_lemmas: bool = False,
+    precomputed_ambiguity: bool = False,
 ) -> list[dict]:
     # Factory Stage 1 (issue #289): an exact canonical lemma may still carry an evidence-backed new
     # POS or sense, so it must reach Stage 1/2 instead of being dropped here as `covered`. The
     # default stays the historical M9 behaviour.
     coverage_filter = "TRUE" if include_canonical_lemmas else "covered = 0"
-    staging.execute(
-        """
-        UPDATE candidate_surfaces
-        SET interpretation_count = (
-            SELECT COUNT(*) FROM candidate_surfaces AS other
-            WHERE other.surface = candidate_surfaces.surface
+    if not precomputed_ambiguity:
+        staging.execute(
+            """
+            UPDATE candidate_surfaces
+            SET interpretation_count = (
+                SELECT COUNT(*) FROM candidate_surfaces AS other
+                WHERE other.surface = candidate_surfaces.surface
+            )
+            """
         )
-        """
-    )
-    staging.execute(
-        """
-        UPDATE candidates
-        SET ambiguous_surface_count = (
-            SELECT COUNT(*) FROM candidate_surfaces AS surface
-            WHERE surface.lemma = candidates.lemma
-              AND surface.pos = candidates.pos
-              AND surface.interpretation_count > 1
+        staging.execute(
+            """
+            UPDATE candidates
+            SET ambiguous_surface_count = (
+                SELECT COUNT(*) FROM candidate_surfaces AS surface
+                WHERE surface.lemma = candidates.lemma
+                  AND surface.pos = candidates.pos
+                  AND surface.interpretation_count > 1
+            )
+            """
         )
-        """
-    )
     staging.commit()
 
     staging.execute("CREATE TEMP TABLE excluded_candidate_lemmas (normalized_lemma TEXT PRIMARY KEY) STRICT")

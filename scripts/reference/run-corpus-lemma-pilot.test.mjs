@@ -43,6 +43,24 @@ test('cached morphology reuse stays in the shared cache and uses a separate run 
   assert.equal(parseArguments([]).outputDirectory, `${runs}/issue-201-pilot`);
 });
 
+test('new selection defaults to the verified full morphology store and legacy modes stay explicit', () => {
+  const temporaryRoot = '/tmp/typewriter-morphology-source-test';
+  const cachePaths = resolveTypewriterCachePaths({
+    env: { TYPEWRITER_CACHE_ROOT: path.join(temporaryRoot, 'cache') },
+    homeDirectory: temporaryRoot,
+  });
+  assert.equal(parseArguments([], { cachePaths }).morphologyStore,
+    `${cachePaths.runs}/written-corpus-morphology-v1`);
+  assert.equal(parseArguments(['--reuse-analysis-from', 'runs/legacy'], { cachePaths }).morphologyStore, null);
+  assert.equal(parseArguments(['--scan-corpus'], { cachePaths }).legacyFullCorpusScan, true);
+  assert.throws(() => parseArguments([
+    '--morphology-store', 'runs/full', '--reuse-analysis-from', 'runs/legacy',
+  ], { cachePaths }), /mutually exclusive/u);
+  assert.throws(() => parseArguments([
+    '--morphology-source-snapshot', 'a'.repeat(64),
+  ], { cachePaths }), /requires --morphology-store/u);
+});
+
 test('shared-cache exclusion inputs preserve source bindings and union prior proposals and candidates', async (t) => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'typewriter-cache-exclusions-'));
   t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
@@ -219,6 +237,49 @@ test('text-free candidate evidence keeps morphology and bounded provenance witho
   assert.equal(serialized.includes('RAW CORPUS CONTENT'), false);
   assert.equal(serialized.includes('candidate_selection_path'), false);
   assert.equal(serialized.includes('created_at_utc'), false);
+
+  const sourceSnapshot = 'f'.repeat(64);
+  const auditEvidence = {
+    source_snapshot_sha256: sourceSnapshot,
+    source_identity_sha256: 'e'.repeat(64),
+    validation: 'full-audit-passed-read-only',
+    store_database_path: 'runs/written-corpus-morphology-v1/analysis.sqlite',
+    completion_bitmap: '1'.repeat(20),
+    verified_paragraphs: 4_988_970,
+    total_paragraphs: 4_988_970,
+    cumulative_unique_lemmas: 221_392,
+    slice_publications: Array.from({ length: 20 }, (_, slice) => ({
+      slice, complete: true, publication_sha256: 'd'.repeat(64),
+    })),
+    source_identity: {
+      contract: 'corpus-morphology-slices-v1',
+      permission_sha256: 'a'.repeat(64),
+      algorithm_sha256: 'c'.repeat(64),
+      schema_sha256: 'b'.repeat(64),
+      index_metadata: { input_manifest_sha256: 'b'.repeat(64), logical_rows_sha256: 'c'.repeat(64) },
+    },
+  };
+  const verifiedInventory = structuredClone(inventory);
+  verifiedInventory.extractor.extractor_version = '2';
+  verifiedInventory.extractor.kiwipiepy_model_version = '0.24.0';
+  verifiedInventory.selection = { source_snapshot_sha256: sourceSnapshot };
+  verifiedInventory.analysis_cache = {
+    mode: 'verified-full-corpus-morphology-v1',
+    source_store_path: 'runs/written-corpus-morphology-v1',
+    source_database_path: auditEvidence.store_database_path,
+    source_snapshot_sha256: sourceSnapshot,
+    source_identity_sha256: auditEvidence.source_identity_sha256,
+    completion_bitmap: '1'.repeat(20),
+    verified_paragraphs: 4_988_970,
+    total_paragraphs: 4_988_970,
+    validation: 'full-audit-passed-read-only',
+    audit_evidence: auditEvidence,
+  };
+  const verifiedEvidence = buildTextFreeCandidateEvidence(verifiedInventory);
+  assert.doesNotThrow(() => observationsFromCorpusEvidence(verifiedEvidence));
+  const partialEvidence = structuredClone(verifiedEvidence);
+  partialEvidence.analysis_cache.audit_evidence.slice_publications[19].complete = false;
+  assert.throws(() => observationsFromCorpusEvidence(partialEvidence), /all 20 audited slices/u);
 });
 
 test('representative evidence uses exact analyzed eojeol forms and rejects substring contexts', () => {

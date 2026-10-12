@@ -220,8 +220,11 @@ const RAW_CI_CATEGORIES = Object.freeze({
         schedule: 'affected',
         paths: [
           'scripts/reference/corpus_morphology.py',
+          'scripts/reference/corpus_morphology_readonly.py',
+          'scripts/reference/corpus_morphology_selector.py',
           'scripts/reference/test-corpus-morphology.py',
           'scripts/reference/corpus_lemma_pilot.py',
+          'scripts/reference/run-corpus-lemma-pilot.mjs',
           'scripts/python/local_cache.py',
           'scripts/python/requirements.txt',
           'tests/corpus-morphology-python.test.mjs',
