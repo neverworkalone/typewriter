@@ -372,11 +372,19 @@ class MorphologyTests(unittest.TestCase):
             legacy_manifest.pop("projection_version")
             legacy_manifest["algorithm_identity"] = {
                 "projection_builder_sha256": selector.LEGACY_PROJECTION_BUILDER_SHA256,
-                "candidate_producer_sha256": "ignored",
+                "candidate_producer_sha256": selector.LEGACY_CANDIDATE_PRODUCER_SHA256,
             }
             legacy_manifest["projection_database_path"] = selector.cache_relative_path(
                 legacy_directory / "selection.sqlite", "Legacy morphology selection projection database"
             )
+            selector.write_projection_manifest(legacy_manifest_path, legacy_manifest)
+            self.assertIsNotNone(selector.read_legacy_projection_manifest(legacy_directory, snapshot))
+            legacy_manifest["algorithm_identity"]["candidate_producer_sha256"] = "f" * 64
+            selector.write_projection_manifest(legacy_manifest_path, legacy_manifest)
+            self.assertIsNone(
+                selector.compatible_legacy_projection(root=selector.cache_root(), source_snapshot=snapshot)
+            )
+            legacy_manifest["algorithm_identity"]["candidate_producer_sha256"] = selector.LEGACY_CANDIDATE_PRODUCER_SHA256
             selector.write_projection_manifest(legacy_manifest_path, legacy_manifest)
 
             projection_hashes = []

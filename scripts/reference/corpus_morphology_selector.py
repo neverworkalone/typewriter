@@ -44,8 +44,11 @@ POS_TAGS = {"noun": "NNG", "verb": "VV", "adjective": "VA"}
 # aggregation, ranking, or selected forms change. Downstream coverage and output
 # handling do not change this cached intermediate result.
 PROJECTION_VERSION = "morphology-selection-v1"
-# Existing pre-version cache directory, retained only for the one-time handoff.
+# Existing pre-version cache identity, used only for the one-time handoff.
 LEGACY_PROJECTION_BUILDER_SHA256 = "3e212a079ba5c2d520ce6ddd9e66dc73fd8e10d2c58ab8fa5d523d5f349f1eb3"
+# Match the producer SHA already recorded by Issue #597's old cache manifest;
+# never hash current producer code or use this value for ongoing cache identity.
+LEGACY_CANDIDATE_PRODUCER_SHA256 = "6e249da2be67644bd4c3791640d6f7831f5818cae067aec8029eb825ced5272f"
 
 def json_bytes(value: object) -> bytes:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -282,6 +285,7 @@ def read_legacy_projection_manifest(directory: Path, source_snapshot: str) -> di
             or manifest.get("source_snapshot_sha256") != source_snapshot
             or not isinstance(algorithm, dict)
             or algorithm.get("projection_builder_sha256") != LEGACY_PROJECTION_BUILDER_SHA256
+            or algorithm.get("candidate_producer_sha256") != LEGACY_CANDIDATE_PRODUCER_SHA256
             or not isinstance(source_evidence, dict)
             or source_evidence.get("source_snapshot_sha256") != source_snapshot
             or manifest.get("projection_database_path") != cache_relative_path(
