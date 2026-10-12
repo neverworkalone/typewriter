@@ -239,10 +239,10 @@ test('text-free candidate evidence keeps morphology and bounded provenance witho
   assert.equal(serialized.includes('created_at_utc'), false);
 
   const sourceSnapshot = 'f'.repeat(64);
-  const auditEvidence = {
+  const storeEvidence = {
     source_snapshot_sha256: sourceSnapshot,
     source_identity_sha256: 'e'.repeat(64),
-    validation: 'full-audit-passed-read-only',
+    validation: 'completed-store-reused-v1',
     store_database_path: 'runs/written-corpus-morphology-v1/analysis.sqlite',
     completion_bitmap: '1'.repeat(20),
     verified_paragraphs: 4_988_970,
@@ -266,20 +266,20 @@ test('text-free candidate evidence keeps morphology and bounded provenance witho
   verifiedInventory.analysis_cache = {
     mode: 'verified-full-corpus-morphology-v1',
     source_store_path: 'runs/written-corpus-morphology-v1',
-    source_database_path: auditEvidence.store_database_path,
+    source_database_path: storeEvidence.store_database_path,
     source_snapshot_sha256: sourceSnapshot,
-    source_identity_sha256: auditEvidence.source_identity_sha256,
+    source_identity_sha256: storeEvidence.source_identity_sha256,
     completion_bitmap: '1'.repeat(20),
     verified_paragraphs: 4_988_970,
     total_paragraphs: 4_988_970,
-    validation: 'full-audit-passed-read-only',
-    audit_evidence: auditEvidence,
+    validation: 'completed-store-reused-v1',
+    store_evidence: storeEvidence,
   };
   const verifiedEvidence = buildTextFreeCandidateEvidence(verifiedInventory);
   assert.doesNotThrow(() => observationsFromCorpusEvidence(verifiedEvidence));
   const partialEvidence = structuredClone(verifiedEvidence);
-  partialEvidence.analysis_cache.audit_evidence.slice_publications[19].complete = false;
-  assert.throws(() => observationsFromCorpusEvidence(partialEvidence), /all 20 audited slices/u);
+  partialEvidence.analysis_cache.store_evidence.slice_publications[19].complete = false;
+  assert.throws(() => observationsFromCorpusEvidence(partialEvidence), /all 20 completed slices/u);
 });
 
 test('representative evidence uses exact analyzed eojeol forms and rejects substring contexts', () => {
