@@ -12,13 +12,27 @@ It overrides stricter historical near/direct substitution and broader/narrower
 exclusion criteria. These rules apply to new Stage 2 authoring, Stage D backfill,
 Stage 1 focused review and Stage 2 independent review.
 
+The 2026-10-12 clarification treats short canonical glosses as anchors for the
+bound senses, not exhaustive accounts of every use. Assess the actual bound
+lemma, POS, sense and gloss together with a plausible, natural, recurring
+usage context. A credible contextual similarity/opposition may support
+`direct`/`antonym` even when glosses emphasize different facets, sentence-level
+substitution is not universal, or opposed qualities can coexist. A reviewer
+should first articulate the plausible context, then decide whether a concrete
+material mismatch remains.
+
 - Canonical is the source of truth; preserve real source/target sense bindings,
   POS, relation types, directions, source order, provenance and digests.
-- **Dictionary: direct (유의어) and antonym (반의어)** are assessed for actual
-  lexical synonymy and opposition of bound senses. A synonym need not replace
-  its peer in every sentence or have identical gloss breadth, intensity or
-  register. Differences alone cannot justify demotion to near/association.
-  Reject genuinely unsupported dictionary relationships. No relevance field.
+- **Lexical: direct (유의어) and antonym (반의어)** are assessed for meaningful
+  semantic similarity or opposition between the bound senses, including
+  defensible natural usage contexts. A `direct` relation can be a close
+  writer-facing alternative without being interchangeable in every sentence;
+  an `antonym` relation need not be a logical negation or an exclusive pair.
+  Differences in short glosses, scope, register or intensity alone cannot
+  justify demotion to near/association, and possible co-existence alone does
+  not disprove contextual opposition. Do not accept a mere topic, co-occurrence,
+  cause, side effect or contrastive scene as lexical meaning. No relevance
+  field.
 - **Writer exploration: near/mood (말의 결), scene/sensory/action/association
   (연상)** should enrich a writer's language and imagination. Preserve any
   intelligible creative path, even when figurative, unusual, broader/narrower,
@@ -50,9 +64,11 @@ association judgment, a broader definition or a slight relevance disagreement
 **does not** establish a systemic defect.
 
 1. Identify the actual cause and **bounded affected population**. For
-   dictionary errors, verify the paired bound senses and relevant positive/
-   negative controls. For relevance errors, demonstrate materially wrong
-   same-source/same-group rank comparisons, not an abstract disagreement.
+   `direct`/`antonym` errors, verify both bound senses and whether a natural,
+   recurring usage supports the claimed semantic relation; compare relevant
+   positive/negative controls instead of treating a terse gloss as exhaustive.
+   For relevance errors, demonstrate materially wrong same-source/same-group
+   rank comparisons, not an abstract disagreement.
 2. When genuinely shared, fix the relevant producer/policy path and verify
    the affected existing records and applicable future Stage 2/Stage D paths.
    Do not demand a word-specific exception or mechanical creativity validator.
@@ -61,8 +77,11 @@ association judgment, a broader definition or a slight relevance disagreement
    all historical reverse links, or unrelated canonical senses.
 4. **Blocking discipline:** Stage 1/2 -1 requires a concrete, material
    lexical, structural, provenance or user-facing error, or an evidenced
-   substantial relevance inversion. Plausible creative routes and minor
-   subjective ranking adjustments are **non-blocking feedback**.
+   substantial relevance inversion. For a disputed `direct`/`antonym`, explain
+   why the actual bound meanings remain materially unsupported after the
+   plausible usage context has been considered. A defensible contextual
+   reading, strict-gloss disagreement, or minor subjective ranking adjustment
+   is **non-blocking feedback**.
 5. Mechanical invariants (IDs, reference integrity, duplicate/self edges,
    missing targets, inconsistent fixed metadata) still use shared validators
    and their ordinary CI gate; see [review-toolchain.md](review-toolchain.md).
