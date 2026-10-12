@@ -246,10 +246,15 @@ class MorphologyTests(unittest.TestCase):
         self.assertEqual(counts["candidate_lemmas"], expected_lemmas)
 
         surface_interpretations = Counter(row[3] for row in oracle if row[0] == 1)
+        expected_ambiguous_surface_counts = Counter(
+            (row[1], row[2]) for row in oracle
+            if row[0] == 1 and surface_interpretations[row[3]] > 1
+        )
         expected_candidates = {
-            (row[1], row[2]): row[4:10]
+            (row[1], row[2]): (*row[4:10], expected_ambiguous_surface_counts[(row[1], row[2])])
             for row in oracle if row[0] == 0
         }
+        self.assertGreater(sum(expected_ambiguous_surface_counts.values()), 0)
         expected_surfaces = sorted(
             (row[1], row[2], row[3], row[4], row[6], row[7], row[8], row[9],
              surface_interpretations[row[3]])
@@ -261,10 +266,10 @@ class MorphologyTests(unittest.TestCase):
         )
         with closing(selector.producer.open_readonly_database(projection_path)) as projection:
             actual_candidates = {
-                (lemma, pos): (tokens, oov, hits, documents, sources, max_source)
-                for lemma, pos, tokens, oov, hits, documents, sources, max_source
+                (lemma, pos): (tokens, oov, hits, documents, sources, max_source, ambiguous_surfaces)
+                for lemma, pos, tokens, oov, hits, documents, sources, max_source, ambiguous_surfaces
                 in projection.execute("""SELECT lemma,pos,token_count,oov_token_count,paragraph_hits,
-                    document_count,source_count,max_source_token_count FROM candidates
+                    document_count,source_count,max_source_token_count,ambiguous_surface_count FROM candidates
                     ORDER BY lemma COLLATE BINARY,pos COLLATE BINARY""")
             }
             actual_surfaces = projection.execute("""SELECT lemma,pos,surface,token_count,paragraph_hits,
