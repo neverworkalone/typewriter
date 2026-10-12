@@ -81,7 +81,7 @@ test('outcomes obey the production relation contract, bound to the sense and its
   for (const denial of ['반대라기보다 같은 장면에서 함께 떠오르는 연상이다', '반대라기 보다는 감각이 이어지는 연결이다', '반대가 아니라고 설명하고 연상으로 분류한다', '반대가 아니라고 판단해 연상으로 둔다', '반대가 아니라 같은 기억 영역의 연상이다', '반의로 단정하지 않고 연상으로 둔다', '서로 반대는 아니고 함께 쓰이는 말이다', '반대 관계가 아닌 감각의 연결이다']) {
     assert.equal(bad(opposite('association', `${row.sense_id}: ${denial}`)), '', `an explicit denial is a valid rationale: ${denial}`);
   }
-  for (const doubled of ['반대가 아닐 수 없는 연결이다', '반대가 아니지 않다고 본다', '반의가 아닌 것은 아니다', '반대가 아니라고 하는 해석은 틀렸다', '반대가 아니라고들 하나 아니다', '반대가 아니라는 주장은 틀렸다', '반대가 아니라는 판단은 잘못되었다', '반대가 아니라는 것은 사실이 아니다']) {
+  for (const doubled of ['반대가 아닐 수 없는 연결이다', '반대가 아니지 않다고 본다', '반의가 아닌 것은 아니다', '반대가 아니라고 하는 해석은 틀렸다', '반대가 아니라고들 하나 아니다', '반대가 아니라는 주장은 틀렸다', '반대가 아니라는 판단은 잘못되었다', '반대가 아니라는 것은 사실이 아니다', '반대가 아니란 주장은 틀렸다', '반대가 아닌 것이 아니라는 뜻이다']) {
     assert.match(bad(opposite('association', `${row.sense_id}: ${doubled}`)), /claims an opposite/u, `a double negative asserts the opposite: ${doubled}`);
   }
   assert.match(bad(opposite('association', `${row.sense_id}: 반대라기보다 연상이라 하나 결국 반대 뜻을 잇는다`)), /claims an opposite/u, 'a remaining claim after 라기보다 is still rejected');

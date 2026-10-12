@@ -89,7 +89,7 @@ export class ReviewContext extends Map {
 // re-queues the reviews of the senses it points at.
 // An explicit denial ("반대가 아니라 …", "반의로 단정하지 않는다") is a valid reason for a reclassification; only a remaining
 // opposite wording is an assertion of antonymy.
-const OPPOSITE_DENIAL = /(?:반대|반의)(?:어|말)?(?:가|는|로|의)?\s*(?:관계|뜻|축|말)?(?:가|는|이|로)?\s*(?:아니(?!\s*(?:지\s*않|않)|\s*(?:라는|다는|냐는|인지)|\s*(?:라고|다고|냐고)(?!\s*(?:설명|판단|판정|기록|밝히|분류|본다|보아|봐|정리|적)))|아닌(?!\s*(?:지\s*않|않|것은?\s*아니|지\s*모른))|아님|(?:이)?라기\s*보다(?:는)?|단정하지\s*않|보지\s*않|간주하지\s*않|여기지\s*않)/gu;
+const OPPOSITE_DENIAL = /(?:반대|반의)(?:어|말)?(?:가|는|로|의)?\s*(?:관계|뜻|축|말)?(?:가|는|이|로)?\s*(?:아니(?=라\s|고\s|며|면서|다(?:[\s.,]|$)|라고\s*(?:설명|판단|판정|기록|밝히|분류|본다|보아|봐|정리|적))|아닌(?!\s*(?:지\s*않|않|것[은이도]?\s*아니|지\s*모른))|아님|(?:이)?라기\s*보다(?:는)?|단정하지\s*않|보지\s*않|간주하지\s*않|여기지\s*않)/gu;
 const assertsOpposite = (rationale) => /반대|반의/u.test(rationale.replace(OPPOSITE_DENIAL, ''));
 const SECOND_ORDER_SIGNAL = 'relation_neighbor_of_related';
 const evidenceSignals = (candidate, explained) => candidate.signals.filter((signal) => signal !== SECOND_ORDER_SIGNAL && !(signal === 'incoming_relation' && explained.has(candidate.id)));
