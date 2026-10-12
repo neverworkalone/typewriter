@@ -1392,7 +1392,10 @@ export async function commitM513PromotionTransaction({
     await writeTempAndRename(canonicalImportPath, result.prospective.importBytes, transactionDirectory, 'canonical-import');
     await writeTempAndRename(currentSeedPath, result.prospective.seedBytes, transactionDirectory, 'seed');
     await writeTempAndRename(promotionLedgerPath, result.prospective.promotionLedgerBytes, transactionDirectory, 'target-promotions');
-    for (const file of decisionSourceFiles) await writeTempAndRename(file.path, file.bytes, transactionDirectory, 'decision-source');
+    for (const file of decisionSourceFiles) {
+      if (file.bytes === null) await rm(file.path, { force: true });
+      else await writeTempAndRename(file.path, file.bytes, transactionDirectory, 'decision-source');
+    }
     await writeTempAndRename(admissionPath, result.admissionBytes, transactionDirectory, 'admission');
     await writeTempAndRename(promotionPath, jsonBytes(result.promotion), transactionDirectory, 'promotion');
     if (replaceExistingPromotion) {

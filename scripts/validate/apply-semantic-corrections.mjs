@@ -794,6 +794,7 @@ async function promoteFiles(files) {
   }));
   try {
     for (const [filePath, bytes] of entries) {
+      if (bytes === null) { await rm(filePath, { force: true }); continue; }
       await mkdir(path.dirname(filePath), { recursive: true });
       await writeFile(filePath, bytes);
     }

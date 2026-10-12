@@ -237,6 +237,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       testCheck('tests/factory-mecab-provider.test.mjs', 'Test pinned MeCab-ko provider contract, three-way fallback and real runtime smoke (synthetic; real runtime skipped without the pinned venv)'),
       testCheck('tests/factory-ensemble.test.mjs', 'Test Ensemble Resolver v2: three-provider adjudication, contextual fallback decisions, verification queue, tamper rejection and same-cohort metrics (synthetic)'),
       testCheck('tests/factory-ensemble-native-smoke.test.mjs', 'Test real three-native-provider ensemble smoke (skipped with the reason where Kiwi, Khaiii native or MeCab-ko is absent; no mock substitute)'),
+      { ...testCheck('tests/sharded-json.test.mjs', 'Test sharded JSON writer: stable shard membership, size-guided first split, promotion file set'), tier: 'normal' },
       testCheck('tests/factory-stage2-worker.test.mjs', 'Test Stage 2 atomic claims, merge-gated session loop, and cleanup'),
       testCheck('tests/factory-stage3-worker.test.mjs', 'Test Stage 3 serial admission, rejection, recovery, and ID/reference allocation'),
       testCheck('tests/factory-relation-amendments.test.mjs', 'Test Stage 3 reverse relation amendments: remapping, staleness, idempotence, semantic authority and audit'),

@@ -77,3 +77,45 @@ test('decision-source promotion files cover only the changed manifest and shards
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('a first split rolls over by size and restores the logical order', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'sharded-json-first-'));
+  try {
+    const manifestPath = path.join(directory, 'source.json');
+    const payload = 'x'.repeat(3 * 1024 * 1024);
+    const logical = { rows: ['a', 'b', 'c', 'd'].map((id) => row(id, { payload })) };
+    await writeShardedJson(logical, manifestPath, { arrays });
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    assert.ok(manifest.rows.$shards.length >= 2, 'more than one shard');
+    assert.ok(manifest.rows.$shards.every(({ count }) => count < 4));
+    assert.deepEqual(await readShardedJson(manifestPath), logical);
+
+    // The same holds when no stored row shares a key with the new rows.
+    const replaced = { rows: ['e', 'f', 'g', 'h'].map((id) => row(id, { payload })) };
+    await writeShardedJson(replaced, manifestPath, { arrays });
+    assert.ok(JSON.parse(await readFile(manifestPath, 'utf8')).rows.$shards.length >= 2);
+    assert.deepEqual(await readShardedJson(manifestPath), replaced);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('removing the last row of a shard plans its deletion with the other promotion files', async () => {
+  const { planDecisionSourceFiles, SEMANTIC_DECISION_SOURCE_ARRAYS } = await import('../scripts/lib/sharded-json-sources.mjs');
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'sharded-json-delete-'));
+  try {
+    const manifestPath = path.join(directory, 'source.json');
+    const payload = 'x'.repeat(6 * 1024 * 1024);
+    const admission = (n) => ({ batch_id: `R${n}`, attempt: 1, payload });
+    const logical = { authored_review: { records: [] }, factory_admissions: [admission(1), admission(2)] };
+    await writeShardedJson(logical, manifestPath, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
+    assert.equal(JSON.parse(await readFile(manifestPath, 'utf8')).factory_admissions.$shards.length, 2);
+
+    const next = { ...logical, factory_admissions: [admission(1)] };
+    const files = await planDecisionSourceFiles(Buffer.from(JSON.stringify(next)), manifestPath);
+    assert.deepEqual(files.filter((file) => file.bytes === null).map((file) => path.basename(file.path)), ['factory-admissions-002.json']);
+    assert.ok(files.some((file) => file.path === manifestPath && file.bytes));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

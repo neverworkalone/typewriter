@@ -72,7 +72,9 @@ function partition(rows, previousRows, previousShards, keyOf) {
     for (const row of previousRows.slice(cursor, cursor + count)) shardOf.set(keyOf(row), index);
     cursor += count;
   });
-  const lastPrevious = previousShards.length - 1;
+  // Without any row already stored (first split, or no shared key) the layout is built fresh and rolls over by size.
+  const anyKnown = rows.some((row) => shardOf.has(keyOf(row)));
+  const lastPrevious = anyKnown ? previousShards.length - 1 : -1;
   const buckets = [];
   const sizes = [];
   let current = -1;
@@ -86,7 +88,11 @@ function partition(rows, previousRows, previousShards, keyOf) {
   for (const row of rows) {
     const known = shardOf.get(keyOf(row));
     if (known === undefined) {
-      if (current < 0) { pending.push(row); continue; }
+      if (current < 0) {
+        if (anyKnown) { pending.push(row); continue; }
+        place(row, 0);
+        continue;
+      }
       const bytes = itemBytes(row);
       const roll = current >= lastPrevious && buckets[current].length
         && (sizes[current] >= TARGET_SHARD_BYTES || sizes[current] + bytes > SOFT_SHARD_BYTES);
