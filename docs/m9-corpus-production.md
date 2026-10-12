@@ -104,6 +104,24 @@ This statement records the owner's release plan. It is not an authorization to d
 
 Owner clarification (PR #235 conversation): authorization to use the corpus for research and development in this repository has already been obtained, so corpus-assisted development needs no further approval. The repository's public visibility is described as opening the research and development process, not as publishing a result. The result built with the corpus (the Chrome Extension) is under application for use and remains unreleased; Typewriter 0.1 was published without the corpus, and the corpus-based version is to be released only after approval. This is recorded as the owner's statement; it does not record an NIKL decision, and the `publication_state` of the B05–B09 artifacts is unchanged.
 
+**Current-status note (2026-10-12):** the owner now confirms that the NIKL portal
+shows `승인` for the 2026-09-27 result-publication application for Typewriter,
+classified as `인공지능 모델/서비스/제품` and targeting the existing Chrome Web
+Store listing. This meets that NIKL approval condition. It does not change the
+historical PR #235 statement or the B05–B09 evidence, and it does not clear the
+record-level rights and exact-revision/package/hosted-surface release gates in
+`DATA-LICENSE.md` and `docs/publication-boundary.md`.
+
+Candidate inventory and review `publication_state` values are source-bound
+candidate-evidence metadata, not the NIKL product result-publication gate. In the
+current tree, corpus-candidate producers emit the values and historical batch
+validators check them; the generic Stage 1 factory treats field presence as an
+evidence binding, not as release permission. No product release/package
+validator consumes these values as authorization. The existing local-only
+candidate status values and their validators are preserved; this approval does
+not authorize publication of raw text, local indexes, or every candidate and
+canonical record.
+
 ## Local context review as the Stage 1 v2 fallback (issue #285)
 
 The local bounded-context review described under *Coverage and review* is reused, unchanged in method, as the

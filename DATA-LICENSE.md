@@ -31,18 +31,22 @@ workflow (issue #239). This workflow tracks Typewriter-authored lexical records
 and editorial evidence while keeping raw corpus text, excerpts, local corpus
 indexes, and restricted source material out of the repository.
 
-**Research and development approval is not product distribution approval.**
+**Research and development approval and result-publication approval are
+separate decisions.** The owner confirmed on 2026-10-12 that the NIKL portal shows
+`승인` for the result-publication application submitted on 2026-09-27 for
+Typewriter, classified as `인공지능 모델/서비스/제품`, targeting the existing
+Chrome Web Store listing. This meets the NIKL result-publication approval
+condition for that submitted result; the application evidence and its stated
+scope are recorded in
+`docs/external-material-review-written-corpus-2025.md`.
 
-Before distributing a corpus-informed Chrome Extension, including its packaged
-SQLite dictionary, Typewriter must obtain approval for the NIKL
-result-publication application and satisfy the applicable release requirements.
-The application has been submitted, but approval has not yet been recorded.
-
-Separately, the current `data/canonical/*.jsonl` records do not have a complete
-record-level source and rights-clearance map. Therefore, they are **not yet
-covered by a CC BY 4.0 redistribution grant**. The same licensing hold applies
-to generated databases, product bundles, and data-bearing artifacts that
-reproduce uncleared lexical content.
+That approval does not clear the current canonical data for redistribution.
+The `data/canonical/*.jsonl` records still lack a complete record-level source
+and rights-clearance map, so they are **not yet covered by a CC BY 4.0
+redistribution grant**. Generated databases, product bundles, and other
+data-bearing artifacts that reproduce uncleared lexical content remain held.
+The exact release revision, reachable history, package, and hosted-artifact
+checks in `docs/publication-boundary.md` also remain release gates.
 
 This hold is not an added license restriction and must not be interpreted as
 requiring product distribution approval before each ordinary development
@@ -52,12 +56,13 @@ repository publication risks. Any newly identified restricted material,
 unapproved corpus excerpt, or improperly copied source content must be
 addressed.
 
-Before product distribution or an independent open-data release, all applicable
+Before product distribution or an independent open-data release, all remaining
 permissions, source-rights dispositions, attribution requirements, and release
 gates must be satisfied. NIKL result-publication approval does not automatically
-grant rights in unrelated third-party content or establish CC BY 4.0 eligibility
-for every record. Third-party material with an authorized basis retains its
-original terms, and public-domain material is not relicensed by this notice.
+grant rights in raw corpus material, unrelated third-party content, or establish
+CC BY 4.0 eligibility for every record. Third-party material with an authorized
+basis retains its original terms, and public-domain material is not relicensed
+by this notice.
 
 Closing issue #152 does not itself grant redistribution rights. See
 `docs/publication-boundary.md` for the distinction between approved research

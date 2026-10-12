@@ -18,8 +18,15 @@ not write or rewrite prose.
 
 - Install the extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/typewriter/dpifnfihnakglmffddnhmefbllmnbbmk).
 - **Live demo:** https://neverworkalone.net/typewriter/
-- **Repository:** This project is being prepared for public use. Repository
-  visibility and product releases are separate decisions.
+- **Repository:** Public for owner-approved research and development. Repository
+  visibility does not clear data rights or approve product releases.
+
+The Chrome Web Store listing above is the target identified in the NIKL
+result-publication application. The owner confirmed on 2026-10-12 that NIKL
+approved the application submitted on 2026-09-27 for the Typewriter result.
+That approval meets the NIKL approval condition for the application; it does not
+clear the current corpus-informed dictionary or the remaining product-release
+checks. See [Data License](DATA-LICENSE.md).
 
 ## Product philosophy
 
@@ -117,9 +124,10 @@ Chromium once with `pnpm exec playwright install chromium`, then run
 `pnpm run test:web:integration`.
 
 Build and package commands are useful for local engineering checks, but the
-resulting files contain the current held dictionary corpus. Do not publish,
-attach, or distribute them until its rights clearance and the applicable release
-gates are complete.
+resulting files contain the current held dictionary corpus. NIKL result-publication
+approval for the submitted Chrome Web Store result is met; do not publish, attach,
+or distribute these files until record-level rights clearance and the exact
+revision, package, and hosted-surface release gates are complete.
 
 For focused development, Chrome checks, and clean-checkout details, see
 [Development](docs/development.md) and [Build and reproducibility](docs/build.md).
@@ -134,8 +142,9 @@ assets:
 - Original documentation: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   with scope described in [LICENSE.md](LICENSE.md).
 - Dictionary data: CC BY 4.0 applies only to records with established
-  redistribution rights. The current canonical corpus and data-bearing artifacts
-  remain on hold; see [Data License](DATA-LICENSE.md).
+  redistribution rights. NIKL result-publication approval is recorded for the
+  submitted Chrome Web Store result, but the current canonical corpus and
+  data-bearing artifacts remain on hold; see [Data License](DATA-LICENSE.md).
 - Typewriter and Never Work Alone names, logos, and visual identity: all rights
   reserved; see [Brand policy](BRAND.md).
 - Third-party components retain their own licenses; see

@@ -14,8 +14,8 @@ The repository is already public for owner-approved research and development;
 the original requirement to keep the entire repository private is superseded
 by that operating decision. It does not authorize disclosure of raw corpus
 material, grant third-party redistribution rights, or approve any product release.
-The corpus-informed Chrome Extension remains subject to the separate
-result-publication approval and release gates below.
+The NIKL result-publication approval is recorded below; corpus-informed product
+distribution remains subject to the separate release gates.
 
 The path inventory was first checked against the tracked tree at f3822cf (the M5
 final-audit merge, 2026-09-24). MO-2 / #151 finalized the license model. GitHub
@@ -48,17 +48,27 @@ every research/development batch PR. A concrete new exposure of restricted sourc
 text, copied passages, raw indexes, sensitive information, or another demonstrable
 rights violation must still be reviewed and stopped.
 
-**Result publication and Chrome Extension distribution — separate approval
-required.** Before publishing or distributing a Chrome Extension containing
-results informed by the NIKL corpus (including its packaged dictionary SQLite
-database), Typewriter must obtain NIKL approval for the **result-publication
-application** and satisfy the applicable project release/license gates. The owner
-has reported that the application was submitted; no approval decision is recorded
-here. Typewriter 0.1 predates corpus use and contains no corpus-informed records.
-Do not distribute the corpus-informed extension (planned 0.2) before approval.
+**NIKL result-publication approval — met for the submitted result.** The owner
+confirmed on 2026-10-12 that the NIKL portal shows `승인` for the application
+submitted on 2026-09-27. The submitted result is Typewriter, classified as
+`인공지능 모델/서비스/제품`, targeting the existing Chrome Web Store listing.
+This meets the NIKL result-publication approval condition for that application.
+The approval record does not include an approval number, decision timestamp, or
+conditions not shown in the owner-provided evidence; see
+[`external-material-review-written-corpus-2025.md`](external-material-review-written-corpus-2025.md).
+Typewriter 0.1 predates corpus use and contains no corpus-informed records.
 
-These statements distinguish the permitted R&D use from the not-yet-approved
-product release. They do **not** assert that the R&D permission grants a general
+**Corpus-informed product distribution remains held by the other release
+gates.** Do not distribute the expanded extension or its packaged dictionary
+SQLite until the applicable record-level rights, attribution, exact-revision,
+package, and hosted-surface checks below are complete. The NIKL approval does
+not authorize redistribution of corpus text, excerpts, local indexes or
+morphology results; it does not clear every canonical record or grant CC BY 4.0
+rights in the complete corpus.
+
+These statements distinguish the permitted R&D use, the approved NIKL
+result-publication application, and the product's remaining release gates. They
+do **not** assert that the R&D permission grants a general
 license to disclose derived records on public GitHub, or that public repository
 visibility independently clears third-party rights. Existing publication-rights
 uncertainty and the incomplete record-level CC BY 4.0 clearance described in
@@ -153,9 +163,9 @@ that this boundary has held across Git history or GitHub-hosted surfaces.
 MO-3 issue #152 is closed. Its closure does not provide item-level rights evidence,
 does not provide a verifiable audit disposition for the exact refs and hosted
 surfaces, and does not approve distribution of corpus-informed products.
-Research/development permission is already approved; a separate NIKL
-result-publication approval is required before Chrome Extension distribution.
-The following product-release conditions remain active:
+Research/development permission and the NIKL result-publication approval for the
+submitted Chrome Web Store result are met. The following independent
+product-release conditions remain active:
 
 1. Establish whether every canonical record, inventory item, evidence file, and
    historical snapshot may be redistributed. The M5 counts are not a provenance
