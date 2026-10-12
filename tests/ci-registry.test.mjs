@@ -113,11 +113,18 @@ test('real Git classification reads large routine files and preserves fail-close
     assert.match(result.detail, detail);
   }
 
-  const oversized = await classify([[inventoryPath, JSON.stringify({ padding: 'x'.repeat(64 * 1024 * 1024) })]]);
-  assert.equal(oversized.result.deepMode, 'full');
-  assert.equal(oversized.result.path, inventoryPath);
-  assert.match(oversized.result.detail, /git "show" .*code=ENOBUFS/u);
-  assert.ok(oversized.result.detail.length < 1000, 'buffer failure diagnostics must not contain file output');
+  // A blob above the previous 64 MiB limit is read by the production classifier.
+  const large = await classify([[inventoryPath, JSON.stringify({ padding: 'x'.repeat(64 * 1024 * 1024) })]]);
+  assert.equal(large.result.deepMode, 'none');
+  assert.equal(large.result.reason, 'validated-routine-data');
+  // Exceeding the configured buffer still fails closed with a content-free diagnostic.
+  const oversized = classifyDeepGateDiff(base, large.head, {
+    runGit: (args) => execFileSync('git', args, { cwd: root, stdio: 'pipe', maxBuffer: 1024 * 1024 }),
+  });
+  assert.equal(oversized.deepMode, 'full');
+  assert.equal(oversized.path, inventoryPath);
+  assert.match(oversized.detail, /git "show" .*code=ENOBUFS/u);
+  assert.ok(oversized.detail.length < 1000, 'buffer failure diagnostics must not contain file output');
 
   const mixed = await classify([[inventoryPath, largeJson], ['scripts/benchmark/sqlite-runtime.mjs', '// fixture\n']]);
   assert.equal(mixed.result.deepMode, 'selective');

@@ -15,13 +15,13 @@ import { relationCorrectionErrors } from '../factory/relation-corrections.mjs';
 import { validateTrashChunk } from '../factory/permanent-trash.mjs';
 import KNOWN_NON_DEEP_PATHS from './deep-gate-known-non-deep-paths.json' with { type: 'json' };
 import NORMAL_COVERAGE from './deep-gate-coverage.json' with { type: 'json' };
+import { GIT_MAX_BUFFER } from '../factory/git-limits.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
 // Production inventories already exceed Node's 1 MiB default. Allow room for
 // complete inventories/authority files and multi-file canonical patches while
 // keeping each subprocess output bounded. Exceeding this limit still fails closed.
-const GIT_MAX_BUFFER = 64 * 1024 * 1024;
 
 class SafeDiagnosticError extends Error {}
 

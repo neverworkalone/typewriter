@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
+import { GIT_MAX_BUFFER } from '../scripts/factory/git-limits.mjs';
 import { createGitHubClient, repositoryFromRemote } from '../scripts/factory/github-client.mjs';
 import { CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, expectedAnalyzerDigest, sha256Hex } from '../scripts/factory/contract.mjs';
 import { isStage2TrackingIssue, trackingIssueBody, trackingIssueTitle } from '../scripts/factory/stage2-issue.mjs';
@@ -690,4 +692,20 @@ test('the production Git adapter and snapshot loader accept the committed relati
 
   const alteredPacket = { ...git, show: (ref, file) => (file === packets[0] ? git.show(ref, file) + ' ' : git.show(ref, file)) };
   await assert.rejects(loadFactorySnapshot({ git: alteredPacket, headSha: 'HEAD' }), /does not match its semantic authority event digest/u);
+});
+
+test('every Git subprocess call that reads whole committed files passes the shared buffer limit, which exceeds the largest production blob', () => {
+  // The semantic decision source grows with every relation backfill batch; a limit that merely fits today fails the next batch.
+  const largest = readFileSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url)).length;
+  assert.ok(GIT_MAX_BUFFER >= 4 * largest, 'shared Git buffer ' + GIT_MAX_BUFFER + ' needs at least 4x the ' + largest + '-byte semantic decision source');
+  const files = ['scripts/ci/deep-gate.mjs', 'scripts/factory/validate.mjs', 'scripts/factory/stage2-worker.mjs', 'scripts/factory/stage3-worker.mjs', 'scripts/factory/freshness.mjs'];
+  for (const file of files) {
+    const source = readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+    const calls = source.split("execFileSync('git'").slice(1);
+    assert.ok(calls.length > 0, file + ' runs Git through execFileSync');
+    for (const [index, call] of calls.entries()) {
+      assert.match(call.slice(0, 400), /maxBuffer: GIT_MAX_BUFFER/u, file + ' Git call #' + (index + 1) + ' must pass the shared maxBuffer');
+    }
+    assert.doesNotMatch(source, /maxBuffer: [^G]/u, file + ' must not hard-code a Git buffer');
+  }
 });

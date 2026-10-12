@@ -7,6 +7,7 @@ import { validateFactoryRepository } from './validate.mjs';
 import { CANDIDATE_STATUSES, REVIEW_STATUSES, parseJsonl, validateCandidateBatch } from './contract.mjs';
 import { COMPACT_CONTRACT } from './permanent-trash.mjs';
 import { trackingIssueBody, trackingIssueTitle } from './stage2-issue.mjs';
+import { GIT_MAX_BUFFER } from './git-limits.mjs';
 
 const MASTER = 'master';
 const CLAIM_PREFIX = 'refs/heads/stage2-claims/';
@@ -26,7 +27,7 @@ export class Stage2WorkerError extends Error {
 function gitRun(root, args, { allowFailure = false } = {}) {
   try {
     return execFileSync('git', args, {
-      cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+      cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: GIT_MAX_BUFFER,
     }).trim();
   } catch (error) {
     if (allowFailure && error.status === 1) return null;
@@ -53,7 +54,7 @@ export function createGitRepository({ root = process.cwd() } = {}) {
     },
     show(ref, file) {
       return execFileSync('git', ['show', ref + ':' + file], {
-        cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+        cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: GIT_MAX_BUFFER,
       });
     },
     createBranch(branchName, baseSha) {
