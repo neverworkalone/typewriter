@@ -4,11 +4,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { validateFactoryRepository } from './validate.mjs';
-import { parseJsonl } from './contract.mjs';
+import { CANDIDATE_STATUSES, REVIEW_STATUSES, parseJsonl, validateCandidateBatch } from './contract.mjs';
+import { COMPACT_CONTRACT } from './permanent-trash.mjs';
 import { trackingIssueBody, trackingIssueTitle } from './stage2-issue.mjs';
 
 const MASTER = 'master';
 const CLAIM_PREFIX = 'refs/heads/stage2-claims/';
+const STAGE2_QUEUE_PATHSPEC = ['data/candidates', 'data/reviews'];
+const STAGE2_REVIEW_FILES = ['decisions.jsonl', 'intake-handoff.json', 'manifest.json', 'semantic-decisions.json'];
 
 export class Stage2WorkerError extends Error {
   constructor(message, { batchId, claimCreated = false, issueNumber } = {}) {
@@ -32,7 +35,7 @@ function gitRun(root, args, { allowFailure = false } = {}) {
   }
 }
 
-// Every tracked path class the merged-master snapshot loader reads; the Stage 2 and Stage 3 Git adapters must list the same set.
+// Full snapshot files for Stage 3 and explicit factory audits.
 export const FACTORY_SNAPSHOT_PATHSPEC = ['data/candidates', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json'];
 
 export function createGitRepository({ root = process.cwd() } = {}) {
@@ -44,8 +47,8 @@ export function createGitRepository({ root = process.cwd() } = {}) {
     resolveRef(ref) {
       return gitRun(root, ['rev-parse', ref + '^{commit}']);
     },
-    listFiles(ref) {
-      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', ...FACTORY_SNAPSHOT_PATHSPEC]);
+    listFiles(ref, pathspec = FACTORY_SNAPSHOT_PATHSPEC) {
+      const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', ...pathspec]);
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
     show(ref, file) {
@@ -96,6 +99,85 @@ const pathRule = {
   // Relation-only backfill packets (#446) are the committed evidence that a semantic-authority backfill event is bound to.
   backfillPacket: /^data\/relation-backfill\/R\d{6}\.json$/u,
 };
+
+function snapshotArtifactGroups(files, area, rule) {
+  const groups = new Map();
+  for (const file of files) {
+    const match = file.match(rule);
+    if (match) {
+      if (!groups.has(match[1])) groups.set(match[1], new Map());
+      groups.get(match[1]).set(match[2], file);
+    } else if (file.startsWith(`data/${area}/`)) {
+      throw new Stage2WorkerError('unrecognized factory artifact path on master: ' + file);
+    }
+  }
+  return groups;
+}
+
+function assertArtifactNames(batchId, area, paths, expected) {
+  const actual = [...paths.keys()].sort();
+  const required = [...expected].sort();
+  if (JSON.stringify(actual) !== JSON.stringify(required)) {
+    throw new Stage2WorkerError(`${batchId} has an incomplete ${area} artifact set: expected ${required.join(', ')}, found ${actual.join(', ') || 'nothing'}`);
+  }
+}
+
+// Stage 2 needs merged status manifests to choose work. It trusts the repository
+// gates that validated prior batches, and reads payload bytes only for the batch
+// selected below. Stage 3 retains loadFactorySnapshot's full repository audit.
+export async function loadStage2QueueSnapshot({ git, headSha }) {
+  const files = git.listFiles(headSha, STAGE2_QUEUE_PATHSPEC);
+  const candidateFiles = snapshotArtifactGroups(files, 'candidates', pathRule.candidate);
+  const reviewFiles = snapshotArtifactGroups(files, 'reviews', pathRule.review);
+  const candidates = [];
+  for (const [batchId, paths] of candidateFiles) {
+    if (!paths.has('manifest.json')) throw new Stage2WorkerError(`${batchId} candidate manifest.json missing`);
+    const manifest = parseJson(git.show(headSha, paths.get('manifest.json')), batchId + '/manifest.json');
+    if (manifest.batch_id !== batchId) throw new Stage2WorkerError(`${batchId} manifest batch_id does not match its directory`);
+    const expected = manifest.contract === COMPACT_CONTRACT
+      ? ['candidates.jsonl', 'manifest.json', 'stage1-decisions.json']
+      : ['candidates.jsonl', 'manifest.json'];
+    assertArtifactNames(batchId, 'candidate', paths, expected);
+    if (!CANDIDATE_STATUSES.includes(manifest.status)
+      && !(manifest.contract === COMPACT_CONTRACT && manifest.status === 'exhausted')) {
+      throw new Stage2WorkerError(`${batchId} candidate manifest has an invalid status ${manifest.status}`);
+    }
+    candidates.push({ batchId, manifest, files: Object.fromEntries(paths) });
+  }
+
+  const reviews = [];
+  for (const [batchId, paths] of reviewFiles) {
+    assertArtifactNames(batchId, 'review', paths, STAGE2_REVIEW_FILES);
+    const manifest = parseJson(git.show(headSha, paths.get('manifest.json')), batchId + '/review/manifest.json');
+    if (manifest.batch_id !== batchId) throw new Stage2WorkerError(`${batchId} review manifest batch_id does not match its directory`);
+    if (!REVIEW_STATUSES.includes(manifest.status)
+      || !Number.isSafeInteger(manifest.attempt) || manifest.attempt < 1
+      || (manifest.status === 'rejected' && (!Number.isSafeInteger(manifest.rejected_pr) || manifest.rejected_pr < 1))) {
+      throw new Stage2WorkerError(`${batchId} review manifest has invalid Stage 2 queue state`);
+    }
+    reviews.push({ batchId, manifest });
+  }
+  return { headSha, candidates, reviews, selectionReady: true };
+}
+
+function validateCurrentStage2Candidate({ git, headSha, candidate }) {
+  const read = (property, artifactName, label) => {
+    if (typeof candidate[property] === 'string') return candidate[property];
+    const file = candidate.files?.[artifactName] ?? `data/candidates/${candidate.batchId}/${artifactName}`;
+    try { return git.show(headSha, file); }
+    catch (error) {
+      throw new Stage2WorkerError(`${candidate.batchId} current candidate input could not read ${label}: ${error.message}`);
+    }
+  };
+  const candidatesText = read('candidatesText', 'candidates.jsonl', 'candidates.jsonl');
+  const stage1DecisionsText = candidate.manifest.contract === COMPACT_CONTRACT
+    ? read('stage1DecisionsText', 'stage1-decisions.json', 'stage1-decisions.json')
+    : undefined;
+  const errors = validateCandidateBatch({ manifest: candidate.manifest, candidatesText, stage1DecisionsText });
+  if (errors.length) {
+    throw new Stage2WorkerError(`${candidate.batchId} current Stage 1 input failed validation:\n${errors.map((error) => `${candidate.batchId}: ${error}`).join('\n')}`);
+  }
+}
 
 export async function loadFactorySnapshot({ git, headSha }) {
   const files = git.listFiles(headSha);
@@ -193,8 +275,9 @@ function naturalBatchOrder(left, right) {
 }
 
 export function eligibleBatches(snapshot, claimRefs = []) {
-  if (!snapshot || !Array.isArray(snapshot.candidates) || !Array.isArray(snapshot.reviews)) {
-    throw new Stage2WorkerError('validated master snapshot is required');
+  if (!snapshot || !Array.isArray(snapshot.candidates) || !Array.isArray(snapshot.reviews)
+    || (snapshot.selectionReady !== true && snapshot.validated !== true)) {
+    throw new Stage2WorkerError('master batch-selection snapshot is required');
   }
   const claimed = new Set(claimRefs.map((value) => typeof value === 'string' ? value : value.ref).filter(Boolean));
   const reviews = new Map(snapshot.reviews.map((entry) => [entry.batchId, entry.manifest]));
@@ -234,7 +317,7 @@ function branchNameFor(agent, issueNumber, batchId, attempt) {
 }
 
 export async function claimNextStage2Batch({
-  github, git, agent = 'codex', loadSnapshot = loadFactorySnapshot, log = () => {},
+  github, git, agent = 'codex', loadSnapshot = loadStage2QueueSnapshot, log = () => {},
 } = {}) {
   const { headSha, snapshot } = await currentMaster({ github, git, loadSnapshot });
   const claimRefs = await github.listClaimRefs();
@@ -244,6 +327,7 @@ export async function claimNextStage2Batch({
   for (const candidate of candidates) {
     const { batchId } = candidate;
     const claimRef = CLAIM_PREFIX + batchId;
+    validateCurrentStage2Candidate({ git, headSha, candidate });
     const claimed = await github.createClaimRef(batchId, headSha);
     if (!claimed) {
       log('claim raced for ' + batchId + '; trying the next eligible batch');
@@ -322,7 +406,7 @@ export async function waitForPullRequestMerge({
   }
 }
 
-export async function releaseClaimAfterMerge({ github, git, claim, prNumber, loadSnapshot = loadFactorySnapshot } = {}) {
+export async function releaseClaimAfterMerge({ github, git, claim, prNumber, loadSnapshot = loadStage2QueueSnapshot } = {}) {
   const pullRequest = await github.getPullRequest(prNumber);
   if (pullRequest.merged !== true && !pullRequest.merged_at) return false;
   if (pullRequest.base?.ref !== MASTER || pullRequest.head?.ref !== claim.branchName) {

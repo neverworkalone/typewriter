@@ -20,8 +20,14 @@ create and delete repository Git refs and to create or update Issues.
 
 The command runs the whole serial session until the queue has no unclaimed
 batches. It fetches master, confirms the local commit matches GitHub's current
-master, and validates all candidate and review artifacts at that commit using
-the shared factory validators. For each batch it:
+master, and reads candidate/review manifests to select the next eligible batch.
+It validates the selected candidate's manifest, candidate rows, and compact
+Stage 1 decisions with the shared candidate contract before creating a claim.
+Previously merged candidate payloads, reviews, canonical data, and admission
+history are trusted from their merge-time CI; Stage 2 does not rerun the full
+factory audit to choose each batch. The explicit `node scripts/factory/validate.mjs`
+command and Stage 3 snapshot loader retain the full repository validation path.
+For each batch it:
 
 1. selects rejected review batches in ascending batch ID order, followed by
    created candidate batches in ascending batch ID order;
@@ -43,8 +49,8 @@ check, confirms the merged result on current master, deletes that claim, and
 starts the next queue iteration.
 
 A closed unmerged PR stops the session and leaves the claim in place. An empty
-queue reports and stops without polling. Use --dry-run to validate and print
-the next batch without creating a ref, Issue, or branch.
+queue reports and stops without polling. Use --dry-run to print the next
+eligible batch without creating a ref, Issue, or branch.
 
 ## Complete the batch in the same primary context
 

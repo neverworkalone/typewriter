@@ -9,7 +9,7 @@ import {
   claimNextStage2Batch,
   createGitRepository,
   eligibleBatches,
-  loadFactorySnapshot,
+  loadStage2QueueSnapshot,
   releaseClaimAfterMerge,
   runStage2Session,
   waitForPullRequestMerge,
@@ -135,7 +135,7 @@ export function createInteractiveStage2Callbacks({
 export async function runStage2Cli(argv, {
   root = ROOT, env = process.env, log = console.log,
   makeGit = createGitRepository, makeGithub = createGitHubClient,
-  loadSnapshot = loadFactorySnapshot, sessionCallbacks,
+  loadSnapshot = loadStage2QueueSnapshot, sessionCallbacks,
 } = {}) {
   const options = parseArguments(argv);
   if (options.help) {

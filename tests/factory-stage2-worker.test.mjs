@@ -12,6 +12,7 @@ import {
   createGitRepository,
   eligibleBatches,
   loadFactorySnapshot,
+  loadStage2QueueSnapshot,
   releaseClaimAfterMerge,
   runStage2Session,
   waitForPullRequestMerge,
@@ -63,9 +64,11 @@ function snapshotGit(batches) {
     resolveRef() { return SHA; },
     listFiles() { return [...files.keys()]; },
     show(_ref, file) {
+      this.showCalls.push(file);
       if (!files.has(file)) throw new Error('missing ' + file);
       return files.get(file);
     },
+    showCalls: [],
     createBranch(branchName, baseSha) {
       this.branches.push({ branchName, baseSha });
     },
@@ -163,7 +166,7 @@ class FakeGitHub {
 }
 
 const runClaim = (github, git, options = {}) => claimNextStage2Batch({
-  github, git, agent: 'codex', loadSnapshot: options.loadSnapshot || loadFactorySnapshot, log: () => {},
+  github, git, agent: 'codex', ...(options.loadSnapshot ? { loadSnapshot: options.loadSnapshot } : {}), log: () => {},
 });
 
 test('GitHub claim creation is an atomic REST ref operation and 422 is a lost race', async () => {
@@ -306,6 +309,43 @@ test('two concurrent workers get one C000001 winner and the loser atomically fal
   assert.ok([...gitA.branches, ...gitB.branches].every((branch) => branch.baseSha === SHA));
 });
 
+test('Stage 2 loads merged queue manifests and validates only the candidate it claims', async () => {
+  const selected = candidateArtifacts('C000001');
+  const later = candidateArtifacts('C000002');
+  const git = snapshotGit({ C000001: selected, C000002: later });
+  const originalShow = git.show.bind(git);
+  git.show = function show(ref, file) {
+    if (file === 'data/candidates/C000002/candidates.jsonl') throw new Error('unselected candidate payload was read');
+    return originalShow(ref, file);
+  };
+
+  const queue = await loadStage2QueueSnapshot({ git, headSha: SHA });
+  assert.equal(queue.selectionReady, true);
+  assert.deepEqual(queue.candidates.map(({ batchId }) => batchId), ['C000001', 'C000002']);
+  assert.ok(git.showCalls.every((file) => file.endsWith('/manifest.json')));
+
+  const github = new FakeGitHub();
+  const claim = await claimNextStage2Batch({ github, git });
+  assert.equal(claim.batchId, 'C000001');
+  assert.ok(git.showCalls.includes('data/candidates/C000001/candidates.jsonl'));
+  assert.equal(git.showCalls.includes('data/candidates/C000002/candidates.jsonl'), false);
+  assert.equal(github.claimAttempts.length, 1);
+});
+
+test('Stage 2 dry-run selects from the queue without reading historical candidate payloads', async () => {
+  const git = snapshotGit({ C000001: candidateArtifacts('C000001'), C000002: candidateArtifacts('C000002') });
+  const originalShow = git.show.bind(git);
+  git.show = function show(ref, file) {
+    if (file.endsWith('/candidates.jsonl')) throw new Error('dry-run read a candidate payload');
+    return originalShow(ref, file);
+  };
+  const result = await runStage2Cli(['--dry-run'], {
+    env: { GH_TOKEN: 'test-token' }, makeGit: () => git, makeGithub: () => new FakeGitHub(), log: () => {},
+  });
+  assert.deepEqual(result, { status: 'dry-run', batchId: 'C000001', attempt: 1, rework: false, baseSha: SHA });
+  assert.ok(git.showCalls.every((file) => file.endsWith('/manifest.json')));
+});
+
 test('a claim ref with no Issue remains untouched and cannot create an Issue or branch', async () => {
   const git = snapshotGit({ C000001: candidateArtifacts('C000001') });
   const github = new FakeGitHub();
@@ -323,6 +363,31 @@ test('invalid merged candidate manifests fail closed before any claim or Issue',
   const git = snapshotGit({ C000001: invalid });
   const github = new FakeGitHub();
   await assert.rejects(runClaim(github, git), Stage2WorkerError);
+  assert.equal(github.claimAttempts.length, 0);
+  assert.equal(github.issues.length, 0);
+  assert.equal(git.branches.length, 0);
+});
+
+test('a selected candidate whose payload no longer matches its source manifest fails before claiming', async () => {
+  const candidate = candidateArtifacts('C000001');
+  const git = snapshotGit({ C000001: candidate });
+  git.files.set('data/candidates/C000001/candidates.jsonl', candidate.candidatesText + '\n');
+  const github = new FakeGitHub();
+  await assert.rejects(runClaim(github, git), /candidates\.jsonl bytes do not match candidates_sha256/u);
+  assert.equal(github.claimAttempts.length, 0);
+  assert.equal(github.issues.length, 0);
+  assert.equal(git.branches.length, 0);
+});
+
+test('a selected candidate row must still satisfy the shared candidate schema before claiming', async () => {
+  const invalid = candidateArtifacts('C000001');
+  const row = JSON.parse(invalid.candidatesText);
+  const candidatesText = jsonl([{ ...row, unrecognized_field: 'not part of the candidate contract' }]);
+  invalid.candidatesText = candidatesText;
+  invalid.manifest.candidates_sha256 = sha256Hex(candidatesText);
+  const git = snapshotGit({ C000001: invalid });
+  const github = new FakeGitHub();
+  await assert.rejects(runClaim(github, git), /unknown field unrecognized_field/u);
   assert.equal(github.claimAttempts.length, 0);
   assert.equal(github.issues.length, 0);
   assert.equal(git.branches.length, 0);
@@ -602,6 +667,16 @@ test('the production Git adapter and snapshot loader accept the committed relati
   const git = createGitRepository({ root });
   const packets = git.listFiles('HEAD').filter((file) => /^data\/relation-backfill\/R\d{6}\.json$/u.test(file));
   assert.ok(packets.length >= 1, 'the production adapter lists the committed relation backfill packets');
+  const stage2Reads = [];
+  const queueSnapshot = await loadStage2QueueSnapshot({
+    git: { ...git, show: (ref, file) => { stage2Reads.push(file); return git.show(ref, file); } },
+    headSha: 'HEAD',
+  });
+  assert.equal(queueSnapshot.selectionReady, true);
+  assert.ok(stage2Reads.length > 0);
+  assert.ok(stage2Reads.every((file) => file.startsWith('data/candidates/') || file.startsWith('data/reviews/')));
+  assert.ok(stage2Reads.every((file) => file.endsWith('/manifest.json')));
+
   const snapshot = await loadFactorySnapshot({ git, headSha: 'HEAD' });
   assert.equal(snapshot.validated, true);
   const metadataOnly = { ...git, show: (ref, file) => {
