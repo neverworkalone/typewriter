@@ -1,0 +1,68 @@
+{
+ "packet_id": "R000020",
+ "relation_corrections": [
+  {
+   "source_record_id": "w4850",
+   "source_sense_id": "w4850-s1",
+   "source_gloss_sha256": "7c285aa5b04b4839d19cf2216fda1c95d12dda3e00057cf0d14f4a862de98252",
+   "target_meaning_sha256": "bc08acfbb20b7fcda8135d362cdfcc276b6e8d5ab3bf6a07a901ed550bb5117f",
+   "previous_relation": {
+    "target": "w224",
+    "target_sense": "w224-s1",
+    "type": "near",
+    "note": "확인하기는 사실이나 상태를 살펴 틀림이 없는지 알아보는 행동이다.",
+    "relevance": 9
+   },
+   "relation": {
+    "target": "w224",
+    "target_sense": "w224-s1",
+    "type": "direct",
+    "note": "확인하기는 사실이나 상태를 살펴 틀림이 없는지 알아보는 행동이다."
+   },
+   "position": 0,
+   "rationale": "w4850-s1와 w224-s1는 품사가 같고 문장에서 서로 바꿔 써도 비슷한 뜻을 내는 유의어라는 오너 판단에 따라, 말의 결(near)이 아니라 유의어(direct)로 재분류한다. 관계와 note는 유지하고 type만 바꾸며 direct는 relevance를 갖지 않는다."
+  },
+  {
+   "source_record_id": "w2824",
+   "source_sense_id": "w2824-s1",
+   "source_gloss_sha256": "b9fdd2cc782d1309c0ed543c08d837e972d0b5fd9187c3bfca46752eac96a202",
+   "target_meaning_sha256": "06b9c2d0e771bf874c80e2e752527e86e6304964c13a13d1706854861fa99baa",
+   "previous_relation": {
+    "target": "w5721",
+    "target_sense": "w5721-s1",
+    "type": "near",
+    "note": "기억이나 생각이 마음에 떠오르는 일이다",
+    "relevance": 4
+   },
+   "relation": {
+    "target": "w5721",
+    "target_sense": "w5721-s1",
+    "type": "direct",
+    "note": "기억이나 생각이 마음에 떠오르는 일이다"
+   },
+   "position": 6,
+   "rationale": "w2824-s1와 w5721-s1는 품사가 같고 문장에서 서로 바꿔 써도 비슷한 뜻을 내는 유의어라는 오너 판단에 따라, 말의 결(near)이 아니라 유의어(direct)로 재분류한다. 관계와 note는 유지하고 type만 바꾸며 direct는 relevance를 갖지 않는다."
+  },
+  {
+   "source_record_id": "w4824",
+   "source_sense_id": "w4824-s1",
+   "source_gloss_sha256": "0bed9d98b497a30f8aca6d7bee6ba38366896ad6e9760add55515c73369a7910",
+   "target_meaning_sha256": "c1b7fc49639a0ee44782ce7b887e5d3f485270e4638959e60730ec7b813945eb",
+   "previous_relation": {
+    "target": "w4797",
+    "target_sense": "w4797-s1",
+    "type": "near",
+    "note": "드러나지 않은 사실을 눈치채는 ‘눈치채다’이다",
+    "relevance": 5
+   },
+   "relation": {
+    "target": "w4797",
+    "target_sense": "w4797-s1",
+    "type": "direct",
+    "note": "드러나지 않은 사실을 눈치채는 ‘눈치채다’이다"
+   },
+   "position": 7,
+   "rationale": "w4824-s1와 w4797-s1는 품사가 같고 문장에서 서로 바꿔 써도 비슷한 뜻을 내는 유의어라는 오너 판단에 따라, 말의 결(near)이 아니라 유의어(direct)로 재분류한다. 관계와 note는 유지하고 type만 바꾸며 direct는 relevance를 갖지 않는다."
+  }
+ ]
+}
