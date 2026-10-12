@@ -290,10 +290,10 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-5-recalibration.jsonl` | `dfef0e4d39f554118cebd848d0309e3f91320d33850fdea4d9b612a108894043` |
 | `data/canonical/m5-7-recalibration.jsonl` | `950b589d7f23809dc6f5d71291097c5df141d27e72474611f3cb44d32356b757` |
 | `data/canonical/m5-9-expansion.jsonl` | `b24b6932364103fbba2246d799528519c31790c855b121c9fd59e7952190ca68` |
-| `data/canonical/pilot.jsonl` | `a6c1960b6293e91371ce620d09b9d8a6d1f653a51b3a7e74709fac41fd842b32` |
+| `data/canonical/pilot.jsonl` | `a8dfa81028b2ba9af32e9a366629a9b819e4c5aa0952e90e88fd6770a1621dd5` |
 | `data/inventory/m5-target-promotions.jsonl` | `07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `79f617218832230cca236c0294df6631752d3b0d9bad1e230dfe6652a0b70bbc` |
+| `data/validation/canonical-semantic-decision-source.json` | `34b611f339b0991d0c7ea644026dbda49c7b742fca3ef1cc2b0ff909700f0e5b` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `89d06c9863b101693073251f3d619869d66715a1adefdd84fbfea57b42e1ef99` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `69b66af4102e8960b759242aad46fe243e143c7710adf900fa45e938d71444f7` |
 | `data/validation/m6-2-inflection-exceptions.json` | `0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7` |
