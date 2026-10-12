@@ -294,34 +294,56 @@ class MorphologyTests(unittest.TestCase):
         with patch("corpus_morphology.runtime_identity", return_value=runtime), \
              patch.object(selector, "EXPECTED_PARAGRAPHS", completed["verified_paragraphs"]), \
              patch.object(selector, "EXPECTED_LEMMAS", completed["cumulative_unique_lemmas"]), \
-             patch.object(selector, "build_projection", side_effect=build_synthetic_projection), \
+             patch.object(selector, "build_projection", side_effect=build_synthetic_projection) as projection_builder, \
              patch.object(selector.morphology_readonly, "inspect_readonly", wraps=readonly.inspect_readonly) as audit:
             first = select("first")
             snapshot = first["analysis_cache"]["source_snapshot_sha256"]
             self.assertEqual(first["analysis_cache"]["validation"], "completed-store-reused-v1")
             self.assertEqual(first["analysis_cache"]["store_evidence"]["validation"], "completed-store-reused-v1")
             self.assertEqual(audit.call_count, 0)
+            self.assertEqual(projection_builder.call_count, 1)
 
             refill = select("refill", snapshot)
             self.assertEqual(refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
             self.assertEqual(audit.call_count, 0)
+            self.assertEqual(projection_builder.call_count, 1)
 
             original_sha256_file = selector.sha256_file
+            selector_path = Path(selector.__file__).resolve()
             auditor_path = Path(readonly.__file__).resolve()
+            changed_selector_sha256 = "e" * 64
             changed_auditor_sha256 = "f" * 64
-            def changed_auditor_digest(file_path):
+            def changed_orchestration_digest(file_path):
+                if Path(file_path).resolve() == selector_path:
+                    return changed_selector_sha256
                 if Path(file_path).resolve() == auditor_path:
                     return changed_auditor_sha256
                 return original_sha256_file(file_path)
-            with patch.object(selector, "sha256_file", side_effect=changed_auditor_digest):
-                changed_auditor = select("changed-auditor", snapshot)
+            with patch.object(selector, "sha256_file", side_effect=changed_orchestration_digest):
+                changed_orchestration = select("changed-orchestration", snapshot)
                 self.assertEqual(audit.call_count, 0)
-                self.assertEqual(changed_auditor["analysis_cache"]["validation"], "completed-store-reused-v1")
-                changed_auditor_refill = select("changed-auditor-refill", snapshot)
+                self.assertEqual(changed_orchestration["analysis_cache"]["validation"], "completed-store-reused-v1")
+                changed_orchestration_refill = select("changed-orchestration-refill", snapshot)
                 self.assertEqual(
-                    changed_auditor_refill["analysis_cache"]["source_snapshot_sha256"], snapshot,
+                    changed_orchestration_refill["analysis_cache"]["source_snapshot_sha256"], snapshot,
                 )
                 self.assertEqual(audit.call_count, 0)
+                self.assertEqual(projection_builder.call_count, 1)
+
+            original_algorithm_identity = selector.projection_algorithm_identity
+            def changed_projection_builder_identity():
+                identity = original_algorithm_identity()
+                identity["projection_builder_sha256"] = "a" * 64
+                return identity
+            with patch.object(
+                selector, "projection_algorithm_identity", side_effect=changed_projection_builder_identity,
+            ):
+                changed_builder = select("changed-projection-builder", snapshot)
+                self.assertEqual(changed_builder["analysis_cache"]["source_snapshot_sha256"], snapshot)
+                self.assertEqual(projection_builder.call_count, 2)
+                changed_builder_refill = select("changed-projection-builder-refill", snapshot)
+                self.assertEqual(changed_builder_refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
+                self.assertEqual(projection_builder.call_count, 2)
 
             with self.assertRaisesRegex(RuntimeError, "source snapshot changed"):
                 select("stale-snapshot", "0" * 64)

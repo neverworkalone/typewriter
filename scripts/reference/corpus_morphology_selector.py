@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 from contextlib import closing
 import hashlib
 import json
@@ -27,6 +28,16 @@ PROJECTION_CONTRACT = "corpus-morphology-selection-projection-v1"
 EXPECTED_PARAGRAPHS = 4_988_970
 EXPECTED_LEMMAS = 221_392
 POS_TAGS = {"noun": "NNG", "verb": "VV", "adjective": "VA"}
+PROJECTION_BUILDER_COMPONENTS = (
+    "PROJECTION_CONTRACT",
+    "POS_TAGS",
+    "PROJECTION_BUILDER_COMPONENTS",
+    "projection_builder_sha256",
+    "projection_directory",
+    "_batched",
+    "configure_readonly_connection",
+    "build_projection",
+)
 
 
 def json_bytes(value: object) -> bytes:
@@ -208,14 +219,47 @@ def projection_manifest_path(directory: Path) -> Path:
 def projection_algorithm_identity() -> dict:
     return {
         "selector_script_sha256": sha256_file(Path(__file__)),
+        "projection_builder_sha256": projection_builder_sha256(),
         "candidate_producer_sha256": sha256_file(Path(producer.__file__)),
         "readonly_auditor_sha256": sha256_file(Path(morphology_readonly.__file__)),
     }
 
 
+def projection_builder_sha256() -> str:
+    """Identify only code and constants that determine the selection projection."""
+    source = Path(__file__).read_text(encoding="utf-8")
+    module = ast.parse(source)
+    definitions = {}
+    for node in module.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            definitions[node.name] = node
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    definitions[target.id] = node
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            definitions[node.target.id] = node
+
+    # Keep orchestration edits out of this identity so an existing projection
+    # remains reusable. Include the builder and its local inputs so changes to
+    # projection rows or their schema use a fresh cache directory automatically.
+    segments = {}
+    for name in PROJECTION_BUILDER_COMPONENTS:
+        node = definitions.get(name)
+        segment = ast.get_source_segment(source, node) if node is not None else None
+        if not segment:
+            raise RuntimeError(f"Morphology projection builder identity is missing {name}")
+        segments[name] = segment
+    return hashlib.sha256(json_bytes(segments)).hexdigest()
+
+
 def projection_directory(root: Path, source_snapshot: str) -> Path:
-    verifier_sha256 = projection_algorithm_identity()["readonly_auditor_sha256"]
-    return assert_cache_path(root / source_snapshot / verifier_sha256, "runs", "Morphology selection projection")
+    identity = projection_algorithm_identity()
+    return assert_cache_path(
+        root / source_snapshot / identity["projection_builder_sha256"] / identity["candidate_producer_sha256"],
+        "runs",
+        "Morphology selection projection",
+    )
 
 
 def read_projection_manifest(directory: Path, source_snapshot: str) -> dict | None:
@@ -233,14 +277,13 @@ def read_projection_manifest(directory: Path, source_snapshot: str) -> dict | No
         raise RuntimeError("Morphology selection projection is bound to a different source snapshot")
     current_algorithm = projection_algorithm_identity()
     recorded_algorithm = manifest.get("algorithm_identity")
-    # Selector orchestration changed to reuse the completed store; the
-    # projection builder and its data producers did not. Bind reuse to the
-    # components that can change projection rows, while the DB digest below
-    # continues to bind the already-produced projection itself.
+    # Selector orchestration and the read-only audit implementation do not
+    # determine projection rows. Bind reuse to the builder and its data
+    # producer, while the DB digest below binds the produced projection.
     if (not isinstance(recorded_algorithm, dict)
             or any(recorded_algorithm.get(key) != current_algorithm.get(key)
-                   for key in ("candidate_producer_sha256", "readonly_auditor_sha256"))):
-        raise RuntimeError("Morphology selection projection was built by different producer or auditor code")
+                   for key in ("projection_builder_sha256", "candidate_producer_sha256"))):
+        raise RuntimeError("Morphology selection projection was built by different builder or producer code")
     source_evidence = manifest.get("store_evidence") or manifest.get("audit_evidence")
     if (not isinstance(source_evidence, dict)
             or source_evidence.get("source_snapshot_sha256") != source_snapshot):
