@@ -74,6 +74,17 @@ test('outcomes obey the production relation contract, bound to the sense and its
   assert.match(bad({ rationale: '근거만 있다.' }), /rationale must cite the sense/u);
   assert.match(bad({ outcome: 'no-relations' }), /no-relations carries amendments/u);
   assert.match(bad({ relation_amendments: [] }), /needs amendments/u);
+  const opposite = (type, rationale) => ({ relation_amendments: [{ ...outcome(row).relation_amendments[0], rationale, relation: { ...targetOf(row), type, note: 'n', ...(type === 'antonym' ? {} : { relevance: 3 }) } }] });
+  assert.match(bad(opposite('association', `${row.sense_id}: 반대 뜻을 연결하고 있다`)), /claims an opposite/u, 'a non-antonym cannot be justified as an opposite');
+  assert.equal(bad(opposite('antonym', `${row.sense_id}: 같은 축에서 반대로 읽힌다`)), '', 'an antonym may be justified as an opposite');
+  assert.equal(bad(opposite('association', `${row.sense_id}: 연상으로 이어지는 연결이다`)), '', 'a non-antonym with ordinary wording is fine');
+  for (const denial of ['반대가 아니라고 설명하고 연상으로 분류한다', '반대가 아니라고 판단해 연상으로 둔다', '반대가 아니라 같은 기억 영역의 연상이다', '반의로 단정하지 않고 연상으로 둔다', '서로 반대는 아니고 함께 쓰이는 말이다', '반대 관계가 아닌 감각의 연결이다']) {
+    assert.equal(bad(opposite('association', `${row.sense_id}: ${denial}`)), '', `an explicit denial is a valid rationale: ${denial}`);
+  }
+  for (const doubled of ['반대가 아닐 수 없는 연결이다', '반대가 아니지 않다고 본다', '반의가 아닌 것은 아니다', '반대가 아니라고 하는 해석은 틀렸다', '반대가 아니라고들 하나 아니다']) {
+    assert.match(bad(opposite('association', `${row.sense_id}: ${doubled}`)), /claims an opposite/u, `a double negative asserts the opposite: ${doubled}`);
+  }
+  assert.match(bad(opposite('association', `${row.sense_id}: 반대가 아니라고 하나 사실상 반대 뜻을 잇는다`)), /claims an opposite/u, 'a denial does not excuse a remaining opposite claim');
   const stale = { relation_amendments: [{ ...outcome(row).relation_amendments[0], source_gloss_sha256: 'f'.repeat(64) }] };
   assert.match(bad(stale), /current gloss digest/u);
   assert.match(record(state, packet, [{ ...outcome(row), sense_id: 'w99-s1' }]).errors.join('\n'), /not part of the supplied packet/u);
