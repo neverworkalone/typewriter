@@ -13,6 +13,7 @@ import {
   DEFAULT_DECISION_SOURCE_PATH,
 } from '../inventory/generate-target-inventory.mjs';
 import { validateDatasetRecords } from './dataset-integrity.mjs';
+import { readShardedJson } from '../lib/sharded-json.mjs';
 import {
   buildCanonicalSemanticAudit,
 } from './semantic-audit.mjs';
@@ -553,7 +554,7 @@ export async function validateTargetInventory({
   );
 
   const factorySource = requireSemanticAudit
-    ? JSON.parse(await readFile(DEFAULT_DECISION_SOURCE_PATH, 'utf8')) : {};
+    ? await readShardedJson(DEFAULT_DECISION_SOURCE_PATH) : {};
   const factoryMappings = factoryInventoryMappings(factorySource, canonicalResult.records);
   for (const [index, entry] of inventory.entries.entries()) {
     if (entry.source === 'canonical') {

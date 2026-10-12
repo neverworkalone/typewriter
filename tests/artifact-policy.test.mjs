@@ -21,6 +21,7 @@ import {
   validateArtifactPolicy,
 } from '../scripts/validate/artifact-policy.mjs';
 import { parseJsonWithUniqueKeys } from '../scripts/validate/unique-json.mjs';
+import { copyShardedAuthority, readShardedJson } from './helpers/sharded-authority.mjs';
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -123,7 +124,7 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   const { artifact } = await buildCanonicalSemanticAudit();
   const inventory = await buildTargetInventory();
 
-  const source = JSON.parse(await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8'));
+  const source = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
   assert.equal(artifact.source.canonical_records_sha256, source.source.canonical_records_sha256);
   assert.equal(artifact.record_count, inventory.canonical_snapshot.record_count);
   assert.equal(artifact.record_count, inventory.canonical_snapshot.start_count + inventory.canonical_snapshot.reference_only_count);
@@ -900,10 +901,7 @@ test('artifact policy closes the compact canonical decision source against deriv
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-canonical-source-policy-'));
   const relativePath = 'data/validation/canonical-semantic-decision-source.json';
   const filePath = path.join(repositoryDirectory, relativePath);
-  const source = JSON.parse(await readFile(
-    path.resolve('data/validation/canonical-semantic-decision-source.json'),
-    'utf8',
-  ));
+  const source = await readShardedJson(path.resolve('data/validation/canonical-semantic-decision-source.json'));
 
   try {
     await mkdir(path.dirname(filePath), { recursive: true });
@@ -948,7 +946,7 @@ test('artifact policy closes factory admission history and preserved snapshots r
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-factory-ledger-policy-'));
   const relativePath = 'data/validation/canonical-semantic-decision-source.json';
   const filePath = path.join(repositoryDirectory, relativePath);
-  const source = JSON.parse(await readFile(path.resolve(relativePath), 'utf8'));
+  const source = await readShardedJson(path.resolve(relativePath));
   source.factory_admissions = [{
     batch_id: 'C999999', attempt: 1, semantic_decisions_sha256: 'a'.repeat(64),
     entries: [{ source_candidate_id: 'C999999-0001', record_id: 'w1001', sense_ids: ['w1001-s2'] }],

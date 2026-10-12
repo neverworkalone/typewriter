@@ -1,6 +1,6 @@
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { SEMANTIC_DECISION_SOURCE_ARRAYS } from '../lib/sharded-json-sources.mjs';
 import { Stage3AdmissionError, canonicalRecordSha256 } from './admission.mjs';
 import { existingSensePairsOf } from './existing-sense-pairs.mjs';
 import {
@@ -11,6 +11,7 @@ import {
   readAuthoredBatchDecisionSources,
   sha256Json,
 } from '../validate/semantic-audit.mjs';
+import { planShardedJsonChanges, readShardedJson } from '../lib/sharded-json.mjs';
 
 const ADMITTED = new Set(['included', 'corrected']);
 const AUTHORITY_PATH = 'data/validation/canonical-semantic-decision-source.json';
@@ -424,12 +425,12 @@ export async function buildStage3SemanticAuthority({
   root, baseCanonicalRecords, plan, semanticDecisions, semanticDecisionsText,
 } = {}) {
   const sourcePath = path.join(root, AUTHORITY_PATH);
-  let sourceText;
-  try { sourceText = await readFile(sourcePath, 'utf8'); }
-  catch (error) { failSystemic(`complete canonical semantic authority is unavailable: ${error.message}`, 'STAGE3_SEMANTIC_AUTHORITY_MISSING'); }
   let source;
-  try { source = JSON.parse(sourceText); }
-  catch (error) { failSystemic(`complete canonical semantic authority is invalid JSON: ${error.message}`, 'STAGE3_SEMANTIC_AUTHORITY_JSON'); }
+  try { source = await readShardedJson(sourcePath); }
+  catch (error) {
+    if (error instanceof SyntaxError) failSystemic(`complete canonical semantic authority is invalid JSON: ${error.message}`, 'STAGE3_SEMANTIC_AUTHORITY_JSON');
+    failSystemic(`complete canonical semantic authority is unavailable: ${error.message}`, 'STAGE3_SEMANTIC_AUTHORITY_MISSING');
+  }
   const semanticRows = new Map((semanticDecisions?.decisions ?? []).map((row) => [row.source_candidate_id, row]));
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
   let baseAudit;
@@ -524,7 +525,9 @@ export async function buildStage3SemanticAuthority({
   events.push(event);
   source.factory_admissions = events;
   source.authored_review_sha256 = sha256Json(source.authored_review);
-  const updatedText = `${JSON.stringify(source, null, 2)}\n`;
+  // Only the manifest and the shards whose rows changed are written back.
+  const { changed } = await planShardedJsonChanges(source, sourcePath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+  const sourceFiles = [...changed].map(([file, text]) => ({ path: path.posix.join(path.posix.dirname(AUTHORITY_PATH), file), text }));
   plan.reviewManifest.admission.semantic_authority = {
     path: AUTHORITY_PATH,
     source_id: source.source_id,
@@ -532,7 +535,7 @@ export async function buildStage3SemanticAuthority({
   };
   return {
     sourcePath: AUTHORITY_PATH,
-    sourceText: updatedText,
+    sourceFiles,
     sourceObject: source,
     sourceEvent: event,
     canonicalRecordsSha256: source.source.canonical_records_sha256,

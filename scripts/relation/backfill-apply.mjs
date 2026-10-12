@@ -12,6 +12,7 @@ import { canonicalRecordsSha256, sha256Json } from '../validate/semantic-audit.m
 import { backfillPacketErrors } from '../factory/validate.mjs';
 import { approvalsStillHold } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
+import { readShardedJson } from '../lib/sharded-json.mjs';
 
 // Relation-only canonical backfill (#446 B): the bridge from approved queue outcomes to a canonical PR. It reuses the
 // Stage 3 relation amendment planner and semantic-authority writer; no lexical admission is involved. Progress is the
@@ -103,7 +104,7 @@ async function readPackets(root) {
   return packets;
 }
 
-const readAuthority = async (root) => JSON.parse(await readFile(path.join(root, AUTHORITY_PATH), 'utf8'));
+const readAuthority = (root) => readShardedJson(path.join(root, AUTHORITY_PATH));
 
 // Packet first (intent), then canonical, then the authority event; the event is what marks the packet complete.
 // Write beside the target and rename, so an interruption leaves either the old file or the complete new one.
@@ -137,7 +138,10 @@ async function applyPacket({ root, records, recordPathById, packetId, amendments
   await mkdir(path.join(root, BACKFILL_PACKET_DIR), { recursive: true });
   await writeAtomic(path.join(root, BACKFILL_PACKET_DIR, `${packetId}.json`), packetText);
   await writePlannedRecords(plan, root);
-  await writeAtomic(path.join(root, AUTHORITY_PATH), authority.sourceText);
+  for (const file of authority.sourceFiles) {
+    await mkdir(path.dirname(path.join(root, file.path)), { recursive: true });
+    await writeAtomic(path.join(root, file.path), file.text);
+  }
   return plan;
 }
 

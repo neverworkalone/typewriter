@@ -26,6 +26,7 @@ import {
   SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   validateAuthoredSemanticReviewBinding,
 } from './semantic-decision-row.mjs';
+import { readShardedJson } from '../lib/sharded-json.mjs';
 
 export { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
@@ -2853,19 +2854,16 @@ export async function readSemanticReviewArtifact(
 export async function readSemanticDecisionSourceArtifact(
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
 ) {
-  let bytes;
   try {
-    bytes = await readFile(decisionSourcePath);
+    return await readShardedJson(decisionSourcePath);
   } catch (error) {
-    if (error.code === 'ENOENT') {
+    if (error.code === 'ENOENT' && error.path === decisionSourcePath) {
       fail(`semantic decision source does not exist: ${decisionSourcePath}`, 'SEMANTIC_DECISION_SOURCE_MISSING');
     }
+    if (error instanceof SyntaxError) {
+      fail(`semantic decision source is not valid JSON: ${decisionSourcePath} (${error.message})`, 'SEMANTIC_DECISION_SOURCE_JSON');
+    }
     throw error;
-  }
-  try {
-    return JSON.parse(bytes.toString('utf8'));
-  } catch (error) {
-    fail(`semantic decision source is not valid JSON: ${decisionSourcePath} (${error.message})`, 'SEMANTIC_DECISION_SOURCE_JSON');
   }
 }
 

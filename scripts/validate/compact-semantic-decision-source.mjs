@@ -1,14 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { SEMANTIC_DECISION_SOURCE_ARRAYS } from '../lib/sharded-json-sources.mjs';
 import {
   DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   compactSemanticDecisionSource,
   isCompactSemanticDecisionSource,
-  serializeSemanticDecisionSource,
 } from './semantic-audit.mjs';
+import { readShardedJsonLogicalBytes, writeShardedJson } from '../lib/sharded-json.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,10 +16,10 @@ export async function compactDecisionSourceFile(
   inputPath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   { sourceBytes } = {},
 ) {
-  const bytes = sourceBytes ?? await readFile(inputPath);
+  const bytes = sourceBytes ?? await readShardedJsonLogicalBytes(inputPath);
   const source = JSON.parse(bytes.toString('utf8'));
   const compacted = compactSemanticDecisionSource(source);
-  await writeFile(inputPath, serializeSemanticDecisionSource(compacted));
+  await writeShardedJson(compacted, inputPath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
   return {
     inputPath,
     beforeBytes: bytes.byteLength,

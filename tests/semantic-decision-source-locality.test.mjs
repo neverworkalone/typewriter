@@ -7,6 +7,7 @@ import {
   serializeSemanticDecisionSource,
   sha256Json,
 } from '../scripts/validate/semantic-audit.mjs';
+import { readShardedJsonLogicalBytes } from '../scripts/lib/sharded-json.mjs';
 
 function changedLineCount(before, after) {
   const beforeLines = before.toString('utf8').split('\n');
@@ -20,7 +21,7 @@ function changedLineCount(before, after) {
 }
 
 test('semantic decision source preserves locality for a representative future batch delta', async () => {
-  const beforeBytes = await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH);
+  const beforeBytes = await readShardedJsonLogicalBytes(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH);
   const before = JSON.parse(beforeBytes);
   assert.deepEqual(serializeSemanticDecisionSource(before), beforeBytes);
 

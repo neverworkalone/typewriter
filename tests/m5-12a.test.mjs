@@ -48,6 +48,7 @@ import {
   buildM512ASemanticDecisionScaffold,
 } from '../scripts/batch/build-m5-12a-decision-scaffold.mjs';
 import { makeHistoricalReplayState } from './helpers/semantic-audit-fixture.mjs';
+import { copyShardedAuthority, readShardedJson } from './helpers/sharded-authority.mjs';
 
 function jsonSha256(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
@@ -789,7 +790,7 @@ test('M5-12A rejects a mutated frozen base seed by bytes, ordering, or record co
 
 test('M5-12A prospective inventory binds its own frozen authority, not later factory admissions', async () => {
   const { validatePromotionLedgerBindings, DEFAULT_DECISION_SOURCE_PATH } = await import('../scripts/inventory/generate-target-inventory.mjs');
-  const liveSource = JSON.parse(await readFile(DEFAULT_DECISION_SOURCE_PATH, 'utf8'));
+  const liveSource = await readShardedJson(DEFAULT_DECISION_SOURCE_PATH);
   assert.ok(liveSource.factory_admissions?.length > 0, 'live authority must have later factory admissions for this regression');
 
   const result = await buildM512A();
@@ -828,7 +829,7 @@ test('M5-12A historical replay binds its import before later relation backfills,
   try {
     await mkdir(path.join(root, 'data/validation'), { recursive: true });
     await cp('data/canonical', path.join(root, 'data/canonical'), { recursive: true });
-    await cp(authorityPath, path.join(root, authorityPath));
+    await copyShardedAuthority(authorityPath, path.join(root, authorityPath));
     for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.resolve(dir), path.join(root, dir));
     await cp('data/relation-backfill', path.join(root, 'data/relation-backfill'), { recursive: true }).catch((error) => { if (error?.code !== 'ENOENT') throw error; });
     assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
@@ -841,7 +842,7 @@ test('M5-12A historical replay binds its import before later relation backfills,
     // A source already tracked by the original ledger fails its binding check before the
     // historical count check. Both paths must reject; select the exact expected gate from
     // the real authority rather than assuming the live import has never been backfilled.
-    const originalAuthority = JSON.parse(await readFile(authorityPath, 'utf8'));
+    const originalAuthority = await readShardedJson(authorityPath);
     const alreadyBound = (originalAuthority.factory_admissions ?? []).some((event) =>
       event.changes.some((change) => change.entry_id === source.record_id));
     await assert.rejects(() => validateM512AFinal({ ...options, canonicalAuthorityPath: authorityPath }), {
@@ -852,7 +853,7 @@ test('M5-12A historical replay binds its import before later relation backfills,
     // has no prior backfill for this source. Apply a second real amendment, then verify
     // that the first amendment's otherwise valid authority is now stale.
     const firstAuthorityPath = path.join(root, 'first-backfill-authority.json');
-    await cp(path.join(root, authorityPath), firstAuthorityPath);
+    await writeFile(firstAuthorityPath, `${JSON.stringify(await readShardedJson(path.join(root, authorityPath)), null, 2)}\n`);
     const firstCanonical = await loadCanonicalContext({ directory: path.join(root, 'data/canonical') });
     const firstIndex = buildRelationIndex(firstCanonical);
     const nextTarget = firstIndex.senses.find((sense) => sense.record_id !== source.record_id

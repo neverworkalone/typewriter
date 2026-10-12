@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
+
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +13,7 @@ import {
   isGrandfatheredM512ADecisionSource,
   SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
 } from './semantic-decision-row.mjs';
+import { inflateShardedJsonText } from '../lib/sharded-json.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -637,6 +640,8 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
   }
   for (const filePath of tracked) {
     if (!filePath.startsWith('data/')) continue;
+    // Shard files are validated as part of their manifest's logical object below.
+    if (/\.shards\//u.test(filePath)) continue;
     const requiredContractName = requiredDurableContractRole(filePath, semantics);
     const absolutePath = path.join(repositoryDirectory, filePath);
     let bytes;
@@ -650,6 +655,9 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       let value;
       try {
         value = parseJsonWithUniqueKeys(bytes, filePath);
+        if (bytes.includes('$shards')) {
+          value = inflateShardedJsonText(bytes.toString('utf8'), (file) => readFileSync(path.join(path.dirname(absolutePath), file), 'utf8'));
+        }
       } catch (error) {
         if (error.code === 'DUPLICATE_JSON_KEY') throw error;
         continue;

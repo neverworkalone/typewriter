@@ -38,6 +38,9 @@ import {
   runStage3Session,
 } from '../scripts/factory/stage3-worker.mjs';
 import { parseArguments, runStage3Cli } from '../scripts/factory/run-stage3-worker.mjs';
+import { copyShardedAuthority } from './helpers/sharded-authority.mjs';
+
+const authorityShards = (root) => readdirSync(path.join(root, 'data/validation/canonical-semantic-decision-source.shards')).map((name) => `canonical-semantic-decision-source.shards/${name}`);
 
 const digest = 'a'.repeat(64);
 const baseRecord = {
@@ -1334,8 +1337,9 @@ test('applyStage3Admission leaves the worktree untouched when a surface-form jud
   });
   const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-apply-gap-'));
   try {
-    for (const file of ['data/validation/canonical-semantic-decision-source.json', 'data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']) {
-      await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    await mkdir(path.join(root, 'data/validation'), { recursive: true });
+    await copyShardedAuthority('data/validation/canonical-semantic-decision-source.json', path.join(root, 'data/validation/canonical-semantic-decision-source.json'));
+    for (const file of ['data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']) {
       await writeFile(path.join(root, file), await readFile(file, 'utf8'));
     }
     await mkdir(path.join(root, 'data/canonical'), { recursive: true });
@@ -1344,7 +1348,7 @@ test('applyStage3Admission leaves the worktree untouched when a surface-form jud
     await writeFile(reviewManifestPath, '{"status":"ready"}\n');
     const snapshot = async () => JSON.stringify([
       await readdir(path.join(root, 'data/canonical')),
-      ...await Promise.all([reviewManifestPath, ...['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json', 'canonical-semantic-decision-source.json'].map((name) => path.join(root, 'data/validation', name))]
+      ...await Promise.all([reviewManifestPath, ...['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json', 'canonical-semantic-decision-source.json', ...authorityShards(root)].map((name) => path.join(root, 'data/validation', name))]
         .map((file) => readFile(file, 'utf8'))),
     ]);
     const before = await snapshot();
@@ -1366,7 +1370,7 @@ test('applyStage3Admission leaves the worktree untouched when a surface-form jud
     await writeFile(processManifestPath, JSON.stringify(manifests([]).reviewManifest));
     const snapshotSync = () => JSON.stringify([
       readdirSync(path.join(root, 'data/canonical')),
-      ...[processManifestPath, ...['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json', 'canonical-semantic-decision-source.json'].map((name) => path.join(root, 'data/validation', name))]
+      ...[processManifestPath, ...['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json', 'canonical-semantic-decision-source.json', ...authorityShards(root)].map((name) => path.join(root, 'data/validation', name))]
         .map((file) => readFileSync(file, 'utf8')),
     ]);
     const processBefore = snapshotSync();

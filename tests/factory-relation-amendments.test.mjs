@@ -19,6 +19,9 @@ import {
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
 import { createCanonicalContext, readCanonicalContext, writeCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
+import { copyShardedAuthority, readShardedJson } from './helpers/sharded-authority.mjs';
+import { writeShardedJson } from '../scripts/lib/sharded-json.mjs';
+import { SEMANTIC_DECISION_SOURCE_ARRAYS } from '../scripts/lib/sharded-json-sources.mjs';
 
 const digest = 'a'.repeat(64);
 const GLOSS = '빛이 흐리지 않고 밝다.';
@@ -158,7 +161,7 @@ async function realCanonical() {
 
 test('a reverse amendment on a real canonical record passes the authority and the complete semantic audit', async () => {
   const { records, paths } = await realCanonical();
-  const ledger = JSON.parse(await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8'));
+  const ledger = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
   const touched = new Set((ledger.factory_admissions ?? []).flatMap((event) => event.changes.map((change) => change.entry_id)));
   const existing = records.find((record) => !touched.has(record.id) && record.senses.length === 1 && record.senses[0].pos === 'noun');
   const sense = existing.senses[0];
@@ -280,7 +283,7 @@ test('hostile amendment JSON yields contract errors, never exceptions, on every 
 
 test('two admitted decisions proposing one tuple: first appends, second is an idempotent no-op, through the real authority, audit and validators', async () => {
   const { records, paths } = await realCanonical();
-  const ledger = JSON.parse(await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8'));
+  const ledger = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
   const touched = new Set((ledger.factory_admissions ?? []).flatMap((event) => event.changes.map((change) => change.entry_id)));
   const existing = records.find((record) => !touched.has(record.id) && record.senses.length === 1 && record.senses[0].pos === 'noun');
   const sense = existing.senses[0];
@@ -387,7 +390,7 @@ test('a corrected record is reached through relation and sense amendments in any
 // audit and the dataset consumer judge the result. Tampering with the sense operation or the correction must be rejected.
 test('a corrected record amended by relations and senses in either order passes the shared audit consumers, and tampering is rejected', async () => {
   const { records, paths } = await realCanonical();
-  const authority0 = JSON.parse(await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8'));
+  const authority0 = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
   const corrected = new Set(authority0.authored_review.review_pass.correction_history.map((item) => item.record_id));
   const touched = new Set((authority0.factory_admissions ?? []).flatMap((event) => event.changes.map((change) => change.entry_id)));
   // The correction digest predates relevance, so the base must carry relevance-bearing relations for the digests to differ.
@@ -427,10 +430,10 @@ test('a corrected record amended by relations and senses in either order passes 
     target: { kind: 'new_pos_on_existing_lemma', entry_id: target.id },
     reviewed_record: { lemma: target.lemma, senses: [{ pos: 'verb', gloss: `합성 시험 ${batch}에서 쓰는 동사 뜻풀이.` }] },
   });
-  const admit = async (batch, decisionRow, before, ledgerText) => {
+  const admit = async (batch, decisionRow, before, ledger) => {
     const scratch = await mkdtemp(path.join(os.tmpdir(), 'mixed-history-'));
     await mkdir(path.join(scratch, 'data/validation'), { recursive: true });
-    await writeFile(path.join(scratch, 'data/validation/canonical-semantic-decision-source.json'), ledgerText);
+    await writeShardedJson(ledger, path.join(scratch, 'data/validation/canonical-semantic-decision-source.json'), { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
     for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.resolve(dir), path.join(scratch, dir));
     try {
       const plan = planStage3Admission({
@@ -444,7 +447,7 @@ test('a corrected record amended by relations and senses in either order passes 
       });
       const after = before.map((item) => plan.records.get(item.id)?.record ?? item)
         .concat([...plan.records.values()].filter((update) => !update.before).map((update) => update.record));
-      return { after, ledgerText: built.sourceText, source: built.sourceObject };
+      return { after, source: built.sourceObject };
     } finally {
       await rm(scratch, { recursive: true, force: true });
     }
@@ -457,13 +460,13 @@ test('a corrected record amended by relations and senses in either order passes 
     assert.doesNotThrow(() => validateDatasetRecords(infos, { semanticAudit: built, requireSemanticAudit: true }));
     return built;
   };
-  const baseText = await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8');
+  const baseLedger = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
   for (const order of [['relation', 'sense'], ['sense', 'relation']]) {
-    let current = records; let text = baseText; let last;
+    let current = records; let ledger = baseLedger; let last;
     for (const [index, kind] of order.entries()) {
       const batch = `C90000${index + 1}`;
-      last = await admit(batch, kind === 'relation' ? relationRow(batch) : senseRow(batch), current, text);
-      current = last.after; text = last.ledgerText;
+      last = await admit(batch, kind === 'relation' ? relationRow(batch) : senseRow(batch), current, ledger);
+      current = last.after; ledger = last.source;
     }
     judge(last.after, last.source);
     const ops = last.source.factory_admissions.slice(-2).map((event) => event.changes.find((change) => change.entry_id === target.id)?.operation);

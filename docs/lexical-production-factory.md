@@ -912,7 +912,7 @@ the shared review decisions and hand-off.
 | Stage 2 review contract | `scripts/factory/contract.mjs`, `artifacts.mjs`, `lemma-decisions.mjs`, `handoff.mjs` and `stage2-worker.mjs`; review digests bind candidate, decisions, semantic decisions and hand-off. |
 | Stage 3 allocator and writer | `scripts/factory/admission.mjs`; deterministic `w…`/sense IDs, reference remapping, new entries, and append-only new POS/sense support for existing records. Canonical `candidate_id` remains the `w…` record id. |
 | Attempt protocol | `scripts/factory/stage3-worker.mjs`, `github-client.mjs` and `run-stage3-worker.mjs`; singleton global lock, atomic per-attempt ref, metadata starter commit, Draft PR before preflight, serial wait, explicit attempt recovery and merge-gated ref release. |
-| Complete semantic authority | `scripts/factory/semantic-authority.mjs` extends `canonical-semantic-decision-source.json` only from the source-bound Stage 2 decision digest; its admission ledger binds each canonical and compact semantic-review change. |
+| Complete semantic authority | `scripts/factory/semantic-authority.mjs` extends `canonical-semantic-decision-source.json` (manifest and shards, rewriting only changed shards) only from the source-bound Stage 2 decision digest; its admission ledger binds each canonical and compact semantic-review change. |
 | Admission baseline and search/build gates | `scripts/batch/validate-issue-223.mjs`, `canonical-batch-baseline.mjs`, `production-entrypoints.mjs` and the registered Stage 3 CI test. Stage 3-created records remain subject to the complete-canonical audit, baseline and one-build check. |
 
 Resolved compatibility choices:

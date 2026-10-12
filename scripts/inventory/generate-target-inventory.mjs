@@ -8,6 +8,7 @@ import {
 } from '../validate/canonical-jsonl.mjs';
 import { isAdditiveFactoryAmendment, validateFactoryAdmissionLedger } from '../validate/semantic-audit.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
+import { readShardedJson } from '../lib/sharded-json.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_SEED_PATH = path.resolve(
@@ -421,7 +422,7 @@ export async function buildTargetInventory({
   let decisionSource;
   if (promotionLedger.length > 0) {
     try {
-      decisionSource = JSON.parse(await readFile(decisionSourcePath, 'utf8'));
+      decisionSource = await readShardedJson(decisionSourcePath);
     } catch (error) {
       if (error.code === 'ENOENT') {
         throw new TargetInventoryGenerationError(

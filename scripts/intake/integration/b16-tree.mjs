@@ -58,7 +58,8 @@ export async function tree() {
   for (const entry of await readdir(path.join(ROOT, 'data/validation'), { withFileTypes: true })) {
     const from = path.join(ROOT, 'data/validation', entry.name);
     const to = path.join(temp, 'data/validation', entry.name);
-    if (entry.isDirectory()) await symlink(from, to);
+    if (entry.name === 'canonical-semantic-decision-source.shards') await cp(from, to, { recursive: true });
+    else if (entry.isDirectory()) await symlink(from, to);
     else if (entry.name === 'canonical-semantic-decision-source.json') await copyFile(from, to);
     else await link(from, to).catch(() => copyFile(from, to));
   }

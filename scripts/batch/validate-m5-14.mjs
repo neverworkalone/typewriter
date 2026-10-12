@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readShardedJson } from '../lib/sharded-json.mjs';
 import { readFileSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -220,7 +221,7 @@ async function validatePromotionState({ currentCanonical, currentDigest, current
   assertEqual(promotion.admission_sha256, sha256(await readFile(admissionPath)), 'promotion admission digest');
   assertEqual((await readJson(currentSeedPath, 'current M5 seed')).value.revision, 'm5-14', 'promoted seed revision');
   const ledger = await readPromotionLedger(promotionLedgerPath);
-  const decisionSource = (await readJson(path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-decision-source.json'), 'canonical semantic decision source')).value;
+  const decisionSource = await readShardedJson(path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-decision-source.json'));
   validatePromotionLedgerBindings({
     entries: ledger,
     canonicalRecords: currentCanonical.records.map(recordOf),

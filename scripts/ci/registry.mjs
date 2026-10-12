@@ -173,6 +173,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'data/canonical/',
           'data/inventory/',
           'data/validation/canonical-semantic-decision-source.json',
+          'data/validation/canonical-semantic-decision-source.shards/',
         ],
       },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
@@ -336,6 +337,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'data/relation-backfill/',
           'data/reviews/C000003/',
           'data/validation/canonical-semantic-decision-source.json',
+          'data/validation/canonical-semantic-decision-source.shards/',
         ],
       },
       commandCheck(
@@ -461,6 +463,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
         deepInputs: [
           'data/batches/m5-12a-semantic-decisions.json',
           'data/validation/canonical-semantic-decision-source.json',
+          'data/validation/canonical-semantic-decision-source.shards/',
         ],
       },
       testCheck('tests/pages-artifact.test.mjs', 'Test Pages artifact publication boundary'),
@@ -513,6 +516,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'data/canonical/',
           'data/inventory/',
           'data/validation/canonical-semantic-decision-source.json',
+          'data/validation/canonical-semantic-decision-source.shards/',
         ],
       },
       {

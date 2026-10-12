@@ -225,6 +225,7 @@ function normalDataKind(pathValue) {
   if (RELATION_BACKFILL_PATH.test(pathValue)) return 'relation-backfill';
   if (
     pathValue === 'data/validation/canonical-semantic-decision-source.json'
+    || /^data\/validation\/canonical-semantic-decision-source\.shards\/[^/]+\.json$/u.test(pathValue)
     || pathValue === 'data/validation/canonical-semantic-correction-manifest.json'
     || pathValue === 'data/validation/canonical-semantic-boundary-decisions.json'
     || pathValue === 'data/validation/canonical-non-batch-baseline.json'

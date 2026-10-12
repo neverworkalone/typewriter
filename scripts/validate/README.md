@@ -44,7 +44,9 @@ reviewed batch importers. It covers expression/POS shape, placeholder glosses,
 and writer-domain sense boundaries. The semantic-audit v3 contract separates
 deterministic content coverage from authored semantic decisions. The durable
 `data/validation/canonical-semantic-decision-source.json` contains the authored
-decision source, while the current coverage, review, and audit envelope are
+decision source (a manifest plus size-guided shards in
+`data/validation/canonical-semantic-decision-source.shards/`, read and written
+through `scripts/lib/sharded-json.mjs`), while the current coverage, review, and audit envelope are
 rebuilt deterministically in memory for each validation. Historical audit
 envelopes remain tracked where an immutable replay contract binds their exact
 bytes. Admission consumes the authored decision source and a matching in-memory

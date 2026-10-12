@@ -13,6 +13,7 @@ import {
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
 import { createCanonicalContext } from '../validate/canonical-context.mjs';
+import { readShardedJsonLogicalBytes } from '../lib/sharded-json.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const INVENTORY_PATH = path.join(ROOT, 'data/inventory/issue-210-recovery-inventory.json');
@@ -196,7 +197,7 @@ async function buildSourceManifest() {
     ...historicalCanonicalPaths,
   ]).sort();
   return Promise.all(paths.map(async (relativePath) => {
-    const bytes = await readFile(path.join(ROOT, relativePath));
+    const bytes = await readShardedJsonLogicalBytes(path.join(ROOT, relativePath));
     return { path: relativePath, sha256: sha256(bytes), byte_count: bytes.byteLength };
   }));
 }

@@ -1,4 +1,5 @@
 import { restorePreFactoryDecisionSource } from '../validate/semantic-audit.mjs';
+import { readShardedJsonLogicalBytes } from '../lib/sharded-json.mjs';
 import { createHash } from 'node:crypto';
 import {
   cp,
@@ -1351,7 +1352,7 @@ export async function commitM514PromotionTransaction({
   const currentCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   const currentSeedBytes = await readFile(currentSeedPath);
   const currentLedgerBytes = await readFile(promotionLedgerPath);
-  const currentDecisionBytes = await readFile(decisionSourcePath);
+  const currentDecisionBytes = await readShardedJsonLogicalBytes(decisionSourcePath);
   if (replaceExistingPromotion) {
     if (!Buffer.isBuffer(reviewBytes) || !Buffer.isBuffer(stageBytes)) {
       fail('M5-14 proposal refresh requires regenerated review and stage evidence', 'PROMOTION_REPLACEMENT_INPUT_REQUIRED');
@@ -1413,10 +1414,10 @@ export async function commitM514PromotionTransaction({
     }
     const finalCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
     const finalSeedDigest = sha256(await readFile(currentSeedPath));
-    const finalDecisionDigest = sha256(await readFile(decisionSourcePath));
+    const finalDecisionDigest = sha256(await readShardedJsonLogicalBytes(decisionSourcePath));
     const finalLedgerEntries = await readPromotionLedger(promotionLedgerPath);
     validatePromotionLedgerPrefix({ currentEntries: finalLedgerEntries, expectedPrefixEntries: result.promotionLedger, baseEntries: result.inputs.basePromotionLedger, binding: result.promotionLedgerBinding, label: 'M5-14 committed promotion ledger' });
-    validatePromotionLedgerBindings({ entries: finalLedgerEntries, canonicalRecords: (await readCanonicalRecords(currentCanonicalDirectory)).records, decisionSource: JSON.parse((await readFile(decisionSourcePath)).toString('utf8')) });
+    validatePromotionLedgerBindings({ entries: finalLedgerEntries, canonicalRecords: (await readCanonicalRecords(currentCanonicalDirectory)).records, decisionSource: JSON.parse((await readShardedJsonLogicalBytes(decisionSourcePath)).toString('utf8')) });
     if (finalCanonicalDigest !== result.prospective.canonicalDigest || finalSeedDigest !== sha256(result.prospective.seedBytes) || finalDecisionDigest !== sha256(result.decisionSourceBytes)) fail('M5-14 committed output digest does not match prevalidated state', 'PROMOTION_DIGEST_MISMATCH');
     const promotion = {
       ...result.promotion,
@@ -1468,7 +1469,7 @@ export async function validateM514Final({ currentCanonicalDirectory = CURRENT_CA
   const currentSeedBytes = await readFile(currentSeedPath);
   const currentLedgerBytes = await readFile(promotionLedgerPath);
   const currentLedgerEntries = await readPromotionLedger(promotionLedgerPath);
-  const currentDecisionBytes = await readFile(decisionSourcePath);
+  const currentDecisionBytes = await readShardedJsonLogicalBytes(decisionSourcePath);
   const admission = (await readJson(admissionPath, 'M5-14 admission evidence')).value;
   const decisionSource = JSON.parse(currentDecisionBytes.toString('utf8'));
   validatePromotionLedgerBindings({ entries: currentLedgerEntries, canonicalRecords: currentCanonical.records.map(recordOf), decisionSource });

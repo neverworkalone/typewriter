@@ -34,6 +34,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
+import { copyShardedAuthority, readShardedJson } from './helpers/sharded-authority.mjs';
 
 const repositoryDirectory = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -246,7 +247,7 @@ test('source-bound backfill survives the real SQLite query path without acceptin
   try {
     await mkdir(path.join(root, 'data/validation'), { recursive: true });
     await cp(path.join(repositoryDirectory, 'data/canonical'), path.join(root, 'data/canonical'), { recursive: true });
-    await cp(path.join(repositoryDirectory, authorityPath), path.join(root, authorityPath));
+    await copyShardedAuthority(path.join(repositoryDirectory, authorityPath), path.join(root, authorityPath));
     for (const directory of ['data/candidates', 'data/reviews']) {
       await symlink(path.join(repositoryDirectory, directory), path.join(root, directory));
     }
