@@ -11,7 +11,7 @@ import { MAX_OBSERVATIONS_PER_CANDIDATE } from '../scripts/factory/lemma-contrac
 import { runStage1 } from '../scripts/factory/produce-candidates.mjs';
 import { buildExclusionManifest, parseArguments as parseCorpusArguments } from '../scripts/reference/run-corpus-lemma-pilot.mjs';
 import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
-import { Stage1Error, allocateBatchId, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
+import { Stage1Error, allocateBatchId, observationsFromCorpusEvidence, produceCandidateBatch } from '../scripts/factory/stage1.mjs';
 import { validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 
@@ -73,6 +73,41 @@ const CANONICAL = [
 ];
 const produce = (evidence, over = {}) => produceCandidateBatch({
   evidence, analyzer: syntheticAnalyzer(), canonicalEntries: CANONICAL, canonicalDigest: HEX, batchId: 'C000002', taskId: 'T000001', ...over,
+});
+
+test('Stage 1 accepts a source-bound reused morphology store and still checks its full-corpus publications', () => {
+  const sourceSnapshot = 'c'.repeat(64);
+  const sourceIdentity = {
+    contract: 'corpus-morphology-slices-v1', permission_sha256: HEX,
+    algorithm_sha256: 'd'.repeat(64), schema_sha256: 'e'.repeat(64),
+    index_metadata: { input_manifest_sha256: HEX, logical_rows_sha256: 'b'.repeat(64) },
+  };
+  const storeEvidence = {
+    source_snapshot_sha256: sourceSnapshot, source_identity_sha256: 'f'.repeat(64),
+    validation: 'completed-store-reused-v1', source_identity: sourceIdentity,
+    store_database_path: 'runs/written-corpus-morphology-v1/analysis.sqlite',
+    completion_bitmap: '1'.repeat(20), verified_paragraphs: 4_988_970,
+    total_paragraphs: 4_988_970, cumulative_unique_lemmas: 221_392,
+    slice_publications: Array.from({ length: 20 }, (_, slice) => ({
+      slice, complete: true, publication_sha256: '9'.repeat(64),
+    })),
+  };
+  const evidence = evidenceDoc([cand('걸음', 'noun', [hit('d1', 'p1', '걸음')])], {
+    permission_record_sha256: HEX,
+    selection: { source_snapshot_sha256: sourceSnapshot },
+    analysis_cache: {
+      mode: 'verified-full-corpus-morphology-v1',
+      source_store_path: 'runs/written-corpus-morphology-v1',
+      source_database_path: storeEvidence.store_database_path,
+      source_snapshot_sha256: sourceSnapshot, source_identity_sha256: storeEvidence.source_identity_sha256,
+      completion_bitmap: '1'.repeat(20), verified_paragraphs: 4_988_970,
+      total_paragraphs: 4_988_970, validation: 'completed-store-reused-v1', store_evidence: storeEvidence,
+    },
+  });
+  assert.equal(observationsFromCorpusEvidence(evidence).observations.length, 1);
+
+  storeEvidence.slice_publications[19].complete = false;
+  assert.throws(() => observationsFromCorpusEvidence(evidence), /all 20 completed slices/u);
 });
 
 test('one lemma observed as several inflected forms is ONE candidate with attributable forms and observations', async () => {

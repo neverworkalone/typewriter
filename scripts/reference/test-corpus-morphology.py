@@ -196,7 +196,7 @@ class MorphologyTests(unittest.TestCase):
         seal = json.loads(seal_bytes)
         proof = selector.snapshot_payload(result=audited, store_path=self.store, seal=seal)
         selector.assert_source_binding_current(store_path=self.store, index_path=self.index, proof=proof)
-        with self.assertRaisesRegex(RuntimeError, "seal changed after its full audit"):
+        with self.assertRaisesRegex(RuntimeError, "seal changed after completed-store validation"):
             selector.assert_source_binding_current(store_path=self.store, index_path=self.index,
                                                    proof={**proof, "store_seal_sha256": "0" * 64})
 
@@ -243,7 +243,7 @@ class MorphologyTests(unittest.TestCase):
         self.assertEqual(sorted(actual_surfaces), expected_surfaces)
         self.assertEqual(sorted(actual_eojeols), expected_eojeols)
 
-    def test_selector_path_audits_once_reuses_proof_and_fails_closed_on_source_drift(self):
+    def test_selector_reuses_completed_store_without_full_audit_and_fails_closed_on_real_drift(self):
         runtime = {
             "python": "Python 3.12.0 synthetic-selector-test",
             "packages": {
@@ -294,41 +294,100 @@ class MorphologyTests(unittest.TestCase):
         with patch("corpus_morphology.runtime_identity", return_value=runtime), \
              patch.object(selector, "EXPECTED_PARAGRAPHS", completed["verified_paragraphs"]), \
              patch.object(selector, "EXPECTED_LEMMAS", completed["cumulative_unique_lemmas"]), \
-             patch.object(selector, "build_projection", side_effect=build_synthetic_projection), \
+             patch.object(selector, "build_projection", side_effect=build_synthetic_projection) as projection_builder, \
              patch.object(selector.morphology_readonly, "inspect_readonly", wraps=readonly.inspect_readonly) as audit:
             first = select("first")
             snapshot = first["analysis_cache"]["source_snapshot_sha256"]
-            self.assertEqual(first["analysis_cache"]["validation"], "full-audit-passed-read-only")
-            self.assertEqual(audit.call_count, 1)
+            self.assertEqual(first["analysis_cache"]["validation"], "completed-store-reused-v1")
+            self.assertEqual(first["analysis_cache"]["store_evidence"]["validation"], "completed-store-reused-v1")
+            self.assertEqual(audit.call_count, 0)
+            self.assertEqual(projection_builder.call_count, 1)
 
             refill = select("refill", snapshot)
             self.assertEqual(refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
-            self.assertEqual(audit.call_count, 1)
+            self.assertEqual(audit.call_count, 0)
+            self.assertEqual(projection_builder.call_count, 1)
 
+            projection_path = selector.typewriter_cache_root() / first["analysis_cache"]["selection_projection_path"]
+            projection_directory = projection_path.parent
+            projection_hashes = []
+            projection_queries = []
             original_sha256_file = selector.sha256_file
+            original_open_readonly = selector.producer.open_readonly_database
+            def track_projection_hash(file_path):
+                if Path(file_path).resolve() == projection_path.resolve():
+                    projection_hashes.append(Path(file_path))
+                return original_sha256_file(file_path)
+            def trace_projection_open(file_path, *args, **kwargs):
+                db = original_open_readonly(file_path, *args, **kwargs)
+                if Path(file_path).resolve() == projection_path.resolve():
+                    db.set_trace_callback(projection_queries.append)
+                return db
+            with patch.object(selector, "sha256_file", side_effect=track_projection_hash), \
+                 patch.object(selector.producer, "open_readonly_database", side_effect=trace_projection_open):
+                fast_manifest = selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
+                self.assertEqual(fast_manifest["projection_database_stamp"], m.file_stamp(projection_path))
+                self.assertEqual(projection_hashes, [])
+                self.assertEqual(projection_queries, [])
+
+                # One-time validation upgrades a pre-stamp manifest; the next
+                # batch takes the stat-only path.
+                unstamped_manifest = dict(fast_manifest)
+                unstamped_manifest.pop("manifest_sha256")
+                unstamped_manifest.pop("projection_database_stamp")
+                selector.write_projection_manifest(
+                    selector.projection_manifest_path(projection_directory), unstamped_manifest,
+                )
+                migrated_manifest = selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
+                self.assertEqual(migrated_manifest["projection_database_stamp"], m.file_stamp(projection_path))
+                self.assertEqual(len(projection_hashes), 1)
+                self.assertTrue(any("PRAGMA quick_check" in query for query in projection_queries))
+                self.assertTrue(any("COUNT(" in query.upper() for query in projection_queries))
+                projection_hashes.clear()
+                projection_queries.clear()
+                selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
+                self.assertEqual(projection_hashes, [])
+                self.assertEqual(projection_queries, [])
+
+            selector_path = Path(selector.__file__).resolve()
             auditor_path = Path(readonly.__file__).resolve()
+            changed_selector_sha256 = "e" * 64
             changed_auditor_sha256 = "f" * 64
-            def changed_auditor_digest(file_path):
+            def changed_orchestration_digest(file_path):
+                if Path(file_path).resolve() == selector_path:
+                    return changed_selector_sha256
                 if Path(file_path).resolve() == auditor_path:
                     return changed_auditor_sha256
                 return original_sha256_file(file_path)
-            with patch.object(selector, "sha256_file", side_effect=changed_auditor_digest):
-                changed_auditor = select("changed-auditor", snapshot)
-                self.assertEqual(audit.call_count, 2)
+            with patch.object(selector, "sha256_file", side_effect=changed_orchestration_digest):
+                changed_orchestration = select("changed-orchestration", snapshot)
+                self.assertEqual(audit.call_count, 0)
+                self.assertEqual(changed_orchestration["analysis_cache"]["validation"], "completed-store-reused-v1")
+                changed_orchestration_refill = select("changed-orchestration-refill", snapshot)
                 self.assertEqual(
-                    changed_auditor["analysis_cache"]["audit_evidence"]["audit_verifier_identity"],
-                    {"readonly_auditor_sha256": changed_auditor_sha256},
+                    changed_orchestration_refill["analysis_cache"]["source_snapshot_sha256"], snapshot,
                 )
-                changed_auditor_refill = select("changed-auditor-refill", snapshot)
-                self.assertEqual(
-                    changed_auditor_refill["analysis_cache"]["audit_evidence"]["audit_verifier_identity"],
-                    {"readonly_auditor_sha256": changed_auditor_sha256},
-                )
-                self.assertEqual(audit.call_count, 2)
+                self.assertEqual(audit.call_count, 0)
+                self.assertEqual(projection_builder.call_count, 1)
+
+            original_algorithm_identity = selector.projection_algorithm_identity
+            def changed_projection_builder_identity():
+                identity = original_algorithm_identity()
+                identity["projection_builder_sha256"] = "a" * 64
+                return identity
+            with patch.object(
+                selector, "projection_algorithm_identity", side_effect=changed_projection_builder_identity,
+            ):
+                changed_builder = select("changed-projection-builder", snapshot)
+                self.assertEqual(changed_builder["analysis_cache"]["source_snapshot_sha256"], snapshot)
+                self.assertEqual(projection_builder.call_count, 2)
+                changed_builder_refill = select("changed-projection-builder-refill", snapshot)
+                self.assertEqual(changed_builder_refill["analysis_cache"]["source_snapshot_sha256"], snapshot)
+                self.assertEqual(projection_builder.call_count, 2)
 
             with self.assertRaisesRegex(RuntimeError, "source snapshot changed"):
                 select("stale-snapshot", "0" * 64)
-            self.assertEqual(audit.call_count, 2)
+            self.assertEqual(audit.call_count, 0)
 
             seal_path = self.store / "seal.json"
             original_seal = seal_path.read_bytes()
@@ -340,21 +399,36 @@ class MorphologyTests(unittest.TestCase):
                     select("changed-seal", snapshot)
             finally:
                 seal_path.write_bytes(original_seal)
-            self.assertEqual(audit.call_count, 2)
+            self.assertEqual(audit.call_count, 0)
 
             changed_permission = self.root / "permission-record.txt"
             permission_bytes = Path(m.DEFAULT_PERMISSION_RECORD_PATH).read_bytes()
-            changed_permission.write_bytes(permission_bytes + b"\n")
+            changed_permission.write_bytes(
+                permission_bytes + b"\n\n## Product publication policy\n\nPublication prose changed.\n"
+            )
             with patch.object(m, "DEFAULT_PERMISSION_RECORD_PATH", changed_permission):
-                with self.assertRaisesRegex(RuntimeError, "Manifest/tool/index/source identity mismatch"):
-                    select("changed-permission", snapshot)
-            self.assertEqual(audit.call_count, 2)
+                prose_change = select("publication-prose-change", snapshot)
+                self.assertEqual(prose_change["analysis_cache"]["source_snapshot_sha256"], snapshot)
+                self.assertEqual(
+                    prose_change["analysis_cache"]["store_evidence"]["source_identity"]["permission_sha256"],
+                    first["analysis_cache"]["store_evidence"]["source_identity"]["permission_sha256"],
+                    "historical permission provenance stays bound to the completed store",
+                )
+            revoked_permission = self.root / "revoked-permission.txt"
+            revoked_permission.write_bytes(permission_bytes.replace(
+                b"- Allowed lexical-reference use: permitted",
+                b"- Allowed lexical-reference use: revoked",
+            ))
+            with patch.object(m, "DEFAULT_PERMISSION_RECORD_PATH", revoked_permission):
+                with self.assertRaisesRegex(RuntimeError, "Allowed lexical-reference use"):
+                    select("revoked-permission", snapshot)
+            self.assertEqual(audit.call_count, 0)
 
             index_stat = self.index.stat()
             os.utime(self.index, ns=(index_stat.st_atime_ns, index_stat.st_mtime_ns + 1_000_000))
             with self.assertRaisesRegex(RuntimeError, "Index identity mismatch"):
                 select("changed-index", snapshot)
-            self.assertEqual(audit.call_count, 2)
+            self.assertEqual(audit.call_count, 0)
 
     def test_separate_calls_do_not_rescan_input_completed_routes_or_facts(self):
         original_chunk = m.chunk_digest

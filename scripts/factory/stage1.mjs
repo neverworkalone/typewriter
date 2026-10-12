@@ -109,19 +109,19 @@ export function observationsFromCorpusEvidence(evidence) {
   }
   const morphologyCache = evidence?.analysis_cache;
   if (morphologyCache?.mode === 'verified-full-corpus-morphology-v1') {
-    const audit = morphologyCache.audit_evidence;
-    const identity = audit?.source_identity;
+    const storeEvidence = morphologyCache.store_evidence;
+    const identity = storeEvidence?.source_identity;
     const sourceSha = morphologyCache.source_snapshot_sha256;
     if (!/^[0-9a-f]{64}$/u.test(String(sourceSha))
       || evidence.selection?.source_snapshot_sha256 !== sourceSha
-      || audit?.source_snapshot_sha256 !== sourceSha) {
-      errors.push('verified morphology evidence must bind the same source snapshot in selection and audit provenance');
+      || storeEvidence?.source_snapshot_sha256 !== sourceSha) {
+      errors.push('verified morphology evidence must bind the same source snapshot in selection and store provenance');
     }
-    if (morphologyCache.validation !== 'full-audit-passed-read-only'
-      || audit?.validation !== 'full-audit-passed-read-only') {
-      errors.push('verified morphology evidence must record a successful full read-only audit');
+    if (morphologyCache.validation !== 'completed-store-reused-v1'
+      || storeEvidence?.validation !== 'completed-store-reused-v1') {
+      errors.push('verified morphology evidence must record reuse of the completed, source-bound store');
     }
-    if (morphologyCache.source_identity_sha256 !== audit?.source_identity_sha256
+    if (morphologyCache.source_identity_sha256 !== storeEvidence?.source_identity_sha256
       || identity?.index_metadata?.input_manifest_sha256 !== manifestDigest
       || identity?.index_metadata?.logical_rows_sha256 !== rowsDigest
       || identity?.permission_sha256 !== evidence.permission_record_sha256
@@ -131,22 +131,22 @@ export function observationsFromCorpusEvidence(evidence) {
       errors.push('verified morphology evidence has mismatched index, permission, analyzer, or schema identity');
     }
     if (morphologyCache.completion_bitmap !== '1'.repeat(20)
-      || audit?.completion_bitmap !== '1'.repeat(20)
+      || storeEvidence?.completion_bitmap !== '1'.repeat(20)
       || morphologyCache.verified_paragraphs !== 4_988_970
       || morphologyCache.total_paragraphs !== 4_988_970
-      || audit?.verified_paragraphs !== 4_988_970
-      || audit?.total_paragraphs !== 4_988_970
-      || audit?.cumulative_unique_lemmas !== 221_392
-      || !Array.isArray(audit?.slice_publications)
-      || audit.slice_publications.length !== 20
-      || audit.slice_publications.some((slice, index) => slice.slice !== index
+      || storeEvidence?.verified_paragraphs !== 4_988_970
+      || storeEvidence?.total_paragraphs !== 4_988_970
+      || storeEvidence?.cumulative_unique_lemmas !== 221_392
+      || !Array.isArray(storeEvidence?.slice_publications)
+      || storeEvidence.slice_publications.length !== 20
+      || storeEvidence.slice_publications.some((slice, index) => slice.slice !== index
         || slice.complete !== true || !/^[0-9a-f]{64}$/u.test(String(slice.publication_sha256)))) {
-      errors.push('verified morphology evidence must bind all 20 audited slices and the exact full-corpus totals');
+      errors.push('verified morphology evidence must bind all 20 completed slices and the exact full-corpus totals');
     }
     if (typeof morphologyCache.source_store_path !== 'string'
       || !morphologyCache.source_store_path.startsWith('runs/')
       || morphologyCache.source_store_path.split('/').includes('..')
-      || morphologyCache.source_database_path !== audit?.store_database_path) {
+      || morphologyCache.source_database_path !== storeEvidence?.store_database_path) {
       errors.push('verified morphology evidence must bind the shared-cache source store path');
     }
   }
