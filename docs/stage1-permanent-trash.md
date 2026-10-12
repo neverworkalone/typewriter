@@ -48,8 +48,7 @@ The migration command first validates every legacy batch, builds the global
 deduplicated archive, reconstructs every legacy manifest, compares it exactly,
 and verifies candidate bytes and existing review bindings. It emits a report
 and fails before applying on loss, collision or invalid input. This is a manual,
-one-time historical audit; it is not registered in Normal, Deep or weekly
-Historical CI. Git retains the original manifest revision for rollback.
+one-time historical audit; it is not registered in Normal or Deep CI. Git retains the original manifest revision for rollback.
 
 Normal validation checks current candidates and compact metadata. It validates
 basic shape, IDs, bounds and provenance of new/modified trash files through the

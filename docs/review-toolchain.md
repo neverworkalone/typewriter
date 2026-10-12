@@ -126,8 +126,7 @@ When a Deep-owned implementation or contract changes, require successful
 selected by the registry through `ci:pr`; CI classifier, registry, workflow,
 or runner changes and unclassifiable paths take Normal, with any independently
 matched affected Deep checks. Full `ci:all` runs only weekly or manually, and
-`ci:deep` still selects all current-system Deep checks across scopes. Neither
-redefines scoped `ci:historical`.
+`ci:deep` still selects all current-system Deep checks across scopes.
 
 `deep_input_paths` describe data consumed by a check; they do not by themselves
 mean that every byte change invalidates its independent performance or
@@ -219,7 +218,7 @@ Changed-only validation may give early feedback, not final coverage.
 
 CI registration separates **scope** (the domain and protected contract) from
 **execution policy** (tier and schedule). Each check records one owner, one
-protected contract, one tier (`candidate`, `normal`, `deep`, or `historical`),
+protected contract, one tier (`candidate`, `normal`, or `deep`),
 and one schedule (`always`, `affected`, or `manual`). New checks default to
 Deep. Normal registration requires a concrete same-PR merge invariant.
 `affected` checks must list normalized repository-relative dependency paths;
@@ -229,17 +228,12 @@ PR gate and visible diagnostic, not unrelated Full Deep. Each registered test fi
 The **scope/domain** is distinct from the **tier**. Normal protects the
 current canonical revision, required admission/factory freshness and current
 product outputs; optional `ci:fast` is a prefix inside the same session.
-`ci:all` selects Normal plus current-system Deep (not a historical replay);
+`ci:all` selects Normal plus current-system Deep;
 `ci:deep` selects Deep checks across scopes. Independent current-revision
 reproducibility and scale/benchmark checks belong in Deep. Completed-issue
-checkpoint replays belong in a separately invoked Historical tier:
-`ci:historical` requires exactly one registered `--scope` and runs only checks
-tagged for that scope; it has no all-history CLI default and stays outside weekly
-Deep `ci:all`. The separate `.github/workflows/historical.yml` provides
-`workflow_dispatch` for one scope or `all`, plus a weekly schedule that enumerates
-all registered scopes as independent runs. This scheduled historical replay is
-not a PR merge gate; a passing scheduled/other-HEAD run never substitutes for
-the required exact-HEAD PR gate.
+checkpoint, one-batch result and one-time migration tests are Manual: they stay
+in the repository, are registered in no CI tier or workflow, and are run directly
+with `node --test <file>` (or their existing `pnpm run batch:*` script).
 
 ### Systemic test coverage — do not merely patch the failing fixture
 
@@ -277,7 +271,7 @@ never "zero builds". Validators and tests reuse the shared artifact through
 validator read itself and never falls back to another build. Independent two-build
 current-revision reproducibility runs in Deep (checks marked
 `independentCurrentRevisionBuilds`, which receive no shared artifact).
-Completed-issue checkpoint replays use the separately selected Historical tier.
+Completed-issue checkpoint replays are Manual tests and run no CI.
 
 `tests/ci-sqlite-build-guard.test.mjs` (registered in the `canonical` category)
 proves pass/fail behavior through the real runner on a fixture session: one

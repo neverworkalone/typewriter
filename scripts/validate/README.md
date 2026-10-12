@@ -74,7 +74,7 @@ The public CI levels are nested:
 - `ci:fast`: canonical, lexical, and toolchain gates for early pull-request
   feedback, including the complete global audit and one SQLite build.
 - `ci:normal`: `ci:fast` plus current batch, product, and artifact gates.
-- `ci:all`: `ci:normal` plus historical replay, independent current-revision
+- `ci:all`: `ci:normal` plus independent current-revision
   reproducibility, and the 500K/1M synthetic benchmark.
 
 Pull requests run one `ci:normal` process. It emits a `ci:fast` checkpoint
@@ -115,7 +115,7 @@ as corpus-dependent components, not as complete CI-level timings. Supplying
 record stores the exact-head level wall-clock, the current-canonical corpus
 baseline, and the derived fixed remainder; the benchmark adds only the fixed
 remainder to each measured scale component so semantic/lexical/SQLite work is
-not counted twice. Batch and historical replay checks remain against their
+not counted twice. Batch checks remain against their
 authoritative fixtures and are included in that fixed remainder; they are
 intentionally not synthesized from generated records.
 
