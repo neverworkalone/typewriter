@@ -25,17 +25,33 @@ from scripts.python.local_cache import assert_cache_path, cache_relative_path, t
 
 SOURCE_CONTRACT = "verified-full-corpus-morphology-source-v1"
 PROJECTION_CONTRACT = "corpus-morphology-selection-projection-v1"
+PROJECTION_SURFACE_AMBIGUITY_SQL = """
+    SELECT DISTINCT form,lemma,pos
+    FROM facts
+    WHERE kind=1 AND slice IN (SELECT slice FROM slices WHERE complete=1)
+    ORDER BY form COLLATE BINARY,lemma COLLATE BINARY,pos COLLATE BINARY
+"""
+PROJECTION_MORPHOLOGY_TOTALS_SQL = """
+    SELECT kind,lemma,pos,form,token_count,oov_token_count,paragraph_hits,document_count,
+           source_count,max_source_token_count
+    FROM morphology_totals
+    ORDER BY kind,lemma COLLATE BINARY,pos COLLATE BINARY,
+             token_count DESC,paragraph_hits DESC,form COLLATE BINARY
+"""
 EXPECTED_PARAGRAPHS = 4_988_970
 EXPECTED_LEMMAS = 221_392
 POS_TAGS = {"noun": "NNG", "verb": "VV", "adjective": "VA"}
 PROJECTION_BUILDER_COMPONENTS = (
     "PROJECTION_CONTRACT",
+    "PROJECTION_SURFACE_AMBIGUITY_SQL",
+    "PROJECTION_MORPHOLOGY_TOTALS_SQL",
     "POS_TAGS",
     "PROJECTION_BUILDER_COMPONENTS",
     "projection_builder_sha256",
     "projection_directory",
     "_batched",
     "configure_readonly_connection",
+    "surface_ambiguity_counts",
     "build_projection",
 )
 
@@ -307,6 +323,32 @@ def _batched(cursor, size: int = 2048):
         yield rows
 
 
+def surface_ambiguity_counts(source: sqlite3.Connection) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
+    """Count ambiguous forms from completed slices in facts_form index order."""
+    interpretation_counts = {}
+    ambiguous_surface_counts = {}
+    current_form = None
+    current_interpretations = []
+
+    def finish_form() -> None:
+        if current_form is None or len(current_interpretations) <= 1:
+            return
+        interpretation_counts[current_form] = len(current_interpretations)
+        for lemma, pos in current_interpretations:
+            key = (lemma, pos)
+            ambiguous_surface_counts[key] = ambiguous_surface_counts.get(key, 0) + 1
+
+    for rows in _batched(source.execute(PROJECTION_SURFACE_AMBIGUITY_SQL)):
+        for form, lemma, pos in rows:
+            if form != current_form:
+                finish_form()
+                current_form = form
+                current_interpretations = []
+            current_interpretations.append((lemma, pos))
+    finish_form()
+    return interpretation_counts, ambiguous_surface_counts
+
+
 def build_projection(*, source_path: Path, projection_path: Path, temporary_directory: Path,
                      source_snapshot: str, expected_lemmas: int | None = EXPECTED_LEMMAS) -> dict:
     temporary_path = projection_path.with_name(f"{projection_path.name}.tmp-{os.getpid()}")
@@ -321,73 +363,53 @@ def build_projection(*, source_path: Path, projection_path: Path, temporary_dire
         producer.create_staging_schema(output)
         output.execute("BEGIN")
 
-        cursor = source.execute("""
-            SELECT lemma,pos,token_count,oov_token_count,paragraph_hits,document_count,source_count,
-                   max_source_token_count,pos_interpretation_count,ambiguous_surface_count
-            FROM lemma_statistics WHERE kind=0
-            ORDER BY lemma COLLATE BINARY,pos COLLATE BINARY
-        """)
+        interpretation_counts, ambiguous_surface_counts = surface_ambiguity_counts(source)
+        cursor = source.execute(PROJECTION_MORPHOLOGY_TOTALS_SQL)
+        surface_key = None
+        surface_rank = 0
+        eojeol_key = None
+        eojeol_rank = 0
         for rows in _batched(cursor):
-            values = []
-            for (lemma, pos, tokens, oov, hits, documents, sources, max_source,
-                 pos_count, ambiguous_surfaces) in rows:
-                if pos not in POS_TAGS or producer.KOREAN_LEMMA.fullmatch(lemma) is None:
-                    raise RuntimeError("Morphology store contains a lemma/POS outside the pinned candidate contract")
-                values.append((lemma, producer.normalize_search_form(lemma), pos, POS_TAGS[pos],
-                               tokens, oov, hits, documents, sources, max_source, 0,
-                               "uncovered", "[]", ambiguous_surfaces))
-                counts["candidate_rows"] += 1
-                if lemma != previous_lemma:
-                    counts["candidate_lemmas"] += 1
-                    previous_lemma = lemma
-            output.executemany("""
-                INSERT INTO candidates(lemma,normalized_lemma,pos,analyzer_tag,token_count,oov_token_count,
-                    paragraph_hits,document_count,source_count,max_source_token_count,covered,coverage_status,
-                    coverage_matches_json,ambiguous_surface_count)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """, values)
-
-        surfaces = source.execute("""
-            SELECT totals.lemma,totals.pos,totals.form,totals.token_count,totals.paragraph_hits,
-                   totals.document_count,totals.source_count,totals.max_source_token_count,
-                   interpretations.interpretation_count
-            FROM morphology_totals AS totals
-            JOIN surface_interpretations AS interpretations USING(form)
-            WHERE totals.kind=1
-            ORDER BY totals.lemma COLLATE BINARY,totals.pos COLLATE BINARY,
-                     totals.token_count DESC,totals.paragraph_hits DESC,totals.form COLLATE BINARY
-        """)
-        key = None
-        rank = 0
-        for rows in _batched(surfaces):
-            values = []
-            for lemma, pos, form, tokens, hits, documents, sources, max_source, interpretations in rows:
-                current_key = (lemma, pos)
-                rank = rank + 1 if current_key == key else 1
-                key = current_key
-                if rank <= producer.TOP_SURFACE_FORMS:
-                    values.append((lemma, pos, form, tokens, hits, documents, sources, max_source, interpretations))
-            output.executemany("INSERT INTO candidate_surfaces VALUES(?,?,?,?,?,?,?,?,?)", values)
-            counts["candidate_surfaces"] += len(values)
-
-        eojeols = source.execute("""
-            SELECT lemma,pos,form,token_count,paragraph_hits,document_count,source_count,max_source_token_count
-            FROM morphology_totals WHERE kind=2
-            ORDER BY lemma COLLATE BINARY,pos COLLATE BINARY,
-                     token_count DESC,paragraph_hits DESC,form COLLATE BINARY
-        """)
-        key = None
-        rank = 0
-        for rows in _batched(eojeols):
-            values = []
-            for lemma, pos, form, tokens, hits, documents, sources, max_source in rows:
-                current_key = (lemma, pos)
-                rank = rank + 1 if current_key == key else 1
-                key = current_key
-                if rank <= producer.TOP_SURFACE_FORMS:
-                    values.append((lemma, pos, form, tokens, hits, documents, sources, max_source))
-            output.executemany("INSERT INTO candidate_eojeol_forms VALUES(?,?,?,?,?,?,?,?)", values)
-            counts["candidate_eojeol_forms"] += len(values)
+            candidate_values = []
+            surface_values = []
+            eojeol_values = []
+            for kind, lemma, pos, form, tokens, oov, hits, documents, sources, max_source in rows:
+                if kind == 0:
+                    if pos not in POS_TAGS or producer.KOREAN_LEMMA.fullmatch(lemma) is None:
+                        raise RuntimeError("Morphology store contains a lemma/POS outside the pinned candidate contract")
+                    candidate_values.append((lemma, producer.normalize_search_form(lemma), pos, POS_TAGS[pos],
+                                             tokens, oov, hits, documents, sources, max_source, 0,
+                                             "uncovered", "[]", ambiguous_surface_counts.get((lemma, pos), 0)))
+                    counts["candidate_rows"] += 1
+                    if lemma != previous_lemma:
+                        counts["candidate_lemmas"] += 1
+                        previous_lemma = lemma
+                elif kind == 1:
+                    current_key = (lemma, pos)
+                    surface_rank = surface_rank + 1 if current_key == surface_key else 1
+                    surface_key = current_key
+                    if surface_rank <= producer.TOP_SURFACE_FORMS:
+                        surface_values.append((lemma, pos, form, tokens, hits, documents, sources, max_source,
+                                               interpretation_counts.get(form, 1)))
+                elif kind == 2:
+                    current_key = (lemma, pos)
+                    eojeol_rank = eojeol_rank + 1 if current_key == eojeol_key else 1
+                    eojeol_key = current_key
+                    if eojeol_rank <= producer.TOP_SURFACE_FORMS:
+                        eojeol_values.append((lemma, pos, form, tokens, hits, documents, sources, max_source))
+            if candidate_values:
+                output.executemany("""
+                    INSERT INTO candidates(lemma,normalized_lemma,pos,analyzer_tag,token_count,oov_token_count,
+                        paragraph_hits,document_count,source_count,max_source_token_count,covered,coverage_status,
+                        coverage_matches_json,ambiguous_surface_count)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """, candidate_values)
+            if surface_values:
+                output.executemany("INSERT INTO candidate_surfaces VALUES(?,?,?,?,?,?,?,?,?)", surface_values)
+                counts["candidate_surfaces"] += len(surface_values)
+            if eojeol_values:
+                output.executemany("INSERT INTO candidate_eojeol_forms VALUES(?,?,?,?,?,?,?,?)", eojeol_values)
+                counts["candidate_eojeol_forms"] += len(eojeol_values)
 
         output.commit()
         output.execute("PRAGMA optimize")
