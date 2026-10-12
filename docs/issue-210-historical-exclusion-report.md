@@ -293,7 +293,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/pilot.jsonl` | `182d556915559991cf54877444aef66ab8c950e1b3f01b4f9b73ff1e03fed6b8` |
 | `data/inventory/m5-target-promotions.jsonl` | `07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `2776e1c37c3172c117c32ce89fb09257046940a53d6855ea14895cfe345c577b` |
+| `data/validation/canonical-semantic-decision-source.json` | `8f0182bc30d334d07be8bab7ec0ef125b424a0bae9153e60fac88432d80a3182` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `4a05ce3484b5a35056456286eae2c6fbe68a489fe662874a5fc408870b9f5e01` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `60ec5620ad8593e1bc7ee1b55b388caa0021e00937d38b1e18869dac18dc1ca1` |
 | `data/validation/m6-2-inflection-exceptions.json` | `0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7` |
