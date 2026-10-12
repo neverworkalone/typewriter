@@ -89,7 +89,7 @@ export class ReviewContext extends Map {
 // re-queues the reviews of the senses it points at.
 // An explicit denial ("반대가 아니라 …", "반의로 단정하지 않는다") is a valid reason for a reclassification; only a remaining
 // opposite wording is an assertion of antonymy.
-const OPPOSITE_DENIAL = /(?:반대|반의)(?:어|말)?(?:가|는|로|의)?\s*(?:관계|뜻|축|말)?(?:가|는|이|로)?\s*(?:아니|아닌|아님|아닐|단정하지|보지\s*않|간주하지|여기지\s*않)/gu;
+const OPPOSITE_DENIAL = /(?:반대|반의)(?:어|말)?(?:가|는|로|의)?\s*(?:관계|뜻|축|말)?(?:가|는|이|로)?\s*(?:아니(?!\s*(?:지\s*않|않))|아닌(?!\s*(?:지\s*않|않|것은?\s*아니))|아님|단정하지\s*않|보지\s*않|간주하지\s*않|여기지\s*않)/gu;
 const assertsOpposite = (rationale) => /반대|반의/u.test(rationale.replace(OPPOSITE_DENIAL, ''));
 const SECOND_ORDER_SIGNAL = 'relation_neighbor_of_related';
 const evidenceSignals = (candidate, explained) => candidate.signals.filter((signal) => signal !== SECOND_ORDER_SIGNAL && !(signal === 'incoming_relation' && explained.has(candidate.id)));
