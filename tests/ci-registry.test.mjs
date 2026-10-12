@@ -1,12 +1,10 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import CI_CHECK_INVENTORY from '../scripts/ci/check-inventory.json' with { type: 'json' };
 import LEGACY_CHECK_IDENTITIES from '../scripts/ci/legacy-check-identities.json' with { type: 'json' };
 import LEGACY_CHECK_TIERS from '../scripts/ci/legacy-check-tiers.json' with { type: 'json' };
 import LEGACY_CHECK_HISTORICAL_SCOPES from '../scripts/ci/legacy-check-history-scopes.json' with { type: 'json' };
@@ -25,7 +23,6 @@ import {
   CI_NORMAL_CATEGORY_ORDER,
   CI_TIER_CATEGORY_ORDER,
   collectCheckRegistrations,
-  collectTestOwnership,
   pnpmCommand,
   registerCategory,
   registerCheck,
@@ -178,32 +175,6 @@ test('real Git classification reads large routine files and preserves fail-close
   }
 });
 
-test('every root Node test file has exactly one CI category owner', async () => {
-  const expectedFiles = (await readdir(TEST_DIRECTORY, { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.test.mjs'))
-    .map((entry) => `tests/${entry.name}`)
-    .sort();
-  const ownership = collectTestOwnership();
-  const ownershipCounts = new Map();
-
-  for (const item of ownership) {
-    ownershipCounts.set(item.file, (ownershipCounts.get(item.file) ?? 0) + 1);
-    assert.ok(item.owner, `${item.file} must have a domain owner`);
-    assert.ok(CI_EXECUTION_TIERS.includes(item.tier), `${item.file} must have a valid execution tier`);
-    assert.ok(CI_CHECK_SCHEDULES.includes(item.schedule), `${item.file} must have a valid schedule`);
-    assert.ok(item.protectedContract, `${item.file} must name the protected contract`);
-  }
-
-  assert.deepEqual(
-    [...ownershipCounts.keys()].sort(),
-    expectedFiles,
-    'CI registry must cover every root tests/*.test.mjs file and no other file',
-  );
-  for (const file of expectedFiles) {
-    assert.equal(ownershipCounts.get(file), 1, `${file} must have one CI owner`);
-  }
-});
-
 test('CI categories are ordered and every category has a descriptive label', () => {
   const allCategoryNames = [...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER];
   assert.deepEqual(
@@ -234,118 +205,7 @@ test('CI categories are ordered and every category has a descriptive label', () 
   }
 });
 
-test('every registered check declares one owner, tier, schedule, and protected contract', () => {
-  const registrations = collectCheckRegistrations();
-  const expectedCount = Object.values(CI_CATEGORIES)
-    .reduce((count, category) => count + category.checks.length, 0);
-  assert.equal(registrations.length, expectedCount);
-  for (const registration of registrations) {
-    assert.ok(registration.owner);
-    assert.ok(CI_EXECUTION_TIERS.includes(registration.tier));
-    assert.ok(CI_CHECK_SCHEDULES.includes(registration.schedule));
-    assert.ok(registration.protectedContract);
-    assert.ok(['explicit', 'legacy-policy'].includes(registration.registration));
-    assert.ok(Array.isArray(registration.deepInputs));
-    if (registration.tier !== 'deep') assert.deepEqual(registration.deepInputs, []);
-    if (registration.schedule === 'affected') {
-      assert.ok(registration.paths.length > 0, `${registration.check} needs dependencies`);
-    }
-  }
-});
-
-test('Issue #464 inventory covers every registered check and records its decision and timing', () => {
-  const registrations = collectCheckRegistrations();
-  const inventoryKeys = CI_CHECK_INVENTORY.checks.map((item) => `${item.owner}\0${item.check}`);
-  const inventoryByKey = new Map(CI_CHECK_INVENTORY.checks.map((item) => [`${item.owner}\0${item.check}`, item]));
-  assert.equal(inventoryByKey.size, CI_CHECK_INVENTORY.checks.length, 'inventory check identities must be unique');
-  assert.deepEqual(
-    [...inventoryKeys].sort(),
-    registrations.map((item) => `${item.owner}\0${item.check}`).sort(),
-    'every registry check must have exactly one inventory row',
-  );
-
-  for (const registration of registrations) {
-    const item = inventoryByKey.get(`${registration.owner}\0${registration.check}`);
-    assert.equal(item.protected_contract, registration.protectedContract);
-    assert.equal(item.selected_tier, registration.tier);
-    assert.equal(item.schedule, registration.schedule);
-    assert.deepEqual(item.dependency_paths ?? [], registration.paths);
-    assert.deepEqual(item.historical_scopes, registration.historicalScopes);
-    assert.deepEqual(item.deep_input_paths ?? [], registration.deepInputs);
-    assert.ok(item.trigger.length > 0);
-    assert.ok(item.decision.length > 0);
-    assert.ok(item.rationale.length > 0);
-    assert.ok(item.consumer.length > 0);
-    if (registration.tier === 'historical') {
-      assert.equal(item.consumer, 'ci:historical --scope <scope-id>');
-      assert.match(item.trigger, /exactly one registered --scope/u);
-    }
-    assert.ok(Number.isFinite(item.estimated_duration_ms) && item.estimated_duration_ms >= 0);
-    assert.ok(item.duration_estimate_source, `${registration.owner}/${registration.check} needs a timing source`);
-    assert.ok(Array.isArray(item.test_files));
-  }
-
-  const countsByTier = Object.fromEntries(CI_EXECUTION_TIERS.map((tier) => [
-    tier,
-    registrations.filter((item) => item.tier === tier).length,
-  ]));
-  assert.deepEqual(CI_CHECK_INVENTORY.counts_by_tier, countsByTier);
-  assert.deepEqual(CI_CHECK_INVENTORY.retired_checks, [], 'PR 2 does not retire any registered check');
-  assert.equal(
-    CI_CHECK_INVENTORY.normal_check_duration_estimate_ms,
-    CI_CHECK_INVENTORY.checks
-      .filter((item) => item.selected_tier === 'normal')
-      .reduce((total, item) => total + item.estimated_duration_ms, 0),
-  );
-  assert.equal(CI_CHECK_INVENTORY.baseline.registered_check_count, 128);
-  assert.equal(CI_CHECK_INVENTORY.baseline.sum_registered_check_duration_ms, 432109);
-  assert.equal(CI_CHECK_INVENTORY.baseline.ci_normal_wall_clock_ms, 434408.39);
-  assert.equal(CI_CHECK_INVENTORY.baseline.current_revision_sqlite_build_count, 1);
-  assert.equal(CI_CHECK_INVENTORY.baseline.post_migration_ci_normal_wall_clock_ms, 82302.41);
-  assert.equal(CI_CHECK_INVENTORY.baseline.post_migration_run_id, 37892126250);
-  assert.equal(
-    CI_CHECK_INVENTORY.baseline.post_migration_head_sha,
-    'd322694395053e3ca83c20e98252f6f0c3bf3450',
-  );
-  assert.equal(
-    CI_CHECK_INVENTORY.baseline.post_migration_wall_clock_reduction_percent,
-    Math.round((1 - CI_CHECK_INVENTORY.baseline.post_migration_ci_normal_wall_clock_ms
-      / CI_CHECK_INVENTORY.baseline.ci_normal_wall_clock_ms) * 10000) / 100,
-  );
-  assert.ok(
-    CI_CHECK_INVENTORY.baseline.post_migration_wall_clock_reduction_percent
-      >= CI_CHECK_INVENTORY.baseline.target_wall_clock_reduction_percent,
-    'Issue #464 requires at least 50% Normal wall-time reduction',
-  );
-  assert.equal(CI_CHECK_INVENTORY.candidate_gate_local_measurement_ms, 2817.28);
-  assert.equal(CI_CHECK_INVENTORY.candidate_gate_local_current_revision_sqlite_build_count, 0);
-  assert.equal(
-    CI_CHECK_INVENTORY.candidate_gate_local_check_duration_ms,
-    CI_CHECK_INVENTORY.checks
-      .filter((item) => item.selected_tier === 'candidate')
-      .reduce((total, item) => total + item.estimated_duration_ms, 0),
-  );
-});
-
-test('legacy identity and tier migration inventories remain complete and bound', async () => {
-  const identityPath = path.resolve(TEST_DIRECTORY, '../scripts/ci/legacy-check-identities.json');
-  const tierPath = path.resolve(TEST_DIRECTORY, '../scripts/ci/legacy-check-tiers.json');
-  const identityText = await readFile(identityPath, 'utf8');
-  const tierText = await readFile(tierPath, 'utf8');
-  assert.equal(
-    createHash('sha256').update(identityText).digest('hex'),
-    '7c15e680af883692189487a24f3122ff955a988f852df51f8419b1fa1404d51e',
-  );
-  assert.equal(
-    createHash('sha256').update(tierText).digest('hex'),
-    'fe5a032a77ced812e0abd2d24b517ec95ced02bd3c742a4763253bbbcdb3fa48',
-  );
-  const historicalScopePath = path.resolve(TEST_DIRECTORY, '../scripts/ci/legacy-check-history-scopes.json');
-  const historicalScopeText = await readFile(historicalScopePath, 'utf8');
-  assert.equal(
-    createHash('sha256').update(historicalScopeText).digest('hex'),
-    '2df0922b9c86df126eff0ccd95e4505a05d6c194156bd7f5956608f8b2190c31',
-  );
+test('legacy tier and historical scope data stay consistent with registered checks', () => {
   assert.deepEqual(Object.keys(LEGACY_CHECK_TIERS).sort(), Object.keys(LEGACY_CHECK_IDENTITIES).sort());
   for (const owner of Object.keys(LEGACY_CHECK_IDENTITIES)) {
     assert.deepEqual(

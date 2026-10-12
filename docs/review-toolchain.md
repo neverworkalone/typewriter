@@ -241,14 +241,6 @@ all registered scopes as independent runs. This scheduled historical replay is
 not a PR merge gate; a passing scheduled/other-HEAD run never substitutes for
 the required exact-HEAD PR gate.
 
-The Issue #464 migration inventory is at
-[`docs/ci-check-inventory.md`](ci-check-inventory.md), with one machine-checked
-row per registered CI check in
-[`scripts/ci/check-inventory.json`](../scripts/ci/check-inventory.json). It records the
-owner, protected contract, measured duration, tier, trigger, migration reason,
-and consumer. No check is retired in PR 2.
-
-
 ### Systemic test coverage — do not merely patch the failing fixture
 
 When a defect is found in a shared validator/producer/builder/consumer, require
