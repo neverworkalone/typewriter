@@ -308,7 +308,47 @@ class MorphologyTests(unittest.TestCase):
             self.assertEqual(audit.call_count, 0)
             self.assertEqual(projection_builder.call_count, 1)
 
+            projection_path = selector.typewriter_cache_root() / first["analysis_cache"]["selection_projection_path"]
+            projection_directory = projection_path.parent
+            projection_hashes = []
+            projection_queries = []
             original_sha256_file = selector.sha256_file
+            original_open_readonly = selector.producer.open_readonly_database
+            def track_projection_hash(file_path):
+                if Path(file_path).resolve() == projection_path.resolve():
+                    projection_hashes.append(Path(file_path))
+                return original_sha256_file(file_path)
+            def trace_projection_open(file_path, *args, **kwargs):
+                db = original_open_readonly(file_path, *args, **kwargs)
+                if Path(file_path).resolve() == projection_path.resolve():
+                    db.set_trace_callback(projection_queries.append)
+                return db
+            with patch.object(selector, "sha256_file", side_effect=track_projection_hash), \
+                 patch.object(selector.producer, "open_readonly_database", side_effect=trace_projection_open):
+                fast_manifest = selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
+                self.assertEqual(fast_manifest["projection_database_stamp"], m.file_stamp(projection_path))
+                self.assertEqual(projection_hashes, [])
+                self.assertEqual(projection_queries, [])
+
+                # One-time validation upgrades a pre-stamp manifest; the next
+                # batch takes the stat-only path.
+                unstamped_manifest = dict(fast_manifest)
+                unstamped_manifest.pop("manifest_sha256")
+                unstamped_manifest.pop("projection_database_stamp")
+                selector.write_projection_manifest(
+                    selector.projection_manifest_path(projection_directory), unstamped_manifest,
+                )
+                migrated_manifest = selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
+                self.assertEqual(migrated_manifest["projection_database_stamp"], m.file_stamp(projection_path))
+                self.assertEqual(len(projection_hashes), 1)
+                self.assertTrue(any("PRAGMA quick_check" in query for query in projection_queries))
+                self.assertTrue(any("COUNT(" in query.upper() for query in projection_queries))
+                projection_hashes.clear()
+                projection_queries.clear()
+                selector.verify_projection(directory=projection_directory, source_snapshot=snapshot)
+                self.assertEqual(projection_hashes, [])
+                self.assertEqual(projection_queries, [])
+
             selector_path = Path(selector.__file__).resolve()
             auditor_path = Path(readonly.__file__).resolve()
             changed_selector_sha256 = "e" * 64

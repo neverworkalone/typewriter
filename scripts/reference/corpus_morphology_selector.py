@@ -406,7 +406,15 @@ def verify_projection(*, directory: Path, source_snapshot: str) -> dict:
     if manifest is None:
         return None
     projection_path = directory / "selection.sqlite"
-    if not projection_path.is_file() or sha256_file(projection_path) != manifest.get("projection_database_sha256"):
+    if not projection_path.is_file():
+        raise RuntimeError("Morphology selection projection database digest mismatch")
+    current_stamp = morphology.file_stamp(projection_path)
+    if manifest.get("projection_database_stamp") == current_stamp:
+        # The builder performed the full integrity and count checks before
+        # publishing this immutable local projection. A matching file stamp
+        # lets subsequent batches reuse it without rescanning its contents.
+        return manifest
+    if sha256_file(projection_path) != manifest.get("projection_database_sha256"):
         raise RuntimeError("Morphology selection projection database digest mismatch")
     with closing(producer.open_readonly_database(projection_path)) as db:
         integrity = db.execute("PRAGMA quick_check").fetchone()
@@ -420,7 +428,15 @@ def verify_projection(*, directory: Path, source_snapshot: str) -> dict:
         }
     if actual_counts != manifest.get("row_counts"):
         raise RuntimeError("Morphology selection projection row counts differ from its manifest")
-    return manifest
+    # Older manifests, or a metadata-only file replacement, incur the full
+    # proof once. Persist the current stamp after the original digest, SQLite
+    # integrity and row-count evidence all pass.
+    updated_manifest = dict(manifest)
+    updated_manifest.pop("manifest_sha256", None)
+    updated_manifest["projection_database_stamp"] = current_stamp
+    write_projection_manifest(projection_manifest_path(directory), updated_manifest)
+    updated_manifest["manifest_sha256"] = digest(updated_manifest)
+    return updated_manifest
 
 
 def projection_for_source(*, store_path: Path, source_proof: dict, root: Path) -> tuple[Path, dict]:
@@ -445,6 +461,7 @@ def projection_for_source(*, store_path: Path, source_proof: dict, root: Path) -
             "store_evidence": source_proof,
             "projection_database_path": cache_relative_path(projection_path, "Morphology selection projection"),
             "projection_database_sha256": sha256_file(projection_path),
+            "projection_database_stamp": morphology.file_stamp(projection_path),
             "row_counts": row_counts,
         }
         write_projection_manifest(projection_manifest_path(directory), manifest)
