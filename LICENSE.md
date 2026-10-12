@@ -29,12 +29,14 @@ separate terms. See [`DATA-LICENSE.md`](DATA-LICENSE.md) and [`BRAND.md`](BRAND.
 
 ## Dictionary data
 
-CC BY 4.0 is the selected license for data records whose redistribution rights
-have been individually cleared. The current canonical dataset has unresolved
-provenance and is not covered by a redistribution grant until its blockers are
-resolved. This boundary also applies to `data/inventory/`, `data/batches/`,
-`data/validation/`, generated SQLite databases, and any extension, web, or other
-artifact that reproduces uncleared lexical content. See [`DATA-LICENSE.md`](DATA-LICENSE.md).
+CC BY 4.0 is the selected license for Typewriter-authored dictionary data to the
+extent Typewriter owns or controls the rights being licensed. The owner's release
+decision permits the independently authored current canonical dataset and its
+generated SQLite, extension, and web products to be distributed under that
+scope; an individual clearance map for every record is not required. Third-party
+material and any specifically demonstrated infringement are excluded and must
+retain their own terms or be removed/cleared as a targeted item. See
+[`DATA-LICENSE.md`](DATA-LICENSE.md).
 
 ## Brand assets
 

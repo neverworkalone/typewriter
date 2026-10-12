@@ -96,3 +96,14 @@ boundary now form a reproducible bounded workflow. Writer outcomes and human
 editorial cost remain unmeasured, so this pilot does not support scaling to a
 larger corpus-derived batch yet. The canonical-mutating PR must remain unmerged
 until the owner confirms the result-publication gate.
+
+**Current-status note (2026-10-12):** `PENDING_OWNER_CONFIRMATION` and the merge
+instruction above record the pilot's historical status and are not rewritten.
+The owner has since confirmed NIKL approval for the 2026-09-27 result-publication
+application targeting the existing Chrome Web Store listing. That confirmation
+and the owner's release decision permit independently authored Typewriter
+dictionary output under the project data license. The policy update does not
+change this pilot's editorial measurements or historical outcomes. Raw corpus
+text and specifically identified copied or restricted third-party content remain
+excluded; current releases follow the ordinary exact-revision and package checks
+in `DATA-LICENSE.md` and `docs/publication-boundary.md`.

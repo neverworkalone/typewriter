@@ -205,9 +205,13 @@ staged artifacts. It prints the package path,
 SHA-256, both product versions, dictionary/schema versions, and the source revision.
 Keep that ZIP and digest together when handing the validated candidate to M8.
 The repository privacy disclosure describes the current extension's local
-settings storage and on-device dictionary lookup. This flow does not lift the corpus
-redistribution hold in `DATA-LICENSE.md`; the generated candidate remains held
-until rights clearance and the applicable publication gate approve it.
+settings storage and on-device dictionary lookup. The owner-approved release
+scope in `DATA-LICENSE.md` permits Typewriter-authored dictionary output to ship
+after the exact-revision, deterministic-build, package-content, license/notice,
+and applicable Store or Pages checks pass. Keep raw corpus material and any
+specifically identified copied or restricted third-party content out of the
+package. This command verifies engineering and package properties; it does not
+replace those content restrictions or the applicable Store/Pages process.
 
 For Chrome integration, run the following after packaging. The runner validates the
 generated package and loads both the working `dist/` and a temporary extraction of
