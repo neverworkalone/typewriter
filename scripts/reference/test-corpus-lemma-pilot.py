@@ -317,6 +317,21 @@ class CorpusLemmaPilotTests(unittest.TestCase):
                     "rule_id": None,
                 }],
             )
+            staging = sqlite3.connect(staging_path)
+            coverage_plan = [
+                str(row[-1])
+                for row in staging.execute(
+                    "EXPLAIN QUERY PLAN UPDATE candidates "
+                    "SET covered = ?, coverage_status = ?, coverage_matches_json = ? "
+                    "WHERE normalized_lemma = ?",
+                    (0, "uncovered", "[]", "probe"),
+                )
+            ]
+            staging.close()
+            self.assertTrue(
+                any("idx_candidates_normalized_lemma" in detail for detail in coverage_plan),
+                coverage_plan,
+            )
             self.assertEqual(candidates["물결"]["coverage_status"], "search_form_collision")
             self.assertEqual(candidates["물결"]["decision_state"], "held")
             self.assertEqual(
@@ -372,6 +387,80 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             self.assertNotIn("바람", excluded_candidates)
             self.assertIn("바라다", excluded_candidates)
             self.assertEqual(excluded["selection"]["excluded_candidate_lemma_count"], 1)
+
+    def test_coverage_updates_use_normalized_lemma_index_for_temp_candidates(self):
+        with sqlite3.connect(":memory:") as staging:
+            staging.executescript(
+                """
+                CREATE TABLE main.candidates (
+                    lemma TEXT NOT NULL,
+                    pos TEXT NOT NULL,
+                    normalized_lemma TEXT NOT NULL,
+                    covered INTEGER NOT NULL,
+                    coverage_status TEXT NOT NULL,
+                    coverage_matches_json TEXT NOT NULL,
+                    source_count INTEGER NOT NULL,
+                    document_count INTEGER NOT NULL,
+                    token_count INTEGER NOT NULL
+                );
+                CREATE INDEX main.idx_candidates_coverage_rank
+                    ON candidates(covered, normalized_lemma, source_count, document_count, token_count);
+                INSERT INTO main.candidates VALUES
+                    ('바람', 'noun', '바람', 0, 'uncovered', '[]', 1, 1, 2),
+                    ('바람', 'adjective', '바람', 0, 'uncovered', '[]', 1, 1, 1),
+                    ('물결', 'noun', '물결', 0, 'uncovered', '[]', 1, 1, 1),
+                    ('기록', 'noun', '기록', 0, 'uncovered', '[]', 1, 1, 1);
+                CREATE TEMP TABLE candidates AS SELECT * FROM main.candidates;
+                CREATE INDEX temp.idx_candidates_coverage_rank
+                    ON candidates(covered, normalized_lemma, source_count, document_count, token_count);
+                """
+            )
+
+            pilot.apply_product_coverage(
+                staging,
+                {
+                    "바람": [{"match_kind": "canonical_lemma"}],
+                    "물결": [{"match_kind": "curated_search_form"}],
+                    "기록": [{"match_kind": "generated_surface_form"}],
+                },
+            )
+
+            temp_indexes = {
+                str(row[0])
+                for row in staging.execute(
+                    "SELECT name FROM sqlite_temp_master WHERE type = 'index'"
+                )
+            }
+            self.assertIn("idx_candidates_normalized_lemma", temp_indexes)
+            coverage_plan = [
+                str(row[-1])
+                for row in staging.execute(
+                    "EXPLAIN QUERY PLAN UPDATE candidates "
+                    "SET covered = ?, coverage_status = ?, coverage_matches_json = ? "
+                    "WHERE normalized_lemma = ?",
+                    (0, "uncovered", "[]", "probe"),
+                )
+            ]
+            self.assertTrue(
+                any("SEARCH candidates USING INDEX idx_candidates_normalized_lemma" in detail
+                    for detail in coverage_plan),
+                coverage_plan,
+            )
+            coverage = {
+                (lemma, pos): (covered, coverage_status)
+                for lemma, pos, covered, coverage_status in staging.execute(
+                    "SELECT lemma, pos, covered, coverage_status FROM candidates"
+                )
+            }
+            self.assertEqual(
+                coverage,
+                {
+                    ("기록", "noun"): (0, "generated_surface_collision"),
+                    ("바람", "adjective"): (1, "exact_canonical_lemma"),
+                    ("바람", "noun"): (1, "exact_canonical_lemma"),
+                    ("물결", "noun"): (0, "search_form_collision"),
+                },
+            )
 
     def _multi_pos_fixture(self, root):
         index_path = root / "index.sqlite"

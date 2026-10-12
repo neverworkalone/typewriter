@@ -266,12 +266,6 @@ def select_from_cached_analysis(
             )
         }
         product_metadata = dict(product.execute("SELECT key, value FROM metadata").fetchall())
-        # Coverage updates are keyed by normalized_lemma; the extractor's rank index
-        # starts with `covered` and cannot serve that lookup without this index.
-        staging.execute(
-            "CREATE INDEX IF NOT EXISTS idx_candidates_normalized_lemma "
-            "ON candidates(normalized_lemma)"
-        )
         producer.apply_product_coverage(staging, product_matches)
         cached_selection_database = CachedAnalysisSelectionDatabase(staging)
         candidate_rows = producer.select_candidate_rows(
