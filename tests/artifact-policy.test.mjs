@@ -911,7 +911,7 @@ test('artifact policy validates sharded decision source rows and keeps shards bo
   );
   try {
     await mkdir(path.dirname(filePath), { recursive: true });
-    const written = await writeShardedJson(source, filePath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+    const written = await writeShardedJson(source, filePath, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
     const shards = written.filter((file) => file.includes('.shards/')).map((file) => `data/validation/${file}`);
     const tracked = [relativePath, ...shards];
     await assert.doesNotReject(validateArtifactPolicy({ repositoryDirectory, tracked }));

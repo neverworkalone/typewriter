@@ -1139,7 +1139,7 @@ export async function buildIssue223CorpusBatch({
   semanticHistory.source.canonical_records_sha256 = canonicalDigest;
   semanticHistory.authored_review.source.canonical_records_sha256 = canonicalDigest;
   semanticHistory.authored_review_sha256 = sha256Json(semanticHistory.authored_review);
-  await writeShardedJson(semanticHistory, semanticHistoryPath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+  await writeShardedJson(semanticHistory, semanticHistoryPath, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
 
   return {
     batch_id: batchId,

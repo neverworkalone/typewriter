@@ -62,47 +62,72 @@ function itemBytes(item) {
   return Buffer.byteLength(JSON.stringify(item, null, 2).replaceAll('\n', '\n  ')) + 4;
 }
 
-function partition(rows, previous) {
-  const shards = [];
+// Rows keep the shard they already live in, identified by `keyOf`; a new row joins the shard of the row before it
+// (the first shard if none), and only rows appended after the final shard extend it or open a new one. Shard order is
+// never reversed, so concatenation always restores the logical order.
+function partition(rows, previousRows, previousShards, keyOf) {
+  const shardOf = new Map();
   let cursor = 0;
-  for (const { count } of previous) {
-    if (cursor >= rows.length) break;
-    const take = Math.min(count, rows.length - cursor);
-    shards.push(rows.slice(cursor, cursor + take));
-    cursor += take;
+  previousShards.forEach(({ count }, index) => {
+    for (const row of previousRows.slice(cursor, cursor + count)) shardOf.set(keyOf(row), index);
+    cursor += count;
+  });
+  const lastPrevious = previousShards.length - 1;
+  const buckets = [];
+  const sizes = [];
+  let current = -1;
+  const place = (row, index) => {
+    while (buckets.length <= index) { buckets.push([]); sizes.push(0); }
+    buckets[index].push(row);
+    sizes[index] += itemBytes(row);
+    current = index;
+  };
+  const pending = [];
+  for (const row of rows) {
+    const known = shardOf.get(keyOf(row));
+    if (known === undefined) {
+      if (current < 0) { pending.push(row); continue; }
+      const bytes = itemBytes(row);
+      const roll = current >= lastPrevious && buckets[current].length
+        && (sizes[current] >= TARGET_SHARD_BYTES || sizes[current] + bytes > SOFT_SHARD_BYTES);
+      place(row, roll ? current + 1 : current);
+    } else {
+      place(row, Math.max(known, current));
+      if (pending.length) { buckets[current].unshift(...pending.splice(0)); }
+    }
   }
-  let size = shards.length ? shards.at(-1).reduce((sum, row) => sum + itemBytes(row), 0) : 0;
-  for (; cursor < rows.length; cursor += 1) {
-    const bytes = itemBytes(rows[cursor]);
-    if (!shards.length || (shards.at(-1).length && (size >= TARGET_SHARD_BYTES || size + bytes > SOFT_SHARD_BYTES))) { shards.push([]); size = 0; }
-    shards.at(-1).push(rows[cursor]);
-    size += bytes;
-  }
-  return shards;
+  for (const row of pending) place(row, Math.max(current, 0));
+  return buckets;
 }
 
 /**
- * Plan the files for a logical object. `arrayPaths` lists the key paths (for example
- * `['authored_review', 'records']`) to shard; `name` prefixes their shard files. Rows keep their
- * existing shard (counts come from `previousManifest`), only new rows extend the last shard or add one.
+ * Plan the files for a logical object. Each `arrays` entry is `{ path, key }`: the key path to shard (for example
+ * `['authored_review', 'records']`) and `key(row)`, a stable row identity. `previous` is the logical object and manifest
+ * currently stored (if any); rows keep their existing shard and only new rows extend the last shard or add one.
  * Returns `{ manifestText, shards: Map<file, text> }` with files relative to the manifest directory.
  */
-export function planShardedJson(logical, manifestPath, { arrayPaths, previousManifest } = {}) {
+export function planShardedJson(logical, manifestPath, { arrays, previous } = {}) {
   const manifest = structuredClone(logical);
   const shards = new Map();
   const directory = path.basename(shardDirectory(manifestPath));
-  for (const keyPath of arrayPaths) {
-    const parent = keyPath.slice(0, -1).reduce((node, key) => node[key], manifest);
-    const key = keyPath.at(-1);
-    const rows = parent[key];
-    if (!Array.isArray(rows)) throw new Error(`${keyPath.join('.')} is not an array`);
-    const previous = keyPath.reduce((node, key) => node?.[key], previousManifest)?.[MARKER] ?? [];
+  for (const { path: keyPath, key } of arrays) {
+    const parent = keyPath.slice(0, -1).reduce((node, name) => node[name], manifest);
     const name = keyPath.join('-').replaceAll('_', '-');
-    parent[key] = { [MARKER]: partition(rows, previous).map((part, index) => {
-      const file = `${directory}/${name}-${String(index + 1).padStart(3, '0')}.json`;
+    const rows = parent[keyPath.at(-1)];
+    if (!Array.isArray(rows)) throw new Error(`${keyPath.join('.')} is not an array`);
+    const previousShards = keyPath.reduce((node, part) => node?.[part], previous?.manifest)?.[MARKER] ?? [];
+    const previousRows = keyPath.reduce((node, part) => node?.[part], previous?.logical) ?? [];
+    const files = previousShards.map(({ file }) => file);
+    const numberOf = (file) => Number(/-(\d+)\.json$/u.exec(file)?.[1] ?? 0);
+    let next = Math.max(0, ...files.map(numberOf)) + 1;
+    const entries = [];
+    partition(rows, previousRows, previousShards, key).forEach((part, index) => {
+      if (!part.length) return;
+      const file = files[index] ?? `${directory}/${name}-${String(next++).padStart(3, '0')}.json`;
       shards.set(file, serialize(part));
-      return { file, count: part.length };
-    }) };
+      entries.push({ file, count: part.length });
+    });
+    parent[keyPath.at(-1)] = { [MARKER]: entries };
   }
   return { manifestText: serialize(manifest), shards };
 }
@@ -111,11 +136,12 @@ async function readOptionalText(file) {
   try { return await readFile(file, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return undefined; throw error; }
 }
 
-/** Plan against the manifest currently on disk and keep only the files whose text differs. */
-export async function planShardedJsonChanges(logical, manifestPath, { arrayPaths }) {
+/** Plan against the stored files and keep only the manifest and shards whose text differs. */
+export async function planShardedJsonChanges(logical, manifestPath, { arrays }) {
   const existingText = await readOptionalText(manifestPath);
   const previousManifest = existingText === undefined ? undefined : JSON.parse(existingText);
-  const { manifestText, shards } = planShardedJson(logical, manifestPath, { arrayPaths, previousManifest });
+  const previous = previousManifest && { manifest: previousManifest, logical: await readShardedJson(manifestPath) };
+  const { manifestText, shards } = planShardedJson(logical, manifestPath, { arrays, previous });
   const changed = new Map();
   for (const [file, text] of shards) {
     if (await readOptionalText(path.join(path.dirname(manifestPath), file)) !== text) changed.set(file, text);
@@ -127,8 +153,8 @@ export async function planShardedJsonChanges(logical, manifestPath, { arrayPaths
 }
 
 /** Write only changed shards (and the manifest if it changed). Returns the changed paths relative to the manifest directory. */
-export async function writeShardedJson(logical, manifestPath, { arrayPaths }) {
-  const { changed, stale } = await planShardedJsonChanges(logical, manifestPath, { arrayPaths });
+export async function writeShardedJson(logical, manifestPath, { arrays }) {
+  const { changed, stale } = await planShardedJsonChanges(logical, manifestPath, { arrays });
   const baseDirectory = path.dirname(manifestPath);
   for (const [file, text] of changed) {
     await mkdir(path.dirname(path.join(baseDirectory, file)), { recursive: true });

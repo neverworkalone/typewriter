@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readShardedJson, writeShardedJson } from '../lib/sharded-json.mjs';
-import { SEMANTIC_DECISION_SOURCE_ARRAYS } from '../lib/sharded-json-sources.mjs';
+import { readShardedJson } from '../lib/sharded-json.mjs';
+import { planDecisionSourceFiles } from '../lib/sharded-json-sources.mjs';
 import {
   mkdir,
   mkdtemp,
@@ -994,9 +994,9 @@ export async function applyCorrections({
         : path.join(canonicalDirectory, relativePath);
       promotionFiles.set(targetPath, await readFile(temporaryPath));
     }
-    const shardedDecisionSource = (await readFile(decisionSourcePath, 'utf8')).includes('"$shards"');
-    const decisionSourceBytes = await readFile(temporaryDecisionSourcePath);
-    if (!shardedDecisionSource) promotionFiles.set(decisionSourcePath, decisionSourceBytes);
+    for (const file of await planDecisionSourceFiles(await readFile(temporaryDecisionSourcePath), decisionSourcePath)) {
+      promotionFiles.set(file.path, file.bytes);
+    }
     promotionFiles.set(boundaryDecisionsPath, await readFile(temporaryBoundaryDecisionsPath));
     if (reviewOutputPath) {
       promotionFiles.set(reviewOutputPath, await readFile(temporaryReviewOutputPath));
@@ -1008,9 +1008,6 @@ export async function applyCorrections({
       promotionFiles.set(auditOutputPath, semanticAuditBytes);
     }
     await promoteFiles(promotionFiles);
-    if (shardedDecisionSource) {
-      await writeShardedJson(JSON.parse(decisionSourceBytes.toString('utf8')), decisionSourcePath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
-    }
 
     return {
       decisionSourcePath,

@@ -526,7 +526,7 @@ export async function buildStage3SemanticAuthority({
   source.factory_admissions = events;
   source.authored_review_sha256 = sha256Json(source.authored_review);
   // Only the manifest and the shards whose rows changed are written back.
-  const { changed } = await planShardedJsonChanges(source, sourcePath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+  const { changed } = await planShardedJsonChanges(source, sourcePath, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
   const sourceFiles = [...changed].map(([file, text]) => ({ path: path.posix.join(path.posix.dirname(AUTHORITY_PATH), file), text }));
   plan.reviewManifest.admission.semantic_authority = {
     path: AUTHORITY_PATH,

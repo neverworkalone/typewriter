@@ -433,7 +433,7 @@ test('a corrected record amended by relations and senses in either order passes 
   const admit = async (batch, decisionRow, before, ledger) => {
     const scratch = await mkdtemp(path.join(os.tmpdir(), 'mixed-history-'));
     await mkdir(path.join(scratch, 'data/validation'), { recursive: true });
-    await writeShardedJson(ledger, path.join(scratch, 'data/validation/canonical-semantic-decision-source.json'), { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+    await writeShardedJson(ledger, path.join(scratch, 'data/validation/canonical-semantic-decision-source.json'), { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
     for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.resolve(dir), path.join(scratch, dir));
     try {
       const plan = planStage3Admission({

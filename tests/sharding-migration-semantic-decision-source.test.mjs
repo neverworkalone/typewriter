@@ -23,11 +23,11 @@ test('the sharded canonical semantic decision source restores exactly the pre-sp
 
 test('rewriting an unchanged logical source touches no shard, and appending touches only the last shard and manifest', async () => {
   const logical = await readShardedJson(SEMANTIC_DECISION_SOURCE_PATH);
-  const unchanged = await planShardedJsonChanges(logical, SEMANTIC_DECISION_SOURCE_PATH, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+  const unchanged = await planShardedJsonChanges(logical, SEMANTIC_DECISION_SOURCE_PATH, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
   assert.equal(unchanged.changed.size, 0);
 
   logical.factory_admissions.push({ batch_id: 'R999999', attempt: 1, entries: [], changes: [] });
-  const appended = await planShardedJsonChanges(logical, SEMANTIC_DECISION_SOURCE_PATH, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+  const appended = await planShardedJsonChanges(logical, SEMANTIC_DECISION_SOURCE_PATH, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
   assert.equal(appended.changed.size, 2);
   assert.ok([...appended.changed.keys()].some((file) => /factory-admissions-\d+\.json$/u.test(file)));
   assert.ok(appended.changed.has('canonical-semantic-decision-source.json'));

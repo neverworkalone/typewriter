@@ -19,7 +19,7 @@ export async function compactDecisionSourceFile(
   const bytes = sourceBytes ?? await readShardedJsonLogicalBytes(inputPath);
   const source = JSON.parse(bytes.toString('utf8'));
   const compacted = compactSemanticDecisionSource(source);
-  await writeShardedJson(compacted, inputPath, { arrayPaths: SEMANTIC_DECISION_SOURCE_ARRAYS });
+  await writeShardedJson(compacted, inputPath, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
   return {
     inputPath,
     beforeBytes: bytes.byteLength,
