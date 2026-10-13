@@ -7,6 +7,20 @@
         "tests/factory-ensemble.test.mjs"
       ],
       "protected_contract": "Stage 1 production, refill selector arguments, task-bound recovery and candidate publication"
+    },
+    {
+      "path": "scripts/factory/refill.mjs",
+      "normal_tests": [
+        "tests/factory-ensemble.test.mjs"
+      ],
+      "protected_contract": "Stage 1 refill profiling, provider reuse, and atomic checkpoint persistence"
+    },
+    {
+      "path": "scripts/reference/canonical-dictionary-cache.mjs",
+      "normal_tests": [
+        "tests/factory-ensemble.test.mjs"
+      ],
+      "protected_contract": "Stage 1 source-bound canonical dictionary cache identity and immutable SQLite reuse"
     }
   ]
 }

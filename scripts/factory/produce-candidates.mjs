@@ -117,6 +117,7 @@ const STAGE1_SOURCE_PATHS = Object.freeze([
   'scripts/reference/corpus_morphology_readonly.py',
   'scripts/reference/corpus_morphology_selector.py',
   'scripts/reference/run-corpus-lemma-pilot.mjs',
+  'scripts/reference/canonical-dictionary-cache.mjs',
   'scripts/reference/select-corpus-candidates-from-analysis.py',
   'scripts/reference/short-query-counts.mjs',
   'scripts/reference/short-query-postings.mjs',
@@ -483,12 +484,16 @@ export async function runStage1(argv, {
         const morphologySource = evidence.analysis_cache?.mode === 'verified-full-corpus-morphology-v1'
           ? evidence.analysis_cache
           : null;
+        const canonicalDictionaryCacheDirectory = isWithinDirectory(cachePaths.runs, evidencePath)
+          ? path.dirname(evidencePath)
+          : taskRunDirectory;
         const sourceArguments = morphologySource
           ? ['--morphology-store', morphologySource.source_store_path,
             '--morphology-source-snapshot', morphologySource.source_snapshot_sha256]
           : ['--reuse-analysis-from', path.dirname(evidencePath)];
         const command = [path.join(root, 'scripts/reference/run-corpus-lemma-pilot.mjs'),
           '--candidate-limit', String(options.maxCandidates), '--include-canonical-lemmas',
+          '--canonical-dictionary-cache-directory', path.relative(cachePaths.root, canonicalDictionaryCacheDirectory).split(path.sep).join('/'),
           ...sourceArguments, '--output-directory', output,
           '--batch-id', refillSelectorBatchId(options.taskId), '--exclude-lemma-source', exclusionPath,
           ...(options.python ? ['--python', options.python] : [])];

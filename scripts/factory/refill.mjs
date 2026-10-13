@@ -5,9 +5,14 @@ import { produceCandidateBatch, Stage1Error } from './stage1.mjs';
 import { digest, jsonText } from './permanent-trash.mjs';
 
 async function save(file, value) {
+  const started = performance.now();
   await mkdir(path.dirname(file), { recursive: true });
-  await writeFile(`${file}.tmp`, jsonText(value), 'utf8');
+  const serialized = jsonText(value);
+  const serializedAt = performance.now();
+  await writeFile(`${file}.tmp`, serialized, 'utf8');
   await rename(`${file}.tmp`, file);
+  return { bytes: Buffer.byteLength(serialized), serialization_ms: serializedAt - started,
+    write_ms: performance.now() - serializedAt, wall_ms: performance.now() - started };
 }
 const snapshotOf = (evidence) => `${evidence.index?.input_manifest_sha256}:${evidence.index?.logical_rows_sha256}`;
 const morphologySnapshotOf = (evidence) => evidence.analysis_cache?.mode === 'verified-full-corpus-morphology-v1'
@@ -23,6 +28,16 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
     revision: args.producerRevision, policy: args.policy, providers: args.providers.map(providerDescriptor),
     contextProposals: args.contextProposals, contextReplay: args.contextReplay, contextAgent: args.contextAgent }));
   let state = { contract: 'lexical-factory-refill-checkpoint-v1', binding, pages: [], providers: {}, exhausted: false };
+  const profile = { checkpoint_writes: 0, checkpoint_bytes: 0, checkpoint_serialization_ms: 0, checkpoint_write_ms: 0,
+    provider_ms: Object.fromEntries(args.providers.map(({ id }) => [id, 0])) };
+  const saveCheckpoint = async () => {
+    const timing = await save(checkpointPath, state);
+    profile.checkpoint_writes += 1;
+    profile.checkpoint_bytes += timing.bytes;
+    profile.checkpoint_serialization_ms += timing.serialization_ms;
+    profile.checkpoint_write_ms += timing.write_ms;
+    return timing;
+  };
   try {
     const previous = JSON.parse(await readFile(checkpointPath, 'utf8'));
     if (previous.binding !== binding || previous.contract !== state.contract) throw new Stage1Error(['refill checkpoint input binding differs; choose a new task or restore its original inputs']);
@@ -48,7 +63,9 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
     const cached = state.providers[provider.id] ??= { metadata: null, results: {} };
     const missing = requests.filter((request) => !cached.results[request.text]);
     if (missing.length) {
+      const providerStarted = performance.now();
       const response = await provider.analyze(missing);
+      profile.provider_ms[provider.id] += performance.now() - providerStarted;
       provider.assertMetadata(response?.metadata);
       if (cached.metadata && JSON.stringify(cached.metadata) !== JSON.stringify(response.metadata)) throw new Stage1Error(['analyzer metadata changed during refill']);
       const ids = new Set(missing.map((request) => request.id));
@@ -57,20 +74,30 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
         || response.results.some((row) => !ids.has(row.id) || row.status === 'error')) throw new Stage1Error([`provider ${provider.id} execution failed; refusing partial refill`]);
       cached.metadata = response.metadata;
       for (const result of response.results) cached.results[result.id] = result;
-      await save(checkpointPath, state);
+      await saveCheckpoint();
     }
     return { metadata: cached.metadata, results: requests.map((request) => ({ ...cached.results[request.text], id: request.id })) };
   } }));
   if (!state.pages.length) {
     state.pages.push(initialEvidence);
     append(initialEvidence);
-    await save(checkpointPath, state);
+    await saveCheckpoint();
   }
   while (true) {
     let produced = null;
+    const checkpointBefore = { writes: profile.checkpoint_writes, bytes: profile.checkpoint_bytes,
+      serialization_ms: profile.checkpoint_serialization_ms, write_ms: profile.checkpoint_write_ms };
+    const producerStarted = performance.now();
     if (combined.candidates.length) produced = await produceCandidateBatch({ ...args, evidence: combined, providers, refill: true });
+    const producerWallMs = performance.now() - producerStarted;
     const count = produced?.rows.length ?? 0;
-    progress({ pages: state.pages.length, candidates: count, visited_proposals: visited.size });
+    progress({ pages: state.pages.length, candidates: count, visited_proposals: visited.size,
+      profile: { producer_pass_wall_ms: Math.round(producerWallMs * 1000) / 1000,
+        cumulative_provider_wall_ms: Object.fromEntries(Object.entries(profile.provider_ms).map(([id, ms]) => [id, Math.round(ms * 1000) / 1000])),
+        checkpoint_writes: profile.checkpoint_writes - checkpointBefore.writes,
+        checkpoint_bytes: profile.checkpoint_bytes - checkpointBefore.bytes,
+        checkpoint_serialization_ms: Math.round((profile.checkpoint_serialization_ms - checkpointBefore.serialization_ms) * 1000) / 1000,
+        checkpoint_write_ms: Math.round((profile.checkpoint_write_ms - checkpointBefore.write_ms) * 1000) / 1000 } });
     if (count >= args.maxCandidates || state.exhausted) {
       if (!count && !combined.candidates.length) {
         await rm(checkpointPath, { force: true });
@@ -85,7 +112,9 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
           ...(state.pages.at(-1).orchestration?.candidate_selection_sha256 ? { selection_sha256: state.pages.at(-1).orchestration.candidate_selection_sha256 } : {}) } } : {}) };
       return produced;
     }
+    const selectorStarted = performance.now();
     const page = await selectPage({ exclusions: excluded, page: state.pages.length, binding });
+    const selectorWallMs = performance.now() - selectorStarted;
     if (!page || !Array.isArray(page.candidates) || !page.selection?.exhaustion
       || page.selection.exhaustion.contract !== 'corpus-selector-exhaustion-v1'
       || !Number.isSafeInteger(page.selection.exhaustion.remaining_lemma_count)
@@ -96,6 +125,10 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
     state.pages.push(page);
     state.exhausted = page.selection.exhaustion.remaining_lemma_count === 0;
     state.exhaustion = page.selection.exhaustion;
-    await save(checkpointPath, state);
+    const timing = await saveCheckpoint();
+    progress({ phase: 'refill-page-select', pages: state.pages.length - 1,
+      selector_wall_ms: Math.round(selectorWallMs * 1000) / 1000,
+      checkpoint_write: { bytes: timing.bytes, serialization_ms: Math.round(timing.serialization_ms * 1000) / 1000,
+        wall_ms: Math.round(timing.wall_ms * 1000) / 1000 } });
   }
 }
