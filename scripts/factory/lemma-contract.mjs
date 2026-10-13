@@ -252,6 +252,10 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
   }
   if (compact && manifest.status === 'exhausted' && (manifest.candidate_count !== 0 || manifest.observation_count !== 0
     || manifest.production?.exhausted !== true)) errors.push('exhausted Stage 1 results require zero candidates/observations and proven source exhaustion');
+  if (compact && manifest.status === 'exhausted'
+    && ![manifest.archive?.unresolved_count, manifest.archive?.excluded_count].some((count) => Number.isSafeInteger(count) && count > 0)) {
+    errors.push('exhausted Stage 1 results must preserve a source observation in the unresolved archive or excluded ledger');
+  }
   const selection = manifest.selection;
   if (!isPlainObject(selection) || Object.keys(selection).sort().join() !== 'bound,deferred_lemma_count,eligible_lemma_count'
     || !Number.isInteger(selection.bound) || selection.bound < 1

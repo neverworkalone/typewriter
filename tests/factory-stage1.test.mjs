@@ -286,6 +286,29 @@ test('oversized proposals without bounded hits are skipped from token evidence a
   await rm(root, { recursive: true, force: true });
 });
 
+test('unrepresentable proposals followed by source exhaustion publish neither an empty batch nor trash', async (t) => {
+  const longProposal = '가'.repeat(85);
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-unrepresentable-exhausted-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cache = await taskCacheFor(root);
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+  const initial = evidenceDoc([cand(longProposal, 'noun', [])]);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(initial));
+
+  await assert.rejects(() => runStage1([
+    '--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none',
+    '--policy', 'provider-resolution-v1', '--max-candidates', '1',
+  ], {
+    root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {},
+    selectPage: async () => evidenceDoc([], {
+      selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } },
+    }),
+  }), /source exhausted with no new source observations; no batch published/u);
+
+  assert.deepEqual((await readdir(path.join(root, 'data'))).sort(), ['canonical']);
+});
+
 test('non-token corpus surfaces are counted and omitted; candidates with no valid hit keep a no_evidence hold', async () => {
   const invalidSurfaces = ["걸음'을", "낯선'", '걸음 을 걷다', '🙂', '1\uFE0F\u20E3', '걸음1\uFE0F\u20E3', '1.', '걸음🙂', '걸음\u0007', '가'.repeat(25), '걸음\u0301'];
   const { manifest, rows, candidatesText, summary } = await produce(evidenceDoc([
