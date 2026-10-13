@@ -99,29 +99,45 @@ imported**. Identified migration records its byte digest and aggregate row count
 imports zero rows, and performs one source-bound reanalysis of residue 0 in the
 new store. Restart reuses completed checkpoints, including those of slice 0.
 
-## Read-only Stage 1 consumer (#566)
+## Stage 1 sealed-store consumer (#581)
 
-New Stage 1 selections use the completed morphology store by default. Before the
-first page, the selector verifies the existing seal and runs the complete audit
-against the current index, permission record, pinned runtime, analyzer/schema
-identity, all 20 publication checksums and exact corpus totals. This consumer
-does not take the writer lock, repair a journal, or renew the store seal. The
-Run `python scripts/reference/corpus_morphology_readonly.py` for the same check
-without selecting candidates.
+The ordinary Stage 1 path (`run-corpus-lemma-pilot.mjs` through
+`corpus_morphology_selector.py::select_from_morphology_store`) reuses the
+completed morphology store. Before selection it checks the store seal and
+recorded identity, today's machine-readable permission fields, the current
+index path and stamp, journal/WAL state, pinned runtime, analyzer and schema
+identity, the complete-corpus totals, and all 20 publication records. It
+validates the store manifest against its recorded identity; it does not run a
+full read-only source/store audit before every first page or refill. It does
+not take the writer lock, repair a journal, or renew the store seal.
+
+The sealed store's historical permission-record digest remains provenance and
+is not rewritten during selection. The selector separately validates current
+permission fields through a temporary current identity. A prose-only change to
+the permission document does not require a full audit, digest rebind, or store
+rebuild when permission remains granted and the live source/store bindings
+still match. Revoked permission, changed or corrupt source/store/index state,
+runtime/analyzer/schema mismatch, incomplete publication evidence, or a
+different expected source snapshot still fails closed.
 
 The selector stores only its bounded candidate projection under
-`~/.cache/typewriter/runs/written-corpus-morphology-selection-v1/<source-digest>/<auditor-sha256>/`:
+`~/.cache/typewriter/runs/written-corpus-morphology-selection-v1/<source-snapshot>/morphology-selection-v1/`:
 eligible lemma/POS counts and the top five observed surface and eojeol forms.
-The auditor SHA is a verifier version separate from the morphology source
-snapshot. The projection manifest binds the complete audit evidence, source
-snapshot, auditor identity and projection code identity. An auditor change
-selects a new cache directory and requires a fresh full audit; unchanged
-auditor bytes let refill pages reuse the proof after rechecking the store seal
-and current source identity. It reads the candidate aggregate as SQLite
-read-only, applies current canonical coverage and reviewed exclusions in
-temporary tables, and never copies the 12 GB morphology database per page.
-Candidate evidence remains text-free; representative corpus hits are collected
-through the existing bounded reader.
+The projection manifest binds the source snapshot and projection version. A
+matching file stamp allows fast reuse; if the projection file changed, the
+selector verifies its digest, SQLite integrity, and row counts before reuse.
+When no compatible projection exists, it can build the small projection from
+the completed aggregate without rerunning corpus morphology. It reads the
+aggregate as SQLite read-only, applies current canonical coverage and reviewed
+exclusions in temporary tables, and never copies the 12 GB morphology database
+per page. Candidate evidence remains text-free; representative corpus hits are
+collected through the existing bounded reader.
+
+`python scripts/reference/corpus_morphology_readonly.py` and
+`reference:corpus:morphology audit` are explicit full-audit diagnostics, not
+routine Stage 1 prerequisites. Use them for a concrete integrity,
+migration, or forensic question. A whole-document permission SHA change alone
+does not establish that permission was revoked.
 
 `run-corpus-lemma-pilot.mjs` selects from this verified full-corpus source by
 default. `--reuse-analysis-from` remains an explicit historical cache mode, and
