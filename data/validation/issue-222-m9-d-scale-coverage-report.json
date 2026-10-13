@@ -14,8 +14,8 @@
     "searchable_record_count": 7500
   },
   "current": {
-    "canonical_revision": "86cd8e429a65f92d0bbd6cb572882a5bb75b4fc3a3c13b7ad18836ff7513ed2f",
-    "canonical_records_sha256": "6fb9e8a292dd1a2a0f3fc8cb50236455f3e58d369d491d52e341d5ae271c89ef",
+    "canonical_revision": "994fec10abc73c8fea3b8b8762b22a4f0689e1fc498b67d543b8c504e8f16119",
+    "canonical_records_sha256": "c42457176f7e964fd985c2e0553358d221a7c9a2e6ce16f7ac98f20afb9656b5",
     "canonical_record_count": 12312,
     "records_added_after_issue_222_checkpoint": 4791,
     "directly_searchable_record_count": 12312,
@@ -37,9 +37,9 @@
       "verb": 1669
     },
     "sense_count": 12620,
-    "relation_count": 38474,
+    "relation_count": 42700,
     "canonical_search_form_count": 12569,
-    "relation_empty_searchable_record_count": 7939,
+    "relation_empty_searchable_record_count": 7451,
     "exact_search_coverage": {
       "expected_lemma_count": 12312,
       "covered_lemma_count": 12312,
@@ -439,7 +439,7 @@
     "command": "npm run ci:normal",
     "check_name": "Validate and test Typewriter",
     "status_source": "external-exact-head-pr-check",
-    "canonical_sha256": "6fb9e8a292dd1a2a0f3fc8cb50236455f3e58d369d491d52e341d5ae271c89ef"
+    "canonical_sha256": "c42457176f7e964fd985c2e0553358d221a7c9a2e6ce16f7ac98f20afb9656b5"
   },
   "runtime_package_impact": {
     "status": "dictionary-record-count-growth-runtime-contract-unchanged-package-bytes-not-measured",
