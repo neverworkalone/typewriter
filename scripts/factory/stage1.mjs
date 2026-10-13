@@ -155,10 +155,8 @@ export function observationsFromCorpusEvidence(evidence) {
   const observations = [];
   // Matched surfaces are accepted only as-is when they satisfy the tracked token contract. Invalid
   // values are omitted and represented only by an aggregate count; never clean or replace source text.
-  // A candidate with no usable hit stays visible through `no_evidence` when its lemma is itself a
-  // bounded surface token; otherwise no source-backed observation can represent it safely.
+  // A candidate left with no usable hit stays visible through the explicit `no_evidence` hold.
   let omittedNonTokenSurfaceHits = 0;
-  let omittedUnrepresentableCandidateCount = 0;
   evidence.candidates.forEach((candidate, index) => {
     const at = `evidence candidate ${index + 1}`;
     const input = normalizeText(candidate.proposed_lemma);
@@ -178,13 +176,6 @@ export function observationsFromCorpusEvidence(evidence) {
     const usableHits = hits.filter((hit) => isSurfaceToken(hit.matched_surface_form));
     omittedNonTokenSurfaceHits += hits.length - usableHits.length;
     if (usableHits.length === 0) {
-      // The proposal lemma is a safe placeholder only when it also fits the tracked surface-token
-      // contract. An overlong no-hit proposal has no honest bounded observation to emit; leave it
-      // out of this evidence page so serial refill can continue with the next source page.
-      if (!isSurfaceToken(input)) {
-        omittedUnrepresentableCandidateCount += 1;
-        return;
-      }
       // No valid located surface: keep the candidate visible with a generic hold. The proposed lemma
       // is a bounded placeholder, not a rewrite or replacement derived from an omitted hit.
       const surface = input;
@@ -208,7 +199,6 @@ export function observationsFromCorpusEvidence(evidence) {
       source_snapshot: `corpus:${manifestDigest}:${rowsDigest}`,
       extractor_version: evidence.extractor.extractor_version,
       omitted_non_token_surface_hits: omittedNonTokenSurfaceHits,
-      omitted_unrepresentable_candidate_count: omittedUnrepresentableCandidateCount,
     },
   };
 }
@@ -860,10 +850,7 @@ export async function produceCandidateBatch({
     throw new Stage1Error([`${grouped.unresolved.length} observations have no reliable lemma/POS, above the bound ${MAX_UNRESOLVED_OBSERVATIONS}; split the evidence run`]);
   }
   const empty = ![...grouped.lemmas.keys()].some((lemma) => !producedLemmas.has(lemma));
-  if (refill && empty && !finalizeEmpty) return {
-    incomplete: true, rows: [], grouped,
-    unrepresentableProposalCount: source.omitted_unrepresentable_candidate_count,
-  };
+  if (refill && empty && !finalizeEmpty) return { incomplete: true, rows: [], grouped };
   const { selected, deferred, skippedProduced } = refill && finalizeEmpty && empty
     ? { selected: [], deferred: [], skippedProduced: grouped.lemmas.size }
     : selectLemmas({ lemmas: grouped.lemmas, maxCandidates, producedLemmas });
@@ -907,7 +894,6 @@ export async function produceCandidateBatch({
     candidatesText,
     rows,
     ensemble: ensemble ? { decisions: grouped.decisions, run: grouped.run } : null,
-    unrepresentableProposalCount: source.omitted_unrepresentable_candidate_count,
     summary: {
       effectivePolicy: policy,
       providerOrder: ids,
@@ -915,7 +901,6 @@ export async function produceCandidateBatch({
       ...(ensemble ? { ensemble: ensembleCohortMetrics({ observations: grouped.observations, decisions: grouped.decisions, run: grouped.run, contextOutcomes: grouped.contextRecords }) } : {}),
       candidates: rows.length,
       omittedNonTokenSurfaceHits: source.omitted_non_token_surface_hits,
-      omittedUnrepresentableProposals: source.omitted_unrepresentable_candidate_count,
       deferredLemmas: deferred,
       skippedProducedLemmas: skippedProduced,
       metrics: batchMetrics(rows, grouped),
