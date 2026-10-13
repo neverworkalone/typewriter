@@ -38,12 +38,14 @@ general topic or scene association.
   부활절 ↔ 성탄절 and 찬송 ↔ 자장가 are negative controls: same category,
   different scene, so they stay near/association. 손을 보태다 (giving help) ↔
   손을 빌리다 (receiving help) is also negative: the participant roles differ,
-  so it stays exploratory. 상상력 (ability) ↔ 상상하다 (the act) and 세탁기 ↔
-  기계 (kind ↔ broader category) are likewise negative: the bound senses name
-  different kinds of thing (ability vs act, kind vs category, whole vs part,
-  person vs result), so they stay exploratory, and an `antonym` needs the same
-  axis (패자 ↔ 승자, not 패자 ↔ 승리). Decide `direct` first and use `near` only
-  for texture that is not a close alternative.
+  so it stays exploratory. 상상력 (ability) ↔ 상상하다 (the act) is likewise
+  negative because the bound senses name different kinds of thing (ability vs
+  act, person vs result, whole vs part), and an `antonym` needs the same axis
+  (패자 ↔ 승자, not 패자 ↔ 승리). A difference of scope alone is not such a
+  difference: 레슨 ↔ 수업 and 꼭대기 ↔ 산꼭대기 are positive direct
+  calibrations because they remain close alternatives in a recurring natural
+  context. Decide `direct` first and use `near` only for texture that is not a
+  close alternative.
 - `antonym` claims meaningful semantic opposition between the bound senses in
   a recognizable natural usage context. Ordinary, literary, figurative,
   technical, domain-specific and culinary contexts can establish the contrast.
